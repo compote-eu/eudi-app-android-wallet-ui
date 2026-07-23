@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ Copyright (c) 2026 European Commission
+  ~
+  ~ Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+  ~ Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+  ~ except in compliance with the Licence.
+  ~
+  ~ You may obtain a copy of the Licence at:
+  ~ https://joinup.ec.europa.eu/software/page/eupl
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software distributed under
+  ~ the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+  ~ ANY KIND, either express or implied. See the Licence for the specific language
+  ~ governing permissions and limitations under the Licence.
+  -->
+
+<!--
+  `local` flavor only. Overrides the strict release config so the app can reach
+  local HTTPS services signed by your own development CA, without hard-coding a LAN
+  IP (which changes between networks). Cleartext (plain HTTP) stays DISABLED.
+
+  This trusts:
+    - the bundled local dev CA (res/raw/local_dev_ca.pem), so HTTPS services signed
+      by it are trusted without installing anything on the device;
+    - system CAs, required because the optional services that stay on the dev
+      reference infrastructure (trusted list, RQES) use public/system CAs;
+    - user-installed CAs, so you can still trust a CA installed on the device.
+
+  The bundled CA is produced by `./gradlew :network-logic:generateLocalDevCa`, which
+  writes res/raw/local_dev_ca.pem. That file is git-ignored (each developer generates
+  their own CA), so you MUST run that task before building the `local` flavor — a
+  fresh checkout will otherwise fail to resolve @raw/local_dev_ca. To trust a CA
+  installed on the device instead of bundling one, remove the @raw entry below.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="@raw/local_dev_ca" />
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
