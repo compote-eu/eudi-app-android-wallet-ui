@@ -8,6 +8,7 @@
 * [Build commands](#build-commands)
 * [Running with remote services](#running-with-remote-services)
 * [Running with local services](#running-with-local-services)
+* [The local flavor](#the-local-flavor)
 * [Why 10.0.2.2?](#why-10022)
 * [How to work with self-signed certificates](#how-to-work-with-self-signed-certificates)
 * [Production note](#production-note)
@@ -54,10 +55,13 @@ Then open the folder in Android Studio.
 
 ## Build variants
 
-The application currently has two product flavors:
+The application currently has three product flavors:
 
 * `dev`: development/reference service configuration. The application ID has the `.dev` suffix.
 * `demo`: demo/reference service configuration.
+* `local`: services running on your own machine. The application ID has the `.local` suffix, so it
+  installs side-by-side with `dev`/`demo`, and its launcher icon carries a red `LOCAL` badge. See
+  [The local flavor](#the-local-flavor) for details.
 
 The application has two build types:
 
@@ -71,6 +75,8 @@ The resulting app build variants are:
 * `devRelease`
 * `demoDebug`
 * `demoRelease`
+* `localDebug`
+* `localRelease`
 
 To select a variant in Android Studio, open **Build > Select Build Variant** and choose the active
 variant for the `:app` module. Android Studio will apply the matching variants to the dependent
@@ -191,7 +197,7 @@ override val issuersConfig: List<VciConfig>
     )
 
 override val walletProviderHost: String
-    get() = "https://10.0.2.2:8444"
+    get() = "https://10.0.2.2:8445"
 ```
 
 For a physical device, use the host computer's LAN IP address instead:
@@ -202,6 +208,117 @@ issuerUrl = "https://192.168.1.50:8443"
 
 The issuer/verifier metadata, redirect URIs, and wallet deep links must match the app's configured
 schemes and hosts. See [CONFIGURATION.md](CONFIGURATION.md) for those values.
+
+## The local flavor
+
+Instead of editing the `dev`/`demo` config by hand as described above, use the dedicated **`local`**
+flavor. It is pre-wired to talk to services on your workstation, installs alongside `dev`/`demo`
+(application ID `eu.europa.ec.euidi.local`), and shows a red `LOCAL` badge on its launcher icon so
+you can tell the three apps apart.
+
+Select the **`localDebug`** variant in **Build > Select Build Variant**, or build from the command
+line:
+
+```bash
+./gradlew :app:assembleLocalDebug
+```
+
+### Configuring the host IP
+
+The `local` flavor reads the host address from a single, per-developer property so you never edit
+Kotlin when you move between networks. The value is exposed to the app as `BuildConfig.LOCAL_IP`.
+
+Set it in `local.properties` (this file is per-machine and git-ignored):
+
+```properties
+localIp=192.168.1.50
+```
+
+Resolution order (first match wins):
+
+1. `localIp` in `local.properties`
+2. the `LOCAL_IP` environment variable
+3. `10.0.2.2` (the Android emulator's alias for the host — the default when nothing is set)
+
+For a **physical device**, set `localIp` to your workstation's LAN IP as seen by the device. For the
+**emulator**, leave it unset to use `10.0.2.2` (see [Why 10.0.2.2?](#why-10022)).
+
+### Which services point where
+
+Only the services that are strictly required to issue a credential point at your machine by default;
+the optional ones stay on the `dev` reference infrastructure. Every entry has the alternative one
+comment-toggle away, in `core-logic/src/local/.../WalletCoreConfigImpl.kt` and
+`business-logic/src/local/.../RQESConfigImpl.kt`:
+
+| Service | Necessary? | Default in `local` | Port |
+|---|---|---|---|
+| Issuer (OpenID4VCI) | Yes | `https://${LOCAL_IP}` (dev URL commented) | `:8443` |
+| Wallet Provider | Yes | `https://${LOCAL_IP}` (dev URL commented) | `:8445` |
+| Trusted list (LoTE) | No | dev reference list (local URLs commented) | `:8446` |
+| RQES signer | No | dev reference signer (local URL commented) | `:8449` |
+
+The ports are a suggested scheme — change them to whatever your local stack binds to.
+
+### Trust settings for local development
+
+Because the local issuer is not present in the dev trusted list, the `local` flavor relaxes issuer
+trust so issuance is not blocked out of the box:
+
+* `configureIssuerTrust` uses `TrustPolicy.Action.INFORM` (not `ENFORCE`).
+* `requireSignedMetadata()` is commented out (many local issuers do not serve signed metadata).
+
+If you run your own trusted-list server that lists your local issuer, uncomment the local LoTE URLs
+and switch these two back to `ENFORCE` / `requireSignedMetadata()`. Both alternatives are present as
+comments at the relevant lines.
+
+### HTTPS and the local dev CA
+
+The `local` flavor ships its own `network-logic/src/local/res/xml/network_security_config.xml`.
+Cleartext HTTP stays disabled; the config trusts **system** and **user-installed** CAs so that HTTPS
+services signed by your development CA work on any LAN without a rebuild.
+
+#### Generating the CA and server certificates
+
+Two Gradle tasks (backed by `scripts/generate-local-dev-ca.sh`, which uses `openssl`) automate this:
+
+```bash
+# 1. Create the local dev CA (once). Bundles the CA cert at
+#    network-logic/src/local/res/raw/local_dev_ca.pem; the private key stays in
+#    network-logic/.local-dev-ca/ (git-ignored).
+./gradlew :network-logic:generateLocalDevCa
+
+# 2. Mint a TLS server certificate signed by that CA for your services. The host is
+#    taken from -PhostIp, else the LOCAL_IP env var, else `localIp` in local.properties,
+#    else 10.0.2.2. The SAN also includes localhost / 127.0.0.1 / 10.0.2.2.
+./gradlew :network-logic:generateLocalServerCert -PhostIp=192.168.1.50
+```
+
+Pass `-Pforce` to `generateLocalServerCert` to overwrite the existing server cert (e.g. when you
+change LAN). Regenerating the CA is separate and destructive — use `-PforceCa` on
+`generateLocalDevCa` only when you deliberately want a new CA (it invalidates any copy already
+installed on a device). Configure your local issuer / wallet-provider TLS with the generated
+`network-logic/.local-dev-ca/server.key` and `server.crt` (or `server-fullchain.crt`). All private
+keys under `network-logic/.local-dev-ca/` are git-ignored — never commit them.
+
+You can also run the script directly: `scripts/generate-local-dev-ca.sh ca` /
+`scripts/generate-local-dev-ca.sh server <host-or-ip>`.
+
+#### Making the app trust the CA
+
+The `local` flavor **bundles the CA in the APK by default** — its
+`network_security_config.xml` trusts `@raw/local_dev_ca` (plus `system` and `user`). The cert at
+`network-logic/src/local/res/raw/local_dev_ca.pem` is written by `generateLocalDevCa` and is
+git-ignored, so:
+
+> **You must run `./gradlew :network-logic:generateLocalDevCa` before building the `local` flavor.**
+> A fresh checkout has no `local_dev_ca.pem`, so the build will fail to resolve `@raw/local_dev_ca`
+> until you generate it. (If you prefer not to bundle a CA, remove the `@raw/local_dev_ca` trust
+> anchor and install the CA on the device instead — push `network-logic/.local-dev-ca/ca.crt` and
+> add it via **Settings > Security > Encryption & credentials > Install a certificate > CA
+> certificate**.)
+
+See [How to work with self-signed certificates](#how-to-work-with-self-signed-certificates) for the
+general guidance this builds on.
 
 ## Why 10.0.2.2?
 

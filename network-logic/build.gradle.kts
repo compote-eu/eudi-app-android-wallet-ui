@@ -41,3 +41,55 @@ excludeFromKoverReport(
     excludedClasses = KoverExclusionRules.NetworkLogic.classes,
     excludedPackages = KoverExclusionRules.NetworkLogic.packages,
 )
+
+// ---------------------------------------------------------------------------------------
+// Local development CA / TLS helper tasks (used by the `local` build flavor).
+// These are developer conveniences and are never part of the app build itself.
+// ---------------------------------------------------------------------------------------
+val localDevCaScript = "$rootDir/scripts/generate-local-dev-ca.sh"
+
+tasks.register<Exec>("generateLocalDevCa") {
+    group = "local dev"
+    description = "Generates a local development CA and bundles its certificate at " +
+        "network-logic/src/local/res/raw/local_dev_ca.pem for the `local` flavor. Pass -PforceCa to regenerate " +
+        "(destructive: invalidates any copy already installed on a device)."
+    workingDir = rootDir
+    commandLine("bash", localDevCaScript, "ca")
+    // Uses a dedicated -PforceCa flag (NOT -Pforce) so regenerating a server cert via
+    // generateLocalServerCert -Pforce never destroys/rotates the CA as a side effect.
+    val forceCaProp = providers.gradleProperty("forceCa")
+    argumentProviders.add(CommandLineArgumentProvider {
+        if (forceCaProp.isPresent) listOf("--force") else emptyList()
+    })
+}
+
+tasks.register<Exec>("generateLocalServerCert") {
+    group = "local dev"
+    description = "Generates a TLS server certificate signed by the local dev CA for your local " +
+        "services. Host resolved from -PhostIp, LOCAL_IP env, or localIp in local.properties. Pass -Pforce to regenerate."
+    dependsOn("generateLocalDevCa")
+    workingDir = rootDir
+    commandLine("bash", localDevCaScript, "server")
+    val hostIpProp = providers.gradleProperty("hostIp")
+    val forceProp = providers.gradleProperty("force")
+    argumentProviders.add(CommandLineArgumentProvider {
+        buildList {
+            hostIpProp.orNull?.let { add(it) }
+            if (forceProp.isPresent) add("--force")
+        }
+    })
+}
+
+tasks.register<Exec>("generateWalletProviderSigningKey") {
+    group = "local dev"
+    description = "Generates the wallet-provider ES256 signing keystore at " +
+        "local-services/config/wallet-provider/signing.p12 (+ public cert). Password via -PkeystorePassword (default 'changeit')."
+    workingDir = rootDir
+    commandLine(
+        "bash", "$rootDir/scripts/generate-signing-keystore.sh",
+        "local-services/config/wallet-provider/signing.p12",
+        "wallet-provider"
+    )
+    val pwProp = providers.gradleProperty("keystorePassword").orElse("changeit")
+    argumentProviders.add(CommandLineArgumentProvider { listOf(pwProp.get()) })
+}

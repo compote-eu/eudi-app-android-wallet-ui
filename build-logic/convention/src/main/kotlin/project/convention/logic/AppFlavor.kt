@@ -34,7 +34,8 @@ enum class AppFlavor(
     val applicationNameSuffix: String? = null
 ) {
     Dev(FlavorDimension.contentType, applicationIdSuffix = ".dev"),
-    Demo(FlavorDimension.contentType)
+    Demo(FlavorDimension.contentType),
+    Local(FlavorDimension.contentType, applicationIdSuffix = ".local")
 }
 
 fun Project.configureFlavors(
@@ -46,6 +47,15 @@ fun Project.configureFlavors(
         "VERSION_NAME",
         "version.properties"
     ).orEmpty()
+
+    // Host used by the `local` flavor to reach services running on the developer's
+    // machine. Configurable per developer/LAN via `localIp` in local.properties, or
+    // the LOCAL_IP environment variable. Falls back to the Android emulator's host
+    // alias (10.0.2.2) when unset. Consumed as BuildConfig.LOCAL_IP by the `local`
+    // source sets (e.g. core-logic/src/local/.../WalletCoreConfigImpl.kt).
+    val localIp = getProperty<String>("localIp")
+        ?: System.getenv("LOCAL_IP")
+        ?: "10.0.2.2"
 
     commonExtension.apply {
         flavorDimensions += FlavorDimension.contentType.name
@@ -64,6 +74,10 @@ fun Project.configureFlavors(
                         "APP_VERSION",
                         version
                     )
+                    // Only the `local` flavor needs the local host address.
+                    if (it == AppFlavor.Local) {
+                        addConfigField("LOCAL_IP", localIp)
+                    }
                     flavorConfigurationBlock(this, it)
                 }
             }

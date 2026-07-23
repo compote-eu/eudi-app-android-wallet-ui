@@ -1,0 +1,73 @@
+# Caddy reverse proxy for the local EU ARF services.
+# Terminates TLS with the dev-CA-signed server cert (mounted at /certs) and proxies
+# to the plain-HTTP backends. The cert's SAN covers ${LOCAL_IP} + localhost/127.0.0.1/
+# 10.0.2.2, and the app bundles the CA, so these connections are trusted end-to-end.
+
+{
+	admin off
+	auto_https off
+}
+
+# Issuer (credential issuer) + OIDC authorization server, both on :8443.
+#   /.well-known/oauth-authorization-server/oidc -> OIDC svc /.well-known/oauth-authorization-server
+#   /oidc/*                                       -> OIDC svc /* (prefix stripped)
+#   everything else                               -> credential issuer
+:8443 {
+	tls /certs/server.crt /certs/server.key
+
+	handle /.well-known/oauth-authorization-server/oidc {
+		rewrite * /.well-known/oauth-authorization-server
+		reverse_proxy issuer-oidc:5000
+	}
+
+	handle_path /oidc/* {
+		reverse_proxy issuer-oidc:5000
+	}
+
+	# Token status list (issuer revocation calls) -> statuslist service
+	handle /token_status_list/* {
+		reverse_proxy statuslist:5000
+	}
+
+	handle {
+		reverse_proxy issuer:5000
+	}
+}
+
+# Issuer FormEU frontend UI  ->  https://${LOCAL_IP}:8444 (browser auth pages)
+:8444 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy issuer-frontend:5000
+}
+
+# Wallet Provider  ->  app: https://${LOCAL_IP}:8445
+:8445 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy wallet-provider:8080
+}
+
+# --- Optional services (only reachable when their compose profile is running) -----------
+
+# Trusted list  ->  https://${LOCAL_IP}:8446   (docker compose --profile trustedlist)
+:8446 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy trustedlist:5000
+}
+
+# Verifier API  ->  https://${LOCAL_IP}:8447   (docker compose --profile verifier)
+:8447 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy verifier:8080
+}
+
+# Verifier UI   ->  https://${LOCAL_IP}:8448
+:8448 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy verifier-ui:4300
+}
+
+# RQES signer (CSC/RSSP)  ->  https://${LOCAL_IP}:8449   (docker compose --profile rqes)
+:8449 {
+	tls /certs/server.crt /certs/server.key
+	reverse_proxy rqes-signer:8082
+}
