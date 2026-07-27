@@ -35,7 +35,16 @@ enum class AppFlavor(
 ) {
     Dev(FlavorDimension.contentType, applicationIdSuffix = ".dev"),
     Demo(FlavorDimension.contentType),
-    Local(FlavorDimension.contentType, applicationIdSuffix = ".local")
+    Local(FlavorDimension.contentType, applicationIdSuffix = ".local"),
+
+    // Slovak (SK) variant. Starts as a suffix flavor (installs alongside dev/demo/local)
+    // and currently targets the local backend for development, so it reuses LOCAL_IP and
+    // the local dev-CA trust. It will get its OWN full applicationId in a later phase.
+    Sk(
+        FlavorDimension.contentType,
+        applicationIdSuffix = ".sk",
+        applicationNameSuffix = " SK"
+    )
 }
 
 fun Project.configureFlavors(
@@ -74,8 +83,9 @@ fun Project.configureFlavors(
                         "APP_VERSION",
                         version
                     )
-                    // Only the `local` flavor needs the local host address.
-                    if (it == AppFlavor.Local) {
+                    // The `local` flavor and the `sk` flavor (which currently targets the
+                    // local backend) need the local host address.
+                    if (it == AppFlavor.Local || it == AppFlavor.Sk) {
                         addConfigField("LOCAL_IP", localIp)
                     }
                     flavorConfigurationBlock(this, it)
