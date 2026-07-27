@@ -26,6 +26,15 @@ plugins {
 
 extensions.configure<LibraryExtension>("android") {
     namespace = "eu.europa.ec.networklogic"
+
+    // The `sk` flavor currently targets the local backend, so it needs the same dev-CA
+    // trust as `local`. Rather than duplicate the network_security_config and the bundled
+    // CA, the `sk` source set reuses the `local` flavor's res (both the XML and
+    // res/raw/local_dev_ca.pem, produced by :network-logic:generateLocalDevCa). When `sk`
+    // moves to its own real backend/trust anchors this extra srcDir should be removed.
+    sourceSets.getByName("sk") {
+        res.srcDir("src/local/res")
+    }
 }
 
 moduleConfig {
