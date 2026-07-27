@@ -61,7 +61,7 @@ interface ConfigLogic {
 }
 
 enum class AppFlavor {
-    DEV, DEMO, LOCAL
+    DEV, DEMO, LOCAL, SK
 }
 
 enum class AppBuildType {
