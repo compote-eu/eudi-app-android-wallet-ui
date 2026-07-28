@@ -48,6 +48,19 @@ bad()  { printf '  MISSING %s\n' "$*"; fail=1; }
 
 echo "Preflight checks:"
 
+# Docker daemon must be reachable. `docker info` is the portable check across macOS
+# (Docker Desktop) and Linux (dockerd) — it just asks the CLI to reach the daemon,
+# regardless of how it was started. Checked first: later checks (e.g. the wallet-provider
+# image) query the daemon and would fail misleadingly if it's down.
+command -v docker >/dev/null 2>&1 || { echo "  MISSING docker CLI not found — install Docker."; exit 1; }
+if ! docker info >/dev/null 2>&1; then
+  echo "  Docker daemon is not running. Start it and retry:"
+  echo "    macOS:  open -a Docker"
+  echo "    Linux:  sudo systemctl start docker   (or start your Docker service)"
+  exit 1
+fi
+ok "Docker daemon is running"
+
 [ -f .env ] || { echo "  MISSING .env — run ./bootstrap.sh"; exit 1; }
 LOCAL_IP="$(grep -E '^LOCAL_IP=' .env | tail -1 | cut -d= -f2 | tr -d '[:space:]')"
 echo "$LOCAL_IP" | grep -Eq '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' || { echo "  MISSING valid LOCAL_IP in .env"; exit 1; }
