@@ -161,6 +161,13 @@ ENV FLASK_APP=app
 EXPOSE 5000
 CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
 DOCKER
+# Keep the clone's `git status` clean: our overlay + Dockerfile are byproducts, not edits
+# to contribute upstream. skip-worktree hides the tracked config_service.py modification;
+# .git/info/exclude (local-only) hides the untracked Dockerfile without adding a tracked
+# .gitignore. Both are re-applied on every fresh clone, so this stays quiet for teammates.
+git -C "$SL" update-index --skip-worktree app/config_service.py 2>/dev/null || true
+grep -qxF 'Dockerfile' "$SL/.git/info/exclude" 2>/dev/null || echo 'Dockerfile' >> "$SL/.git/info/exclude"
+
 # Status-list signing key (the FC country maps to the UT key), signed by the dev CA.
 if [ ! -f config/statuslist/cert/PID-DS-0001_UT_cert.der ]; then
   mkdir -p config/statuslist/privKey config/statuslist/cert
