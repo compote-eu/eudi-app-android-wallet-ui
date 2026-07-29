@@ -20,6 +20,7 @@ import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
@@ -72,6 +73,7 @@ fun provideDocumentIssuanceSuccessInteractor(
 @Scoped
 fun provideDocumentOfferInteractor(
     walletCoreDocumentsController: WalletCoreDocumentsController,
+    walletEngine: WalletEngine,
     resourceProvider: ResourceProvider,
     deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     uiSerializer: UiSerializer,
@@ -79,6 +81,7 @@ fun provideDocumentOfferInteractor(
 ): DocumentOfferInteractor =
     DocumentOfferInteractorImpl(
         walletCoreDocumentsController,
+        walletEngine,
         deviceAuthenticationInteractor,
         resourceProvider,
         uiSerializer,

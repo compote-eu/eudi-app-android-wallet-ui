@@ -26,6 +26,8 @@ import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.ResolveDocumentOfferPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletDocument
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.getIssuerName
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.eudi.openid4vci.CredentialConfigurationIdentifier
@@ -103,6 +105,9 @@ class TestDocumentOfferInteractor {
     private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
 
     @Mock
+    private lateinit var walletEngine: WalletEngine
+
+    @Mock
     private lateinit var deviceAuthenticationInteractor: DeviceAuthenticationInteractor
 
     @Mock
@@ -132,6 +137,7 @@ class TestDocumentOfferInteractor {
 
         interactor = DocumentOfferInteractorImpl(
             walletCoreDocumentsController = walletCoreDocumentsController,
+            walletEngine = walletEngine,
             deviceAuthenticationInteractor = deviceAuthenticationInteractor,
             resourceProvider = resourceProvider,
             uiSerializer = uiSerializer,
@@ -1261,8 +1267,10 @@ class TestDocumentOfferInteractor {
 
     //region helper functions
     private fun mockGetMainPidDocumentCall(mainPid: IssuedDocument?) {
-        whenever(walletCoreDocumentsController.getMainPidDocument())
-            .thenReturn(mainPid)
+        // Only presence matters for DocumentOffer; map to a WalletDocument outside whenever()
+        // to avoid Mockito's UnfinishedStubbingException.
+        val mapped = mainPid?.let { WalletDocument(id = "offer_pid") }
+        whenever(walletEngine.getMainPidDocument()).thenReturn(mapped)
     }
 
     private fun mockWalletDocumentsControllerResolveOfferEventEmission(event: ResolveDocumentOfferPartialState) {

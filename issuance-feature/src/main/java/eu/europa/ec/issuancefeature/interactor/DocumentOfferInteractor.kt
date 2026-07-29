@@ -29,6 +29,7 @@ import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.ResolveDocumentOfferPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.documentIdentifier
 import eu.europa.ec.corelogic.extension.getIssuerLogo
 import eu.europa.ec.corelogic.extension.getIssuerName
@@ -119,6 +120,7 @@ interface DocumentOfferInteractor {
 
 class DocumentOfferInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val walletEngine: WalletEngine,
     private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     private val resourceProvider: ResourceProvider,
     private val uiSerializer: UiSerializer,
@@ -177,7 +179,7 @@ class DocumentOfferInteractorImpl(
                             }
 
                             val hasMainPid =
-                                walletCoreDocumentsController.getMainPidDocument() != null
+                                walletEngine.getMainPidDocument() != null
 
                             val hasPidInOffer =
                                 response.offer.offeredDocuments.any { offeredDocument ->
