@@ -24,6 +24,7 @@ import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.transformer.RequestTransformer
 import eu.europa.ec.corelogic.controller.TransferEventPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.PresentationCombinationDomain
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -77,6 +78,9 @@ class TestPresentationRequestInteractor {
     private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
 
     @Mock
+    private lateinit var walletEngine: WalletEngine
+
+    @Mock
     private lateinit var uuidProvider: UuidProvider
 
     private lateinit var interactor: PresentationRequestInteractor
@@ -91,6 +95,7 @@ class TestPresentationRequestInteractor {
             resourceProvider = resourceProvider,
             walletCorePresentationController = walletCorePresentationController,
             walletCoreDocumentsController = walletCoreDocumentsController,
+            walletEngine = walletEngine,
             uuidProvider = uuidProvider
         )
 
@@ -635,6 +640,7 @@ class TestPresentationRequestInteractor {
             resourceProvider = resourceProvider,
             uuidProvider = uuidProvider,
             walletCoreDocumentsController = walletCoreDocumentsController,
+            walletEngine = walletEngine,
         )
 
         assertEquals("DefaultPresentationScopeId", newInteractor.presentationScopeId)
@@ -764,11 +770,11 @@ class TestPresentationRequestInteractor {
     }
 
     private suspend fun mockIsDocumentRevoked(isRevoked: Boolean) {
-        whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenReturn(isRevoked)
+        whenever(walletEngine.isDocumentRevoked(any())).thenReturn(isRevoked)
     }
 
     private suspend fun mockIsDocumentRevoked(revokedIds: Set<String>) {
-        whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenAnswer {
+        whenever(walletEngine.isDocumentRevoked(any())).thenAnswer {
             (it.arguments.first() as String) in revokedIds
         }
     }

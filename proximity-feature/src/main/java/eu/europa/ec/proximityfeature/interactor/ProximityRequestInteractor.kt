@@ -24,6 +24,7 @@ import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.transformer.RequestTransformer
 import eu.europa.ec.corelogic.controller.TransferEventPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import kotlinx.coroutines.flow.Flow
@@ -57,6 +58,7 @@ class ProximityRequestInteractorImpl(
     private val resourceProvider: ResourceProvider,
     private val uuidProvider: UuidProvider,
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val walletEngine: WalletEngine,
     walletCorePresentationController: WalletCorePresentationController? = null
 ) : ProximityRequestInteractor,
     ScopedPresentationInteractorDelegate(walletCorePresentationController) {
@@ -84,7 +86,7 @@ class ProximityRequestInteractorImpl(
 
                         val revokedDocumentIds = storageDocuments
                             .map { it.id }
-                            .filter { walletCoreDocumentsController.isDocumentRevoked(it) }
+                            .filter { walletEngine.isDocumentRevoked(it) }
                             .toSet()
 
                         val combinationsDomain =
