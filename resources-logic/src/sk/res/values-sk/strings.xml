@@ -1,0 +1,478 @@
+<!--
+  ~ Copyright (c) 2026 European Commission
+  ~
+  ~ Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+  ~ Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+  ~ except in compliance with the Licence.
+  ~
+  ~ You may obtain a copy of the Licence at:
+  ~ https://joinup.ec.europa.eu/software/page/eupl
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software distributed under
+  ~ the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+  ~ ANY KIND, either express or implied. See the Licence for the specific language
+  ~ governing permissions and limitations under the Licence.
+  -->
+
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- region Generic -->
+    <string name="generic_error_message">Ups! Niečo sa pokazilo</string>
+    <string name="generic_error_description">Ak problém pretrváva, kontaktujte prosím zákaznícku podporu</string>
+    <string name="generic_error_button_retry">SKÚSIŤ ZNOVA</string>
+    <string name="generic_network_error_message">Nie ste pripojení na internet</string>
+    <string name="generic_error_retry">Skúste to prosím znova</string>
+    <string name="generic_cancel">Zrušiť</string>
+    <string name="generic_cancel_capitalized" tools:ignore="ButtonCase">ZRUŠIŤ</string>
+    <string name="generic_continue">Pokračovať</string>
+    <string name="generic_continue_capitalized" tools:ignore="ButtonCase">POKRAČOVAŤ</string>
+    <string name="generic_enable_capitalized" tools:ignore="ButtonCase">POVOLIŤ</string>
+    <string name="generic_success">Hotovo</string>
+    <string name="generic_close">Zavrieť</string>
+    <string name="generic_ok">OK</string>
+    <string name="generic_dash">-</string>
+    <string name="generic_default_relying_party_name">Overujúca strana</string>
+    <string name="generic_default_issuer_name">Vydavateľ</string>
+    <string name="generic_view_details">Zobraziť podrobnosti</string>
+    <string name="generic_deferred_success_text">Prebieha!</string>
+    <string name="generic_bottom_sheet_delete_title">Odstrániť dokument?</string>
+    <string name="generic_bottom_sheet_delete_subtitle">Tento dokument bude odstránený z vašej peňaženky a môže to ovplyvniť prístup k službám.</string>
+    <string name="generic_bottom_sheet_delete_primary_button_text">Odstrániť</string>
+    <string name="generic_bottom_sheet_delete_secondary_button_text">Zrušiť</string>
+    <string name="generic_scan_qr">Naskenovať QR</string>
+    <string name="generic_or">ALEBO</string>
+    <string name="generic_filters_apply">Použiť</string>
+    <string name="generic_filters_reset">Obnoviť všetko</string>
+    <string name="generic_filters_title">Filtrovať podľa</string>
+    <string name="generic_filters_sort_by">Zoradiť podľa</string>
+    <string name="generic_search">Hľadať</string>
+    <string name="generic_unknown_issuer">Neznámy</string>
+    <!--endregion-->
+
+    <!-- region Content Description -->
+    <string name="content_description_image_or_placeholder_icon">Ikona obrázka alebo zástupného symbolu</string>
+    <string name="content_description_user_signature_icon">Podpis používateľa</string>
+    <string name="content_description_qr_code_icon">QR kód</string>
+    <string name="content_description_more_vert_icon">Ďalšie položky</string>
+    <string name="content_description_arrow_back_icon">Späť</string>
+    <string name="content_description_close_icon">Zavrieť</string>
+    <string name="content_description_warning_icon">Upozornenie</string>
+    <string name="content_description_error_icon">Chyba</string>
+    <string name="content_description_error_filled_icon">Chyba</string>
+    <string name="content_description_delete_icon">Odstrániť</string>
+    <string name="content_description_touch_id_icon">Touch id</string>
+    <string name="content_description_qr_icon">QR</string>
+    <string name="content_description_qr_scanner_icon">Skener QR</string>
+    <string name="content_description_nfc_icon">NFC</string>
+    <string name="content_description_user_icon">Používateľ</string>
+    <string name="content_description_id_icon">Id</string>
+    <string name="content_description_id_stroke_icon">Obrys id</string>
+    <string name="content_description_logo_icon">Ikona loga</string>
+    <string name="content_description_logo_icon_and_text">Ikona loga a text</string>
+    <string name="content_description_arrow_up_icon">Šípka nahor</string>
+    <string name="content_description_arrow_down_icon">Šípka nadol</string>
+    <string name="content_description_visibility_icon">Zobraziť</string>
+    <string name="content_description_visibility_off_icon">Skryť</string>
+    <string name="content_description_add_icon">Pridať</string>
+    <string name="content_description_edit_icon">Upraviť</string>
+    <string name="content_description_verified_icon">Overené</string>
+    <string name="content_description_message_icon">Správa</string>
+    <string name="content_description_success_icon">Úspech</string>
+    <string name="content_description_clock_timer_icon">Časovač</string>
+    <string name="content_description_arrow_right_icon">Šípka doprava</string>
+    <string name="content_description_open_new_icon">Otvoriť nové</string>
+    <string name="content_description_handle_bar_icon">Rukoväť</string>
+    <string name="content_description_search_icon">Hľadať</string>
+    <string name="content_description_present_document_same_device_icon">Predložiť dokument osobne</string>
+    <string name="content_description_present_document_cross_device_icon">Predložiť dokument online</string>
+    <string name="content_description_add_document_from_list_icon">Pridať dokument zo zoznamu</string>
+    <string name="content_description_add_document_from_qr_icon">Pridať dokument cez QR</string>
+    <string name="content_description_authenticate_in_person_icon">Overiť sa osobne</string>
+    <string name="content_description_authenticate_online_icon">Overiť sa online</string>
+    <string name="content_description_sign_document_from_device_icon">Podpísať dokument zo zariadenia</string>
+    <string name="content_description_sign_document_from_qr_icon">Podpísať dokument cez QR</string>
+
+    <string name="content_description_bookmark_icon">Záložka</string>
+    <string name="content_description_bookmark_filled_icon">Vyplnená záložka</string>
+    <string name="content_description_certified_icon">Certifikované</string>
+    <string name="content_description_documents_icon">Dokumenty</string>
+    <string name="content_description_download_icon">Stiahnuť</string>
+    <string name="content_description_filters_icon">Filtre</string>
+    <string name="content_description_home_icon">Domov</string>
+    <string name="content_description_in_progress_icon">Prebieha</string>
+    <string name="content_description_notifications_icon">Upozornenia</string>
+    <string name="content_description_transactions_icon">História</string>
+    <string name="content_description_wallet_activated_icon">Peňaženka aktivovaná</string>
+    <string name="content_description_wallet_secured_icon">Peňaženka zabezpečená</string>
+    <string name="content_description_info_icon">Informácie</string>
+    <string name="content_description_issuer_icon">Vydavateľ</string>
+    <string name="content_description_issuer_logo_icon">Logo vydavateľa</string>
+    <string name="content_description_menu_icon">Ponuka</string>
+    <string name="content_description_signature_icon">Podpis</string>
+    <string name="content_description_authenticate_icon">Overovacie preukazy totožnosti</string>
+    <string name="content_description_change_pin_icon">Zmeniť PIN</string>
+    <string name="content_description_check_icon">Potvrdiť</string>
+    <string name="content_description_open_in_browser_icon">Otvoriť v prehliadači</string>
+    <string name="content_description_date_range_icon">Vybrať rozsah dátumov filtra</string>
+    <string name="content_description_settings_icon">Nastavenia</string>
+    <string name="content_description_batch_issuance_counter_icon">Počítadlo hromadného vydávania</string>
+    <!--endregion-->
+
+    <!-- region Biometric prompt -->
+    <string name="biometric_prompt_title">Biometrické overenie</string>
+    <string name="biometric_prompt_subtitle">Overte sa pomocou svojich biometrických údajov</string>
+    <string name="biometric_login_title">Vitajte späť</string>
+    <string name="biometric_login_biometrics_enabled_subtitle">Použite svoje biometrické údaje na prístup do EUDI Wallet.</string>
+    <string name="biometric_login_biometrics_not_enabled_subtitle">Na prístup do EUDI Wallet musíte zadať svoj PIN.</string>
+    <!--endregion-->
+
+    <!-- region Biometrics -->
+    <string name="biometric_no_hardware">Vaše zariadenie nepodporuje biometrické overenie</string>
+    <string name="biometric_unknown_error">Pri inicializácii biometrického overenia sa niečo pokazilo. Skúste to prosím znova</string>
+    <string name="biometric_default_mode_text_above_pin_field">PIN</string>
+    <!--endregion-->
+
+    <!-- region Document Success -->
+    <string name="document_success_header_description">Nasledujúce informácie ste úspešne zdieľali so stranou</string>
+    <string name="document_success_header_description_when_error">Informácie ste úspešne zdieľali so stranou</string>
+    <string name="document_success_relying_party_default_name">@string/generic_default_relying_party_name</string>
+    <string name="document_success_collapsed_supporting_text">@string/generic_view_details</string>
+    <string name="document_success_sticky_button_text">@string/generic_close</string>
+    <!--endregion-->
+
+    <!-- region Quick Pin -->
+    <string name="quick_pin_invalid_error">Neplatný PIN</string>
+    <string name="quick_pin_non_match">PIN kódy sa nezhodujú</string>
+    <string name="quick_pin_locked_out">Nesprávny PIN ste zadali %1$d-krát za sebou.\nPred ďalším pokusom prosím počkajte %2$s.</string>
+
+    <string name="quick_pin_create_title">Vitajte vo svojej peňaženke</string>
+    <string name="quick_pin_create_subtitle">Zabezpečte svoju peňaženku PIN kódom a pripojte sa k svojmu národnému systému.</string>
+    <string name="quick_pin_create_enter_pin_input_label">Zadajte PIN</string>
+    <string name="quick_pin_create_reenter_pin_input_label">Potvrďte PIN</string>
+
+    <string name="quick_pin_change_title">Zmeniť PIN</string>
+    <string name="quick_pin_change_validate_current_subtitle">Zadajte svoj aktuálny PIN</string>
+    <string name="quick_pin_change_enter_new_subtitle">Vyberte si PIN pre budúce prihlásenia</string>
+    <string name="quick_pin_change_reenter_new_subtitle">Znova zadajte nový PIN</string>
+
+    <string name="quick_pin_create_success_text">Vaša peňaženka je zabezpečená!</string>
+    <string name="quick_pin_create_success_description">Ak chcete aktivovať svoju peňaženku, pripojte sa k svojmu národnému systému a pridajte svoj digitálny preukaz totožnosti.</string>
+    <string name="quick_pin_create_success_no_activation_description">Vaša peňaženka je pripravená na použitie.</string>
+    <string name="quick_pin_create_success_btn">Pridať môj digitálny preukaz totožnosti</string>
+    <string name="quick_pin_create_success_no_activation_btn">PREJSŤ NA DOMOVSKÚ OBRAZOVKU</string>
+    <string name="quick_pin_change_success_text">@string/generic_success</string>
+    <string name="quick_pin_change_success_description">PIN ste úspešne zmenili</string>
+    <string name="quick_pin_change_success_btn">SPÄŤ NA DOMOVSKÚ OBRAZOVKU</string>
+
+    <string name="quick_pin_bottom_sheet_cancel_title">Zrušiť zmenu PIN?</string>
+    <string name="quick_pin_bottom_sheet_cancel_subtitle">Zrušením sa vrátite späť na domovskú obrazovku bez zmeny PIN</string>
+    <string name="quick_pin_bottom_sheet_cancel_primary_button_text">@string/generic_continue_capitalized</string>
+    <string name="quick_pin_bottom_sheet_cancel_secondary_button_text">@string/generic_cancel_capitalized</string>
+    <!--endregion-->
+
+    <!-- region Request Screen -->
+    <string name="request_header_description">Nasledujúca transakcia vyžaduje vaše povolenie a overenie.</string>
+    <string name="request_header_main_text">ŽIADOSŤ O ZDIEĽANIE ÚDAJOV</string>
+    <string name="request_relying_party_default_name">@string/generic_default_relying_party_name</string>
+    <string name="request_relying_party_description">žiada o nasledujúce</string>
+    <string name="request_warning_text">Pred zdieľaním svojich údajov ich prosím pozorne skontrolujte.</string>
+    <string name="request_collapsed_supporting_text">@string/generic_view_details</string>
+    <string name="request_combination_option_title">Možnosť %1$d z %2$d</string>
+    <string name="request_no_data">Požadovaný dokument nie je vo vašej EUDI Wallet dostupný.
+        Ďalšie informácie vám poskytne autorizovaný vydavateľ.</string>
+    <string name="request_sticky_button_text">Zdieľať</string>
+    <string name="request_bottom_sheet_warning_title">Upozornenie</string>
+    <string name="request_bottom_sheet_warning_subtitle">Ak sa rozhodnete nezdieľať určité údaje, môže to viesť k zlyhaniu vydania požadovaného dokumentu.</string>
+    <string name="request_blocked_bottom_sheet_title">Predloženie zablokované</string>
+    <string name="request_blocked_bottom_sheet_message">Táto žiadosť o predloženie bola zablokovaná, pretože vaša peňaženka nedokázala overiť overujúcu stranu.\n\nVaše osobné ani iné údaje neboli s touto overujúcou stranou zdieľané.</string>
+    <string name="request_blocked_bottom_sheet_primary_button_text">@string/generic_close</string>
+    <string name="request_gender_male">Muž</string>
+    <string name="request_gender_female">Žena</string>
+    <string name="request_gender_not_known">Neznáme</string>
+    <string name="request_gender_not_applicable">Neuplatňuje sa</string>
+    <!--endregion-->
+
+    <!-- region Loading Screen -->
+    <string name="loading_header_description">Čakajte prosím…</string>
+    <string name="loading_biometry_biometrics_enabled_description">Použite svoje biometrické údaje na schválenie transakcie.</string>
+    <string name="loading_biometry_biometrics_not_enabled_description">Na schválenie transakcie musíte overiť svoju totožnosť.</string>
+    <!--endregion-->
+
+    <!-- region Dashboard -->
+    <string name="dashboard_document_has_not_expired">Platný do:\ %1$s</string>
+    <string name="dashboard_document_has_expired">Platnosť vypršala</string>
+    <string name="dashboard_document_deferred_pending">Čaká sa</string>
+    <string name="dashboard_document_deferred_failed">Vydanie zlyhalo</string>
+    <string name="dashboard_document_revoked">Zrušený</string>
+    <string name="dashboard_document_credentials_info_text">%d/%d</string>
+
+    <string name="dashboard_bottom_sheet_bluetooth_title">Povoliť bluetooth?</string>
+    <string name="dashboard_bottom_sheet_bluetooth_subtitle">Povoľte bluetooth na zdieľanie svojich informácií pomocou možnosti overenia osobne alebo online</string>
+    <string name="dashboard_bottom_sheet_bluetooth_primary_button_text">@string/generic_enable_capitalized</string>
+    <string name="dashboard_bottom_sheet_bluetooth_secondary_button_text">@string/generic_cancel_capitalized</string>
+
+    <string name="dashboard_bottom_sheet_deferred_document_pressed_title">@string/generic_bottom_sheet_delete_title</string>
+    <string name="dashboard_bottom_sheet_deferred_document_pressed_subtitle">@string/generic_bottom_sheet_delete_subtitle</string>
+    <string name="dashboard_bottom_sheet_deferred_document_pressed_primary_button_text">@string/generic_bottom_sheet_delete_primary_button_text</string>
+    <string name="dashboard_bottom_sheet_deferred_document_pressed_secondary_button_text">@string/generic_bottom_sheet_delete_secondary_button_text</string>
+
+    <string name="dashboard_bottom_sheet_deferred_documents_ready_title">Dokumenty vydané</string>
+    <string name="dashboard_bottom_sheet_deferred_documents_ready_subtitle">Do vašej peňaženky boli pridané nové dokumenty.</string>
+
+    <string name="dashboard_bottom_sheet_revoked_document_dialog_title">Zrušené dokumenty</string>
+    <string name="dashboard_bottom_sheet_revoked_document_dialog_subtitle">Nasledujúce dokumenty boli zrušené.</string>
+    <!--endregion-->
+
+    <!-- region Dashboard Side Menu -->
+    <string name="dashboard_side_menu_title">Moja EÚ peňaženka</string>
+    <string name="dashboard_side_menu_option_change_pin">Zmeniť PIN</string>
+    <string name="dashboard_side_menu_option_settings">Nastavenia</string>
+    <!--endregion-->
+
+    <!-- region Settings Screen -->
+    <string name="settings_screen_title">Nastavenia</string>
+    <string name="settings_screen_option_biometrics_authentication">Overovať sa pomocou biometrie</string>
+    <string name="settings_screen_option_show_batch_issuance_counter">Počítadlo hromadného vydávania</string>
+    <string name="settings_screen_option_retrieve_logs">Získať záznamy</string>
+    <string name="settings_screen_option_changelog">Zoznam zmien</string>
+    <string name="settings_intent_chooser_logs_share_title">Zdieľať záznamy</string>
+    <!--endregion-->
+
+    <!-- region Home Screen -->
+    <string name="home_screen_title">Domov</string>
+    <string name="home_screen_welcome">Vitajte</string>
+    <string name="home_screen_welcome_user_message">Vitajte, %1$s</string>
+    <string name="home_screen_authentication_card_title">Overte sa, autorizujte transakcie a zdieľajte svoje digitálne dokumenty osobne alebo online.</string>
+    <string name="home_screen_sign_card_title">Elektronicky podpisujte digitálne dokumenty pomocou svojej peňaženky výberom súboru zo svojho zariadenia.</string>
+    <string name="home_screen_authenticate">Overiť sa</string>
+    <string name="home_screen_authenticate_description">Overte sa zdieľaním svojich údajov osobne (v bezprostrednej blízkosti) alebo online (webová lokalita/služba).</string>
+    <string name="home_screen_sign">Podpísať</string>
+    <string name="home_screen_learn_more">Zistiť viac</string>
+    <string name="home_screen_authenticate_option_in_person">Osobne</string>
+    <string name="home_screen_add_document_option_online">Online</string>
+
+    <string name="home_screen_sign_document">Podpísať dokument</string>
+    <string name="home_screen_sign_document_description">Podpíšte dokument digitálne výberom súboru zo svojho zariadenia alebo naskenovaním QR kódu.</string>
+    <string name="home_screen_sign_document_option_from_device">Zo zariadenia</string>
+    <string name="home_screen_sign_document_option_scan_qr">Naskenovať QR</string>
+    <!--endregion-->
+
+    <!-- region Home Screen Learn More Popups content -->
+    <string name="home_screen_authenticate_learn_more_inner_title">Podpisujte dokumenty bezpečne</string>
+    <string name="home_screen_authenticate_learn_more_description">Podpisujte dokumenty len pomocou svojej peňaženky. Poskytnutie právne záväzného elektronického podpisu bude rýchlejšie a jednoduchšie ako kedykoľvek predtým a umožní vám vybavovať záležitosti kdekoľvek sa nachádzate.</string>
+    <string name="home_screen_sign_learn_more_inner_title">Prístup k online službám</string>
+    <string name="home_screen_sign_learn_more_description">Identifikujte sa širokému spektru verejných a súkromných online služieb pri zachovaní svojho súkromia. Preukážte svoju totožnosť len niekoľkými ťuknutiami – bez potreby spravovať nespočetné množstvo hesiel.</string>
+    <!--endregion-->
+
+    <!-- region Documents Screen -->
+    <string name="documents_screen_title">Dokumenty</string>
+    <string name="documents_screen_search_label">@string/generic_search</string>
+    <string name="documents_screen_search_no_results">Vášmu vyhľadávaniu nezodpovedajú žiadne dokumenty. Skúste zmeniť vyhľadávací dopyt alebo filtre.</string>
+    <string name="documents_screen_add_document_title">Pridať dokument</string>
+    <string name="documents_screen_add_document_description">Pridajte dokumenty do svojej peňaženky výberom zo zoznamu alebo naskenovaním poskytnutého QR kódu.</string>
+    <string name="documents_screen_add_document_fab">Pridať dokument</string>
+    <string name="documents_screen_add_document_option_list">Zo zoznamu</string>
+    <string name="documents_screen_add_document_option_qr">@string/generic_scan_qr</string>
+    <string name="documents_screen_add_document_option_or">@string/generic_or</string>
+    <string name="documents_screen_filters_title">@string/generic_filters_title</string>
+    <string name="documents_screen_filters_sort_by">@string/generic_filters_sort_by</string>
+    <string name="documents_screen_filters_sort_default">Predvolené</string>
+    <string name="documents_screen_filters_filter_by_issuer">Vydavateľ</string>
+    <string name="documents_screen_filters_filter_by_category">Kategória</string>
+    <string name="documents_screen_filters_filter_by_state">Stav</string>
+    <string name="documents_screen_filters_filter_by_state_revoked">Zrušený</string>
+    <string name="documents_screen_filters_filter_by_state_valid">Platný</string>
+    <string name="documents_screen_filters_filter_by_state_expired">Platnosť vypršala</string>
+    <string name="documents_screen_filters_filter_by_expiry_period">Obdobie platnosti</string>
+    <string name="documents_screen_filters_filter_by_expiry_period_1">Najbližších 7 dní</string>
+    <string name="documents_screen_filters_filter_by_expiry_period_2">Najbližších 30 dní</string>
+    <string name="documents_screen_filters_filter_by_expiry_period_3">Po 30 dňoch</string>
+    <string name="documents_screen_filters_filter_by_expiry_period_4">Pred dneškom (platnosť vypršala)</string>
+    <string name="documents_screen_filters_apply">@string/generic_filters_apply</string>
+    <string name="documents_screen_filters_reset">@string/generic_filters_reset</string>
+    <string name="documents_screen_filters_unknown_issuer">@string/generic_unknown_issuer</string>
+    <!--endregion-->
+
+    <!-- region Transactions Screen -->
+    <string name="transactions_screen_title">História</string>
+    <string name="transactions_screen_search_label">@string/generic_search</string>
+    <string name="transactions_screen_search_no_results">Nenašli sa žiadne transakcie. Skúste zmeniť vyhľadávací dopyt alebo filtre.</string>
+    <string name="transactions_screen_0_minutes_ago_message">Práve teraz</string>
+    <plurals name="transactions_screen_some_minutes_ago_message">
+        <item quantity="one">pred %d minútou</item>
+        <item quantity="few">pred %d minútami</item>
+        <item quantity="many">pred %d minútami</item>
+        <item quantity="other">pred %d minútami</item>
+    </plurals>
+    <string name="transactions_screen_text_field_date_pattern">dd/mm/yyyy</string>
+    <!--endregion-->
+
+    <!-- region Transactions Screen, Filter labels-->
+    <string name="transactions_screen_filters_title">@string/generic_filters_title</string>
+    <string name="transactions_screen_filters_sort_by">@string/generic_filters_sort_by</string>
+    <string name="transactions_screen_filters_sort_transaction_date">Dátum transakcie</string>
+    <string name="transactions_screen_filter_by_date_period">Dátum</string>
+    <string name="transactions_screen_filter_by_status">Stav</string>
+    <string name="transactions_screen_filters_filter_by_relying_party">Overujúca strana</string>
+    <string name="transactions_screen_filters_filter_by_transaction_type">Typ transakcie</string>
+    <string name="transactions_screen_filters_filter_by_transaction_type_presentation">Predloženie</string>
+    <string name="transactions_screen_filters_filter_by_transaction_type_issuance">Vydanie</string>
+    <string name="transactions_screen_filters_filter_by_transaction_type_signing">Podpisovanie</string>
+    <string name="transactions_screen_filters_date_from">Dátum od</string>
+    <string name="transactions_screen_filters_date_to">Dátum do</string>
+    <string name="transactions_filter_item_status_completed">Dokončené</string>
+    <string name="transactions_filter_item_status_failed">Zlyhalo</string>
+    <string name="transactions_filter_item_no_relying_party_transactions">Bez overujúcej strany</string>
+    <string name="transactions_screen_filters_apply">@string/generic_filters_apply</string>
+    <string name="transactions_screen_filters_reset">@string/generic_filters_reset</string>
+    <!--endregion-->
+
+    <!-- region Document Sign -->
+    <string name="document_sign_title">Podpísať dokument</string>
+    <string name="document_sign_subtitle">Vyberte dokument zo svojho zariadenia na elektronické podpísanie.</string>
+    <string name="document_sign_select_document">Vybrať dokument</string>
+    <!--endregion-->
+
+    <!-- region Qr Scan -->
+    <string name="qr_scan_permission_not_granted">Povolenie na fotoaparát nebolo udelené\nOtvorte nastavenia aplikácie</string>
+    <string name="qr_scan_informative_text_presentation_flow">Máte problémy s naskenovaním QR kódu?\nSkúste prosím alternatívny spôsob</string>
+    <string name="qr_scan_informative_text_issuance_flow">Máte problémy s naskenovaním QR kódu?\nSkúste prosím alternatívny spôsob</string>
+    <string name="qr_scan_informative_text_signature_flow">Máte problémy s naskenovaním QR kódu?\nSkúste prosím alternatívny spôsob</string>
+    <!--endregion-->
+
+    <!-- region Document Details -->
+    <string name="document_details_boolean_item_true_readable_value">áno</string>
+    <string name="document_details_boolean_item_false_readable_value">nie</string>
+
+    <string name="document_details_bottom_sheet_delete_title">@string/generic_bottom_sheet_delete_title</string>
+    <string name="document_details_bottom_sheet_delete_subtitle">@string/generic_bottom_sheet_delete_subtitle</string>
+    <string name="document_details_bottom_sheet_delete_primary_button_text">@string/generic_bottom_sheet_delete_primary_button_text</string>
+    <string name="document_details_bottom_sheet_delete_secondary_button_text">@string/generic_bottom_sheet_delete_secondary_button_text</string>
+
+    <string name="document_details_toolbar_action_reissue">Vydať znova</string>
+    <string name="document_details_toolbar_action_remove">Odstrániť</string>
+
+    <string name="document_details_document_credentials_info_text">Zostávajúce inštancie %d/%d</string>
+    <string name="document_details_main_section_text">ÚDAJE DOKUMENTU</string>
+    <string name="document_details_issuer_section_text">ÚDAJE VYDAVATEĽA</string>
+    <string name="document_details_issuer_card_unknown_issuer">@string/generic_unknown_issuer</string>
+    <string name="document_details_issuer_card_expires_on_text">Platnosť vyprší:\ %1$s</string>
+    <string name="document_details_issuer_card_revoked_text">Dokument zrušený</string>
+    <string name="document_details_issuer_card_issued_on_text">Vydaný dňa:\ %1$s</string>
+    <string name="document_details_issuer_card_issued_message_text">Tento dokument môžete kedykoľvek vydať znova.</string>
+    <string name="document_details_issuer_card_issued_action_btn_text">Vydať dokument znova</string>
+    <string name="document_details_issuer_card_revoked_message_text">Tento dokument nemožno použiť na overenie.</string>
+    <string name="document_details_issuer_card_expired_action_btn_text">@string/document_details_issuer_card_issued_action_btn_text</string>
+    <string name="document_details_issuer_card_expired_on_text">Platnosť vypršala dňa:\ %1$s</string>
+    <string name="document_details_issuer_card_expired_text">Platnosť vypršala</string>
+    <string name="document_details_issuer_card_expired_message_text">Platnosť tohto dokumentu vypršala. Môžete ho vydať znova.</string>
+    <string name="document_details_secondary_button_text">Odstrániť z peňaženky</string>
+
+    <string name="document_details_bottom_sheet_bookmark_info_title">Uložené do obľúbených</string>
+    <string name="document_details_bottom_sheet_bookmark_info_message">Dokument bol úspešne pridaný do zoznamu vašich obľúbených.</string>
+    <string name="document_details_bottom_sheet_bookmark_removed_info_title">Odstránené z obľúbených</string>
+    <string name="document_details_bottom_sheet_bookmark_removed_info_message">Dokument bol úspešne odstránený zo zoznamu vašich obľúbených.</string>
+
+    <string name="document_details_bottom_sheet_badge_title">Dôveryhodná overujúca strana</string>
+    <string name="document_details_bottom_sheet_badge_subtitle">Overujúca strana sa považuje za dôveryhodnú, keď spĺňa
+        vopred stanovené kritériá pre bezpečnosť, ochranu údajov, súlad s predpismi a zodpovedné zaobchádzanie s údajmi.</string>
+    <!--endregion-->
+
+    <!-- region Transaction Details -->
+    <string name="transaction_details_screen_title">Informácie o transakcii</string>
+    <string name="transaction_details_screen_card_date_label">Dátum</string>
+    <string name="transaction_details_request_deletion_message">Môžete požiadať o zastavenie spracúvania osobných údajov spojených s touto transakciou. Môže to ovplyvniť váš prístup k službám.</string>
+    <string name="transaction_details_report_transaction_message">Ak sa domnievate, že táto overujúca strana neoprávnene požiadala o osobné údaje, môžete túto transakciu nahlásiť príslušným orgánom.</string>
+    <string name="transaction_details_request_deletion_button">Požiadať o vymazanie údajov</string>
+    <string name="transaction_details_report_transaction_button">Nahlásiť podozrivú transakciu</string>
+    <string name="transaction_details_data_shared_section_title">ZDIEĽANÉ ÚDAJE</string>
+    <string name="transaction_details_data_signed_section_title">PODPÍSANÉ ÚDAJE</string>
+    <string name="transaction_details_collapsed_supporting_text">@string/generic_view_details</string>
+    <!--endregion-->
+
+    <!-- region Proximity QR -->
+    <string name="proximity_qr_title">Overiť moju totožnosť</string>
+    <string name="proximity_qr_subtitle">Zobrazte tento QR kód interagujúcej strane v bezprostrednej blízkosti na overenie svojej totožnosti.</string>
+    <string name="proximity_qr_use_nfc">Pripojiť cez NFC</string>
+    <string name="proximity_qr_hold_near_reader">Priložte telefón k čítačke na naskenovanie.</string>
+    <!--endregion-->
+
+    <!-- region Presentation Qr Scan -->
+    <string name="presentation_qr_scan_title">Overiť moju totožnosť</string>
+    <string name="presentation_qr_scan_subtitle">Naskenujte QR kód poskytnutý interagujúcou stranou na overenie svojej totožnosti.</string>
+    <!--endregion-->
+
+    <!-- region Signature Qr Scan -->
+    <string name="signature_qr_scan_title">Podpísať dokument</string>
+    <string name="signature_qr_scan_subtitle">Naskenujte QR kód na elektronické podpísanie dokumentu.</string>
+    <!--endregion-->
+
+    <!-- region Issuance Add Document Screen -->
+    <string name="issuance_add_document_title">Pridať dokument zo zoznamu</string>
+    <string name="issuance_add_document_subtitle">Vyberte digitálny dokument z nižšie uvedeného zoznamu a pridajte ho do svojej peňaženky. Ďalšie dokumenty môžete pridať naskenovaním QR kódu, ktorý vám poskytla autorizovaná vydávajúca služba.</string>
+    <string name="issuance_add_document_no_options">Žiadne dostupné dokumenty</string>
+    <string name="issuance_add_document_deferred_success_text">@string/generic_deferred_success_text</string>
+    <string name="issuance_add_document_deferred_success_description">Váš dokument bol vyžiadaný. Po jeho vydaní do vašej peňaženky budete upozornení.</string>
+    <string name="issuance_add_document_deferred_success_primary_button_text">@string/generic_ok</string>
+    <string name="issuance_add_document_pid_combined">PID kombinovaný</string>
+    <!--endregion-->
+
+    <!-- region Issuance Success Screen -->
+    <string name="issuance_success_header_description">Do svojej peňaženky ste úspešne pridali nasledujúce</string>
+    <string name="issuance_success_header_description_when_error">Do svojej peňaženky ste úspešne pridali dokument(y)</string>
+    <string name="issuance_success_header_issuer_default_name">@string/generic_default_issuer_name</string>
+    <!--endregion-->
+
+    <!-- region Issuance Qr Scan -->
+    <string name="issuance_qr_scan_title">Pridať dokument cez QR</string>
+    <string name="issuance_qr_scan_subtitle">Naskenujte QR kód poskytnutý vydavateľom a pridajte digitálny dokument do svojej peňaženky.</string>
+    <!--endregion-->
+
+    <!-- region Issuance Document Offer -->
+    <string name="issuance_document_offer_primary_button_text_add">Pridať</string>
+    <string name="issuance_document_offer_deferred_success_text">@string/generic_deferred_success_text</string>
+    <string name="issuance_document_offer_deferred_success_description">Vaše dokumenty od %1$s boli vyžiadané. Po ich vydaní do vašej peňaženky budete upozornení.</string>
+    <string name="issuance_document_offer_deferred_success_primary_button_text">@string/generic_ok</string>
+    <string name="issuance_document_offer_error_missing_pid_text">Peňaženku je najprv potrebné aktivovať národným preukazom totožnosti</string>
+    <string name="issuance_document_offer_error_invalid_txcode_format">Neplatný formát transakčného kódu. Dĺžka by mala byť medzi %1$d až %2$d číslicami a povolené sú iba číselné znaky.</string>
+    <string name="issuance_document_offer_error_no_document">Ponuku osvedčenia sa nepodarilo načítať a spracovať</string>
+
+    <string name="issuance_document_offer_description">Nasledujúca transakcia vyžaduje vaše povolenie a overenie.</string>
+    <string name="issuance_document_offer_header_main_text">ŽIADOSŤ O VYDANIE</string>
+    <string name="issuance_document_offer_relying_party_default_name">@string/generic_default_issuer_name</string>
+    <string name="issuance_document_offer_relying_party_description">chce pridať nasledujúce</string>
+    <!--endregion-->
+
+    <!-- region Issuance Document Offer Code -->
+    <string name="issuance_code_title">%1$s vyžaduje overenie</string>
+    <string name="issuance_code_caption">Zadajte %1$d-miestny transakčný kód, ktorý ste dostali.</string>
+    <!--endregion-->
+
+    <!-- region Issuance Document Errors -->
+    <string name="issuance_generic_error">Pri vydávaní vášho dokumentu(ov) sa niečo pokazilo</string>
+    <string name="issuance_blocked_bottom_sheet_title">Vydanie zablokované</string>
+    <string name="issuance_blocked_bottom_sheet_message">Táto žiadosť o vydanie bola zablokovaná, pretože vaša peňaženka nedokázala overiť poskytovateľa.\n\nVaše osobné ani iné údaje neboli s týmto poskytovateľom zdieľané.</string>
+    <string name="issuance_blocked_bottom_sheet_primary_button_text">@string/generic_close</string>
+    <string name="issuance_partially_blocked_bottom_sheet_title">Neboli pridané všetky dokumenty</string>
+    <string name="issuance_partially_blocked_bottom_sheet_message">Niektoré dokumenty boli pridané do vašej peňaženky. Ostatné boli zablokované, pretože ich poskytovateľa sa nepodarilo overiť, a pre tieto neboli zdieľané žiadne údaje.</string>
+    <string name="issuance_partially_blocked_bottom_sheet_primary_button_text">@string/generic_continue</string>
+    <!--endregion-->
+
+    <!-- region Document Categories -->
+    <string name="document_category_government">ŠTÁTNA SPRÁVA</string>
+    <string name="document_category_travel">CESTOVANIE</string>
+    <string name="document_category_finance">FINANCIE</string>
+    <string name="document_category_education">VZDELÁVANIE</string>
+    <string name="document_category_health">ZDRAVIE</string>
+    <string name="document_category_social_security">SOCIÁLNE ZABEZPEČENIE</string>
+    <string name="document_category_retail">MALOOBCHOD</string>
+    <string name="document_category_other">OSTATNÉ</string>
+    <!--endregion-->
+
+    <!-- region Transaction Categories -->
+    <string name="transaction_category_today">DNES</string>
+    <string name="transaction_category_this_week">TENTO TÝŽDEŇ</string>
+    <string name="transaction_category_month_year">MESIAC</string>
+    <!--endregion-->
+
+</resources>
