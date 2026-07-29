@@ -229,7 +229,7 @@ class DocumentDetailsInteractorImpl(
                 )
 
                 if (allPidDocuments.count() > 1) {
-                    walletCoreDocumentsController.getMainPidDocument()?.id == documentId
+                    walletEngine.getMainPidDocument()?.id == documentId
                 } else {
                     true
                 }

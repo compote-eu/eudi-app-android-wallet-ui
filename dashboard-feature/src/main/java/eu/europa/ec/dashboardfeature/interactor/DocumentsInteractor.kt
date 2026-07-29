@@ -288,7 +288,7 @@ class DocumentsInteractorImpl(
     override fun getDocuments(): Flow<DocumentInteractorGetDocumentsPartialState> =
         flow<DocumentInteractorGetDocumentsPartialState> {
             val shouldAllowUserInteraction =
-                walletCoreDocumentsController.getMainPidDocument() != null
+                walletEngine.getMainPidDocument() != null
 
             val documentCategories = walletCoreDocumentsController.getAllDocumentCategories()
 

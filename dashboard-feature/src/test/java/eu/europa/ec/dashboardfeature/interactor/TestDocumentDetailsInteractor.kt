@@ -28,6 +28,7 @@ import eu.europa.ec.corelogic.controller.DeleteAllDocumentsPartialState
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimPathDomain
@@ -1503,8 +1504,10 @@ class TestDocumentDetailsInteractor {
     }
 
     private fun mockGetMainPidDocument(response: IssuedDocument?) {
-        whenever(walletCoreDocumentsController.getMainPidDocument())
-            .thenReturn(response)
+        // Map outside whenever(): touching the mock's `id` inside the stubbing would trip
+        // Mockito's UnfinishedStubbingException.
+        val mapped = response?.let { WalletDocument(id = it.id) }
+        whenever(walletEngine.getMainPidDocument()).thenReturn(mapped)
     }
 
     private fun mockDeleteAllDocumentsCall(response: DeleteAllDocumentsPartialState) {

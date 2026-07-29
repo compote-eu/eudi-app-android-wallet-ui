@@ -42,4 +42,11 @@ interface WalletEngine {
 
     /** Remove the bookmark for [bookmarkId]. */
     suspend fun deleteBookmark(bookmarkId: String)
+
+    /**
+     * The wallet's main PID document as an app-owned [WalletDocument], or null if there is
+     * none. First domain-model capability: [WalletDocument] replaces the wallet-core Document
+     * type at the seam. Non-suspend to mirror the current Android source.
+     */
+    fun getMainPidDocument(): WalletDocument?
 }

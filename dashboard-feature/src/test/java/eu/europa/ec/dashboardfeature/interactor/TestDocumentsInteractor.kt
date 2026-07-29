@@ -34,6 +34,7 @@ import eu.europa.ec.businesslogic.validator.model.SortOrder
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDeferredDocumentPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
 import eu.europa.ec.corelogic.model.DocumentCategories
@@ -752,7 +753,7 @@ class TestDocumentsInteractor {
         coroutineRule.runTest {
             // Given
             mockShowBatchIssuanceCounterPreference(response = true)
-            whenever(walletCoreDocumentsController.getMainPidDocument()).thenReturn(null)
+            whenever(walletEngine.getMainPidDocument()).thenReturn(null)
             whenever(walletCoreDocumentsController.getAllDocuments()).thenReturn(emptyList())
             whenever(walletCoreDocumentsController.getAllDocumentCategories())
                 .thenReturn(DocumentCategories(value = emptyMap()))
@@ -775,7 +776,7 @@ class TestDocumentsInteractor {
         coroutineRule.runTest {
             // Given
             mockShowBatchIssuanceCounterPreference(response = true)
-            whenever(walletCoreDocumentsController.getMainPidDocument()).thenReturn(null)
+            whenever(walletEngine.getMainPidDocument()).thenReturn(null)
             whenever(walletCoreDocumentsController.getAllDocuments())
                 .thenThrow(mockedExceptionWithMessage)
             whenever(walletCoreDocumentsController.getAllDocumentCategories())
@@ -801,7 +802,7 @@ class TestDocumentsInteractor {
         coroutineRule.runTest {
             // Given
             mockShowBatchIssuanceCounterPreference(response = true)
-            whenever(walletCoreDocumentsController.getMainPidDocument()).thenReturn(null)
+            whenever(walletEngine.getMainPidDocument()).thenReturn(null)
             whenever(walletCoreDocumentsController.getAllDocuments())
                 .thenThrow(mockedExceptionWithNoMessage)
             whenever(walletCoreDocumentsController.getAllDocumentCategories())
@@ -953,8 +954,8 @@ class TestDocumentsInteractor {
             whenever(unsignedDoc.format).thenReturn(mockedMdocPidFormat)
             whenever(unsignedDoc.issuerMetadata).thenReturn(null)
 
-            whenever(walletCoreDocumentsController.getMainPidDocument())
-                .thenReturn(mockedFullDocuments[0])
+            whenever(walletEngine.getMainPidDocument())
+                .thenReturn(WalletDocument(id = "mocked_pid_id"))
             // Cast to List<Document> since both IssuedDocument and UnsignedDocument implement Document.
             @Suppress("UNCHECKED_CAST")
             whenever(walletCoreDocumentsController.getAllDocuments())
@@ -1420,8 +1421,8 @@ class TestDocumentsInteractor {
         documentIsRevoked: Boolean = false,
         documentLowOnCredentials: Boolean = false,
     ) {
-        whenever(walletCoreDocumentsController.getMainPidDocument())
-            .thenReturn(mainPid)
+        whenever(walletEngine.getMainPidDocument())
+            .thenReturn(WalletDocument(id = "mocked_pid_id"))
         whenever(walletCoreDocumentsController.getAllDocuments())
             .thenReturn(documents)
         whenever(walletCoreDocumentsController.getAllDocumentCategories())

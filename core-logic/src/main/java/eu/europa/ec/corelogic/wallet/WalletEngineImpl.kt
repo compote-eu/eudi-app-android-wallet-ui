@@ -17,6 +17,7 @@
 package eu.europa.ec.corelogic.wallet
 
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 
 /**
@@ -42,4 +43,7 @@ class WalletEngineImpl(
 
     override suspend fun deleteBookmark(bookmarkId: String) =
         documentsController.deleteBookmark(bookmarkId)
+
+    override fun getMainPidDocument(): WalletDocument? =
+        documentsController.getMainPidDocument()?.let { WalletDocument(id = it.id) }
 }
