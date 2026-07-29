@@ -1,0 +1,37 @@
+# XcodeGen spec for the KMP-spike iOS app. Regenerate the .xcodeproj with:
+#   cd iosApp && xcodegen generate
+# The project is generated (not committed); project.yml is the source of truth.
+name: iosApp
+options:
+  bundleIdPrefix: eu.europa.ec.eudi.kmp
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: iosApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: eu.europa.ec.eudi.kmp.iosApp
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        SWIFT_VERSION: "5.0"
+        CODE_SIGNING_ALLOWED: NO
+        # The Kotlin framework is built by the pre-build script below into this folder.
+        FRAMEWORK_SEARCH_PATHS:
+          - $(inherited)
+          - $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
+        OTHER_LDFLAGS:
+          - $(inherited)
+          - -framework
+          - SharedKit
+    preBuildScripts:
+      - name: Compile Kotlin Framework (SharedKit)
+        basedOnDependencyAnalysis: false
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode
