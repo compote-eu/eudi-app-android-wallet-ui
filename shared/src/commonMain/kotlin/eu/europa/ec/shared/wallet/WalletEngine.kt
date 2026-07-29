@@ -33,4 +33,13 @@ interface WalletEngine {
 
     /** Whether the document with [documentId] is revoked. */
     suspend fun isDocumentRevoked(documentId: String): Boolean
+
+    /** Whether the document with [documentId] is bookmarked. */
+    suspend fun isDocumentBookmarked(documentId: String): Boolean
+
+    /** Persist a bookmark for [bookmarkId]. */
+    suspend fun storeBookmark(bookmarkId: String)
+
+    /** Remove the bookmark for [bookmarkId]. */
+    suspend fun deleteBookmark(bookmarkId: String)
 }

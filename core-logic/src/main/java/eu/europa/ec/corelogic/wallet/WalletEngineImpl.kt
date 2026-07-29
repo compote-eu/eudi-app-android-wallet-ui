@@ -33,4 +33,13 @@ class WalletEngineImpl(
 
     override suspend fun isDocumentRevoked(documentId: String): Boolean =
         documentsController.isDocumentRevoked(documentId)
+
+    override suspend fun isDocumentBookmarked(documentId: String): Boolean =
+        documentsController.isDocumentBookmarked(documentId)
+
+    override suspend fun storeBookmark(bookmarkId: String) =
+        documentsController.storeBookmark(bookmarkId)
+
+    override suspend fun deleteBookmark(bookmarkId: String) =
+        documentsController.deleteBookmark(bookmarkId)
 }

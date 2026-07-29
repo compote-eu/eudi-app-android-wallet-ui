@@ -125,6 +125,7 @@ fun provideDocumentSignInteractor(
 @Factory
 fun provideDocumentDetailsInteractor(
     walletCoreDocumentsController: WalletCoreDocumentsController,
+    walletEngine: WalletEngine,
     deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     resourceProvider: ResourceProvider,
     uuidProvider: UuidProvider,
@@ -133,6 +134,7 @@ fun provideDocumentDetailsInteractor(
 ): DocumentDetailsInteractor =
     DocumentDetailsInteractorImpl(
         walletCoreDocumentsController,
+        walletEngine,
         deviceAuthenticationInteractor,
         resourceProvider,
         uuidProvider,

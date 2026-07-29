@@ -28,6 +28,7 @@ import eu.europa.ec.corelogic.controller.DeleteAllDocumentsPartialState
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimType
@@ -93,6 +94,9 @@ class TestDocumentDetailsInteractor {
     private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
 
     @Mock
+    private lateinit var walletEngine: WalletEngine
+
+    @Mock
     private lateinit var resourceProvider: ResourceProvider
 
     @Mock
@@ -123,6 +127,7 @@ class TestDocumentDetailsInteractor {
 
         interactor = DocumentDetailsInteractorImpl(
             walletCoreDocumentsController = walletCoreDocumentsController,
+            walletEngine = walletEngine,
             deviceAuthenticationInteractor = deviceAuthenticationInteractor,
             resourceProvider = resourceProvider,
             uuidProvider = uuidProvider,
@@ -1513,7 +1518,7 @@ class TestDocumentDetailsInteractor {
     }
 
     private suspend fun mockStoreBookmarkCall(bookmarkId: String, throwable: Throwable? = null) {
-        whenever(walletCoreDocumentsController.storeBookmark(bookmarkId))
+        whenever(walletEngine.storeBookmark(bookmarkId))
             .thenAnswer {
                 throwable?.let { throw throwable }
                 Unit
@@ -1521,7 +1526,7 @@ class TestDocumentDetailsInteractor {
     }
 
     private suspend fun mockDeleteBookmarkCall(bookmarkId: String, throwable: Throwable? = null) {
-        whenever(walletCoreDocumentsController.deleteBookmark(bookmarkId))
+        whenever(walletEngine.deleteBookmark(bookmarkId))
             .thenAnswer {
                 throwable?.let { throw throwable }
                 Unit
@@ -1529,12 +1534,12 @@ class TestDocumentDetailsInteractor {
     }
 
     private suspend fun mockRetrieveBookmarkCall(response: Boolean) {
-        whenever(walletCoreDocumentsController.isDocumentBookmarked(ArgumentMatchers.anyString()))
+        whenever(walletEngine.isDocumentBookmarked(ArgumentMatchers.anyString()))
             .thenReturn(response)
     }
 
     private suspend fun mockIsDocumentRevoked(isRevoked: Boolean) {
-        whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenReturn(isRevoked)
+        whenever(walletEngine.isDocumentRevoked(any())).thenReturn(isRevoked)
     }
 
     private suspend fun mockIsDocumentLowOnCredentialsCall(response: Boolean) {

@@ -29,6 +29,7 @@ import eu.europa.ec.corelogic.controller.DeleteAllDocumentsPartialState
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.isExpired
 import eu.europa.ec.corelogic.extension.localizedIssuerMetadata
 import eu.europa.ec.corelogic.model.DocumentIdentifier
@@ -127,6 +128,7 @@ interface DocumentDetailsInteractor {
 
 class DocumentDetailsInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val walletEngine: WalletEngine,
     private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     private val resourceProvider: ResourceProvider,
     private val uuidProvider: UuidProvider,
@@ -169,9 +171,9 @@ class DocumentDetailsInteractorImpl(
                 val issuerLogo = safeIssuedDocument.localizedIssuerMetadata(userLocale)?.logo
 
                 val documentIsBookmarked =
-                    walletCoreDocumentsController.isDocumentBookmarked(documentId)
+                    walletEngine.isDocumentBookmarked(documentId)
 
-                val documentIsRevoked = walletCoreDocumentsController.isDocumentRevoked(documentId)
+                val documentIsRevoked = walletEngine.isDocumentRevoked(documentId)
                 val issuerDetails = IssuerDetailsCardDataUi(
                     issuerName = issuerName,
                     issuerLogo = issuerLogo?.uri,
@@ -267,7 +269,7 @@ class DocumentDetailsInteractorImpl(
 
     override fun storeBookmark(documentId: DocumentId): Flow<DocumentDetailsInteractorStoreBookmarkPartialState> =
         flow {
-            walletCoreDocumentsController.storeBookmark(documentId)
+            walletEngine.storeBookmark(documentId)
             emit(DocumentDetailsInteractorStoreBookmarkPartialState.Success(documentId))
         }.safeAsync {
             DocumentDetailsInteractorStoreBookmarkPartialState.Failure
@@ -275,7 +277,7 @@ class DocumentDetailsInteractorImpl(
 
     override fun deleteBookmark(documentId: DocumentId): Flow<DocumentDetailsInteractorDeleteBookmarkPartialState> =
         flow {
-            walletCoreDocumentsController.deleteBookmark(documentId)
+            walletEngine.deleteBookmark(documentId)
             emit(DocumentDetailsInteractorDeleteBookmarkPartialState.Success)
         }.safeAsync {
             DocumentDetailsInteractorDeleteBookmarkPartialState.Failure
