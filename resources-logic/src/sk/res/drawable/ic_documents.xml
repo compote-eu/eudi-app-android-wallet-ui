@@ -1,0 +1,15 @@
+<!--
+  `sk` flavor icon. Derived from Google Material Icons ('text_snippet', Filled style),
+  licensed under the Apache License 2.0. Overrides the default
+  res/drawable/ic_documents.xml for the sk flavor only; colour comes from the theme
+  tint applied by WrapIcon, so the fillColor here is a neutral placeholder.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="m20.41 8.41-4.83-4.83c-.37-.37-.88-.58-1.41-.58H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V9.83c0-.53-.21-1.04-.59-1.42zM7 7h7v2H7V7zm10 10H7v-2h10v2zm0-4H7v-2h10v2z" />
+</vector>
