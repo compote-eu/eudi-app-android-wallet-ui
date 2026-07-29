@@ -49,4 +49,7 @@ interface WalletEngine {
      * type at the seam. Non-suspend to mirror the current Android source.
      */
     fun getMainPidDocument(): WalletDocument?
+
+    /** All documents currently in the wallet, as app-owned [WalletDocument]s. */
+    fun getAllDocuments(): List<WalletDocument>
 }

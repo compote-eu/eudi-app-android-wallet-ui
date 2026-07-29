@@ -46,4 +46,7 @@ class WalletEngineImpl(
 
     override fun getMainPidDocument(): WalletDocument? =
         documentsController.getMainPidDocument()?.let { WalletDocument(id = it.id) }
+
+    override fun getAllDocuments(): List<WalletDocument> =
+        documentsController.getAllDocuments().map { WalletDocument(id = it.id) }
 }

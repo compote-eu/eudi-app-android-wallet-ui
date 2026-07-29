@@ -24,7 +24,8 @@ import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.model.PinFlow
-import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletDocument
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testfeature.util.getMockedFullDocuments
@@ -60,7 +61,7 @@ class TestSplashInteractor {
     private lateinit var resourceProvider: ResourceProvider
 
     @Mock
-    private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
+    private lateinit var walletEngine: WalletEngine
 
     @Mock
     private lateinit var configLogic: ConfigLogic
@@ -77,7 +78,7 @@ class TestSplashInteractor {
             quickPinInteractor = quickPinInteractor,
             uiSerializer = uiSerializer,
             resourceProvider = resourceProvider,
-            walletCoreDocumentsController = walletCoreDocumentsController,
+            walletEngine = walletEngine,
             configLogic = configLogic
         )
     }
@@ -103,7 +104,7 @@ class TestSplashInteractor {
             // Given
             whenever(quickPinInteractor.hasPin()).thenReturn(false)
             whenever(configLogic.forcePidActivation).thenReturn(true)
-            whenever(walletCoreDocumentsController.getAllDocuments()).thenReturn(emptyList())
+            whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
 
             // When
             val result = interactor.getAfterSplashRoute()
@@ -129,9 +130,8 @@ class TestSplashInteractor {
             // Given
             whenever(quickPinInteractor.hasPin()).thenReturn(false)
             whenever(configLogic.forcePidActivation).thenReturn(true)
-            val mockedFullDocuments = getMockedFullDocuments()
-            whenever(walletCoreDocumentsController.getAllDocuments())
-                .thenReturn(mockedFullDocuments)
+            whenever(walletEngine.getAllDocuments())
+                .thenReturn(listOf(WalletDocument(id = "mocked_id")))
 
             // When
             val result = interactor.getAfterSplashRoute()
@@ -156,7 +156,7 @@ class TestSplashInteractor {
             // Given
             whenever(quickPinInteractor.hasPin()).thenReturn(false)
             whenever(configLogic.forcePidActivation).thenReturn(false)
-            whenever(walletCoreDocumentsController.getAllDocuments()).thenReturn(emptyList())
+            whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
 
             // When
             val result = interactor.getAfterSplashRoute()
@@ -182,7 +182,7 @@ class TestSplashInteractor {
             // Given
             whenever(quickPinInteractor.hasPin()).thenReturn(true)
             whenever(configLogic.forcePidActivation).thenReturn(false)
-            whenever(walletCoreDocumentsController.getAllDocuments()).thenReturn(emptyList())
+            whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
             mockBiometricLoginStrings()
 
             val expectedBiometricConfig = buildBiometricUiConfig(shouldActivateWithPid = false)
@@ -213,9 +213,8 @@ class TestSplashInteractor {
             // Given
             whenever(quickPinInteractor.hasPin()).thenReturn(true)
             whenever(configLogic.forcePidActivation).thenReturn(true)
-            val mockedFullDocuments = getMockedFullDocuments()
-            whenever(walletCoreDocumentsController.getAllDocuments())
-                .thenReturn(mockedFullDocuments)
+            whenever(walletEngine.getAllDocuments())
+                .thenReturn(listOf(WalletDocument(id = "mocked_id")))
             mockBiometricLoginStrings()
 
             val expectedBiometricConfig = buildBiometricUiConfig(shouldActivateWithPid = false)
@@ -247,7 +246,7 @@ class TestSplashInteractor {
             // Given
             whenever(quickPinInteractor.hasPin()).thenReturn(true)
             whenever(configLogic.forcePidActivation).thenReturn(true)
-            whenever(walletCoreDocumentsController.getAllDocuments()).thenReturn(emptyList())
+            whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
             mockBiometricLoginStrings()
 
             whenever(
@@ -284,7 +283,7 @@ class TestSplashInteractor {
             // Given
             whenever(quickPinInteractor.hasPin()).thenReturn(true)
             whenever(configLogic.forcePidActivation).thenReturn(false)
-            whenever(walletCoreDocumentsController.getAllDocuments()).thenReturn(emptyList())
+            whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
             mockBiometricLoginStrings()
 
             val expectedBiometricConfig = buildBiometricUiConfig(shouldActivateWithPid = false)
