@@ -1,0 +1,221 @@
+# KMP unification feasibility — EUDI wallet (Android + iOS)
+
+Research + planning note on whether the EUDI reference wallet could be converted to
+Kotlin Multiplatform (KMP) / Compose Multiplatform (CMP) to run on both Android and iOS
+with full feature parity — and the role of **Multipaz** (OpenWallet Foundation) as the
+shared engine.
+
+> **Status:** research/planning only — no code changes proposed here.
+> **Date:** 2026-07 · **Android** `eudi-lib-android-wallet-core` 0.29.0 (on `org.multipaz` 0.99.0), Kotlin 2.4.0, AGP 9.3.0 · **iOS** `eudi-lib-ios-wallet-kit` 0.37.5, Swift 6 / SwiftUI · **Multipaz** 0.100.0 (Apache-2.0, pre-1.0).
+
+---
+
+## 1. Bottom line
+
+A single shared codebase for Android + iOS is **more feasible than a naive reading suggests**,
+because a production-grade **KMP wallet engine already exists and we already ship it**: EUDI's
+Android `wallet-core` is a wrapper over **Multipaz** (`org.multipaz`), a Kotlin-Multiplatform
+identity SDK with a **working iOS ISO 18013-5 proximity stack** — the exact thing the EU's own KMP
+verifier stalled on.
+
+The recommended target is therefore **not** a from-scratch unification, and **not** a Multipaz-only
+rewrite, but a **combined stack**:
+
+- **Multipaz as the explicit shared KMP engine on both platforms** — SecureArea, Storage,
+  Document/Credential, ISO 18013-5/-7 proximity + DC-API, mdoc/SD-JWT, Longfellow ZK.
+- **EUDI's EU-specific libraries layered on top** — RQES (no Multipaz equivalent), `statium`
+  status-list (already KMP), `etsi` trusted-list (already KMP), and the ARF/LoA trust + EU-issuer
+  VCI/VP behaviour.
+- **Compose Multiplatform UI** (`multipaz-compose` is already CMP with iOS variants).
+
+This dissolves the two blockers identified below (no-KMP-core; iOS-proximity-is-a-separate-Swift-stack).
+It remains a **multi-quarter program**, and RQES + ARF compliance stay EU-specific, but the central
+technical wall is removed.
+
+---
+
+## 2. The reframing — we already ship Multipaz on Android
+
+Verified from this repo's own resolved dependencies (Gradle cache): `org.multipaz:multipaz`,
+`multipaz-android`, `multipaz-android-legacy`, `multipaz-compose`, and `multipaz-dcapi` — all at
+**0.99.0** — are pulled in transitively via `eudi-lib-android-wallet-core` 0.29.0. The cache even
+holds the **iOS KLIB variants** (`multipaz-compose-iosarm64/-iossimulatorarm64/-iosx64`,
+`multipaz-dcapi-ios*`), because Multipaz publishes those targets.
+
+The `eudi-lib-android-wallet-core` README's architecture diagram labels `org.multipaz` as its
+"SecureArea, Storage" layer. So **Multipaz is not an alternative to what we run — it is the engine
+underneath what we run, on Android.** EUDI re-implemented the equivalent lower layers in Swift for
+iOS rather than using Multipaz's iOS targets. The strategic question is whether to **promote Multipaz
+from a hidden Android-only substrate to our explicit shared engine for both platforms.**
+
+Corroborating the EU's own direction: the EU **Age-Verification backend** (`av-dc-api-backend`)
+vendors the full Multipaz stack, and **Longfellow ZK** is shared Google/EU technology. The two
+ecosystems are converging, not diverging.
+
+---
+
+## 3. The (softened) governing constraints
+
+| Constraint | Status after Multipaz | Consequence |
+|---|---|---|
+| "No KMP wallet-core" | **Softened.** A KMP wallet *engine* exists (Multipaz) and is already our Android substrate. What's missing is a KMP *EUDI wallet-core* wrapper. | Build/port a wrapper on Multipaz, or push EUDI to ship a KMP wallet-core — not invent an engine. |
+| ISO 18013-5 proximity on iOS | **Cleared by Multipaz** (QR + BLE; see §4). | iOS holder NFC-tap engagement is impossible on any iOS SDK (Apple limit), not a Multipaz gap. |
+| Both apps already exist at parity | Unchanged | This is a refactor-to-unify of two mature apps; RQES + ARF stay EU-specific. |
+
+---
+
+## 4. Multipaz fact sheet + iOS proximity verdict
+
+| | |
+|---|---|
+| Identity | OWF KMP SDK for ISO mdoc/mDL + SD-JWT VC — issuance, storage, proximity & online presentment |
+| Lineage | Google "Identity Credential" (`com.android.identity`, David Zeuthen et al.) → donated to OWF → rebranded Multipaz, namespace → `org.multipaz` |
+| Version / license | **0.100.0** (2026-07-08), **Apache-2.0**, pre-1.0 (1.0 targeted late-2026/early-2027), releases every 4–8 weeks |
+| Governance | OpenWallet Foundation (Linux Foundation); maintainers are Google engineers |
+| KMP targets | Android, **iOS (first-class)**, JVM/server, JS/Wasm — one `commonMain` core |
+| Key modules | `multipaz` (core), `multipaz-compose` (CMP UI), `multipaz-swiftui`, `multipaz-doctypes` (mDL/EU-PID/photoID), `multipaz-csa` (Cloud Secure Area), `multipaz-openid4vci`, `multipaz-verifier`, `multipaz-dcapi`, `multipaz-longfellow` (ZK) |
+
+**iOS proximity verdict — affirmative.** Multipaz has a real iOS ISO 18013-5 stack in shared code,
+not stubs: `BlePeripheralManagerIos.kt` (~533 lines, `CBPeripheralManager` + L2CAP, holder),
+`BleCentralManagerIos.kt` (~670 lines, reader), `SecureEnclaveSecureArea.kt`, `NfcTagReader.ios.kt`
+(reader). Shared proximity screens compile and run on iOS in the TestApp.
+
+**Apple-imposed nuance:** iOS holders engage via **QR + BLE** (Apple grants no NFC HCE to third-party
+apps, so NFC-tap holder engagement is unavailable on any iOS SDK). Android holders keep QR + NFC + BLE.
+
+---
+
+## 5. Architecture difference — Multipaz vs eudi-lib
+
+| Dimension | Multipaz | EUDI eudi-lib |
+|---|---|---|
+| Codebase | One KMP core, all platforms | Per-platform SDKs; Android `wallet-core` umbrella + separate iOS Swift `wallet-kit` |
+| Secure keys | `SecureArea` iface: Keystore/StrongBox, Secure Enclave, Software, Cloud Secure Area | Uses **Multipaz's `SecureArea`** on Android; bespoke Swift on iOS |
+| Storage | `Storage` KMP abstraction (SQLite) — same everywhere | Multipaz `Storage` on Android; separate Swift lib on iOS |
+| 18013-5 transfer | In the KMP core → **shared Android + iOS** | Android = thin wrapper over Multipaz; **iOS = separate Swift stack** |
+| UI | `multipaz-compose` (CMP incl. iOS) + `multipaz-swiftui` | Jetpack Compose (Android) + SwiftUI (iOS), no sharing |
+
+The difference is not the engine (on Android it is the same engine) — it is that Multipaz already
+extends that engine to iOS, whereas EUDI re-implemented it in Swift.
+
+---
+
+## 6. Shareability map (this app)
+
+Of ~401 Android Kotlin files:
+
+- **~15–20% immediately platform-neutral** — domain models, config, interactors/mappers, Ktor
+  networking. Ktor, kotlinx-serialization, coroutines-core, kotlinx-datetime, Koin-core are KMP-capable.
+- **~10–15% shareable after dep swap / expect-actual** — DI (koin-android → core), Ktor engine, prefs.
+- **~55–60% platform-bound today** — the ~215 Compose UI files, `storage-logic` (Room + SQLCipher —
+  note Multipaz supplies its own KMP Storage), Keystore/StrongBox crypto, biometrics, WorkManager,
+  manifest/deep-links, and every wallet-core call site.
+
+Five hardest subsystems (ranked): ① wallet-core call sites → ② ISO 18013-5 proximity (now solvable
+via Multipaz iOS) → ③ secure storage → ④ the Compose UI surface → ⑤ biometrics + app-shell.
+
+---
+
+## 7. Reuse map — what Multipaz covers vs what stays EUDI
+
+Mapped to this app's actual EUDI-SDK import surface (import counts in parentheses):
+
+| Our dependency | Multipaz coverage | Verdict |
+|---|---|---|
+| `wallet.document.*` (105) — Document/Credential/formats | Multipaz `DocumentStore`/`Document`/`Credential` (already the substrate) | **Reuse Multipaz** |
+| `iso18013.transfer` (11) + `wallet.transfer.openId4vp` (9) — proximity/presentment | Multipaz mdoc transport + presentment, **incl. iOS** | **Reuse Multipaz — the iOS win** |
+| `wallet.dcapi` (5) — DC-API / 18013-7 | `multipaz-dcapi` (already pulled, incl. iOS variants) | Reuse Multipaz |
+| `sdjwt.vc` (5) | Multipaz SD-JWT VC | Reuse Multipaz |
+| `wallet.issue.openid4vci` + `openid4vci.*` (~30) | Multipaz has a VCI client; EUDI's `openid4vci-kt` is more battle-tested vs EU issuers | Keep EUDI (evaluate) |
+| `wallet.trust` (5) | Multipaz `TrustManager` is generic, not ARF-aware | Keep EUDI (ARF/LoA-high) |
+| `etsi1196x2`/`etsi119602` (20), `statium` (2) | already **KMP** (shared both platforms) | Keep EUDI — already multiplatform |
+| `rqesui.*` + `rqes.*` (28) — remote signing | **Multipaz has none** | **Keep EUDI RQES** (biggest EU-only piece) |
+| `wallet.transactionLogging` (15) | app/EUDI-specific format | Keep EUDI |
+
+---
+
+## 8. Feature-parity target
+
+The Android and iOS apps are **already at parity** — no Android feature is missing on iOS. The only
+permanently-native, Apple-only items are: the **Apple "Identity Documents in Wallet" document-provider**
+entitlement (iOS 18+), the **W3C Digital Credentials API** bridge, and Keychain/Secure Enclave /
+LocalAuthentication / CoreBluetooth (native by nature — and largely handled inside Multipaz's iOS actuals).
+A unified app must *not lose* these.
+
+---
+
+## 9. Options
+
+**A — Combined stack: Multipaz engine + EUDI EU-libs + CMP UI.** ⭐ *recommended*
+Multipaz as the shared KMP engine on both platforms; keep EUDI's Apache-licensed RQES / statium / etsi /
+ARF-trust on top; share the UI via Compose Multiplatform. Solves the no-KMP-core + iOS-proximity blockers
+while retaining EU-specific compliance. Big but tractable; the engine already exists and is our Android substrate.
+
+**B — Multipaz-only engine (drop eudi-libs).**
+Cleanest single stack, but **loses RQES, ARF/LoA-high trust, and EU-issuer-specific VCI/VP handling.**
+Not recommended for an EUDI-lineage national wallet.
+
+**C — Status quo: two native stacks.**
+No engineering cost now, but permanent duplication (Android on Multipaz-under-wallet-core; iOS on the Swift
+stack) and the iOS proximity stack stays the weaker, separately-maintained one.
+
+---
+
+## 10. Recommended path — combined stack, incremental
+
+Two routes to promote Multipaz to the explicit shared engine:
+- **(a) Push EUDI to ship a KMP `wallet-core`** built on Multipaz's iOS targets, and adopt it — lowest
+  effort for us; depends on the EU roadmap (which is trending this way).
+- **(b) Build our own thin KMP wrapper directly on Multipaz** + port EU-specific bits to `commonMain` —
+  more work, under our control; Multipaz does the heavy lifting.
+
+| Phase | Scope | Risk | Rough effort |
+|---|---|---|---|
+| **0. Spike** | Reproduce the KMMBridge/XCFramework → SPM path; run the Multipaz TestApp on iOS; prove one shared module in both apps. | Low | 1–2 wks |
+| **1. Shared domain + utils** | Platform-neutral models, config, validators, formatters, statium/etsi usage → `commonMain`. Koin-android→core; Ktor engine per platform. | Low–Med | 1–2 mo |
+| **2. Multipaz as explicit shared engine** | Adopt route (a) or (b): a KMP wallet API over Multipaz `SecureArea`/`Storage`/`DocumentStore`/transfer; stop leaking Android-wrapper types into view-models. | High | 3–5 mo |
+| **3. Shared presentation logic** | View-models/interactors → `commonMain` on top of the engine + shared networking. | Med | 2–3 mo |
+| **4. EU-specific + native edges** | RQES (stays Swift on iOS for now), ARF trust config, biometrics, camera/QR, deep links; validate Multipaz iOS proximity against EUDI verifiers. | High | 3–5 mo |
+| **5. Compose-Multiplatform UI** | Migrate UI + resources to CMP (`multipaz-compose` foundation); retire SwiftUI screens; keep Apple document-provider / W3C-DC native. | Med–High | 4–6 mo |
+
+Full Option A ≈ **12–18 months**, but every phase delivers standalone value and can stop early (after
+Phase 3 you have a shared engine + logic with two native UIs).
+
+---
+
+## 11. Corrections to earlier premises
+
+1. **Licensing:** the eudi-lib *libraries* are **Apache-2.0**, not EUPL — only the reference *apps*
+   are EUPL-1.2. Mixing Multipaz (Apache) with eudi-libs (Apache) under our EUPL app is clean and is
+   *already the current shape*. There is no new license conflict.
+2. **"No KMP wallet-core" is not an absolute blocker** — a KMP wallet *engine* (Multipaz) exists,
+   handles iOS proximity, and is already our Android substrate. The missing piece is a KMP EUDI
+   *wrapper*, which is far smaller than an engine.
+
+---
+
+## 12. Risks & unknowns
+
+- **iOS validation burden** — Multipaz's iOS surface (Secure Enclave, BLE, SKIE/SwiftUI bridge) is
+  newer than its Android surface; must be proven against target iOS versions and EUDI verifiers — but
+  it's one codebase, not a parallel Swift stack.
+- **Pre-1.0 churn** on both stacks (Multipaz 0.x, EUDI libs) — pin versions, budget for bumps.
+- **RQES + ARF stay EU-specific** — not provided by Multipaz; the combined stack must retain them.
+- **Attestation** models differ (Android key-attestation vs Apple App Attest) — needs backend work.
+- **Flagged / unverified:** no published formal EUDI↔Multipaz interop certification; exact OpenID4VP
+  draft (1.0 vs draft-24) to confirm at integration; "US states ship the Multipaz SDK specifically"
+  is plausible but unverified. Confirm SDK/version status against the upstream orgs before committing budget.
+
+---
+
+## 13. References
+
+- Android app: this repo (`core-logic`, `build-logic/convention`, `gradle/libs.versions.toml`; Gradle cache shows `org.multipaz` 0.99.0).
+- iOS app: `github.com/eu-digital-identity-wallet/eudi-app-ios-wallet-ui`.
+- Multipaz: `github.com/openwallet-foundation/multipaz` · `developer.multipaz.org` · OWF project page.
+- EUDI-on-Multipaz: `eudi-lib-android-wallet-core` (README arch diagram; dependency on `org.multipaz`), `eudi-lib-android-iso18013-data-transfer`; EU AV backend `av-dc-api-backend` vendors Multipaz.
+- EUDI iOS separate stack: `eudi-lib-ios-iso18013-data-transfer`, `eudi-lib-ios-wallet-kit`.
+- EU-specific libs: `eudi-lib-android-rqes-core`, `eudi-lib-kmp-statium`, `eudi-lib-kmp-etsi-1196x2`; ARF `eudi.dev`.
+- ZK: `github.com/google/longfellow-zk`; EU `av-lib-ios-longfellow-zkp`.
+- KMP verifier precedent (stalled on iOS 18013-5): `eudi-app-multiplatform-verifier-ui`.
+- KMP production precedents: JetBrains case studies (Bitkey/Block, Worldline, McDonald's, Cash App, Netflix, Philips).
