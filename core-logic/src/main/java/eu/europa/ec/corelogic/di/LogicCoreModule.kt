@@ -34,6 +34,8 @@ import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogControllerImpl
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProvider
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProviderImpl
 import eu.europa.ec.corelogic.wallet.WalletEngineImpl
+import eu.europa.ec.shared.resources.ComposeResourcesStringResolver
+import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.networklogic.repository.WalletAttestationRepository
@@ -66,6 +68,13 @@ class LogicCoreModule
 fun provideWalletEngine(
     walletCoreDocumentsController: WalletCoreDocumentsController,
 ): WalletEngine = WalletEngineImpl(walletCoreDocumentsController)
+
+/**
+ * Phase-3a KMP string accessor for shared presentation (replaces Android-Context
+ * ResourceProvider.getString in migrated view-models). Backed by compose-resources.
+ */
+@Factory
+fun provideStringResolver(): StringResolver = ComposeResourcesStringResolver()
 
 @Scope(WalletCoreScope::class)
 @Scoped
