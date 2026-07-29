@@ -29,7 +29,6 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.multipaz.credential.SecureAreaBoundCredential
 import kotlin.time.Instant
-import kotlin.time.toJavaInstant
 
 class TestDocumentExtensions {
 
@@ -50,7 +49,7 @@ class TestDocumentExtensions {
             val result = document.getExpiryDate()
 
             // Then the document's expiry is the latest credential's validUntil.
-            assertEquals(latest.toJavaInstant(), result)
+            assertEquals(latest, result)
         }
     }
 

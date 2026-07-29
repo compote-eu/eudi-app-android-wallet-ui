@@ -23,7 +23,9 @@ import java.time.Instant
 data class DocumentsFilterableAttributes(
     override val searchTags: List<String>,
     val name: String,
-    val expiryDate: Instant?,
+    // Stage 1 of the date migration: the expiry chain is on kotlin.time.Instant (matching the
+    // underlying credential data). issuedDate stays on java.time.Instant until a later stage.
+    val expiryDate: kotlin.time.Instant?,
     val issuedDate: Instant?,
     val issuer: String,
     val category: DocumentCategory,

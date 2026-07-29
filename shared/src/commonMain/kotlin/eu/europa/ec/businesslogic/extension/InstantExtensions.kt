@@ -14,26 +14,24 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 1 (date migration, stage 1): moved from :business-logic to the shared KMP module
+// and ported from java.time.Instant to kotlin.time.Instant — which is what the underlying
+// document credentials already use, so the app-side toJavaInstant() conversions on this
+// path go away. Pure arithmetic, no formatting, so it is fully platform-neutral.
 package eu.europa.ec.businesslogic.extension
 
-import java.time.Instant
-import java.time.temporal.ChronoUnit
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 
 fun Instant.isWithinNextDays(days: Long): Boolean {
-    val now = Instant.now()
-    val future = now.plus(days, ChronoUnit.DAYS)
-    return this.isAfter(now) && !this.isAfter(future)
+    val now = Clock.System.now()
+    return this > now && this <= now + days.days
 }
 
-fun Instant.isBeyondNextDays(days: Long): Boolean {
-    val now = Instant.now()
-    return this.isAfter(now.plus(days, ChronoUnit.DAYS))
-}
+fun Instant.isBeyondNextDays(days: Long): Boolean =
+    this > Clock.System.now() + days.days
 
-fun Instant.isExpired(): Boolean {
-    return this.isBefore(Instant.now())
-}
+fun Instant.isExpired(): Boolean = this < Clock.System.now()
 
-fun Instant.isValid(): Boolean {
-    return this.isAfter(Instant.now())
-}
+fun Instant.isValid(): Boolean = this > Clock.System.now()

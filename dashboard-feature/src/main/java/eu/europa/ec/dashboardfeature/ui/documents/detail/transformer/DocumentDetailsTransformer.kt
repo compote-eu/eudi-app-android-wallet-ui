@@ -20,6 +20,7 @@ import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.util.DAY_MONTH_YEAR_FULL_PATTERN
 import eu.europa.ec.businesslogic.util.FULL_DATETIME_PATTERN_24H_SEPARATED_BY_DASH
 import eu.europa.ec.businesslogic.util.formatInstant
+import kotlin.time.toJavaInstant
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
 import eu.europa.ec.corelogic.extension.getExpiryDate
@@ -60,7 +61,7 @@ object DocumentDetailsTransformer {
             documentIssuanceDate = document.issuedAt.formatInstant(
                 pattern = FULL_DATETIME_PATTERN_24H_SEPARATED_BY_DASH
             ),
-            documentExpirationDate = document.getExpiryDate()?.formatInstant(
+            documentExpirationDate = document.getExpiryDate()?.toJavaInstant()?.formatInstant(
                 pattern = DAY_MONTH_YEAR_FULL_PATTERN
             ),
         )

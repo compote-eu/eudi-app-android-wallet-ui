@@ -24,6 +24,7 @@ import eu.europa.ec.businesslogic.extension.isValid
 import eu.europa.ec.businesslogic.extension.isWithinNextDays
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.businesslogic.util.formatInstant
+import kotlin.time.toJavaInstant
 import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.businesslogic.validator.FilterValidatorPartialState
 import eu.europa.ec.businesslogic.validator.model.FilterAction
@@ -338,7 +339,7 @@ class DocumentsInteractorImpl(
                                 documentExpirationDate == null -> null
                                 else -> resourceProvider.getString(
                                     R.string.dashboard_document_has_not_expired,
-                                    documentExpirationDate.formatInstant()
+                                    documentExpirationDate.toJavaInstant().formatInstant()
                                 )
                             }
 

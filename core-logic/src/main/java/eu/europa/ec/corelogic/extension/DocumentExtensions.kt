@@ -17,12 +17,12 @@
 package eu.europa.ec.corelogic.extension
 
 import eu.europa.ec.businesslogic.extension.getLocalizedValue
+import eu.europa.ec.businesslogic.extension.isExpired
 import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
-import java.time.Instant
 import java.util.Locale
-import kotlin.time.toJavaInstant
+import kotlin.time.Instant
 
 fun Document.localizedIssuerMetadata(locale: Locale): IssuerMetadata.IssuerDisplay? {
     return issuerMetadata?.issuerDisplay.getLocalizedValue(
@@ -44,7 +44,7 @@ fun Document.localizedIssuerMetadata(locale: Locale): IssuerMetadata.IssuerDispl
  * actually detect an expired document.
  */
 suspend fun IssuedDocument.getExpiryDate(): Instant? =
-    getCredentials().maxOfOrNull { it.validUntil }?.toJavaInstant()
+    getCredentials().maxOfOrNull { it.validUntil }
 
 /**
  * Whether the document has expired, i.e. its [getExpiryDate] is in the past. A document with no
@@ -52,4 +52,4 @@ suspend fun IssuedDocument.getExpiryDate(): Instant? =
  * rather than an expiry.
  */
 suspend fun IssuedDocument.isExpired(): Boolean =
-    getExpiryDate()?.isBefore(Instant.now()) ?: false
+    getExpiryDate()?.isExpired() ?: false

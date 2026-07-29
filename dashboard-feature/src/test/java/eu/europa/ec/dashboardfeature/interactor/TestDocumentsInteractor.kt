@@ -85,6 +85,7 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.Instant
+import kotlin.time.toKotlinInstant
 import java.time.temporal.ChronoUnit
 import kotlin.test.assertTrue
 
@@ -142,7 +143,7 @@ class TestDocumentsInteractor {
     private fun documentsAttributes(
         name: String = "PID",
         issuedDate: Instant? = null,
-        expiryDate: Instant? = null,
+        expiryDate: kotlin.time.Instant? = null,
         issuer: String = "Issuer",
         category: DocumentCategory = DocumentCategory.Government,
         isRevoked: Boolean = false,
@@ -1191,12 +1192,12 @@ class TestDocumentsInteractor {
         val nullExpiry = documentsAttributes(expiryDate = null, isRevoked = false)
         val expired =
             documentsAttributes(
-                expiryDate = Instant.parse("2020-01-01T00:00:00Z"),
+                expiryDate = Instant.parse("2020-01-01T00:00:00Z").toKotlinInstant(),
                 isRevoked = false,
             )
         val valid =
             documentsAttributes(
-                expiryDate = Instant.parse("2099-01-01T00:00:00Z"),
+                expiryDate = Instant.parse("2099-01-01T00:00:00Z").toKotlinInstant(),
                 isRevoked = false,
             )
         val revoked = documentsAttributes(expiryDate = null, isRevoked = true)
@@ -1296,16 +1297,16 @@ class TestDocumentsInteractor {
         )
 
         val expired = documentsAttributes(
-            expiryDate = Instant.parse("2020-01-01T00:00:00Z"),
+            expiryDate = Instant.parse("2020-01-01T00:00:00Z").toKotlinInstant(),
         )
         val tomorrow = documentsAttributes(
-            expiryDate = Instant.now().plus(1, ChronoUnit.DAYS),
+            expiryDate = Instant.now().plus(1, ChronoUnit.DAYS).toKotlinInstant(),
         )
         val nextMonth = documentsAttributes(
-            expiryDate = Instant.now().plus(20, ChronoUnit.DAYS),
+            expiryDate = Instant.now().plus(20, ChronoUnit.DAYS).toKotlinInstant(),
         )
         val farFuture = documentsAttributes(
-            expiryDate = Instant.now().plus(365, ChronoUnit.DAYS),
+            expiryDate = Instant.now().plus(365, ChronoUnit.DAYS).toKotlinInstant(),
         )
 
         // When + Then
