@@ -20,9 +20,8 @@ import android.bluetooth.BluetoothManager
 import android.content.Context
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.commonfeature.util.DocumentJsonKeys
-import eu.europa.ec.commonfeature.util.extractValueFromDocumentOrEmpty
 import eu.europa.ec.corelogic.config.WalletCoreConfig
-import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -45,7 +44,7 @@ interface HomeInteractor {
 
 class HomeInteractorImpl(
     private val resourceProvider: ResourceProvider,
-    private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val walletEngine: WalletEngine,
     private val walletCoreConfig: WalletCoreConfig
 ) : HomeInteractor {
     private val genericErrorMsg
@@ -62,13 +61,8 @@ class HomeInteractorImpl(
 
     override fun getUserNameViaMainPidDocument(): Flow<HomeInteractorGetUserNameViaMainPidDocumentPartialState> =
         flow {
-            val mainPid = walletCoreDocumentsController.getMainPidDocument()
-            val userFirstName = mainPid?.let {
-                return@let extractValueFromDocumentOrEmpty(
-                    document = it,
-                    key = DocumentJsonKeys.FIRST_NAME
-                )
-            }.orEmpty()
+            val mainPid = walletEngine.getMainPidDocument()
+            val userFirstName = mainPid?.claims?.get(DocumentJsonKeys.FIRST_NAME).orEmpty()
 
             emit(
                 HomeInteractorGetUserNameViaMainPidDocumentPartialState.Success(

@@ -78,11 +78,11 @@ fun provideSettingsInteractor(
 @Factory
 fun provideHomeInteractor(
     resourceProvider: ResourceProvider,
-    walletCoreDocumentsController: WalletCoreDocumentsController,
+    walletEngine: WalletEngine,
     walletCoreConfig: WalletCoreConfig,
 ): HomeInteractor = HomeInteractorImpl(
     resourceProvider,
-    walletCoreDocumentsController,
+    walletEngine,
     walletCoreConfig,
 )
 

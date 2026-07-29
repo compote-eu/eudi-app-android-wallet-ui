@@ -17,6 +17,7 @@
 package eu.europa.ec.corelogic.wallet
 
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.corelogic.extension.identifierString
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 
@@ -45,7 +46,14 @@ class WalletEngineImpl(
         documentsController.deleteBookmark(bookmarkId)
 
     override fun getMainPidDocument(): WalletDocument? =
-        documentsController.getMainPidDocument()?.let { WalletDocument(id = it.id) }
+        documentsController.getMainPidDocument()?.let { doc ->
+            WalletDocument(
+                id = doc.id,
+                claims = doc.data.claims.associate {
+                    it.identifierString to it.value?.toString().orEmpty()
+                },
+            )
+        }
 
     override fun getAllDocuments(): List<WalletDocument> =
         documentsController.getAllDocuments().map { WalletDocument(id = it.id) }

@@ -25,4 +25,11 @@ package eu.europa.ec.shared.wallet
  */
 data class WalletDocument(
     val id: String,
+    /**
+     * Top-level claim values keyed by claim identifier (the wallet-core `identifierString`),
+     * stringified. A first, deliberately-flat claims representation — sufficient for simple
+     * by-key lookups; it will gain structure (namespaces / nested claims / typed values) as
+     * richer consumers migrate.
+     */
+    val claims: Map<String, String> = emptyMap(),
 )
