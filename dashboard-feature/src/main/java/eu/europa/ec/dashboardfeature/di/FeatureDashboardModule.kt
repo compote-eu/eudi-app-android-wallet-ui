@@ -25,6 +25,7 @@ import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
@@ -89,6 +90,7 @@ fun provideHomeInteractor(
 fun provideDocumentsInteractor(
     resourceProvider: ResourceProvider,
     documentsController: WalletCoreDocumentsController,
+    walletEngine: WalletEngine,
     filterValidator: FilterValidator,
     configLogic: ConfigLogic,
     prefKeys: PrefKeys,
@@ -96,6 +98,7 @@ fun provideDocumentsInteractor(
     DocumentsInteractorImpl(
         resourceProvider,
         documentsController,
+        walletEngine,
         filterValidator,
         configLogic,
         prefKeys,

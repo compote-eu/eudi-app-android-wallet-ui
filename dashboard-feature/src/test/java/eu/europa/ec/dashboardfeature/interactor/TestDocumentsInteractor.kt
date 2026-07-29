@@ -34,6 +34,7 @@ import eu.europa.ec.businesslogic.validator.model.SortOrder
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDeferredDocumentPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
 import eu.europa.ec.corelogic.model.DocumentCategories
 import eu.europa.ec.corelogic.model.DocumentCategory
@@ -101,6 +102,9 @@ class TestDocumentsInteractor {
     private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
 
     @Mock
+    private lateinit var walletEngine: WalletEngine
+
+    @Mock
     private lateinit var filterValidator: FilterValidator
 
     @Mock
@@ -123,6 +127,7 @@ class TestDocumentsInteractor {
         interactor = DocumentsInteractorImpl(
             resourceProvider = resourceProvider,
             walletCoreDocumentsController = walletCoreDocumentsController,
+            walletEngine = walletEngine,
             filterValidator = filterValidator,
             configLogic = configLogic,
             prefKeys = prefKeys,
@@ -956,7 +961,7 @@ class TestDocumentsInteractor {
                 .thenReturn(mockedFullDocuments + listOf(unsignedDoc) as List<Document>)
             whenever(walletCoreDocumentsController.getAllDocumentCategories())
                 .thenReturn(DocumentCategories(value = emptyMap()))
-            whenever(walletCoreDocumentsController.isDocumentRevoked(anyString())).thenReturn(false)
+            whenever(walletEngine.isDocumentRevoked(anyString())).thenReturn(false)
             whenever(walletCoreDocumentsController.isDocumentLowOnCredentials(any()))
                 .thenReturn(false)
             whenever(resourceProvider.getLocale())
@@ -1421,7 +1426,7 @@ class TestDocumentsInteractor {
             .thenReturn(documents)
         whenever(walletCoreDocumentsController.getAllDocumentCategories())
             .thenReturn(DocumentCategories(value = emptyMap()))
-        whenever(walletCoreDocumentsController.isDocumentRevoked(anyString()))
+        whenever(walletEngine.isDocumentRevoked(anyString()))
             .thenReturn(documentIsRevoked)
         whenever(walletCoreDocumentsController.isDocumentLowOnCredentials(any()))
             .thenReturn(documentLowOnCredentials)

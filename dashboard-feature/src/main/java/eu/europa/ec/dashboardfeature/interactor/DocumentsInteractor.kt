@@ -38,6 +38,7 @@ import eu.europa.ec.businesslogic.validator.model.SortOrder
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDeferredDocumentPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.getExpiryDate
 import eu.europa.ec.corelogic.extension.isExpired
 import eu.europa.ec.corelogic.extension.localizedIssuerMetadata
@@ -172,6 +173,7 @@ interface DocumentsInteractor {
 class DocumentsInteractorImpl(
     private val resourceProvider: ResourceProvider,
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val walletEngine: WalletEngine,
     private val filterValidator: FilterValidator,
     private val configLogic: ConfigLogic,
     private val prefKeys: PrefKeys,
@@ -298,7 +300,7 @@ class DocumentsInteractorImpl(
                 items = walletCoreDocumentsController.getAllDocuments().map { document ->
 
                     val documentIsRevoked =
-                        walletCoreDocumentsController.isDocumentRevoked(document.id)
+                        walletEngine.isDocumentRevoked(document.id)
 
                     when (document) {
                         is IssuedDocument -> {
