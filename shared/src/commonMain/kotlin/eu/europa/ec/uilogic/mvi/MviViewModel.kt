@@ -14,6 +14,9 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the MVI base moves to the shared KMP module (commonMain) so view-models can be
+// shared across Android + iOS. Uses androidx.lifecycle.ViewModel (KMP since 2.8) + coroutines
+// only — no Android-specific code. Package unchanged; feature view-models are untouched.
 package eu.europa.ec.uilogic.mvi
 
 import androidx.lifecycle.ViewModel

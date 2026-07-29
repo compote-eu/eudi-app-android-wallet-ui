@@ -65,6 +65,9 @@ kotlin {
             // required on the classpath by the Compose compiler plugin.
             implementation(compose.runtime)
             implementation(compose.components.resources)
+            // androidx.lifecycle ViewModel (KMP) — base for the shared MviViewModel. `api`
+            // so feature view-models that extend MviViewModel see androidx.lifecycle.ViewModel.
+            api(libs.androidx.lifecycle.viewmodel)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

@@ -14,6 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: moved to the shared KMP module (commonMain), package unchanged so the ~29
+// feature view-models compile against it without edits. Pure marker interfaces.
 package eu.europa.ec.uilogic.mvi
 
 interface ViewState
