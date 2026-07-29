@@ -33,6 +33,8 @@ import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogControllerImpl
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProvider
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProviderImpl
+import eu.europa.ec.corelogic.wallet.WalletEngineImpl
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.networklogic.repository.WalletAttestationRepository
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -54,6 +56,16 @@ import org.koin.mp.KoinPlatform
 @Configuration
 @ComponentScan("eu.europa.ec.corelogic")
 class LogicCoreModule
+
+/**
+ * Phase-2 WalletEngine seam: the app-owned wallet boundary (shared/commonMain). The Android
+ * implementation delegates to the wallet-core controller; consumers can depend on WalletEngine
+ * instead of the Android-only wallet-core types. First capability: revocation.
+ */
+@Factory
+fun provideWalletEngine(
+    walletCoreDocumentsController: WalletCoreDocumentsController,
+): WalletEngine = WalletEngineImpl(walletCoreDocumentsController)
 
 @Scope(WalletCoreScope::class)
 @Scoped

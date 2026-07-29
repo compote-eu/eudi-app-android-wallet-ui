@@ -21,6 +21,7 @@ import android.content.Intent
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.corelogic.util.CoreActions.REVOCATION_IDS_DETAILS_EXTRA
@@ -59,6 +60,7 @@ class RevocationWorkManager(
     workerParams: WorkerParameters,
     private val revokedDocumentDao: RevokedDocumentDao,
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val walletEngine: WalletEngine,
 ) : CoroutineWorker(appContext, workerParams) {
 
     companion object {
@@ -68,7 +70,7 @@ class RevocationWorkManager(
     override suspend fun doWork(): Result {
         try {
 
-            val storedRevokedDocuments = walletCoreDocumentsController.getRevokedDocumentIds()
+            val storedRevokedDocuments = walletEngine.getRevokedDocumentIds()
             val fromRevokedToValid = mutableListOf<String>()
             val revokedDocuments = mutableListOf<IssuedDocument>()
 
