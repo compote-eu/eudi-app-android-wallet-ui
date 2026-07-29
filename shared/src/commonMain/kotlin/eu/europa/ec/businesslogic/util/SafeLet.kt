@@ -14,6 +14,9 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 1: moved from :business-logic to the shared KMP module (commonMain). The package
+// is unchanged so existing call sites in the Android modules keep compiling unmodified;
+// business-logic re-exports :shared via `api`. Now available to iOS too.
 package eu.europa.ec.businesslogic.util
 
 inline fun <T1 : Any, T2 : Any, R : Any> safeLet(p1: T1?, p2: T2?, block: (T1, T2) -> R?): R? {
