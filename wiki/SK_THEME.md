@@ -111,6 +111,48 @@ dialog `0 -8 44 -10`.
 mobile 320 / tablet 641 / desktop 769 px; page width 1440, gutter 30
 (mostly irrelevant for the phone app).
 
+## Icons
+ID SK uses **Google Material Icons — Filled** (Apache-2.0). The app's icons are otherwise
+bespoke EUDI vector drawables. For the `sk` flavor we swap only the **standard 24×24 dp**
+UI icons (plus `ic_home`, which is 25×24) for their Material equivalents, and keep the
+larger / illustrative / brand icons as the current custom drawables.
+
+Implementation is a **resource override in the `sk` source set** — no code change: each
+Material icon is shipped as an Android vector drawable at
+`resources-logic/src/sk/res/drawable/<original_name>.xml`, reusing the original resource
+name so it overrides `main/res/drawable/<name>.xml` for the `sk` flavor only. `AppIcons.kt`
+and every `R.drawable.ic_*` reference are untouched. Colour comes from the theme tint that
+`WrapIcon` applies (Material3 `Icon(tint=…)`), so each vector's `fillColor` is a neutral
+placeholder. Licensing for the bundled Material icons is Apache-2.0 (noted per-file).
+
+The 31 swapped icons (`original → Material Filled`):
+
+| Original | Material | Original | Material |
+|---|---|---|---|
+| `ic_add` | `add` | `ic_menu` | `menu` |
+| `ic_batch_issuance_counter` | `numbers` | `ic_more` | `more_vert` |
+| `ic_bookmark` | `bookmark_border` | `ic_notifications` | `notifications_active` |
+| `ic_bookmark_filled` | `bookmark` | `ic_open_in_browser` | `open_in_browser` |
+| `ic_certified` | `verified_user` | `ic_open_new` | `open_in_new` |
+| `ic_change_pin` | `pin` | `ic_qr_scanner` | `qr_code_scanner` |
+| `ic_clock_timer` | `watch_later` | `ic_search` | `search` |
+| `ic_delete` | `delete` | `ic_settings` | `settings` |
+| `ic_documents` | `text_snippet` | `ic_sign_document` | `draw` |
+| `ic_download` | `download` | `ic_touch_id` | `fingerprint` |
+| `ic_edit` | `edit` | `ic_transactions` | `history` |
+| `ic_error` | `error` | `ic_verified` | `verified` |
+| `ic_export` | `save_alt` | `ic_visibility_off` | `visibility_off` |
+| `ic_filters` | `filter_list` | `ic_visibility_on` | `visibility` |
+| `ic_home` | `home` | `ic_warning` | `warning` |
+| `ic_info` | `info` | | |
+
+Kept as the current custom drawables (not swapped): the larger/illustrative icons
+(`ic_add_document_from_*`, `ic_present_document_*`, `ic_sign_document_from_*`,
+`ic_authenticate_id_cards`, `ic_contract`, `ic_id`, `ic_id_stroke`, `ic_in_progress`,
+`ic_wallet_activated`, `ic_wallet_secured`, `ic_qr`, `ic_user`, `ic_message`, `ic_nfc`,
+`ic_handle_bar`, `ic_success`, `ic_check`) and the brand logos (`ic_logo_icon`,
+`ic_logo_icon_and_text`).
+
 ## Mapping to our Compose theme
 Theme lives in `resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/`:
 - `theme/values/ThemeColors.kt` ← applied roles + semantic families (+ derived dark set).
