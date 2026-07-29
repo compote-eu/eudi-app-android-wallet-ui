@@ -208,7 +208,69 @@ Phase 3 you have a shared engine + logic with two native UIs).
 
 ---
 
-## 13. References
+## 13. Phase 3 — shared presentation (Compose Multiplatform), execution plan
+
+Goal: move view-models + presentation logic + Compose UI into `commonMain` (CMP), so both
+platforms render the same screens on top of the `WalletEngine` seam. This is also where the
+Phase-2 "rich document consumers" land, because they are entangled with presentation-layer
+localization.
+
+Surface (measured on this repo): **29 view-models** (MVI — `MviViewModel`/`MviContract`
+already isolated in `ui-logic`), **103 Compose files / 351 composables**, and the localization
+surface that blocked Phase 2: **583 `R.string`/`stringResource` sites across 56 files using
+`resourceProvider`**.
+
+Sub-phases (dependency order):
+
+- **3a — Resources & localization foundation (the linchpin).** Migrate strings/drawables to a
+  KMP resource system (Compose-Resources `Res` or moko-resources; ~583 sites) and replace the
+  Android-`Context` `resourceProvider` with a **KMP string resolver** injected into view-models.
+  This is the exact entanglement that blocked the rich document consumers, so it retroactively
+  unblocks them. Risk: **high** (largest surface; user-visible text must stay identical).
+- **3b — MVI + view-models → commonMain.** Move `MviViewModel`/`MviContract` to `:shared`, then
+  view-models feature-by-feature (they depend on interactors [shareable via `WalletEngine`] +
+  the 3a resolver + a nav abstraction). Risk: med.
+- **3c — Navigation.** Replace Android `navigation-compose` (9 files) with CMP navigation
+  (androidx.navigation multiplatform) or a KMP nav abstraction; deep links per platform. Risk: med.
+- **3d — Compose UI → CMP.** Move `ui-logic` + feature screens to `commonMain`. Concrete
+  blockers: `LocalContext` (23 files), `AndroidView` (1 — QR camera), `accompanist` (2), `coil`→
+  coil3 (KMP), `activity-compose` (3). The iOS SwiftUI layer is retired here. Risk: med-high
+  (per-platform look/accessibility parity).
+- **3e — Platform edges stay native (`expect/actual`).** Camera/QR (CameraX ↔ AVFoundation/
+  Vision), biometrics (`BiometricPrompt` 3 files ↔ LocalAuthentication), WorkManager (4), deep
+  links, FileProvider. The engine is already covered by the `WalletEngine` seam.
+- **3f — Land the Phase-2 leftovers.** With 3a done, migrate the documents list-builder +
+  `getDocumentById` success/detail flows: model claim-paths + localized issuer metadata (now
+  resolvable via the KMP string resolver), retiring the last wallet-core UI-type coupling
+  (`DocumentIdentifier`, `DocumentCategory`).
+
+Overall: multi-quarter, executed feature-by-feature behind the existing seam; each feature stays
+shippable on Android throughout.
+
+## 14. iOS WalletEngine implementation — plan
+
+`WalletEngine` is a `commonMain` interface; today only the Android `WalletEngineImpl` (over
+`eudi-lib-android-wallet-core`) exists. iOS needs an implementation — the *how* is the decision:
+
+| Option | Approach | Verdict |
+|---|---|---|
+| **A — Kotlin impl in `iosMain` over Multipaz (KMP)** | Implement `WalletEngine` in `iosMain` using Multipaz's KMP APIs (`SecureArea`, `DocumentStore`, mdoc transport). | **Recommended** — one Kotlin engine; Multipaz's iOS proximity / Secure Enclave already work. |
+| **B — Bridge to Swift `eudi-lib-ios-wallet-kit`** | Swift implements a protocol injected into KMP (Kotlin can't call Swift directly). | Awkward inversion; keeps two SDK stacks. Avoid unless Multipaz gaps force it. |
+| **C — Hybrid** | Multipaz engine (A) + EUDI Swift **RQES** (no KMP equivalent). | Realistic end-state: A for the engine, Swift for RQES. |
+
+Recommended path (A → C): implement `WalletEngine` on iOS over Multipaz capability-by-capability,
+mirroring what exists (revocation, bookmarks, `getMainPidDocument`, `getAllDocuments`, claims),
+then grow with Phase-3's richer fields. RQES stays Swift.
+
+Sequencing (why presentation comes first): until the `WalletEngine` *consumers* (view-models /
+interactors) run in `commonMain` (Phase 3), an iOS engine has nothing to drive. So Phase 3 is the
+enabler; the iOS engine then makes iOS functional. **Retire the proximity (BLE) risk early** by
+proving Multipaz on-device against EUDI verifiers before committing the rest.
+
+Effort/risk: med-high; the two risks are (a) proving Multipaz iOS proximity / secure-area against
+EUDI verifiers, and (b) RQES remaining platform-specific.
+
+## 15. References
 
 - Android app: this repo (`core-logic`, `build-logic/convention`, `gradle/libs.versions.toml`; Gradle cache shows `org.multipaz` 0.99.0).
 - iOS app: `github.com/eu-digital-identity-wallet/eudi-app-ios-wallet-ui`.
