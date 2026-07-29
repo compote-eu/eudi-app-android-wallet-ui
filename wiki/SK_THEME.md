@@ -153,6 +153,41 @@ Kept as the current custom drawables (not swapped): the larger/illustrative icon
 `ic_handle_bar`, `ic_success`, `ic_check`) and the brand logos (`ic_logo_icon`,
 `ic_logo_icon_and_text`).
 
+## Localization
+The UI is fully string-resourced — every displayed string comes from
+`stringResource(R.string.…)` (Compose) or `resourceProvider.getString(…)` (ViewModels);
+an audit found **no hardcoded user-facing strings**. The default (English) source is
+`resources-logic/src/main/res/values/strings.xml` (342 `<string>` + 1 `<plurals>`).
+
+The `sk` flavor ships **Slovak and Hungarian** (the latter for the Hungarian minority in
+Slovakia) as **sk-source-set** locale resources — they are *not* app-wide:
+- `resources-logic/src/sk/res/values-sk/strings.xml`
+- `resources-logic/src/sk/res/values-hu/strings.xml`
+
+Behaviour: in the `sk` build the UI switches to Slovak on a Slovak-locale device and
+Hungarian on a Hungarian-locale device; any other locale falls back to the default
+English. dev/demo/local are unaffected (English only). Both files keep 1:1 parity with the
+source (same `name`s, `@string/` aliases and format specifiers preserved). Plural
+categories follow CLDR: Slovak `one/few/many/other`, Hungarian `one/other`.
+
+Glossary choices (confirmed with the maintainer): *relying party* → SK **overujúca strana**,
+HU **ellenőrző fél**; *credential (offer)* → SK **ponuka osvedčenia**, HU **igazolvány-ajánlat**;
+*Success* → SK **Hotovo**, HU **Kész**; `EUDI Wallet`, `PID`, `PIN`, `QR`, `NFC` kept as-is.
+
+**Not covered by `strings.xml`** (localize separately if desired):
+- **App name** — a manifest placeholder (`${appName}` → "EUDI Wallet SK"), not a string
+  resource. For a localized name, convert it to a string resource (see the Typography section
+  above and `wiki/THEMING.md`).
+- **RQES signing sub-SDK** — carries its own ~35 strings (`LocalizableKey` enum), separate
+  from `strings.xml`. Localized for `sk` via `EudiRQESUiConfig.translations` in
+  `business-logic/src/sk/.../RQESConfigImpl.kt` (Slovak + Hungarian maps). The SDK selects by
+  device language (`Locale.getDefault().language`) and falls back per-key to English.
+- **Credential/API metadata** (document types, claim/attribute labels, issuer names) — localized
+  server-side, not in `strings.xml`.
+
+To add another language: drop a `resources-logic/src/sk/res/values-<lang>/strings.xml`
+mirroring the source (or `src/main/res/values-<lang>/` to make it app-wide).
+
 ## Mapping to our Compose theme
 Theme lives in `resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/`:
 - `theme/values/ThemeColors.kt` ← applied roles + semantic families (+ derived dark set).
