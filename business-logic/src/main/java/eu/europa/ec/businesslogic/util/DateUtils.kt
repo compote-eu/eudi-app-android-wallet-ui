@@ -126,18 +126,6 @@ fun String.toLocalDate(
     return result
 }
 
-fun Instant.formatInstant(
-    pattern: String = DAY_MONTH_YEAR_SHORT_PATTERN,
-    zoneId: ZoneId = ZoneId.systemDefault(),
-    selectedLanguage: String = LocaleUtils.PROJECT_DEFAULT_LOCALE,
-): String {
-    val formatter = DateTimeFormatter.ofPattern(
-        pattern,
-        LocaleUtils.getLocaleFromSelectedLanguage(selectedLanguage)
-    ).withZone(zoneId)
-    return formatter.format(this)
-}
-
 fun LocalDateTime.isJustNow(): Boolean {
     return ChronoUnit.MINUTES.between(this, LocalDateTime.now()) == 0L
 }
