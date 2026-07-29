@@ -52,8 +52,14 @@ kotlin {
     }
 
     sourceSets {
+        commonMain.dependencies {
+            // Coroutines (KMP). `api` because safeAsync exposes Flow / CoroutineDispatcher
+            // in its public signature.
+            api(libs.kotlinx.coroutines)
+        }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
