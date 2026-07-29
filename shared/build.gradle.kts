@@ -1,0 +1,59 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+// Phase-0 KMP spike module. Deliberately does NOT use the Android-only convention
+// plugins (they force every module to `com.android.library`, which AGP 9 no longer
+// combines with Kotlin Multiplatform). It applies the Kotlin Multiplatform plugin plus
+// the dedicated `com.android.kotlin.multiplatform.library` plugin so it can compile for
+// both Android and iOS. See wiki/KMP_FEASIBILITY.md.
+plugins {
+    // Applied by id without a version: both the Kotlin Gradle plugin and AGP are already on
+    // the build classpath via the `build-logic` included build, so a versioned request
+    // conflicts ("already on the classpath with an unknown version").
+    id("org.jetbrains.kotlin.multiplatform")
+    id("com.android.kotlin.multiplatform.library")
+}
+
+kotlin {
+    // AGP 9's KMP-aware Android target (replaces androidTarget() + a `com.android.library`
+    // block). Produces an AAR consumable by the existing Android modules. `withHostTest`
+    // lets the shared commonTest also run as an Android (JVM) unit test.
+    android {
+        namespace = "eu.europa.ec.shared"
+        compileSdk = 37
+        minSdk = 29
+        withHostTest {}
+    }
+
+    // iOS targets: device (arm64) + both simulators. Produces a static framework that a
+    // future iosApp/ Xcode target consumes.
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64(),
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "SharedKit"
+            isStatic = true
+        }
+    }
+
+    sourceSets {
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
+    }
+}
