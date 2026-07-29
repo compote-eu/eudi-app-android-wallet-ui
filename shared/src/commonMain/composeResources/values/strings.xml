@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright (c) 2026 European Commission
+  ~
+  ~ Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+  ~ Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+  ~ except in compliance with the Licence.
+  ~
+  ~ You may obtain a copy of the Licence at:
+  ~ https://joinup.ec.europa.eu/software/page/eupl
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software distributed under
+  ~ the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+  ~ ANY KIND, either express or implied. See the Licence for the specific language
+  ~ governing permissions and limitations under the Licence.
+  -->
+
+<!--
+  Phase 3a: KMP-shared strings (compose-resources), resolvable in commonMain via
+  Res.string.* on both Android and iOS. Seeded with the two generic messages; app
+  strings migrate here incrementally as the presentation layer moves to commonMain.
+  Values mirror resources-logic/src/main/res/values/strings.xml.
+-->
+<resources>
+    <string name="generic_error_message">Oups! Something went wrong</string>
+    <string name="generic_network_error_message">You are not connected to the internet</string>
+</resources>

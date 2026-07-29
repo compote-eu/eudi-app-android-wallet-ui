@@ -25,6 +25,10 @@ plugins {
     // conflicts ("already on the classpath with an unknown version").
     id("org.jetbrains.kotlin.multiplatform")
     id("com.android.kotlin.multiplatform.library")
+    // Compose Multiplatform — used here for compose-resources (Phase 3a: KMP string/resource
+    // resolution). The compose compiler plugin is bundled with Kotlin, so applied by id.
+    alias(libs.plugins.jetbrains.compose)
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 kotlin {
@@ -56,10 +60,20 @@ kotlin {
             // Coroutines (KMP). `api` because safeAsync exposes Flow / CoroutineDispatcher
             // in its public signature.
             api(libs.kotlinx.coroutines)
+            // compose-resources: KMP-shared strings/drawables (Res.string.*), for view-model
+            // string resolution and the future Compose Multiplatform UI. compose.runtime is
+            // required on the classpath by the Compose compiler plugin.
+            implementation(compose.runtime)
+            implementation(compose.components.resources)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
         }
     }
+}
+
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "eu.europa.ec.shared.resources"
 }

@@ -1,6 +1,7 @@
 [versions]
 # Kotlin
 kotlin = "2.4.0"
+composeMultiplatform = "1.10.1"
 kotlinxCoroutines = "1.11.0"
 kotlinxDatetime = "0.8.0"
 kotlinxSerializationJson = "1.11.0"
@@ -229,6 +230,7 @@ baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprof
 
 # Kotlin & KSP
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+jetbrains-compose = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
 koin-compiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koinPlugin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
