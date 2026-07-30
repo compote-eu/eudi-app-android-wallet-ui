@@ -14,6 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 // Phase-0 KMP spike module. Deliberately does NOT use the Android-only convention
 // plugins (they force every module to `com.android.library`, which AGP 9 no longer
 // combines with Kotlin Multiplatform). It applies the Kotlin Multiplatform plugin plus
@@ -42,6 +44,13 @@ kotlin {
         compileSdk = 37
         minSdk = 29
         withHostTest {}
+        // Pin to JVM 17 like every other module (KotlinAndroid convention). Without this the
+        // Android target follows the running JDK (e.g. Android Studio's JBR 21), and the app —
+        // built at 17 — fails to inline :shared's inline funs (safeLet/safeAsync): "Cannot
+        // inline bytecode built with JVM target 21 into bytecode being built with JVM target 17".
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
     }
 
     // iOS targets: device (arm64) + both simulators. Produces a static framework that a
