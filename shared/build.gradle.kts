@@ -72,10 +72,11 @@ kotlin {
             // in its public signature.
             api(libs.kotlinx.coroutines)
             // compose-resources: KMP-shared strings/drawables (Res.string.*), for view-model
-            // string resolution and the future Compose Multiplatform UI. compose.runtime is
-            // required on the classpath by the Compose compiler plugin.
-            implementation(compose.runtime)
-            implementation(compose.components.resources)
+            // string resolution and the future Compose Multiplatform UI. The Compose compiler
+            // plugin requires the Compose runtime on the classpath; referenced by explicit
+            // coordinate (the `compose.runtime` DSL accessor is deprecated in CMP 1.10+).
+            implementation(libs.jetbrains.compose.runtime)
+            implementation(libs.jetbrains.compose.components.resources)
             // androidx.lifecycle ViewModel (KMP) — base for the shared MviViewModel. `api`
             // so feature view-models that extend MviViewModel see androidx.lifecycle.ViewModel.
             api(libs.androidx.lifecycle.viewmodel)
