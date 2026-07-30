@@ -20,22 +20,54 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 /**
- * Phase-3c prototype: type-safe navigation routes for Navigation 3.
+ * Phase-3c / N2: type-safe Navigation 3 routes.
  *
- * Each route is a [NavKey] (the Nav3 back-stack key) *and* `@Serializable`, so navigation
- * arguments are carried as typed fields (see [DocumentDetailsRoute.documentId]) instead of
- * hand-Base64-serialized config strings. The back stack is plain state — `List<NavKey>` — and
- * Nav3 (with kotlinx-serialization) persists it. This removes the whole legacy apparatus:
- * `UiSerializer` (Class<M> reflection + Base64), `generateComposableArguments`/
- * `generateComposableNavigationLink`, and the `Screen(name, "?arg={x}")` string contract.
+ * Each route is a [NavKey] back-stack key *and* `@Serializable`, carrying navigation arguments as
+ * typed fields instead of hand-Base64-serialized config strings. This retires the legacy apparatus
+ * ([eu.europa.ec.uilogic.navigation.Screen] string routes, `UiSerializer`, and the
+ * `generateComposable*` builders).
+ *
+ * This file covers the routes whose arguments are primitives or absent (mirroring
+ * [eu.europa.ec.uilogic.navigation]'s `*Screens`). Routes that currently carry rich config objects
+ * (Success, Biometric, QrScan, PresentationRequest, ProximityQR, the issuance offer/success flows,
+ * QuickPin) are added in a later step, once those configs are made KMP-clean and moved to
+ * commonMain (they still embed Compose types / java.net.URI today).
  */
 sealed interface AppRoute : NavKey
 
+// --- Startup ---
 @Serializable
 data object SplashRoute : AppRoute
 
+// --- Dashboard ---
 @Serializable
-data class DashboardRoute(val startTab: String? = null) : AppRoute
+data object DashboardRoute : AppRoute
+
+@Serializable
+data object SettingsRoute : AppRoute
+
+@Serializable
+data object DocumentSignRoute : AppRoute
 
 @Serializable
 data class DocumentDetailsRoute(val documentId: String) : AppRoute
+
+@Serializable
+data class TransactionDetailsRoute(val transactionId: String) : AppRoute
+
+// --- Presentation (online) ---
+@Serializable
+data class PresentationLoadingRoute(val scopeId: String) : AppRoute
+
+@Serializable
+data class PresentationSuccessRoute(val scopeId: String) : AppRoute
+
+// --- Proximity ---
+@Serializable
+data class ProximityRequestRoute(val scopeId: String) : AppRoute
+
+@Serializable
+data class ProximityLoadingRoute(val scopeId: String) : AppRoute
+
+@Serializable
+data class ProximitySuccessRoute(val scopeId: String) : AppRoute

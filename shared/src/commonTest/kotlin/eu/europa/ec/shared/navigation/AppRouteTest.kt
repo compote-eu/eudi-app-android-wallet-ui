@@ -21,9 +21,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Proves the Nav3 type-safe routing model on both Android (JVM) and iOS (Kotlin/Native):
- * routes carry typed arguments and round-trip via kotlinx-serialization — no Base64, no
- * Class<M> reflection, no UiSerializer. Also shows the back stack as plain state.
+ * Proves the Nav3 type-safe routing model on both Android (JVM) and iOS (Kotlin/Native): routes
+ * carry typed arguments and round-trip via kotlinx-serialization — no Base64, no Class<M>
+ * reflection, no UiSerializer. Also shows the back stack as plain state.
  */
 class AppRouteTest {
 
@@ -42,12 +42,22 @@ class AppRouteTest {
     fun the_back_stack_is_plain_typed_state() {
         val backStack: MutableList<AppRoute> = mutableListOf(SplashRoute)
 
-        backStack.add(DashboardRoute(startTab = "documents"))
+        backStack.add(DashboardRoute)
         backStack.add(DocumentDetailsRoute(documentId = "doc-9"))
 
         assertEquals(3, backStack.size)
         assertEquals(DocumentDetailsRoute("doc-9"), backStack.last())
         backStack.removeAt(backStack.lastIndex) // "pop"
-        assertEquals(DashboardRoute("documents"), backStack.last())
+        assertEquals(DashboardRoute, backStack.last())
+    }
+
+    @Test
+    fun scoped_routes_carry_their_scope_id() {
+        val route = ProximityLoadingRoute(scopeId = "scope-42")
+        val restored = Json.decodeFromString(
+            ProximityLoadingRoute.serializer(),
+            Json.encodeToString(ProximityLoadingRoute.serializer(), route),
+        )
+        assertEquals("scope-42", restored.scopeId)
     }
 }
