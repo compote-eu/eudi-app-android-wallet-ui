@@ -270,7 +270,48 @@ proving Multipaz on-device against EUDI verifiers before committing the rest.
 Effort/risk: med-high; the two risks are (a) proving Multipaz iOS proximity / secure-area against
 EUDI verifiers, and (b) RQES remaining platform-specific.
 
-## 15. References
+## 15. Navigation migration — Navigation 3 (supersedes UiSerializer/string routes)
+
+Decision: adopt **Navigation 3 (Nav3)** type-safe routing for the shared presentation layer,
+instead of KMP-ifying the legacy `UiSerializer` + string-route apparatus. Nav3's back stack is
+plain observable state (`List<NavKey>`) and routes are `@Serializable` `NavKey` objects carrying
+**typed** arguments, so the whole legacy stack — `UiSerializer` (Base64 + `Class<M>` reflection +
+Compose-type serializers), `generateComposableArguments`/`generateComposableNavigationLink`, and
+the `Screen(name, "?arg={x}")` string contract — is **retired, not ported**.
+
+**Prototype (done):** `navigation3-runtime` 1.1.0-alpha01 (iOS variants resolve) + kotlin-
+serialization in `:shared`; `AppRoute` `@Serializable NavKey` routes in `commonMain` round-trip
+via kotlinx-serialization on Android + iOS (`AppRouteTest`). Note: `navigation3-ui` (`NavDisplay`)
+currently resolves only for `-android` in the cache — the iOS host needs its iOS variant confirmed.
+
+**Current surface:** ~15 `Screen`s, 39 files import `androidx.navigation`, 24 serialize sites
+(9 `fromBase64` + 15 `toBase64`), 9 `UiSerializable` configs (2 use Compose `Color`, 1 `TextAlign`,
+1 `TextOverflow`, 1 `java.net.URI`), one `RouterHost` (`NavHost`).
+
+Migration phases:
+
+- **N1 — Foundation (done).** Nav3 runtime + prototype routes + serialization in `:shared`.
+- **N2 — Route model.** Convert all ~15 `Screen`s to `@Serializable NavKey` routes in
+  `commonMain`; **strip Compose-type/`URI` fields out of the configs** (UI styling doesn't belong
+  in nav args) so configs become plain KMP-serializable data. This is what retires `UiSerializer`.
+- **N3 — Host.** Replace `RouterHost` (`NavHost`/navigation-compose) with a Nav3 `NavDisplay` +
+  `entryProvider` (Android first; iOS host once `navigation3-ui` iOS resolves). Back stack becomes
+  `rememberNavBackStack()` state.
+- **N4 — View-models.** VMs emit navigation as typed routes (`Effect.Navigation` carrying an
+  `AppRoute`) instead of route strings; the host mutates the `NavKey` back stack. The 24 serialize
+  sites collapse into typed route construction.
+- **N5 — Deep links.** Map external deep-link URIs → typed routes; the Android intent/URI helpers
+  (`Context`/`Intent`) stay native behind the host.
+- **N6 — Retire legacy.** Delete `UiSerializer`, `generateComposableArguments`/
+  `generateComposableNavigationLink`, the `Screen` string contract, and the `navigation-compose`
+  dependency.
+
+Risks: Nav3 is **alpha** (pin the version, expect API churn); `navigation3-ui` **iOS** availability
+must be confirmed for the iOS host; and refactoring Compose-type fields out of the 9 configs touches
+those configs + their screen consumers. Effort: multi-week (touches ~39 nav files + 24 serialize
+sites + 9 configs + `RouterHost`), executed feature-by-feature behind the current system.
+
+## 16. References
 
 - Android app: this repo (`core-logic`, `build-logic/convention`, `gradle/libs.versions.toml`; Gradle cache shows `org.multipaz` 0.99.0).
 - iOS app: `github.com/eu-digital-identity-wallet/eudi-app-ios-wallet-ui`.
