@@ -43,28 +43,6 @@ import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapAsyncImage
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
 import eu.europa.ec.uilogic.component.wrap.WrapText
-import kotlinx.serialization.Serializable
-
-/**
- * Data class representing information about a Relying Party.
- *
- * @property logo An optional logo URL string for the Relying Party (KMP-clean; the image loader
- *   accepts a String source directly).
- * @property isVerified A boolean indicating whether the Relying Party is verified.
- * @property name The name of the Relying Party.
- * @property nameTextConfig Optional [TextConfig] for styling the name text.
- * @property description An optional description of the Relying Party.
- * @property descriptionTextConfig Optional [TextConfig] for styling the description text.
- */
-@Serializable
-data class RelyingPartyDataUi(
-    val logo: String? = null,
-    val isVerified: Boolean,
-    val name: String,
-    val nameTextConfig: TextConfig? = null,
-    val description: String? = null,
-    val descriptionTextConfig: TextConfig? = null,
-)
 
 @Composable
 fun RelyingParty(

@@ -41,29 +41,6 @@ import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapText
 import eu.europa.ec.uilogic.extension.optionalTestTag
-import kotlinx.serialization.Serializable
-
-/**
- * Data class representing the configuration for a content header.
- * This header typically displays information like app icon, name, description,
- * and potentially relying party details.
- *
- * @property appIconAndTextData Data for displaying the app icon and text.
- * @property description A descriptive text for the content.
- * @property descriptionTextConfig Configuration for the appearance of the description text.
- * @property mainText The main title or heading text.
- * @property mainTextConfig Configuration for the appearance of the main text.
- * @property relyingPartyData Data for displaying information about the relying party, if applicable.
- */
-@Serializable
-data class ContentHeaderConfig(
-    val appIconAndTextData: AppIconAndTextDataUi = AppIconAndTextDataUi(),
-    val description: String?,
-    val descriptionTextConfig: TextConfig? = null,
-    val mainText: String? = null,
-    val mainTextConfig: TextConfig? = null,
-    val relyingPartyData: RelyingPartyDataUi? = null,
-)
 
 /**
  * Composable function that displays the content header for the screen.
