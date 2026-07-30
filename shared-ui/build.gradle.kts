@@ -65,6 +65,9 @@ kotlin {
             implementation(libs.jetbrains.compose.runtime)
             implementation(libs.jetbrains.compose.components.resources)
             implementation(libs.kotlinx.serialization.json)
+            // Nav3 route model (AppRoute : NavKey, AppNavigator) lives here: config-carrying routes
+            // reference the shared-ui UI-model, and AppRoute is sealed so its subtypes must co-locate.
+            api(libs.androidx.navigation3.runtime)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

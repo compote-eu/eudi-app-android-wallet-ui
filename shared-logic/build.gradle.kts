@@ -55,7 +55,6 @@ kotlin {
             // MviViewModel extends androidx.lifecycle.ViewModel; AppRoute uses NavKey).
             api(libs.kotlinx.coroutines)
             api(libs.androidx.lifecycle.viewmodel)
-            api(libs.androidx.navigation3.runtime)
             implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
