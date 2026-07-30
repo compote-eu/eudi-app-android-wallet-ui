@@ -22,9 +22,9 @@ import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessViewModel
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.proximityfeature.interactor.ProximitySuccessInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximitySuccessInteractorGetUiItemsPartialState
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.DashboardScreens
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -37,7 +37,7 @@ class ProximitySuccessViewModel(
 
     override fun getNextScreenConfigNavigation(): ConfigNavigation {
         val popToDashboard = ConfigNavigation(
-            navigationType = NavigationType.PopTo(DashboardScreens.Dashboard),
+            navigationType = NavigationType.PopTo(DashboardRoute),
         )
 
         return popToDashboard

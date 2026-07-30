@@ -44,6 +44,7 @@ import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.AppIcons
@@ -392,11 +393,11 @@ private fun PreviewBiometricScreen() {
                     ),
                     isPreAuthorization = true,
                     onSuccessNavigation = ConfigNavigation(
-                        navigationType = NavigationType.PushScreen(CommonScreens.Biometric)
+                        navigationType = NavigationType.PushRoute(DashboardRoute)
                     ),
                     onBackNavigationConfig = OnBackNavigationConfig(
                         onBackNavigation = ConfigNavigation(
-                            navigationType = NavigationType.PushScreen(CommonScreens.Biometric),
+                            navigationType = NavigationType.PushRoute(DashboardRoute),
                         ),
                         hasToolbarBackIcon = true
                     )

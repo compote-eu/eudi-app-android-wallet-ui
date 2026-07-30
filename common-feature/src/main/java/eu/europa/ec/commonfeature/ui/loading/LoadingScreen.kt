@@ -33,6 +33,7 @@ import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
+import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -66,7 +67,7 @@ fun LoadingScreen(
                 when (navigationEffect) {
                     is Effect.Navigation.SwitchScreen -> {
                         navController.navigate(navigationEffect.screenRoute) {
-                            popUpTo(viewModel.getCallerScreen().screenRoute) {
+                            popUpTo(viewModel.getCallerRoute().toLegacyScreen().screenRoute) {
                                 inclusive = true
                             }
                         }

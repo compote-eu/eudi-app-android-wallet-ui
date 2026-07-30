@@ -35,6 +35,12 @@ import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorScopedPartia
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
+import eu.europa.ec.shared.navigation.DocumentOfferRoute
+import eu.europa.ec.shared.navigation.PresentationRequestRoute
+import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -43,15 +49,11 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
-import eu.europa.ec.uilogic.navigation.PresentationScreens
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
+import eu.europa.ec.uilogic.navigation.helper.toLegacyArguments
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -180,22 +182,14 @@ class AddDocumentViewModel(
             is Event.OnDynamicPresentation -> {
                 setEffect {
                     Effect.Navigation.SwitchScreen(
-                        generateComposableNavigationLink(
-                            PresentationScreens.PresentationRequest,
-                            generateComposableArguments(
-                                mapOf(
-                                    RequestUriConfig.serializedKeyName to uiSerializer.toBase64(
-                                        RequestUriConfig(
-                                            PresentationMode.OpenId4Vp(
-                                                event.uri,
-                                                IssuanceScreens.AddDocument.screenRoute
-                                            )
-                                        ),
-                                        RequestUriConfig.Parser
-                                    )
+                        PresentationRequestRoute(
+                            RequestUriConfig(
+                                PresentationMode.OpenId4Vp(
+                                    event.uri,
+                                    AddDocumentRoute(viewState.value.issuanceConfig)
                                 )
                             )
-                        ),
+                        ).toLegacyRoute(),
                         inclusive = false
                     )
                 }
@@ -378,35 +372,27 @@ class AddDocumentViewModel(
     private fun navigateToDocumentIssuanceSuccessScreen(documentIds: List<String>) {
         val onSuccessNavigation = when (viewState.value.issuanceConfig.flowType) {
             is IssuanceFlowType.NoDocument -> ConfigNavigation(
-                navigationType = NavigationType.PushScreen(
-                    screen = DashboardScreens.Dashboard,
-                    popUpToScreen = IssuanceScreens.AddDocument
+                navigationType = NavigationType.PushRoute(
+                    route = DashboardRoute,
+                    popUpTo = AddDocumentRoute(viewState.value.issuanceConfig)
                 )
             )
 
             is IssuanceFlowType.ExtraDocument -> ConfigNavigation(
                 navigationType = NavigationType.PopTo(
-                    screen = DashboardScreens.Dashboard
+                    route = DashboardRoute
                 )
             )
         }
 
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = generateComposableNavigationLink(
-                    screen = IssuanceScreens.DocumentIssuanceSuccess,
-                    arguments = generateComposableArguments(
-                        mapOf(
-                            IssuanceSuccessUiConfig.serializedKeyName to uiSerializer.toBase64(
-                                model = IssuanceSuccessUiConfig(
-                                    documentIds = documentIds,
-                                    onSuccessNavigation = onSuccessNavigation,
-                                ),
-                                parser = IssuanceSuccessUiConfig.Parser
-                            ).orEmpty()
-                        )
+                screenRoute = DocumentIssuanceSuccessRoute(
+                    IssuanceSuccessUiConfig(
+                        documentIds = documentIds,
+                        onSuccessNavigation = onSuccessNavigation,
                     )
-                ),
+                ).toLegacyRoute(),
                 inclusive = false
             )
         }
@@ -424,21 +410,13 @@ class AddDocumentViewModel(
     private fun navigateToQrScanScreen() {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = generateComposableNavigationLink(
-                    screen = CommonScreens.QrScan,
-                    arguments = generateComposableArguments(
-                        mapOf(
-                            QrScanUiConfig.serializedKeyName to uiSerializer.toBase64(
-                                QrScanUiConfig(
-                                    title = resourceProvider.getString(R.string.issuance_qr_scan_title),
-                                    subTitle = resourceProvider.getString(R.string.issuance_qr_scan_subtitle),
-                                    qrScanFlow = QrScanFlow.Issuance(viewState.value.issuanceConfig.flowType)
-                                ),
-                                QrScanUiConfig.Parser
-                            )
-                        )
+                screenRoute = QrScanRoute(
+                    QrScanUiConfig(
+                        title = resourceProvider.getString(R.string.issuance_qr_scan_title),
+                        subTitle = resourceProvider.getString(R.string.issuance_qr_scan_subtitle),
+                        qrScanFlow = QrScanFlow.Issuance(viewState.value.issuanceConfig.flowType)
                     )
-                ),
+                ).toLegacyRoute(),
                 inclusive = false
             )
         }
@@ -483,25 +461,20 @@ class AddDocumentViewModel(
                 setEffect {
                     Effect.Navigation.OpenDeepLinkAction(
                         deepLinkUri = uri,
-                        arguments = generateComposableArguments(
-                            mapOf(
-                                OfferUiConfig.serializedKeyName to uiSerializer.toBase64(
-                                    OfferUiConfig(
-                                        offerUri = action.link.toString(),
-                                        onSuccessNavigation = ConfigNavigation(
-                                            navigationType = NavigationType.PushScreen(
-                                                screen = DashboardScreens.Dashboard,
-                                                popUpToScreen = IssuanceScreens.AddDocument
-                                            )
-                                        ),
-                                        onCancelNavigation = ConfigNavigation(
-                                            navigationType = NavigationType.Pop
-                                        )
-                                    ),
-                                    OfferUiConfig.Parser
+                        arguments = DocumentOfferRoute(
+                            OfferUiConfig(
+                                offerUri = action.link.toString(),
+                                onSuccessNavigation = ConfigNavigation(
+                                    navigationType = NavigationType.PushRoute(
+                                        route = DashboardRoute,
+                                        popUpTo = AddDocumentRoute(viewState.value.issuanceConfig)
+                                    )
+                                ),
+                                onCancelNavigation = ConfigNavigation(
+                                    navigationType = NavigationType.Pop
                                 )
                             )
-                        )
+                        ).toLegacyArguments()
                     )
                 }
             }

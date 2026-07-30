@@ -37,6 +37,8 @@ import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoU
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.DocumentDetailsRoute
+import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
@@ -46,13 +48,10 @@ import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.PresentationScreens
 import eu.europa.ec.uilogic.navigation.StartupScreens
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -159,7 +158,6 @@ sealed class DocumentDetailsBottomSheetContent {
 @KoinViewModel
 class DocumentDetailsViewModel(
     private val documentDetailsInteractor: DocumentDetailsInteractor,
-    private val uiSerializer: UiSerializer,
     private val resourceProvider: ResourceProvider,
     @InjectedParam private val documentId: DocumentId,
 ) : MviViewModel<Event, State, Effect>() {
@@ -268,22 +266,14 @@ class DocumentDetailsViewModel(
             is Event.OnDynamicPresentation -> {
                 setEffect {
                     Effect.Navigation.SwitchScreen(
-                        generateComposableNavigationLink(
-                            PresentationScreens.PresentationRequest,
-                            generateComposableArguments(
-                                mapOf(
-                                    RequestUriConfig.serializedKeyName to uiSerializer.toBase64(
-                                        RequestUriConfig(
-                                            PresentationMode.OpenId4Vp(
-                                                event.uri,
-                                                DashboardScreens.DocumentDetails.screenRoute
-                                            )
-                                        ),
-                                        RequestUriConfig.Parser
-                                    )
+                        PresentationRequestRoute(
+                            config = RequestUriConfig(
+                                PresentationMode.OpenId4Vp(
+                                    event.uri,
+                                    DocumentDetailsRoute(documentId = documentId)
                                 )
                             )
-                        ),
+                        ).toLegacyRoute(),
                         popUpToScreenRoute = DashboardScreens.DocumentDetails.screenRoute,
                         inclusive = false
                     )

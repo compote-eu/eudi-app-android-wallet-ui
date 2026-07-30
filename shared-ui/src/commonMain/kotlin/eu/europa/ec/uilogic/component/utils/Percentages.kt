@@ -14,21 +14,13 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.commonfeature.config
+// The screen-fraction constants split out of :ui-logic's Constants.kt: they are plain Floats used
+// as defaults by the serialized UI-model (SuccessUIConfig.ImageConfig.screenPercentageSize), which
+// lives in commonMain. Package unchanged so call sites don't churn.
+package eu.europa.ec.uilogic.component.utils
 
-import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.uilogic.config.ConfigNavigation
-import eu.europa.ec.uilogic.serializer.UiSerializable
-import eu.europa.ec.uilogic.serializer.UiSerializableParser
-import kotlinx.serialization.Serializable
+/** Value 0.25 */
+const val PERCENTAGE_25 = 0.25F
 
-@Serializable
-data class IssuanceSuccessUiConfig(
-    val documentIds: List<DocumentId>,
-    val onSuccessNavigation: ConfigNavigation,
-) : UiSerializable {
-
-    companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "issuanceSuccessConfig"
-    }
-}
+/** Value 0.6 */
+const val PERCENTAGE_60 = 0.6F

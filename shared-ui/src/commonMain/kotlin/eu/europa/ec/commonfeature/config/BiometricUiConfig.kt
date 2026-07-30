@@ -14,6 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Nav3 Stage 3: moved to :shared-ui commonMain (package unchanged) as the payload of
+// BiometricRoute. KMP-clean now that ConfigNavigation carries a typed AppRoute.
 package eu.europa.ec.commonfeature.config
 
 import eu.europa.ec.uilogic.config.ConfigNavigation

@@ -16,9 +16,18 @@
 
 package eu.europa.ec.shared.navigation
 
+import eu.europa.ec.commonfeature.config.IssuanceFlowType
+import eu.europa.ec.commonfeature.config.IssuanceUiConfig
+import eu.europa.ec.commonfeature.config.OfferUiConfig
+import eu.europa.ec.commonfeature.config.PresentationMode
+import eu.europa.ec.commonfeature.config.RequestUriConfig
+import eu.europa.ec.commonfeature.model.PinFlow
+import eu.europa.ec.uilogic.config.ConfigNavigation
+import eu.europa.ec.uilogic.config.NavigationType
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 /**
  * Proves the Nav3 type-safe routing model on both Android (JVM) and iOS (Kotlin/Native): routes
@@ -59,5 +68,81 @@ class AppRouteTest {
             Json.encodeToString(ProximityLoadingRoute.serializer(), route),
         )
         assertEquals("scope-42", restored.scopeId)
+    }
+
+    /**
+     * The sealed base is `@Serializable`, so an `AppRoute`-typed field serializes polymorphically —
+     * this is what lets a config carry its own next destination (Stage 2).
+     */
+    @Test
+    fun an_app_route_typed_field_round_trips_polymorphically() {
+        val nav = ConfigNavigation(
+            navigationType = NavigationType.PushRoute(
+                route = AddDocumentRoute(IssuanceUiConfig(flowType = IssuanceFlowType.NoDocument)),
+                popUpTo = DashboardRoute,
+            )
+        )
+
+        val restored = Json.decodeFromString(
+            ConfigNavigation.serializer(),
+            Json.encodeToString(ConfigNavigation.serializer(), nav),
+        )
+
+        assertEquals(nav, restored)
+        val push = assertIs<NavigationType.PushRoute>(restored.navigationType)
+        assertEquals(DashboardRoute, push.popUpTo)
+        assertEquals(IssuanceFlowType.NoDocument, assertIs<AddDocumentRoute>(push.route).config.flowType)
+    }
+
+    /** A config-carrying route nests a whole config — including a nested destination — as typed data. */
+    @Test
+    fun a_config_carrying_route_round_trips_its_nested_navigation() {
+        val route = DocumentOfferRoute(
+            OfferUiConfig(
+                offerUri = "openid-credential-offer://issuer",
+                onSuccessNavigation = ConfigNavigation(NavigationType.PopTo(DashboardRoute)),
+                onCancelNavigation = ConfigNavigation(NavigationType.Pop),
+            )
+        )
+
+        val restored = Json.decodeFromString(
+            DocumentOfferRoute.serializer(),
+            Json.encodeToString(DocumentOfferRoute.serializer(), route),
+        )
+
+        assertEquals(route, restored)
+        assertEquals(
+            DashboardRoute,
+            assertIs<NavigationType.PopTo>(restored.config.onSuccessNavigation.navigationType).route,
+        )
+    }
+
+    /** The presentation initiator is a typed route now, not a legacy route string. */
+    @Test
+    fun presentation_mode_carries_a_typed_initiator_route() {
+        val route = PresentationRequestRoute(
+            RequestUriConfig(
+                PresentationMode.OpenId4Vp(uri = "vp://request", initiatorRoute = DashboardRoute)
+            )
+        )
+
+        val restored = Json.decodeFromString(
+            PresentationRequestRoute.serializer(),
+            Json.encodeToString(PresentationRequestRoute.serializer(), route),
+        )
+
+        assertEquals(route, restored)
+        assertEquals(DashboardRoute, restored.config.mode.initiatorRoute)
+        assertEquals("vp_presentation_scope_id", restored.config.presentationScopeId)
+    }
+
+    @Test
+    fun enum_arguments_round_trip() {
+        val route = QuickPinRoute(pinFlow = PinFlow.CREATE_WITH_ACTIVATION)
+        val restored = Json.decodeFromString(
+            QuickPinRoute.serializer(),
+            Json.encodeToString(QuickPinRoute.serializer(), route),
+        )
+        assertEquals(PinFlow.CREATE_WITH_ACTIVATION, restored.pinFlow)
     }
 }

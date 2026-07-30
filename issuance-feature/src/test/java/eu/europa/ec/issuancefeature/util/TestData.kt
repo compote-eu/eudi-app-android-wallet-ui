@@ -16,6 +16,8 @@
 
 package eu.europa.ec.issuancefeature.util
 
+import eu.europa.ec.commonfeature.config.IssuanceFlowType
+import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimPathDomain.Companion.toClaimPathDomain
@@ -26,6 +28,8 @@ import eu.europa.ec.eudi.openid4vci.TxCode
 import eu.europa.ec.eudi.openid4vci.TxCodeInputMode
 import eu.europa.ec.eudi.wallet.document.NameSpace
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.testfeature.util.mockedAgeVerificationDocName
 import eu.europa.ec.testfeature.util.mockedMdlDocName
 import eu.europa.ec.testfeature.util.mockedMdocAgeVerificationFormat
@@ -44,8 +48,6 @@ import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
 
 internal const val mockedOfferedDocumentName = "Offered Document"
 internal const val mockedOfferedDocumentDocType = "mocked_offered_document_doc_type"
@@ -55,7 +57,6 @@ internal const val mockedIssuanceErrorMessage = "Issuance error message"
 internal const val mockedInvalidCodeFormatMessage = "Invalid code format message"
 internal const val mockedWalletActivationErrorMessage = "Wallet activation error message"
 internal const val mockedPrimaryButtonText = "Primary button text"
-internal const val mockedRouteArguments = "mockedRouteArguments"
 internal const val mockedTxCode = "mockedTxCode"
 internal const val mockedSuccessText = "Success text"
 internal const val mockedCombinedPid = "PID Combined"
@@ -150,13 +151,13 @@ internal val mockedOfferTxCodeFourDigits = TxCode(
 internal val mockedConfigNavigationTypePop = ConfigNavigation(navigationType = NavigationType.Pop)
 internal val mockedConfigNavigationTypePush = ConfigNavigation(
     navigationType = NavigationType.PushRoute(
-        route = DashboardScreens.Dashboard.screenRoute,
-        popUpToRoute = IssuanceScreens.AddDocument.screenRoute
+        route = DashboardRoute,
+        popUpTo = AddDocumentRoute(IssuanceUiConfig(flowType = IssuanceFlowType.NoDocument))
     )
 )
 internal val mockedConfigNavigationTypePopToScreen = ConfigNavigation(
     navigationType = NavigationType.PopTo(
-        screen = DashboardScreens.Dashboard
+        route = DashboardRoute
     )
 )
 

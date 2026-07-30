@@ -28,7 +28,6 @@ import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractorImpl
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -49,13 +48,11 @@ fun provideAddDocumentInteractor(
     walletCoreDocumentsController: WalletCoreDocumentsController,
     resourceProvider: ResourceProvider,
     deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
-    uiSerializer: UiSerializer
 ): AddDocumentInteractor =
     AddDocumentInteractorImpl(
         walletCoreDocumentsController,
         deviceAuthenticationInteractor,
         resourceProvider,
-        uiSerializer
     )
 
 @Factory
@@ -76,7 +73,6 @@ fun provideDocumentOfferInteractor(
     walletEngine: WalletEngine,
     resourceProvider: ResourceProvider,
     deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
-    uiSerializer: UiSerializer,
     configLogic: ConfigLogic
 ): DocumentOfferInteractor =
     DocumentOfferInteractorImpl(
@@ -84,7 +80,6 @@ fun provideDocumentOfferInteractor(
         walletEngine,
         deviceAuthenticationInteractor,
         resourceProvider,
-        uiSerializer,
         configLogic
     )
 

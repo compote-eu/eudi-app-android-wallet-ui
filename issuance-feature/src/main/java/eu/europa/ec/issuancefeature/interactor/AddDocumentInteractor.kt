@@ -22,6 +22,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenti
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
+import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
@@ -34,6 +35,9 @@ import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.SuccessRoute
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -42,12 +46,7 @@ import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -102,7 +101,6 @@ class AddDocumentInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
     private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     private val resourceProvider: ResourceProvider,
-    private val uiSerializer: UiSerializer
 ) : AddDocumentInteractor {
 
     private val genericErrorMsg
@@ -314,31 +312,27 @@ class AddDocumentInteractorImpl(
         val navigation = when (flowType) {
             is IssuanceFlowType.NoDocument -> ConfigNavigation(
                 navigationType = NavigationType.PushRoute(
-                    route = DashboardScreens.Dashboard.screenRoute,
-                    popUpToRoute = IssuanceScreens.AddDocument.screenRoute
+                    route = DashboardRoute,
+                    popUpTo = AddDocumentRoute(IssuanceUiConfig(flowType = flowType))
                 ),
             )
 
             is IssuanceFlowType.ExtraDocument -> ConfigNavigation(
                 navigationType = NavigationType.PopTo(
-                    screen = DashboardScreens.Dashboard
+                    route = DashboardRoute
                 )
             )
         }
-        val successScreenArguments = getSuccessScreenArgumentsForDeferred(navigation)
-        return generateComposableNavigationLink(
-            screen = CommonScreens.Success,
-            arguments = successScreenArguments
-        )
+        return SuccessRoute(getSuccessConfigForDeferred(navigation)).toLegacyRoute()
     }
 
     override fun resumeOpenId4VciWithAuthorization(uri: String) {
         walletCoreDocumentsController.resumeOpenId4VciWithAuthorization(uri)
     }
 
-    private fun getSuccessScreenArgumentsForDeferred(
+    private fun getSuccessConfigForDeferred(
         navigation: ConfigNavigation
-    ): String {
+    ): SuccessUIConfig {
         val (textElementsConfig, imageConfig, buttonText) = Triple(
             first = SuccessUIConfig.TextElementsConfig(
                 text = resourceProvider.getString(R.string.issuance_add_document_deferred_success_text),
@@ -353,24 +347,17 @@ class AddDocumentInteractorImpl(
             third = resourceProvider.getString(R.string.issuance_add_document_deferred_success_primary_button_text)
         )
 
-        return generateComposableArguments(
-            mapOf(
-                SuccessUIConfig.serializedKeyName to uiSerializer.toBase64(
-                    SuccessUIConfig(
-                        textElementsConfig = textElementsConfig,
-                        imageConfig = imageConfig,
-                        buttonConfig = listOf(
-                            SuccessUIConfig.ButtonConfig(
-                                text = buttonText,
-                                style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
-                                navigation = navigation
-                            )
-                        ),
-                        onBackScreenToNavigate = navigation,
-                    ),
-                    SuccessUIConfig.Parser
-                ).orEmpty()
-            )
+        return SuccessUIConfig(
+            textElementsConfig = textElementsConfig,
+            imageConfig = imageConfig,
+            buttonConfig = listOf(
+                SuccessUIConfig.ButtonConfig(
+                    text = buttonText,
+                    style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
+                    navigation = navigation
+                )
+            ),
+            onBackScreenToNavigate = navigation,
         )
     }
 }

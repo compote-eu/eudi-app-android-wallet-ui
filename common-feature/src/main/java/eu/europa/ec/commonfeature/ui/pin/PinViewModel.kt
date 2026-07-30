@@ -26,6 +26,10 @@ import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorPinValidPartialState
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorSetPinPartialState
 import eu.europa.ec.commonfeature.model.PinFlow
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.QuickPinRoute
+import eu.europa.ec.shared.navigation.SuccessRoute
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.component.AppIcons
@@ -36,13 +40,8 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.ModuleRoute
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -119,7 +118,6 @@ sealed class Effect : ViewSideEffect {
 class PinViewModel(
     private val interactor: QuickPinInteractor,
     private val resourceProvider: ResourceProvider,
-    private val uiSerializer: UiSerializer,
     @InjectedParam private val pinFlow: PinFlow
 ) : MviViewModel<Event, State, Effect>() {
 
@@ -451,96 +449,82 @@ class PinViewModel(
     private fun getNextScreenRoute(): String {
 
         val navigationAfterCreate = ConfigNavigation(
-            navigationType = NavigationType.PushScreen(
-                screen = IssuanceScreens.AddDocument,
-                arguments = mapOf(
-                    IssuanceUiConfig.serializedKeyName to uiSerializer.toBase64(
-                        model = IssuanceUiConfig(
-                            flowType = IssuanceFlowType.NoDocument
-                        ),
-                        parser = IssuanceUiConfig.Parser
-                    )
+            navigationType = NavigationType.PushRoute(
+                route = AddDocumentRoute(
+                    config = IssuanceUiConfig(flowType = IssuanceFlowType.NoDocument)
                 ),
-                popUpToScreen = CommonScreens.QuickPin
+                popUpTo = QuickPinRoute(pinFlow)
             ),
         )
 
         val navigationAfterUpdate = ConfigNavigation(
-            navigationType = NavigationType.PopTo(DashboardScreens.Dashboard),
+            navigationType = NavigationType.PopTo(DashboardRoute),
         )
 
         val navigationAfterCreateNoActivation = ConfigNavigation(
-            navigationType = NavigationType.PushScreen(
-                screen = DashboardScreens.Dashboard,
-                popUpToScreen = CommonScreens.QuickPin
+            navigationType = NavigationType.PushRoute(
+                route = DashboardRoute,
+                popUpTo = QuickPinRoute(pinFlow)
             ),
         )
 
-        return generateComposableNavigationLink(
-            screen = CommonScreens.Success,
-            arguments = generateComposableArguments(
-                mapOf(
-                    SuccessUIConfig.serializedKeyName to uiSerializer.toBase64(
-                        SuccessUIConfig(
-                            textElementsConfig = SuccessUIConfig.TextElementsConfig(
-                                text = when (pinFlow) {
-                                    PinFlow.CREATE_WITH_ACTIVATION, PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
-                                        R.string.quick_pin_create_success_text
-                                    )
+        return SuccessRoute(
+            config = SuccessUIConfig(
+                textElementsConfig = SuccessUIConfig.TextElementsConfig(
+                    text = when (pinFlow) {
+                        PinFlow.CREATE_WITH_ACTIVATION, PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
+                            R.string.quick_pin_create_success_text
+                        )
 
-                                    PinFlow.UPDATE -> resourceProvider.getString(R.string.quick_pin_change_success_text)
-                                },
-                                description = when (pinFlow) {
-                                    PinFlow.CREATE_WITH_ACTIVATION -> resourceProvider.getString(R.string.quick_pin_create_success_description)
-                                    PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
-                                        R.string.quick_pin_create_success_no_activation_description
-                                    )
+                        PinFlow.UPDATE -> resourceProvider.getString(R.string.quick_pin_change_success_text)
+                    },
+                    description = when (pinFlow) {
+                        PinFlow.CREATE_WITH_ACTIVATION -> resourceProvider.getString(R.string.quick_pin_create_success_description)
+                        PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
+                            R.string.quick_pin_create_success_no_activation_description
+                        )
 
-                                    PinFlow.UPDATE -> resourceProvider.getString(R.string.quick_pin_change_success_description)
-                                }
-                            ),
-                            imageConfig = when (pinFlow) {
-                                PinFlow.CREATE_WITH_ACTIVATION, PinFlow.CREATE_WITHOUT_ACTIVATION -> SuccessUIConfig.ImageConfig(
-                                    type = SuccessUIConfig.ImageConfig.Type.Drawable(
-                                        icon = AppIcons.WalletSecured
-                                    ),
-                                    tint = null,
-                                )
-
-                                PinFlow.UPDATE -> SuccessUIConfig.ImageConfig()
-                            },
-                            buttonConfig = listOf(
-                                SuccessUIConfig.ButtonConfig(
-                                    text = when (pinFlow) {
-                                        PinFlow.CREATE_WITH_ACTIVATION -> resourceProvider.getString(
-                                            R.string.quick_pin_create_success_btn
-                                        )
-
-                                        PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
-                                            R.string.quick_pin_create_success_no_activation_btn
-                                        )
-
-                                        PinFlow.UPDATE -> resourceProvider.getString(R.string.quick_pin_change_success_btn)
-                                    },
-                                    style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
-                                    navigation = when (pinFlow) {
-                                        PinFlow.CREATE_WITH_ACTIVATION -> navigationAfterCreate
-                                        PinFlow.CREATE_WITHOUT_ACTIVATION -> navigationAfterCreateNoActivation
-                                        PinFlow.UPDATE -> navigationAfterUpdate
-                                    }
-                                )
-                            ),
-                            onBackScreenToNavigate = when (pinFlow) {
-                                PinFlow.CREATE_WITH_ACTIVATION -> navigationAfterCreate
-                                PinFlow.CREATE_WITHOUT_ACTIVATION -> navigationAfterCreateNoActivation
-                                PinFlow.UPDATE -> navigationAfterUpdate
-                            },
+                        PinFlow.UPDATE -> resourceProvider.getString(R.string.quick_pin_change_success_description)
+                    }
+                ),
+                imageConfig = when (pinFlow) {
+                    PinFlow.CREATE_WITH_ACTIVATION, PinFlow.CREATE_WITHOUT_ACTIVATION -> SuccessUIConfig.ImageConfig(
+                        type = SuccessUIConfig.ImageConfig.Type.Drawable(
+                            icon = AppIcons.WalletSecured
                         ),
-                        SuccessUIConfig.Parser
-                    ).orEmpty()
-                )
+                        tint = null,
+                    )
+
+                    PinFlow.UPDATE -> SuccessUIConfig.ImageConfig()
+                },
+                buttonConfig = listOf(
+                    SuccessUIConfig.ButtonConfig(
+                        text = when (pinFlow) {
+                            PinFlow.CREATE_WITH_ACTIVATION -> resourceProvider.getString(
+                                R.string.quick_pin_create_success_btn
+                            )
+
+                            PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
+                                R.string.quick_pin_create_success_no_activation_btn
+                            )
+
+                            PinFlow.UPDATE -> resourceProvider.getString(R.string.quick_pin_change_success_btn)
+                        },
+                        style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
+                        navigation = when (pinFlow) {
+                            PinFlow.CREATE_WITH_ACTIVATION -> navigationAfterCreate
+                            PinFlow.CREATE_WITHOUT_ACTIVATION -> navigationAfterCreateNoActivation
+                            PinFlow.UPDATE -> navigationAfterUpdate
+                        }
+                    )
+                ),
+                onBackScreenToNavigate = when (pinFlow) {
+                    PinFlow.CREATE_WITH_ACTIVATION -> navigationAfterCreate
+                    PinFlow.CREATE_WITHOUT_ACTIVATION -> navigationAfterCreateNoActivation
+                    PinFlow.UPDATE -> navigationAfterUpdate
+                },
             )
-        )
+        ).toLegacyRoute()
     }
 
     private fun showBottomSheet() {

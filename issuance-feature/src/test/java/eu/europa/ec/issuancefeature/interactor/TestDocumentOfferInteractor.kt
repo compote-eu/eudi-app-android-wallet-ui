@@ -51,7 +51,6 @@ import eu.europa.ec.issuancefeature.util.mockedOfferTxCodeFourDigits
 import eu.europa.ec.issuancefeature.util.mockedOfferedDocumentDocType
 import eu.europa.ec.issuancefeature.util.mockedOfferedDocumentName
 import eu.europa.ec.issuancefeature.util.mockedPrimaryButtonText
-import eu.europa.ec.issuancefeature.util.mockedRouteArguments
 import eu.europa.ec.issuancefeature.util.mockedSuccessDescription
 import eu.europa.ec.issuancefeature.util.mockedSuccessText
 import eu.europa.ec.issuancefeature.util.mockedTxCode
@@ -82,7 +81,7 @@ import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.serializer.UiSerializerImpl
 import junit.framework.TestCase.assertEquals
 import org.junit.After
 import org.junit.Before
@@ -115,9 +114,6 @@ class TestDocumentOfferInteractor {
     private lateinit var resourceProvider: ResourceProvider
 
     @Mock
-    private lateinit var uiSerializer: UiSerializer
-
-    @Mock
     private lateinit var configLogic: ConfigLogic
 
     @Mock
@@ -141,7 +137,6 @@ class TestDocumentOfferInteractor {
             walletEngine = walletEngine,
             deviceAuthenticationInteractor = deviceAuthenticationInteractor,
             resourceProvider = resourceProvider,
-            uiSerializer = uiSerializer,
             configLogic = configLogic
         )
         biometricCrypto = BiometricCrypto(cryptoObject = null)
@@ -801,11 +796,10 @@ class TestDocumentOfferInteractor {
     // mocked deferred documents
     // 2. required strings are mocked
     // 3. triple object with warning tint color
-    // 4. uiSerializer.toBase64() serializes the mockedSuccessUiConfig into mockedRouteArguments
 
     // Case 5 Expected Result:
     // IssueDocumentsInteractorPartialState.DeferredSuccess state, with:
-    // - successRoute equal to "SUCCESS?successConfig=mockedArguments"
+    // - successRoute equal to the Success screen route carrying the serialized SuccessUIConfig
     @Test
     fun `Given Case 5, When issueDocuments is called, Then Case 5 Expected Result is returned`() =
         coroutineRule.runTest {
@@ -852,13 +846,6 @@ class TestDocumentOfferInteractor {
                 onBackScreenToNavigate = mockedConfigNavigationTypePop
             )
 
-            whenever(
-                uiSerializer.toBase64(
-                    model = config,
-                    parser = SuccessUIConfig.Parser
-                )
-            ).thenReturn(mockedRouteArguments)
-
             // When
             interactor.issueDocuments(
                 offerUri = mockedUriPath1,
@@ -867,7 +854,7 @@ class TestDocumentOfferInteractor {
                 txCode = securePin(mockedTxCode)
             ).runFlowTest {
                 val expectedResult = IssueDocumentsInteractorPartialState.DeferredSuccess(
-                    successRoute = "SUCCESS?successConfig=$mockedRouteArguments"
+                    successRoute = expectedGenericSuccessRoute(config)
                 )
 
                 // Then
@@ -884,11 +871,10 @@ class TestDocumentOfferInteractor {
     // 2. nonIssuedDocsNames is formed by combining the document types of non-issued documents:
     //    "eu.europa.ec.eudi.pid.1, org.iso.18013.5.1.mDL"
     // 3. mocked string resources
-    // 7. uiSerializer.toBase64() serializes the SuccessUIConfig object into mockedArguments.
 
     // Case 6 Expected Result:
     // IssueDocumentsInteractorPartialState.Success state, with:
-    // - successRoute equal to "SUCCESS?successConfig=mockedArguments"
+    // - the successfully issued documentIds
     @Test
     fun `Given Case 6, When issueDocuments is called, Then Case 6 Expected Result is returned`() =
         coroutineRule.runTest {
@@ -914,26 +900,6 @@ class TestDocumentOfferInteractor {
                 )
             )
 
-            val config = SuccessUIConfig(
-                textElementsConfig = mockedTripleObject.first,
-                imageConfig = mockedTripleObject.second,
-                buttonConfig = listOf(
-                    SuccessUIConfig.ButtonConfig(
-                        text = mockedTripleObject.third,
-                        style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
-                        navigation = mockedConfigNavigationTypePop
-                    )
-                ),
-                onBackScreenToNavigate = mockedConfigNavigationTypePop
-            )
-
-            whenever(
-                uiSerializer.toBase64(
-                    model = config,
-                    parser = SuccessUIConfig.Parser
-                )
-            ).thenReturn(mockedRouteArguments)
-
             // When
             interactor.issueDocuments(
                 offerUri = mockedUriPath1,
@@ -956,7 +922,7 @@ class TestDocumentOfferInteractor {
 
     // Case 7 Expected Result:
     // IssueDocumentsInteractorPartialState.Success state, with:
-    // - successRoute equal to "SUCCESS?successConfig=mockedArguments".
+    // - the successfully issued documentIds.
     @Test
     fun `Given Case 7, When issueDocuments is called, Then Case 7 Expected Result is returned`() =
         coroutineRule.runTest {
@@ -975,13 +941,6 @@ class TestDocumentOfferInteractor {
                     nonIssuedDocuments = nonIssuedDeferredDocuments
                 )
             )
-
-            whenever(
-                uiSerializer.toBase64(
-                    model = mockedSuccessUiConfig,
-                    parser = SuccessUIConfig.Parser
-                )
-            ).thenReturn(mockedRouteArguments)
 
             // When
             interactor.issueDocuments(
@@ -1388,6 +1347,14 @@ class TestDocumentOfferInteractor {
     ): TxCode {
         return TxCode(inputMode, length, description)
     }
+
+    private fun expectedGenericSuccessRoute(config: SuccessUIConfig): String {
+        val serializedConfig = UiSerializerImpl().toBase64(
+            model = config,
+            parser = SuccessUIConfig.Parser
+        ).orEmpty()
+        return "SUCCESS?successConfig=$serializedConfig"
+    }
     //endregion
 
     //region mocked objects
@@ -1396,32 +1363,5 @@ class TestDocumentOfferInteractor {
     )
 
     private val mockHttpUrl = "https://issuer.eudiw.dev"
-
-    private val mockedTripleObject by lazy {
-        Triple(
-            first = SuccessUIConfig.TextElementsConfig(
-                text = mockedSuccessText,
-                description = mockedSuccessDescription,
-                color = ColorKey.Success
-            ),
-            second = SuccessUIConfig.ImageConfig(),
-            third = mockedPrimaryButtonText
-        )
-    }
-
-    private val mockedSuccessUiConfig by lazy {
-        SuccessUIConfig(
-            textElementsConfig = mockedTripleObject.first,
-            imageConfig = mockedTripleObject.second,
-            buttonConfig = listOf(
-                SuccessUIConfig.ButtonConfig(
-                    text = mockedTripleObject.third,
-                    style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
-                    navigation = mockedConfigNavigationTypePop
-                )
-            ),
-            onBackScreenToNavigate = mockedConfigNavigationTypePop
-        )
-    }
     //endregion
 }

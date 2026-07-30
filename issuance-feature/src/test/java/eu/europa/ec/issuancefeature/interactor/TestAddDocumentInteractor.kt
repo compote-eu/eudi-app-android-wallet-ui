@@ -36,7 +36,6 @@ import eu.europa.ec.issuancefeature.util.mockedMdlOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedPhotoIdOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedPidOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedPrimaryButtonText
-import eu.europa.ec.issuancefeature.util.mockedRouteArguments
 import eu.europa.ec.issuancefeature.util.mockedScopedDocuments
 import eu.europa.ec.issuancefeature.util.mockedSuccessContentDescription
 import eu.europa.ec.issuancefeature.util.mockedSuccessDescription
@@ -61,7 +60,7 @@ import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.contentDescriptionId
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.serializer.UiSerializerImpl
 import junit.framework.TestCase.assertEquals
 import org.junit.After
 import org.junit.Before
@@ -90,9 +89,6 @@ class TestAddDocumentInteractor {
     private lateinit var resourceProvider: ResourceProvider
 
     @Mock
-    private lateinit var uiSerializer: UiSerializer
-
-    @Mock
     private lateinit var context: Context
 
     @Mock
@@ -112,7 +108,6 @@ class TestAddDocumentInteractor {
             walletCoreDocumentsController = walletCoreDocumentsController,
             deviceAuthenticationInteractor = deviceAuthenticationInteractor,
             resourceProvider = resourceProvider,
-            uiSerializer = uiSerializer
         )
 
         crypto = BiometricCrypto(cryptoObject = null)
@@ -876,20 +871,13 @@ class TestAddDocumentInteractor {
             onBackScreenToNavigate = mockedConfigNavigationTypePush
         )
 
-        whenever(
-            uiSerializer.toBase64(
-                model = config,
-                parser = SuccessUIConfig.Parser
-            )
-        ).thenReturn(mockedRouteArguments)
-
         val flowType = IssuanceFlowType.NoDocument
 
         // When
         val result = interactor.buildGenericSuccessRouteForDeferred(flowType = flowType)
 
         // Then
-        val expectedResult = "SUCCESS?successConfig=$mockedRouteArguments"
+        val expectedResult = expectedGenericSuccessRoute(config)
         assertEquals(expectedResult, result)
     }
 
@@ -914,13 +902,6 @@ class TestAddDocumentInteractor {
             onBackScreenToNavigate = mockedConfigNavigationTypePopToScreen
         )
 
-        whenever(
-            uiSerializer.toBase64(
-                model = config,
-                parser = SuccessUIConfig.Parser
-            )
-        ).thenReturn(mockedRouteArguments)
-
         val flowType = IssuanceFlowType.ExtraDocument(
             formatType = null
         )
@@ -929,45 +910,7 @@ class TestAddDocumentInteractor {
         val result = interactor.buildGenericSuccessRouteForDeferred(flowType = flowType)
 
         // Then
-        val expectedResult = "SUCCESS?successConfig=$mockedRouteArguments"
-        assertEquals(expectedResult, result)
-    }
-
-    // Case 3:
-    // 1. uiSerializer.toBase64 returns null → the `.orEmpty()` fallback path is exercised,
-    //    producing a route with an empty successConfig argument.
-    @Test
-    fun `When buildGenericSuccessRouteForDeferred is called and uiSerializer returns null, Then the route uses the empty fallback`() {
-        // Given
-        mockDocumentIssuanceStrings()
-
-        val config = SuccessUIConfig(
-            textElementsConfig = mockedTripleObject.first,
-            imageConfig = mockedTripleObject.second,
-            buttonConfig = listOf(
-                SuccessUIConfig.ButtonConfig(
-                    text = mockedTripleObject.third,
-                    style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
-                    navigation = mockedConfigNavigationTypePush
-                )
-            ),
-            onBackScreenToNavigate = mockedConfigNavigationTypePush
-        )
-
-        whenever(
-            uiSerializer.toBase64(
-                model = config,
-                parser = SuccessUIConfig.Parser
-            )
-        ).thenReturn(null)
-
-        val flowType = IssuanceFlowType.NoDocument
-
-        // When
-        val result = interactor.buildGenericSuccessRouteForDeferred(flowType = flowType)
-
-        // Then
-        val expectedResult = "SUCCESS?successConfig="
+        val expectedResult = expectedGenericSuccessRoute(config)
         assertEquals(expectedResult, result)
     }
     //endregion
@@ -1017,6 +960,14 @@ class TestAddDocumentInteractor {
             .thenReturn(mockedSuccessContentDescription)
         whenever(resourceProvider.getString(R.string.issuance_add_document_deferred_success_description))
             .thenReturn(mockedSuccessDescription)
+    }
+
+    private fun expectedGenericSuccessRoute(config: SuccessUIConfig): String {
+        val serializedConfig = UiSerializerImpl().toBase64(
+            model = config,
+            parser = SuccessUIConfig.Parser
+        ).orEmpty()
+        return "SUCCESS?successConfig=$serializedConfig"
     }
     //endregion
 

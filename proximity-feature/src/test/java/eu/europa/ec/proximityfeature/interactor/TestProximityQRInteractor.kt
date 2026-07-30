@@ -22,6 +22,7 @@ import eu.europa.ec.corelogic.controller.PresentationControllerConfig
 import eu.europa.ec.corelogic.controller.TransferEventPartialState
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
 import eu.europa.ec.testfeature.util.mockedGenericErrorMessage
@@ -32,7 +33,7 @@ import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.container.EudiComponentActivity
-import eu.europa.ec.uilogic.navigation.DashboardScreens
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flow
@@ -393,7 +394,7 @@ class TestProximityQRInteractor {
     @Test
     fun `Given a RequestUriConfig with Ble mode, When setConfig is called, Then it calls walletCorePresentationController#setConfig with PresentationControllerConfig_Ble`() {
         // Given
-        val initiator = DashboardScreens.Dashboard.screenRoute
+        val initiator = DashboardRoute
         val config = RequestUriConfig(
             mode = PresentationMode.Ble(initiator)
         )
@@ -403,7 +404,7 @@ class TestProximityQRInteractor {
 
         // Then
         verify(walletCorePresentationController, times(1))
-            .setConfig(PresentationControllerConfig.Ble(initiator))
+            .setConfig(PresentationControllerConfig.Ble(initiator.toLegacyRoute()))
 
         assertEquals(interactor.presentationScopeId, "ble_presentation_scope_id")
     }
@@ -411,7 +412,7 @@ class TestProximityQRInteractor {
     @Test
     fun `Given a RequestUriConfig with OpenId4Vp mode, When setConfig is called, Then it calls walletCorePresentationController#setConfig with PresentationControllerConfig_OpenId4Vp`() {
         // Given
-        val initiator = DashboardScreens.Dashboard.screenRoute
+        val initiator = DashboardRoute
         val config = RequestUriConfig(
             mode = PresentationMode.OpenId4Vp(uri = "", initiator)
         )
@@ -421,7 +422,7 @@ class TestProximityQRInteractor {
 
         // Then
         verify(walletCorePresentationController, times(1))
-            .setConfig(PresentationControllerConfig.OpenId4VP(uri = "", initiator))
+            .setConfig(PresentationControllerConfig.OpenId4VP(uri = "", initiator.toLegacyRoute()))
 
         assertEquals(interactor.presentationScopeId, "vp_presentation_scope_id")
     }

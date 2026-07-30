@@ -18,6 +18,7 @@ package eu.europa.ec.commonfeature.ui.loading
 
 import android.content.Context
 import androidx.lifecycle.viewModelScope
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.NavigationType
@@ -25,7 +26,8 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.Screen
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
+import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration
@@ -62,17 +64,17 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
     abstract fun getHeaderConfig(): ContentHeaderConfig
 
     /**
-     * The [Screen] the user will be navigated to:
+     * The [AppRoute] the user will be navigated to:
      * 1. If they press the "X" button--cancel the [LoadingScreen] .
      * 2. If they press the "X" button of the Error screen (should any Error happen).
      */
-    abstract fun getPreviousScreen(): Screen
+    abstract fun getPreviousRoute(): AppRoute
 
     /**
-     * The [Screen] which opened the re-usable [LoadingScreen] .
-     * It will be erased from the back-stack when user successfully moves to the next step [Screen].
+     * The [AppRoute] which opened the re-usable [LoadingScreen] .
+     * It will be erased from the back-stack when user successfully moves to the next step route.
      */
-    abstract fun getCallerScreen(): Screen
+    abstract fun getCallerRoute(): AppRoute
 
     /**
      * Used to perform any kind of work the calling viewModel needs to.
@@ -119,16 +121,10 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
 
     protected fun doNavigation(navigationType: NavigationType) {
         when (navigationType) {
-            is NavigationType.PushScreen -> {
-                setEffect {
-                    Effect.Navigation.SwitchScreen(navigationType.screen.screenRoute)
-                }
-            }
-
             is NavigationType.Pop, NavigationType.Finish -> {
                 setEffect {
                     Effect.Navigation.PopBackStackUpTo(
-                        screenRoute = getPreviousScreen().screenRoute,
+                        screenRoute = getPreviousRoute().toLegacyScreen().screenRoute,
                         inclusive = false
                     )
                 }
@@ -137,7 +133,7 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
             is NavigationType.PopTo -> {
                 setEffect {
                     Effect.Navigation.PopBackStackUpTo(
-                        screenRoute = navigationType.screen.screenRoute,
+                        screenRoute = navigationType.route.toLegacyScreen().screenRoute,
                         inclusive = false
                     )
                 }
@@ -146,7 +142,7 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
             is NavigationType.Deeplink -> {}
 
             is NavigationType.PushRoute -> setEffect {
-                Effect.Navigation.SwitchScreen(navigationType.route)
+                Effect.Navigation.SwitchScreen(navigationType.route.toLegacyRoute())
             }
         }
     }

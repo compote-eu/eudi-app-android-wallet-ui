@@ -32,8 +32,8 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
+import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 
 data class State(
     val isLoading: Boolean = false,
@@ -161,18 +161,8 @@ abstract class DocumentSuccessViewModel : MviViewModel<Event, State, Effect>() {
         val navigationEffect: Effect.Navigation = when (val nav = navigation.navigationType) {
             is NavigationType.PopTo -> {
                 Effect.Navigation.PopBackStackUpTo(
-                    screenRoute = nav.screen.screenRoute,
+                    screenRoute = nav.route.toLegacyScreen().screenRoute,
                     inclusive = false
-                )
-            }
-
-            is NavigationType.PushScreen -> {
-                Effect.Navigation.SwitchScreen(
-                    screenRoute = generateComposableNavigationLink(
-                        screen = nav.screen,
-                        arguments = generateComposableArguments(nav.arguments),
-                    ),
-                    popUpRoute = nav.popUpToScreen?.screenRoute
                 )
             }
 
@@ -184,8 +174,8 @@ abstract class DocumentSuccessViewModel : MviViewModel<Event, State, Effect>() {
             is NavigationType.Pop, NavigationType.Finish -> Effect.Navigation.Pop
 
             is NavigationType.PushRoute -> Effect.Navigation.SwitchScreen(
-                nav.route,
-                nav.popUpToRoute
+                screenRoute = nav.route.toLegacyRoute(),
+                popUpRoute = nav.popUpTo?.toLegacyScreen()?.screenRoute
             )
         }
 

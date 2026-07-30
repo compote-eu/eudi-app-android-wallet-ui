@@ -40,12 +40,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import eu.europa.ec.commonfeature.config.IssuanceFlowType
+import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.OfferUiConfig
 import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.commonfeature.ui.issuance.IssuerPartiallyTrustedSheetContent
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.issuancefeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.uilogic.component.ErrorInfo
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -73,7 +77,6 @@ import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.cacheUri
 import eu.europa.ec.uilogic.extension.getPendingUri
-import eu.europa.ec.uilogic.navigation.DashboardScreens
 import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import kotlinx.coroutines.CoroutineScope
@@ -343,9 +346,11 @@ private fun ContentPreview() {
             offerUiConfig = OfferUiConfig(
                 offerUri = "",
                 onSuccessNavigation = ConfigNavigation(
-                    navigationType = NavigationType.PushScreen(
-                        screen = DashboardScreens.Dashboard,
-                        popUpToScreen = IssuanceScreens.AddDocument
+                    navigationType = NavigationType.PushRoute(
+                        route = DashboardRoute,
+                        popUpTo = AddDocumentRoute(
+                            IssuanceUiConfig(flowType = IssuanceFlowType.NoDocument)
+                        )
                     )
                 ),
                 onCancelNavigation = ConfigNavigation(

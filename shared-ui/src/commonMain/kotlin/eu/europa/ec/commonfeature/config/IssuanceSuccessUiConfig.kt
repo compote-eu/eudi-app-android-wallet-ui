@@ -14,31 +14,24 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Nav3 Stage 3: moved to :shared-ui commonMain (package unchanged) as the payload of
+// DocumentIssuanceSuccessRoute. `DocumentId` is `typealias DocumentId = String` in the Android-only
+// wallet-document-manager library, so the field is declared as `String` here; call sites passing
+// `List<DocumentId>` still compile.
 package eu.europa.ec.commonfeature.config
 
-import eu.europa.ec.corelogic.model.FormatType
+import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.serializer.UiSerializable
 import eu.europa.ec.uilogic.serializer.UiSerializableParser
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed interface IssuanceFlowType {
-    @Serializable
-    @SerialName("NoDocument")
-    data object NoDocument : IssuanceFlowType
-
-    @Serializable
-    @SerialName("ExtraDocument")
-    data class ExtraDocument(val formatType: FormatType?) : IssuanceFlowType
-}
-
-@Serializable
-data class IssuanceUiConfig(
-    val flowType: IssuanceFlowType,
+data class IssuanceSuccessUiConfig(
+    val documentIds: List<String>,
+    val onSuccessNavigation: ConfigNavigation,
 ) : UiSerializable {
 
     companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "issuanceConfig"
+        override val serializedKeyName = "issuanceSuccessConfig"
     }
 }

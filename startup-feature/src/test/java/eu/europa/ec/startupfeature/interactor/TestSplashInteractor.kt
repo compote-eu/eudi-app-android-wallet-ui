@@ -24,6 +24,9 @@ import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.model.PinFlow
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.BiometricRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.resourceslogic.R
@@ -34,9 +37,7 @@ import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import junit.framework.TestCase.assertEquals
 import org.junit.After
 import org.junit.Before
@@ -53,9 +54,6 @@ class TestSplashInteractor {
 
     @Mock
     private lateinit var quickPinInteractor: QuickPinInteractor
-
-    @Mock
-    private lateinit var uiSerializer: UiSerializer
 
     @Mock
     private lateinit var resourceProvider: ResourceProvider
@@ -76,7 +74,6 @@ class TestSplashInteractor {
 
         interactor = SplashInteractorImpl(
             quickPinInteractor = quickPinInteractor,
-            uiSerializer = uiSerializer,
             resourceProvider = resourceProvider,
             walletEngine = walletEngine,
             configLogic = configLogic
@@ -171,8 +168,7 @@ class TestSplashInteractor {
     // Case 4:
     // 1. quickPinInteractor.hasPin() returns true (PIN already set, biometric login flow).
     // 2. configLogic.forcePidActivation is false,
-    //    so shouldActivateWithPid evaluates to false and onSuccessNavigation pushes to Dashboard
-    //    with empty arguments (no IssuanceUiConfig payload).
+    //    so shouldActivateWithPid evaluates to false and onSuccessNavigation pushes DashboardRoute.
 
     // Case 4 Expected Result:
     // The BIOMETRIC route, with biometricConfig = the serialized BiometricUiConfig payload.
@@ -185,15 +181,13 @@ class TestSplashInteractor {
             whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
             mockBiometricLoginStrings()
 
-            val expectedBiometricConfig = buildBiometricUiConfig(shouldActivateWithPid = false)
-            mockBiometricConfigSerialization(expectedBiometricConfig)
-
             // When
             val result = interactor.getAfterSplashRoute()
 
             // Then
-            val expectedResult =
-                "${CommonScreens.Biometric.screenName}?biometricConfig=$mockedBiometricConfigBase64"
+            val expectedResult = BiometricRoute(
+                buildBiometricUiConfig(shouldActivateWithPid = false)
+            ).toLegacyRoute()
             assertEquals(expectedResult, result)
         }
     }
@@ -202,8 +196,7 @@ class TestSplashInteractor {
     // 1. quickPinInteractor.hasPin() returns true (PIN already set, biometric login flow).
     // 2. configLogic.forcePidActivation is true.
     // 3. walletCoreDocumentsController.getAllDocuments() returns a non-empty list,
-    //    so shouldActivateWithPid evaluates to false and onSuccessNavigation pushes to Dashboard
-    //    with empty arguments (no IssuanceUiConfig payload).
+    //    so shouldActivateWithPid evaluates to false and onSuccessNavigation pushes DashboardRoute.
 
     // Case 5 Expected Result:
     // The BIOMETRIC route, with biometricConfig = the serialized BiometricUiConfig payload.
@@ -217,15 +210,13 @@ class TestSplashInteractor {
                 .thenReturn(listOf(WalletDocument(id = "mocked_id")))
             mockBiometricLoginStrings()
 
-            val expectedBiometricConfig = buildBiometricUiConfig(shouldActivateWithPid = false)
-            mockBiometricConfigSerialization(expectedBiometricConfig)
-
             // When
             val result = interactor.getAfterSplashRoute()
 
             // Then
-            val expectedResult =
-                "${CommonScreens.Biometric.screenName}?biometricConfig=$mockedBiometricConfigBase64"
+            val expectedResult = BiometricRoute(
+                buildBiometricUiConfig(shouldActivateWithPid = false)
+            ).toLegacyRoute()
             assertEquals(expectedResult, result)
         }
     }
@@ -234,12 +225,12 @@ class TestSplashInteractor {
     // 1. quickPinInteractor.hasPin() returns true (PIN already set, biometric login flow).
     // 2. configLogic.forcePidActivation is true.
     // 3. walletCoreDocumentsController.getAllDocuments() returns an empty list,
-    //    so shouldActivateWithPid evaluates to true and onSuccessNavigation pushes to
-    //    IssuanceScreens.AddDocument with the serialized IssuanceUiConfig(NoDocument) payload.
+    //    so shouldActivateWithPid evaluates to true and onSuccessNavigation pushes
+    //    AddDocumentRoute carrying IssuanceUiConfig(NoDocument).
 
     // Case 6 Expected Result:
     // The BIOMETRIC route, with biometricConfig = the serialized BiometricUiConfig payload
-    // (whose nested onSuccessNavigation carries the issuanceConfig argument).
+    // (whose nested onSuccessNavigation carries the AddDocumentRoute config).
     @Test
     fun `Given Case 6, When getAfterSplashRoute is called, Then Case 6 Expected Result is returned`() {
         coroutineRule.runTest {
@@ -249,22 +240,13 @@ class TestSplashInteractor {
             whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
             mockBiometricLoginStrings()
 
-            whenever(
-                uiSerializer.toBase64(
-                    model = IssuanceUiConfig(flowType = IssuanceFlowType.NoDocument),
-                    parser = IssuanceUiConfig.Parser
-                )
-            ).thenReturn(mockedIssuanceConfigBase64)
-
-            val expectedBiometricConfig = buildBiometricUiConfig(shouldActivateWithPid = true)
-            mockBiometricConfigSerialization(expectedBiometricConfig)
-
             // When
             val result = interactor.getAfterSplashRoute()
 
             // Then
-            val expectedResult =
-                "${CommonScreens.Biometric.screenName}?biometricConfig=$mockedBiometricConfigBase64"
+            val expectedResult = BiometricRoute(
+                buildBiometricUiConfig(shouldActivateWithPid = true)
+            ).toLegacyRoute()
             assertEquals(expectedResult, result)
         }
     }
@@ -272,8 +254,9 @@ class TestSplashInteractor {
     // Case 7:
     // 1. quickPinInteractor.hasPin() returns true (biometric login flow).
     // 2. configLogic.forcePidActivation is false (shouldActivateWithPid = false).
-    // 3. uiSerializer.toBase64 of the BiometricUiConfig returns null,
-    //    so the .orEmpty() fallback inside the route arguments map is exercised.
+    // 3. Base64 encoding is unavailable on a plain JVM, so the serialization of the
+    //    BiometricUiConfig yields null and the .orEmpty() fallback in the route arguments
+    //    is exercised.
 
     // Case 7 Expected Result:
     // The BIOMETRIC route, with an empty biometricConfig value.
@@ -285,14 +268,6 @@ class TestSplashInteractor {
             whenever(configLogic.forcePidActivation).thenReturn(false)
             whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
             mockBiometricLoginStrings()
-
-            val expectedBiometricConfig = buildBiometricUiConfig(shouldActivateWithPid = false)
-            whenever(
-                uiSerializer.toBase64(
-                    model = expectedBiometricConfig,
-                    parser = BiometricUiConfig.Parser
-                )
-            ).thenReturn(null)
 
             // When
             val result = interactor.getAfterSplashRoute()
@@ -315,15 +290,6 @@ class TestSplashInteractor {
             .thenReturn(mockedBiometricLoginSubtitleNotEnabled)
     }
 
-    private fun mockBiometricConfigSerialization(config: BiometricUiConfig) {
-        whenever(
-            uiSerializer.toBase64(
-                model = config,
-                parser = BiometricUiConfig.Parser
-            )
-        ).thenReturn(mockedBiometricConfigBase64)
-    }
-
     private fun buildBiometricUiConfig(shouldActivateWithPid: Boolean): BiometricUiConfig {
         return BiometricUiConfig(
             mode = BiometricMode.Login(
@@ -334,16 +300,11 @@ class TestSplashInteractor {
             isPreAuthorization = true,
             shouldInitializeBiometricAuthOnCreate = true,
             onSuccessNavigation = ConfigNavigation(
-                navigationType = NavigationType.PushScreen(
-                    screen = if (!shouldActivateWithPid) {
-                        DashboardScreens.Dashboard
+                navigationType = NavigationType.PushRoute(
+                    route = if (shouldActivateWithPid) {
+                        AddDocumentRoute(IssuanceUiConfig(flowType = IssuanceFlowType.NoDocument))
                     } else {
-                        IssuanceScreens.AddDocument
-                    },
-                    arguments = if (shouldActivateWithPid) {
-                        mapOf(IssuanceUiConfig.serializedKeyName to mockedIssuanceConfigBase64)
-                    } else {
-                        emptyMap()
+                        DashboardRoute
                     }
                 )
             ),
@@ -360,7 +321,5 @@ class TestSplashInteractor {
     private val mockedBiometricLoginSubtitleEnabled = "Biometric subtitle when biometrics enabled"
     private val mockedBiometricLoginSubtitleNotEnabled =
         "Biometric subtitle when biometrics not enabled"
-    private val mockedIssuanceConfigBase64 = "mockedIssuanceConfigBase64"
-    private val mockedBiometricConfigBase64 = "mockedBiometricConfigBase64"
     //endregion
 }

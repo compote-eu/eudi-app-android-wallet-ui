@@ -26,18 +26,17 @@ import eu.europa.ec.dashboardfeature.interactor.HomeInteractorGetUserNameViaMain
 import eu.europa.ec.dashboardfeature.ui.home.HomeScreenBottomSheetContent.Bluetooth
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.ProximityQrRoute
+import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.wrap.ActionCardConfig
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.CommonScreens
 import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.ProximityScreens
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
@@ -124,7 +123,6 @@ sealed class HomeScreenBottomSheetContent {
 @KoinViewModel
 class HomeViewModel(
     private val homeInteractor: HomeInteractor,
-    private val uiSerializer: UiSerializer,
     private val resourceProvider: ResourceProvider
 ) : MviViewModel<Event, State, Effect>() {
 
@@ -288,38 +286,22 @@ class HomeViewModel(
         setState { copy(bleAvailability = BleAvailability.AVAILABLE) }
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = generateComposableNavigationLink(
-                    screen = ProximityScreens.QR,
-                    arguments = generateComposableArguments(
-                        mapOf(
-                            RequestUriConfig.serializedKeyName to uiSerializer.toBase64(
-                                RequestUriConfig(PresentationMode.Ble(DashboardScreens.Dashboard.screenRoute)),
-                                RequestUriConfig.Parser
-                            )
-                        )
-                    )
-                )
+                screenRoute = ProximityQrRoute(
+                    config = RequestUriConfig(PresentationMode.Ble(DashboardRoute))
+                ).toLegacyRoute()
             )
         }
     }
 
     private fun navigateToQrSignatureScan() {
         val navigationEffect = Effect.Navigation.SwitchScreen(
-            screenRoute = generateComposableNavigationLink(
-                screen = CommonScreens.QrScan,
-                arguments = generateComposableArguments(
-                    mapOf(
-                        QrScanUiConfig.serializedKeyName to uiSerializer.toBase64(
-                            QrScanUiConfig(
-                                title = resourceProvider.getString(R.string.signature_qr_scan_title),
-                                subTitle = resourceProvider.getString(R.string.signature_qr_scan_subtitle),
-                                qrScanFlow = QrScanFlow.Signature
-                            ),
-                            QrScanUiConfig.Parser
-                        )
-                    )
+            screenRoute = QrScanRoute(
+                config = QrScanUiConfig(
+                    title = resourceProvider.getString(R.string.signature_qr_scan_title),
+                    subTitle = resourceProvider.getString(R.string.signature_qr_scan_subtitle),
+                    qrScanFlow = QrScanFlow.Signature
                 )
-            )
+            ).toLegacyRoute()
         )
         setEffect {
             navigationEffect
@@ -328,21 +310,13 @@ class HomeViewModel(
 
     private fun navigateToQrScan() {
         val navigationEffect = Effect.Navigation.SwitchScreen(
-            screenRoute = generateComposableNavigationLink(
-                screen = CommonScreens.QrScan,
-                arguments = generateComposableArguments(
-                    mapOf(
-                        QrScanUiConfig.serializedKeyName to uiSerializer.toBase64(
-                            QrScanUiConfig(
-                                title = resourceProvider.getString(R.string.presentation_qr_scan_title),
-                                subTitle = resourceProvider.getString(R.string.presentation_qr_scan_subtitle),
-                                qrScanFlow = QrScanFlow.Presentation
-                            ),
-                            QrScanUiConfig.Parser
-                        )
-                    )
+            screenRoute = QrScanRoute(
+                config = QrScanUiConfig(
+                    title = resourceProvider.getString(R.string.presentation_qr_scan_title),
+                    subTitle = resourceProvider.getString(R.string.presentation_qr_scan_subtitle),
+                    qrScanFlow = QrScanFlow.Presentation
                 )
-            )
+            ).toLegacyRoute()
         )
         setEffect {
             navigationEffect

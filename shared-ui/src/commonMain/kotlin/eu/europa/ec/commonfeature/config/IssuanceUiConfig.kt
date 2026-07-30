@@ -14,21 +14,33 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Nav3 Stage 3: moved to :shared-ui commonMain (package unchanged) as the payload of
+// AddDocumentRoute. `FormatType` is `typealias FormatType = String` in the Android-only :core-logic,
+// so the field is declared as `String` here; call sites passing a `FormatType` still compile.
 package eu.europa.ec.commonfeature.config
 
-import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.serializer.UiSerializable
 import eu.europa.ec.uilogic.serializer.UiSerializableParser
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class OfferUiConfig(
-    val offerUri: String,
-    val onSuccessNavigation: ConfigNavigation,
-    val onCancelNavigation: ConfigNavigation,
+sealed interface IssuanceFlowType {
+    @Serializable
+    @SerialName("NoDocument")
+    data object NoDocument : IssuanceFlowType
+
+    @Serializable
+    @SerialName("ExtraDocument")
+    data class ExtraDocument(val formatType: String?) : IssuanceFlowType
+}
+
+@Serializable
+data class IssuanceUiConfig(
+    val flowType: IssuanceFlowType,
 ) : UiSerializable {
 
     companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "offerConfig"
+        override val serializedKeyName = "issuanceConfig"
     }
 }

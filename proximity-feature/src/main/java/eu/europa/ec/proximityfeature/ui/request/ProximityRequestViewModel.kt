@@ -31,16 +31,15 @@ import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractorPartialState
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.BiometricRoute
+import eu.europa.ec.shared.navigation.ProximityLoadingRoute
+import eu.europa.ec.shared.navigation.ProximityRequestRoute
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.navigation.ProximityScreens
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -49,7 +48,6 @@ import org.koin.core.annotation.KoinViewModel
 class ProximityRequestViewModel(
     private val interactor: ProximityRequestInteractor,
     private val resourceProvider: ResourceProvider,
-    private val uiSerializer: UiSerializer,
     @InjectedParam private val presentationScopeId: String
 ) : RequestViewModel() {
 
@@ -64,35 +62,28 @@ class ProximityRequestViewModel(
         )
     }
 
-    override fun getNextScreen(): String {
-        return generateComposableNavigationLink(
-            screen = CommonScreens.Biometric,
-            arguments = generateComposableArguments(
-                mapOf(
-                    BiometricUiConfig.serializedKeyName to uiSerializer.toBase64(
-                        BiometricUiConfig(
-                            mode = BiometricMode.Default(
-                                descriptionWhenBiometricsEnabled = resourceProvider.getString(R.string.loading_biometry_biometrics_enabled_description),
-                                descriptionWhenBiometricsNotEnabled = resourceProvider.getString(R.string.loading_biometry_biometrics_not_enabled_description),
-                                textAbovePin = resourceProvider.getString(R.string.biometric_default_mode_text_above_pin_field),
-                            ),
-                            isPreAuthorization = false,
-                            shouldInitializeBiometricAuthOnCreate = true,
-                            onSuccessNavigation = ConfigNavigation(
-                                navigationType = NavigationType.PushScreen(
-                                    screen = ProximityScreens.Loading,
-                                    arguments = mapOf("scopeId" to presentationScopeId)
-                                )
-                            ),
-                            onBackNavigationConfig = OnBackNavigationConfig(
-                                onBackNavigation = ConfigNavigation(
-                                    navigationType = NavigationType.PopTo(ProximityScreens.Request),
-                                ),
-                                hasToolbarBackIcon = true
-                            )
+    override fun getNextRoute(): AppRoute {
+        return BiometricRoute(
+            BiometricUiConfig(
+                mode = BiometricMode.Default(
+                    descriptionWhenBiometricsEnabled = resourceProvider.getString(R.string.loading_biometry_biometrics_enabled_description),
+                    descriptionWhenBiometricsNotEnabled = resourceProvider.getString(R.string.loading_biometry_biometrics_not_enabled_description),
+                    textAbovePin = resourceProvider.getString(R.string.biometric_default_mode_text_above_pin_field),
+                ),
+                isPreAuthorization = false,
+                shouldInitializeBiometricAuthOnCreate = true,
+                onSuccessNavigation = ConfigNavigation(
+                    navigationType = NavigationType.PushRoute(
+                        ProximityLoadingRoute(presentationScopeId)
+                    ),
+                ),
+                onBackNavigationConfig = OnBackNavigationConfig(
+                    onBackNavigation = ConfigNavigation(
+                        navigationType = NavigationType.PopTo(
+                            ProximityRequestRoute(presentationScopeId)
                         ),
-                        BiometricUiConfig.Parser
-                    ).orEmpty()
+                    ),
+                    hasToolbarBackIcon = true
                 )
             )
         )

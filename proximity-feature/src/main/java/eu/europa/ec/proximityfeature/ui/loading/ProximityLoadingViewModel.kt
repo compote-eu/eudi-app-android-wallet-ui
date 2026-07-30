@@ -28,13 +28,14 @@ import eu.europa.ec.proximityfeature.interactor.ProximityLoadingObserveResponseP
 import eu.europa.ec.proximityfeature.interactor.ProximityLoadingSendRequestedDocumentPartialState
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.ProximityLoadingRoute
+import eu.europa.ec.shared.navigation.ProximityRequestRoute
+import eu.europa.ec.shared.navigation.ProximitySuccessRoute
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.navigation.ProximityScreens
-import eu.europa.ec.uilogic.navigation.Screen
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -56,21 +57,16 @@ class ProximityLoadingViewModel(
         )
     }
 
-    override fun getPreviousScreen(): Screen {
-        return ProximityScreens.Request
+    override fun getPreviousRoute(): AppRoute {
+        return ProximityRequestRoute(presentationScopeId)
     }
 
-    override fun getCallerScreen(): Screen {
-        return ProximityScreens.Loading
+    override fun getCallerRoute(): AppRoute {
+        return ProximityLoadingRoute(presentationScopeId)
     }
 
-    private fun getNextScreen(): String {
-        return generateComposableNavigationLink(
-            screen = ProximityScreens.Success,
-            arguments = generateComposableArguments(
-                mapOf("scopeId" to presentationScopeId)
-            )
-        )
+    private fun getNextRoute(): AppRoute {
+        return ProximitySuccessRoute(presentationScopeId)
     }
 
     override fun getCancellableTimeout(): Duration = 5.toDuration(DurationUnit.SECONDS)
@@ -90,7 +86,7 @@ class ProximityLoadingViewModel(
                                     errorSubTitle = it.error,
                                     onCancel = {
                                         setEvent(Event.DismissError)
-                                        doNavigation(NavigationType.PopTo(getPreviousScreen()))
+                                        doNavigation(NavigationType.PopTo(getPreviousRoute()))
                                     }
                                 )
                             )
@@ -141,7 +137,7 @@ class ProximityLoadingViewModel(
                                     setEvent(Event.DismissError)
                                     doNavigation(
                                         NavigationType.PopTo(
-                                            getPreviousScreen()
+                                            getPreviousRoute()
                                         )
                                     )
                                 }
@@ -168,7 +164,7 @@ class ProximityLoadingViewModel(
                         errorSubTitle = resourceProvider.genericErrorMessage(),
                         onCancel = {
                             setEvent(Event.DismissError)
-                            doNavigation(NavigationType.PopTo(getPreviousScreen()))
+                            doNavigation(NavigationType.PopTo(getPreviousRoute()))
                         },
                         onRetry = null,
                     )
@@ -208,6 +204,6 @@ class ProximityLoadingViewModel(
                 error = null
             )
         }
-        doNavigation(NavigationType.PushRoute(getNextScreen()))
+        doNavigation(NavigationType.PushRoute(getNextRoute()))
     }
 }

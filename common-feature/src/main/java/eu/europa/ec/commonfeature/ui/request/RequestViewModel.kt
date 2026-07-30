@@ -18,6 +18,7 @@ package eu.europa.ec.commonfeature.ui.request
 
 import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
@@ -32,6 +33,8 @@ import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.IntentType
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
+import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import kotlinx.coroutines.Job
 
 data class State(
@@ -104,7 +107,7 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
     protected var viewModelJob: Job? = null
 
     abstract fun getHeaderConfig(): ContentHeaderConfig
-    abstract fun getNextScreen(): String
+    abstract fun getNextRoute(): AppRoute
     abstract fun doWork()
 
     open fun init(intentAction: IntentAction?) {}
@@ -147,7 +150,7 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
             }
 
             is Event.StickyButtonPressed -> {
-                doNavigation(NavigationType.PushRoute(getNextScreen()))
+                doNavigation(NavigationType.PushRoute(getNextRoute()))
             }
 
             is Event.UserIdentificationClicked -> {
@@ -216,11 +219,6 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
 
     private fun doNavigation(navigationType: NavigationType) {
         when (navigationType) {
-            is NavigationType.PushScreen -> {
-                unsubscribe()
-                setEffect { Effect.Navigation.SwitchScreen(navigationType.screen.screenRoute) }
-            }
-
             is NavigationType.Pop -> {
                 setEffect { Effect.Navigation.Pop }
             }
@@ -232,12 +230,14 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
             is NavigationType.Deeplink -> {}
 
             is NavigationType.PopTo -> {
-                setEffect { Effect.Navigation.PopTo(navigationType.screen.screenRoute) }
+                setEffect {
+                    Effect.Navigation.PopTo(navigationType.route.toLegacyScreen().screenRoute)
+                }
             }
 
             is NavigationType.PushRoute -> {
                 unsubscribe()
-                setEffect { Effect.Navigation.SwitchScreen(navigationType.route) }
+                setEffect { Effect.Navigation.SwitchScreen(navigationType.route.toLegacyRoute()) }
             }
         }
     }

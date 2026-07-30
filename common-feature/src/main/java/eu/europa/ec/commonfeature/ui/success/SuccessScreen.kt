@@ -43,6 +43,7 @@ import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.resourceslogic.theme.values.success
+import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -62,7 +63,6 @@ import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.cacheUri
-import eu.europa.ec.uilogic.navigation.StartupScreens
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -149,7 +149,7 @@ private fun SuccessScreenView(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            when (imageConfig.type) {
+            when (val imageType = imageConfig.type) {
                 is SuccessUIConfig.ImageConfig.Type.Default -> WrapImage(
                     modifier = Modifier.fillMaxWidth(imageConfig.screenPercentageSize),
                     iconData = AppIcons.Success,
@@ -159,7 +159,7 @@ private fun SuccessScreenView(
 
                 is SuccessUIConfig.ImageConfig.Type.Drawable -> WrapImage(
                     modifier = Modifier.fillMaxWidth(imageConfig.screenPercentageSize),
-                    iconData = imageConfig.type.icon,
+                    iconData = imageType.icon,
                     colorFilter = imageConfig.tint?.let { safeImageColorTint ->
                         ColorFilter.tint(safeImageColorTint.toColor())
                     },
@@ -276,12 +276,12 @@ private fun SuccessDefaultPreview() {
                             text = "Back",
                             style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
                             navigation = ConfigNavigation(
-                                navigationType = NavigationType.PopTo(StartupScreens.Splash),
+                                navigationType = NavigationType.PopTo(SplashRoute),
                             )
                         )
                     ),
                     onBackScreenToNavigate = ConfigNavigation(
-                        navigationType = NavigationType.PopTo(StartupScreens.Splash),
+                        navigationType = NavigationType.PopTo(SplashRoute),
                     ),
                 )
             ),
@@ -315,12 +315,12 @@ private fun SuccessPendingPreview() {
                             text = "back",
                             style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
                             navigation = ConfigNavigation(
-                                navigationType = NavigationType.PopTo(StartupScreens.Splash),
+                                navigationType = NavigationType.PopTo(SplashRoute),
                             )
                         )
                     ),
                     onBackScreenToNavigate = ConfigNavigation(
-                        navigationType = NavigationType.PopTo(StartupScreens.Splash),
+                        navigationType = NavigationType.PopTo(SplashRoute),
                     ),
                 )
             ),

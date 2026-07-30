@@ -94,8 +94,5 @@ const val DEFAULT_ACTION_CARD_HEIGHT = 97
 /** Size 100 */
 const val SIZE_100 = 100
 
-/** Value 0.25 */
-const val PERCENTAGE_25 = 0.25F
-
-/** Value 0.6 */
-const val PERCENTAGE_60 = 0.6F
+// PERCENTAGE_25 / PERCENTAGE_60 moved to :shared-ui commonMain (component/utils/Percentages.kt),
+// same package — the serialized UI-model in commonMain uses them as defaults.

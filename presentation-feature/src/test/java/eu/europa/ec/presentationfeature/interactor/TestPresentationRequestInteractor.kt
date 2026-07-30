@@ -29,6 +29,7 @@ import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.PresentationCombinationDomain
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.getMockedMdlWithBasicFields
 import eu.europa.ec.testfeature.util.getMockedPidWithBasicFields
@@ -786,6 +787,6 @@ class TestPresentationRequestInteractor {
     //endregion
 
     //region mocked objects
-    private val mockedInitiatorRoute = "mockedInitiatorRoute"
+    private val mockedInitiatorRoute = DashboardRoute
     //endregion
 }

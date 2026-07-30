@@ -35,6 +35,10 @@ import eu.europa.ec.issuancefeature.interactor.ResolveDocumentOfferInteractorPar
 import eu.europa.ec.issuancefeature.ui.offer.transformer.DocumentOfferTransformer.toListItemDataUiList
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
+import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
+import eu.europa.ec.shared.navigation.DocumentOfferRoute
+import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
@@ -45,12 +49,10 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
-import eu.europa.ec.uilogic.navigation.PresentationScreens
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
+import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -203,22 +205,14 @@ class DocumentOfferViewModel(
             is Event.OnDynamicPresentation -> {
                 setEffect {
                     Effect.Navigation.SwitchScreen(
-                        generateComposableNavigationLink(
-                            PresentationScreens.PresentationRequest,
-                            generateComposableArguments(
-                                mapOf(
-                                    RequestUriConfig.serializedKeyName to uiSerializer.toBase64(
-                                        RequestUriConfig(
-                                            PresentationMode.OpenId4Vp(
-                                                event.uri,
-                                                IssuanceScreens.DocumentOffer.screenRoute
-                                            )
-                                        ),
-                                        RequestUriConfig
-                                    )
+                        PresentationRequestRoute(
+                            RequestUriConfig(
+                                PresentationMode.OpenId4Vp(
+                                    event.uri,
+                                    DocumentOfferRoute(viewState.value.offerUiConfig)
                                 )
                             )
-                        ),
+                        ).toLegacyRoute(),
                         shouldPopToSelf = false
                     )
                 }
@@ -481,20 +475,12 @@ class DocumentOfferViewModel(
     ) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = generateComposableNavigationLink(
-                    screen = IssuanceScreens.DocumentIssuanceSuccess,
-                    arguments = generateComposableArguments(
-                        mapOf(
-                            IssuanceSuccessUiConfig.serializedKeyName to uiSerializer.toBase64(
-                                model = IssuanceSuccessUiConfig(
-                                    documentIds = documentIds,
-                                    onSuccessNavigation = onSuccessNavigation,
-                                ),
-                                parser = IssuanceSuccessUiConfig.Parser
-                            ).orEmpty()
-                        )
+                screenRoute = DocumentIssuanceSuccessRoute(
+                    IssuanceSuccessUiConfig(
+                        documentIds = documentIds,
+                        onSuccessNavigation = onSuccessNavigation,
                     )
-                )
+                ).toLegacyRoute()
             )
         }
     }
@@ -511,17 +497,8 @@ class DocumentOfferViewModel(
         val navigationEffect: Effect.Navigation = when (val nav = navigation.navigationType) {
             is NavigationType.PopTo -> {
                 Effect.Navigation.PopBackStackUpTo(
-                    screenRoute = nav.screen.screenRoute,
+                    screenRoute = nav.route.toLegacyScreen().screenRoute,
                     inclusive = false
-                )
-            }
-
-            is NavigationType.PushScreen -> {
-                Effect.Navigation.SwitchScreen(
-                    generateComposableNavigationLink(
-                        screen = nav.screen,
-                        arguments = generateComposableArguments(nav.arguments),
-                    )
                 )
             }
 
@@ -532,7 +509,7 @@ class DocumentOfferViewModel(
 
             is NavigationType.Pop, NavigationType.Finish -> Effect.Navigation.Pop
 
-            is NavigationType.PushRoute -> Effect.Navigation.SwitchScreen(nav.route)
+            is NavigationType.PushRoute -> Effect.Navigation.SwitchScreen(nav.route.toLegacyRoute())
         }
 
         setEffect {
@@ -548,39 +525,17 @@ class DocumentOfferViewModel(
     ) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = generateComposableNavigationLink(
-                    IssuanceScreens.DocumentOfferCode,
-                    getNavigateOfferCodeScreenArguments(
-                        offerUri = offerUri,
-                        issuerName = issuerName,
-                        txCodeLength = txCodeLength,
-                        onSuccessNavigation = onSuccessNavigation
-                    )
-                ),
-                shouldPopToSelf = false
-            )
-        }
-    }
-
-    private fun getNavigateOfferCodeScreenArguments(
-        offerUri: String,
-        issuerName: String,
-        txCodeLength: Int,
-        onSuccessNavigation: ConfigNavigation
-    ): String {
-        return generateComposableArguments(
-            mapOf(
-                OfferCodeUiConfig.serializedKeyName to uiSerializer.toBase64(
+                screenRoute = DocumentOfferCodeRoute(
                     OfferCodeUiConfig(
                         offerUri = offerUri,
                         txCodeLength = txCodeLength,
                         issuerName = issuerName,
                         onSuccessNavigation = onSuccessNavigation
-                    ),
-                    OfferCodeUiConfig.Parser
-                ).orEmpty()
+                    )
+                ).toLegacyRoute(),
+                shouldPopToSelf = false
             )
-        )
+        }
     }
 
     private fun handleDeepLink(deepLinkUri: Uri?) {

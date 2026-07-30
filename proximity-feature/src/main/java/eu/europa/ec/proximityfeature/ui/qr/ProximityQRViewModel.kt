@@ -22,14 +22,13 @@ import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.proximityfeature.interactor.ProximityQRInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityQRPartialState
+import eu.europa.ec.shared.navigation.ProximityRequestRoute
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.ProximityScreens
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -148,14 +147,9 @@ class ProximityQRViewModel(
                         unsubscribe()
                         setEffect {
                             Effect.Navigation.SwitchScreen(
-                                screenRoute = generateComposableNavigationLink(
-                                    screen = ProximityScreens.Request,
-                                    arguments = generateComposableArguments(
-                                        mapOf(
-                                            "scopeId" to viewState.value.presentationScopeId
-                                        )
-                                    )
-                                )
+                                screenRoute = ProximityRequestRoute(
+                                    viewState.value.presentationScopeId
+                                ).toLegacyRoute()
                             )
                         }
                     }

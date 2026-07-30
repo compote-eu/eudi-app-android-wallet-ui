@@ -38,8 +38,8 @@ import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
+import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -371,7 +371,7 @@ class BiometricViewModel(
 
             is NavigationType.PopTo -> {
                 Effect.Navigation.PopBackStackUpTo(
-                    screenRoute = nav.screen.screenRoute,
+                    screenRoute = nav.route.toLegacyScreen().screenRoute,
                     inclusive = false,
                     indicateFlowCompletion = when (navigation.indicateFlowCompletion) {
                         FlowCompletion.CANCEL -> if (!flowSucceeded) FlowCompletion.CANCEL else FlowCompletion.NONE
@@ -381,19 +381,9 @@ class BiometricViewModel(
                 )
             }
 
-            is NavigationType.PushScreen -> {
-                Effect.Navigation.SwitchScreen(
-                    screen = generateComposableNavigationLink(
-                        screen = nav.screen,
-                        arguments = generateComposableArguments(nav.arguments)
-                    ),
-                    screenPopUpTo = screenRoute
-                )
-            }
-
             is NavigationType.PushRoute -> {
                 Effect.Navigation.SwitchScreen(
-                    screen = nav.route,
+                    screen = nav.route.toLegacyRoute(),
                     screenPopUpTo = screenRoute
                 )
             }

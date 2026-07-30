@@ -14,10 +14,23 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.commonfeature.model
+// Nav3 Stage 3: moved to :shared-ui commonMain (package unchanged) as the payload of
+// DocumentOfferRoute.
+package eu.europa.ec.commonfeature.config
 
-enum class PinFlow {
-    CREATE_WITHOUT_ACTIVATION,
-    CREATE_WITH_ACTIVATION,
-    UPDATE
+import eu.europa.ec.uilogic.config.ConfigNavigation
+import eu.europa.ec.uilogic.serializer.UiSerializable
+import eu.europa.ec.uilogic.serializer.UiSerializableParser
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class OfferUiConfig(
+    val offerUri: String,
+    val onSuccessNavigation: ConfigNavigation,
+    val onCancelNavigation: ConfigNavigation,
+) : UiSerializable {
+
+    companion object Parser : UiSerializableParser {
+        override val serializedKeyName = "offerConfig"
+    }
 }

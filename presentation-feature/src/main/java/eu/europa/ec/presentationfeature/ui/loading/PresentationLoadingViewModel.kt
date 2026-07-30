@@ -19,6 +19,8 @@ package eu.europa.ec.presentationfeature.ui.loading
 import android.content.Context
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
+import eu.europa.ec.commonfeature.config.PresentationMode
+import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.ui.loading.Effect
 import eu.europa.ec.commonfeature.ui.loading.Event
 import eu.europa.ec.commonfeature.ui.loading.LoadingViewModel
@@ -28,13 +30,15 @@ import eu.europa.ec.presentationfeature.interactor.PresentationLoadingObserveRes
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingSendRequestedDocumentPartialState
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.PresentationLoadingRoute
+import eu.europa.ec.shared.navigation.PresentationRequestRoute
+import eu.europa.ec.shared.navigation.PresentationSuccessRoute
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.navigation.PresentationScreens
-import eu.europa.ec.uilogic.navigation.Screen
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -56,21 +60,36 @@ class PresentationLoadingViewModel(
         )
     }
 
-    override fun getPreviousScreen(): Screen {
-        return PresentationScreens.PresentationRequest
-    }
-
-    override fun getCallerScreen(): Screen {
-        return PresentationScreens.PresentationLoading
-    }
-
-    private fun getNextScreen(): String {
-        return generateComposableNavigationLink(
-            screen = PresentationScreens.PresentationSuccess,
-            arguments = generateComposableArguments(
-                mapOf("scopeId" to presentationScopeId)
+    /**
+     * [PresentationLoadingRoute] only carries the scope id, so the request screen's original
+     * [RequestUriConfig] is not reachable from here — the config below is a placeholder.
+     *
+     * It is inert today: every consumer of this value goes through `toLegacyScreen()`, which maps
+     * to `PresentationScreens.PresentationRequest` and discards the config, so Nav2 pops by route
+     * *pattern* exactly as before.
+     *
+     * Stage 5 must not pop by value: `AppNavigator.popUpTo` matches with `==`, so a rebuilt config
+     * would silently fail to find the real back-stack entry. That applies to every config-carrying
+     * pop target (see the `popUpTo = AddDocumentRoute(...)` sites too), not just this placeholder —
+     * the fix is to match pop targets by destination identity/type rather than by value.
+     */
+    override fun getPreviousRoute(): AppRoute {
+        return PresentationRequestRoute(
+            RequestUriConfig(
+                mode = PresentationMode.OpenId4Vp(
+                    uri = "",
+                    initiatorRoute = DashboardRoute,
+                )
             )
         )
+    }
+
+    override fun getCallerRoute(): AppRoute {
+        return PresentationLoadingRoute(presentationScopeId)
+    }
+
+    private fun getNextRoute(): AppRoute {
+        return PresentationSuccessRoute(presentationScopeId)
     }
 
     override fun getCancellableTimeout(): Duration = 5.toDuration(DurationUnit.SECONDS)
@@ -90,7 +109,7 @@ class PresentationLoadingViewModel(
                                     errorSubTitle = it.error,
                                     onCancel = {
                                         setEvent(Event.DismissError)
-                                        doNavigation(NavigationType.PopTo(getPreviousScreen()))
+                                        doNavigation(NavigationType.PopTo(getPreviousRoute()))
                                     }
                                 )
                             )
@@ -149,7 +168,7 @@ class PresentationLoadingViewModel(
                                     setEvent(Event.DismissError)
                                     doNavigation(
                                         NavigationType.PopTo(
-                                            getPreviousScreen()
+                                            getPreviousRoute()
                                         )
                                     )
                                 }
@@ -176,7 +195,7 @@ class PresentationLoadingViewModel(
                         errorSubTitle = resourceProvider.genericErrorMessage(),
                         onCancel = {
                             setEvent(Event.DismissError)
-                            doNavigation(NavigationType.PopTo(getPreviousScreen()))
+                            doNavigation(NavigationType.PopTo(getPreviousRoute()))
                         },
                         onRetry = null,
                     )
@@ -216,6 +235,6 @@ class PresentationLoadingViewModel(
                 error = null
             )
         }
-        doNavigation(NavigationType.PushRoute(getNextScreen()))
+        doNavigation(NavigationType.PushRoute(getNextRoute()))
     }
 }

@@ -14,6 +14,9 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Nav3 Stage 3: moved to :shared-ui commonMain (package unchanged) as the payload of SuccessRoute.
+// Its Compose/URI fields were already keyed away in Stage 1 (ColorKey), so only ConfigNavigation
+// had to be typed for this to become KMP-clean.
 package eu.europa.ec.commonfeature.config
 
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi

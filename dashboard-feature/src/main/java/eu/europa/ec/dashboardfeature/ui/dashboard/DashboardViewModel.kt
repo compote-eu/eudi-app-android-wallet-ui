@@ -29,6 +29,11 @@ import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.DocumentDetailsRoute
+import eu.europa.ec.shared.navigation.DocumentOfferRoute
+import eu.europa.ec.shared.navigation.PresentationRequestRoute
+import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ModalOptionUi
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -37,16 +42,14 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.CommonScreens
 import eu.europa.ec.uilogic.navigation.DashboardScreens
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.IntentType
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
 import eu.europa.ec.uilogic.navigation.helper.hasIntentAction
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.navigation.helper.toLegacyArguments
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import org.koin.core.annotation.KoinViewModel
 
 data class State(
@@ -134,7 +137,6 @@ enum class SideMenuAnimation {
 @KoinViewModel
 class DashboardViewModel(
     private val dashboardInteractor: DashboardInteractor,
-    private val uiSerializer: UiSerializer,
     private val resourceProvider: ResourceProvider,
 ) : MviViewModel<Event, State, Effect>() {
     override fun setInitialState(): State {
@@ -197,14 +199,7 @@ class DashboardViewModel(
     private fun goToDocumentDetails(docId: DocumentId) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = generateComposableNavigationLink(
-                    screen = DashboardScreens.DocumentDetails,
-                    arguments = generateComposableArguments(
-                        mapOf(
-                            "documentId" to docId
-                        )
-                    )
-                )
+                screenRoute = DocumentDetailsRoute(documentId = docId).toLegacyRoute()
             )
         }
     }
@@ -250,12 +245,7 @@ class DashboardViewModel(
     private fun handleSideMenuItemClicked(itemType: SideMenuTypeUi) {
         when (itemType) {
             SideMenuTypeUi.CHANGE_PIN -> {
-                val nextScreenRoute = generateComposableNavigationLink(
-                    screen = CommonScreens.QuickPin,
-                    arguments = generateComposableArguments(
-                        mapOf("pinFlow" to PinFlow.UPDATE)
-                    )
-                )
+                val nextScreenRoute = QuickPinRoute(pinFlow = PinFlow.UPDATE).toLegacyRoute()
 
                 hideSideMenu()
                 setEffect { Effect.Navigation.SwitchScreen(screenRoute = nextScreenRoute) }
@@ -273,40 +263,30 @@ class DashboardViewModel(
             hasDeepLink(uri)?.let {
                 val arguments: String? = when (it.type) {
                     DeepLinkType.OPENID4VP -> {
-                        generateComposableArguments(
-                            mapOf(
-                                RequestUriConfig.serializedKeyName to uiSerializer.toBase64(
-                                    RequestUriConfig(
-                                        PresentationMode.OpenId4Vp(
-                                            uri.toString(),
-                                            DashboardScreens.Dashboard.screenRoute
-                                        )
-                                    ),
-                                    RequestUriConfig.Parser
+                        PresentationRequestRoute(
+                            config = RequestUriConfig(
+                                PresentationMode.OpenId4Vp(
+                                    uri.toString(),
+                                    DashboardRoute
                                 )
                             )
-                        )
+                        ).toLegacyArguments()
                     }
 
                     DeepLinkType.CREDENTIAL_OFFER -> {
-                        generateComposableArguments(
-                            mapOf(
-                                OfferUiConfig.serializedKeyName to uiSerializer.toBase64(
-                                    OfferUiConfig(
-                                        offerUri = it.link.toString(),
-                                        onSuccessNavigation = ConfigNavigation(
-                                            navigationType = NavigationType.PopTo(
-                                                screen = DashboardScreens.Dashboard
-                                            )
-                                        ),
-                                        onCancelNavigation = ConfigNavigation(
-                                            navigationType = NavigationType.Pop
-                                        )
-                                    ),
-                                    OfferUiConfig.Parser
+                        DocumentOfferRoute(
+                            config = OfferUiConfig(
+                                offerUri = it.link.toString(),
+                                onSuccessNavigation = ConfigNavigation(
+                                    navigationType = NavigationType.PopTo(
+                                        route = DashboardRoute
+                                    )
+                                ),
+                                onCancelNavigation = ConfigNavigation(
+                                    navigationType = NavigationType.Pop
                                 )
                             )
-                        )
+                        ).toLegacyArguments()
                     }
 
                     else -> null
@@ -321,18 +301,13 @@ class DashboardViewModel(
         } ?: hasIntentAction(intent)?.let { action ->
             when (action.type) {
                 IntentType.DC_API -> {
-                    val arguments: String = generateComposableArguments(
-                        mapOf(
-                            RequestUriConfig.serializedKeyName to uiSerializer.toBase64(
-                                RequestUriConfig(
-                                    PresentationMode.DcApi(
-                                        initiatorRoute = DashboardScreens.Dashboard.screenRoute
-                                    )
-                                ),
-                                RequestUriConfig.Parser
+                    val arguments: String = PresentationRequestRoute(
+                        config = RequestUriConfig(
+                            PresentationMode.DcApi(
+                                initiatorRoute = DashboardRoute
                             )
                         )
-                    )
+                    ).toLegacyArguments()
 
                     setEffect {
                         Effect.Navigation.OpenIntentAction(

@@ -14,10 +14,15 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Nav3 Stage 2: the "config carries its next destination" contract, now typed and KMP-clean.
+// `NavigationType` used to hold an `@Contextual Screen` plus a `Map<String, String?>` of
+// pre-Base64-serialized arguments; it now holds an [AppRoute], which bundles its arguments as
+// typed fields. That drops the ScreenSerializer/UiSerializer coupling and lets this file — and
+// therefore every config that embeds it (Biometric/Offer/OfferCode/IssuanceSuccess/Success) —
+// live in commonMain alongside [AppRoute]. Package unchanged so call sites don't churn.
 package eu.europa.ec.uilogic.config
 
-import eu.europa.ec.uilogic.navigation.Screen
-import kotlinx.serialization.Contextual
+import eu.europa.ec.shared.navigation.AppRoute
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -37,25 +42,29 @@ sealed interface NavigationType {
     @SerialName("Finish")
     data object Finish : NavigationType
 
-    @Serializable
-    @SerialName("PushScreen")
-    data class PushScreen(
-        @Contextual val screen: Screen,
-        val arguments: Map<String, String?> = emptyMap(),
-        @Contextual val popUpToScreen: Screen? = null
-    ) : NavigationType
-
+    /**
+     * Push [route], optionally clearing the back stack up to [popUpTo] first.
+     *
+     * Replaces the former `PushScreen(screen, arguments, popUpToScreen)` *and* the string-based
+     * `PushRoute(route, popUpToRoute)`: with typed routes the two are the same operation.
+     */
     @Serializable
     @SerialName("PushRoute")
     data class PushRoute(
-        val route: String,
-        val popUpToRoute: String? = null
+        val route: AppRoute,
+        val popUpTo: AppRoute? = null
     ) : NavigationType
 
     @Serializable
     @SerialName("PopTo")
-    data class PopTo(@Contextual val screen: Screen) : NavigationType
+    data class PopTo(val route: AppRoute) : NavigationType
 
+    /**
+     * An Android-only side effect: hand [link] to the deep-link handler. [routeToPop] stays a raw
+     * route string because it round-trips through the domain layer
+     * (`PresentationControllerConfig.initiatorRoute`, which core-logic cannot type against
+     * [AppRoute]); it is retyped when the Nav3 host lands in Stage 5.
+     */
     @Serializable
     @SerialName("Deeplink")
     data class Deeplink(val link: String, val routeToPop: String? = null) : NavigationType

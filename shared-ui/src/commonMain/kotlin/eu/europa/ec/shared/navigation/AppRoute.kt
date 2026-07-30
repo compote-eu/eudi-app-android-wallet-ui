@@ -17,6 +17,16 @@
 package eu.europa.ec.shared.navigation
 
 import androidx.navigation3.runtime.NavKey
+import eu.europa.ec.commonfeature.config.BiometricUiConfig
+import eu.europa.ec.commonfeature.config.IssuanceSuccessUiConfig
+import eu.europa.ec.commonfeature.config.IssuanceUiConfig
+import eu.europa.ec.commonfeature.config.OfferCodeUiConfig
+import eu.europa.ec.commonfeature.config.OfferUiConfig
+import eu.europa.ec.commonfeature.config.QrScanUiConfig
+import eu.europa.ec.commonfeature.config.RequestUriConfig
+import eu.europa.ec.commonfeature.config.SuccessUIConfig
+import eu.europa.ec.commonfeature.model.PinFlow
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -27,47 +37,104 @@ import kotlinx.serialization.Serializable
  * ([eu.europa.ec.uilogic.navigation.Screen] string routes, `UiSerializer`, and the
  * `generateComposable*` builders).
  *
- * This file covers the routes whose arguments are primitives or absent (mirroring
- * [eu.europa.ec.uilogic.navigation]'s `*Screens`). Routes that currently carry rich config objects
- * (Success, Biometric, QrScan, PresentationRequest, ProximityQR, the issuance offer/success flows,
- * QuickPin) are added in a later step, once those configs are made KMP-clean and moved to
- * commonMain (they still embed Compose types / java.net.URI today).
+ * The hierarchy is sealed, so every route lives in this file — including the config-carrying ones,
+ * which is why `AppRoute` and the configs it references had to move into this module (Stage 2).
+ * The base is `@Serializable` so an `AppRoute`-typed *field* (see
+ * [eu.europa.ec.uilogic.config.NavigationType.PushRoute]) serializes polymorphically; each variant
+ * declares a short `@SerialName` to keep those nested payloads small.
+ *
+ * Until the Nav3 host lands (Stage 5) these keys are translated back to legacy route strings by
+ * `AppRoute.toLegacyRoute()` / `toLegacyScreen()` in :ui-logic.
  */
+@Serializable
 sealed interface AppRoute : NavKey
 
 // --- Startup ---
 @Serializable
+@SerialName("Splash")
 data object SplashRoute : AppRoute
 
 // --- Dashboard ---
 @Serializable
+@SerialName("Dashboard")
 data object DashboardRoute : AppRoute
 
 @Serializable
+@SerialName("Settings")
 data object SettingsRoute : AppRoute
 
 @Serializable
+@SerialName("DocumentSign")
 data object DocumentSignRoute : AppRoute
 
 @Serializable
+@SerialName("DocumentDetails")
 data class DocumentDetailsRoute(val documentId: String) : AppRoute
 
 @Serializable
+@SerialName("TransactionDetails")
 data class TransactionDetailsRoute(val transactionId: String) : AppRoute
+
+// --- Common (reusable screens) ---
+@Serializable
+@SerialName("Success")
+data class SuccessRoute(val config: SuccessUIConfig) : AppRoute
+
+@Serializable
+@SerialName("Biometric")
+data class BiometricRoute(val config: BiometricUiConfig) : AppRoute
+
+@Serializable
+@SerialName("QuickPin")
+data class QuickPinRoute(val pinFlow: PinFlow) : AppRoute
+
+@Serializable
+@SerialName("QrScan")
+data class QrScanRoute(val config: QrScanUiConfig) : AppRoute
 
 // --- Presentation (online) ---
 @Serializable
+@SerialName("PresentationRequest")
+data class PresentationRequestRoute(val config: RequestUriConfig) : AppRoute
+
+@Serializable
+@SerialName("PresentationLoading")
 data class PresentationLoadingRoute(val scopeId: String) : AppRoute
 
 @Serializable
+@SerialName("PresentationSuccess")
 data class PresentationSuccessRoute(val scopeId: String) : AppRoute
 
 // --- Proximity ---
 @Serializable
+@SerialName("ProximityQr")
+data class ProximityQrRoute(val config: RequestUriConfig) : AppRoute
+
+@Serializable
+@SerialName("ProximityRequest")
 data class ProximityRequestRoute(val scopeId: String) : AppRoute
 
 @Serializable
+@SerialName("ProximityLoading")
 data class ProximityLoadingRoute(val scopeId: String) : AppRoute
 
 @Serializable
+@SerialName("ProximitySuccess")
 data class ProximitySuccessRoute(val scopeId: String) : AppRoute
+
+// --- Issuance ---
+@Serializable
+@SerialName("AddDocument")
+data class AddDocumentRoute(val config: IssuanceUiConfig) : AppRoute
+
+@Serializable
+@SerialName("DocumentOffer")
+data class DocumentOfferRoute(val config: OfferUiConfig) : AppRoute
+
+@Serializable
+@SerialName("DocumentOfferCode")
+data class DocumentOfferCodeRoute(val config: OfferCodeUiConfig) : AppRoute
+
+@Serializable
+@SerialName("DocumentIssuanceSuccess")
+data class DocumentIssuanceSuccessRoute(val config: IssuanceSuccessUiConfig) : AppRoute

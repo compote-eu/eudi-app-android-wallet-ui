@@ -14,36 +14,24 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Nav3 Stage 3: moved to :shared-ui commonMain (package unchanged) as the payload of
+// DocumentOfferCodeRoute.
 package eu.europa.ec.commonfeature.config
 
+import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.serializer.UiSerializable
 import eu.europa.ec.uilogic.serializer.UiSerializableParser
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed interface QrScanFlow {
-    @Serializable
-    @SerialName("Presentation")
-    data object Presentation : QrScanFlow
-
-    @Serializable
-    @SerialName("Issuance")
-    data class Issuance(val issuanceFlowType: IssuanceFlowType) : QrScanFlow
-
-    @Serializable
-    @SerialName("Signature")
-    data object Signature : QrScanFlow
-}
-
-@Serializable
-data class QrScanUiConfig(
-    val title: String,
-    val subTitle: String,
-    val qrScanFlow: QrScanFlow
+data class OfferCodeUiConfig(
+    val offerUri: String,
+    val txCodeLength: Int,
+    val issuerName: String,
+    val onSuccessNavigation: ConfigNavigation
 ) : UiSerializable {
 
     companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "qrScanConfig"
+        override val serializedKeyName = "offerCodeConfig"
     }
 }

@@ -24,17 +24,16 @@ import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.model.PinFlow
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.BiometricRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 
 interface SplashInteractor {
     suspend fun getAfterSplashRoute(): String
@@ -42,7 +41,6 @@ interface SplashInteractor {
 
 class SplashInteractorImpl(
     private val quickPinInteractor: QuickPinInteractor,
-    private val uiSerializer: UiSerializer,
     private val resourceProvider: ResourceProvider,
     private val walletEngine: WalletEngine,
     private val configLogic: ConfigLogic
@@ -65,69 +63,48 @@ class SplashInteractorImpl(
     }
 
     private fun getQuickPinConfig(): String {
-        return generateComposableNavigationLink(
-            screen = CommonScreens.QuickPin,
-            arguments = generateComposableArguments(
-                mapOf(
-                    "pinFlow" to if (shouldActivateWithPid) {
-                        PinFlow.CREATE_WITH_ACTIVATION
-                    } else {
-                        PinFlow.CREATE_WITHOUT_ACTIVATION
-                    }
-                )
-            )
-        )
+        return QuickPinRoute(
+            if (shouldActivateWithPid) {
+                PinFlow.CREATE_WITH_ACTIVATION
+            } else {
+                PinFlow.CREATE_WITHOUT_ACTIVATION
+            }
+        ).toLegacyRoute()
     }
 
     private fun getBiometricsConfig(): String {
 
         val shouldActivateWithPid = configLogic.forcePidActivation && !hasDocuments
 
-        return generateComposableNavigationLink(
-            screen = CommonScreens.Biometric,
-            arguments = generateComposableArguments(
-                mapOf(
-                    BiometricUiConfig.serializedKeyName to uiSerializer.toBase64(
-                        BiometricUiConfig(
-                            mode = BiometricMode.Login(
-                                title = resourceProvider.getString(R.string.biometric_login_title),
-                                subTitleWhenBiometricsEnabled = resourceProvider.getString(R.string.biometric_login_biometrics_enabled_subtitle),
-                                subTitleWhenBiometricsNotEnabled = resourceProvider.getString(R.string.biometric_login_biometrics_not_enabled_subtitle),
-                            ),
-                            isPreAuthorization = true,
-                            shouldInitializeBiometricAuthOnCreate = true,
-                            onSuccessNavigation = ConfigNavigation(
-                                navigationType = NavigationType.PushScreen(
-                                    screen = if (!shouldActivateWithPid) {
-                                        DashboardScreens.Dashboard
-                                    } else {
-                                        IssuanceScreens.AddDocument
-                                    },
-                                    arguments = if (shouldActivateWithPid) {
-                                        mapOf(
-                                            IssuanceUiConfig.serializedKeyName to uiSerializer.toBase64(
-                                                model = IssuanceUiConfig(
-                                                    flowType = IssuanceFlowType.NoDocument
-                                                ),
-                                                parser = IssuanceUiConfig.Parser
-                                            )
-                                        )
-                                    } else {
-                                        emptyMap()
-                                    }
+        return BiometricRoute(
+            BiometricUiConfig(
+                mode = BiometricMode.Login(
+                    title = resourceProvider.getString(R.string.biometric_login_title),
+                    subTitleWhenBiometricsEnabled = resourceProvider.getString(R.string.biometric_login_biometrics_enabled_subtitle),
+                    subTitleWhenBiometricsNotEnabled = resourceProvider.getString(R.string.biometric_login_biometrics_not_enabled_subtitle),
+                ),
+                isPreAuthorization = true,
+                shouldInitializeBiometricAuthOnCreate = true,
+                onSuccessNavigation = ConfigNavigation(
+                    navigationType = NavigationType.PushRoute(
+                        route = if (shouldActivateWithPid) {
+                            AddDocumentRoute(
+                                IssuanceUiConfig(
+                                    flowType = IssuanceFlowType.NoDocument
                                 )
-                            ),
-                            onBackNavigationConfig = OnBackNavigationConfig(
-                                onBackNavigation = ConfigNavigation(
-                                    navigationType = NavigationType.Finish
-                                ),
-                                hasToolbarBackIcon = false
                             )
-                        ),
-                        BiometricUiConfig.Parser
-                    ).orEmpty()
+                        } else {
+                            DashboardRoute
+                        }
+                    )
+                ),
+                onBackNavigationConfig = OnBackNavigationConfig(
+                    onBackNavigation = ConfigNavigation(
+                        navigationType = NavigationType.Finish
+                    ),
+                    hasToolbarBackIcon = false
                 )
             )
-        )
+        ).toLegacyRoute()
     }
 }

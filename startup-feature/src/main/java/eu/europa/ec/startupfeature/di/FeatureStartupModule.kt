@@ -22,7 +22,6 @@ import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.startupfeature.interactor.SplashInteractorImpl
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -36,13 +35,11 @@ class FeatureStartupModule
 @Factory
 fun provideSplashInteractor(
     quickPinInteractor: QuickPinInteractor,
-    uiSerializer: UiSerializer,
     resourceProvider: ResourceProvider,
     walletEngine: WalletEngine,
     configLogic: ConfigLogic
 ): SplashInteractor = SplashInteractorImpl(
     quickPinInteractor,
-    uiSerializer,
     resourceProvider,
     walletEngine,
     configLogic

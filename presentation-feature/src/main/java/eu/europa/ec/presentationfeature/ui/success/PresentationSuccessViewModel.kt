@@ -22,9 +22,9 @@ import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessViewModel
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractorGetUiItemsPartialState
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.DashboardScreens
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -40,7 +40,7 @@ class PresentationSuccessViewModel(
         val deepLinkWithUriOrPopToDashboard = ConfigNavigation(
             navigationType = redirectUri?.let {
                 NavigationType.Deeplink(it.toString(), interactor.initiatorRoute)
-            } ?: NavigationType.PopTo(DashboardScreens.Dashboard)
+            } ?: NavigationType.PopTo(DashboardRoute)
         )
 
         return deepLinkWithUriOrPopToDashboard

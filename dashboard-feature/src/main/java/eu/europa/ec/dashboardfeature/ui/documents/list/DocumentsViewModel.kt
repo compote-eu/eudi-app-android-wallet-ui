@@ -38,6 +38,9 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.DocumentDetailsRoute
+import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.ModalOptionUi
@@ -50,13 +53,9 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.CommonScreens
 import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.StartupScreens
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -162,7 +161,6 @@ sealed class DocumentsBottomSheetContent {
 class DocumentsViewModel(
     private val interactor: DocumentsInteractor,
     private val resourceProvider: ResourceProvider,
-    private val uiSerializer: UiSerializer,
 ) : MviViewModel<Event, State, Effect>() {
 
     private var retryDeferredDocsJob: Job? = null
@@ -541,34 +539,19 @@ class DocumentsViewModel(
     private fun goToDocumentDetails(docId: DocumentId) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = generateComposableNavigationLink(
-                    screen = DashboardScreens.DocumentDetails,
-                    arguments = generateComposableArguments(
-                        mapOf(
-                            "documentId" to docId
-                        )
-                    )
-                )
+                screenRoute = DocumentDetailsRoute(documentId = docId).toLegacyRoute()
             )
         }
     }
 
     private fun goToAddDocument() {
-        val addDocumentScreenRoute = generateComposableNavigationLink(
-            screen = IssuanceScreens.AddDocument,
-            arguments = generateComposableArguments(
-                mapOf(
-                    IssuanceUiConfig.serializedKeyName to uiSerializer.toBase64(
-                        model = IssuanceUiConfig(
-                            flowType = IssuanceFlowType.ExtraDocument(
-                                formatType = null
-                            )
-                        ),
-                        parser = IssuanceUiConfig.Parser
-                    )
+        val addDocumentScreenRoute = AddDocumentRoute(
+            config = IssuanceUiConfig(
+                flowType = IssuanceFlowType.ExtraDocument(
+                    formatType = null
                 )
             )
-        )
+        ).toLegacyRoute()
         setEffect {
             Effect.Navigation.SwitchScreen(
                 screenRoute = addDocumentScreenRoute
@@ -579,25 +562,17 @@ class DocumentsViewModel(
     private fun goToQrScan() {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = generateComposableNavigationLink(
-                    screen = CommonScreens.QrScan,
-                    arguments = generateComposableArguments(
-                        mapOf(
-                            QrScanUiConfig.serializedKeyName to uiSerializer.toBase64(
-                                QrScanUiConfig(
-                                    title = resourceProvider.getString(R.string.issuance_qr_scan_title),
-                                    subTitle = resourceProvider.getString(R.string.issuance_qr_scan_subtitle),
-                                    qrScanFlow = QrScanFlow.Issuance(
-                                        issuanceFlowType = IssuanceFlowType.ExtraDocument(
-                                            formatType = null
-                                        )
-                                    )
-                                ),
-                                QrScanUiConfig.Parser
+                screenRoute = QrScanRoute(
+                    config = QrScanUiConfig(
+                        title = resourceProvider.getString(R.string.issuance_qr_scan_title),
+                        subTitle = resourceProvider.getString(R.string.issuance_qr_scan_subtitle),
+                        qrScanFlow = QrScanFlow.Issuance(
+                            issuanceFlowType = IssuanceFlowType.ExtraDocument(
+                                formatType = null
                             )
                         )
                     )
-                ),
+                ).toLegacyRoute(),
                 inclusive = false
             )
         }

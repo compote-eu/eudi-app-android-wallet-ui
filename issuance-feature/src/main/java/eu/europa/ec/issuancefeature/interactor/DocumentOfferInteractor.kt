@@ -42,14 +42,12 @@ import eu.europa.ec.issuancefeature.ui.offer.model.DocumentOfferUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.shared.navigation.SuccessRoute
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
 import eu.europa.ec.uilogic.config.ConfigNavigation
-import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -124,7 +122,6 @@ class DocumentOfferInteractorImpl(
     private val walletEngine: WalletEngine,
     private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     private val resourceProvider: ResourceProvider,
-    private val uiSerializer: UiSerializer,
     private val configLogic: ConfigLogic
 ) : DocumentOfferInteractor {
 
@@ -325,17 +322,13 @@ class DocumentOfferInteractorImpl(
         description: String,
         navigation: ConfigNavigation
     ): String {
-        val successScreenArguments = getDeferredSuccessScreenArguments(description, navigation)
-        return generateComposableNavigationLink(
-            screen = CommonScreens.Success,
-            arguments = successScreenArguments
-        )
+        return SuccessRoute(getDeferredSuccessConfig(description, navigation)).toLegacyRoute()
     }
 
-    private fun getDeferredSuccessScreenArguments(
+    private fun getDeferredSuccessConfig(
         description: String,
         navigation: ConfigNavigation
-    ): String {
+    ): SuccessUIConfig {
         val (textElementsConfig, imageConfig, buttonText) = Triple(
             first = SuccessUIConfig.TextElementsConfig(
                 text = resourceProvider.getString(R.string.issuance_document_offer_deferred_success_text),
@@ -352,24 +345,17 @@ class DocumentOfferInteractorImpl(
             third = resourceProvider.getString(R.string.issuance_document_offer_deferred_success_primary_button_text)
         )
 
-        return generateComposableArguments(
-            mapOf(
-                SuccessUIConfig.serializedKeyName to uiSerializer.toBase64(
-                    SuccessUIConfig(
-                        textElementsConfig = textElementsConfig,
-                        imageConfig = imageConfig,
-                        buttonConfig = listOf(
-                            SuccessUIConfig.ButtonConfig(
-                                text = buttonText,
-                                style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
-                                navigation = navigation
-                            )
-                        ),
-                        onBackScreenToNavigate = navigation,
-                    ),
-                    SuccessUIConfig.Parser
-                ).orEmpty()
-            )
+        return SuccessUIConfig(
+            textElementsConfig = textElementsConfig,
+            imageConfig = imageConfig,
+            buttonConfig = listOf(
+                SuccessUIConfig.ButtonConfig(
+                    text = buttonText,
+                    style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
+                    navigation = navigation
+                )
+            ),
+            onBackScreenToNavigate = navigation,
         )
     }
 }

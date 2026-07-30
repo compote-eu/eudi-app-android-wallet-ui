@@ -14,77 +14,34 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Nav3 Stage 2/3: the Android half of RequestUriConfig, split off when the config itself moved to
+// :shared-ui commonMain. It maps to core-logic's domain config and needs the Intent-carrying
+// IntentAction, so it stays here. Note the AppRoute -> legacy-route-string narrowing on
+// `initiatorRoute`: core-logic treats it as an opaque token (it is never read inside core, only
+// handed back to the UI via PresentationSuccessInteractor), so the bridge encoding is enough until
+// the Nav3 host lands in Stage 5.
 package eu.europa.ec.commonfeature.config
 
 import eu.europa.ec.corelogic.controller.PresentationControllerConfig
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.IntentType
-import eu.europa.ec.uilogic.serializer.UiSerializable
-import eu.europa.ec.uilogic.serializer.UiSerializableParser
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-
-@Serializable
-sealed interface PresentationMode {
-    val scopeId: String
-
-    @Serializable
-    @SerialName("OpenId4Vp")
-    data class OpenId4Vp(
-        val uri: String,
-        val initiatorRoute: String,
-    ) : PresentationMode {
-
-        override val scopeId: String
-            get() = "vp_presentation_scope_id"
-    }
-
-    @Serializable
-    @SerialName("Ble")
-    data class Ble(
-        val initiatorRoute: String,
-    ) : PresentationMode {
-
-        override val scopeId: String
-            get() = "ble_presentation_scope_id"
-    }
-
-    @Serializable
-    @SerialName("DcApi")
-    data class DcApi(
-        val initiatorRoute: String,
-    ) : PresentationMode {
-
-        override val scopeId: String
-            get() = "dc_api_presentation_scope_id"
-    }
-}
-
-@Serializable
-data class RequestUriConfig(
-    val mode: PresentationMode
-) : UiSerializable {
-
-    val presentationScopeId: String = mode.scopeId
-
-    companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "requestUriConfig"
-    }
-}
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 
 fun RequestUriConfig.toDomainConfig(intentAction: IntentAction?): PresentationControllerConfig {
-    return when (mode) {
-        is PresentationMode.Ble -> PresentationControllerConfig.Ble(mode.initiatorRoute)
+    val presentationMode = mode
+    val initiator = presentationMode.initiatorRoute.toLegacyRoute()
+    return when (presentationMode) {
+        is PresentationMode.Ble -> PresentationControllerConfig.Ble(initiator)
         is PresentationMode.OpenId4Vp -> PresentationControllerConfig.OpenId4VP(
-            mode.uri,
-            mode.initiatorRoute
+            presentationMode.uri,
+            initiator
         )
 
         is PresentationMode.DcApi -> {
             intentAction?.let { safeIntentAction ->
                 when (safeIntentAction.type) {
                     IntentType.DC_API -> PresentationControllerConfig.DcApi(
-                        initiator = mode.initiatorRoute,
+                        initiator = initiator,
                         startIntent = safeIntentAction.intent
                     )
                 }

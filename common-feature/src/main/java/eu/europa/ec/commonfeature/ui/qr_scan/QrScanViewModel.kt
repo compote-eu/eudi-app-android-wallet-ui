@@ -21,6 +21,7 @@ import androidx.lifecycle.viewModelScope
 import eu.europa.ec.businesslogic.validator.Form
 import eu.europa.ec.businesslogic.validator.Rule
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
+import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.OfferUiConfig
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.QrScanFlow
@@ -30,17 +31,17 @@ import eu.europa.ec.commonfeature.interactor.QrScanInteractor
 import eu.europa.ec.eudi.rqesui.domain.extension.toUriOrEmpty
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.DocumentOfferRoute
+import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
-import eu.europa.ec.uilogic.navigation.PresentationScreens
-import eu.europa.ec.uilogic.navigation.helper.generateComposableArguments
-import eu.europa.ec.uilogic.navigation.helper.generateComposableNavigationLink
+import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -208,22 +209,14 @@ class QrScanViewModel(
     private fun navigateToPresentationRequest(scanResult: String) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = generateComposableNavigationLink(
-                    screen = PresentationScreens.PresentationRequest,
-                    arguments = generateComposableArguments(
-                        mapOf(
-                            RequestUriConfig.serializedKeyName to uiSerializer.toBase64(
-                                RequestUriConfig(
-                                    PresentationMode.OpenId4Vp(
-                                        uri = scanResult,
-                                        initiatorRoute = DashboardScreens.Dashboard.screenRoute
-                                    )
-                                ),
-                                RequestUriConfig.Parser
-                            )
+                screenRoute = PresentationRequestRoute(
+                    config = RequestUriConfig(
+                        PresentationMode.OpenId4Vp(
+                            uri = scanResult,
+                            initiatorRoute = DashboardRoute
                         )
                     )
-                )
+                ).toLegacyRoute()
             )
         }
     }
@@ -231,25 +224,17 @@ class QrScanViewModel(
     private fun navigateToDocumentOffer(scanResult: String, issuanceFlowType: IssuanceFlowType) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = generateComposableNavigationLink(
-                    screen = IssuanceScreens.DocumentOffer,
-                    arguments = generateComposableArguments(
-                        mapOf(
-                            OfferUiConfig.serializedKeyName to uiSerializer.toBase64(
-                                OfferUiConfig(
-                                    offerUri = scanResult,
-                                    onSuccessNavigation = calculateOnSuccessNavigation(
-                                        issuanceFlowType
-                                    ),
-                                    onCancelNavigation = calculateOnCancelNavigation(
-                                        issuanceFlowType
-                                    )
-                                ),
-                                OfferUiConfig.Parser
-                            )
+                screenRoute = DocumentOfferRoute(
+                    config = OfferUiConfig(
+                        offerUri = scanResult,
+                        onSuccessNavigation = calculateOnSuccessNavigation(
+                            issuanceFlowType
+                        ),
+                        onCancelNavigation = calculateOnCancelNavigation(
+                            issuanceFlowType
                         )
                     )
-                )
+                ).toLegacyRoute()
             )
         }
     }
@@ -269,8 +254,10 @@ class QrScanViewModel(
             is IssuanceFlowType.NoDocument -> {
                 ConfigNavigation(
                     navigationType = NavigationType.PushRoute(
-                        route = DashboardScreens.Dashboard.screenRoute,
-                        popUpToRoute = IssuanceScreens.AddDocument.screenRoute
+                        route = DashboardRoute,
+                        popUpTo = AddDocumentRoute(
+                            config = IssuanceUiConfig(flowType = issuanceFlowType)
+                        )
                     )
                 )
             }
@@ -278,7 +265,7 @@ class QrScanViewModel(
             is IssuanceFlowType.ExtraDocument -> {
                 ConfigNavigation(
                     navigationType = NavigationType.PopTo(
-                        screen = DashboardScreens.Dashboard
+                        route = DashboardRoute
                     )
                 )
             }
