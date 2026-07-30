@@ -33,5 +33,11 @@ targets:
       - name: Compile Kotlin Framework (SharedKit)
         basedOnDependencyAnalysis: false
         script: |
+          # Build guard: skip the Gradle task during Xcode's index build so the Kotlin
+          # framework isn't built twice (once for the real build, once for indexing).
+          if [ "$ACTION" = "indexbuild" ]; then
+            echo "Skipping Kotlin framework build during indexing."
+            exit 0
+          fi
           cd "$SRCROOT/.."
           ./gradlew :shared:embedAndSignAppleFrameworkForXcode
