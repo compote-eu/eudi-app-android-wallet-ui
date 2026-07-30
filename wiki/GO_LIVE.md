@@ -96,7 +96,7 @@ The application is a modular Android project. Important modules for production a
 
 | Module                       | Production relevance                                                                                                                   |
 |------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| `app`                        | Application ID, signing, release build type, baseline profile packaging.                                                               |
+| `androidApp`                        | Application ID, signing, release build type, baseline profile packaging.                                                               |
 | `assembly-logic`             | Android application class, manifest, permissions, activities, deep links, NFC service, app name.                                       |
 | `core-logic`                 | Wallet Core integration, issuer configuration, wallet provider, trust stores, document issuance, presentation, revocation, reissuance. |
 | `business-logic`             | Global app config, RQES config, logging, encrypted preference storage, crypto helpers.                                                 |
@@ -135,7 +135,7 @@ Keep these files under strict review:
 | File                                                                                                      | Why it matters                                                                                       |
 |-----------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|
 | `build-logic/convention/src/main/kotlin/project/convention/logic/AppFlavor.kt`                            | Defines product flavors and application ID suffixes.                                                 |
-| `app/build.gradle.kts`                                                                                    | Defines app ID, signing config, release minification, version code.                                  |
+| `androidApp/build.gradle.kts`                                                                                    | Defines app ID, signing config, release minification, version code.                                  |
 | `assembly-logic/build.gradle.kts`                                                                         | Defines app display name placeholder.                                                                |
 | `assembly-logic/src/main/AndroidManifest.xml`                                                             | Defines exported components, permissions, backups, deep links, NFC service, network security config. |
 | `core-logic/src/<flavor>/java/eu/europa/ec/corelogic/config/WalletCoreConfigImpl.kt`                      | Main wallet network, trust, issuer, document, and presentation configuration.                        |
@@ -260,8 +260,8 @@ Build commands:
 
 ```powershell
 .\gradlew.bat clean
-.\gradlew.bat :app:assembleProdRelease
-.\gradlew.bat :app:bundleProdRelease
+.\gradlew.bat :androidApp:assembleProdRelease
+.\gradlew.bat :androidApp:bundleProdRelease
 ```
 
 Use Android App Bundle (`.aab`) for Google Play distribution unless your distribution channel
@@ -273,12 +273,12 @@ Production identity values must be final before external testing.
 
 | Setting         | Current location                                                  | Production guidance                                                                                                                      |
 |-----------------|-------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| `applicationId` | `app/build.gradle.kts`                                            | Use a final reverse-DNS ID owned by the implementer, for example `eu.example.wallet`. Changing it after release creates a different app. |
-| `namespace`     | `app/build.gradle.kts` and modules                                | Can remain internal package names, but align with your code ownership and policy.                                                        |
+| `applicationId` | `androidApp/build.gradle.kts`                                            | Use a final reverse-DNS ID owned by the implementer, for example `eu.example.wallet`. Changing it after release creates a different app. |
+| `namespace`     | `androidApp/build.gradle.kts` and modules                                | Can remain internal package names, but align with your code ownership and policy.                                                        |
 | App name        | `assembly-logic/build.gradle.kts`, manifest placeholder `appName` | Use the official wallet name approved for the Member State or wallet provider.                                                           |
 | App icon        | `assembly-logic/src/main/AndroidManifest.xml`, mipmap resources   | Replace reference icons with production brand assets.                                                                                    |
 | Version name    | `version.properties`                                              | Replace `yyyy.mm.v` with your release versioning scheme.                                                                                 |
-| Version code    | `app/build.gradle.kts` or CI mutation                             | Must monotonically increase for app stores.                                                                                              |
+| Version code    | `androidApp/build.gradle.kts` or CI mutation                             | Must monotonically increase for app stores.                                                                                              |
 | Min SDK         | `build-logic/.../KotlinAndroid.kt`                                | Current `minSdk` is 29. Confirm with your device support policy.                                                                         |
 | Target SDK      | `build-logic/.../AndroidApplicationConventionPlugin.kt`           | Current `targetSdk` is 37. Keep current with Android policy.                                                                             |
 
@@ -320,7 +320,7 @@ Requirements:
 
 Current release signing is configured in:
 
-`app/build.gradle.kts`
+`androidApp/build.gradle.kts`
 
 The reference configuration expects:
 
@@ -337,7 +337,7 @@ Production requirements:
 * Do not store production signing material in a developer workstation as the only source.
 * Prefer CI secret storage backed by HSM/KMS, Google Play App Signing, or an equivalent controlled process.
 * Use separate passwords for keystore and key if your policy requires it.
-* If using separate store and key passwords, change `app/build.gradle.kts` to read a distinct
+* If using separate store and key passwords, change `androidApp/build.gradle.kts` to read a distinct
   `ANDROID_KEYSTORE_PASSWORD` or equivalent CI secret for `storePassword`.
 * Record the SHA-256 fingerprint of the app signing certificate.
 * Restrict who can produce signed production artifacts.
@@ -383,7 +383,7 @@ For production, the minimum release pipeline should run:
 .\gradlew.bat testProdReleaseUnitTest
 .\gradlew.bat koverHtmlReportProdDebug
 .\gradlew.bat dependencyCheckAnalyze
-.\gradlew.bat :app:bundleProdRelease
+.\gradlew.bat :androidApp:bundleProdRelease
 ```
 
 Also add:
@@ -400,8 +400,8 @@ Also add:
 Example final-artifact checks:
 
 ```powershell
-.\gradlew.bat :app:processProdReleaseMainManifest
-.\gradlew.bat :app:dependencies --configuration prodReleaseRuntimeClasspath
+.\gradlew.bat :androidApp:processProdReleaseMainManifest
+.\gradlew.bat :androidApp:dependencies --configuration prodReleaseRuntimeClasspath
 ```
 
 Inspect the merged manifest and dependency output as release evidence.
@@ -2113,15 +2113,15 @@ For existing demo release:
 
 ```powershell
 .\gradlew.bat clean
-.\gradlew.bat :app:assembleDemoRelease
+.\gradlew.bat :androidApp:assembleDemoRelease
 ```
 
 For recommended production flavor:
 
 ```powershell
 .\gradlew.bat clean
-.\gradlew.bat :app:assembleProdRelease
-.\gradlew.bat :app:bundleProdRelease
+.\gradlew.bat :androidApp:assembleProdRelease
+.\gradlew.bat :androidApp:bundleProdRelease
 ```
 
 ### Install Local Release APK

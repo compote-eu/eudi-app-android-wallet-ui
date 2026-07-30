@@ -81,15 +81,15 @@ modules.
 From the project root on Windows:
 
 ```powershell
-.\gradlew.bat :app:assembleDevDebug
-.\gradlew.bat :app:assembleDemoDebug
+.\gradlew.bat :androidApp:assembleDevDebug
+.\gradlew.bat :androidApp:assembleDemoDebug
 ```
 
 Release builds:
 
 ```powershell
-.\gradlew.bat :app:assembleDevRelease
-.\gradlew.bat :app:assembleDemoRelease
+.\gradlew.bat :androidApp:assembleDevRelease
+.\gradlew.bat :androidApp:assembleDemoRelease
 ```
 
 On macOS/Linux, replace `.\gradlew.bat` with `./gradlew`.
@@ -105,17 +105,17 @@ Run tests and checks:
 APK outputs are created under:
 
 ```text
-app/build/outputs/apk/<flavor>/<build-type>/
+androidApp/build/outputs/apk/<flavor>/<build-type>/
 ```
 
 Examples:
 
 ```text
-app/build/outputs/apk/dev/debug/app-dev-debug.apk
-app/build/outputs/apk/demo/release/app-demo-release.apk
+androidApp/build/outputs/apk/dev/debug/androidApp-dev-debug.apk
+androidApp/build/outputs/apk/demo/release/androidApp-demo-release.apk
 ```
 
-Release signing is configured in `app/build.gradle.kts`. The current reference setup expects a
+Release signing is configured in `androidApp/build.gradle.kts`. The current reference setup expects a
 keystore file at the project root named `sign` and reads signing values from `local.properties` or
 environment variables. In the current Gradle file, `storePassword` is read from the same
 `androidKeyPassword` / `ANDROID_KEY_PASSWORD` value used for `keyPassword`; if your keystore uses a

@@ -41,7 +41,7 @@ class AndroidBaseLineProfilePlugin : Plugin<Project> {
                 }
                 configureFlavors(this)
                 configureGradleManagedDevices(this)
-                targetProjectPath = ":app"
+                targetProjectPath = ":androidApp"
             }
 
             extensions.configure<BaselineProfileProducerExtension> {

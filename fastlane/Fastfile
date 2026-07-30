@@ -53,7 +53,7 @@ platform :android do
     )
 
     increment_version_code(
-      gradle_file_path: "app/build.gradle.kts",
+      gradle_file_path: "androidApp/build.gradle.kts",
       version_code: buildNumber,
     )
 
@@ -120,16 +120,16 @@ platform :android do
 
     project_root = File.expand_path("..", __dir__)
     base_dir = File.join(
-      project_root, 
-      "app", 
-      "build", 
+      project_root,
+      "androidApp",
+      "build",
       "outputs", 
       "apk", 
       build_type, 
       "release"
     )
 
-    default_apk_name = "app-#{build_type}-release.apk"
+    default_apk_name = "androidApp-#{build_type}-release.apk"
     new_apk_name = "#{app_version}.apk"
 
     default_apk_path = File.join(base_dir, default_apk_name)
@@ -232,7 +232,7 @@ platform :android do
   desc "Set versionCode back to default 1"
   lane :reset_versioncode do
     increment_version_code(
-      gradle_file_path: "app/build.gradle.kts",
+      gradle_file_path: "androidApp/build.gradle.kts",
       version_code: 1,
     )
   end

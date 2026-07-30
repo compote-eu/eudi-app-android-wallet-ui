@@ -48,7 +48,7 @@ plugins {
 }
 
 rootProject.name = "EUDI Wallet"
-include(":app")
+include(":androidApp")
 include(":business-logic")
 include(":ui-logic")
 include(":network-logic")

@@ -34,7 +34,7 @@ links here for the full detail.
 | Layer | What it covers | Where it lives |
 | --- | --- | --- |
 | 1. Compose theme | Colors, typography, fonts, shapes, dimensions | `resources-logic` module, package `eu.europa.ec.resourceslogic.theme` |
-| 2. Branding assets | In-app logos, launcher icon, app display name, package id, brand strings, splash screen, system bars, host XML theme | `resources-logic` resources + `assembly-logic` + `app` + `build-logic` |
+| 2. Branding assets | In-app logos, launcher icon, app display name, package id, brand strings, splash screen, system bars, host XML theme | `resources-logic` resources + `assembly-logic` + `androidApp` + `build-logic` |
 | 3. Sub-SDK theming | The RQES signing UI carries its own theme and translations | `business-logic` (`RQESConfigImpl`) |
 
 ### The Compose theme: `ThemeManager`
@@ -100,7 +100,7 @@ The minimum set of files to change for a full rebrand. Each row links to its det
 | In-app logos                       | [`res/drawable/ic_logo_icon.xml`](../resources-logic/src/main/res/drawable/ic_logo_icon.xml), `ic_logo_icon_and_text.xml`                                                                                                 | Brand colors are baked into the vectors. See [Logos](#logos-and-in-app-imagery).                 |
 | Launcher icon                      | `resources-logic/src/demo/res/mipmap-*` **and** `resources-logic/src/dev/res/mipmap-*` (foreground per flavor) + shared [`ic_launcher_background.xml`](../resources-logic/src/main/res/values/ic_launcher_background.xml) | Icon bitmaps per flavor; background color is shared. See [Launcher icon](#launcher-icon).        |
 | App display name                   | [`assembly-logic/build.gradle.kts`](../assembly-logic/build.gradle.kts) (`appName`) + [`AppFlavor.kt`](../build-logic/convention/src/main/kotlin/project/convention/logic/AppFlavor.kt) (suffix)                          | See [App name](#app-name-and-package-identity).                                                  |
-| Package / application id           | `app/build.gradle.kts` (`applicationId`) + `AppFlavor.kt` (`.dev` suffix)                                                                                                                                                 | Don't change after public release.                                                               |
+| Package / application id           | `androidApp/build.gradle.kts` (`applicationId`) + `AppFlavor.kt` (`.dev` suffix)                                                                                                                                                 | Don't change after public release.                                                               |
 | Splash (OS window)                 | [`res/values-v31/themes.xml`](../resources-logic/src/main/res/values-v31/themes.xml)                                                                                                                                      | See [Splash screen](#splash-screen).                                                             |
 | Brand strings (product name in UI) | [`res/values/strings.xml`](../resources-logic/src/main/res/values/strings.xml) (+ localized variants)                                                                                                                     | Search for `EUDI`/`Wallet`. See [Brand strings](#brand-strings).                                 |
 | System bars (status/navigation)    | [`MainActivity.kt`](../assembly-logic/src/main/java/eu/europa/ec/assemblylogic/ui/MainActivity.kt) (`enableEdgeToEdge`)                                                                                                   | Edge-to-edge — **not** the XML theme. See [Window chrome](#window-chrome-and-system-bars).       |
@@ -301,7 +301,7 @@ for your brand; keep suffixes (if any) for non-production builds only.
 
 ### Application id
 
-The package / application id is set in `app/build.gradle.kts` (`applicationId`), with a `.dev`
+The package / application id is set in `androidApp/build.gradle.kts` (`applicationId`), with a `.dev`
 suffix applied to the `dev` flavor via `AppFlavor.kt`. Use a reverse-DNS id you own, e.g.
 `eu.example.wallet`. **Do not change it after public release** unless you intend to publish a
 separate app. See the production table in
