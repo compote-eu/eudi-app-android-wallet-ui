@@ -24,30 +24,11 @@ import eu.europa.ec.uilogic.BuildConfig
 import eu.europa.ec.uilogic.container.EudiComponentActivity
 import eu.europa.ec.uilogic.navigation.Screen
 
-fun <T> generateComposableArguments(arguments: Map<String, T>): String {
-    if (arguments.isEmpty()) return ""
-    return StringBuilder().apply {
-        append("?")
-        arguments.onEachIndexed { index, entry ->
-            if (index > 0) {
-                append("&")
-            }
-            append("${entry.key}=${entry.value}")
-        }
-    }.toString()
-}
-
 fun generateComposableDeepLinkUri(screen: Screen, arguments: String): Uri =
     generateComposableDeepLinkUri(screen.screenName, arguments)
 
 fun generateComposableDeepLinkUri(screen: String, arguments: String): Uri =
     "${BuildConfig.DEEPLINK}/${screen}$arguments".toUri()
-
-fun generateComposableNavigationLink(screen: Screen, arguments: String): String =
-    generateComposableNavigationLink(screen.screenName, arguments)
-
-fun generateComposableNavigationLink(screen: String, arguments: String): String =
-    "${screen}$arguments"
 
 fun generateNewTaskDeepLink(
     context: Context,
