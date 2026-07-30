@@ -18,6 +18,7 @@ package eu.europa.ec.businesslogic.extension
 
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -27,10 +28,13 @@ class FlowExtensionsTest {
 
     @Test
     fun safeAsync_emits_the_fallback_value_when_the_flow_throws() = runTest {
+        // Inject the test scheduler's dispatcher instead of safeAsync's default `ioDispatcher`
+        // (Dispatchers.IO on Android): flowOn(Dispatchers.IO) would run the upstream on real
+        // threads outside runTest's virtual scheduler, making [1, -1] assembly racy/flaky.
         val result = flow {
             emit(1)
             throw IllegalStateException("boom")
-        }.safeAsync { -1 }.toList()
+        }.safeAsync(dispatcher = UnconfinedTestDispatcher(testScheduler)) { -1 }.toList()
 
         assertEquals(listOf(1, -1), result)
     }

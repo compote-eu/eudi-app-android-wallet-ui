@@ -18,6 +18,8 @@ package eu.europa.ec.uilogic.di
 
 import eu.europa.ec.analyticslogic.controller.AnalyticsController
 import eu.europa.ec.businesslogic.di.LogicBusinessModule
+import eu.europa.ec.shared.resources.ComposeResourcesStringResolver
+import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.uilogic.config.ConfigUILogic
 import eu.europa.ec.uilogic.config.ConfigUILogicImpl
 import eu.europa.ec.uilogic.navigation.RouterHost
@@ -43,6 +45,15 @@ fun provideRouterHost(
 
 @Factory
 fun provideUiSerializer(): UiSerializer = UiSerializerImpl()
+
+/**
+ * Phase-3a KMP string accessor for shared presentation (replaces Android-Context
+ * ResourceProvider.getString in migrated view-models). Backed by compose-resources; lives in the
+ * UI layer because its impl (and the StringResolver contract's compose-resources StringResource
+ * type) belong to :shared-ui, not the Compose-free :shared-logic.
+ */
+@Factory
+fun provideStringResolver(): StringResolver = ComposeResourcesStringResolver()
 
 @Single
 fun provideConfigUILogic(): ConfigUILogic = ConfigUILogicImpl()

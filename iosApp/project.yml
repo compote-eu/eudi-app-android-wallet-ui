@@ -24,7 +24,7 @@ targets:
         # The Kotlin framework is built by the pre-build script below into this folder.
         FRAMEWORK_SEARCH_PATHS:
           - $(inherited)
-          - $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
+          - $(SRCROOT)/../shared-ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
         OTHER_LDFLAGS:
           - $(inherited)
           - -framework
@@ -42,4 +42,4 @@ targets:
             exit 0
           fi
           cd "$SRCROOT/.."
-          ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+          ./gradlew :shared-ui:embedAndSignAppleFrameworkForXcode

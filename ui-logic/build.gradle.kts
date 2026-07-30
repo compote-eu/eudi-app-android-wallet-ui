@@ -36,6 +36,9 @@ moduleConfig {
 dependencies {
     implementation(project(LibraryModule.ResourcesLogic.path))
     implementation(project(LibraryModule.BusinessLogic.path))
+    // KMP Compose-MP UI module (compose-resources + StringResolver). `api` so feature modules that
+    // depend on :ui-logic can use Res/StringResolver directly in the Phase-3 presentation migration.
+    api(project(":shared-ui"))
     implementation(project(LibraryModule.AnalyticsLogic.path))
     implementation(project(LibraryModule.CoreLogic.path))
     implementation(project(LibraryModule.StorageLogic.path))
