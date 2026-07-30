@@ -14,6 +14,11 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3c: the navigation route contract (route-string data only — no Android/androidx) moves
+// to the shared KMP module (commonMain), package unchanged. View-models emit these Screen /
+// ModuleRoute routes as navigation effects; the Android side (RouterHost, still in :ui-logic)
+// consumes them and drives the NavController. This lets view-models reference navigation types
+// from commonMain.
 package eu.europa.ec.uilogic.navigation
 
 interface NavigatableItem
