@@ -71,6 +71,7 @@ import eu.europa.ec.uilogic.component.utils.LifecycleEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.VSpacer
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
@@ -316,7 +317,7 @@ private fun Options(
                     text = issuerId,
                     textConfig = TextConfig(
                         styleKey = TextStyleKey.LabelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        colorKey = ColorKey.OnSurfaceVariant,
                     )
                 )
             }

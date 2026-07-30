@@ -76,6 +76,7 @@ import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import eu.europa.ec.uilogic.component.wrap.SimpleBottomSheet
 import eu.europa.ec.uilogic.component.wrap.StickyBottomConfig
 import eu.europa.ec.uilogic.component.wrap.StickyBottomType
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableListItem
@@ -399,7 +400,7 @@ private fun RequestWarningNote(
         text = stringResource(R.string.request_warning_text),
         textConfig = TextConfig(
             styleKey = TextStyleKey.BodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            colorKey = ColorKey.OnSurface,
         )
     )
 }

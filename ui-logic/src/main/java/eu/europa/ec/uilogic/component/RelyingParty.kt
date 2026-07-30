@@ -37,6 +37,7 @@ import eu.europa.ec.uilogic.component.preview.TextLengthPreviewProvider
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.SPACING_EXTRA_SMALL
 import eu.europa.ec.uilogic.component.utils.VSpacer
+import eu.europa.ec.uilogic.component.wrap.TextAlignKey
 import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapAsyncImage
@@ -71,7 +72,7 @@ fun RelyingParty(
     modifier: Modifier = Modifier,
     relyingPartyData: RelyingPartyDataUi,
 ) {
-    val commonTextAlign = TextAlign.Center
+    val commonTextAlign = TextAlignKey.Center
 
     Column(
         modifier = modifier,
@@ -107,7 +108,7 @@ fun RelyingParty(
                     text = name,
                     textConfig = nameTextConfig ?: TextConfig(
                         styleKey = TextStyleKey.TitleMedium,
-                        textAlign = commonTextAlign,
+                        textAlignKey = commonTextAlign,
                     )
                 )
             }
@@ -118,7 +119,7 @@ fun RelyingParty(
                     text = safeDescription,
                     textConfig = descriptionTextConfig ?: TextConfig(
                         styleKey = TextStyleKey.BodySmall,
-                        textAlign = commonTextAlign,
+                        textAlignKey = commonTextAlign,
                     )
                 )
             }

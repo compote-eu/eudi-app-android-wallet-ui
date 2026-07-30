@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapIconButton
@@ -47,7 +48,7 @@ fun SectionTitle(
     text: String,
     textConfig: TextConfig = TextConfig(
         styleKey = TextStyleKey.LabelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        colorKey = ColorKey.OnSurfaceVariant,
     ),
     icon: IconDataUi? = null,
     throttleIconClicks: Boolean = true,

@@ -51,6 +51,7 @@ import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.CheckboxDataUi
 import eu.europa.ec.uilogic.component.wrap.RadioButtonDataUi
 import eu.europa.ec.uilogic.component.wrap.SwitchDataUi
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapAsyncImage
@@ -366,7 +367,7 @@ fun ListItem(
                             text = trailingContentData.text,
                             textConfig = TextConfig(
                                 styleKey = TextStyleKey.LabelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                colorKey = ColorKey.OnSurfaceVariant,
                                 maxLines = Int.MAX_VALUE,
                             )
                         )

@@ -36,6 +36,7 @@ import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
+import eu.europa.ec.uilogic.component.wrap.TextAlignKey
 import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapText
@@ -79,7 +80,7 @@ fun ContentHeader(
     config: ContentHeaderConfig,
     descriptionTestTag: String? = null,
 ) {
-    val commonTextAlign = TextAlign.Center
+    val commonTextAlign = TextAlignKey.Center
 
     Column(
         modifier = modifier,
@@ -104,7 +105,7 @@ fun ContentHeader(
                     text = safeDescription,
                     textConfig = descriptionTextConfig ?: TextConfig(
                         styleKey = TextStyleKey.BodyLarge,
-                        textAlign = commonTextAlign,
+                        textAlignKey = commonTextAlign,
                         maxLines = 3,
                     )
                 )
@@ -119,7 +120,7 @@ fun ContentHeader(
                     text = safeMainText,
                     textConfig = mainTextConfig ?: TextConfig(
                         styleKey = TextStyleKey.BodyLargeBold,
-                        textAlign = commonTextAlign,
+                        textAlignKey = commonTextAlign,
                     )
                 )
             }

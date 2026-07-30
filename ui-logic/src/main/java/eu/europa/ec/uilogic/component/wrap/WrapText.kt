@@ -30,30 +30,29 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.TextLengthPreviewProvider
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
 /**
  * Data class representing the configuration for text elements.
  *
- * Fully serializable: [styleKey] identifies the [TextStyle] by name (the
- * [TextStyleKey] enum), and the destination resolves it via [TextStyleKey.toTextStyle]
- * at render time. This means a `TextConfig` can be carried across a navigation
- * argument without losing its style.
+ * Fully serializable and KMP-clean: every Compose type is carried as a keyed enum
+ * ([styleKey], [colorKey], [textAlignKey], [overflowKey]) and resolved to its concrete
+ * Compose value at render time (see [toTextStyle], [toColor], [toTextAlign], [toTextOverflow]).
+ * This means a `TextConfig` can be carried across a navigation argument without losing its style.
  *
  * @property styleKey Optional [TextStyleKey]. `null` means use `LocalTextStyle.current`.
- * @property color Text color. `null` means use `MaterialTheme.colorScheme.onSurface`.
- * @property textAlign Horizontal alignment, defaults to [TextAlign.Start].
+ * @property colorKey Text [ColorKey]. `null` means use `MaterialTheme.colorScheme.onSurface`.
+ * @property textAlignKey Horizontal alignment, defaults to [TextAlignKey.Start].
  * @property maxLines Maximum number of lines, defaults to 2.
- * @property overflow Overflow handling, defaults to [TextOverflow.Ellipsis].
+ * @property overflowKey Overflow handling, defaults to [TextOverflowKey.Ellipsis].
  */
 @Serializable
 data class TextConfig(
     val styleKey: TextStyleKey? = null,
-    @Contextual val color: Color? = null,
-    @Contextual val textAlign: TextAlign = TextAlign.Start,
+    val colorKey: ColorKey? = null,
+    val textAlignKey: TextAlignKey = TextAlignKey.Start,
     val maxLines: Int = 2,
-    @Contextual val overflow: TextOverflow = TextOverflow.Ellipsis,
+    val overflowKey: TextOverflowKey = TextOverflowKey.Ellipsis,
 )
 
 @Composable
@@ -66,11 +65,32 @@ fun WrapText(
         modifier = modifier,
         text = text,
         style = textConfig.styleKey?.toTextStyle() ?: LocalTextStyle.current,
-        color = textConfig.color ?: MaterialTheme.colorScheme.onSurface,
-        textAlign = textConfig.textAlign,
+        color = textConfig.colorKey?.toColor() ?: MaterialTheme.colorScheme.onSurface,
+        textAlign = textConfig.textAlignKey.toTextAlign(),
         maxLines = textConfig.maxLines,
-        overflow = textConfig.overflow,
+        overflow = textConfig.overflowKey.toTextOverflow(),
     )
+}
+
+/** Resolves a [ColorKey] to a live [Color] from the current Material theme (`@Composable`). */
+@Composable
+fun ColorKey.toColor(): Color = when (this) {
+    ColorKey.OnSurface -> MaterialTheme.colorScheme.onSurface
+    ColorKey.OnSurfaceVariant -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
+/** Resolves a [TextAlignKey] to a Compose [TextAlign]. */
+fun TextAlignKey.toTextAlign(): TextAlign = when (this) {
+    TextAlignKey.Start -> TextAlign.Start
+    TextAlignKey.Center -> TextAlign.Center
+    TextAlignKey.End -> TextAlign.End
+}
+
+/** Resolves a [TextOverflowKey] to a Compose [TextOverflow]. */
+fun TextOverflowKey.toTextOverflow(): TextOverflow = when (this) {
+    TextOverflowKey.Clip -> TextOverflow.Clip
+    TextOverflowKey.Ellipsis -> TextOverflow.Ellipsis
+    TextOverflowKey.Visible -> TextOverflow.Visible
 }
 
 /**
