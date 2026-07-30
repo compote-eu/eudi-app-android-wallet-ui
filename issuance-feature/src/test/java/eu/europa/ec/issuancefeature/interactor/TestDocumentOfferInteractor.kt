@@ -60,6 +60,7 @@ import eu.europa.ec.issuancefeature.util.mockedWalletActivationErrorMessage
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.testfeature.util.getMockedMainPid
 import eu.europa.ec.testfeature.util.mockedDefaultLocale
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
@@ -828,11 +829,11 @@ class TestDocumentOfferInteractor {
                 first = SuccessUIConfig.TextElementsConfig(
                     text = mockedSuccessText,
                     description = mockedSuccessDescription,
-                    color = ThemeColors.pending
+                    color = ColorKey.Pending
                 ),
                 second = SuccessUIConfig.ImageConfig(
                     type = SuccessUIConfig.ImageConfig.Type.Drawable(icon = AppIcons.InProgress),
-                    tint = ThemeColors.primary,
+                    tint = ColorKey.Primary,
                     screenPercentageSize = PERCENTAGE_25,
                 ),
                 third = resourceProvider.getString(R.string.issuance_document_offer_deferred_success_primary_button_text)
@@ -1401,7 +1402,7 @@ class TestDocumentOfferInteractor {
             first = SuccessUIConfig.TextElementsConfig(
                 text = mockedSuccessText,
                 description = mockedSuccessDescription,
-                color = ThemeColors.success
+                color = ColorKey.Success
             ),
             second = SuccessUIConfig.ImageConfig(),
             third = mockedPrimaryButtonText

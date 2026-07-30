@@ -44,6 +44,7 @@ import eu.europa.ec.issuancefeature.util.mockedSuccessText
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.testfeature.util.mockedDefaultLocale
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
@@ -1024,11 +1025,11 @@ class TestAddDocumentInteractor {
             first = SuccessUIConfig.TextElementsConfig(
                 text = resourceProvider.getString(R.string.issuance_add_document_deferred_success_text),
                 description = resourceProvider.getString(R.string.issuance_add_document_deferred_success_description),
-                color = ThemeColors.pending
+                color = ColorKey.Pending
             ),
             second = SuccessUIConfig.ImageConfig(
                 type = SuccessUIConfig.ImageConfig.Type.Drawable(icon = AppIcons.InProgress),
-                tint = ThemeColors.primary,
+                tint = ColorKey.Primary,
                 screenPercentageSize = PERCENTAGE_25,
             ),
             third = resourceProvider.getString(R.string.issuance_add_document_deferred_success_primary_button_text)

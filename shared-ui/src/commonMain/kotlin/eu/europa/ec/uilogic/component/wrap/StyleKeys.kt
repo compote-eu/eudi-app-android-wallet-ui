@@ -31,6 +31,9 @@ import kotlinx.serialization.Serializable
 enum class ColorKey {
     OnSurface,
     OnSurfaceVariant,
+    Success,
+    Pending,
+    Primary,
 }
 
 @Serializable

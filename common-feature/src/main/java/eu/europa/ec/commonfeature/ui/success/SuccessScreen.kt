@@ -53,6 +53,8 @@ import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
 import eu.europa.ec.uilogic.component.utils.SIZE_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
+import eu.europa.ec.uilogic.component.wrap.ColorKey
+import eu.europa.ec.uilogic.component.wrap.toColor
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.WrapButton
 import eu.europa.ec.uilogic.component.wrap.WrapImage
@@ -159,7 +161,7 @@ private fun SuccessScreenView(
                     modifier = Modifier.fillMaxWidth(imageConfig.screenPercentageSize),
                     iconData = imageConfig.type.icon,
                     colorFilter = imageConfig.tint?.let { safeImageColorTint ->
-                        ColorFilter.tint(safeImageColorTint)
+                        ColorFilter.tint(safeImageColorTint.toColor())
                     },
                     contentScale = ContentScale.FillWidth
                 )
@@ -171,7 +173,7 @@ private fun SuccessScreenView(
                     .padding(vertical = SPACING_SMALL.dp),
                 text = state.successConfig.textElementsConfig.text,
                 style = MaterialTheme.typography.headlineLarge.copy(
-                    color = state.successConfig.textElementsConfig.color
+                    color = state.successConfig.textElementsConfig.color.toColor()
                 ),
                 textAlign = TextAlign.Center,
             )
@@ -301,11 +303,11 @@ private fun SuccessPendingPreview() {
                     textElementsConfig = SuccessUIConfig.TextElementsConfig(
                         text = stringResource(R.string.issuance_add_document_deferred_success_text),
                         description = stringResource(R.string.issuance_add_document_deferred_success_description),
-                        color = ThemeColors.pending,
+                        color = ColorKey.Pending,
                     ),
                     imageConfig = SuccessUIConfig.ImageConfig(
                         type = SuccessUIConfig.ImageConfig.Type.Drawable(icon = AppIcons.InProgress),
-                        tint = ThemeColors.primary,
+                        tint = ColorKey.Primary,
                         screenPercentageSize = PERCENTAGE_25,
                     ),
                     buttonConfig = listOf(

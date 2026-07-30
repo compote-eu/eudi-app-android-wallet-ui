@@ -42,6 +42,7 @@ import eu.europa.ec.issuancefeature.ui.offer.model.DocumentOfferUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -339,13 +340,13 @@ class DocumentOfferInteractorImpl(
             first = SuccessUIConfig.TextElementsConfig(
                 text = resourceProvider.getString(R.string.issuance_document_offer_deferred_success_text),
                 description = description,
-                color = ThemeColors.pending
+                color = ColorKey.Pending
             ),
             second = SuccessUIConfig.ImageConfig(
                 type = SuccessUIConfig.ImageConfig.Type.Drawable(
                     icon = AppIcons.InProgress,
                 ),
-                tint = ThemeColors.primary,
+                tint = ColorKey.Primary,
                 screenPercentageSize = PERCENTAGE_25,
             ),
             third = resourceProvider.getString(R.string.issuance_document_offer_deferred_success_primary_button_text)
