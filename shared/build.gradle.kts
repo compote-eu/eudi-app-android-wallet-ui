@@ -38,7 +38,9 @@ plugins {
 kotlin {
     // AGP 9's KMP-aware Android target (replaces androidTarget() + a `com.android.library`
     // block). Produces an AAR consumable by the existing Android modules. `withHostTest`
-    // lets the shared commonTest also run as an Android (JVM) unit test.
+    // lets the shared commonTest also run as an Android (JVM) unit test. NB: this block is
+    // `android {}`, NOT `androidLibrary {}` — the latter is deprecated as of AGP 9.3.x
+    // ("The 'androidLibrary' block is deprecated. Please use 'android' instead").
     android {
         namespace = "eu.europa.ec.shared"
         compileSdk = 37
@@ -53,10 +55,11 @@ kotlin {
         }
     }
 
-    // iOS targets: device (arm64) + both simulators. Produces a static framework that a
-    // future iosApp/ Xcode target consumes.
+    // iOS targets: device (arm64) + Apple-Silicon simulator. Produces a static framework that
+    // the iosApp/ Xcode target consumes. iosX64 (Intel-Mac simulator) is intentionally omitted:
+    // Apple no longer ships Intel Macs, and our KMP deps (Compose MP 1.11+, androidx.lifecycle
+    // 2.11+, and AndroidX libs generally) have stopped publishing iosX64 artifacts.
     listOf(
-        iosX64(),
         iosArm64(),
         iosSimulatorArm64(),
     ).forEach { iosTarget ->
