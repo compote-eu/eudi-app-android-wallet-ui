@@ -33,10 +33,12 @@ targets:
       - name: Compile Kotlin Framework (SharedKit)
         basedOnDependencyAnalysis: false
         script: |
-          # Build guard: skip the Gradle task during Xcode's index build so the Kotlin
-          # framework isn't built twice (once for the real build, once for indexing).
-          if [ "$ACTION" = "indexbuild" ]; then
-            echo "Skipping Kotlin framework build during indexing."
+          # Build guard: skip the Gradle task during Xcode's index build AND SwiftUI previews,
+          # so the Kotlin framework isn't rebuilt (or deadlocked) outside a real build. Android
+          # Studio's KMP inspection ("Missing build guard for an Xcode target") flags a
+          # framework-compile script phase that doesn't guard both of these actions.
+          if [ "$ACTION" = "indexbuild" ] || [ "$ENABLE_PREVIEWS" = "YES" ]; then
+            echo "Skipping Kotlin framework build during indexing / SwiftUI preview."
             exit 0
           fi
           cd "$SRCROOT/.."
