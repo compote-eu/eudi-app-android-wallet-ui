@@ -29,6 +29,8 @@ plugins {
     // resolution). The compose compiler plugin is bundled with Kotlin, so applied by id.
     alias(libs.plugins.jetbrains.compose)
     id("org.jetbrains.kotlin.plugin.compose")
+    // @Serializable Nav3 route keys (type-safe navigation, Phase 3c prototype).
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 kotlin {
@@ -68,6 +70,10 @@ kotlin {
             // androidx.lifecycle ViewModel (KMP) — base for the shared MviViewModel. `api`
             // so feature view-models that extend MviViewModel see androidx.lifecycle.ViewModel.
             api(libs.androidx.lifecycle.viewmodel)
+            // Nav3 (type-safe navigation) prototype: NavKey routes + kotlinx-serialization,
+            // the KMP replacement for the legacy string-route + UiSerializer approach.
+            api(libs.androidx.navigation3.runtime)
+            implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
