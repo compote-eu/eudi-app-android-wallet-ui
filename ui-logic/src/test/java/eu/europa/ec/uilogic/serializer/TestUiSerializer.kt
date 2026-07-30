@@ -19,6 +19,8 @@ package eu.europa.ec.uilogic.serializer
 import eu.europa.ec.businesslogic.extension.encodeToBase64
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.IconDataUi
+import eu.europa.ec.uilogic.component.imageVector
+import eu.europa.ec.uilogic.component.resourceId
 import kotlinx.serialization.Serializable
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull

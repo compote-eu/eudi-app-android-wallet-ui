@@ -27,6 +27,9 @@ plugins {
     // Compose Multiplatform + the (Kotlin-bundled) Compose compiler plugin.
     alias(libs.plugins.jetbrains.compose)
     id("org.jetbrains.kotlin.plugin.compose")
+    // @Serializable UI-model data classes (TextConfig, IconDataUi, ContentHeaderConfig, …) that
+    // become Nav3 route-argument payloads. Data-class serializers must be generated in this module.
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 kotlin {
@@ -61,6 +64,7 @@ kotlin {
             api(project(":shared-logic"))
             implementation(libs.jetbrains.compose.runtime)
             implementation(libs.jetbrains.compose.components.resources)
+            implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

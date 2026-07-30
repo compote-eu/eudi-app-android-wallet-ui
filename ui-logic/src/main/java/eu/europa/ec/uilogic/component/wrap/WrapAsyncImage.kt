@@ -26,6 +26,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.svg.SvgDecoder
 import eu.europa.ec.uilogic.component.IconDataUi
+import eu.europa.ec.uilogic.component.resourceId
 
 @Composable
 fun WrapAsyncImage(
