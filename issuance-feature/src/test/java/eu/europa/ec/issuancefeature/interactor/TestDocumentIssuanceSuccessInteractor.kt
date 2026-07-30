@@ -549,7 +549,7 @@ class TestDocumentIssuanceSuccessInteractor {
                             description = mockedSuccessDescription,
                             relyingPartyData = RelyingPartyDataUi(
                                 name = mockedIssuerName,
-                                logo = URI.create(mockedIssuerLogo),
+                                logo = mockedIssuerLogo,
                                 isVerified = false
                             )
                         ),

@@ -357,7 +357,7 @@ class DocumentOfferViewModel(
         issuerLogo: URI?,
     ): RelyingPartyDataUi {
         return RelyingPartyDataUi(
-            logo = issuerLogo,
+            logo = issuerLogo?.toString(),
             isVerified = false,
             name = issuerName,
             description = resourceProvider.getString(R.string.issuance_document_offer_relying_party_description)

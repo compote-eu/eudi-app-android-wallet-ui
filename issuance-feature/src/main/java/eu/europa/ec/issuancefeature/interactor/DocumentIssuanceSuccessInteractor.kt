@@ -133,7 +133,7 @@ class DocumentIssuanceSuccessInteractorImpl(
             val headerConfig = ContentHeaderConfig(
                 description = headerConfigDescription,
                 relyingPartyData = RelyingPartyDataUi(
-                    logo = issuerLogo,
+                    logo = issuerLogo?.toString(),
                     name = issuerName,
                     isVerified = issuerIsTrusted,
                 )

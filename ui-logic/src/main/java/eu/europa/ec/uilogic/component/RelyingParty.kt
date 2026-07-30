@@ -43,14 +43,13 @@ import eu.europa.ec.uilogic.component.wrap.TextStyleKey
 import eu.europa.ec.uilogic.component.wrap.WrapAsyncImage
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
 import eu.europa.ec.uilogic.component.wrap.WrapText
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
-import java.net.URI
 
 /**
  * Data class representing information about a Relying Party.
  *
- * @property logo An optional [IconDataUi] representing the logo of the Relying Party.
+ * @property logo An optional logo URL string for the Relying Party (KMP-clean; the image loader
+ *   accepts a String source directly).
  * @property isVerified A boolean indicating whether the Relying Party is verified.
  * @property name The name of the Relying Party.
  * @property nameTextConfig Optional [TextConfig] for styling the name text.
@@ -59,7 +58,7 @@ import java.net.URI
  */
 @Serializable
 data class RelyingPartyDataUi(
-    @Contextual val logo: URI? = null,
+    val logo: String? = null,
     val isVerified: Boolean,
     val name: String,
     val nameTextConfig: TextConfig? = null,
@@ -83,7 +82,7 @@ fun RelyingParty(
             logo?.let { safeLogo ->
                 WrapAsyncImage(
                     modifier = Modifier.fillMaxWidth(0.5f),
-                    source = safeLogo.toString(),
+                    source = safeLogo,
                     contentScale = ContentScale.FillWidth
                 )
                 VSpacer.Small()
