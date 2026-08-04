@@ -29,11 +29,13 @@ import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
+import eu.europa.ec.shared.navigation.SettingsRoute
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ModalOptionUi
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -42,14 +44,12 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.DashboardScreens
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.IntentType
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
 import eu.europa.ec.uilogic.navigation.helper.hasIntentAction
 import eu.europa.ec.uilogic.navigation.helper.toLegacyArguments
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import org.koin.core.annotation.KoinViewModel
 
 data class State(
@@ -100,8 +100,8 @@ sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data object Pop : Navigation()
         data class SwitchScreen(
-            val screenRoute: String,
-            val popUpToScreenRoute: String = DashboardScreens.Dashboard.screenRoute,
+            val route: AppRoute,
+            val popUpTo: AppRoute = DashboardRoute,
             val inclusive: Boolean = false,
         ) : Navigation()
 
@@ -199,7 +199,7 @@ class DashboardViewModel(
     private fun goToDocumentDetails(docId: DocumentId) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = DocumentDetailsRoute(documentId = docId).toLegacyRoute()
+                route = DocumentDetailsRoute(documentId = docId)
             )
         }
     }
@@ -245,15 +245,15 @@ class DashboardViewModel(
     private fun handleSideMenuItemClicked(itemType: SideMenuTypeUi) {
         when (itemType) {
             SideMenuTypeUi.CHANGE_PIN -> {
-                val nextScreenRoute = QuickPinRoute(pinFlow = PinFlow.UPDATE).toLegacyRoute()
+                val nextRoute = QuickPinRoute(pinFlow = PinFlow.UPDATE)
 
                 hideSideMenu()
-                setEffect { Effect.Navigation.SwitchScreen(screenRoute = nextScreenRoute) }
+                setEffect { Effect.Navigation.SwitchScreen(route = nextRoute) }
             }
 
             SideMenuTypeUi.SETTINGS -> {
                 hideSideMenu()
-                setEffect { Effect.Navigation.SwitchScreen(screenRoute = DashboardScreens.Settings.screenRoute) }
+                setEffect { Effect.Navigation.SwitchScreen(route = SettingsRoute) }
             }
         }
     }

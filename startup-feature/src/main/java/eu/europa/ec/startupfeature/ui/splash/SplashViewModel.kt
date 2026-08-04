@@ -17,12 +17,12 @@
 package eu.europa.ec.startupfeature.ui.splash
 
 import androidx.lifecycle.viewModelScope
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.ModuleRoute
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -38,8 +38,7 @@ sealed class Event : ViewEvent {
 sealed class Effect : ViewSideEffect {
 
     sealed class Navigation : Effect() {
-        data class SwitchModule(val moduleRoute: ModuleRoute) : Navigation()
-        data class SwitchScreen(val route: String) : Navigation()
+        data class SwitchScreen(val route: AppRoute) : Navigation()
     }
 }
 
@@ -58,9 +57,9 @@ class SplashViewModel(
     private fun enterApplication() {
         viewModelScope.launch {
             delay((viewState.value.logoAnimationDuration + 500).toLong())
-            val screenRoute = interactor.getAfterSplashRoute()
+            val route = interactor.getAfterSplashRoute()
             setEffect {
-                Effect.Navigation.SwitchScreen(screenRoute)
+                Effect.Navigation.SwitchScreen(route)
             }
         }
     }

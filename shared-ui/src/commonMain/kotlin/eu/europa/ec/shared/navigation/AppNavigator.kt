@@ -26,11 +26,20 @@ import androidx.navigation3.runtime.NavKey
  * list) and exposes the operations the current app performs through `navController`, mapping each
  * navigation-compose pattern to an explicit list op so behavior is preserved 1:1:
  *
- *  - `navigate(X)`                         -> [navigate]
- *  - `navigate(X){ popUpTo(Y){inclusive} }`-> [navigate] with popUpTo args
- *  - `popBackStack()` (Pop)                -> [pop]
- *  - Splash `SwitchModule` (popUpTo start, inclusive) -> [replaceAll]
- *  - Pin `SwitchModule` (plain navigate)   -> [navigate]
+ *  - `navigate(X)`                          -> [navigate]
+ *  - `navigate(X){ popUpTo(Y){inclusive} }` -> [navigate] with popUpTo args
+ *  - `popBackStack()` (Pop)                 -> [pop]
+ *  - `popBackStack(route, inclusive)`       -> [popUpTo]
+ *  - Splash replacing itself (`navigate(X){ popUpTo(Splash){inclusive} }`, leaving a stack of one)
+ *    -> [replaceAll]
+ *
+ * The Stage-4 Nav2 counterparts of these live in :ui-logic `TypedNavigation.kt`
+ * (`navigateToRoute` / `navigateReplacingCurrent` / `popBackStackTo`) with matching parameter
+ * names, so the Stage-5 host swap only changes the receiver.
+ *
+ * Note for Stage 5: [popUpTo] and [navigate]'s `popUpTo` argument match by `==`. Config-carrying
+ * pop targets are rebuilt at their call sites rather than read off the back stack, so a value
+ * comparison would silently miss the real entry — match those by destination identity/type instead.
  */
 class AppNavigator(private val backStack: MutableList<NavKey>) {
 

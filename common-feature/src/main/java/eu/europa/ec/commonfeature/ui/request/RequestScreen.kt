@@ -86,6 +86,8 @@ import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.finish
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
+import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
+import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -144,7 +146,7 @@ fun RequestScreen(
                 when (navigationEffect) {
 
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigate(navigationEffect.screenRoute)
+                        navController.navigateToRoute(navigationEffect.route)
                     }
 
                     is Effect.Navigation.Pop -> {
@@ -152,8 +154,8 @@ fun RequestScreen(
                     }
 
                     is Effect.Navigation.PopTo -> {
-                        navController.popBackStack(
-                            route = navigationEffect.screenRoute,
+                        navController.popBackStackTo(
+                            route = navigationEffect.route,
                             inclusive = false
                         )
                     }

@@ -118,6 +118,7 @@ import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.finish
 import eu.europa.ec.uilogic.extension.isScrollingUp
 import eu.europa.ec.uilogic.extension.paddingFrom
+import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -280,11 +281,11 @@ private fun handleNavigationEffect(
     when (navigationEffect) {
         is Effect.Navigation.Pop -> context.finish()
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigate(navigationEffect.screenRoute) {
-                popUpTo(navigationEffect.popUpToScreenRoute) {
-                    inclusive = navigationEffect.inclusive
-                }
-            }
+            navController.navigateToRoute(
+                route = navigationEffect.route,
+                popUpTo = navigationEffect.popUpTo,
+                popUpToInclusive = navigationEffect.inclusive,
+            )
         }
     }
 }

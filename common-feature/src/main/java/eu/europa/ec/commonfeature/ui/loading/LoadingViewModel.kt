@@ -26,8 +26,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
-import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration
@@ -48,9 +46,9 @@ sealed class Event : ViewEvent {
 
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
-        data class SwitchScreen(val screenRoute: String) : Navigation()
+        data class SwitchScreen(val route: AppRoute) : Navigation()
         data class PopBackStackUpTo(
-            val screenRoute: String,
+            val route: AppRoute,
             val inclusive: Boolean
         ) : Navigation()
     }
@@ -124,7 +122,7 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
             is NavigationType.Pop, NavigationType.Finish -> {
                 setEffect {
                     Effect.Navigation.PopBackStackUpTo(
-                        screenRoute = getPreviousRoute().toLegacyScreen().screenRoute,
+                        route = getPreviousRoute(),
                         inclusive = false
                     )
                 }
@@ -133,7 +131,7 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
             is NavigationType.PopTo -> {
                 setEffect {
                     Effect.Navigation.PopBackStackUpTo(
-                        screenRoute = navigationType.route.toLegacyScreen().screenRoute,
+                        route = navigationType.route,
                         inclusive = false
                     )
                 }
@@ -142,7 +140,7 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
             is NavigationType.Deeplink -> {}
 
             is NavigationType.PushRoute -> setEffect {
-                Effect.Navigation.SwitchScreen(navigationType.route.toLegacyRoute())
+                Effect.Navigation.SwitchScreen(navigationType.route)
             }
         }
     }

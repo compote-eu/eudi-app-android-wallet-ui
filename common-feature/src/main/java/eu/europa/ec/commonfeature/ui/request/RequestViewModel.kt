@@ -33,8 +33,6 @@ import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.IntentType
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
-import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import kotlinx.coroutines.Job
 
 data class State(
@@ -84,13 +82,13 @@ sealed class Event : ViewEvent {
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data class SwitchScreen(
-            val screenRoute: String,
+            val route: AppRoute,
         ) : Navigation()
 
         data object Pop : Navigation()
         data object Finish : Navigation()
         data class PopTo(
-            val screenRoute: String,
+            val route: AppRoute,
         ) : Navigation()
     }
 
@@ -230,14 +228,12 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
             is NavigationType.Deeplink -> {}
 
             is NavigationType.PopTo -> {
-                setEffect {
-                    Effect.Navigation.PopTo(navigationType.route.toLegacyScreen().screenRoute)
-                }
+                setEffect { Effect.Navigation.PopTo(navigationType.route) }
             }
 
             is NavigationType.PushRoute -> {
                 unsubscribe()
-                setEffect { Effect.Navigation.SwitchScreen(navigationType.route.toLegacyRoute()) }
+                setEffect { Effect.Navigation.SwitchScreen(navigationType.route) }
             }
         }
     }

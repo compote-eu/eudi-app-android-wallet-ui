@@ -32,6 +32,7 @@ import eu.europa.ec.eudi.rqesui.domain.extension.toUriOrEmpty
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
@@ -41,7 +42,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -70,7 +70,7 @@ sealed class Event : ViewEvent {
 
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
-        data class SwitchScreen(val screenRoute: String) : Navigation()
+        data class SwitchScreen(val route: AppRoute) : Navigation()
         data object Pop : Navigation()
         data object GoToAppSettings : Navigation()
     }
@@ -209,14 +209,14 @@ class QrScanViewModel(
     private fun navigateToPresentationRequest(scanResult: String) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = PresentationRequestRoute(
+                route = PresentationRequestRoute(
                     config = RequestUriConfig(
                         PresentationMode.OpenId4Vp(
                             uri = scanResult,
                             initiatorRoute = DashboardRoute
                         )
                     )
-                ).toLegacyRoute()
+                )
             )
         }
     }
@@ -224,7 +224,7 @@ class QrScanViewModel(
     private fun navigateToDocumentOffer(scanResult: String, issuanceFlowType: IssuanceFlowType) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = DocumentOfferRoute(
+                route = DocumentOfferRoute(
                     config = OfferUiConfig(
                         offerUri = scanResult,
                         onSuccessNavigation = calculateOnSuccessNavigation(
@@ -234,7 +234,7 @@ class QrScanViewModel(
                             issuanceFlowType
                         )
                     )
-                ).toLegacyRoute()
+                )
             )
         }
     }

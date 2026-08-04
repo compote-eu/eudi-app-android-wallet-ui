@@ -27,6 +27,7 @@ import eu.europa.ec.commonfeature.interactor.QuickPinInteractorPinValidPartialSt
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorSetPinPartialState
 import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.navigation.SuccessRoute
@@ -40,8 +41,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.ModuleRoute
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -103,8 +102,7 @@ sealed class Event : ViewEvent {
 
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
-        data class SwitchModule(val moduleRoute: ModuleRoute) : Navigation()
-        data class SwitchScreen(val screen: String) : Navigation()
+        data class SwitchScreen(val route: AppRoute) : Navigation()
 
         data object Pop : Navigation()
         data object Finish : Navigation()
@@ -336,7 +334,7 @@ class PinViewModel(
                     is QuickPinInteractorSetPinPartialState.Success -> {
                         clearPendingPin()
                         setEffect {
-                            Effect.Navigation.SwitchScreen(getNextScreenRoute())
+                            Effect.Navigation.SwitchScreen(getNextRoute())
                         }
                     }
                 }
@@ -446,7 +444,7 @@ class PinViewModel(
         delay(time)
     }
 
-    private fun getNextScreenRoute(): String {
+    private fun getNextRoute(): AppRoute {
 
         val navigationAfterCreate = ConfigNavigation(
             navigationType = NavigationType.PushRoute(
@@ -524,7 +522,7 @@ class PinViewModel(
                     PinFlow.UPDATE -> navigationAfterUpdate
                 },
             )
-        ).toLegacyRoute()
+        )
     }
 
     private fun showBottomSheet() {

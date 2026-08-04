@@ -53,6 +53,8 @@ import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.cacheUri
 import eu.europa.ec.uilogic.extension.findActivity
+import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
+import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -95,18 +97,15 @@ fun DocumentSuccessScreen(
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigate(navigationEffect.screenRoute) {
-                            navigationEffect.popUpRoute?.let { popUpToRoute ->
-                                popUpTo(popUpToRoute) {
-                                    inclusive = true
-                                }
-                            }
-                        }
+                        navController.navigateToRoute(
+                            route = navigationEffect.route,
+                            popUpTo = navigationEffect.popUpTo,
+                        )
                     }
 
                     is Effect.Navigation.PopBackStackUpTo -> {
-                        navController.popBackStack(
-                            route = navigationEffect.screenRoute,
+                        navController.popBackStackTo(
+                            route = navigationEffect.route,
                             inclusive = navigationEffect.inclusive
                         )
                     }

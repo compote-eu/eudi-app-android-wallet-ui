@@ -35,6 +35,7 @@ import eu.europa.ec.issuancefeature.interactor.ResolveDocumentOfferInteractorPar
 import eu.europa.ec.issuancefeature.ui.offer.transformer.DocumentOfferTransformer.toListItemDataUiList
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
@@ -51,8 +52,6 @@ import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
-import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -97,12 +96,12 @@ sealed class Event : ViewEvent {
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data class SwitchScreen(
-            val screenRoute: String,
+            val route: AppRoute,
             val shouldPopToSelf: Boolean = true
         ) : Navigation()
 
         data class PopBackStackUpTo(
-            val screenRoute: String,
+            val route: AppRoute,
             val inclusive: Boolean
         ) : Navigation()
 
@@ -212,7 +211,7 @@ class DocumentOfferViewModel(
                                     DocumentOfferRoute(viewState.value.offerUiConfig)
                                 )
                             )
-                        ).toLegacyRoute(),
+                        ),
                         shouldPopToSelf = false
                     )
                 }
@@ -475,20 +474,20 @@ class DocumentOfferViewModel(
     ) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = DocumentIssuanceSuccessRoute(
+                route = DocumentIssuanceSuccessRoute(
                     IssuanceSuccessUiConfig(
                         documentIds = documentIds,
                         onSuccessNavigation = onSuccessNavigation,
                     )
-                ).toLegacyRoute()
+                )
             )
         }
     }
 
-    private fun goToSuccessScreen(route: String) {
+    private fun goToSuccessScreen(route: AppRoute) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = route
+                route = route
             )
         }
     }
@@ -497,7 +496,7 @@ class DocumentOfferViewModel(
         val navigationEffect: Effect.Navigation = when (val nav = navigation.navigationType) {
             is NavigationType.PopTo -> {
                 Effect.Navigation.PopBackStackUpTo(
-                    screenRoute = nav.route.toLegacyScreen().screenRoute,
+                    route = nav.route,
                     inclusive = false
                 )
             }
@@ -509,7 +508,7 @@ class DocumentOfferViewModel(
 
             is NavigationType.Pop, NavigationType.Finish -> Effect.Navigation.Pop
 
-            is NavigationType.PushRoute -> Effect.Navigation.SwitchScreen(nav.route.toLegacyRoute())
+            is NavigationType.PushRoute -> Effect.Navigation.SwitchScreen(nav.route)
         }
 
         setEffect {
@@ -525,14 +524,14 @@ class DocumentOfferViewModel(
     ) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = DocumentOfferCodeRoute(
+                route = DocumentOfferCodeRoute(
                     OfferCodeUiConfig(
                         offerUri = offerUri,
                         txCodeLength = txCodeLength,
                         issuerName = issuerName,
                         onSuccessNavigation = onSuccessNavigation
                     )
-                ).toLegacyRoute(),
+                ),
                 shouldPopToSelf = false
             )
         }

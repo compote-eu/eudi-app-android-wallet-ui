@@ -33,7 +33,8 @@ import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
-import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
+import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
+import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -66,16 +67,15 @@ fun LoadingScreen(
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigate(navigationEffect.screenRoute) {
-                            popUpTo(viewModel.getCallerRoute().toLegacyScreen().screenRoute) {
-                                inclusive = true
-                            }
-                        }
+                        navController.navigateToRoute(
+                            route = navigationEffect.route,
+                            popUpTo = viewModel.getCallerRoute(),
+                        )
                     }
 
                     is Effect.Navigation.PopBackStackUpTo -> {
-                        navController.popBackStack(
-                            route = navigationEffect.screenRoute,
+                        navController.popBackStackTo(
+                            route = navigationEffect.route,
                             inclusive = navigationEffect.inclusive
                         )
                     }

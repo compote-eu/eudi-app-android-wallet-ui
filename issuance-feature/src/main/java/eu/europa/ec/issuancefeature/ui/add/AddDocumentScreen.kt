@@ -81,8 +81,8 @@ import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.finish
 import eu.europa.ec.uilogic.extension.getPendingUri
 import eu.europa.ec.uilogic.extension.paddingFrom
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
+import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -152,11 +152,10 @@ fun AddDocumentScreen(
                 when (navigationEffect) {
                     is Effect.Navigation.Pop -> navController.popBackStack()
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigate(navigationEffect.screenRoute) {
-                            popUpTo(IssuanceScreens.AddDocument.screenRoute) {
-                                inclusive = navigationEffect.inclusive
-                            }
-                        }
+                        navController.navigateReplacingCurrent(
+                            route = navigationEffect.route,
+                            popUpToCurrent = navigationEffect.inclusive
+                        )
                     }
 
                     is Effect.Navigation.Finish -> context.finish()

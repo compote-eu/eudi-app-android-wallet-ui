@@ -22,6 +22,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenti
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
+import eu.europa.ec.shared.navigation.SuccessRoute
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
 import eu.europa.ec.corelogic.controller.IssuanceMethod
@@ -60,7 +61,6 @@ import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.contentDescriptionId
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
-import eu.europa.ec.uilogic.serializer.UiSerializerImpl
 import junit.framework.TestCase.assertEquals
 import org.junit.After
 import org.junit.Before
@@ -854,7 +854,7 @@ class TestAddDocumentInteractor {
     // 1. ConfigNavigation with NavigationType.PushRoute
     // 2. string resources mocked
     @Test
-    fun `Given Case 1, When buildGenericSuccessRouteForDeferred is called, Then the expected string result is returned`() {
+    fun `Given Case 1, When buildGenericSuccessRouteForDeferred is called, Then the expected SuccessRoute is returned`() {
         // Given
         mockDocumentIssuanceStrings()
 
@@ -877,15 +877,14 @@ class TestAddDocumentInteractor {
         val result = interactor.buildGenericSuccessRouteForDeferred(flowType = flowType)
 
         // Then
-        val expectedResult = expectedGenericSuccessRoute(config)
-        assertEquals(expectedResult, result)
+        assertEquals(SuccessRoute(config), result)
     }
 
     // Case 2:
     // 1. ConfigNavigation with NavigationType.PopRoute
     // 2. string resources mocked
     @Test
-    fun `When buildGenericSuccessRouteForDeferred (PopRoute) is called, then the expected string result is returned`() {
+    fun `When buildGenericSuccessRouteForDeferred (PopRoute) is called, then the expected SuccessRoute is returned`() {
         // Given
         mockDocumentIssuanceStrings()
 
@@ -910,8 +909,7 @@ class TestAddDocumentInteractor {
         val result = interactor.buildGenericSuccessRouteForDeferred(flowType = flowType)
 
         // Then
-        val expectedResult = expectedGenericSuccessRoute(config)
-        assertEquals(expectedResult, result)
+        assertEquals(SuccessRoute(config), result)
     }
     //endregion
 
@@ -962,13 +960,6 @@ class TestAddDocumentInteractor {
             .thenReturn(mockedSuccessDescription)
     }
 
-    private fun expectedGenericSuccessRoute(config: SuccessUIConfig): String {
-        val serializedConfig = UiSerializerImpl().toBase64(
-            model = config,
-            parser = SuccessUIConfig.Parser
-        ).orEmpty()
-        return "SUCCESS?successConfig=$serializedConfig"
-    }
     //endregion
 
     //region mocked objects

@@ -27,6 +27,8 @@ import eu.europa.ec.dashboardfeature.ui.transactions.list.model.FilterDateRangeS
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionCategoryUi
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionFilterIds
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionUi
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.TransactionDetailsRoute
 import eu.europa.ec.uilogic.component.DatePickerDialogConfig
 import eu.europa.ec.uilogic.component.DatePickerDialogType
@@ -39,8 +41,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 import java.time.LocalDate
@@ -106,8 +106,8 @@ sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data object Pop : Navigation()
         data class SwitchScreen(
-            val screenRoute: String,
-            val popUpToScreenRoute: String = DashboardScreens.Dashboard.screenRoute,
+            val route: AppRoute,
+            val popUpTo: AppRoute = DashboardRoute,
             val inclusive: Boolean = false,
         ) : Navigation()
     }
@@ -411,7 +411,7 @@ class TransactionsViewModel(
     private fun goToTransactionDetails(transactionId: String) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = TransactionDetailsRoute(transactionId = transactionId).toLegacyRoute()
+                route = TransactionDetailsRoute(transactionId = transactionId)
             )
         }
     }

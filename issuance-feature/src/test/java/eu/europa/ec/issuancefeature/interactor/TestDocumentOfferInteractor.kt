@@ -22,6 +22,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenti
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
+import eu.europa.ec.shared.navigation.SuccessRoute
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.ResolveDocumentOfferPartialState
@@ -81,7 +82,6 @@ import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
-import eu.europa.ec.uilogic.serializer.UiSerializerImpl
 import junit.framework.TestCase.assertEquals
 import org.junit.After
 import org.junit.Before
@@ -854,7 +854,7 @@ class TestDocumentOfferInteractor {
                 txCode = securePin(mockedTxCode)
             ).runFlowTest {
                 val expectedResult = IssueDocumentsInteractorPartialState.DeferredSuccess(
-                    successRoute = expectedGenericSuccessRoute(config)
+                    successRoute = SuccessRoute(config)
                 )
 
                 // Then
@@ -1348,13 +1348,6 @@ class TestDocumentOfferInteractor {
         return TxCode(inputMode, length, description)
     }
 
-    private fun expectedGenericSuccessRoute(config: SuccessUIConfig): String {
-        val serializedConfig = UiSerializerImpl().toBase64(
-            model = config,
-            parser = SuccessUIConfig.Parser
-        ).orEmpty()
-        return "SUCCESS?successConfig=$serializedConfig"
-    }
     //endregion
 
     //region mocked objects

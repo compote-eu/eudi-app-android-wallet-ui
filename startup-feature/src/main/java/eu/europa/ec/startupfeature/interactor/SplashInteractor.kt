@@ -25,6 +25,7 @@ import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.BiometricRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
@@ -33,10 +34,9 @@ import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 
 interface SplashInteractor {
-    suspend fun getAfterSplashRoute(): String
+    suspend fun getAfterSplashRoute(): AppRoute
 }
 
 class SplashInteractorImpl(
@@ -52,7 +52,7 @@ class SplashInteractorImpl(
     private val shouldActivateWithPid: Boolean
         get() = configLogic.forcePidActivation && !hasDocuments
 
-    override suspend fun getAfterSplashRoute(): String = when (quickPinInteractor.hasPin()) {
+    override suspend fun getAfterSplashRoute(): AppRoute = when (quickPinInteractor.hasPin()) {
         true -> {
             getBiometricsConfig()
         }
@@ -62,17 +62,17 @@ class SplashInteractorImpl(
         }
     }
 
-    private fun getQuickPinConfig(): String {
+    private fun getQuickPinConfig(): AppRoute {
         return QuickPinRoute(
             if (shouldActivateWithPid) {
                 PinFlow.CREATE_WITH_ACTIVATION
             } else {
                 PinFlow.CREATE_WITHOUT_ACTIVATION
             }
-        ).toLegacyRoute()
+        )
     }
 
-    private fun getBiometricsConfig(): String {
+    private fun getBiometricsConfig(): AppRoute {
 
         val shouldActivateWithPid = configLogic.forcePidActivation && !hasDocuments
 
@@ -105,6 +105,6 @@ class SplashInteractorImpl(
                     hasToolbarBackIcon = false
                 )
             )
-        ).toLegacyRoute()
+        )
     }
 }

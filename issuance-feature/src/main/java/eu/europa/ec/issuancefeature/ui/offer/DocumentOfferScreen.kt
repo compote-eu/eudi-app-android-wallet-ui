@@ -77,8 +77,9 @@ import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.cacheUri
 import eu.europa.ec.uilogic.extension.getPendingUri
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
+import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
+import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -288,18 +289,15 @@ private fun handleNavigationEffect(
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigate(navigationEffect.screenRoute) {
-                if (navigationEffect.shouldPopToSelf) {
-                    popUpTo(IssuanceScreens.DocumentOffer.screenRoute) {
-                        inclusive = true
-                    }
-                }
-            }
+            navController.navigateReplacingCurrent(
+                route = navigationEffect.route,
+                popUpToCurrent = navigationEffect.shouldPopToSelf
+            )
         }
 
         is Effect.Navigation.PopBackStackUpTo -> {
-            navController.popBackStack(
-                route = navigationEffect.screenRoute,
+            navController.popBackStackTo(
+                route = navigationEffect.route,
                 inclusive = navigationEffect.inclusive
             )
         }

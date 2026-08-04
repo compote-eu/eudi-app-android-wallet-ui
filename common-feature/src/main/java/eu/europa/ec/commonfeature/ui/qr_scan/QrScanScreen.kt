@@ -79,7 +79,7 @@ import eu.europa.ec.uilogic.component.wrap.WrapIcon
 import eu.europa.ec.uilogic.extension.openAppSettings
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.extension.throttledClickable
-import eu.europa.ec.uilogic.navigation.CommonScreens
+import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -118,11 +118,7 @@ private fun handleNavigationEffect(
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigate(navigationEffect.screenRoute) {
-                popUpTo(CommonScreens.QrScan.screenRoute) {
-                    inclusive = true
-                }
-            }
+            navController.navigateReplacingCurrent(navigationEffect.route)
         }
 
         is Effect.Navigation.Pop -> {

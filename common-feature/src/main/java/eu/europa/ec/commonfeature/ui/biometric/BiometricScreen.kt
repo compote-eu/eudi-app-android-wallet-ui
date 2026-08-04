@@ -75,6 +75,9 @@ import eu.europa.ec.uilogic.extension.setBackStackFlowCancelled
 import eu.europa.ec.uilogic.extension.setBackStackFlowSuccess
 import eu.europa.ec.uilogic.navigation.CommonScreens
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
+import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
+import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
+import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -112,9 +115,7 @@ fun BiometricScreen(
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigate(navigationEffect.screen) {
-                            popUpTo(CommonScreens.Biometric.screenRoute) { inclusive = true }
-                        }
+                        navController.navigateReplacingCurrent(navigationEffect.route)
                     }
 
                     is Effect.Navigation.LaunchBiometricsSystemScreen -> {
@@ -122,27 +123,24 @@ fun BiometricScreen(
                     }
 
                     is Effect.Navigation.PopBackStackUpTo -> {
+                        // The flow-completion flags are keyed by the back-stack entry's route
+                        // pattern; Nav3 replaces this savedStateHandle mechanism in Stage 5.
+                        val flowRoute = navigationEffect.route.toLegacyScreen().screenRoute
                         when (navigationEffect.indicateFlowCompletion) {
                             FlowCompletion.CANCEL -> {
-                                navController.setBackStackFlowCancelled(
-                                    navigationEffect.screenRoute
-                                )
+                                navController.setBackStackFlowCancelled(flowRoute)
                             }
 
                             FlowCompletion.SUCCESS -> {
-                                navController.setBackStackFlowSuccess(
-                                    navigationEffect.screenRoute
-                                )
+                                navController.setBackStackFlowSuccess(flowRoute)
                             }
 
                             FlowCompletion.NONE -> {
-                                navController.resetBackStack(
-                                    navigationEffect.screenRoute
-                                )
+                                navController.resetBackStack(flowRoute)
                             }
                         }
-                        navController.popBackStack(
-                            route = navigationEffect.screenRoute,
+                        navController.popBackStackTo(
+                            route = navigationEffect.route,
                             inclusive = navigationEffect.inclusive
                         )
                     }

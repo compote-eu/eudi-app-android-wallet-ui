@@ -26,7 +26,9 @@ import eu.europa.ec.dashboardfeature.interactor.HomeInteractorGetUserNameViaMain
 import eu.europa.ec.dashboardfeature.ui.home.HomeScreenBottomSheetContent.Bluetooth
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.DocumentSignRoute
 import eu.europa.ec.shared.navigation.ProximityQrRoute
 import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.uilogic.component.AppIcons
@@ -35,8 +37,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
@@ -98,8 +98,8 @@ sealed class Event : ViewEvent {
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data class SwitchScreen(
-            val screenRoute: String,
-            val popUpToScreenRoute: String = DashboardScreens.Dashboard.screenRoute,
+            val route: AppRoute,
+            val popUpTo: AppRoute = DashboardRoute,
             val inclusive: Boolean = false,
         ) : Navigation()
 
@@ -277,7 +277,7 @@ class HomeViewModel(
     private fun navigateToDocumentSign() {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = DashboardScreens.DocumentSign.screenRoute
+                route = DocumentSignRoute
             )
         }
     }
@@ -286,22 +286,22 @@ class HomeViewModel(
         setState { copy(bleAvailability = BleAvailability.AVAILABLE) }
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = ProximityQrRoute(
+                route = ProximityQrRoute(
                     config = RequestUriConfig(PresentationMode.Ble(DashboardRoute))
-                ).toLegacyRoute()
+                )
             )
         }
     }
 
     private fun navigateToQrSignatureScan() {
         val navigationEffect = Effect.Navigation.SwitchScreen(
-            screenRoute = QrScanRoute(
+            route = QrScanRoute(
                 config = QrScanUiConfig(
                     title = resourceProvider.getString(R.string.signature_qr_scan_title),
                     subTitle = resourceProvider.getString(R.string.signature_qr_scan_subtitle),
                     qrScanFlow = QrScanFlow.Signature
                 )
-            ).toLegacyRoute()
+            )
         )
         setEffect {
             navigationEffect
@@ -310,13 +310,13 @@ class HomeViewModel(
 
     private fun navigateToQrScan() {
         val navigationEffect = Effect.Navigation.SwitchScreen(
-            screenRoute = QrScanRoute(
+            route = QrScanRoute(
                 config = QrScanUiConfig(
                     title = resourceProvider.getString(R.string.presentation_qr_scan_title),
                     subTitle = resourceProvider.getString(R.string.presentation_qr_scan_subtitle),
                     qrScanFlow = QrScanFlow.Presentation
                 )
-            ).toLegacyRoute()
+            )
         )
         setEffect {
             navigationEffect

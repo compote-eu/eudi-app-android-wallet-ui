@@ -29,6 +29,7 @@ import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorPinValidPartialState
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.FlowCompletion
@@ -38,8 +39,6 @@ import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
-import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -78,12 +77,11 @@ sealed class Effect : ViewSideEffect {
     data object InitializeBiometricAuthOnCreate : Effect()
     sealed class Navigation : Effect() {
         data class SwitchScreen(
-            val screen: String,
-            val screenPopUpTo: String
+            val route: AppRoute
         ) : Navigation()
 
         data class PopBackStackUpTo(
-            val screenRoute: String,
+            val route: AppRoute,
             val inclusive: Boolean,
             val indicateFlowCompletion: FlowCompletion
         ) : Navigation()
@@ -356,22 +354,20 @@ class BiometricViewModel(
 
     private fun doNavigation(
         navigation: ConfigNavigation,
-        screenRoute: String = CommonScreens.Biometric.screenRoute,
         flowSucceeded: Boolean
     ) {
-        navigate(navigation, screenRoute, flowSucceeded)
+        navigate(navigation, flowSucceeded)
     }
 
     private fun navigate(
         navigation: ConfigNavigation,
-        screenRoute: String = CommonScreens.Biometric.screenRoute,
         flowSucceeded: Boolean
     ) {
         val navigationEffect: Effect.Navigation = when (val nav = navigation.navigationType) {
 
             is NavigationType.PopTo -> {
                 Effect.Navigation.PopBackStackUpTo(
-                    screenRoute = nav.route.toLegacyScreen().screenRoute,
+                    route = nav.route,
                     inclusive = false,
                     indicateFlowCompletion = when (navigation.indicateFlowCompletion) {
                         FlowCompletion.CANCEL -> if (!flowSucceeded) FlowCompletion.CANCEL else FlowCompletion.NONE
@@ -382,10 +378,7 @@ class BiometricViewModel(
             }
 
             is NavigationType.PushRoute -> {
-                Effect.Navigation.SwitchScreen(
-                    screen = nav.route.toLegacyRoute(),
-                    screenPopUpTo = screenRoute
-                )
+                Effect.Navigation.SwitchScreen(route = nav.route)
             }
 
             is NavigationType.Deeplink -> Effect.Navigation.Deeplink(

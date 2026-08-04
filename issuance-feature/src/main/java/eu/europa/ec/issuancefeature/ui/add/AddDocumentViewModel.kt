@@ -36,6 +36,7 @@ import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
@@ -53,7 +54,6 @@ import eu.europa.ec.uilogic.navigation.helper.DeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
 import eu.europa.ec.uilogic.navigation.helper.toLegacyArguments
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -105,7 +105,7 @@ sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data object Pop : Navigation()
         data object Finish : Navigation()
-        data class SwitchScreen(val screenRoute: String, val inclusive: Boolean) : Navigation()
+        data class SwitchScreen(val route: AppRoute, val inclusive: Boolean) : Navigation()
         data class OpenDeepLinkAction(val deepLinkUri: Uri, val arguments: String?) : Navigation()
     }
 
@@ -189,7 +189,7 @@ class AddDocumentViewModel(
                                     AddDocumentRoute(viewState.value.issuanceConfig)
                                 )
                             )
-                        ).toLegacyRoute(),
+                        ),
                         inclusive = false
                     )
                 }
@@ -387,21 +387,21 @@ class AddDocumentViewModel(
 
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = DocumentIssuanceSuccessRoute(
+                route = DocumentIssuanceSuccessRoute(
                     IssuanceSuccessUiConfig(
                         documentIds = documentIds,
                         onSuccessNavigation = onSuccessNavigation,
                     )
-                ).toLegacyRoute(),
+                ),
                 inclusive = false
             )
         }
     }
 
-    private fun navigateToGenericSuccessScreen(route: String) {
+    private fun navigateToGenericSuccessScreen(route: AppRoute) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = route,
+                route = route,
                 inclusive = true
             )
         }
@@ -410,13 +410,13 @@ class AddDocumentViewModel(
     private fun navigateToQrScanScreen() {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = QrScanRoute(
+                route = QrScanRoute(
                     QrScanUiConfig(
                         title = resourceProvider.getString(R.string.issuance_qr_scan_title),
                         subTitle = resourceProvider.getString(R.string.issuance_qr_scan_subtitle),
                         qrScanFlow = QrScanFlow.Issuance(viewState.value.issuanceConfig.flowType)
                     )
-                ).toLegacyRoute(),
+                ),
                 inclusive = false
             )
         }

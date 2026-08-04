@@ -57,11 +57,6 @@ sealed class Event : ViewEvent {
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data object Pop : Navigation()
-        data class SwitchScreen(
-            val screenRoute: String,
-            val popUpToScreenRoute: String,
-            val inclusive: Boolean
-        ) : Navigation()
     }
 }
 

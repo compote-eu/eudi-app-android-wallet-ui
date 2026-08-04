@@ -103,7 +103,7 @@ class ProximityLoadingViewModel(
 
                     is ProximityLoadingObserveResponsePartialState.UserAuthenticationRequired -> {
                         val popEffect = Effect.Navigation.PopBackStackUpTo(
-                            screenRoute = ProximityScreens.Request.screenRoute,
+                            route = getPreviousRoute(),
                             inclusive = false
                         )
 

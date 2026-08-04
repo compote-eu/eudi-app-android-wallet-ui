@@ -61,7 +61,7 @@ import eu.europa.ec.uilogic.component.wrap.rememberSecurePinTextFieldState
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.paddingFrom
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
+import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -255,11 +255,7 @@ private fun handleNavigationEffect(
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigate(navigationEffect.screenRoute) {
-                popUpTo(IssuanceScreens.DocumentOfferCode.screenRoute) {
-                    inclusive = true
-                }
-            }
+            navController.navigateReplacingCurrent(navigationEffect.route)
         }
 
         is Effect.Navigation.Pop -> navController.popBackStack()

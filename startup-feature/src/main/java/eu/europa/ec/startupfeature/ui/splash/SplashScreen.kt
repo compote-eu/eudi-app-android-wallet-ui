@@ -38,8 +38,7 @@ import androidx.navigation.NavController
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
 import eu.europa.ec.uilogic.component.wrap.WrapImage
-import eu.europa.ec.uilogic.navigation.ModuleRoute
-import eu.europa.ec.uilogic.navigation.StartupScreens
+import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -55,16 +54,8 @@ fun SplashScreen(
         effectFlow = viewModel.effect,
         onNavigationRequested = {
             when (it) {
-                is Effect.Navigation.SwitchModule -> {
-                    navController.navigate(it.moduleRoute.route) {
-                        popUpTo(ModuleRoute.StartupModule.route) { inclusive = true }
-                    }
-                }
-
                 is Effect.Navigation.SwitchScreen -> {
-                    navController.navigate(it.route) {
-                        popUpTo(StartupScreens.Splash.screenRoute) { inclusive = true }
-                    }
+                    navController.navigateReplacingCurrent(it.route)
                 }
             }
         }

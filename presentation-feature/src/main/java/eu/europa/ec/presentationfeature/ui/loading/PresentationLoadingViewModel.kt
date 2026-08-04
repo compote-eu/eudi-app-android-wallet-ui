@@ -130,7 +130,7 @@ class PresentationLoadingViewModel(
 
                     is PresentationLoadingObserveResponsePartialState.UserAuthenticationRequired -> {
                         val popEffect = Effect.Navigation.PopBackStackUpTo(
-                            screenRoute = PresentationScreens.PresentationRequest.screenRoute,
+                            route = getPreviousRoute(),
                             inclusive = false
                         )
 

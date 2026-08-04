@@ -44,6 +44,8 @@ import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.shared.navigation.SplashRoute
+import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
+import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -89,18 +91,15 @@ fun SuccessScreen(
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigate(navigationEffect.screenRoute) {
-                            navigationEffect.popUpRoute?.let { popUpToRoute ->
-                                popUpTo(popUpToRoute) {
-                                    inclusive = true
-                                }
-                            }
-                        }
+                        navController.navigateToRoute(
+                            route = navigationEffect.route,
+                            popUpTo = navigationEffect.popUpTo,
+                        )
                     }
 
                     is Effect.Navigation.PopBackStackUpTo -> {
-                        navController.popBackStack(
-                            route = navigationEffect.screenRoute,
+                        navController.popBackStackTo(
+                            route = navigationEffect.route,
                             inclusive = navigationEffect.inclusive
                         )
                     }

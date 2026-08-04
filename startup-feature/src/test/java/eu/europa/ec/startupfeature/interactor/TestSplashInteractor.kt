@@ -27,6 +27,7 @@ import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.BiometricRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.resourceslogic.R
@@ -36,8 +37,6 @@ import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import junit.framework.TestCase.assertEquals
 import org.junit.After
 import org.junit.Before
@@ -107,8 +106,7 @@ class TestSplashInteractor {
             val result = interactor.getAfterSplashRoute()
 
             // Then
-            val expectedResult =
-                "${CommonScreens.QuickPin.screenName}?pinFlow=${PinFlow.CREATE_WITH_ACTIVATION}"
+            val expectedResult = QuickPinRoute(PinFlow.CREATE_WITH_ACTIVATION)
             assertEquals(expectedResult, result)
         }
     }
@@ -134,8 +132,7 @@ class TestSplashInteractor {
             val result = interactor.getAfterSplashRoute()
 
             // Then
-            val expectedResult =
-                "${CommonScreens.QuickPin.screenName}?pinFlow=${PinFlow.CREATE_WITHOUT_ACTIVATION}"
+            val expectedResult = QuickPinRoute(PinFlow.CREATE_WITHOUT_ACTIVATION)
             assertEquals(expectedResult, result)
         }
     }
@@ -159,8 +156,7 @@ class TestSplashInteractor {
             val result = interactor.getAfterSplashRoute()
 
             // Then
-            val expectedResult =
-                "${CommonScreens.QuickPin.screenName}?pinFlow=${PinFlow.CREATE_WITHOUT_ACTIVATION}"
+            val expectedResult = QuickPinRoute(PinFlow.CREATE_WITHOUT_ACTIVATION)
             assertEquals(expectedResult, result)
         }
     }
@@ -171,7 +167,7 @@ class TestSplashInteractor {
     //    so shouldActivateWithPid evaluates to false and onSuccessNavigation pushes DashboardRoute.
 
     // Case 4 Expected Result:
-    // The BIOMETRIC route, with biometricConfig = the serialized BiometricUiConfig payload.
+    // BiometricRoute, carrying the BiometricUiConfig.
     @Test
     fun `Given Case 4, When getAfterSplashRoute is called, Then Case 4 Expected Result is returned`() {
         coroutineRule.runTest {
@@ -187,7 +183,7 @@ class TestSplashInteractor {
             // Then
             val expectedResult = BiometricRoute(
                 buildBiometricUiConfig(shouldActivateWithPid = false)
-            ).toLegacyRoute()
+            )
             assertEquals(expectedResult, result)
         }
     }
@@ -199,7 +195,7 @@ class TestSplashInteractor {
     //    so shouldActivateWithPid evaluates to false and onSuccessNavigation pushes DashboardRoute.
 
     // Case 5 Expected Result:
-    // The BIOMETRIC route, with biometricConfig = the serialized BiometricUiConfig payload.
+    // BiometricRoute, carrying the BiometricUiConfig.
     @Test
     fun `Given Case 5, When getAfterSplashRoute is called, Then Case 5 Expected Result is returned`() {
         coroutineRule.runTest {
@@ -216,7 +212,7 @@ class TestSplashInteractor {
             // Then
             val expectedResult = BiometricRoute(
                 buildBiometricUiConfig(shouldActivateWithPid = false)
-            ).toLegacyRoute()
+            )
             assertEquals(expectedResult, result)
         }
     }
@@ -229,7 +225,7 @@ class TestSplashInteractor {
     //    AddDocumentRoute carrying IssuanceUiConfig(NoDocument).
 
     // Case 6 Expected Result:
-    // The BIOMETRIC route, with biometricConfig = the serialized BiometricUiConfig payload
+    // BiometricRoute, carrying the BiometricUiConfig
     // (whose nested onSuccessNavigation carries the AddDocumentRoute config).
     @Test
     fun `Given Case 6, When getAfterSplashRoute is called, Then Case 6 Expected Result is returned`() {
@@ -246,34 +242,7 @@ class TestSplashInteractor {
             // Then
             val expectedResult = BiometricRoute(
                 buildBiometricUiConfig(shouldActivateWithPid = true)
-            ).toLegacyRoute()
-            assertEquals(expectedResult, result)
-        }
-    }
-
-    // Case 7:
-    // 1. quickPinInteractor.hasPin() returns true (biometric login flow).
-    // 2. configLogic.forcePidActivation is false (shouldActivateWithPid = false).
-    // 3. Base64 encoding is unavailable on a plain JVM, so the serialization of the
-    //    BiometricUiConfig yields null and the .orEmpty() fallback in the route arguments
-    //    is exercised.
-
-    // Case 7 Expected Result:
-    // The BIOMETRIC route, with an empty biometricConfig value.
-    @Test
-    fun `Given Case 7, When getAfterSplashRoute is called, Then Case 7 Expected Result is returned`() {
-        coroutineRule.runTest {
-            // Given
-            whenever(quickPinInteractor.hasPin()).thenReturn(true)
-            whenever(configLogic.forcePidActivation).thenReturn(false)
-            whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
-            mockBiometricLoginStrings()
-
-            // When
-            val result = interactor.getAfterSplashRoute()
-
-            // Then
-            val expectedResult = "${CommonScreens.Biometric.screenName}?biometricConfig="
+            )
             assertEquals(expectedResult, result)
         }
     }

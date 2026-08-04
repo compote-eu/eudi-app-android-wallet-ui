@@ -24,7 +24,7 @@ import kotlin.test.assertTrue
 
 /**
  * Verifies the back-stack command layer reproduces the current navController behaviors
- * (Android + iOS), including the two SwitchModule variants.
+ * (Android + iOS): plain push, push-with-popUpTo, pop, and the splash "start anew" reset.
  */
 class AppNavigatorTest {
 
@@ -56,16 +56,16 @@ class AppNavigatorTest {
     }
 
     @Test
-    fun replaceAll_starts_anew_like_splash_switchModule() {
+    fun replaceAll_starts_anew_like_splash_replacing_itself() {
         val nav = navigator(SplashRoute)
-        nav.replaceAll(DashboardRoute) // splash SwitchModule clears startup, inclusive
+        nav.replaceAll(DashboardRoute) // splash pops itself inclusively, leaving one entry
         assertEquals(listOf(DashboardRoute), nav.entries)
     }
 
     @Test
-    fun plain_navigate_matches_pin_switchModule() {
+    fun plain_navigate_leaves_the_existing_stack_intact() {
         val nav = navigator(SplashRoute, SettingsRoute)
-        nav.navigate(DashboardRoute) // pin SwitchModule = plain navigate, no clearing
+        nav.navigate(DashboardRoute) // no popUpTo argument = nothing is cleared
         assertEquals(listOf(SplashRoute, SettingsRoute, DashboardRoute), nav.entries)
     }
 

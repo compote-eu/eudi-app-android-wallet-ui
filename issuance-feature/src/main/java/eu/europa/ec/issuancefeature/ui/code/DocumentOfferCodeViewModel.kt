@@ -27,6 +27,7 @@ import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
 import eu.europa.ec.issuancefeature.interactor.IssueDocumentsInteractorPartialState
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -34,7 +35,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -70,7 +70,7 @@ sealed class Event : ViewEvent {
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data class SwitchScreen(
-            val screenRoute: String
+            val route: AppRoute
         ) : Navigation()
 
         data object Pop : Navigation()
@@ -273,20 +273,20 @@ class DocumentOfferCodeViewModel(
     ) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = DocumentIssuanceSuccessRoute(
+                route = DocumentIssuanceSuccessRoute(
                     IssuanceSuccessUiConfig(
                         documentIds = documentIds,
                         onSuccessNavigation = onSuccessNavigation,
                     )
-                ).toLegacyRoute()
+                )
             )
         }
     }
 
-    private fun goToSuccessScreen(route: String) {
+    private fun goToSuccessScreen(route: AppRoute) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = route
+                route = route
             )
         }
     }

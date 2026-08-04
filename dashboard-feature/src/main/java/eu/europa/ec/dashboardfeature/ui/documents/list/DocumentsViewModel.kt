@@ -39,8 +39,11 @@ import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.QrScanRoute
+import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.ModalOptionUi
@@ -53,9 +56,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.StartupScreens
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -131,8 +131,8 @@ sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data object Pop : Navigation()
         data class SwitchScreen(
-            val screenRoute: String,
-            val popUpToScreenRoute: String = DashboardScreens.Dashboard.screenRoute,
+            val route: AppRoute,
+            val popUpTo: AppRoute = DashboardRoute,
             val inclusive: Boolean = false,
         ) : Navigation()
     }
@@ -501,8 +501,8 @@ class DocumentsViewModel(
 
                         setEffect {
                             Effect.Navigation.SwitchScreen(
-                                screenRoute = StartupScreens.Splash.screenRoute,
-                                popUpToScreenRoute = DashboardScreens.Dashboard.screenRoute,
+                                route = SplashRoute,
+                                popUpTo = DashboardRoute,
                                 inclusive = true
                             )
                         }
@@ -539,22 +539,22 @@ class DocumentsViewModel(
     private fun goToDocumentDetails(docId: DocumentId) {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = DocumentDetailsRoute(documentId = docId).toLegacyRoute()
+                route = DocumentDetailsRoute(documentId = docId)
             )
         }
     }
 
     private fun goToAddDocument() {
-        val addDocumentScreenRoute = AddDocumentRoute(
+        val addDocumentRoute = AddDocumentRoute(
             config = IssuanceUiConfig(
                 flowType = IssuanceFlowType.ExtraDocument(
                     formatType = null
                 )
             )
-        ).toLegacyRoute()
+        )
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = addDocumentScreenRoute
+                route = addDocumentRoute
             )
         }
     }
@@ -562,7 +562,7 @@ class DocumentsViewModel(
     private fun goToQrScan() {
         setEffect {
             Effect.Navigation.SwitchScreen(
-                screenRoute = QrScanRoute(
+                route = QrScanRoute(
                     config = QrScanUiConfig(
                         title = resourceProvider.getString(R.string.issuance_qr_scan_title),
                         subTitle = resourceProvider.getString(R.string.issuance_qr_scan_subtitle),
@@ -572,7 +572,7 @@ class DocumentsViewModel(
                             )
                         )
                     )
-                ).toLegacyRoute(),
+                ),
                 inclusive = false
             )
         }

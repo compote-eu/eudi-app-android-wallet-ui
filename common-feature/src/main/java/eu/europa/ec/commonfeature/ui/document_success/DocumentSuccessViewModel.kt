@@ -20,6 +20,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import eu.europa.ec.businesslogic.extension.toUri
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
@@ -32,8 +33,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
-import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 
 data class State(
     val isLoading: Boolean = false,
@@ -52,12 +51,12 @@ sealed class Event : ViewEvent {
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data class SwitchScreen(
-            val screenRoute: String,
-            val popUpRoute: String?,
+            val route: AppRoute,
+            val popUpTo: AppRoute?,
         ) : Navigation()
 
         data class PopBackStackUpTo(
-            val screenRoute: String,
+            val route: AppRoute,
             val inclusive: Boolean,
         ) : Navigation()
 
@@ -161,7 +160,7 @@ abstract class DocumentSuccessViewModel : MviViewModel<Event, State, Effect>() {
         val navigationEffect: Effect.Navigation = when (val nav = navigation.navigationType) {
             is NavigationType.PopTo -> {
                 Effect.Navigation.PopBackStackUpTo(
-                    screenRoute = nav.route.toLegacyScreen().screenRoute,
+                    route = nav.route,
                     inclusive = false
                 )
             }
@@ -174,8 +173,8 @@ abstract class DocumentSuccessViewModel : MviViewModel<Event, State, Effect>() {
             is NavigationType.Pop, NavigationType.Finish -> Effect.Navigation.Pop
 
             is NavigationType.PushRoute -> Effect.Navigation.SwitchScreen(
-                screenRoute = nav.route.toLegacyRoute(),
-                popUpRoute = nav.popUpTo?.toLegacyScreen()?.screenRoute
+                route = nav.route,
+                popUpTo = nav.popUpTo
             )
         }
 

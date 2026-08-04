@@ -104,6 +104,7 @@ import eu.europa.ec.uilogic.component.wrap.WrapListItemDefaults
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.extension.finish
 import eu.europa.ec.uilogic.extension.paddingFrom
+import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -326,11 +327,11 @@ private fun handleNavigationEffect(
     when (navigationEffect) {
         is Effect.Navigation.Pop -> context.finish()
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigate(navigationEffect.screenRoute) {
-                popUpTo(navigationEffect.popUpToScreenRoute) {
-                    inclusive = navigationEffect.inclusive
-                }
-            }
+            navController.navigateToRoute(
+                route = navigationEffect.route,
+                popUpTo = navigationEffect.popUpTo,
+                popUpToInclusive = navigationEffect.inclusive,
+            )
         }
     }
 }

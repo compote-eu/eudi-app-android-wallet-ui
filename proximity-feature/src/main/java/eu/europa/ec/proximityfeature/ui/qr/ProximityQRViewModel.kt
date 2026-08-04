@@ -22,13 +22,13 @@ import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.proximityfeature.interactor.ProximityQRInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityQRPartialState
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.ProximityRequestRoute
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -55,7 +55,7 @@ sealed class Event : ViewEvent {
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data class SwitchScreen(
-            val screenRoute: String
+            val route: AppRoute
         ) : Navigation()
 
         data object Pop : Navigation()
@@ -147,9 +147,9 @@ class ProximityQRViewModel(
                         unsubscribe()
                         setEffect {
                             Effect.Navigation.SwitchScreen(
-                                screenRoute = ProximityRequestRoute(
+                                route = ProximityRequestRoute(
                                     viewState.value.presentationScopeId
-                                ).toLegacyRoute()
+                                )
                             )
                         }
                     }

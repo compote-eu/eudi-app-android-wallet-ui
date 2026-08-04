@@ -42,12 +42,12 @@ import eu.europa.ec.issuancefeature.ui.offer.model.DocumentOfferUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.SuccessRoute
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
 import eu.europa.ec.uilogic.config.ConfigNavigation
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -81,7 +81,7 @@ sealed class IssueDocumentsInteractorPartialState {
     ) : IssueDocumentsInteractorPartialState()
 
     data class DeferredSuccess(
-        val successRoute: String,
+        val successRoute: AppRoute,
     ) : IssueDocumentsInteractorPartialState()
 
     data class Failure(val errorMessage: String) : IssueDocumentsInteractorPartialState()
@@ -321,8 +321,8 @@ class DocumentOfferInteractorImpl(
     private fun buildGenericSuccessRouteForDeferred(
         description: String,
         navigation: ConfigNavigation
-    ): String {
-        return SuccessRoute(getDeferredSuccessConfig(description, navigation)).toLegacyRoute()
+    ): AppRoute {
+        return SuccessRoute(getDeferredSuccessConfig(description, navigation))
     }
 
     private fun getDeferredSuccessConfig(

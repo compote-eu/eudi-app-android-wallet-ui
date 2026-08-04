@@ -37,8 +37,11 @@ import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoU
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
+import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
@@ -47,11 +50,8 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.StartupScreens
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -119,8 +119,8 @@ sealed class Effect : ViewSideEffect {
         data object Pop : Navigation()
 
         data class SwitchScreen(
-            val screenRoute: String,
-            val popUpToScreenRoute: String?,
+            val route: AppRoute,
+            val popUpTo: AppRoute?,
             val inclusive: Boolean?
         ) : Navigation()
 
@@ -273,8 +273,8 @@ class DocumentDetailsViewModel(
                                     DocumentDetailsRoute(documentId = documentId)
                                 )
                             )
-                        ).toLegacyRoute(),
-                        popUpToScreenRoute = DashboardScreens.DocumentDetails.screenRoute,
+                        ),
+                        popUpTo = DocumentDetailsRoute(documentId = documentId),
                         inclusive = false
                     )
                 }
@@ -391,8 +391,8 @@ class DocumentDetailsViewModel(
 
                         setEffect {
                             Effect.Navigation.SwitchScreen(
-                                screenRoute = StartupScreens.Splash.screenRoute,
-                                popUpToScreenRoute = DashboardScreens.Dashboard.screenRoute,
+                                route = SplashRoute,
+                                popUpTo = DashboardRoute,
                                 inclusive = true
                             )
                         }

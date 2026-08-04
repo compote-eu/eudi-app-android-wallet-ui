@@ -36,6 +36,7 @@ import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.SuccessRoute
 import eu.europa.ec.uilogic.component.wrap.ColorKey
@@ -46,7 +47,6 @@ import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -92,7 +92,7 @@ interface AddDocumentInteractor {
         resultHandler: DeviceAuthenticationResult
     )
 
-    fun buildGenericSuccessRouteForDeferred(flowType: IssuanceFlowType): String
+    fun buildGenericSuccessRouteForDeferred(flowType: IssuanceFlowType): AppRoute
 
     fun resumeOpenId4VciWithAuthorization(uri: String)
 }
@@ -308,7 +308,7 @@ class AddDocumentInteractorImpl(
         }
     }
 
-    override fun buildGenericSuccessRouteForDeferred(flowType: IssuanceFlowType): String {
+    override fun buildGenericSuccessRouteForDeferred(flowType: IssuanceFlowType): AppRoute {
         val navigation = when (flowType) {
             is IssuanceFlowType.NoDocument -> ConfigNavigation(
                 navigationType = NavigationType.PushRoute(
@@ -323,7 +323,7 @@ class AddDocumentInteractorImpl(
                 )
             )
         }
-        return SuccessRoute(getSuccessConfigForDeferred(navigation)).toLegacyRoute()
+        return SuccessRoute(getSuccessConfigForDeferred(navigation))
     }
 
     override fun resumeOpenId4VciWithAuthorization(uri: String) {

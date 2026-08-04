@@ -62,8 +62,8 @@ import eu.europa.ec.uilogic.component.wrap.WrapSecurePinTextField
 import eu.europa.ec.uilogic.component.wrap.rememberSecurePinTextFieldState
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.finish
-import eu.europa.ec.uilogic.navigation.CommonScreens
 import kotlinx.coroutines.CoroutineScope
+import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emptyFlow
@@ -143,14 +143,8 @@ private fun handleNavigationEffect(
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigate(navigationEffect.screen) {
-                popUpTo(CommonScreens.QuickPin.screenRoute) {
-                    inclusive = true
-                }
-            }
+            navController.navigateReplacingCurrent(navigationEffect.route)
         }
-
-        is Effect.Navigation.SwitchModule -> navController.navigate(navigationEffect.moduleRoute.route)
 
         is Effect.Navigation.Pop -> navController.popBackStack()
         is Effect.Navigation.Finish -> context.finish()

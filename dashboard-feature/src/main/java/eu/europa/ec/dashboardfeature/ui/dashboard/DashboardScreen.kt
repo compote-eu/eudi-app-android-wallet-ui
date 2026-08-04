@@ -69,6 +69,7 @@ import eu.europa.ec.uilogic.extension.openIntentChooser
 import eu.europa.ec.uilogic.extension.openUrl
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.handleIntentAction
+import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -235,11 +236,11 @@ private fun handleNavigationEffect(
     when (navigationEffect) {
         is Effect.Navigation.Pop -> context.finish()
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigate(navigationEffect.screenRoute) {
-                popUpTo(navigationEffect.popUpToScreenRoute) {
-                    inclusive = navigationEffect.inclusive
-                }
-            }
+            navController.navigateToRoute(
+                route = navigationEffect.route,
+                popUpTo = navigationEffect.popUpTo,
+                popUpToInclusive = navigationEffect.inclusive,
+            )
         }
 
         is Effect.Navigation.OpenDeepLinkAction -> {

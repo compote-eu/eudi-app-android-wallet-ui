@@ -87,6 +87,7 @@ import eu.europa.ec.uilogic.extension.cacheUri
 import eu.europa.ec.uilogic.extension.getPendingUri
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
+import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -258,13 +259,11 @@ private fun handleNavigationEffect(
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigate(navigationEffect.screenRoute) {
-                navigationEffect.popUpToScreenRoute?.let { safePopUpToScreenRoute ->
-                    popUpTo(safePopUpToScreenRoute) {
-                        inclusive = navigationEffect.inclusive == true
-                    }
-                }
-            }
+            navController.navigateToRoute(
+                route = navigationEffect.route,
+                popUpTo = navigationEffect.popUpTo,
+                popUpToInclusive = navigationEffect.inclusive == true,
+            )
         }
 
         is Effect.Navigation.DeepLink -> {
