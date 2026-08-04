@@ -30,6 +30,11 @@ plugins {
     // @Serializable UI-model data classes (TextConfig, IconDataUi, ContentHeaderConfig, …) that
     // become Nav3 route-argument payloads. Data-class serializers must be generated in this module.
     id("org.jetbrains.kotlin.plugin.serialization")
+    // Koin annotations for the shared view-models (Phase 3b). Unlike the Android modules, which get
+    // this via the `project.android.koin` convention plugin, a KMP module wires it by hand — the
+    // convention plugin also adds Android-only artifacts (koin-android, workmanager). Koin 1.1.0's
+    // plugin is a *Kotlin compiler* plugin (not KSP) and applies to every compilation, iOS included.
+    alias(libs.plugins.koin.compiler)
 }
 
 kotlin {
@@ -54,6 +59,11 @@ kotlin {
             baseName = "SharedKit"
             isStatic = true
             export(project(":shared-logic"))
+            // Pinned explicitly because the bundle ID can no longer be inferred: the Koin compiler
+            // plugin generates its definition hints into `org.koin.plugin.hints`, so this module's
+            // classes no longer share one package prefix. Without this the linker warns and falls
+            // back to the bundle *name* ("SharedKit").
+            binaryOption("bundleId", "eu.europa.ec.shared.ui")
         }
     }
 
@@ -68,6 +78,13 @@ kotlin {
             // Nav3 route model (AppRoute : NavKey, AppNavigator) lives here: config-carrying routes
             // reference the shared-ui UI-model, and AppRoute is sealed so its subtypes must co-locate.
             api(libs.androidx.navigation3.runtime)
+            // DI for the shared view-models. `api` because downstream Android modules resolve them
+            // (SharedUiModule is referenced from assembly-logic's @KoinApplication) and because the
+            // Koin compiler plugin generates `module { viewModelOf(...) }` bodies into this module's
+            // compilations, which need koin-core + the KMP viewmodel DSL on the compile classpath.
+            api(libs.koin.core)
+            api(libs.koin.core.viewmodel)
+            api(libs.koin.annotations)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

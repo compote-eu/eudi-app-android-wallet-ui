@@ -14,6 +14,9 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the Android implementation of the (now KMP) `SplashInteractor` interface, which moved to
+// :shared-ui/commonMain with `SplashViewModel`. This side stays Android-only: it resolves strings
+// through ResourceProvider and reads ConfigLogic/QuickPinInteractor.
 package eu.europa.ec.startupfeature.interactor
 
 import eu.europa.ec.businesslogic.config.ConfigLogic
@@ -34,10 +37,6 @@ import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-
-interface SplashInteractor {
-    suspend fun getAfterSplashRoute(): AppRoute
-}
 
 class SplashInteractorImpl(
     private val quickPinInteractor: QuickPinInteractor,

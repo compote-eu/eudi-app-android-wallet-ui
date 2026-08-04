@@ -14,6 +14,15 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the first feature view-model to move to commonMain — it is shared verbatim by Android and
+// iOS. Everything it touches is already KMP: the MVI base (:shared-logic), `AppRoute` (this module),
+// androidx.lifecycle's KMP ViewModel, and coroutines. The package is unchanged, so `SplashScreen` and
+// the module's `entryProvider` in :startup-feature are untouched.
+//
+// `@KoinViewModel` still works here: Koin 1.1.0's compiler plugin runs on every compilation (iOS
+// included) and generates the binding against the KMP `koin-core-viewmodel` DSL. The definition is
+// picked up by `SharedUiModule` (this module's `@ComponentScan`) instead of `FeatureStartupModule`,
+// while the Android-only `SplashInteractor` implementation stays bound in :startup-feature.
 package eu.europa.ec.startupfeature.ui.splash
 
 import androidx.lifecycle.viewModelScope
