@@ -117,11 +117,6 @@ fun BiometricScreen(
                     }
 
                     is Effect.Navigation.PopBackStackUpTo -> {
-                        // `indicateFlowCompletion` used to be written to the target entry's
-                        // `savedStateHandle` here. Nothing ever read those flags back (the
-                        // `wasFlowCancelled`/`wasFlowSucceeded` readers had no callers), and Nav3
-                        // has no per-entry savedStateHandle, so the write is gone — see the note in
-                        // ui-logic's ContextExtensions.
                         navigator.popBackStackTo(
                             route = navigationEffect.route,
                             inclusive = navigationEffect.inclusive

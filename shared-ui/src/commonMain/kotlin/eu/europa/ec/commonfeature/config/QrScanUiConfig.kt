@@ -17,8 +17,6 @@
 // Nav3 Stage 3: moved to :shared-ui commonMain (package unchanged) as the payload of QrScanRoute.
 package eu.europa.ec.commonfeature.config
 
-import eu.europa.ec.uilogic.serializer.UiSerializable
-import eu.europa.ec.uilogic.serializer.UiSerializableParser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -42,9 +40,4 @@ data class QrScanUiConfig(
     val title: String,
     val subTitle: String,
     val qrScanFlow: QrScanFlow
-) : UiSerializable {
-
-    companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "qrScanConfig"
-    }
-}
+)

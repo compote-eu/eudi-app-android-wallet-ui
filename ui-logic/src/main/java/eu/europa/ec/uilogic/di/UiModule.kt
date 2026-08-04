@@ -24,8 +24,6 @@ import eu.europa.ec.uilogic.config.ConfigUILogic
 import eu.europa.ec.uilogic.config.ConfigUILogicImpl
 import eu.europa.ec.uilogic.navigation.RouterHost
 import eu.europa.ec.uilogic.navigation.RouterHostImpl
-import eu.europa.ec.uilogic.serializer.UiSerializer
-import eu.europa.ec.uilogic.serializer.UiSerializerImpl
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -42,9 +40,6 @@ fun provideRouterHost(
     configUILogic: ConfigUILogic,
     analyticsController: AnalyticsController
 ): RouterHost = RouterHostImpl(configUILogic, analyticsController)
-
-@Factory
-fun provideUiSerializer(): UiSerializer = UiSerializerImpl()
 
 /**
  * Phase-3a KMP string accessor for shared presentation (replaces Android-Context

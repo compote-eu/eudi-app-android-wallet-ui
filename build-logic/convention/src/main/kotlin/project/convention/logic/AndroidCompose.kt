@@ -43,8 +43,6 @@ internal fun Project.configureAndroidCompose(
             add("implementation", libs.findLibrary("coil.kt.svg").get())
             add("implementation", libs.findLibrary("coil-kt-network-okhttp").get())
 
-            add("implementation", libs.findLibrary("androidx-navigation-compose").get())
-
             add("implementation", libs.findLibrary("androidx.lifecycle.runtimeCompose").get())
             add("implementation", libs.findLibrary("androidx.lifecycle.viewModelCompose").get())
 

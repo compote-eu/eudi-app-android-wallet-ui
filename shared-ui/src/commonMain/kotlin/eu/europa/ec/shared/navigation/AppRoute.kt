@@ -30,21 +30,21 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Phase-3c / N2: type-safe Navigation 3 routes.
+ * The app's type-safe Navigation 3 routes — the complete set of destinations.
  *
- * Each route is a [NavKey] back-stack key *and* `@Serializable`, carrying navigation arguments as
- * typed fields instead of hand-Base64-serialized config strings. This retires the legacy apparatus
- * ([eu.europa.ec.uilogic.navigation.Screen] string routes, `UiSerializer`, and the
- * `generateComposable*` builders).
+ * Each route is a [NavKey] back-stack key *and* `@Serializable`, carrying its navigation arguments as
+ * typed fields. This replaced an apparatus of `Screen` route-pattern strings, a Base64+reflection
+ * `UiSerializer`, and `generateComposable*` link builders, none of which could go KMP.
  *
  * The hierarchy is sealed, so every route lives in this file — including the config-carrying ones,
- * which is why `AppRoute` and the configs it references had to move into this module (Stage 2).
- * The base is `@Serializable` so an `AppRoute`-typed *field* (see
+ * which is why `AppRoute` and the configs it references live in this module. The base is
+ * `@Serializable` so an `AppRoute`-typed *field* (see
  * [eu.europa.ec.uilogic.config.NavigationType.PushRoute]) serializes polymorphically; each variant
  * declares a short `@SerialName` to keep those nested payloads small.
  *
- * Until the Nav3 host lands (Stage 5) these keys are translated back to legacy route strings by
- * `AppRoute.toLegacyRoute()` / `toLegacyScreen()` in :ui-logic.
+ * The host that consumes these is `RouterHostImpl.StartFlow` (a `NavDisplay` over
+ * [AppNavigator]); each feature module contributes its destinations via a `featureXEntries`
+ * `entryProvider` extension.
  */
 @Serializable
 sealed interface AppRoute : NavKey

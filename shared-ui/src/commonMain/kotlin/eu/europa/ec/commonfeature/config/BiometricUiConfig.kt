@@ -19,8 +19,6 @@
 package eu.europa.ec.commonfeature.config
 
 import eu.europa.ec.uilogic.config.ConfigNavigation
-import eu.europa.ec.uilogic.serializer.UiSerializable
-import eu.europa.ec.uilogic.serializer.UiSerializableParser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -50,12 +48,7 @@ data class BiometricUiConfig(
     val shouldInitializeBiometricAuthOnCreate: Boolean = true,
     val onSuccessNavigation: ConfigNavigation,
     val onBackNavigationConfig: OnBackNavigationConfig
-) : UiSerializable {
-
-    companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "biometricConfig"
-    }
-}
+)
 
 @Serializable
 data class OnBackNavigationConfig(

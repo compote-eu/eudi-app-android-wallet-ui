@@ -19,8 +19,6 @@
 // so the field is declared as `String` here; call sites passing a `FormatType` still compile.
 package eu.europa.ec.commonfeature.config
 
-import eu.europa.ec.uilogic.serializer.UiSerializable
-import eu.europa.ec.uilogic.serializer.UiSerializableParser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -38,9 +36,4 @@ sealed interface IssuanceFlowType {
 @Serializable
 data class IssuanceUiConfig(
     val flowType: IssuanceFlowType,
-) : UiSerializable {
-
-    companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "issuanceConfig"
-    }
-}
+)

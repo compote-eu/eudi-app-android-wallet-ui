@@ -19,8 +19,6 @@
 package eu.europa.ec.commonfeature.config
 
 import eu.europa.ec.uilogic.config.ConfigNavigation
-import eu.europa.ec.uilogic.serializer.UiSerializable
-import eu.europa.ec.uilogic.serializer.UiSerializableParser
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -28,9 +26,4 @@ data class OfferUiConfig(
     val offerUri: String,
     val onSuccessNavigation: ConfigNavigation,
     val onCancelNavigation: ConfigNavigation,
-) : UiSerializable {
-
-    companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "offerConfig"
-    }
-}
+)

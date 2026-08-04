@@ -21,8 +21,6 @@
 package eu.europa.ec.commonfeature.config
 
 import eu.europa.ec.shared.navigation.AppRoute
-import eu.europa.ec.uilogic.serializer.UiSerializable
-import eu.europa.ec.uilogic.serializer.UiSerializableParser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -68,11 +66,7 @@ sealed interface PresentationMode {
 @Serializable
 data class RequestUriConfig(
     val mode: PresentationMode
-) : UiSerializable {
+) {
 
     val presentationScopeId: String = mode.scopeId
-
-    companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "requestUriConfig"
-    }
 }

@@ -33,7 +33,6 @@ import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
-import eu.europa.ec.uilogic.config.FlowCompletion
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
@@ -81,8 +80,7 @@ sealed class Effect : ViewSideEffect {
 
         data class PopBackStackUpTo(
             val route: AppRoute,
-            val inclusive: Boolean,
-            val indicateFlowCompletion: FlowCompletion
+            val inclusive: Boolean
         ) : Navigation()
 
         data object LaunchBiometricsSystemScreen : Navigation()
@@ -180,10 +178,7 @@ class BiometricViewModel(
             is Event.OnNavigateBack -> {
                 setState { copy(error = null) }
                 biometricUiConfig.onBackNavigationConfig.onBackNavigation?.let {
-                    doNavigation(
-                        navigation = it,
-                        flowSucceeded = false
-                    )
+                    doNavigation(navigation = it)
                 }
             }
 
@@ -288,10 +283,7 @@ class BiometricViewModel(
     }
 
     private fun authenticationSuccess() {
-        doNavigation(
-            navigation = biometricUiConfig.onSuccessNavigation,
-            flowSucceeded = true
-        )
+        doNavigation(navigation = biometricUiConfig.onSuccessNavigation)
     }
 
     private fun startLockoutTick(initialRemainingMs: Long) {
@@ -345,28 +337,13 @@ class BiometricViewModel(
         )
     }
 
-    private fun doNavigation(
-        navigation: ConfigNavigation,
-        flowSucceeded: Boolean
-    ) {
-        navigate(navigation, flowSucceeded)
-    }
-
-    private fun navigate(
-        navigation: ConfigNavigation,
-        flowSucceeded: Boolean
-    ) {
+    private fun doNavigation(navigation: ConfigNavigation) {
         val navigationEffect: Effect.Navigation = when (val nav = navigation.navigationType) {
 
             is NavigationType.PopTo -> {
                 Effect.Navigation.PopBackStackUpTo(
                     route = nav.route,
-                    inclusive = false,
-                    indicateFlowCompletion = when (navigation.indicateFlowCompletion) {
-                        FlowCompletion.CANCEL -> if (!flowSucceeded) FlowCompletion.CANCEL else FlowCompletion.NONE
-                        FlowCompletion.SUCCESS -> if (flowSucceeded) FlowCompletion.SUCCESS else FlowCompletion.NONE
-                        FlowCompletion.NONE -> FlowCompletion.NONE
-                    }
+                    inclusive = false
                 )
             }
 

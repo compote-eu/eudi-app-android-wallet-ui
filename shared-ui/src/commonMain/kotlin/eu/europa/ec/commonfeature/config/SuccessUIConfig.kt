@@ -25,8 +25,6 @@ import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_60
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.config.ConfigNavigation
-import eu.europa.ec.uilogic.serializer.UiSerializable
-import eu.europa.ec.uilogic.serializer.UiSerializableParser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -40,7 +38,7 @@ data class SuccessUIConfig(
     val imageConfig: ImageConfig,
     val buttonConfig: List<ButtonConfig>,
     val onBackScreenToNavigate: ConfigNavigation
-) : UiSerializable {
+) {
 
     @Serializable
     data class ImageConfig(
@@ -78,8 +76,4 @@ data class SuccessUIConfig(
         val description: String,
         val color: ColorKey = ColorKey.Success
     )
-
-    companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "successConfig"
-    }
 }

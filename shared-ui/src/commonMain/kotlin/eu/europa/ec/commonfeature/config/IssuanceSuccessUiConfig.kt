@@ -21,17 +21,10 @@
 package eu.europa.ec.commonfeature.config
 
 import eu.europa.ec.uilogic.config.ConfigNavigation
-import eu.europa.ec.uilogic.serializer.UiSerializable
-import eu.europa.ec.uilogic.serializer.UiSerializableParser
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class IssuanceSuccessUiConfig(
     val documentIds: List<String>,
     val onSuccessNavigation: ConfigNavigation,
-) : UiSerializable {
-
-    companion object Parser : UiSerializableParser {
-        override val serializedKeyName = "issuanceSuccessConfig"
-    }
-}
+)
