@@ -17,14 +17,17 @@
 package eu.europa.ec.shared.navigation
 
 import androidx.navigation3.runtime.NavKey
+import eu.europa.ec.commonfeature.config.IssuanceFlowType
+import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * Verifies the back-stack command layer reproduces the current navController behaviors
- * (Android + iOS): plain push, push-with-popUpTo, pop, and the splash "start anew" reset.
+ * Verifies the back-stack command layer reproduces the retired navController behaviors
+ * (Android + iOS): plain push, push-with-popUpTo, pop, replace-current, the splash "start anew"
+ * reset, and — the Stage-5 requirement — that pop targets match by destination rather than by value.
  */
 class AppNavigatorTest {
 
@@ -74,5 +77,59 @@ class AppNavigatorTest {
         val nav = navigator(DashboardRoute, SettingsRoute, DocumentSignRoute)
         assertTrue(nav.popUpTo(DashboardRoute, inclusive = false))
         assertEquals(listOf(DashboardRoute), nav.entries)
+    }
+
+    @Test
+    fun replaceCurrent_swaps_the_displayed_entry() {
+        val nav = navigator(DashboardRoute, SettingsRoute)
+        nav.replaceCurrent(DocumentSignRoute)
+        assertEquals(listOf(DashboardRoute, DocumentSignRoute), nav.entries)
+    }
+
+    /**
+     * The Stage-5 requirement: config-carrying pop targets are rebuilt at the call site, so an
+     * equality match would miss the entry that is actually on the stack. Matching the destination
+     * finds it — which is also what navigation-compose's `popUpTo(routePattern)` did.
+     */
+    @Test
+    fun popUpTo_matches_the_destination_not_the_arguments() {
+        val onStack = AddDocumentRoute(IssuanceUiConfig(IssuanceFlowType.NoDocument))
+        val rebuiltWithDifferentConfig =
+            AddDocumentRoute(IssuanceUiConfig(IssuanceFlowType.ExtraDocument("mDL")))
+        assertFalse(onStack == rebuiltWithDifferentConfig)
+
+        val nav = navigator(DashboardRoute, onStack, SettingsRoute)
+        assertTrue(nav.popUpTo(rebuiltWithDifferentConfig, inclusive = true))
+        assertEquals(listOf(DashboardRoute), nav.entries)
+    }
+
+    @Test
+    fun navigate_popUpTo_also_matches_by_destination() {
+        val nav = navigator(
+            DashboardRoute,
+            AddDocumentRoute(IssuanceUiConfig(IssuanceFlowType.NoDocument)),
+        )
+        nav.navigate(
+            route = DashboardRoute,
+            popUpTo = AddDocumentRoute(IssuanceUiConfig(IssuanceFlowType.ExtraDocument("mDL"))),
+            popUpToInclusive = true,
+        )
+        assertEquals(listOf(DashboardRoute, DashboardRoute), nav.entries)
+    }
+
+    @Test
+    fun popUpTo_reports_false_when_the_destination_is_absent() {
+        val nav = navigator(DashboardRoute, SettingsRoute)
+        assertFalse(nav.popUpTo(DocumentSignRoute))
+        assertEquals(listOf(DashboardRoute, SettingsRoute), nav.entries)
+    }
+
+    @Test
+    fun isOnBackStack_sees_displayed_and_buried_destinations() {
+        val nav = navigator(DashboardRoute, DocumentDetailsRoute("d1"), SettingsRoute)
+        assertTrue(nav.isOnBackStack(DashboardRoute::class))
+        assertTrue(nav.isOnBackStack(DocumentDetailsRoute::class))
+        assertTrue(nav.isOnBackStack(SettingsRoute::class))
+        assertFalse(nav.isOnBackStack(DocumentSignRoute::class))
     }
 }

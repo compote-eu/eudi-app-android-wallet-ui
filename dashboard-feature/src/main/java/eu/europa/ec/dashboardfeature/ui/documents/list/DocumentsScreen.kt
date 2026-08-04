@@ -66,7 +66,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.corelogic.model.DocumentCategory
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.util.CoreActions
@@ -77,6 +76,7 @@ import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentUi
 import eu.europa.ec.dashboardfeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.warning
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.FiltersSearchBar
 import eu.europa.ec.uilogic.component.InlineSnackbar
@@ -136,7 +136,7 @@ private const val FAB_ENTER_DURATION_MILLIS = 300
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DocumentsScreen(
-    navHostController: NavController,
+    navigator: AppNavigator,
     viewModel: DocumentsViewModel,
     onDashboardEventSent: (DashboardEvent) -> Unit,
 ) {
@@ -207,7 +207,7 @@ fun DocumentsScreen(
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(navigationEffect, navHostController, context)
+                handleNavigationEffect(navigationEffect, navigator, context)
             },
             scrollState = listScrollState,
             paddingValues = paddingValues,
@@ -275,13 +275,13 @@ private fun AddDocumentFab(
 
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
-    navController: NavController,
+    navigator: AppNavigator,
     context: Context,
 ) {
     when (navigationEffect) {
         is Effect.Navigation.Pop -> context.finish()
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigateToRoute(
+            navigator.navigateToRoute(
                 route = navigationEffect.route,
                 popUpTo = navigationEffect.popUpTo,
                 popUpToInclusive = navigationEffect.inclusive,

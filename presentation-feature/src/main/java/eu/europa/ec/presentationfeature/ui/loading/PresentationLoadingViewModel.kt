@@ -38,7 +38,6 @@ import eu.europa.ec.shared.navigation.PresentationSuccessRoute
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.PresentationScreens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -61,17 +60,14 @@ class PresentationLoadingViewModel(
     }
 
     /**
+     * The destination to fall back to: the presentation request screen.
+     *
      * [PresentationLoadingRoute] only carries the scope id, so the request screen's original
-     * [RequestUriConfig] is not reachable from here — the config below is a placeholder.
-     *
-     * It is inert today: every consumer of this value goes through `toLegacyScreen()`, which maps
-     * to `PresentationScreens.PresentationRequest` and discards the config, so Nav2 pops by route
-     * *pattern* exactly as before.
-     *
-     * Stage 5 must not pop by value: `AppNavigator.popUpTo` matches with `==`, so a rebuilt config
-     * would silently fail to find the real back-stack entry. That applies to every config-carrying
-     * pop target (see the `popUpTo = AddDocumentRoute(...)` sites too), not just this placeholder —
-     * the fix is to match pop targets by destination identity/type rather than by value.
+     * [RequestUriConfig] is not reachable from here and the config below is a placeholder. That is
+     * harmless because pop targets are matched by *destination*, not by value —
+     * [eu.europa.ec.shared.navigation.AppNavigator.popUpTo] compares `route::class`, exactly as
+     * navigation-compose's `popUpTo(routePattern)` ignored arguments — so only
+     * `PresentationRequestRoute` itself is significant here.
      */
     override fun getPreviousRoute(): AppRoute {
         return PresentationRequestRoute(

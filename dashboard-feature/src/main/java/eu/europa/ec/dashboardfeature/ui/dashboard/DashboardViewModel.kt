@@ -49,7 +49,6 @@ import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.IntentType
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
 import eu.europa.ec.uilogic.navigation.helper.hasIntentAction
-import eu.europa.ec.uilogic.navigation.helper.toLegacyArguments
 import org.koin.core.annotation.KoinViewModel
 
 data class State(
@@ -105,12 +104,16 @@ sealed class Effect : ViewSideEffect {
             val inclusive: Boolean = false,
         ) : Navigation()
 
-        data class OpenDeepLinkAction(val deepLinkUri: Uri, val arguments: String?) :
+        /**
+         * [route] is the destination the link resolves to, fully typed. Non-navigating link types
+         * (a broadcast, an external URL) carry `null`.
+         */
+        data class OpenDeepLinkAction(val deepLinkUri: Uri, val route: AppRoute?) :
             Navigation()
 
         data class OpenIntentAction(
             val intentAction: IntentAction,
-            val arguments: String?
+            val route: AppRoute?
         ) : Navigation()
 
         data object OnAppSettings : Navigation()
@@ -261,7 +264,7 @@ class DashboardViewModel(
     private fun handleDeepLink(intent: Intent?) {
         intent?.data?.let { uri ->
             hasDeepLink(uri)?.let {
-                val arguments: String? = when (it.type) {
+                val route: AppRoute? = when (it.type) {
                     DeepLinkType.OPENID4VP -> {
                         PresentationRequestRoute(
                             config = RequestUriConfig(
@@ -270,7 +273,7 @@ class DashboardViewModel(
                                     DashboardRoute
                                 )
                             )
-                        ).toLegacyArguments()
+                        )
                     }
 
                     DeepLinkType.CREDENTIAL_OFFER -> {
@@ -286,7 +289,7 @@ class DashboardViewModel(
                                     navigationType = NavigationType.Pop
                                 )
                             )
-                        ).toLegacyArguments()
+                        )
                     }
 
                     else -> null
@@ -294,25 +297,25 @@ class DashboardViewModel(
                 setEffect {
                     Effect.Navigation.OpenDeepLinkAction(
                         deepLinkUri = uri,
-                        arguments = arguments
+                        route = route
                     )
                 }
             }
         } ?: hasIntentAction(intent)?.let { action ->
             when (action.type) {
                 IntentType.DC_API -> {
-                    val arguments: String = PresentationRequestRoute(
+                    val route = PresentationRequestRoute(
                         config = RequestUriConfig(
                             PresentationMode.DcApi(
                                 initiatorRoute = DashboardRoute
                             )
                         )
-                    ).toLegacyArguments()
+                    )
 
                     setEffect {
                         Effect.Navigation.OpenIntentAction(
                             intentAction = action,
-                            arguments = arguments
+                            route = route
                         )
                     }
                 }

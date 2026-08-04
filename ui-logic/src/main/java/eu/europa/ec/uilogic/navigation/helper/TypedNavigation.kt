@@ -14,20 +14,16 @@
  * governing permissions and limitations under the Licence.
  */
 
-// Nav3 Stage 4: the shared translator seam.
+// The shared translator seam: view-models emit typed [AppRoute] navigation effects, and every
+// `*Screen.kt` translator turns those into back-stack operations here.
 //
-// View-models now emit typed [AppRoute] navigation effects, and every `*Screen.kt` translator turns
-// those into back-stack operations here instead of hand-writing `navigate(string) { popUpTo(string) }`.
-// The two functions mirror [eu.europa.ec.shared.navigation.AppNavigator.navigate] / `popUpTo`
-// one-for-one — same names for the parameters, same defaults — so the Stage-5 host swap is a change
-// of receiver (`navController` -> `navigator`) rather than a rewrite of every call site.
-//
-// Note the asymmetry they encapsulate, which is exactly what the hand-written call sites kept getting
-// wrong: navigating needs a *navigable* route (`toLegacyRoute()`, arguments included), while a pop
-// target needs the route *pattern* (`toLegacyScreen().screenRoute`, arguments stripped).
+// Stage 4 introduced these three functions over `NavController` so that Stage 5 would only have to
+// change the receiver. That is what happened: they are now extensions on [AppNavigator] with the
+// same names, parameters and defaults, so no call site moved. The Base64/route-pattern asymmetry
+// they used to hide is simply gone — a destination is a value now.
 package eu.europa.ec.uilogic.navigation.helper
 
-import androidx.navigation.NavController
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AppRoute
 
 /**
@@ -36,47 +32,22 @@ import eu.europa.ec.shared.navigation.AppRoute
  * [popUpToInclusive] defaults to `true` because that is what every existing call site did — the
  * screen being left behind is normally consumed by the navigation.
  */
-fun NavController.navigateToRoute(
+fun AppNavigator.navigateToRoute(
     route: AppRoute,
     popUpTo: AppRoute? = null,
     popUpToInclusive: Boolean = true,
-) {
-    navigate(route.toLegacyRoute()) {
-        popUpTo?.let {
-            popUpTo(it.toLegacyScreen().screenRoute) { inclusive = popUpToInclusive }
-        }
-    }
-}
+) = navigate(route = route, popUpTo = popUpTo, popUpToInclusive = popUpToInclusive)
 
 /**
  * Push [route] and drop the screen we are leaving — the "this screen is consumed by the navigation"
  * pattern (QrScan, QuickPin, Biometric, AddDocument, DocumentOffer, DocumentOfferCode, ProximityQR).
  *
- * These call sites used to hardcode their own `popUpTo(CommonScreens.X.screenRoute)`. Reading the
- * target off the controller instead of naming it keeps the legacy `Screen` constants out of the
- * translators and — unlike naming a config-carrying route — needs no reconstruction of the config,
- * so there is nothing for a Stage-5 equality check to miss.
- *
- * Equivalent on the normal path: every destination is registered as `composable(route =
- * SomeScreens.X.screenRoute)`, and `NavDestination.route` returns that same pattern, so while the
- * screen is displayed `currentDestination?.route` *is* the literal those call sites hardcoded.
- *
- * One divergence, deliberately accepted: if a second navigation effect is delivered after the first
- * already navigated away, the old code's `popUpTo` named a route no longer on the stack and quietly
- * did nothing, whereas this pops whatever is now current. Both paths are the same pre-existing
- * double-navigation bug; neither is reachable from a single user action.
- *
  * Set [popUpToCurrent] to false to keep the current screen on the back stack.
  */
-fun NavController.navigateReplacingCurrent(route: AppRoute, popUpToCurrent: Boolean = true) {
-    val current = currentDestination?.route
-    navigate(route.toLegacyRoute()) {
-        if (popUpToCurrent) {
-            current?.let { popUpTo(it) { inclusive = true } }
-        }
-    }
+fun AppNavigator.navigateReplacingCurrent(route: AppRoute, popUpToCurrent: Boolean = true) {
+    if (popUpToCurrent) replaceCurrent(route) else navigate(route)
 }
 
 /** Pop entries down to [route], also removing it when [inclusive]. */
-fun NavController.popBackStackTo(route: AppRoute, inclusive: Boolean = false): Boolean =
-    popBackStack(route = route.toLegacyScreen().screenRoute, inclusive = inclusive)
+fun AppNavigator.popBackStackTo(route: AppRoute, inclusive: Boolean = false): Boolean =
+    popUpTo(target = route, inclusive = inclusive)

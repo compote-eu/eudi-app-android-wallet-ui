@@ -145,4 +145,35 @@ class AppRouteTest {
         )
         assertEquals(PinFlow.CREATE_WITH_ACTIVATION, restored.pinFlow)
     }
+
+    /**
+     * Stage 5: the one seam that stays a `String` — `PresentationControllerConfig.initiatorRoute` in
+     * `:core-logic` — now carries the route as JSON rather than Base64, so it round-trips on a plain
+     * JVM too (the old `android.util.Base64` path silently produced an empty payload off-device).
+     */
+    @Test
+    fun the_opaque_domain_token_round_trips_a_typed_route() {
+        val route = AddDocumentRoute(IssuanceUiConfig(IssuanceFlowType.ExtraDocument("mDL")))
+
+        val token = AppRouteCodec.encode(route)
+        assertEquals(route, AppRouteCodec.decode(token))
+    }
+
+    @Test
+    fun decoding_an_absent_or_unreadable_token_yields_null() {
+        assertEquals(null, AppRouteCodec.decode(null))
+        assertEquals(null, AppRouteCodec.decode(""))
+        assertEquals(null, AppRouteCodec.decode("PRESENTATION_REQUEST?requestUriConfig="))
+    }
+
+    @Test
+    fun analytics_names_stay_the_legacy_screen_names() {
+        assertEquals("DASHBOARD", DashboardRoute.analyticsName)
+        assertEquals("ISSUANCE_ADD_DOCUMENT", AddDocumentRoute(
+            IssuanceUiConfig(IssuanceFlowType.NoDocument)
+        ).analyticsName)
+        assertEquals("PROXIMITY_LOADING", ProximityLoadingRoute("s1").analyticsName)
+        assertEquals(mapOf("scopeId" to "s1"), ProximityLoadingRoute("s1").analyticsParams)
+        assertEquals(emptyMap(), DashboardRoute.analyticsParams)
+    }
 }

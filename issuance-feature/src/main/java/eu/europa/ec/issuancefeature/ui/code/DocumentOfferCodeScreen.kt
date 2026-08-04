@@ -39,11 +39,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.commonfeature.config.OfferCodeUiConfig
 import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.commonfeature.ui.issuance.IssuerPartiallyTrustedSheetContent
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -73,7 +73,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DocumentOfferCodeScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: DocumentOfferCodeViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -103,7 +103,7 @@ fun DocumentOfferCodeScreen(
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(navigationEffect, navController)
+                handleNavigationEffect(navigationEffect, navigator)
             },
             paddingValues = paddingValues,
             state = state,
@@ -251,14 +251,14 @@ private fun CodeFieldLayout(
 
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
-    navController: NavController
+    navigator: AppNavigator
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigateReplacingCurrent(navigationEffect.route)
+            navigator.navigateReplacingCurrent(navigationEffect.route)
         }
 
-        is Effect.Navigation.Pop -> navController.popBackStack()
+        is Effect.Navigation.Pop -> navigator.pop()
     }
 }
 

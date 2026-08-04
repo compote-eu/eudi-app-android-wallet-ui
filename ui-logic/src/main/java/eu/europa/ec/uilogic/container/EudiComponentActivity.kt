@@ -27,18 +27,21 @@ import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.NavController
-import androidx.navigation.NavGraphBuilder
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.resourceslogic.theme.ThemeManager
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.DocumentDetailsRoute
+import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
 import eu.europa.ec.uilogic.navigation.RouterHost
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
+import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.IntentType
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
@@ -67,10 +70,16 @@ open class EudiComponentActivity : FragmentActivity() {
 
     internal fun getCachedIntent(): Intent? = viewModel.getCachedIntent()
 
+    internal fun cacheIntentAction(intentAction: IntentAction) {
+        viewModel.cacheIntentAction(intentAction)
+    }
+
+    internal fun consumePendingIntentAction(): IntentAction? = viewModel.consumePendingIntentAction()
+
     @Composable
     protected fun Content(
         intent: Intent?,
-        builder: NavGraphBuilder.(NavController) -> Unit,
+        entries: EntryProviderScope<NavKey>.(AppNavigator) -> Unit,
     ) {
         ThemeManager.instance.Theme {
             Surface(
@@ -79,8 +88,8 @@ open class EudiComponentActivity : FragmentActivity() {
                     .fillMaxSize(),
                 color = MaterialTheme.colorScheme.surface
             ) {
-                routerHost.StartFlow {
-                    builder(it)
+                routerHost.StartFlow { navigator ->
+                    entries(navigator)
                 }
                 LaunchedEffect(Unit) {
                     viewModel.onFlowStart()
@@ -121,8 +130,9 @@ open class EudiComponentActivity : FragmentActivity() {
         hasDeepLink(intent?.data)?.let {
             if (it.type == DeepLinkType.ISSUANCE && !coldBoot) {
                 handleDeepLinkAction(
-                    routerHost.getNavController(),
-                    it.link
+                    navigator = routerHost.getNavigator(),
+                    context = this,
+                    uri = it.link
                 )
             } else if (
                 it.type == DeepLinkType.CREDENTIAL_OFFER
@@ -133,13 +143,14 @@ open class EudiComponentActivity : FragmentActivity() {
                 routerHost.popToIssuanceOnboardingScreen()
             } else if (it.type == DeepLinkType.OPENID4VP
                 && routerHost.userIsLoggedInWithDocuments()
-                && (routerHost.isScreenOnBackStackOrForeground(IssuanceScreens.AddDocument)
-                        || routerHost.isScreenOnBackStackOrForeground(IssuanceScreens.DocumentOffer)
-                        || routerHost.isScreenOnBackStackOrForeground(DashboardScreens.DocumentDetails))
+                && (routerHost.isRouteOnBackStackOrForeground(AddDocumentRoute::class)
+                        || routerHost.isRouteOnBackStackOrForeground(DocumentOfferRoute::class)
+                        || routerHost.isRouteOnBackStackOrForeground(DocumentDetailsRoute::class))
             ) {
                 handleDeepLinkAction(
-                    routerHost.getNavController(),
-                    DeepLinkAction(it.link, DeepLinkType.DYNAMIC_PRESENTATION)
+                    navigator = routerHost.getNavigator(),
+                    context = this,
+                    action = DeepLinkAction(it.link, DeepLinkType.DYNAMIC_PRESENTATION)
                 )
             } else if (it.type != DeepLinkType.ISSUANCE) {
                 cacheIntent(intent)
@@ -172,6 +183,7 @@ internal class EudiComponentActivityViewModel(
 
     private var flowStarted: Boolean = false
     private var pendingIntent: Intent? = null
+    private var pendingIntentAction: IntentAction? = null
 
     override fun onCleared() {
         getOrNullKoinScope(sessionId)?.close()
@@ -195,6 +207,14 @@ internal class EudiComponentActivityViewModel(
     }
 
     fun getCachedIntent(): Intent? = pendingIntent
+
+    fun cacheIntentAction(intentAction: IntentAction) {
+        pendingIntentAction = intentAction
+    }
+
+    /** One-shot: the destination that was pushed alongside the action reads it exactly once. */
+    fun consumePendingIntentAction(): IntentAction? =
+        pendingIntentAction.also { pendingIntentAction = null }
 
     fun hasFlowStarted(): Boolean = flowStarted
 

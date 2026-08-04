@@ -19,12 +19,12 @@ package eu.europa.ec.assemblylogic.ui
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import eu.europa.ec.commonfeature.router.featureCommonGraph
-import eu.europa.ec.dashboardfeature.router.featureDashboardGraph
-import eu.europa.ec.issuancefeature.router.featureIssuanceGraph
-import eu.europa.ec.presentationfeature.router.presentationGraph
-import eu.europa.ec.proximityfeature.router.featureProximityGraph
-import eu.europa.ec.startupfeature.router.featureStartupGraph
+import eu.europa.ec.commonfeature.router.featureCommonEntries
+import eu.europa.ec.dashboardfeature.router.featureDashboardEntries
+import eu.europa.ec.issuancefeature.router.featureIssuanceEntries
+import eu.europa.ec.presentationfeature.router.presentationEntries
+import eu.europa.ec.proximityfeature.router.featureProximityEntries
+import eu.europa.ec.startupfeature.router.featureStartupEntries
 import eu.europa.ec.uilogic.container.EudiComponentActivity
 
 class MainActivity : EudiComponentActivity() {
@@ -32,13 +32,13 @@ class MainActivity : EudiComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            Content(intent) {
-                featureStartupGraph(it)
-                featureCommonGraph(it)
-                featureDashboardGraph(it)
-                presentationGraph(it)
-                featureProximityGraph(it)
-                featureIssuanceGraph(it)
+            Content(intent) { navigator ->
+                featureStartupEntries(navigator)
+                featureCommonEntries(navigator)
+                featureDashboardEntries(navigator)
+                presentationEntries(navigator)
+                featureProximityEntries(navigator)
+                featureIssuanceEntries(navigator)
             }
         }
     }

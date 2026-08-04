@@ -17,16 +17,16 @@
 package eu.europa.ec.proximityfeature.ui.success
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreen
+import eu.europa.ec.shared.navigation.AppNavigator
 
 @Composable
 fun ProximitySuccessScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: ProximitySuccessViewModel,
 ) {
     DocumentSuccessScreen(
-        navController = navController,
+        navigator = navigator,
         viewModel = viewModel,
     )
 }

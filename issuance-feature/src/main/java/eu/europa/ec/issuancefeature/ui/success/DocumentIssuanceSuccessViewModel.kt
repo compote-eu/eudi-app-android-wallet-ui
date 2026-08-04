@@ -23,7 +23,6 @@ import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessViewModel
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorGetUiItemsPartialState
 import eu.europa.ec.uilogic.config.ConfigNavigation
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -31,26 +30,20 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 class DocumentIssuanceSuccessViewModel(
     private val interactor: DocumentIssuanceSuccessInteractor,
-    private val uiSerializer: UiSerializer,
-    @InjectedParam private val issuanceSuccessSerializedConfig: String,
+    @InjectedParam private val issuanceSuccessUiConfig: IssuanceSuccessUiConfig,
 ) : DocumentSuccessViewModel() {
 
-    override fun getNextScreenConfigNavigation(): ConfigNavigation {
-        val deserializedIssuanceSuccessUiConfig = getDeserializedIssuanceSuccessUiConfig()
-
-        return deserializedIssuanceSuccessUiConfig.onSuccessNavigation
-    }
+    override fun getNextScreenConfigNavigation(): ConfigNavigation =
+        issuanceSuccessUiConfig.onSuccessNavigation
 
     override fun doWork() {
-        val deserializedIssuanceSuccessUiConfig = getDeserializedIssuanceSuccessUiConfig()
-
         setState {
             copy(isLoading = true)
         }
 
         viewModelScope.launch {
             interactor.getUiItems(
-                documentIds = deserializedIssuanceSuccessUiConfig.documentIds
+                documentIds = issuanceSuccessUiConfig.documentIds
             ).collect { response ->
                 when (response) {
                     is DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Failed -> {
@@ -77,14 +70,5 @@ class DocumentIssuanceSuccessViewModel(
 
     override fun getPendingIntent(): Intent? {
         return null
-    }
-
-    private fun getDeserializedIssuanceSuccessUiConfig(): IssuanceSuccessUiConfig {
-        val deserializedIssuanceSuccessUiConfig = uiSerializer.fromBase64(
-            payload = issuanceSuccessSerializedConfig,
-            model = IssuanceSuccessUiConfig::class.java,
-            parser = IssuanceSuccessUiConfig.Parser
-        ) ?: throw RuntimeException("IssuanceSuccessUiConfig:: is Missing or invalid")
-        return deserializedIssuanceSuccessUiConfig
     }
 }

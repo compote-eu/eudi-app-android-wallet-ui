@@ -17,19 +17,19 @@
 package eu.europa.ec.presentationfeature.ui.request
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.ui.request.RequestScreen
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 
 @Composable
 fun PresentationRequestScreen(
     intentAction: IntentAction?,
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: PresentationRequestViewModel
 ) {
     RequestScreen(
         intentAction = intentAction,
-        navController = navController,
+        navigator = navigator,
         viewModel = viewModel
     )
 }

@@ -40,9 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.proximityfeature.ui.qr.component.rememberQrBitmapPainter
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ContentTitle
@@ -65,7 +65,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 
 @Composable
 fun ProximityQRScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: ProximityQRViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -83,11 +83,11 @@ fun ProximityQRScreen(
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigateReplacingCurrent(navigationEffect.route)
+                        navigator.navigateReplacingCurrent(navigationEffect.route)
                     }
 
                     is Effect.Navigation.Pop -> {
-                        navController.popBackStack()
+                        navigator.pop()
                     }
                 }
             },

@@ -29,7 +29,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -65,8 +64,7 @@ sealed class Effect : ViewSideEffect {
 @KoinViewModel
 class ProximityQRViewModel(
     private val interactor: ProximityQRInteractor,
-    private val uiSerializer: UiSerializer,
-    @InjectedParam private val requestUriConfigRaw: String
+    @InjectedParam private val requestUriConfig: RequestUriConfig
 ) : MviViewModel<Event, State, Effect>() {
 
     private var interactorJob: Job? = null
@@ -96,12 +94,6 @@ class ProximityQRViewModel(
     }
 
     private fun initializeConfig() {
-        val requestUriConfig = uiSerializer.fromBase64(
-            requestUriConfigRaw,
-            RequestUriConfig::class.java,
-            RequestUriConfig.Parser
-        ) ?: throw RuntimeException("RequestUriConfig:: is Missing or invalid")
-
         setState {
             copy(presentationScopeId = requestUriConfig.presentationScopeId)
         }

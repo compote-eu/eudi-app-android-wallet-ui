@@ -47,6 +47,13 @@ dependencies {
     implementation(libs.zxing)
     implementation(libs.gson)
 
+    // Nav3 host: `NavDisplay` plus the decorator that gives each back-stack entry its own
+    // ViewModelStore (what NavBackStackEntry used to provide for `koinViewModel()`). The Nav3
+    // *runtime* (NavKey/entryProvider) comes through `api(":shared-ui")`, so feature modules can
+    // contribute entries without depending on the host artifacts.
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+
     testImplementation(project(LibraryModule.TestLogic.path))
 }
 

@@ -44,10 +44,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.AppIcons
@@ -88,7 +88,7 @@ typealias OpenSideMenuEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event.S
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    navHostController: NavController,
+    navigator: AppNavigator,
     viewModel: HomeViewModel,
     onDashboardEventSent: (DashboardEvent) -> Unit
 ) {
@@ -117,7 +117,7 @@ fun HomeScreen(
                 viewModel.setEvent(event)
             },
             onNavigationRequested = {
-                handleNavigationEffect(it, navHostController, context)
+                handleNavigationEffect(it, navigator, context)
             },
             coroutineScope = scope,
             modalBottomSheetState = bottomSheetState,
@@ -268,12 +268,12 @@ private fun Content(
 
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
-    navController: NavController,
+    navigator: AppNavigator,
     context: Context
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigateToRoute(
+            navigator.navigateToRoute(
                 route = navigationEffect.route,
                 popUpTo = navigationEffect.popUpTo,
                 popUpToInclusive = navigationEffect.inclusive,

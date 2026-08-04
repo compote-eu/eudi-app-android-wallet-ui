@@ -42,7 +42,6 @@ import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -51,11 +50,8 @@ import org.koin.core.annotation.KoinViewModel
 class PresentationRequestViewModel(
     private val interactor: PresentationRequestInteractor,
     private val resourceProvider: ResourceProvider,
-    private val uiSerializer: UiSerializer,
-    @InjectedParam private val requestUriConfigRaw: String
+    @InjectedParam private val requestUriConfig: RequestUriConfig
 ) : RequestViewModel() {
-
-    private lateinit var requestUriConfig: RequestUriConfig
 
     override fun getHeaderConfig(): ContentHeaderConfig {
         return ContentHeaderConfig(
@@ -96,12 +92,6 @@ class PresentationRequestViewModel(
     }
 
     override fun init(intentAction: IntentAction?) {
-        requestUriConfig = uiSerializer.fromBase64(
-            requestUriConfigRaw,
-            RequestUriConfig::class.java,
-            RequestUriConfig.Parser
-        ) ?: throw RuntimeException("RequestUriConfig:: is Missing or invalid")
-
         setState {
             copy(
                 presentationScopeId = requestUriConfig.presentationScopeId,

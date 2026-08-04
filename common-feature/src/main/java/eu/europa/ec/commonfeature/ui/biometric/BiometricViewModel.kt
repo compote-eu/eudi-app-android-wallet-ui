@@ -30,6 +30,7 @@ import eu.europa.ec.commonfeature.interactor.QuickPinInteractorPinValidPartialSt
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.FlowCompletion
@@ -38,8 +39,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.CommonScreens
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -90,7 +89,7 @@ sealed class Effect : ViewSideEffect {
         data class Deeplink(
             val link: Uri,
             val isPreAuthorization: Boolean,
-            val routeToPop: String? = null
+            val routeToPop: AppRoute? = null
         ) : Navigation()
 
         data object Pop : Navigation()
@@ -102,8 +101,7 @@ sealed class Effect : ViewSideEffect {
 class BiometricViewModel(
     private val biometricInteractor: BiometricInteractor,
     private val resourceProvider: ResourceProvider,
-    private val uiSerializer: UiSerializer,
-    @InjectedParam private val biometricConfig: String
+    @InjectedParam private val config: BiometricUiConfig
 ) : MviViewModel<Event, State, Effect>() {
 
     private val biometricUiConfig
@@ -112,11 +110,6 @@ class BiometricViewModel(
     private var lockoutTickJob: Job? = null
 
     override fun setInitialState(): State {
-        val config = uiSerializer.fromBase64(
-            biometricConfig,
-            BiometricUiConfig::class.java,
-            BiometricUiConfig.Parser
-        ) ?: throw RuntimeException("BiometricUiConfig:: is Missing or invalid")
         return State(
             config = config,
             userBiometricsAreEnabled = false,
@@ -384,7 +377,9 @@ class BiometricViewModel(
             is NavigationType.Deeplink -> Effect.Navigation.Deeplink(
                 link = nav.link.toUri(),
                 isPreAuthorization = viewState.value.config.isPreAuthorization,
-                routeToPop = nav.routeToPop
+                // `routeToPop` is the opaque token that travelled through :core-logic — see
+                // AppRouteCodec. It becomes a destination again here, at the edge of the UI layer.
+                routeToPop = AppRouteCodec.decode(nav.routeToPop)
             )
 
             is NavigationType.Pop -> Effect.Navigation.Pop

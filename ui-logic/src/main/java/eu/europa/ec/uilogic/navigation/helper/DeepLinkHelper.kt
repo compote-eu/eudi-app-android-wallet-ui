@@ -21,15 +21,13 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.core.os.bundleOf
-import androidx.navigation.NavController
 import eu.europa.ec.businesslogic.util.safeLet
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.eudi.rqesui.infrastructure.EudiRQESUi
 import eu.europa.ec.eudi.rqesui.infrastructure.RemoteUri
+import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.uilogic.extension.openUrl
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
-import eu.europa.ec.uilogic.navigation.PresentationScreens
-import eu.europa.ec.uilogic.navigation.Screen
 
 fun hasDeepLink(deepLinkUri: Uri?): DeepLinkAction? {
     return safeLet(
@@ -47,85 +45,78 @@ fun hasDeepLink(deepLinkUri: Uri?): DeepLinkAction? {
 }
 
 fun handleDeepLinkAction(
-    navController: NavController,
+    navigator: AppNavigator,
+    context: Context,
     uri: Uri,
-    arguments: String? = null
+    route: AppRoute? = null
 ) {
     hasDeepLink(uri)?.let { action ->
         handleDeepLinkAction(
-            navController = navController,
+            navigator = navigator,
+            context = context,
             action = action,
-            arguments = arguments
+            route = route
         )
     }
 }
 
+/**
+ * Dispatch a deep link: either broadcast/hand it off to another component, or navigate to [route].
+ *
+ * Nav3 Stage 5: the navigating branches used to build a route *string* here — the screen came from
+ * the deep-link type and the arguments arrived pre-Base64-encoded from the caller. The caller now
+ * supplies the whole typed destination (it is the one that knows the config to put in it), so this
+ * only decides *whether* the link navigates. The two remaining `Screen` lookups are therefore gone,
+ * as is the `arguments: String?` parameter.
+ *
+ * A navigating type with no [route] is a no-op, matching the old behaviour: the route string would
+ * have been the bare screen name with its required config argument missing.
+ */
 fun handleDeepLinkAction(
-    navController: NavController,
+    navigator: AppNavigator,
+    context: Context,
     action: DeepLinkAction,
-    arguments: String? = null
+    route: AppRoute? = null
 ) {
-    val screen: Screen = when (action.type) {
-        DeepLinkType.OPENID4VP -> {
-            PresentationScreens.PresentationRequest
-        }
-
-        DeepLinkType.CREDENTIAL_OFFER -> {
-            IssuanceScreens.DocumentOffer
+    when (action.type) {
+        DeepLinkType.OPENID4VP, DeepLinkType.CREDENTIAL_OFFER -> {
+            route?.let { navigator.navigate(it, popUpTo = it, popUpToInclusive = true) }
         }
 
         DeepLinkType.ISSUANCE -> {
             notify(
-                context = navController.context,
+                context = context,
                 action = CoreActions.VCI_RESUME_ACTION,
                 bundle = bundleOf(Pair("uri", action.link.toString()))
             )
-            return
         }
 
         DeepLinkType.EXTERNAL -> {
-            navController.context.openUrl(action.link)
-            return
+            context.openUrl(action.link)
         }
 
         DeepLinkType.DYNAMIC_PRESENTATION -> {
             notify(
-                context = navController.context,
+                context = context,
                 action = CoreActions.VCI_DYNAMIC_PRESENTATION,
                 bundle = bundleOf(Pair("uri", action.link.toString()))
             )
-            return
         }
 
         DeepLinkType.RQES -> {
             action.link.getQueryParameter("code")?.let { authorizationCode ->
                 EudiRQESUi.resume(
-                    context = navController.context,
+                    context = context,
                     authorizationCode = authorizationCode
                 )
             }
-            return
         }
 
         DeepLinkType.RQES_DOC_RETRIEVAL -> {
             EudiRQESUi.initiate(
-                context = navController.context,
+                context = context,
                 remoteUri = RemoteUri(action.link)
             )
-            return
-        }
-    }
-
-    val navigationLink = arguments?.let {
-        generateComposableNavigationLink(
-            screen = screen,
-            arguments = arguments
-        )
-    } ?: screen.screenRoute
-
-    navController.navigate(navigationLink) {
-        popUpTo(screen.screenRoute) {
-            inclusive = true
         }
     }
 }

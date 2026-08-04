@@ -35,7 +35,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -91,8 +90,7 @@ sealed class DocumentOfferCodeBottomSheetContent {
 @KoinViewModel
 class DocumentOfferCodeViewModel(
     private val resourceProvider: ResourceProvider,
-    private val uiSerializer: UiSerializer,
-    @InjectedParam private val offerCodeSerializedConfig: String,
+    @InjectedParam private val offerCodeUiConfig: OfferCodeUiConfig,
     documentOfferInteractor: DocumentOfferInteractor? = null
 ) : MviViewModel<Event, State, Effect>() {
 
@@ -105,15 +103,10 @@ class DocumentOfferCodeViewModel(
             }
 
     override fun setInitialState(): State {
-        val deserializedOfferCodeUiConfig = uiSerializer.fromBase64(
-            offerCodeSerializedConfig,
-            OfferCodeUiConfig::class.java,
-            OfferCodeUiConfig.Parser
-        ) ?: throw RuntimeException("OfferCodeUiConfig:: is Missing or invalid")
         return State(
-            offerCodeUiConfig = deserializedOfferCodeUiConfig,
-            screenTitle = calculateScreenTitle(issuerName = deserializedOfferCodeUiConfig.issuerName),
-            screenSubtitle = calculateScreenCaption(txCodeLength = deserializedOfferCodeUiConfig.txCodeLength)
+            offerCodeUiConfig = offerCodeUiConfig,
+            screenTitle = calculateScreenTitle(issuerName = offerCodeUiConfig.issuerName),
+            screenSubtitle = calculateScreenCaption(txCodeLength = offerCodeUiConfig.txCodeLength)
         )
     }
 

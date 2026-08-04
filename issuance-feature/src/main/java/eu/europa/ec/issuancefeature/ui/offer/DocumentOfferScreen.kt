@@ -39,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.OfferUiConfig
@@ -48,6 +47,7 @@ import eu.europa.ec.commonfeature.ui.issuance.IssuerPartiallyTrustedSheetContent
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.issuancefeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.uilogic.component.ErrorInfo
@@ -91,7 +91,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DocumentOfferScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: DocumentOfferViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -151,7 +151,7 @@ fun DocumentOfferScreen(
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(context, navigationEffect, navController)
+                handleNavigationEffect(context, navigationEffect, navigator)
             },
             paddingValues = paddingValues,
             coroutineScope = scope,
@@ -285,18 +285,18 @@ private fun MainContent(
 private fun handleNavigationEffect(
     context: Context,
     navigationEffect: Effect.Navigation,
-    navController: NavController
+    navigator: AppNavigator
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigateReplacingCurrent(
+            navigator.navigateReplacingCurrent(
                 route = navigationEffect.route,
                 popUpToCurrent = navigationEffect.shouldPopToSelf
             )
         }
 
         is Effect.Navigation.PopBackStackUpTo -> {
-            navController.popBackStackTo(
+            navigator.popBackStackTo(
                 route = navigationEffect.route,
                 inclusive = navigationEffect.inclusive
             )
@@ -305,14 +305,18 @@ private fun handleNavigationEffect(
         is Effect.Navigation.DeepLink -> {
             navigationEffect.routeToPop?.let {
                 context.cacheUri(navigationEffect.link)
-                navController.popBackStack(
+                navigator.popBackStackTo(
                     route = it,
                     inclusive = false
                 )
-            } ?: handleDeepLinkAction(navController, navigationEffect.link)
+            } ?: handleDeepLinkAction(
+                navigator = navigator,
+                context = context,
+                uri = navigationEffect.link
+            )
         }
 
-        is Effect.Navigation.Pop -> navController.popBackStack()
+        is Effect.Navigation.Pop -> navigator.pop()
     }
 }
 

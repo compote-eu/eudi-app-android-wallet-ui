@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.util.CoreActions
@@ -54,6 +53,7 @@ import eu.europa.ec.dashboardfeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.resourceslogic.theme.values.warning
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.IssuerDetailsCard
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
@@ -88,6 +88,7 @@ import eu.europa.ec.uilogic.extension.getPendingUri
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
+import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -99,7 +100,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DocumentDetailsScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: DocumentDetailsViewModel,
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -171,7 +172,7 @@ fun DocumentDetailsScreen(
                 handleNavigationEffect(
                     context = context,
                     navigationEffect = navigationEffect,
-                    navController = navController
+                    navigator = navigator
                 )
             },
             paddingValues = paddingValues,
@@ -255,11 +256,11 @@ private fun getToolbarConfig(
 private fun handleNavigationEffect(
     context: Context,
     navigationEffect: Effect.Navigation,
-    navController: NavController,
+    navigator: AppNavigator,
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigateToRoute(
+            navigator.navigateToRoute(
                 route = navigationEffect.route,
                 popUpTo = navigationEffect.popUpTo,
                 popUpToInclusive = navigationEffect.inclusive == true,
@@ -269,14 +270,18 @@ private fun handleNavigationEffect(
         is Effect.Navigation.DeepLink -> {
             navigationEffect.routeToPop?.let {
                 context.cacheUri(navigationEffect.link)
-                navController.popBackStack(
+                navigator.popBackStackTo(
                     route = it,
                     inclusive = false
                 )
-            } ?: handleDeepLinkAction(navController, navigationEffect.link)
+            } ?: handleDeepLinkAction(
+                navigator = navigator,
+                context = context,
+                uri = navigationEffect.link
+            )
         }
 
-        is Effect.Navigation.Pop -> navController.popBackStack()
+        is Effect.Navigation.Pop -> navigator.pop()
     }
 }
 

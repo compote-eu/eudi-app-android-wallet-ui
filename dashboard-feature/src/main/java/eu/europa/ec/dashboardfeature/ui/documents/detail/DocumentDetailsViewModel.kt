@@ -126,7 +126,7 @@ sealed class Effect : ViewSideEffect {
 
         data class DeepLink(
             val link: Uri,
-            val routeToPop: String? = null
+            val routeToPop: AppRoute? = null
         ) : Navigation()
     }
 

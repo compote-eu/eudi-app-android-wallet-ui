@@ -17,29 +17,34 @@
 package eu.europa.ec.shared.navigation
 
 import androidx.navigation3.runtime.NavKey
+import kotlin.reflect.KClass
 
 /**
- * Phase-3c / N3: the KMP navigation command layer over a Nav3 back stack.
+ * Phase-3c / N3: the KMP navigation command layer over the Nav3 back stack.
  *
- * Wraps the back stack (a plain `MutableList<NavKey>` — in the Compose host this is a
- * `SnapshotStateList` from `rememberNavBackStack()`, so mutations recompose; in tests a plain
- * list) and exposes the operations the current app performs through `navController`, mapping each
- * navigation-compose pattern to an explicit list op so behavior is preserved 1:1:
+ * Wraps the back stack (a plain `MutableList<NavKey>` — in the Compose host this is the
+ * `NavBackStack` from `rememberNavBackStack()`, whose backing `SnapshotStateList` makes mutations
+ * recompose `NavDisplay`; in tests a plain list) and exposes the operations the app performs,
+ * mapping each former navigation-compose pattern to an explicit list op so behavior is preserved
+ * 1:1:
  *
  *  - `navigate(X)`                          -> [navigate]
  *  - `navigate(X){ popUpTo(Y){inclusive} }` -> [navigate] with popUpTo args
  *  - `popBackStack()` (Pop)                 -> [pop]
  *  - `popBackStack(route, inclusive)`       -> [popUpTo]
- *  - Splash replacing itself (`navigate(X){ popUpTo(Splash){inclusive} }`, leaving a stack of one)
- *    -> [replaceAll]
+ *  - `navigate(X){ popUpTo(current){inclusive=true} }` -> [replaceCurrent]
+ *  - Splash replacing itself, leaving a stack of one -> [replaceAll]
  *
- * The Stage-4 Nav2 counterparts of these live in :ui-logic `TypedNavigation.kt`
- * (`navigateToRoute` / `navigateReplacingCurrent` / `popBackStackTo`) with matching parameter
- * names, so the Stage-5 host swap only changes the receiver.
+ * ## Pop targets are matched by destination, not by value
  *
- * Note for Stage 5: [popUpTo] and [navigate]'s `popUpTo` argument match by `==`. Config-carrying
- * pop targets are rebuilt at their call sites rather than read off the back stack, so a value
- * comparison would silently miss the real entry — match those by destination identity/type instead.
+ * [popUpTo] (and [navigate]'s `popUpTo` argument) match on the target's **class**, not on `==`.
+ * That is the faithful translation of what navigation-compose did: `popUpTo(Screen.X.screenRoute)`
+ * named a route *pattern*, so arguments never took part in the match. It is also what makes the
+ * existing call sites correct — config-carrying pop targets such as `AddDocumentRoute(config)` are
+ * rebuilt at the call site rather than read off the back stack, so a value comparison would
+ * silently fail to find the real entry and the pop would become a no-op. Every [AppRoute] variant
+ * is its own class and no destination is legitimately stacked twice, so matching by class
+ * identifies exactly one entry.
  */
 class AppNavigator(private val backStack: MutableList<NavKey>) {
 
@@ -65,13 +70,30 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
             false
         }
 
-    /** Pop entries down to the last occurrence of [target] (also removing it when [inclusive]). */
-    fun popUpTo(target: NavKey, inclusive: Boolean = false): Boolean {
-        val index = backStack.indexOfLast { it == target }
+    /**
+     * Pop entries down to the last entry that is the same destination as [target] (also removing it
+     * when [inclusive]). See the class KDoc for why the match is by destination class.
+     */
+    fun popUpTo(target: NavKey, inclusive: Boolean = false): Boolean =
+        popUpTo(destination = target::class, inclusive = inclusive)
+
+    /** Pop entries down to the last entry of type [destination], also removing it when [inclusive]. */
+    fun popUpTo(destination: KClass<out NavKey>, inclusive: Boolean = false): Boolean {
+        val index = backStack.indexOfLast { it::class == destination }
         if (index < 0) return false
         val keep = if (inclusive) index else index + 1
         while (backStack.size > keep) backStack.removeAt(backStack.lastIndex)
         return true
+    }
+
+    /**
+     * Replace the entry currently displayed with [route] — the "this screen is consumed by the
+     * navigation" pattern (Splash, QrScan, QuickPin, Biometric, AddDocument, DocumentOffer,
+     * DocumentOfferCode, ProximityQR).
+     */
+    fun replaceCurrent(route: NavKey) {
+        if (backStack.isNotEmpty()) backStack.removeAt(backStack.lastIndex)
+        backStack.add(route)
     }
 
     /** Reset the whole back stack to a single [route] — the "start anew" module switch. */
@@ -79,4 +101,8 @@ class AppNavigator(private val backStack: MutableList<NavKey>) {
         backStack.clear()
         backStack.add(route)
     }
+
+    /** Whether a [destination] is displayed or waiting underneath on the back stack. */
+    fun isOnBackStack(destination: KClass<out NavKey>): Boolean =
+        backStack.any { it::class == destination }
 }

@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
@@ -54,6 +53,7 @@ import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.issuancefeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ErrorInfo
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -94,7 +94,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddDocumentScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: AddDocumentViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -150,9 +150,9 @@ fun AddDocumentScreen(
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
-                    is Effect.Navigation.Pop -> navController.popBackStack()
+                    is Effect.Navigation.Pop -> navigator.pop()
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigateReplacingCurrent(
+                        navigator.navigateReplacingCurrent(
                             route = navigationEffect.route,
                             popUpToCurrent = navigationEffect.inclusive
                         )
@@ -160,9 +160,10 @@ fun AddDocumentScreen(
 
                     is Effect.Navigation.Finish -> context.finish()
                     is Effect.Navigation.OpenDeepLinkAction -> handleDeepLinkAction(
-                        navController,
-                        navigationEffect.deepLinkUri,
-                        navigationEffect.arguments
+                        navigator = navigator,
+                        context = context,
+                        uri = navigationEffect.deepLinkUri,
+                        route = navigationEffect.route
                     )
                 }
             },

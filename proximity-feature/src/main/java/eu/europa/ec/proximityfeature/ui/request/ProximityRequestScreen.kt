@@ -17,17 +17,17 @@
 package eu.europa.ec.proximityfeature.ui.request
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.ui.request.RequestScreen
+import eu.europa.ec.shared.navigation.AppNavigator
 
 @Composable
 fun ProximityRequestScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: ProximityRequestViewModel
 ) {
     RequestScreen(
         intentAction = null,
-        navController = navController,
+        navigator = navigator,
         viewModel = viewModel
     )
 }

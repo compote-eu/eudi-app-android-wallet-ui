@@ -16,41 +16,37 @@
 
 package eu.europa.ec.uilogic.navigation.helper
 
+import android.content.Context
 import android.content.Intent
-import androidx.navigation.NavController
-import eu.europa.ec.uilogic.extension.navigateWithIntentAction
-import eu.europa.ec.uilogic.navigation.PresentationScreens
-import eu.europa.ec.uilogic.navigation.Screen
+import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.uilogic.extension.cacheIntentAction
 
 fun hasIntentAction(intent: Intent?): IntentAction? {
     return intent?.toIntentAction()
 }
 
+/**
+ * Hand [action] to [route] and go there.
+ *
+ * Nav3 Stage 5: as with `handleDeepLinkAction`, the caller supplies the typed destination instead of
+ * this helper resolving a `Screen` and appending a Base64 argument. The action itself is parked in
+ * the activity-scoped one-shot slot (see `Context.cacheIntentAction`) rather than in the departing
+ * back-stack entry's `savedStateHandle`, which Nav3 does not have.
+ */
 fun handleIntentAction(
-    navController: NavController,
+    navigator: AppNavigator,
+    context: Context,
     action: IntentAction,
-    arguments: String? = null
+    route: AppRoute?
 ) {
-    val screen: Screen = when (action.type) {
-        IntentType.DC_API -> PresentationScreens.PresentationRequest
-    }
-
-    val navigationLink = arguments?.let {
-        generateComposableNavigationLink(
-            screen = screen,
-            arguments = arguments
-        )
-    } ?: screen.screenRoute
-
-    navController.navigateWithIntentAction(
-        route = navigationLink,
-        intentAction = action,
-        builder = {
-            popUpTo(screen.screenRoute) {
-                inclusive = true
-            }
+    val destination = route ?: return
+    when (action.type) {
+        IntentType.DC_API -> {
+            context.cacheIntentAction(action)
+            navigator.navigate(destination, popUpTo = destination, popUpToInclusive = true)
         }
-    )
+    }
 }
 
 private fun Intent.toIntentAction(): IntentAction? {

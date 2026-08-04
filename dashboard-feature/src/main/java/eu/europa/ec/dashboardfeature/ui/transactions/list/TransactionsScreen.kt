@@ -62,7 +62,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.dashboardfeature.model.SearchItemUi
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.FilterDateRangeSelectionUi
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionCategoryUi
@@ -72,6 +71,7 @@ import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
 import eu.europa.ec.eudi.rqesui.domain.util.safeLet
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.success
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.DatePickerDialogType
 import eu.europa.ec.uilogic.component.FiltersDatePickerDialog
@@ -117,7 +117,7 @@ typealias OpenSideMenuEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event.S
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionsScreen(
-    navHostController: NavController,
+    navigator: AppNavigator,
     viewModel: TransactionsViewModel,
     onDashboardEventSent: (DashboardEvent) -> Unit,
 ) {
@@ -155,7 +155,7 @@ fun TransactionsScreen(
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(navigationEffect, navHostController, context)
+                handleNavigationEffect(navigationEffect, navigator, context)
             },
             paddingValues = paddingValues,
             coroutineScope = scope,
@@ -321,13 +321,13 @@ private fun Content(
 
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
-    navController: NavController,
+    navigator: AppNavigator,
     context: Context,
 ) {
     when (navigationEffect) {
         is Effect.Navigation.Pop -> context.finish()
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigateToRoute(
+            navigator.navigateToRoute(
                 route = navigationEffect.route,
                 popUpTo = navigationEffect.popUpTo,
                 popUpToInclusive = navigationEffect.inclusive,

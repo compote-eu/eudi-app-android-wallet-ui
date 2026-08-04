@@ -34,7 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
 import eu.europa.ec.uilogic.component.wrap.WrapImage
@@ -45,7 +45,7 @@ import kotlinx.coroutines.flow.onEach
 
 @Composable
 fun SplashScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: SplashViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -55,7 +55,7 @@ fun SplashScreen(
         onNavigationRequested = {
             when (it) {
                 is Effect.Navigation.SwitchScreen -> {
-                    navController.navigateReplacingCurrent(it.route)
+                    navigator.navigateReplacingCurrent(it.route)
                 }
             }
         }

@@ -39,7 +39,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.ui.request.model.DocumentFormatDomain
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
@@ -51,6 +50,7 @@ import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.warning
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ErrorInfo
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -100,7 +100,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun RequestScreen(
     intentAction: IntentAction?,
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: RequestViewModel,
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -146,15 +146,15 @@ fun RequestScreen(
                 when (navigationEffect) {
 
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigateToRoute(navigationEffect.route)
+                        navigator.navigateToRoute(navigationEffect.route)
                     }
 
                     is Effect.Navigation.Pop -> {
-                        navController.popBackStack()
+                        navigator.pop()
                     }
 
                     is Effect.Navigation.PopTo -> {
-                        navController.popBackStackTo(
+                        navigator.popBackStackTo(
                             route = navigationEffect.route,
                             inclusive = false
                         )

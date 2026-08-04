@@ -23,6 +23,7 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import eu.europa.ec.uilogic.container.EudiComponentActivity
+import eu.europa.ec.uilogic.navigation.helper.IntentAction
 
 fun Context.getPendingUri(): Uri? {
     return (this as? EudiComponentActivity)?.getCachedIntent()?.data.let { uri ->
@@ -44,6 +45,30 @@ fun Context.cacheUri(uri: Uri) {
     }
     (this as? EudiComponentActivity)?.cacheIntent(intent)
 }
+
+/**
+ * Park [intentAction] for the destination that is about to be pushed — the one-shot DC_API hand-off
+ * from the dashboard to the presentation request screen.
+ *
+ * Nav3 Stage 5: this replaces `navigateWithIntentAction`, which wrote the action to the current
+ * back-stack entry's `savedStateHandle` for the presentation graph to read off
+ * `previousBackStackEntry`. Nav3 has no per-entry `savedStateHandle`, so the hand-off uses the same
+ * activity-scoped slot as the deep-link `Uri` above. Narrowing: the action no longer survives
+ * process death mid-hand-off (the `Parcelable` in a `savedStateHandle` did) — the window is a single
+ * frame between pushing the route and the entry reading it.
+ */
+fun Context.cacheIntentAction(intentAction: IntentAction) {
+    (this as? EudiComponentActivity)?.cacheIntentAction(intentAction)
+}
+
+/**
+ * Take the pending [IntentAction], if any, clearing it.
+ *
+ * Call from `remember {}` so a single entry reads it once — like the `savedStateHandle.remove()` it
+ * replaces, a second read returns null.
+ */
+fun Context.consumePendingIntentAction(): IntentAction? =
+    (this as? EudiComponentActivity)?.consumePendingIntentAction()
 
 fun Context.finish() {
     (this as? EudiComponentActivity)?.finish()

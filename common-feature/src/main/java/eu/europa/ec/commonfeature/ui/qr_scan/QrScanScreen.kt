@@ -53,7 +53,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -61,6 +60,7 @@ import com.google.accompanist.permissions.shouldShowRationale
 import eu.europa.ec.commonfeature.ui.qr_scan.component.QrCodeAnalyzer
 import eu.europa.ec.commonfeature.ui.qr_scan.component.qrBorderCanvas
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ErrorInfo
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -87,7 +87,7 @@ import java.util.concurrent.Executors
 
 @Composable
 fun QrScanScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: QrScanViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -104,7 +104,7 @@ fun QrScanScreen(
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(context, navigationEffect, navController)
+                handleNavigationEffect(context, navigationEffect, navigator)
             },
             paddingValues = paddingValues,
         )
@@ -114,15 +114,15 @@ fun QrScanScreen(
 private fun handleNavigationEffect(
     context: Context,
     navigationEffect: Effect.Navigation,
-    navController: NavController
+    navigator: AppNavigator
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigateReplacingCurrent(navigationEffect.route)
+            navigator.navigateReplacingCurrent(navigationEffect.route)
         }
 
         is Effect.Navigation.Pop -> {
-            navController.popBackStack()
+            navigator.pop()
         }
 
         is Effect.Navigation.GoToAppSettings -> context.openAppSettings()

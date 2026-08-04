@@ -28,7 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
@@ -41,7 +41,7 @@ import kotlinx.coroutines.flow.onEach
 
 @Composable
 fun LoadingScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: LoadingViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -67,14 +67,14 @@ fun LoadingScreen(
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigateToRoute(
+                        navigator.navigateToRoute(
                             route = navigationEffect.route,
                             popUpTo = viewModel.getCallerRoute(),
                         )
                     }
 
                     is Effect.Navigation.PopBackStackUpTo -> {
-                        navController.popBackStackTo(
+                        navigator.popBackStackTo(
                             route = navigationEffect.route,
                             inclusive = navigationEffect.inclusive
                         )

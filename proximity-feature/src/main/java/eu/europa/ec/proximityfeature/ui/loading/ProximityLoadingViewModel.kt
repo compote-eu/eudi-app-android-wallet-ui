@@ -35,7 +35,6 @@ import eu.europa.ec.shared.navigation.ProximitySuccessRoute
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.navigation.ProximityScreens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam

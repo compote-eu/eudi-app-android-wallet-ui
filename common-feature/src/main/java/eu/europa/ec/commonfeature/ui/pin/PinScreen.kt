@@ -40,11 +40,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -73,7 +73,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PinScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: PinViewModel,
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -102,7 +102,7 @@ fun PinScreen(
                 handleNavigationEffect(
                     context,
                     navigationEffect,
-                    navController
+                    navigator
                 )
             },
             paddingValues = paddingValues,
@@ -139,14 +139,14 @@ fun PinScreen(
 private fun handleNavigationEffect(
     context: Context,
     navigationEffect: Effect.Navigation,
-    navController: NavController
+    navigator: AppNavigator
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigateReplacingCurrent(navigationEffect.route)
+            navigator.navigateReplacingCurrent(navigationEffect.route)
         }
 
-        is Effect.Navigation.Pop -> navController.popBackStack()
+        is Effect.Navigation.Pop -> navigator.pop()
         is Effect.Navigation.Finish -> context.finish()
     }
 }

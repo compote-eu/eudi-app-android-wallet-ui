@@ -35,9 +35,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
@@ -61,7 +61,7 @@ import kotlinx.coroutines.flow.onEach
 
 @Composable
 fun DocumentSuccessScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: DocumentSuccessViewModel,
 ) {
     val context = LocalContext.current
@@ -97,14 +97,14 @@ fun DocumentSuccessScreen(
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigateToRoute(
+                        navigator.navigateToRoute(
                             route = navigationEffect.route,
                             popUpTo = navigationEffect.popUpTo,
                         )
                     }
 
                     is Effect.Navigation.PopBackStackUpTo -> {
-                        navController.popBackStackTo(
+                        navigator.popBackStackTo(
                             route = navigationEffect.route,
                             inclusive = navigationEffect.inclusive
                         )
@@ -113,14 +113,14 @@ fun DocumentSuccessScreen(
                     is Effect.Navigation.DeepLink -> {
                         context.cacheUri(navigationEffect.link)
                         navigationEffect.routeToPop?.let {
-                            navController.popBackStack(
+                            navigator.popBackStackTo(
                                 route = it,
                                 inclusive = false
                             )
-                        } ?: navController.popBackStack()
+                        } ?: navigator.pop()
                     }
 
-                    is Effect.Navigation.Pop -> navController.popBackStack()
+                    is Effect.Navigation.Pop -> navigator.pop()
 
                     is Effect.Navigation.FinishWithResult -> {
                         context.findActivity().let { activity ->

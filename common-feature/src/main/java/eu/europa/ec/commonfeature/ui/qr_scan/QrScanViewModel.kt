@@ -42,7 +42,6 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -79,20 +78,14 @@ sealed class Effect : ViewSideEffect {
 @KoinViewModel
 class QrScanViewModel(
     private val interactor: QrScanInteractor,
-    private val uiSerializer: UiSerializer,
     private val resourceProvider: ResourceProvider,
-    @InjectedParam private val qrScannedConfig: String,
+    @InjectedParam private val qrScannedConfig: QrScanUiConfig,
 ) : MviViewModel<Event, State, Effect>() {
 
     override fun setInitialState(): State {
-        val deserializedConfig: QrScanUiConfig = uiSerializer.fromBase64(
-            qrScannedConfig,
-            QrScanUiConfig::class.java,
-            QrScanUiConfig.Parser
-        ) ?: throw RuntimeException("QrScanUiConfig:: is Missing or invalid")
         return State(
-            qrScannedConfig = deserializedConfig,
-            informativeText = calculateInformativeText(deserializedConfig.qrScanFlow)
+            qrScannedConfig = qrScannedConfig,
+            informativeText = calculateInformativeText(qrScannedConfig.qrScanFlow)
         )
     }
 

@@ -39,7 +39,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -56,6 +55,7 @@ import eu.europa.ec.dashboardfeature.ui.home.HomeViewModel
 import eu.europa.ec.dashboardfeature.ui.transactions.list.TransactionsScreen
 import eu.europa.ec.dashboardfeature.ui.transactions.list.TransactionsViewModel
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.SystemBroadcastReceiver
 import eu.europa.ec.uilogic.component.utils.LifecycleEffect
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
@@ -77,7 +77,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun DashboardScreen(
-    hostNavController: NavController,
+    navigator: AppNavigator,
     viewModel: DashboardViewModel,
     documentsViewModel: DocumentsViewModel,
     homeViewModel: HomeViewModel,
@@ -110,7 +110,7 @@ internal fun DashboardScreen(
         ) {
             composable(BottomNavigationItem.Home.route) {
                 HomeScreen(
-                    hostNavController,
+                    navigator,
                     homeViewModel,
                     onDashboardEventSent = { event ->
                         viewModel.setEvent(event)
@@ -119,7 +119,7 @@ internal fun DashboardScreen(
             }
             composable(BottomNavigationItem.Documents.route) {
                 DocumentsScreen(
-                    hostNavController,
+                    navigator,
                     documentsViewModel,
                     onDashboardEventSent = { event ->
                         viewModel.setEvent(event)
@@ -128,7 +128,7 @@ internal fun DashboardScreen(
             }
             composable(BottomNavigationItem.Transactions.route) {
                 TransactionsScreen(
-                    hostNavController,
+                    navigator,
                     transactionsViewModel,
                     onDashboardEventSent = { event ->
                         viewModel.setEvent(event)
@@ -187,7 +187,7 @@ internal fun DashboardScreen(
     LaunchedEffect(Unit) {
         viewModel.effect.onEach { effect ->
             when (effect) {
-                is Effect.Navigation -> handleNavigationEffect(effect, hostNavController, context)
+                is Effect.Navigation -> handleNavigationEffect(effect, navigator, context)
 
                 is Effect.CloseBottomSheet -> {
                     scope.launch {
@@ -230,13 +230,13 @@ internal fun DashboardScreen(
 
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
-    navController: NavController,
+    navigator: AppNavigator,
     context: Context,
 ) {
     when (navigationEffect) {
         is Effect.Navigation.Pop -> context.finish()
         is Effect.Navigation.SwitchScreen -> {
-            navController.navigateToRoute(
+            navigator.navigateToRoute(
                 route = navigationEffect.route,
                 popUpTo = navigationEffect.popUpTo,
                 popUpToInclusive = navigationEffect.inclusive,
@@ -245,17 +245,19 @@ private fun handleNavigationEffect(
 
         is Effect.Navigation.OpenDeepLinkAction -> {
             handleDeepLinkAction(
-                navController,
-                navigationEffect.deepLinkUri,
-                navigationEffect.arguments
+                navigator = navigator,
+                context = context,
+                uri = navigationEffect.deepLinkUri,
+                route = navigationEffect.route
             )
         }
 
         is Effect.Navigation.OpenIntentAction -> {
             handleIntentAction(
-                navController = navController,
+                navigator = navigator,
+                context = context,
                 action = navigationEffect.intentAction,
-                arguments = navigationEffect.arguments,
+                route = navigationEffect.route,
             )
         }
 

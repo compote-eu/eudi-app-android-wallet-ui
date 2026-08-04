@@ -21,6 +21,7 @@ import android.content.Intent
 import android.net.Uri
 import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
@@ -64,7 +65,7 @@ sealed class Effect : ViewSideEffect {
 
         data class DeepLink(
             val link: Uri,
-            val routeToPop: String?,
+            val routeToPop: AppRoute?,
         ) : Navigation()
 
         data class FinishWithResult(
@@ -167,7 +168,7 @@ abstract class DocumentSuccessViewModel : MviViewModel<Event, State, Effect>() {
 
             is NavigationType.Deeplink -> Effect.Navigation.DeepLink(
                 nav.link.toUri(),
-                nav.routeToPop
+                AppRouteCodec.decode(nav.routeToPop)
             )
 
             is NavigationType.Pop, NavigationType.Finish -> Effect.Navigation.Pop

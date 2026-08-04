@@ -16,20 +16,22 @@
 
 // Nav3 Stage 2/3: the Android half of RequestUriConfig, split off when the config itself moved to
 // :shared-ui commonMain. It maps to core-logic's domain config and needs the Intent-carrying
-// IntentAction, so it stays here. Note the AppRoute -> legacy-route-string narrowing on
-// `initiatorRoute`: core-logic treats it as an opaque token (it is never read inside core, only
-// handed back to the UI via PresentationSuccessInteractor), so the bridge encoding is enough until
-// the Nav3 host lands in Stage 5.
+// IntentAction, so it stays here.
+//
+// Stage 5: `initiatorRoute` crosses into :core-logic, which must not depend on :shared-ui, so the
+// destination is encoded to an opaque token here and decoded back to an `AppRoute` when the domain
+// hands it to the UI again (PresentationSuccessInteractor -> PresentationSuccessViewModel). core
+// never reads the value. See AppRouteCodec.
 package eu.europa.ec.commonfeature.config
 
 import eu.europa.ec.corelogic.controller.PresentationControllerConfig
+import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.IntentType
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
 
 fun RequestUriConfig.toDomainConfig(intentAction: IntentAction?): PresentationControllerConfig {
     val presentationMode = mode
-    val initiator = presentationMode.initiatorRoute.toLegacyRoute()
+    val initiator = AppRouteCodec.encode(presentationMode.initiatorRoute)
     return when (presentationMode) {
         is PresentationMode.Ble -> PresentationControllerConfig.Ble(initiator)
         is PresentationMode.OpenId4Vp -> PresentationControllerConfig.OpenId4VP(

@@ -32,9 +32,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.dashboardfeature.ui.document_sign.model.DocumentSignButtonUi
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -56,7 +56,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 
 @Composable
 internal fun DocumentSignScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: DocumentSignViewModel,
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -73,7 +73,7 @@ internal fun DocumentSignScreen(
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
-                    Effect.Navigation.Pop -> navController.popBackStack()
+                    Effect.Navigation.Pop -> navigator.pop()
                 }
             },
             paddingValues = contentPadding

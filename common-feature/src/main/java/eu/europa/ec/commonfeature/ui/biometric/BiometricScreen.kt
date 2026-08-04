@@ -37,13 +37,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
@@ -64,20 +64,14 @@ import eu.europa.ec.uilogic.component.wrap.WrapIconButton
 import eu.europa.ec.uilogic.component.wrap.WrapSecurePinTextField
 import eu.europa.ec.uilogic.component.wrap.rememberSecurePinTextFieldState
 import eu.europa.ec.uilogic.config.ConfigNavigation
-import eu.europa.ec.uilogic.config.FlowCompletion
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.cacheUri
 import eu.europa.ec.uilogic.extension.finish
 import eu.europa.ec.uilogic.extension.paddingFrom
-import eu.europa.ec.uilogic.extension.resetBackStack
-import eu.europa.ec.uilogic.extension.setBackStackFlowCancelled
-import eu.europa.ec.uilogic.extension.setBackStackFlowSuccess
-import eu.europa.ec.uilogic.navigation.CommonScreens
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
-import eu.europa.ec.uilogic.navigation.helper.toLegacyScreen
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -86,7 +80,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 
 @Composable
 fun BiometricScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: BiometricViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -115,7 +109,7 @@ fun BiometricScreen(
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigateReplacingCurrent(navigationEffect.route)
+                        navigator.navigateReplacingCurrent(navigationEffect.route)
                     }
 
                     is Effect.Navigation.LaunchBiometricsSystemScreen -> {
@@ -123,23 +117,12 @@ fun BiometricScreen(
                     }
 
                     is Effect.Navigation.PopBackStackUpTo -> {
-                        // The flow-completion flags are keyed by the back-stack entry's route
-                        // pattern; Nav3 replaces this savedStateHandle mechanism in Stage 5.
-                        val flowRoute = navigationEffect.route.toLegacyScreen().screenRoute
-                        when (navigationEffect.indicateFlowCompletion) {
-                            FlowCompletion.CANCEL -> {
-                                navController.setBackStackFlowCancelled(flowRoute)
-                            }
-
-                            FlowCompletion.SUCCESS -> {
-                                navController.setBackStackFlowSuccess(flowRoute)
-                            }
-
-                            FlowCompletion.NONE -> {
-                                navController.resetBackStack(flowRoute)
-                            }
-                        }
-                        navController.popBackStackTo(
+                        // `indicateFlowCompletion` used to be written to the target entry's
+                        // `savedStateHandle` here. Nothing ever read those flags back (the
+                        // `wasFlowCancelled`/`wasFlowSucceeded` readers had no callers), and Nav3
+                        // has no per-entry savedStateHandle, so the write is gone — see the note in
+                        // ui-logic's ContextExtensions.
+                        navigator.popBackStackTo(
                             route = navigationEffect.route,
                             inclusive = navigationEffect.inclusive
                         )
@@ -149,22 +132,21 @@ fun BiometricScreen(
                         navigationEffect.routeToPop?.let { route ->
                             context.cacheUri(navigationEffect.link)
                             if (navigationEffect.isPreAuthorization) {
-                                navController.navigate(route) {
-                                    popUpTo(CommonScreens.Biometric.screenRoute) {
-                                        inclusive = true
-                                    }
-                                }
+                                navigator.navigateReplacingCurrent(route)
                             } else {
-                                navController.popBackStack(
+                                navigator.popBackStackTo(
                                     route = route,
                                     inclusive = false
                                 )
                             }
-                        } ?: handleDeepLinkAction(navController, navigationEffect.link)
-
+                        } ?: handleDeepLinkAction(
+                            navigator = navigator,
+                            context = context,
+                            uri = navigationEffect.link
+                        )
                     }
 
-                    is Effect.Navigation.Pop -> navController.popBackStack()
+                    is Effect.Navigation.Pop -> navigator.pop()
                     is Effect.Navigation.Finish -> context.finish()
                 }
             },

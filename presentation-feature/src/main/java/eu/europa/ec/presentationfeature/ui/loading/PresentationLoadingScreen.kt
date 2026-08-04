@@ -17,16 +17,16 @@
 package eu.europa.ec.presentationfeature.ui.loading
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.ui.loading.LoadingScreen
+import eu.europa.ec.shared.navigation.AppNavigator
 
 @Composable
 fun PresentationLoadingScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: PresentationLoadingViewModel
 ) {
     LoadingScreen(
-        navController = navController,
+        navigator = navigator,
         viewModel = viewModel
     )
 }

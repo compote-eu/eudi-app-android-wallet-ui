@@ -14,33 +14,60 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Nav3 Stage 5: the host is a `NavDisplay` over a typed `AppRoute` back stack.
+//
+// What used to be a `NavHost` with six nested `navigation(route = ModuleRoute.X)` subgraphs is now
+// one flat back stack plus six per-feature `entryProvider` contributions. The imperative surface
+// this interface exposes to `EudiComponentActivity` (which runs outside composition, from
+// `onNewIntent`) is unchanged in shape — only the currency changed, from `Screen` route patterns to
+// [AppRoute] destination types.
 package eu.europa.ec.uilogic.navigation
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.NavController
-import androidx.navigation.NavGraphBuilder
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.rememberNavController
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreProvider
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
 import eu.europa.ec.analyticslogic.controller.AnalyticsController
-import eu.europa.ec.businesslogic.extension.firstPart
-import eu.europa.ec.businesslogic.extension.toMapOrEmpty
+import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.SplashRoute
+import eu.europa.ec.shared.navigation.analyticsName
+import eu.europa.ec.shared.navigation.analyticsParams
 import eu.europa.ec.uilogic.config.ConfigUILogic
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import kotlin.reflect.KClass
 
 interface RouterHost {
-    fun getNavController(): NavHostController
+    /**
+     * The command layer over the live back stack.
+     *
+     * Only valid once [StartFlow] has composed; the activity's deep-link entry points are all
+     * reached after `onFlowStart`, which is what the original `lateinit navController` relied on too.
+     */
+    fun getNavigator(): AppNavigator
     fun getNavContext(): Context
     fun userIsLoggedInWithDocuments(): Boolean
     fun userIsLoggedInWithNoDocuments(): Boolean
     fun popToDashboardScreen()
     fun popToIssuanceOnboardingScreen()
-    fun isScreenOnBackStackOrForeground(screen: Screen): Boolean
+
+    /** Whether [destination] is the displayed entry or is waiting underneath it. */
+    fun isRouteOnBackStackOrForeground(destination: KClass<out AppRoute>): Boolean
 
     @Composable
-    fun StartFlow(builder: NavGraphBuilder.(NavController) -> Unit)
+    fun StartFlow(entries: EntryProviderScope<NavKey>.(AppNavigator) -> Unit)
 }
 
 class RouterHostImpl(
@@ -48,79 +75,67 @@ class RouterHostImpl(
     private val analyticsController: AnalyticsController
 ) : RouterHost {
 
-    private lateinit var navController: NavHostController
+    private lateinit var navigator: AppNavigator
     private lateinit var context: Context
 
-    override fun getNavController(): NavHostController = navController
+    override fun getNavigator(): AppNavigator = navigator
     override fun getNavContext(): Context = context
 
     @Composable
-    override fun StartFlow(builder: NavGraphBuilder.(NavController) -> Unit) {
+    override fun StartFlow(entries: EntryProviderScope<NavKey>.(AppNavigator) -> Unit) {
 
-        navController = rememberNavController()
+        val backStack = rememberNavBackStack(SplashRoute)
+        val navigator = remember(backStack) { AppNavigator(backStack) }
+
+        // Published for the activity's imperative deep-link surface, which runs outside composition.
+        // Assigned here rather than from an effect so it is available as soon as the host composes —
+        // the same point at which the old `navController` field was assigned, and before the
+        // `LaunchedEffect` in `EudiComponentActivity.Content` fires `onFlowStart`.
+        this.navigator = navigator
         context = LocalContext.current
 
-        NavHost(
-            navController = navController,
-            startDestination = ModuleRoute.StartupModule.route
-        ) {
-            builder(navController)
-        }
+        // Each entry needs its own ViewModelStore, cleared when the entry is popped — that is what
+        // NavBackStackEntry gave `koinViewModel()` under navigation-compose.
+        val viewModelStoreProvider = rememberViewModelStoreProvider(
+            parent = checkNotNull(LocalViewModelStoreOwner.current) {
+                "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
+            }
+        )
 
-        DisposableEffect(navController) {
-            val listener = NavController.OnDestinationChangedListener { _, destination, args ->
-                destination.route?.let { route ->
-                    analyticsController.logScreen(
-                        route.firstPart("?"),
-                        args.toMapOrEmpty()
-                    )
+        NavDisplay(
+            backStack = backStack,
+            onBack = { navigator.pop() },
+            entryDecorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(viewModelStoreProvider),
+            ),
+            entryProvider = entryProvider { entries(navigator) },
+        )
+
+        LaunchedEffect(backStack) {
+            snapshotFlow { backStack.lastOrNull() as? AppRoute }
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collect { route ->
+                    analyticsController.logScreen(route.analyticsName, route.analyticsParams)
                 }
-            }
-            navController.addOnDestinationChangedListener(listener)
-            onDispose {
-                navController.removeOnDestinationChangedListener(listener)
-            }
         }
     }
 
     override fun userIsLoggedInWithDocuments(): Boolean =
-        isScreenOnBackStackOrForeground(getDashboardScreen())
+        isRouteOnBackStackOrForeground(configUILogic.dashboardRoute)
 
     override fun userIsLoggedInWithNoDocuments(): Boolean =
-        isScreenOnBackStackOrForeground(getIssuanceScreen())
+        isRouteOnBackStackOrForeground(configUILogic.issuanceRoute)
 
-    override fun isScreenOnBackStackOrForeground(screen: Screen): Boolean {
-        val screenRoute = screen.screenRoute
-        try {
-            if (navController.currentDestination?.route == screenRoute) {
-                return true
-            }
-            navController.getBackStackEntry(screenRoute)
-            return true
-        } catch (_: Exception) {
-            return false
-        }
-    }
+    override fun isRouteOnBackStackOrForeground(destination: KClass<out AppRoute>): Boolean =
+        if (::navigator.isInitialized) navigator.isOnBackStack(destination) else false
 
     override fun popToDashboardScreen() {
-        navController.popBackStack(
-            route = getDashboardScreen().screenRoute,
-            inclusive = false
-        )
+        navigator.popUpTo(destination = configUILogic.dashboardRoute, inclusive = false)
     }
 
     override fun popToIssuanceOnboardingScreen() {
-        navController.popBackStack(
-            route = getIssuanceScreen().screenRoute,
-            inclusive = false
-        )
-    }
-
-    private fun getDashboardScreen(): Screen {
-        return configUILogic.dashboardScreenIdentifier
-    }
-
-    private fun getIssuanceScreen(): Screen {
-        return configUILogic.issuanceScreenIdentifier
+        navigator.popUpTo(destination = configUILogic.issuanceRoute, inclusive = false)
     }
 }

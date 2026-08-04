@@ -17,16 +17,16 @@
 package eu.europa.ec.presentationfeature.ui.success
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreen
+import eu.europa.ec.shared.navigation.AppNavigator
 
 @Composable
 fun PresentationSuccessScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: PresentationSuccessViewModel,
 ) {
     DocumentSuccessScreen(
-        navController = navController,
+        navigator = navigator,
         viewModel = viewModel,
     )
 }

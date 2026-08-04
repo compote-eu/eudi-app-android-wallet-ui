@@ -41,13 +41,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsCardUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsDataSharedHolderUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsDataSignedHolderUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.success
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -79,7 +79,7 @@ import kotlinx.coroutines.flow.onEach
 
 @Composable
 internal fun TransactionDetailsScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: TransactionDetailsViewModel,
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -95,7 +95,7 @@ internal fun TransactionDetailsScreen(
             onEventSend = { viewModel.setEvent(it) },
             effectFlow = viewModel.effect,
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(navigationEffect, navController)
+                handleNavigationEffect(navigationEffect, navigator)
             },
             paddingValues = paddingValues,
         )
@@ -176,10 +176,10 @@ private fun Content(
 
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
-    navController: NavController,
+    navigator: AppNavigator,
 ) {
     when (navigationEffect) {
-        is Effect.Navigation.Pop -> navController.popBackStack()
+        is Effect.Navigation.Pop -> navigator.pop()
     }
 }
 

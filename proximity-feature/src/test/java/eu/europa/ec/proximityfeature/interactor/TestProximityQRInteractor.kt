@@ -33,7 +33,7 @@ import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.container.EudiComponentActivity
-import eu.europa.ec.uilogic.navigation.helper.toLegacyRoute
+import eu.europa.ec.shared.navigation.AppRouteCodec
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flow
@@ -404,7 +404,7 @@ class TestProximityQRInteractor {
 
         // Then
         verify(walletCorePresentationController, times(1))
-            .setConfig(PresentationControllerConfig.Ble(initiator.toLegacyRoute()))
+            .setConfig(PresentationControllerConfig.Ble(AppRouteCodec.encode(initiator)))
 
         assertEquals(interactor.presentationScopeId, "ble_presentation_scope_id")
     }
@@ -422,7 +422,7 @@ class TestProximityQRInteractor {
 
         // Then
         verify(walletCorePresentationController, times(1))
-            .setConfig(PresentationControllerConfig.OpenId4VP(uri = "", initiator.toLegacyRoute()))
+            .setConfig(PresentationControllerConfig.OpenId4VP(uri = "", AppRouteCodec.encode(initiator)))
 
         assertEquals(interactor.presentationScopeId, "vp_presentation_scope_id")
     }

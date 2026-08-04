@@ -43,10 +43,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
@@ -71,7 +71,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: SettingsViewModel,
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
@@ -98,7 +98,7 @@ fun SettingsScreen(
             onNavigationRequested = { navigationEffect ->
                 handleNavigationEffect(
                     navigationEffect = navigationEffect,
-                    navController = navController,
+                    navigator = navigator,
                     context = context,
                     onLaunchBiometricSystemScreen = {
                         viewModel.setEvent(Event.LaunchBiometricSystemScreen)
@@ -118,12 +118,12 @@ fun SettingsScreen(
 
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
-    navController: NavController,
+    navigator: AppNavigator,
     context: Context,
     onLaunchBiometricSystemScreen: () -> Unit,
 ) {
     when (navigationEffect) {
-        is Effect.Navigation.Pop -> navController.popBackStack()
+        is Effect.Navigation.Pop -> navigator.pop()
 
         is Effect.Navigation.LaunchBiometricsSystemScreen -> onLaunchBiometricSystemScreen()
 

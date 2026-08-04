@@ -53,8 +53,6 @@ import eu.europa.ec.uilogic.mvi.ViewState
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
-import eu.europa.ec.uilogic.navigation.helper.toLegacyArguments
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -106,7 +104,7 @@ sealed class Effect : ViewSideEffect {
         data object Pop : Navigation()
         data object Finish : Navigation()
         data class SwitchScreen(val route: AppRoute, val inclusive: Boolean) : Navigation()
-        data class OpenDeepLinkAction(val deepLinkUri: Uri, val arguments: String?) : Navigation()
+        data class OpenDeepLinkAction(val deepLinkUri: Uri, val route: AppRoute?) : Navigation()
     }
 
     data object ShowBottomSheet : Effect()
@@ -117,23 +115,16 @@ sealed class Effect : ViewSideEffect {
 class AddDocumentViewModel(
     private val addDocumentInteractor: AddDocumentInteractor,
     private val resourceProvider: ResourceProvider,
-    private val uiSerializer: UiSerializer,
-    @InjectedParam private val issuanceConfig: String,
+    @InjectedParam private val issuanceConfig: IssuanceUiConfig,
 ) : MviViewModel<Event, State, Effect>() {
 
     private var issuanceJob: Job? = null
 
     override fun setInitialState(): State {
-        val deserializedConfig: IssuanceUiConfig = uiSerializer.fromBase64(
-            payload = issuanceConfig,
-            model = IssuanceUiConfig::class.java,
-            parser = IssuanceUiConfig.Parser
-        ) ?: throw RuntimeException("IssuanceUiConfig:: is Missing or invalid")
-
         return State(
-            issuanceConfig = deserializedConfig,
-            navigatableAction = getNavigatableAction(deserializedConfig.flowType),
-            onBackAction = getOnBackAction(deserializedConfig.flowType),
+            issuanceConfig = issuanceConfig,
+            navigatableAction = getNavigatableAction(issuanceConfig.flowType),
+            onBackAction = getOnBackAction(issuanceConfig.flowType),
             title = resourceProvider.getString(R.string.issuance_add_document_title),
             subtitle = resourceProvider.getString(R.string.issuance_add_document_subtitle),
         )
@@ -461,7 +452,7 @@ class AddDocumentViewModel(
                 setEffect {
                     Effect.Navigation.OpenDeepLinkAction(
                         deepLinkUri = uri,
-                        arguments = DocumentOfferRoute(
+                        route = DocumentOfferRoute(
                             OfferUiConfig(
                                 offerUri = action.link.toString(),
                                 onSuccessNavigation = ConfigNavigation(
@@ -474,7 +465,7 @@ class AddDocumentViewModel(
                                     navigationType = NavigationType.Pop
                                 )
                             )
-                        ).toLegacyArguments()
+                        )
                     )
                 }
             }
@@ -483,7 +474,7 @@ class AddDocumentViewModel(
                 setEffect {
                     Effect.Navigation.OpenDeepLinkAction(
                         deepLinkUri = uri,
-                        arguments = null
+                        route = null
                     )
                 }
             }

@@ -36,6 +36,7 @@ import eu.europa.ec.issuancefeature.ui.offer.transformer.DocumentOfferTransforme
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
@@ -52,7 +53,6 @@ import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -109,7 +109,7 @@ sealed class Effect : ViewSideEffect {
 
         data class DeepLink(
             val link: Uri,
-            val routeToPop: String? = null
+            val routeToPop: AppRoute? = null
         ) : Navigation()
     }
 
@@ -128,8 +128,7 @@ sealed class DocumentOfferBottomSheetContent {
 @KoinViewModel
 class DocumentOfferViewModel(
     private val resourceProvider: ResourceProvider,
-    private val uiSerializer: UiSerializer,
-    @InjectedParam private val offerSerializedConfig: String,
+    @InjectedParam private val offerUiConfig: OfferUiConfig,
     documentOfferInteractor: DocumentOfferInteractor? = null
 ) : MviViewModel<Event, State, Effect>() {
 
@@ -142,14 +141,8 @@ class DocumentOfferViewModel(
             }
 
     override fun setInitialState(): State {
-        val deserializedOfferUiConfig = uiSerializer.fromBase64(
-            offerSerializedConfig,
-            OfferUiConfig::class.java,
-            OfferUiConfig.Parser
-        ) ?: throw RuntimeException("OfferUiConfig:: is Missing or invalid")
-
         return State(
-            offerUiConfig = deserializedOfferUiConfig,
+            offerUiConfig = offerUiConfig,
             headerConfig = getInitialHeaderConfig()
         )
     }
@@ -503,7 +496,7 @@ class DocumentOfferViewModel(
 
             is NavigationType.Deeplink -> Effect.Navigation.DeepLink(
                 nav.link.toUri(),
-                nav.routeToPop
+                AppRouteCodec.decode(nav.routeToPop)
             )
 
             is NavigationType.Pop, NavigationType.Finish -> Effect.Navigation.Pop

@@ -37,12 +37,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
 import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.resourceslogic.theme.values.success
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
@@ -73,7 +73,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 
 @Composable
 fun SuccessScreen(
-    navController: NavController,
+    navigator: AppNavigator,
     viewModel: SuccessViewModel
 ) {
     val context = LocalContext.current
@@ -91,14 +91,14 @@ fun SuccessScreen(
             onNavigationRequested = { navigationEffect ->
                 when (navigationEffect) {
                     is Effect.Navigation.SwitchScreen -> {
-                        navController.navigateToRoute(
+                        navigator.navigateToRoute(
                             route = navigationEffect.route,
                             popUpTo = navigationEffect.popUpTo,
                         )
                     }
 
                     is Effect.Navigation.PopBackStackUpTo -> {
-                        navController.popBackStackTo(
+                        navigator.popBackStackTo(
                             route = navigationEffect.route,
                             inclusive = navigationEffect.inclusive
                         )
@@ -107,14 +107,14 @@ fun SuccessScreen(
                     is Effect.Navigation.DeepLink -> {
                         context.cacheUri(navigationEffect.link)
                         navigationEffect.routeToPop?.let {
-                            navController.popBackStack(
+                            navigator.popBackStackTo(
                                 route = it,
                                 inclusive = false
                             )
-                        } ?: navController.popBackStack()
+                        } ?: navigator.pop()
                     }
 
-                    is Effect.Navigation.Pop -> navController.popBackStack()
+                    is Effect.Navigation.Pop -> navigator.pop()
                 }
             },
             paddingValues = paddingValues
