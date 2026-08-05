@@ -60,7 +60,6 @@ import eu.europa.ec.uilogic.component.content.ContentTitle
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
-import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
@@ -115,9 +114,6 @@ fun SettingsScreen(
         )
     }
 
-    OneTimeLaunchedEffect {
-        viewModel.setEvent(Event.Init)
-    }
 }
 
 private fun handleNavigationEffect(

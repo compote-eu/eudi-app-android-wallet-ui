@@ -36,7 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
-import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
 import eu.europa.ec.uilogic.component.wrap.WrapImage
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import kotlinx.coroutines.flow.Flow
@@ -61,9 +60,6 @@ fun SplashScreen(
         }
     )
 
-    OneTimeLaunchedEffect {
-        viewModel.setEvent(Event.Initialize)
-    }
 }
 
 @Composable

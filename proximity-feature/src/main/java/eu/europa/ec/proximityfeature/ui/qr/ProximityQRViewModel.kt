@@ -70,6 +70,14 @@ class ProximityQRViewModel(
 
     private var interactorJob: Job? = null
 
+    init {
+        // Tied to the ViewModel's lifetime, not the composition's — see the note on
+        // `OneTimeLaunchedEffect`'s saveable guard in HomeViewModel. Without this no QR code was
+        // generated after process death.
+        initializeConfig()
+        generateQrCode()
+    }
+
     override fun setInitialState(): State = State()
 
     override fun handleEvents(event: Event) {

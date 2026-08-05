@@ -104,6 +104,18 @@ enum class RequestBottomSheetContent {
 abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
     protected var viewModelJob: Job? = null
 
+    /**
+     * Guards the one-shot initial work. Deliberately NOT saveable: it must survive configuration
+     * change (where re-running would submit the request twice) but reset with the process, so a
+     * restored screen re-runs against its brand-new ViewModel.
+     *
+     * This replaces `OneTimeLaunchedEffect`, whose flag was `rememberSaveable` and so came back
+     * `true` after process death, suppressing `Event.Init` and leaving the screen permanently empty.
+     * The work cannot move into `init` because it needs `intentAction` from the composition, and
+     * `doWork()` is abstract.
+     */
+    private var hasRunInitialWork = false
+
     abstract fun getHeaderConfig(): ContentHeaderConfig
     abstract fun getNextRoute(): AppRoute
     abstract fun doWork()
@@ -131,6 +143,10 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
     override fun handleEvents(event: Event) {
         when (event) {
             is Event.Init -> {
+                // Sent from a plain LaunchedEffect(Unit), which re-runs whenever the composition is
+                // rebuilt; the ViewModel-scoped flag is what makes it once-per-instance.
+                if (hasRunInitialWork) return
+                hasRunInitialWork = true
                 init(event.intentAction)
                 doWork()
             }

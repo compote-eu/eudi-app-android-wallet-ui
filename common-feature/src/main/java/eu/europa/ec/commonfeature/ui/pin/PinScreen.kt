@@ -51,7 +51,6 @@ import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ImePaddingConfig
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
-import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
@@ -136,9 +135,6 @@ fun PinScreen(
         }
     }
 
-    OneTimeLaunchedEffect {
-        viewModel.setEvent(Event.Init)
-    }
 }
 
 private fun handleNavigationEffect(

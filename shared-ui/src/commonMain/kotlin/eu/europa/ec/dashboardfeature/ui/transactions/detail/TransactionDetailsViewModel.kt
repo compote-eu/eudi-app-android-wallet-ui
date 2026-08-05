@@ -78,6 +78,14 @@ class TransactionDetailsViewModel(
     private val interactor: TransactionDetailsInteractor,
     @InjectedParam private val transactionId: String,
 ) : MviViewModel<Event, State, Effect>() {
+
+    init {
+        // Tied to the ViewModel's lifetime, not the composition's — see the note on
+        // `OneTimeLaunchedEffect`'s saveable guard in HomeViewModel. The `Event.Init` branch stays:
+        // the error state's `onRetry` re-sends this same event.
+        getTransactionDetails(Event.Init)
+    }
+
     override fun setInitialState(): State = State()
 
     override fun handleEvents(event: Event) {

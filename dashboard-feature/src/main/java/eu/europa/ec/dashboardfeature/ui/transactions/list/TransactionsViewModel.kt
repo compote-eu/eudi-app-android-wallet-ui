@@ -75,7 +75,6 @@ data class State(
 ) : ViewState
 
 sealed class Event : ViewEvent {
-    data object Init : Event()
     data object OnResume : Event()
     data object OnPause : Event()
     data object Pop : Event()
@@ -127,6 +126,18 @@ sealed class TransactionsBottomSheetContent {
 class TransactionsViewModel(
     private val interactor: TransactionsInteractor,
 ) : MviViewModel<Event, State, Effect>() {
+
+    init {
+        // Belongs to the ViewModel's lifetime, not the composition's: this collector is the only
+        // assigner of `transactionsUi`, so nothing renders until it is running. It used to be
+        // started by an `Event.Init` sent from `OneTimeLaunchedEffect`, whose "already ran" flag is
+        // `rememberSaveable` — so after process death the flag was restored as `true` and the event
+        // was never re-sent to this brand-new ViewModel, leaving the list permanently empty.
+        // `init` is the correct scope: it runs exactly once per instance, surviving configuration
+        // change (where re-running would double-collect) and re-running after process death.
+        collectSearchAndFilterStateChanges()
+    }
+
     override fun setInitialState(): State {
         return State(
             isLoading = true,
@@ -136,10 +147,6 @@ class TransactionsViewModel(
 
     override fun handleEvents(event: Event) {
         when (event) {
-            is Event.Init -> {
-                collectSearchAndFilterStateChanges()
-            }
-
             is Event.OnResume -> {
                 getTransactions(event)
             }

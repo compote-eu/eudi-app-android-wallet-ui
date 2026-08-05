@@ -73,6 +73,14 @@ sealed class Effect : ViewSideEffect {
 class SettingsViewModel(
     private val settingsInteractor: SettingsInteractor,
 ) : MviViewModel<Event, State, Effect>() {
+
+    init {
+        // Tied to the ViewModel's lifetime, not the composition's — see the note on
+        // `OneTimeLaunchedEffect`'s saveable guard in HomeViewModel. Without this the settings list
+        // came back empty after process death.
+        createSettingsItemsUi(viewState.value.changelogUrl)
+    }
+
     override fun setInitialState(): State {
         return State(
             appVersion = settingsInteractor.getAppVersion(),

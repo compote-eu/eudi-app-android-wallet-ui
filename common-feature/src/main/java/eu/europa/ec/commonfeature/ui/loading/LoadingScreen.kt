@@ -32,7 +32,6 @@ import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
-import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.flow.Flow
@@ -85,9 +84,8 @@ fun LoadingScreen(
         )
     }
 
-    OneTimeLaunchedEffect {
-        viewModel.setEvent(Event.Initialize)
-        viewModel.setEvent(Event.DoWork(context))
+    LaunchedEffect(Unit) {
+        viewModel.startInitialWork(context)
     }
 }
 

@@ -80,7 +80,6 @@ data class State(
 ) : ViewState
 
 sealed class Event : ViewEvent {
-    data object Init : Event()
     data object GetDocuments : Event()
     data object OnPause : Event()
     data class TryIssuingDeferredDocuments(val deferredDocs: Map<DocumentId, FormatType>) : Event()
@@ -165,6 +164,17 @@ class DocumentsViewModel(
     private var retryDeferredDocsJob: Job? = null
     private var fetchDocumentsJob: Job? = null
 
+    init {
+        // Belongs to the ViewModel's lifetime, not the composition's: this collector is the only
+        // assigner of `documentsUi`, so nothing renders until it is running. It used to be started
+        // by an `Event.Init` sent from `OneTimeLaunchedEffect`, whose "already ran" flag is
+        // `rememberSaveable` — so after process death the flag was restored as `true` and the event
+        // was never re-sent to this brand-new ViewModel, leaving the list permanently empty.
+        // `init` is the correct scope: it runs exactly once per instance, surviving configuration
+        // change (where re-running would double-collect) and re-running after process death.
+        filterStateChanged()
+    }
+
     override fun setInitialState(): State {
         return State(
             isLoading = true,
@@ -174,10 +184,6 @@ class DocumentsViewModel(
 
     override fun handleEvents(event: Event) {
         when (event) {
-            is Event.Init -> {
-                filterStateChanged()
-            }
-
             is Event.GetDocuments -> {
                 getDocuments(
                     event = event,

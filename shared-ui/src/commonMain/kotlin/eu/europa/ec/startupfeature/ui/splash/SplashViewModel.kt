@@ -55,6 +55,16 @@ sealed class Effect : ViewSideEffect {
 class SplashViewModel(
     private val interactor: SplashInteractor,
 ) : MviViewModel<Event, State, Effect>() {
+
+    init {
+        // Must be tied to the ViewModel's lifetime, not the composition's. This is the only thing
+        // that navigates off the splash, and it used to be triggered by an `Event.Initialize` from
+        // `OneTimeLaunchedEffect`, whose "already ran" flag is `rememberSaveable` — so if the
+        // process died while the splash was showing, the restored flag suppressed the event and the
+        // app hung on the splash forever.
+        enterApplication()
+    }
+
     override fun setInitialState(): State = State()
 
     override fun handleEvents(event: Event) {

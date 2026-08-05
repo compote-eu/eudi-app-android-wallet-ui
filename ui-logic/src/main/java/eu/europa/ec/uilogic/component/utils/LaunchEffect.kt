@@ -18,27 +18,20 @@ package eu.europa.ec.uilogic.component.utils
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 
-@Composable
-fun OneTimeLaunchedEffect(
-    block: () -> Unit
-) {
-    var initialEffects by rememberSaveable { mutableStateOf(false) }
-    if (!initialEffects) {
-        LaunchedEffect(Unit) {
-            initialEffects = true
-            block()
-        }
-    }
-}
+// `OneTimeLaunchedEffect` used to live here. It guarded its block with `rememberSaveable`, which
+// meant "once per saved-state lifetime" — so after process death the restored flag suppressed the
+// block even though the process, and every ViewModel in it, was brand new. Every caller used it to
+// kick off ViewModel-scoped initialisation, so every caller was silently broken on the restore path.
+//
+// It is deliberately not replaced: work that must happen once per ViewModel belongs in the
+// ViewModel's `init`, which survives configuration change and re-runs after process death. Where the
+// work needs data from the composition (LoadingViewModel, RequestViewModel), the pattern is a plain
+// `LaunchedEffect(Unit)` plus a non-saveable ViewModel-scoped guard. Note that simply switching this
+// helper to `remember` would have been wrong: it re-fires on every configuration change.
 
 @Composable
 fun LifecycleEffect(

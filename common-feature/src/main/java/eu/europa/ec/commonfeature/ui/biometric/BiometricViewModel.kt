@@ -106,6 +106,35 @@ class BiometricViewModel(
     private val biometricUiConfig
         get() = viewState.value.config
 
+    init {
+        // Tied to the ViewModel's lifetime, not the composition's — see the note on
+        // `OneTimeLaunchedEffect`'s saveable guard in HomeViewModel. Without this, after process
+        // death the login screen came up with `userBiometricsAreEnabled` still false, no lockout
+        // tick, and no automatic biometric prompt.
+        initializeBiometricState()
+    }
+
+    private fun initializeBiometricState() {
+        viewModelScope.launch {
+            val userBiometricsAreEnabled = biometricInteractor.getBiometricUserSelection()
+            setState {
+                copy(userBiometricsAreEnabled = userBiometricsAreEnabled)
+            }
+            when (val lockoutState = biometricInteractor.getPinLockoutState()) {
+                is PinLockoutState.Active -> startLockoutTick(lockoutState.remaining.inWholeMilliseconds)
+                PinLockoutState.Idle -> Unit
+            }
+            if (
+                biometricUiConfig.shouldInitializeBiometricAuthOnCreate
+                && userBiometricsAreEnabled
+            ) {
+                setEffect {
+                    Effect.InitializeBiometricAuthOnCreate
+                }
+            }
+        }
+    }
+
     private var lockoutTickJob: Job? = null
 
     override fun setInitialState(): State {
@@ -118,26 +147,7 @@ class BiometricViewModel(
 
     override fun handleEvents(event: Event) {
         when (event) {
-            is Event.Init -> {
-                viewModelScope.launch {
-                    val userBiometricsAreEnabled = biometricInteractor.getBiometricUserSelection()
-                    setState {
-                        copy(userBiometricsAreEnabled = userBiometricsAreEnabled)
-                    }
-                    when (val lockoutState = biometricInteractor.getPinLockoutState()) {
-                        is PinLockoutState.Active -> startLockoutTick(lockoutState.remaining.inWholeMilliseconds)
-                        PinLockoutState.Idle -> Unit
-                    }
-                    if (
-                        biometricUiConfig.shouldInitializeBiometricAuthOnCreate
-                        && userBiometricsAreEnabled
-                    ) {
-                        setEffect {
-                            Effect.InitializeBiometricAuthOnCreate
-                        }
-                    }
-                }
-            }
+            is Event.Init -> initializeBiometricState()
 
             is Event.OnBiometricsClicked -> {
                 setState { copy(error = null) }

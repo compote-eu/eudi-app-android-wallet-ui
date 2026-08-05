@@ -65,7 +65,6 @@ data class State(
 ) : ViewState
 
 sealed class Event : ViewEvent {
-    data object Init : Event()
     data object StartProximityFlow : Event()
 
     sealed class AuthenticateCard : Event() {
@@ -132,6 +131,16 @@ class HomeViewModel(
     private val homeInteractor: HomeInteractor,
 ) : MviViewModel<Event, State, Effect>() {
 
+    init {
+        // Belongs to the ViewModel's lifetime, not the composition's. It used to be started by an
+        // `Event.Init` sent from `OneTimeLaunchedEffect`, whose "already ran" flag is
+        // `rememberSaveable` — so after process death the flag was restored as `true` and the event
+        // was never re-sent to this brand-new ViewModel, which is why Home came back reading
+        // "Welcome" instead of "Welcome, <name>". `init` runs exactly once per instance, surviving
+        // configuration change and re-running after process death.
+        getUserNameViaMainPidDocument()
+    }
+
     override fun setInitialState(): State {
         return State(
             welcomeUserMessage = UiText.Resource(Res.string.home_screen_welcome),
@@ -153,10 +162,6 @@ class HomeViewModel(
 
     override fun handleEvents(event: Event) {
         when (event) {
-            is Event.Init -> {
-                getUserNameViaMainPidDocument()
-            }
-
             is Event.AuthenticateCard.AuthenticatePressed -> showBottomSheet(
                 sheetContent = HomeScreenBottomSheetContent.Authenticate
             )

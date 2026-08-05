@@ -40,7 +40,6 @@ import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
-import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
@@ -137,9 +136,6 @@ fun DocumentSuccessScreen(
         )
     }
 
-    OneTimeLaunchedEffect {
-        viewModel.setEvent(Event.DoWork)
-    }
 }
 
 @Composable

@@ -91,7 +91,6 @@ import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.HSpacer
 import eu.europa.ec.uilogic.component.utils.LifecycleEffect
-import eu.europa.ec.uilogic.component.utils.OneTimeLaunchedEffect
 import eu.europa.ec.uilogic.component.utils.SIZE_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
@@ -415,10 +414,6 @@ private fun Content(
         lifecycleEvent = Lifecycle.Event.ON_PAUSE
     ) {
         onEventSend(Event.OnPause)
-    }
-
-    OneTimeLaunchedEffect {
-        onEventSend(Event.Init)
     }
 
     LaunchedEffect(Unit) {
