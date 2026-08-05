@@ -14,9 +14,6 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The screen-fraction constants split out of :ui-logic's Constants.kt: they are plain Floats used
-// as defaults by the serialized UI-model (SuccessUIConfig.ImageConfig.screenPercentageSize), which
-// lives in commonMain. Package unchanged so call sites don't churn.
 // The icon-size constants split out of :ui-logic's Constants.kt, following the same precedent as
 // Percentages.kt: they are plain Ints used as defaults by `ListItemLeadingContentDataUi`, which now
 // lives in commonMain. Package unchanged so call sites don't churn.

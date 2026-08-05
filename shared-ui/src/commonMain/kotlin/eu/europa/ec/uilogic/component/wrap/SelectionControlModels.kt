@@ -14,9 +14,6 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The screen-fraction constants split out of :ui-logic's Constants.kt: they are plain Floats used
-// as defaults by the serialized UI-model (SuccessUIConfig.ImageConfig.screenPercentageSize), which
-// lives in commonMain. Package unchanged so call sites don't churn.
 // Phase 3b: the selection-control models split out of their Wrap* composable files. Plain data
 // (state + callback), referenced by `ListItemTrailingContentDataUi`, so they have to sit in
 // commonMain for the list-item model to compile there. Packages unchanged.

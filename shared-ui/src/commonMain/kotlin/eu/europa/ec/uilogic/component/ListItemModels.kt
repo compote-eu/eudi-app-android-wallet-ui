@@ -14,9 +14,6 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The screen-fraction constants split out of :ui-logic's Constants.kt: they are plain Floats used
-// as defaults by the serialized UI-model (SuccessUIConfig.ImageConfig.screenPercentageSize), which
-// lives in commonMain. Package unchanged so call sites don't churn.
 // Phase 3b: the list-item UI *model* split out of :ui-logic's ListItem.kt, where it sat beside the
 // composables that render it. Tints are `ColorKey`, not `androidx.compose.ui.graphics.Color` —
 // the same keyed-enum pattern `TextConfig` already uses, resolved by `ColorKey.toColor()` in

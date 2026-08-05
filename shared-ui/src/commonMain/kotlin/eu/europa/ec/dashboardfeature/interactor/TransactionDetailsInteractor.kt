@@ -14,9 +14,6 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The screen-fraction constants split out of :ui-logic's Constants.kt: they are plain Floats used
-// as defaults by the serialized UI-model (SuccessUIConfig.ImageConfig.screenPercentageSize), which
-// lives in commonMain. Package unchanged so call sites don't churn.
 // Phase 3b: the interactor *contract* moves to commonMain so `TransactionDetailsViewModel` can live
 // there, following the `SplashInteractor` pattern — the Android `TransactionDetailsInteractorImpl`
 // (wallet-core, ResourceProvider, UuidProvider) stays in :dashboard-feature along with its Koin

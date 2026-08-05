@@ -14,9 +14,6 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The screen-fraction constants split out of :ui-logic's Constants.kt: they are plain Floats used
-// as defaults by the serialized UI-model (SuccessUIConfig.ImageConfig.screenPercentageSize), which
-// lives in commonMain. Package unchanged so call sites don't churn.
 // Phase 3b: the error-screen config split out of ContentError.kt. Almost every view-model holds one
 // in its state, so it gates their move to commonMain.
 package eu.europa.ec.uilogic.component.content
