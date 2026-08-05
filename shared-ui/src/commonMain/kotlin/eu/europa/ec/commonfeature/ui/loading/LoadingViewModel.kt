@@ -14,11 +14,16 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the re-usable loading screen's view-model base. The only Android type it named was the
+// `Context` it forwards to device authentication, now the opaque `PlatformContext` handle — on Android
+// that is a typealias for Context, so `LoadingScreen` and the subclass overrides are unchanged. The
+// presentation subclass stays in :presentation-feature for now: its interactor's partial states carry
+// a `java.net.URI` redirect and an `android.content.Intent`. Package unchanged.
 package eu.europa.ec.commonfeature.ui.loading
 
-import android.content.Context
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.NavigationType
@@ -38,7 +43,7 @@ data class State(
 ) : ViewState
 
 sealed class Event : ViewEvent {
-    data class DoWork(val context: Context) : Event()
+    data class DoWork(val context: PlatformContext) : Event()
     data object Initialize : Event()
     data object GoBack : Event()
     data object DismissError : Event()
@@ -79,7 +84,7 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
      * Gets called once upon initialization of the [LoadingScreen] +
      * each time the user presses "Try again" in its Error screen.
      */
-    abstract fun doWork(context: Context)
+    abstract fun doWork(context: PlatformContext)
 
     /**
      * Start the Screen without back navigation until timer is run out.
@@ -111,7 +116,7 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
      * Called from a plain `LaunchedEffect(Unit)`, which re-runs whenever the composition is rebuilt;
      * this ViewModel-scoped guard is what makes the work once-per-instance.
      */
-    fun startInitialWork(context: Context) {
+    fun startInitialWork(context: PlatformContext) {
         if (hasRunInitialWork) return
         hasRunInitialWork = true
         setEvent(Event.Initialize)

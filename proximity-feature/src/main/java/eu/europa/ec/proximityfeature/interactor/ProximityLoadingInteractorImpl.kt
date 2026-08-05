@@ -30,32 +30,7 @@ import eu.europa.ec.corelogic.model.AuthenticationData
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
 
-sealed class ProximityLoadingObserveResponsePartialState {
-    data class UserAuthenticationRequired(
-        val authenticationData: List<AuthenticationData>,
-    ) : ProximityLoadingObserveResponsePartialState()
-
-    data class Failure(val error: String) : ProximityLoadingObserveResponsePartialState()
-    data object Success : ProximityLoadingObserveResponsePartialState()
-    data object RequestReadyToBeSent : ProximityLoadingObserveResponsePartialState()
-}
-
-sealed class ProximityLoadingSendRequestedDocumentPartialState {
-    data class Failure(val error: String) : ProximityLoadingSendRequestedDocumentPartialState()
-    data object Success : ProximityLoadingSendRequestedDocumentPartialState()
-}
-
-interface ProximityLoadingInteractor : ScopedPresentationInteractor {
-    fun observeResponse(): Flow<ProximityLoadingObserveResponsePartialState>
-    suspend fun sendRequestedDocuments(): ProximityLoadingSendRequestedDocumentPartialState
-    fun handleUserAuthentication(
-        context: Context,
-        crypto: BiometricCrypto,
-        notifyOnAuthenticationFailure: Boolean,
-        resultHandler: DeviceAuthenticationResult,
-    )
-}
-
+// Phase 3b: the contract and both partial states moved to :shared-ui/commonMain (same package).
 class ProximityLoadingInteractorImpl(
     private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     walletCorePresentationController: WalletCorePresentationController? = null

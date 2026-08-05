@@ -14,49 +14,26 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the device-authentication *contract*, moved so the authenticating view-models can name it
+// from commonMain. `DeviceAuthenticationInteractorImpl` stays in :common-feature with its Koin
+// provider, since it delegates to the Android DeviceAuthenticationController. Every type here is now
+// platform-neutral: `PlatformContext` and the crypto handle are opaque, and the availability and result
+// types are plain Kotlin. Package unchanged.
 package eu.europa.ec.commonfeature.interactor
 
-import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
-import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationController
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
+import eu.europa.ec.shared.platform.PlatformContext
 
 interface DeviceAuthenticationInteractor {
     fun getBiometricsAvailability(): BiometricsAvailability
     fun authenticateWithBiometrics(
-        context: Context,
+        context: PlatformContext,
         crypto: BiometricCrypto,
         notifyOnAuthenticationFailure: Boolean,
         resultHandler: DeviceAuthenticationResult
     )
 
     fun launchBiometricSystemScreen()
-}
-
-class DeviceAuthenticationInteractorImpl(
-    private val deviceAuthenticationController: DeviceAuthenticationController,
-) : DeviceAuthenticationInteractor {
-
-    override fun launchBiometricSystemScreen() {
-        deviceAuthenticationController.launchBiometricSystemScreen()
-    }
-
-    override fun getBiometricsAvailability(): BiometricsAvailability {
-        return deviceAuthenticationController.deviceSupportsBiometrics()
-    }
-
-    override fun authenticateWithBiometrics(
-        context: Context,
-        crypto: BiometricCrypto,
-        notifyOnAuthenticationFailure: Boolean,
-        resultHandler: DeviceAuthenticationResult
-    ) {
-        deviceAuthenticationController.authenticate(
-            context,
-            crypto,
-            notifyOnAuthenticationFailure,
-            resultHandler
-        )
-    }
 }

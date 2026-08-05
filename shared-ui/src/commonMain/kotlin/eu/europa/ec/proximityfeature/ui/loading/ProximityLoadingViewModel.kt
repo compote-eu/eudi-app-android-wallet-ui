@@ -14,15 +14,24 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the seventh feature view-model in commonMain, and the first that authenticates the user —
+// it drives one biometric prompt per document being shared, which is the whole reason the device-auth
+// handle exists. The `Context` it forwards is now an opaque `PlatformContext`; everything else it
+// touches (the callbacks, the crypto courier, the partial states) became platform-neutral with the
+// device-auth types.
+//
+// Its presentation twin stays Android-side until the intent/URI seam lands, because
+// `PresentationLoadingObserveResponsePartialState` carries a `java.net.URI` redirect and an
+// `android.content.Intent`. Package unchanged, so `ProximityLoadingScreen` is untouched.
 package eu.europa.ec.proximityfeature.ui.loading
 
-import android.content.Context
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.commonfeature.ui.loading.Effect
 import eu.europa.ec.commonfeature.ui.loading.Event
 import eu.europa.ec.commonfeature.ui.loading.LoadingViewModel
 import eu.europa.ec.corelogic.model.AuthenticationData
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.proximityfeature.interactor.ProximityLoadingInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityLoadingObserveResponsePartialState
 import eu.europa.ec.proximityfeature.interactor.ProximityLoadingSendRequestedDocumentPartialState
@@ -72,7 +81,7 @@ class ProximityLoadingViewModel(
 
     override fun getCancellableTimeout(): Duration = 5.toDuration(DurationUnit.SECONDS)
 
-    override fun doWork(context: Context) {
+    override fun doWork(context: PlatformContext) {
         viewModelScope.launch {
 
             interactor.setScopeId(presentationScopeId)
@@ -151,7 +160,7 @@ class ProximityLoadingViewModel(
     }
 
     private fun openAuthenticationPrompt(
-        context: Context,
+        context: PlatformContext,
         popEffect: Effect,
         authenticationDataList: List<AuthenticationData>,
         sendRequestedDocumentsAction: () -> Unit,
