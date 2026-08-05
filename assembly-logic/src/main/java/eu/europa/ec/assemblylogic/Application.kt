@@ -28,6 +28,8 @@ import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.worker.ReIssuanceWorkManager
 import eu.europa.ec.corelogic.worker.RevocationWorkManager
 import eu.europa.ec.eudi.rqesui.infrastructure.EudiRQESUi
+import eu.europa.ec.shared.resources.StringCatalog
+import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.inject
 import org.koin.core.KoinApplication
 import kotlin.time.Duration
@@ -38,12 +40,26 @@ class Application : Application() {
     private val analyticsController: AnalyticsController by inject()
     private val configLogic: ConfigLogic by inject()
     private val walletCoreConfig: WalletCoreConfig by inject()
+    private val stringCatalog: StringCatalog by inject()
 
     override fun onCreate() {
         super.onCreate()
         initializeKoin().initializeRqes()
+        warmStringCatalog()
         initializeReporting()
         initializeWorkManagers()
+    }
+
+    /**
+     * Loads the shared string corpus before anything can read it synchronously.
+     *
+     * Blocking is deliberate: `StringCatalog` backs the non-suspend interactor paths, so a
+     * half-warmed cache would surface as resource keys in the UI rather than as a failure. It is a
+     * single compose-resources file read — the per-key lookups afterwards are offset reads into
+     * the same cached file, not I/O.
+     */
+    private fun warmStringCatalog() {
+        runBlocking { stringCatalog.warm() }
     }
 
     private fun KoinApplication.initializeRqes() {

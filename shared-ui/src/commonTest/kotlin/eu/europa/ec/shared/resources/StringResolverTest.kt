@@ -17,20 +17,28 @@
 package eu.europa.ec.shared.resources
 
 import kotlinx.coroutines.test.runTest
+import org.jetbrains.compose.resources.PluralStringResource
 import org.jetbrains.compose.resources.StringResource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * Shows that [StringResolver] is trivially fakeable in commonTest — the pattern migrated
- * view-models use to assert on resolved strings without the compose-resources runtime reader.
+ * Shows that [StringResolver] is trivially fakeable in commonTest — the pattern suspend-scoped
+ * interactor code uses to assert on resolved strings without the compose-resources runtime reader.
  */
 class StringResolverTest {
 
     private val fake = object : StringResolver {
         override suspend fun resolve(resource: StringResource) = "resolved:${resource.key}"
+
         override suspend fun resolve(resource: StringResource, vararg formatArgs: Any) =
             "resolved:${resource.key}:${formatArgs.joinToString()}"
+
+        override suspend fun resolvePlural(
+            resource: PluralStringResource,
+            quantity: Int,
+            vararg formatArgs: Any,
+        ) = "resolved:${resource.key}:$quantity:${formatArgs.joinToString()}"
     }
 
     @Test
@@ -39,6 +47,18 @@ class StringResolverTest {
         assertEquals(
             "resolved:generic_network_error_message:42",
             fake.resolve(Res.string.generic_network_error_message, 42),
+        )
+    }
+
+    @Test
+    fun plurals_carry_their_quantity_separately_from_format_arguments() = runTest {
+        assertEquals(
+            "resolved:transactions_screen_some_minutes_ago_message:5:5",
+            fake.resolvePlural(
+                Res.plurals.transactions_screen_some_minutes_ago_message,
+                quantity = 5,
+                5,
+            ),
         )
     }
 }

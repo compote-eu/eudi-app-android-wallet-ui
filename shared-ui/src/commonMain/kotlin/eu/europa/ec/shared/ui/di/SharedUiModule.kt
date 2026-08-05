@@ -16,9 +16,14 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.shared.resources.ComposeResourcesStringCatalog
+import eu.europa.ec.shared.resources.ComposeResourcesStringResolver
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.StringResolver
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module
+import org.koin.core.annotation.Single
 
 /**
  * Phase 3b: this module's Koin definitions — one `@Module` per Gradle module, as everywhere else in
@@ -37,3 +42,22 @@ import org.koin.core.annotation.Module
 @Configuration
 @ComponentScan("eu.europa.ec")
 class SharedUiModule
+
+/**
+ * The synchronous string corpus used by interactors and transformers. Declared here rather than in
+ * `:ui-logic` so iOS resolves the same binding from the same graph.
+ *
+ * A singleton because it owns the warmed cache; `warm()` is awaited once at application startup.
+ */
+@Single
+fun provideStringCatalog(): StringCatalog = ComposeResourcesStringCatalog()
+
+/**
+ * The suspend resolver, for coroutine-scoped resolution and for all plural lookups.
+ *
+ * Moved here from `:ui-logic`'s `LogicUiModule` in Phase 3a: the contract and its implementation
+ * both live in `commonMain`, so binding it from an Android-only module would have left iOS without
+ * it.
+ */
+@Single
+fun provideStringResolver(): StringResolver = ComposeResourcesStringResolver()

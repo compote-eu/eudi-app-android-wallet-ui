@@ -72,8 +72,12 @@ kotlin {
             // `api` (not implementation) so the framework can `export` it and downstream modules
             // that depend on :shared-ui also see :shared-logic.
             api(project(":shared-logic"))
-            implementation(libs.jetbrains.compose.runtime)
-            implementation(libs.jetbrains.compose.components.resources)
+            // `api`, not `implementation`: both types surface in this module's public API —
+            // `StringResource`/`PluralStringResource` in `StringCatalog` and `UiText`, and
+            // `@Composable` on `UiText.resolve()`. Consumers (:resources-logic, :ui-logic, the
+            // feature modules) name those types directly.
+            api(libs.jetbrains.compose.runtime)
+            api(libs.jetbrains.compose.components.resources)
             implementation(libs.kotlinx.serialization.json)
             // Nav3 route model (AppRoute : NavKey, AppNavigator) lives here: config-carrying routes
             // reference the shared-ui UI-model, and AppRoute is sealed so its subtypes must co-locate.

@@ -16,23 +16,37 @@
 
 package eu.europa.ec.shared.resources
 
+import org.jetbrains.compose.resources.PluralStringResource
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
 
 /**
- * Phase 3a: the KMP-shared string accessor for (eventually commonMain) presentation code —
- * the replacement for the Android-`Context` `ResourceProvider.getString`. View-models depend
- * on this interface and resolve shared [Res] strings platform-neutrally; unit tests can fake
- * it, avoiding compose-resources' runtime resource reader.
+ * Phase 3a: the KMP-shared *suspend* string accessor, for code that resolves inside a coroutine.
  *
- * Resolution is `suspend` because compose-resources reads packaged resources asynchronously;
- * view-models call it from their coroutine scopes.
+ * There are now three ways to reach the shared corpus, and which one to use follows from the
+ * calling layer:
+ *  - view-model state holds [UiText] and the composable resolves it — no resolver injected;
+ *  - synchronous interactor/transformer code uses [StringCatalog];
+ *  - suspend code (and *all* plural resolution) uses this interface.
+ *
+ * Plurals live here rather than on [StringCatalog] because selecting a plural form needs the
+ * locale's CLDR categories, which compose-resources applies during the suspend read. Caching
+ * forms for a synchronous accessor would bake in English's one/other split.
+ *
+ * Fakeable in `commonTest` without compose-resources' runtime reader.
  */
 interface StringResolver {
 
     suspend fun resolve(resource: StringResource): String
 
     suspend fun resolve(resource: StringResource, vararg formatArgs: Any): String
+
+    suspend fun resolvePlural(
+        resource: PluralStringResource,
+        quantity: Int,
+        vararg formatArgs: Any,
+    ): String
 }
 
 /** Default [StringResolver] backed by Compose Multiplatform's compose-resources. */
@@ -43,4 +57,10 @@ class ComposeResourcesStringResolver : StringResolver {
 
     override suspend fun resolve(resource: StringResource, vararg formatArgs: Any): String =
         getString(resource, *formatArgs)
+
+    override suspend fun resolvePlural(
+        resource: PluralStringResource,
+        quantity: Int,
+        vararg formatArgs: Any,
+    ): String = getPluralString(resource, quantity, *formatArgs)
 }
