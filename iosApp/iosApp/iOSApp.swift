@@ -20,7 +20,17 @@ import SwiftUI
 struct iOSApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // The Compose Multiplatform spike is the root while we establish that shared view-models
+            // can drive real iOS UI. ContentView (the SwiftUI-calling-Kotlin spike from Phase 0) is
+            // still in the target and reachable from the tab below, so both paths stay exercised.
+            TabView {
+                ComposeSpikeView()
+                    .ignoresSafeArea()
+                    .tabItem { Label("Compose MP", systemImage: "square.stack.3d.up") }
+
+                ContentView()
+                    .tabItem { Label("SwiftUI", systemImage: "swift") }
+            }
         }
     }
 }

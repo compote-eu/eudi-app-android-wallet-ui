@@ -128,6 +128,11 @@ androidx-navigation3-ui = { group = "androidx.navigation3", name = "navigation3-
 androidx-lifecycle-viewmodel-navigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "androidxLifecycleViewmodel" }
 jetbrains-compose-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "composeMultiplatform" }
 jetbrains-compose-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "composeMultiplatform" }
+# NB: Compose Multiplatform's UI artifacts (foundation, material3, ui) are deliberately NOT listed here.
+# They are consumed through the `org.jetbrains.compose` plugin's `compose.*` accessors in
+# shared-ui/build.gradle.kts, because their versions do not all track `composeMultiplatform` — material3
+# in particular has its own line, so `org.jetbrains.compose.material3:material3:1.11.1` does not exist.
+# Letting the plugin resolve them keeps the set self-consistent.
 androidx-lifecycle-viewModelCompose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
 androidx-metrics = { group = "androidx.metrics", name = "metrics-performance", version.ref = "androidxMetrics" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "androidxProfileinstaller" }

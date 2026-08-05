@@ -98,6 +98,20 @@ kotlin {
             api(libs.koin.core.viewmodel)
             api(libs.koin.annotations)
         }
+        // Compose Multiplatform UI, iOS-only for now. This is the spike that proves the shared
+        // view-models can drive Compose UI on iOS (Skiko rendering, Koin on native, compose-resources
+        // at render time). Kept OUT of commonMain deliberately: on Android these artifacts map onto
+        // AndroidX Compose, so they would join the shipping app's classpath next to its own Compose
+        // BOM. Widen to commonMain when the real screens move, and revisit versions then.
+        // Via the Compose plugin's accessors rather than the version catalog: these artifacts do not
+        // all track `composeMultiplatform` (material3 has its own version line, so
+        // org.jetbrains.compose.material3:material3:1.11.1 does not exist). The plugin resolves a
+        // self-consistent set.
+        iosMain.dependencies {
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
+        }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)

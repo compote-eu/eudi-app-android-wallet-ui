@@ -8,3 +8,6 @@ DerivedData/
 xcuserdata/
 *.xcuserstate
 *.xcscmblueprint
+
+# Info.plist is generated from project.yml by XcodeGen (see the `info:` block there).
+Info.plist
