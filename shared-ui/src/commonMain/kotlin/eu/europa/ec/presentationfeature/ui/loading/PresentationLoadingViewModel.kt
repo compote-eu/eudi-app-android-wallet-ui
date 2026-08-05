@@ -14,9 +14,13 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the ninth feature view-model in commonMain, rejoining the proximity twin it was split from
+// one commit earlier. Its interactor's partial states were the only thing holding it back, and neither
+// payload turned out to need a real abstraction in the view-model: the redirect became a `String` and
+// the intent an opaque `PlatformIntent`, both of which this view-model ignores — it matches the branch
+// and calls `onSuccess()`. Package unchanged, so `PresentationLoadingScreen` is untouched.
 package eu.europa.ec.presentationfeature.ui.loading
 
-import android.content.Context
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.commonfeature.config.PresentationMode
@@ -25,6 +29,7 @@ import eu.europa.ec.commonfeature.ui.loading.Effect
 import eu.europa.ec.commonfeature.ui.loading.Event
 import eu.europa.ec.commonfeature.ui.loading.LoadingViewModel
 import eu.europa.ec.corelogic.model.AuthenticationData
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingObserveResponsePartialState
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingSendRequestedDocumentPartialState
@@ -92,7 +97,7 @@ class PresentationLoadingViewModel(
 
     override fun getCancellableTimeout(): Duration = 5.toDuration(DurationUnit.SECONDS)
 
-    override fun doWork(context: Context) {
+    override fun doWork(context: PlatformContext) {
         viewModelScope.launch {
 
             interactor.setScopeId(presentationScopeId)
@@ -179,7 +184,7 @@ class PresentationLoadingViewModel(
     }
 
     private fun openAuthenticationPrompt(
-        context: Context,
+        context: PlatformContext,
         popEffect: Effect,
         authenticationDataList: List<AuthenticationData>,
         sendRequestedDocumentsAction: () -> Unit,

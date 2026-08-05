@@ -150,7 +150,8 @@ class TestPresentationLoadingInteractor {
     // WalletCorePartialState.Redirect with a URI.
 
     // Case 3 Expected Result:
-    // PresentationLoadingObserveResponsePartialState.Redirect with the same URI.
+    // PresentationLoadingObserveResponsePartialState.Redirect with the same URI, as a String — the
+    // shared partial state carries it that way so it can cross into commonMain.
 
     @Test
     fun `Given Case 3, When observeResponse is called, Then Case 3 Expected Result is returned`() {
@@ -165,7 +166,7 @@ class TestPresentationLoadingInteractor {
                 .runFlowTest {
                     // Then
                     TestCase.assertEquals(
-                        PresentationLoadingObserveResponsePartialState.Redirect(URI("uri")),
+                        PresentationLoadingObserveResponsePartialState.Redirect(URI("uri").toString()),
                         awaitItem()
                     )
                 }

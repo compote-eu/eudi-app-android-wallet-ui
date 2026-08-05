@@ -32,34 +32,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
 import java.net.URI
 
-sealed class PresentationLoadingObserveResponsePartialState {
-    data class UserAuthenticationRequired(
-        val authenticationData: List<AuthenticationData>,
-    ) : PresentationLoadingObserveResponsePartialState()
-
-    data class Failure(val error: String) : PresentationLoadingObserveResponsePartialState()
-    data object Success : PresentationLoadingObserveResponsePartialState()
-    data class Redirect(val uri: URI) : PresentationLoadingObserveResponsePartialState()
-    data object RequestReadyToBeSent : PresentationLoadingObserveResponsePartialState()
-    data class IntentToSend(val intent: Intent) : PresentationLoadingObserveResponsePartialState()
-}
-
-sealed class PresentationLoadingSendRequestedDocumentPartialState {
-    data class Failure(val error: String) : PresentationLoadingSendRequestedDocumentPartialState()
-    data object Success : PresentationLoadingSendRequestedDocumentPartialState()
-}
-
-interface PresentationLoadingInteractor : ScopedPresentationInteractor {
-    fun observeResponse(): Flow<PresentationLoadingObserveResponsePartialState>
-    suspend fun sendRequestedDocuments(): PresentationLoadingSendRequestedDocumentPartialState
-    fun handleUserAuthentication(
-        context: Context,
-        crypto: BiometricCrypto,
-        notifyOnAuthenticationFailure: Boolean,
-        resultHandler: DeviceAuthenticationResult,
-    )
-}
-
+// Phase 3b: the contract and both partial states moved to :shared-ui/commonMain (same package).
 class PresentationLoadingInteractorImpl(
     private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     walletCorePresentationController: WalletCorePresentationController? = null
@@ -73,8 +46,10 @@ class PresentationLoadingInteractorImpl(
                     error = response.error
                 )
 
+                // The shared partial state carries the redirect as a String; a URI is representable
+                // as neutral data, unlike the intent below.
                 is WalletCorePartialState.Redirect -> PresentationLoadingObserveResponsePartialState.Redirect(
-                    uri = response.uri
+                    uri = response.uri.toString()
                 )
 
                 is WalletCorePartialState.Success -> {
