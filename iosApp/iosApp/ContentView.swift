@@ -15,8 +15,16 @@
  */
 
 import SwiftUI
-// The Kotlin Multiplatform :shared module, exposed as an Objective-C/Swift framework.
-import SharedKit
+
+// The Kotlin Multiplatform module, exposed as an Objective-C/Swift framework.
+//
+// Imported symbol-by-symbol rather than as a whole module on purpose. Obj-C has a flat namespace, so
+// every public Kotlin declaration lands in one, and each shared view-model contributes top-level
+// `State`, `Event` and `Effect` classes. A plain `import SharedKit` therefore makes `State` ambiguous
+// against `SwiftUI.State` and breaks `@State`. A scoped import keeps those names out of this file
+// entirely; see wiki/KMP_FEASIBILITY.md on why this stays a non-issue while iOS hosts Compose UI.
+import class SharedKit.Platform
+import class SharedKit.PinValidator
 
 struct ContentView: View {
 
