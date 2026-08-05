@@ -131,8 +131,8 @@ class TestPresentationSuccessInteractor {
         // When
         val result = interactor.redirectUri
 
-        // Then
-        assertEquals(expectedUri, result)
+        // Then: the interactor exposes it as a String, so the shared contract can name it.
+        assertEquals(expectedUri.toString(), result)
     }
     //endregion
 

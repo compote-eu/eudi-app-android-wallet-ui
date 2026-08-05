@@ -14,14 +14,16 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: moved with the `DocumentSuccessViewModel` base. Its only Android type was the pending
+// intent it forwards, now the opaque `PlatformIntent`. Its interactor contract needed no retyping.
 package eu.europa.ec.proximityfeature.ui.success
 
-import android.content.Intent
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessViewModel
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.proximityfeature.interactor.ProximitySuccessInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximitySuccessInteractorGetUiItemsPartialState
+import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
@@ -84,7 +86,7 @@ class ProximitySuccessViewModel(
         }
     }
 
-    override fun getPendingIntent(): Intent? {
+    override fun getPendingIntent(): PlatformIntent? {
         return null
     }
 

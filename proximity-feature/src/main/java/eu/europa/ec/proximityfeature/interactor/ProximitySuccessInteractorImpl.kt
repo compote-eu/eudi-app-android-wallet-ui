@@ -14,13 +14,11 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.presentationfeature.interactor
+package eu.europa.ec.proximityfeature.interactor
 
-import android.content.Intent
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
-import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractor
 import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractorDelegate
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
@@ -29,8 +27,13 @@ import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiTextOr
+import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
+import eu.europa.ec.shared.resources.document_success_header_description
+import eu.europa.ec.shared.resources.document_success_header_description_when_error
+import eu.europa.ec.shared.resources.document_success_relying_party_default_name
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -40,54 +43,20 @@ import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import java.net.URI
-import eu.europa.ec.shared.resources.Res
-import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
-import eu.europa.ec.shared.resources.document_success_header_description
-import eu.europa.ec.shared.resources.document_success_header_description_when_error
-import eu.europa.ec.shared.resources.document_success_relying_party_default_name
 
-sealed class PresentationSuccessInteractorGetUiItemsPartialState {
-    data class Success(
-        val documentsUi: List<ExpandableListItemUi.NestedListItem>,
-        val headerConfig: ContentHeaderConfig,
-    ) : PresentationSuccessInteractorGetUiItemsPartialState()
-
-    data class Failed(
-        val errorMessage: String
-    ) : PresentationSuccessInteractorGetUiItemsPartialState()
-}
-
-interface PresentationSuccessInteractor : ScopedPresentationInteractor {
-    val initiatorRoute: String
-    val redirectUri: URI?
-    fun getPendingIntent(): Intent?
-    fun getUiItems(): Flow<PresentationSuccessInteractorGetUiItemsPartialState>
-    fun stopPresentation()
-}
-
-class PresentationSuccessInteractorImpl(
+// Phase 3b: the contract and its partial state moved to :shared-ui/commonMain (same package).
+class ProximitySuccessInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
     private val resourceProvider: ResourceProvider,
     private val uuidProvider: UuidProvider,
     walletCorePresentationController: WalletCorePresentationController? = null
-) : PresentationSuccessInteractor,
+) : ProximitySuccessInteractor,
     ScopedPresentationInteractorDelegate(walletCorePresentationController) {
 
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
 
-    override val initiatorRoute: String
-        get() = walletCorePresentationController.initiatorRoute
-
-    override val redirectUri: URI?
-        get() = walletCorePresentationController.redirectUri
-
-    override fun getPendingIntent(): Intent? {
-        return walletCorePresentationController.pendingIntent
-    }
-
-    override fun getUiItems(): Flow<PresentationSuccessInteractorGetUiItemsPartialState> {
+    override fun getUiItems(): Flow<ProximitySuccessInteractorGetUiItemsPartialState> {
         return flow {
 
             val documentsUi = mutableListOf<ExpandableListItemUi.NestedListItem>()
@@ -165,13 +134,13 @@ class PresentationSuccessInteractorImpl(
             )
 
             emit(
-                PresentationSuccessInteractorGetUiItemsPartialState.Success(
+                ProximitySuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = documentsUi,
                     headerConfig = headerConfig
                 )
             )
         }.safeAsync {
-            PresentationSuccessInteractorGetUiItemsPartialState.Failed(
+            ProximitySuccessInteractorGetUiItemsPartialState.Failed(
                 errorMessage = it.localizedMessage ?: genericErrorMsg
             )
         }

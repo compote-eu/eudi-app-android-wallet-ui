@@ -14,14 +14,16 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the base behind the three document-success screens. Its Android leaves were all
+// pass-through values, and each crosses the seam the way its kind should: the deep link is a `String`
+// (as in `SuccessViewModel`), the pending intent is the opaque `PlatformIntent` handle, and
+// `Activity.RESULT_OK` went back to the screen, since a result code is a platform constant and shared
+// code has no business naming -1. Package unchanged.
 package eu.europa.ec.commonfeature.ui.document_success
 
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
-import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
+import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
@@ -63,14 +65,23 @@ sealed class Effect : ViewSideEffect {
 
         data object Pop : Navigation()
 
+        /**
+         * The link stays a `String` rather than an `android.net.Uri`, matching
+         * `SuccessViewModel.Effect.Navigation.DeepLink`; the screen parses it at the point of use.
+         */
         data class DeepLink(
-            val link: Uri,
+            val link: String,
             val routeToPop: AppRoute?,
         ) : Navigation()
 
+        /**
+         * Finish the hosting activity, handing this intent back as the successful result.
+         *
+         * The result *code* is no longer carried: it was always `Activity.RESULT_OK`, which is a
+         * platform constant, so the screen supplies it rather than shared code naming -1.
+         */
         data class FinishWithResult(
-            val intent: Intent,
-            val resultCode: Int,
+            val intent: PlatformIntent,
         ) : Navigation()
     }
 }
@@ -79,7 +90,7 @@ abstract class DocumentSuccessViewModel : MviViewModel<Event, State, Effect>() {
 
     abstract fun getNextScreenConfigNavigation(): ConfigNavigation
     abstract fun doWork()
-    abstract fun getPendingIntent(): Intent?
+    abstract fun getPendingIntent(): PlatformIntent?
 
     override fun setInitialState(): State {
         return State(
@@ -147,12 +158,9 @@ abstract class DocumentSuccessViewModel : MviViewModel<Event, State, Effect>() {
         }
     }
 
-    private fun handleIntent(intent: Intent) {
+    private fun handleIntent(intent: PlatformIntent) {
         setEffect {
-            Effect.Navigation.FinishWithResult(
-                intent = intent,
-                resultCode = Activity.RESULT_OK,
-            )
+            Effect.Navigation.FinishWithResult(intent = intent)
         }
     }
 
@@ -167,7 +175,7 @@ abstract class DocumentSuccessViewModel : MviViewModel<Event, State, Effect>() {
             }
 
             is NavigationType.Deeplink -> Effect.Navigation.DeepLink(
-                nav.link.toUri(),
+                nav.link,
                 AppRouteCodec.decode(nav.routeToPop)
             )
 

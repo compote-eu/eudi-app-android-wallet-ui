@@ -16,6 +16,8 @@
 
 package eu.europa.ec.commonfeature.ui.document_success
 
+import android.app.Activity
+import androidx.core.net.toUri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -111,7 +113,7 @@ fun DocumentSuccessScreen(
                     }
 
                     is Effect.Navigation.DeepLink -> {
-                        context.cacheUri(navigationEffect.link)
+                        context.cacheUri(navigationEffect.link.toUri())
                         navigationEffect.routeToPop?.let {
                             navigator.popBackStackTo(
                                 route = it,
@@ -125,7 +127,9 @@ fun DocumentSuccessScreen(
                     is Effect.Navigation.FinishWithResult -> {
                         context.findActivity().let { activity ->
                             navigationEffect.intent.let { intent ->
-                                activity.setResult(navigationEffect.resultCode, intent)
+                                // The result code is a platform constant, so it lives here rather
+                                // than in the shared view-model.
+                                activity.setResult(Activity.RESULT_OK, intent)
                                 activity.finish()
                             }
                         }

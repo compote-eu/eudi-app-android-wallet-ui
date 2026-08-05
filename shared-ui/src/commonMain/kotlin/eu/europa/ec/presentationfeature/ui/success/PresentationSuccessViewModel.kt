@@ -14,14 +14,17 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: moved with the `DocumentSuccessViewModel` base. The pending intent became an opaque
+// `PlatformIntent`, and `interactor.redirectUri` is now a `String`, so building the deep link no longer
+// needs `.toString()`.
 package eu.europa.ec.presentationfeature.ui.success
 
-import android.content.Intent
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessViewModel
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractorGetUiItemsPartialState
+import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
@@ -47,7 +50,7 @@ class PresentationSuccessViewModel(
         val redirectUri = interactor.redirectUri
         val deepLinkWithUriOrPopToDashboard = ConfigNavigation(
             navigationType = redirectUri?.let {
-                NavigationType.Deeplink(it.toString(), interactor.initiatorRoute)
+                NavigationType.Deeplink(it, interactor.initiatorRoute)
             } ?: NavigationType.PopTo(DashboardRoute)
         )
 
@@ -87,7 +90,7 @@ class PresentationSuccessViewModel(
         }
     }
 
-    override fun getPendingIntent(): Intent? {
+    override fun getPendingIntent(): PlatformIntent? {
         return interactor.getPendingIntent()
     }
 

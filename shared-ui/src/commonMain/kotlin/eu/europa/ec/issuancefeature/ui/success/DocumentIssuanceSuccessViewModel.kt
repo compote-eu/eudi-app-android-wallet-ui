@@ -14,14 +14,16 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: moved with the `DocumentSuccessViewModel` base. Besides the pending intent, the only
+// thing in the way was `List<DocumentId>` on its interactor, and `DocumentId` is a String typealias.
 package eu.europa.ec.issuancefeature.ui.success
 
-import android.content.Intent
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.commonfeature.config.IssuanceSuccessUiConfig
 import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessViewModel
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorGetUiItemsPartialState
+import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -76,7 +78,7 @@ class DocumentIssuanceSuccessViewModel(
         }
     }
 
-    override fun getPendingIntent(): Intent? {
+    override fun getPendingIntent(): PlatformIntent? {
         return null
     }
 }

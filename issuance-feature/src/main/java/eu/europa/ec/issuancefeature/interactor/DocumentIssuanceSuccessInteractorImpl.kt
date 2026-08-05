@@ -44,21 +44,7 @@ import eu.europa.ec.shared.resources.issuance_success_header_description
 import eu.europa.ec.shared.resources.issuance_success_header_description_when_error
 import eu.europa.ec.shared.resources.issuance_success_header_issuer_default_name
 
-sealed class DocumentIssuanceSuccessInteractorGetUiItemsPartialState {
-    data class Success(
-        val documentsUi: List<ExpandableListItemUi.NestedListItem>,
-        val headerConfig: ContentHeaderConfig,
-    ) : DocumentIssuanceSuccessInteractorGetUiItemsPartialState()
-
-    data class Failed(
-        val errorMessage: String,
-    ) : DocumentIssuanceSuccessInteractorGetUiItemsPartialState()
-}
-
-interface DocumentIssuanceSuccessInteractor {
-    fun getUiItems(documentIds: List<DocumentId>): Flow<DocumentIssuanceSuccessInteractorGetUiItemsPartialState>
-}
-
+// Phase 3b: the contract and its partial state moved to :shared-ui/commonMain (same package).
 class DocumentIssuanceSuccessInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
     private val resourceProvider: ResourceProvider,
