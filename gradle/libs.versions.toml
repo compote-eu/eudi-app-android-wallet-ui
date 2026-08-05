@@ -4,6 +4,10 @@ kotlin = "2.4.10"
 composeMultiplatform = "1.11.1"
 androidxLifecycleViewmodel = "2.11.0"
 navigation3 = "1.1.5"
+# JetBrains' multiplatform build of navigation3-ui. Google publishes navigation3-*runtime* for iOS but
+# NOT navigation3-ui, so `NavDisplay` is Android-only upstream; this fork fills exactly that gap and
+# delegates to the androidx artifacts on Android. Its own line, since it tracks the fork not androidx.
+jetbrainsNavigation3 = "1.1.1"
 kotlinxCoroutines = "1.11.0"
 kotlinxDatetime = "0.8.0"
 kotlinxSerializationJson = "1.11.0"
@@ -125,6 +129,8 @@ androidx-lifecycle-runtimeCompose = { group = "androidx.lifecycle", name = "life
 androidx-lifecycle-viewmodel = { group = "androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "androidxLifecycleViewmodel" }
 androidx-navigation3-runtime = { group = "androidx.navigation3", name = "navigation3-runtime", version.ref = "navigation3" }
 androidx-navigation3-ui = { group = "androidx.navigation3", name = "navigation3-ui", version.ref = "navigation3" }
+# Multiplatform NavDisplay (iOS + desktop + js), pairing with androidx's multiplatform navigation3-runtime.
+jetbrains-navigation3-ui = { group = "org.jetbrains.androidx.navigation3", name = "navigation3-ui", version.ref = "jetbrainsNavigation3" }
 androidx-lifecycle-viewmodel-navigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "androidxLifecycleViewmodel" }
 jetbrains-compose-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "composeMultiplatform" }
 jetbrains-compose-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "composeMultiplatform" }

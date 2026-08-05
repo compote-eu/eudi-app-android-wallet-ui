@@ -111,6 +111,15 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
+            // For `LocalViewModelStoreOwner`, which the iOS navigation host provides per back-stack
+            // entry — the job `rememberViewModelStoreNavEntryDecorator` does on Android. Same 2.11.0
+            // version line as the KMP `lifecycle-viewmodel` already in commonMain.
+            implementation(libs.androidx.lifecycle.viewModelCompose)
+            // The real `NavDisplay`, from JetBrains' multiplatform build of navigation3-ui — androidx
+            // publishes navigation3-runtime for iOS but not navigation3-ui.
+            implementation(libs.jetbrains.navigation3.ui)
+            // Per-entry ViewModelStore decorator, as the Android host uses.
+            implementation(libs.androidx.lifecycle.viewmodel.navigation3)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
