@@ -29,7 +29,6 @@ import androidx.lifecycle.viewModelScope
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.uilogic.mvi.MviViewModel
-import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import kotlinx.coroutines.delay
@@ -39,10 +38,6 @@ import org.koin.core.annotation.KoinViewModel
 data class State(
     val logoAnimationDuration: Int = 1500
 ) : ViewState
-
-sealed class Event : ViewEvent {
-    data object Initialize : Event()
-}
 
 sealed class Effect : ViewSideEffect {
 
@@ -54,7 +49,7 @@ sealed class Effect : ViewSideEffect {
 @KoinViewModel
 class SplashViewModel(
     private val interactor: SplashInteractor,
-) : MviViewModel<Event, State, Effect>() {
+) : MviViewModel<Nothing, State, Effect>() {
 
     init {
         // Must be tied to the ViewModel's lifetime, not the composition's. This is the only thing
@@ -67,11 +62,15 @@ class SplashViewModel(
 
     override fun setInitialState(): State = State()
 
-    override fun handleEvents(event: Event) {
-        when (event) {
-            Event.Initialize -> enterApplication()
-        }
-    }
+    /**
+     * The splash screen has no interactions — it shows a logo and leaves. Since the move to `init`
+     * above, an event could only re-run [enterApplication] and navigate twice, which is exactly the
+     * bug the stale test caught, so the event type is [Nothing]: `setEvent` now takes an argument no
+     * caller can construct, making "there are no events" a compile-time guarantee instead of a
+     * convention. If the splash ever does need one (skipping the animation, say), declare a
+     * `sealed class Event : ViewEvent` and widen this type argument back.
+     */
+    override fun handleEvents(event: Nothing) = Unit
 
     private fun enterApplication() {
         viewModelScope.launch {

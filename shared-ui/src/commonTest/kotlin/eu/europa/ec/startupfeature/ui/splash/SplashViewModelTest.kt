@@ -45,10 +45,10 @@ import kotlin.test.assertEquals
  * The trigger is **construction**, not an event: `enterApplication()` moved into the VM's `init` block
  * so that a process death on the splash screen cannot leave the app stranded there (the `Event.Init`
  * that used to drive it came from an `OneTimeLaunchedEffect` whose "already ran" flag is
- * `rememberSaveable`). So these tests must not send `Event.Initialize` — doing so runs the flow a
- * second time, which is what made `invocations` come back as 2. `Event.Initialize` and its
- * `handleEvents` branch have no production emitter left; they survive only because it is Splash's
- * sole event and removing it would leave an eventless sealed class.
+ * `rememberSaveable`). An earlier version of these tests still sent the by-then-emitterless
+ * `Event.Initialize`, which ran the flow a second time and made `invocations` come back as 2. The
+ * event type is now `Nothing`, so that mistake is no longer expressible — `assertEquals(1, …)` below
+ * is a real check that construction starts the flow exactly once.
  *
  * `Dispatchers.setMain` is required because `viewModelScope` dispatches on Main; the test dispatcher
  * is shared with `runTest` so the VM's `delay` runs on the same virtual clock (the same wiring the
