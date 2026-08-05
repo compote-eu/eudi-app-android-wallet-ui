@@ -42,6 +42,14 @@ import kotlin.test.assertEquals
  * route the interactor resolves (including a config-carrying one) is handed on verbatim as a
  * navigation effect.
  *
+ * The trigger is **construction**, not an event: `enterApplication()` moved into the VM's `init` block
+ * so that a process death on the splash screen cannot leave the app stranded there (the `Event.Init`
+ * that used to drive it came from an `OneTimeLaunchedEffect` whose "already ran" flag is
+ * `rememberSaveable`). So these tests must not send `Event.Initialize` — doing so runs the flow a
+ * second time, which is what made `invocations` come back as 2. `Event.Initialize` and its
+ * `handleEvents` branch have no production emitter left; they survive only because it is Splash's
+ * sole event and removing it would leave an eventless sealed class.
+ *
  * `Dispatchers.setMain` is required because `viewModelScope` dispatches on Main; the test dispatcher
  * is shared with `runTest` so the VM's `delay` runs on the same virtual clock (the same wiring the
  * `FlowExtensionsTest` fix needed).
@@ -78,13 +86,12 @@ class SplashViewModelTest {
     }
 
     @Test
-    fun initialize_switches_to_the_route_the_interactor_resolved() =
+    fun creating_the_view_model_switches_to_the_route_the_interactor_resolved() =
         runTest(mainDispatcher) {
             val interactor = FakeSplashInteractor(DashboardRoute)
             val viewModel = SplashViewModel(interactor)
             val effect = async { viewModel.effect.first() }
 
-            viewModel.setEvent(Event.Initialize)
             advanceUntilIdle()
 
             assertEquals(Effect.Navigation.SwitchScreen(DashboardRoute), effect.await())
@@ -98,7 +105,6 @@ class SplashViewModelTest {
             val viewModel = SplashViewModel(interactor)
             val animationDuration = viewModel.viewState.value.logoAnimationDuration.toLong()
 
-            viewModel.setEvent(Event.Initialize)
             advanceTimeBy(animationDuration)
 
             assertEquals(0, interactor.invocations)
@@ -111,7 +117,6 @@ class SplashViewModelTest {
             val viewModel = SplashViewModel(FakeSplashInteractor(route))
             val effect = async { viewModel.effect.first() }
 
-            viewModel.setEvent(Event.Initialize)
             advanceUntilIdle()
 
             assertEquals(Effect.Navigation.SwitchScreen(route), effect.await())
