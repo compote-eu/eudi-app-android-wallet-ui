@@ -97,20 +97,27 @@ kotlin {
             api(libs.koin.core)
             api(libs.koin.core.viewmodel)
             api(libs.koin.annotations)
+            // Compose Multiplatform UI, for the shared screens. On Android these map onto the same
+            // androidx.compose artifacts the app already uses, so they add version *requests* that
+            // Gradle reconciles with the app's Compose BOM rather than a parallel Compose — verified
+            // by diffing :androidApp's resolved compose graph before and after this widening: the
+            // resolved versions did not move (everything still converges on the BOM's 1.11.4, which is
+            // already how the app reconciles requests from 1.2.1 through 1.11.2).
+            // `api`, since these types appear in shared composables' public signatures (Modifier, …).
+            // Consumed through the Compose plugin's accessors, not the catalog: the versions do not all
+            // track `composeMultiplatform` (org.jetbrains.compose.material3:material3:1.11.1 does not
+            // exist).
+            api(compose.foundation)
+            api(compose.material3)
+            api(compose.ui)
+            api(compose.animation)
+            // `collectAsStateWithLifecycle` — multiplatform since lifecycle 2.11, so the shared screens
+            // keep Android's lifecycle-aware collection rather than downgrading to `collectAsState`.
+            api(libs.androidx.lifecycle.runtimeCompose)
         }
-        // Compose Multiplatform UI, iOS-only for now. This is the spike that proves the shared
-        // view-models can drive Compose UI on iOS (Skiko rendering, Koin on native, compose-resources
-        // at render time). Kept OUT of commonMain deliberately: on Android these artifacts map onto
-        // AndroidX Compose, so they would join the shipping app's classpath next to its own Compose
-        // BOM. Widen to commonMain when the real screens move, and revisit versions then.
-        // Via the Compose plugin's accessors rather than the version catalog: these artifacts do not
-        // all track `composeMultiplatform` (material3 has its own version line, so
-        // org.jetbrains.compose.material3:material3:1.11.1 does not exist). The plugin resolves a
-        // self-consistent set.
+        // iOS-only: the navigation host's pieces. The Compose UI artifacts moved to commonMain with
+        // the first shared screen.
         iosMain.dependencies {
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
             // For `LocalViewModelStoreOwner`, which the iOS navigation host provides per back-stack
             // entry — the job `rememberViewModelStoreNavEntryDecorator` does on Android. Same 2.11.0
             // version line as the KMP `lifecycle-viewmodel` already in commonMain.

@@ -14,20 +14,18 @@
  * governing permissions and limitations under the Licence.
  */
 
-// SPIKE — the first Compose Multiplatform UI in this project, and the first time a shared view-model
-// drives a real screen on iOS. It answers questions no Gradle task can:
+// The iOS app's Compose entry point.
 //
-//   1. does Compose MP actually render on iOS (the Skiko path we had never exercised)?
-//   2. does a commonMain `MviViewModel` — viewModelScope, coroutines, its `init` block — work inside a
-//      real iOS app lifecycle?
-//   3. do compose-resources strings resolve at *render* time on iOS, including argument substitution?
-//   4. does Koin resolve shared definitions on Kotlin/Native?
-//   5. does the hand-written [IosNavHost] navigate a real back stack, driven by a shared view-model's
-//      navigation *effect* — the same `Effect.Navigation.SwitchScreen` the Android screens consume?
+// It now renders the *real* shared `SplashScreen` from commonMain — the same composable the Android
+// host renders through `featureStartupEntries` — inside [IosNavHost], which is the same upstream
+// `NavDisplay`. So the interesting parts are no longer iOS-specific at all; what lives here is only
+// what a host must supply: the `UIViewController`, the Koin start, and a stand-in for the dashboard,
+// which is still Android-only.
 //
-// Deliberately in iosMain, not commonMain: Compose MP's UI artifacts map onto AndroidX Compose on
-// Android, so putting them in commonMain would place them on the shipping app's classpath beside its
-// own Compose BOM. None of the questions above depend on where this source sits.
+// Everything this file was originally written to prove is now proven on the simulator: Compose MP
+// renders on iOS, a commonMain `MviViewModel` works inside a real iOS app lifecycle, compose-resources
+// resolve at render time (strings *and* the logo drawable), Koin resolves on Kotlin/Native, and a
+// shared view-model's navigation effect drives a real back stack.
 //
 // The interactor is a stub because every shared view-model's interactor *implementation* is still
 // Android-side. So this proves the UI/DI/MVI/navigation/resources stack, NOT wallet functionality.
@@ -38,13 +36,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,13 +52,10 @@ import eu.europa.ec.shared.Platform
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.SplashRoute
-import eu.europa.ec.shared.resources.Res
-import eu.europa.ec.shared.resources.home_screen_welcome_user_message
 import eu.europa.ec.shared.ui.navigation.IosNavHost
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
-import eu.europa.ec.startupfeature.ui.splash.Effect
+import eu.europa.ec.startupfeature.ui.splash.SplashScreen
 import eu.europa.ec.startupfeature.ui.splash.SplashViewModel
-import org.jetbrains.compose.resources.stringResource
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
@@ -86,10 +78,18 @@ fun SplashSpikeViewController(): UIViewController {
                 // platforms once its screens are shared.
                 IosNavHost(startRoute = SplashRoute) { navigator ->
                     entry<SplashRoute> {
-                        SplashSpikeScreen(onRouteResolved = { navigator.navigate(it) })
+                        // The REAL shared screen from commonMain — the same composable the Android
+                        // host renders via `featureStartupEntries`. Only the view-model's construction
+                        // differs: Android uses `koinViewModel()`, and here it is built from the
+                        // Koin-resolved interactor.
+                        val interactor = remember { KoinPlatform.getKoin().get<SplashInteractor>() }
+                        SplashScreen(
+                            navigator = navigator,
+                            viewModel = remember { SplashViewModel(interactor) },
+                        )
                     }
                     entry<DashboardRoute> {
-                        DashboardSpikeScreen(onBack = { navigator.pop() })
+                        DashboardSpikeScreen()
                     }
                 }
             }
@@ -109,65 +109,30 @@ private fun startKoinIfNeeded() {
     startKoin { modules(spikeModule) }
 }
 
+/**
+ * Stands in for the dashboard, which is still Android-only. Reaching it is the proof: the *shared*
+ * `SplashScreen` ran, its shared view-model resolved a route, and the host swapped the entry.
+ *
+ * Note there is no back button. The shared screen navigates with `navigateReplacingCurrent`, which
+ * replaces the splash entry rather than stacking on top of it — so this is the root, exactly as on
+ * Android, and `pop()` would correctly do nothing.
+ */
 @Composable
-private fun SplashSpikeScreen(onRouteResolved: (AppRoute) -> Unit) {
-    val interactor = remember { KoinPlatform.getKoin().get<SplashInteractor>() }
-    val viewModel = remember { SplashViewModel(interactor) }
-    val state by viewModel.viewState.collectAsState()
-    var waited by remember { mutableStateOf(false) }
-
-    // The view-model's `init` already started the timer. Consuming its navigation effect here is the
-    // same contract the Android `SplashScreen` implements — proof that a shared view-model can drive
-    // real navigation on iOS.
-    LaunchedEffect(Unit) {
-        viewModel.effect.collect { effect ->
-            if (effect is Effect.Navigation.SwitchScreen) {
-                waited = true
-                onRouteResolved(effect.route)
-            }
-        }
-    }
-
-    SpikeColumn {
-        Text("Compose MP on ${Platform.name}", style = MaterialTheme.typography.titleMedium)
-
-        // A *formatted* corpus string, so this proves positional argument substitution on iOS, not
-        // just lookup.
-        Text(
-            text = stringResource(Res.string.home_screen_welcome_user_message, "iOS"),
-            style = MaterialTheme.typography.headlineSmall,
-        )
-        Text(
-            text = "shared SplashViewModel: logoAnimationDuration = ${state.logoAnimationDuration} ms",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Text(
-            text = "interactor via Koin: ${interactor::class.simpleName}",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        if (!waited) {
-            CircularProgressIndicator()
-            Text("waiting for the splash decision…", style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-@Composable
-private fun DashboardSpikeScreen(onBack: () -> Unit) {
-    // Per-entry state: this counter belongs to the Dashboard entry, and the host gives that entry its
-    // own SaveableStateHolder slot and its own ViewModelStore.
+private fun DashboardSpikeScreen() {
+    // Per-entry state, held in the SaveableStateHolder slot the host gives this entry.
     var taps by remember { mutableStateOf(0) }
 
     SpikeColumn {
-        Text("Navigated by the shared view-model", style = MaterialTheme.typography.titleMedium)
+        Text("Reached from the shared SplashScreen", style = MaterialTheme.typography.titleMedium)
         Text("DashboardRoute", style = MaterialTheme.typography.headlineSmall)
         Text(
-            text = "IosNavHost pushed this entry after SplashViewModel emitted " +
-                    "Effect.Navigation.SwitchScreen.",
+            text = "The commonMain SplashScreen rendered its logo and animation here, then its " +
+                    "shared view-model emitted Effect.Navigation.SwitchScreen and NavDisplay " +
+                    "replaced the entry.",
             style = MaterialTheme.typography.bodySmall,
         )
+        Text("Compose MP on ${Platform.name}", style = MaterialTheme.typography.bodySmall)
         Button(onClick = { taps++ }) { Text("per-entry state: $taps") }
-        Button(onClick = onBack) { Text("navigator.pop()") }
     }
 }
 

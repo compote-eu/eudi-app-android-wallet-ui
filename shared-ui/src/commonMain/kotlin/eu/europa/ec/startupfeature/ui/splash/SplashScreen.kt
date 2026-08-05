@@ -14,6 +14,17 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the FIRST shared screen — the same composable now renders on Android and iOS.
+//
+// Nothing about the screen's logic changed; what moved is where it lives. Its whole surface was
+// already multiplatform-capable — Compose animation, foundation, material3, `collectAsStateWithLifecycle`
+// (multiplatform since lifecycle 2.11) — and its view-model has been in commonMain since `be2b5a61`.
+// Two things had to come with it: the `navigateReplacingCurrent` translator helper (pure `AppNavigator`
+// logic, so it simply moved), and the logo asset.
+//
+// The package is unchanged, so `featureStartupEntries` in :startup-feature — which contributes this
+// destination to the Android host — needed no edit at all. The iOS host contributes the same
+// destination through the identical `entry<SplashRoute>` shape.
 package eu.europa.ec.startupfeature.ui.splash
 
 import androidx.compose.animation.AnimatedVisibility
@@ -21,6 +32,7 @@ import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,12 +47,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.shared.navigation.AppNavigator
-import eu.europa.ec.uilogic.component.AppIcons
-import eu.europa.ec.uilogic.component.wrap.WrapImage
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.content_description_logo_icon
+import eu.europa.ec.shared.resources.ic_logo_icon
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SplashScreen(
@@ -86,8 +101,14 @@ private fun Content(
                 enter = fadeIn(animationSpec = tween(state.logoAnimationDuration)),
                 exit = fadeOut(animationSpec = tween(state.logoAnimationDuration)),
             ) {
-                WrapImage(
-                    iconData = AppIcons.LogoIcon
+                // Straight from compose-resources rather than through `AppIcons`/`WrapImage`: the
+                // icon system still resolves keys to Android `R.drawable` ids in :ui-logic, so it
+                // cannot serve a shared screen yet. Migrating that corpus (53 vector XMLs, which
+                // compose-resources can consume as-is) is its own piece of work; this screen was the
+                // only consumer of `AppIcons.LogoIcon`.
+                Image(
+                    painter = painterResource(Res.drawable.ic_logo_icon),
+                    contentDescription = stringResource(Res.string.content_description_logo_icon),
                 )
             }
         }
