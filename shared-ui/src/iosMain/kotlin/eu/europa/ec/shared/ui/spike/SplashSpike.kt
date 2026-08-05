@@ -31,31 +31,35 @@
 // Android-side. So this proves the UI/DI/MVI/navigation/resources stack, NOT wallet functionality.
 package eu.europa.ec.shared.ui.spike
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeUIViewController
-import eu.europa.ec.shared.Platform
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.shared.ui.navigation.IosNavHost
+import eu.europa.ec.uilogic.component.AppIconKey
+import eu.europa.ec.uilogic.component.drawableResource
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.startupfeature.ui.splash.SplashScreen
 import eu.europa.ec.startupfeature.ui.splash.SplashViewModel
+import org.jetbrains.compose.resources.painterResource
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
@@ -110,29 +114,44 @@ private fun startKoinIfNeeded() {
 }
 
 /**
- * Stands in for the dashboard, which is still Android-only. Reaching it is the proof: the *shared*
- * `SplashScreen` ran, its shared view-model resolved a route, and the host swapped the entry.
+ * Stands in for the dashboard, and doubles as the **icon-corpus check**.
  *
- * Note there is no back button. The shared screen navigates with `navigateReplacingCurrent`, which
- * replaces the splash entry rather than stacking on top of it — so this is the root, exactly as on
- * Android, and `pop()` would correctly do nothing.
+ * Renders every `AppIconKey` that has a migrated drawable, which is how the 53-vector corpus gets
+ * verified at all: compose-resources' vector parser is *common* code, so if an icon parses and draws
+ * here it parses the same way on Android — and the Android AVD's screencap returns black for Compose
+ * windows, making this the only place the pixels can actually be inspected.
+ *
+ * Anything blank, black-on-black or the wrong colour in this grid is a parse or transform defect.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DashboardSpikeScreen() {
-    // Per-entry state, held in the SaveableStateHolder slot the host gives this entry.
-    var taps by remember { mutableStateOf(0) }
+    val keys = remember { AppIconKey.entries.filter { it.drawableResource != null } }
 
-    SpikeColumn {
-        Text("Reached from the shared SplashScreen", style = MaterialTheme.typography.titleMedium)
-        Text("DashboardRoute", style = MaterialTheme.typography.headlineSmall)
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Reached from the shared SplashScreen", style = MaterialTheme.typography.titleSmall)
         Text(
-            text = "The commonMain SplashScreen rendered its logo and animation here, then its " +
-                    "shared view-model emitted Effect.Navigation.SwitchScreen and NavDisplay " +
-                    "replaced the entry.",
+            "icon corpus: ${keys.size} drawable-backed keys",
             style = MaterialTheme.typography.bodySmall,
         )
-        Text("Compose MP on ${Platform.name}", style = MaterialTheme.typography.bodySmall)
-        Button(onClick = { taps++ }) { Text("per-entry state: $taps") }
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(6),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(keys.size) { index ->
+                val key = keys[index]
+                Box(
+                    modifier = Modifier.padding(6.dp).size(44.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(key.drawableResource!!),
+                        contentDescription = key.name,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+        }
     }
 }
 
