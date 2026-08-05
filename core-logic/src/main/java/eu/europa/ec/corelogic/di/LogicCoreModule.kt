@@ -164,11 +164,5 @@ class WalletCoreScope
 inline fun <reified T : Any> getOrCreateKoinScope(scopeId: String): org.koin.core.scope.Scope =
     KoinPlatform.getKoin().getOrCreateScope<T>(scopeId)
 
-/**
- * Retrieves an existing Koin scope by its identifier.
- *
- * @param scopeId The unique identifier of the scope to retrieve.
- * @return The [org.koin.core.scope.Scope] instance if it exists, or null if no scope with the given ID is found.
- */
-fun getOrNullKoinScope(scopeId: String): org.koin.core.scope.Scope? =
-    KoinPlatform.getKoin().getScopeOrNull(scopeId)
+// `getOrNullKoinScope` moved to :shared-ui (same package) so commonMain view-models can close their
+// presentation scope. See KoinScopes.kt there.

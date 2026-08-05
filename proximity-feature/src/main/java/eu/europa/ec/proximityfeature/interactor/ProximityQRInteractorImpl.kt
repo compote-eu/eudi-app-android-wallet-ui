@@ -20,7 +20,6 @@ import androidx.activity.ComponentActivity
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.config.toDomainConfig
-import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractor
 import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractorDelegate
 import eu.europa.ec.corelogic.controller.TransferEventPartialState
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
@@ -29,24 +28,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onSubscription
-
-sealed class ProximityQRPartialState {
-    data class QrReady(val qrCode: String) : ProximityQRPartialState()
-    data class Error(val error: String) : ProximityQRPartialState()
-    data object Connected : ProximityQRPartialState()
-    data object Disconnected : ProximityQRPartialState()
-}
-
-interface ProximityQRInteractor : ScopedPresentationInteractor {
-    fun startQrEngagement(): Flow<ProximityQRPartialState>
-    fun toggleNfcEngagement(
-        componentActivity: ComponentActivity,
-        toggle: Boolean
-    )
-
-    fun cancelTransfer()
-    fun setConfig(config: RequestUriConfig)
-}
 
 class ProximityQRInteractorImpl(
     private val resourceProvider: ResourceProvider,

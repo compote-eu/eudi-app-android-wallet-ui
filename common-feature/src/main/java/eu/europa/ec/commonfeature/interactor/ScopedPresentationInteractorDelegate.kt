@@ -20,11 +20,9 @@ import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.di.WalletPresentationScope
 import eu.europa.ec.corelogic.di.getOrCreateKoinScope
 
-interface ScopedPresentationInteractor {
-    val presentationScopeId: String
-    fun setScopeId(scopeId: String)
-}
-
+// Phase 3b: the `ScopedPresentationInteractor` contract moved to :shared-ui/commonMain (same package)
+// with the first presentation view-model. This delegate stays here — it resolves a
+// WalletCorePresentationController out of a core-logic Koin scope.
 abstract class ScopedPresentationInteractorDelegate(
     walletCorePresentationController: WalletCorePresentationController? = null
 ) : ScopedPresentationInteractor {

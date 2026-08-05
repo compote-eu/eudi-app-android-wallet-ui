@@ -14,9 +14,18 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the sixth feature view-model in commonMain, and the first to use the platform-handle
+// layer. It was otherwise KMP-clean; the only Android type it named was `ComponentActivity`, which it
+// never touched — `Event.NfcEngagement` carries it from the composition straight to
+// `interactor.toggleNfcEngagement`. That parameter is now a `PlatformActivity`, an opaque expect class
+// that is an `actual typealias` for ComponentActivity on Android, so the screen and the interactor
+// implementation are untouched.
+//
+// Also lifted with it: the `ProximityQRInteractor` contract, the `ScopedPresentationInteractor` it
+// extends, and `getOrNullKoinScope` (used by `cleanUp` to close the presentation scope). Package
+// unchanged.
 package eu.europa.ec.proximityfeature.ui.qr
 
-import androidx.activity.ComponentActivity
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
@@ -24,6 +33,7 @@ import eu.europa.ec.proximityfeature.interactor.ProximityQRInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityQRPartialState
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.ProximityRequestRoute
+import eu.europa.ec.shared.platform.PlatformActivity
 import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.mvi.MviViewModel
@@ -47,7 +57,7 @@ sealed class Event : ViewEvent {
     data object Init : Event()
     data object GoBack : Event()
     data class NfcEngagement(
-        val componentActivity: ComponentActivity,
+        val componentActivity: PlatformActivity,
         val enable: Boolean
     ) : Event()
 }

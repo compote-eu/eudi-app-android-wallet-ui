@@ -61,6 +61,12 @@ kotlin {
             api(libs.androidx.lifecycle.viewmodel)
             implementation(libs.kotlinx.serialization.json)
         }
+        androidMain.dependencies {
+            // `api`, not implementation: ComponentActivity IS the androidMain `PlatformActivity`
+            // (an actual typealias), so it appears in this module's public Android signatures.
+            // Plain `activity`, never activity-compose — this module stays Compose-UI-free.
+            api(libs.androidx.activity)
+        }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)

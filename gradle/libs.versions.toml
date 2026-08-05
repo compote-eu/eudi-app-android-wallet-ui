@@ -106,6 +106,9 @@ kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime",
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 
 # AndroidX
+# Plain `activity` (NOT activity-compose): :shared-logic needs ComponentActivity for the androidMain
+# `actual typealias PlatformActivity`, and that module must stay Compose-UI-free.
+androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "androidxActivity" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
 androidx-appAuth = { group = "androidx.security", name = "security-app-authenticator", version.ref = "androidxAppAuth" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "androidxAppCompat" }
