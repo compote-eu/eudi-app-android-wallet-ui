@@ -38,6 +38,7 @@ import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.SuccessRoute
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -340,8 +341,8 @@ class AddDocumentInteractorImpl(
     ): SuccessUIConfig {
         val (textElementsConfig, imageConfig, buttonText) = Triple(
             first = SuccessUIConfig.TextElementsConfig(
-                text = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_text),
-                description = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_description),
+                text = UiText.Resource(Res.string.issuance_add_document_deferred_success_text),
+                description = UiText.Resource(Res.string.issuance_add_document_deferred_success_description),
                 color = ColorKey.Pending
             ),
             second = SuccessUIConfig.ImageConfig(
@@ -349,7 +350,7 @@ class AddDocumentInteractorImpl(
                 tint = ColorKey.Primary,
                 screenPercentageSize = PERCENTAGE_25,
             ),
-            third = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_primary_button_text)
+            third = UiText.Resource(Res.string.issuance_add_document_deferred_success_primary_button_text)
         )
 
         return SuccessUIConfig(

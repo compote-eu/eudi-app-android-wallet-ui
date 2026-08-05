@@ -44,6 +44,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.resolve
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -107,11 +110,11 @@ private val bottomSheetDefaultTextColor: Color
  * @property isNegativeButtonWarning A flag indicating if the negative button should be styled as a warning (e.g., red color). Defaults to false.
  */
 data class BottomSheetTextDataUi(
-    val title: String,
-    val message: String,
-    val positiveButtonText: String? = null,
+    val title: UiText,
+    val message: UiText,
+    val positiveButtonText: UiText? = null,
     val isPositiveButtonWarning: Boolean = false,
-    val negativeButtonText: String? = null,
+    val negativeButtonText: UiText? = null,
     val isNegativeButtonWarning: Boolean = false,
 )
 
@@ -215,7 +218,7 @@ fun DialogBottomSheet(
                         )
                     ) {
                         Text(
-                            text = safeNegativeButtonText,
+                            text = safeNegativeButtonText.resolve(),
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.labelLarge
                         )
@@ -236,7 +239,7 @@ fun DialogBottomSheet(
                         )
                     ) {
                         Text(
-                            text = safePositiveButtonText,
+                            text = safePositiveButtonText.resolve(),
                             textAlign = TextAlign.Center,
                             style = MaterialTheme.typography.labelLarge
                         )
@@ -304,7 +307,7 @@ private fun BaseBottomSheet(
                 )
             }
             Text(
-                text = textData.title,
+                text = textData.title.resolve(),
                 style = MaterialTheme.typography.headlineSmall.copy(
                     color = bottomSheetDefaultTextColor
                 )
@@ -312,7 +315,7 @@ private fun BaseBottomSheet(
         }
 
         Text(
-            text = textData.message,
+            text = textData.message.resolve(),
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = bottomSheetDefaultTextColor
             )
@@ -531,8 +534,8 @@ private fun SimpleBottomSheetPreview() {
     PreviewTheme {
         SimpleBottomSheet(
             textData = BottomSheetTextDataUi(
-                title = "Title",
-                message = "Message",
+                title = "Title".asUiText(),
+                message = "Message".asUiText(),
             )
         )
     }
@@ -544,8 +547,8 @@ private fun SimpleBottomSheetWithLeadingIconPreview() {
     PreviewTheme {
         SimpleBottomSheet(
             textData = BottomSheetTextDataUi(
-                title = "Title",
-                message = "Message",
+                title = "Title".asUiText(),
+                message = "Message".asUiText(),
             ),
             leadingIcon = AppIcons.Warning,
             leadingIconTint = MaterialTheme.colorScheme.warning,
@@ -559,10 +562,10 @@ private fun DialogBottomSheetPreview() {
     PreviewTheme {
         DialogBottomSheet(
             textData = BottomSheetTextDataUi(
-                title = "Title",
-                message = "Message",
-                positiveButtonText = "OK",
-                negativeButtonText = "Cancel"
+                title = "Title".asUiText(),
+                message = "Message".asUiText(),
+                positiveButtonText = "OK".asUiText(),
+                negativeButtonText = "Cancel".asUiText()
             )
         )
     }
@@ -576,8 +579,8 @@ private fun BottomSheetWithOptionsListPreview() {
     PreviewTheme {
         BottomSheetWithOptionsList(
             textData = BottomSheetTextDataUi(
-                title = "Title",
-                message = "Message"
+                title = "Title".asUiText(),
+                message = "Message".asUiText()
             ),
             options = buildList {
                 addAll(
@@ -628,8 +631,8 @@ private fun BottomSheetWithTwoBigIconsEvenTextPreview() {
     PreviewTheme {
         BottomSheetWithTwoBigIcons(
             textData = BottomSheetTextDataUi(
-                title = "Title",
-                message = "Message"
+                title = "Title".asUiText(),
+                message = "Message".asUiText()
             ),
             options = buildList {
                 addAll(
@@ -662,8 +665,8 @@ private fun BottomSheetWithTwoBigIconsUnevenTextPreview() {
     PreviewTheme {
         BottomSheetWithTwoBigIcons(
             textData = BottomSheetTextDataUi(
-                title = "Title",
-                message = "Message"
+                title = "Title".asUiText(),
+                message = "Message".asUiText()
             ),
             options = buildList {
                 addAll(

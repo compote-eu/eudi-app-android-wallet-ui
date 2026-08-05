@@ -41,6 +41,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.resolve
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -217,7 +220,7 @@ private fun Content(
         verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
     ) {
         Text(
-            text = state.welcomeUserMessage,
+            text = state.welcomeUserMessage.resolve(),
             style = MaterialTheme.typography.headlineMedium.copy(
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -315,8 +318,8 @@ private fun HomeScreenSheetContent(
         is HomeScreenBottomSheetContent.Authenticate -> {
             BottomSheetWithTwoBigIcons(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(Res.string.home_screen_authenticate),
-                    message = stringResource(Res.string.home_screen_authenticate_description)
+                    title = UiText.Resource(Res.string.home_screen_authenticate),
+                    message = UiText.Resource(Res.string.home_screen_authenticate_description)
                 ),
                 options = listOf(
                     ModalOptionUi(
@@ -339,8 +342,8 @@ private fun HomeScreenSheetContent(
         is HomeScreenBottomSheetContent.Sign -> {
             BottomSheetWithTwoBigIcons(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(Res.string.home_screen_sign_document),
-                    message = stringResource(Res.string.home_screen_sign_document_description)
+                    title = UiText.Resource(Res.string.home_screen_sign_document),
+                    message = UiText.Resource(Res.string.home_screen_sign_document_description)
                 ),
                 options = listOf(
                     ModalOptionUi(
@@ -441,10 +444,10 @@ private fun HomeScreenSheetContent(
         is HomeScreenBottomSheetContent.Bluetooth -> {
             DialogBottomSheet(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(Res.string.dashboard_bottom_sheet_bluetooth_title),
-                    message = stringResource(Res.string.dashboard_bottom_sheet_bluetooth_subtitle),
-                    positiveButtonText = stringResource(Res.string.dashboard_bottom_sheet_bluetooth_primary_button_text),
-                    negativeButtonText = stringResource(Res.string.dashboard_bottom_sheet_bluetooth_secondary_button_text),
+                    title = UiText.Resource(Res.string.dashboard_bottom_sheet_bluetooth_title),
+                    message = UiText.Resource(Res.string.dashboard_bottom_sheet_bluetooth_subtitle),
+                    positiveButtonText = UiText.Resource(Res.string.dashboard_bottom_sheet_bluetooth_primary_button_text),
+                    negativeButtonText = UiText.Resource(Res.string.dashboard_bottom_sheet_bluetooth_secondary_button_text),
                 ),
                 onPositiveClick = {
                     onEventSent(
@@ -514,18 +517,18 @@ private fun HomeScreenContentPreview() {
             Content(
                 state = State(
                     isBottomSheetOpen = false,
-                    welcomeUserMessage = "Welcome back, Alex",
+                    welcomeUserMessage = "Welcome back, Alex".asUiText(),
                     authenticateCardConfig = ActionCardConfig(
-                        title = stringResource(Res.string.home_screen_authentication_card_title),
+                        title = UiText.Resource(Res.string.home_screen_authentication_card_title),
                         icon = AppIcons.WalletActivated,
-                        primaryButtonText = stringResource(Res.string.home_screen_authenticate),
-                        secondaryButtonText = stringResource(Res.string.home_screen_learn_more),
+                        primaryButtonText = UiText.Resource(Res.string.home_screen_authenticate),
+                        secondaryButtonText = UiText.Resource(Res.string.home_screen_learn_more),
                     ),
                     signCardConfig = ActionCardConfig(
-                        title = stringResource(Res.string.home_screen_sign_card_title),
+                        title = UiText.Resource(Res.string.home_screen_sign_card_title),
                         icon = AppIcons.Contract,
-                        primaryButtonText = stringResource(Res.string.home_screen_sign),
-                        secondaryButtonText = stringResource(Res.string.home_screen_learn_more),
+                        primaryButtonText = UiText.Resource(Res.string.home_screen_sign),
+                        secondaryButtonText = UiText.Resource(Res.string.home_screen_learn_more),
                     )
 
                 ),

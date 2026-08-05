@@ -151,8 +151,8 @@ private fun Content(
             modifier = Modifier
                 .fillMaxWidth()
                 .paddingFrom(paddingValues, bottom = false, top = false),
-            title = state.qrScannedConfig.title,
-            subtitle = state.qrScannedConfig.subTitle,
+            title = state.title.resolve(),
+            subtitle = state.subtitle.resolve(),
         )
 
         Box(

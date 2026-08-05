@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import eu.europa.ec.shared.resources.UiText
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -430,8 +431,8 @@ private fun SheetContent(
         RequestBottomSheetContent.WARNING -> {
             SimpleBottomSheet(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(Res.string.request_bottom_sheet_warning_title),
-                    message = stringResource(Res.string.request_bottom_sheet_warning_subtitle),
+                    title = UiText.Resource(Res.string.request_bottom_sheet_warning_title),
+                    message = UiText.Resource(Res.string.request_bottom_sheet_warning_subtitle),
                 ),
                 leadingIcon = AppIcons.Warning,
                 leadingIconTint = MaterialTheme.colorScheme.warning
@@ -441,9 +442,9 @@ private fun SheetContent(
         RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
             DialogBottomSheet(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(Res.string.request_blocked_bottom_sheet_title),
-                    message = stringResource(Res.string.request_blocked_bottom_sheet_message),
-                    positiveButtonText = stringResource(Res.string.request_blocked_bottom_sheet_primary_button_text),
+                    title = UiText.Resource(Res.string.request_blocked_bottom_sheet_title),
+                    message = UiText.Resource(Res.string.request_blocked_bottom_sheet_message),
+                    positiveButtonText = UiText.Resource(Res.string.request_blocked_bottom_sheet_primary_button_text),
                 ),
                 leadingIcon = AppIcons.Warning,
                 leadingIconTint = MaterialTheme.colorScheme.warning,
@@ -461,12 +462,12 @@ private fun ContentPreview() {
         Content(
             state = State(
                 headerConfig = ContentHeaderConfig(
-                    description = stringResource(Res.string.request_header_description),
-                    mainText = stringResource(Res.string.request_header_main_text),
+                    description = UiText.Resource(Res.string.request_header_description),
+                    mainText = UiText.Resource(Res.string.request_header_main_text),
                     relyingPartyData = RelyingPartyDataUi(
                         isVerified = true,
-                        name = stringResource(Res.string.request_relying_party_default_name),
-                        description = stringResource(Res.string.request_relying_party_description)
+                        name = UiText.Resource(Res.string.request_relying_party_default_name),
+                        description = UiText.Resource(Res.string.request_relying_party_description)
                     )
                 ),
                 requestDataUi = RequestDataUi.Single(
@@ -494,12 +495,12 @@ private fun ContentNoDataPreview() {
         Content(
             state = State(
                 headerConfig = ContentHeaderConfig(
-                    description = stringResource(Res.string.request_header_description),
-                    mainText = stringResource(Res.string.request_header_main_text),
+                    description = UiText.Resource(Res.string.request_header_description),
+                    mainText = UiText.Resource(Res.string.request_header_main_text),
                     relyingPartyData = RelyingPartyDataUi(
                         isVerified = true,
-                        name = stringResource(Res.string.request_relying_party_default_name),
-                        description = stringResource(Res.string.request_relying_party_description)
+                        name = UiText.Resource(Res.string.request_relying_party_default_name),
+                        description = UiText.Resource(Res.string.request_relying_party_description)
                     )
                 ),
                 requestDataUi = RequestDataUi.NoData,
@@ -523,12 +524,12 @@ private fun ContentMultipleCombinationsPreview() {
         Content(
             state = State(
                 headerConfig = ContentHeaderConfig(
-                    description = stringResource(Res.string.request_header_description),
-                    mainText = stringResource(Res.string.request_header_main_text),
+                    description = UiText.Resource(Res.string.request_header_description),
+                    mainText = UiText.Resource(Res.string.request_header_main_text),
                     relyingPartyData = RelyingPartyDataUi(
                         isVerified = true,
-                        name = stringResource(Res.string.request_relying_party_default_name),
-                        description = stringResource(Res.string.request_relying_party_description)
+                        name = UiText.Resource(Res.string.request_relying_party_default_name),
+                        description = UiText.Resource(Res.string.request_relying_party_description)
                     )
                 ),
                 requestDataUi = RequestDataUi.Multiple(

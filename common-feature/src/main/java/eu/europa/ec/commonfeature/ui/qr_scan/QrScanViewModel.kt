@@ -36,9 +36,15 @@ import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.issuance_qr_scan_subtitle
+import eu.europa.ec.shared.resources.issuance_qr_scan_title
+import eu.europa.ec.shared.resources.presentation_qr_scan_subtitle
+import eu.europa.ec.shared.resources.presentation_qr_scan_title
 import eu.europa.ec.shared.resources.qr_scan_informative_text_issuance_flow
 import eu.europa.ec.shared.resources.qr_scan_informative_text_presentation_flow
 import eu.europa.ec.shared.resources.qr_scan_informative_text_signature_flow
+import eu.europa.ec.shared.resources.signature_qr_scan_subtitle
+import eu.europa.ec.shared.resources.signature_qr_scan_title
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.mvi.MviViewModel
@@ -57,6 +63,8 @@ data class State(
     val finishedScanning: Boolean = false,
     val qrScannedConfig: QrScanUiConfig,
 
+    val title: UiText,
+    val subtitle: UiText,
     val failedScanAttempts: Int = 0,
     val showInformativeText: Boolean = false,
     val informativeText: UiText,
@@ -87,6 +95,8 @@ class QrScanViewModel(
     override fun setInitialState(): State {
         return State(
             qrScannedConfig = qrScannedConfig,
+            title = calculateTitle(qrScannedConfig.qrScanFlow),
+            subtitle = calculateSubtitle(qrScannedConfig.qrScanFlow),
             informativeText = calculateInformativeText(qrScannedConfig.qrScanFlow)
         )
     }
@@ -187,6 +197,35 @@ class QrScanViewModel(
 
             is QrScanFlow.Signature -> navigateToRqesSdk(context, scanResult)
         }
+    }
+
+    /**
+     * The screen's copy follows from the flow alone, so it is derived here rather than passed in.
+     * [QrScanUiConfig] used to carry `title`/`subTitle` as resolved strings, which made all three
+     * callers resolve the very pair this `when` reproduces.
+     */
+    private fun calculateTitle(
+        qrScanFlow: QrScanFlow,
+    ): UiText {
+        return UiText.Resource(
+            when (qrScanFlow) {
+                is QrScanFlow.Presentation -> Res.string.presentation_qr_scan_title
+                is QrScanFlow.Issuance -> Res.string.issuance_qr_scan_title
+                is QrScanFlow.Signature -> Res.string.signature_qr_scan_title
+            }
+        )
+    }
+
+    private fun calculateSubtitle(
+        qrScanFlow: QrScanFlow,
+    ): UiText {
+        return UiText.Resource(
+            when (qrScanFlow) {
+                is QrScanFlow.Presentation -> Res.string.presentation_qr_scan_subtitle
+                is QrScanFlow.Issuance -> Res.string.issuance_qr_scan_subtitle
+                is QrScanFlow.Signature -> Res.string.signature_qr_scan_subtitle
+            }
+        )
     }
 
     private fun calculateInformativeText(

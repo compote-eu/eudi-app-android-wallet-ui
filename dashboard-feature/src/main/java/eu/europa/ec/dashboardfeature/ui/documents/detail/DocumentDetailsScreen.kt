@@ -38,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import eu.europa.ec.shared.resources.UiText
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -398,14 +399,14 @@ private fun SheetContent(
         is DocumentDetailsBottomSheetContent.DeleteDocumentConfirmation ->
             DialogBottomSheet(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(
+                    title = UiText.Resource(
                         Res.string.document_details_bottom_sheet_delete_title
                     ),
-                    message = stringResource(
+                    message = UiText.Resource(
                         Res.string.document_details_bottom_sheet_delete_subtitle
                     ),
-                    positiveButtonText = stringResource(Res.string.document_details_bottom_sheet_delete_primary_button_text),
-                    negativeButtonText = stringResource(Res.string.document_details_bottom_sheet_delete_secondary_button_text),
+                    positiveButtonText = UiText.Resource(Res.string.document_details_bottom_sheet_delete_primary_button_text),
+                    negativeButtonText = UiText.Resource(Res.string.document_details_bottom_sheet_delete_secondary_button_text),
                     isPositiveButtonWarning = true,
                 ),
                 leadingIcon = AppIcons.Delete,

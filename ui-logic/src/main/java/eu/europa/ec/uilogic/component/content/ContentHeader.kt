@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.AppIcons
@@ -79,7 +81,7 @@ fun ContentHeader(
                         .fillMaxWidth()
                         .optionalTestTag(descriptionTestTag)
                         .padding(vertical = SPACING_SMALL.dp),
-                    text = safeDescription,
+                    text = safeDescription.resolve(),
                     textConfig = descriptionTextConfig ?: TextConfig(
                         styleKey = TextStyleKey.BodyLarge,
                         textAlignKey = commonTextAlign,
@@ -94,7 +96,7 @@ fun ContentHeader(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = SPACING_MEDIUM.dp),
-                    text = safeMainText,
+                    text = safeMainText.resolve(),
                     textConfig = mainTextConfig ?: TextConfig(
                         styleKey = TextStyleKey.BodyLargeBold,
                         textAlignKey = commonTextAlign,
@@ -126,12 +128,12 @@ private fun ContentHeaderPreview(
                 appIconAndTextData = AppIconAndTextDataUi(
                     appIcon = AppIcons.LogoIconAndText,
                 ),
-                description = "Description: $text",
-                mainText = "Title: $text",
+                description = "Description: $text".asUiText(),
+                mainText = "Title: $text".asUiText(),
                 relyingPartyData = RelyingPartyDataUi(
                     isVerified = true,
-                    name = "Relying Party Name: $text",
-                    description = "Relying Party Description: $text",
+                    name = "Relying Party Name: $text".asUiText(),
+                    description = "Relying Party Description: $text".asUiText(),
                 )
             )
         )

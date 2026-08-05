@@ -16,7 +16,6 @@
 
 package eu.europa.ec.proximityfeature.interactor
 
-import eu.europa.ec.businesslogic.extension.ifEmptyOrNull
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
@@ -30,6 +29,8 @@ import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiTextOr
 import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
 import eu.europa.ec.shared.resources.document_success_header_description
 import eu.europa.ec.shared.resources.document_success_header_description_when_error
@@ -131,16 +132,18 @@ class ProximitySuccessInteractorImpl(
                 }
             }
 
-            val headerConfigDescription = if (documentsUi.isEmpty()) {
-                resourceProvider.getString(Res.string.document_success_header_description_when_error)
-            } else {
-                resourceProvider.getString(Res.string.document_success_header_description)
-            }
+            val headerConfigDescription = UiText.Resource(
+                if (documentsUi.isEmpty()) {
+                    Res.string.document_success_header_description_when_error
+                } else {
+                    Res.string.document_success_header_description
+                }
+            )
             val headerConfig = ContentHeaderConfig(
                 description = headerConfigDescription,
                 relyingPartyData = RelyingPartyDataUi(
-                    name = verifierName.ifEmptyOrNull(
-                        default = resourceProvider.getString(Res.string.document_success_relying_party_default_name)
+                    name = verifierName.asUiTextOr(
+                        fallback = UiText.Resource(Res.string.document_success_relying_party_default_name)
                     ),
                     isVerified = isVerified,
                 )

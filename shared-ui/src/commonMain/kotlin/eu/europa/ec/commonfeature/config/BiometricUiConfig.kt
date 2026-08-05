@@ -18,26 +18,32 @@
 // BiometricRoute. KMP-clean now that ConfigNavigation carries a typed AppRoute.
 package eu.europa.ec.commonfeature.config
 
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/**
+ * The prompt copy for the biometric screen. Every field is a resource, carried as a [UiText] key so
+ * the caller — a request view-model, or `SplashInteractor` — does not have to resolve it just to
+ * build the route it is navigating to.
+ */
 @Serializable
 sealed interface BiometricMode {
     @Serializable
     @SerialName("Default")
     data class Default(
-        val descriptionWhenBiometricsEnabled: String,
-        val descriptionWhenBiometricsNotEnabled: String,
-        val textAbovePin: String,
+        val descriptionWhenBiometricsEnabled: UiText,
+        val descriptionWhenBiometricsNotEnabled: UiText,
+        val textAbovePin: UiText,
     ) : BiometricMode
 
     @Serializable
     @SerialName("Login")
     data class Login(
-        val title: String,
-        val subTitleWhenBiometricsEnabled: String,
-        val subTitleWhenBiometricsNotEnabled: String,
+        val title: UiText,
+        val subTitleWhenBiometricsEnabled: UiText,
+        val subTitleWhenBiometricsNotEnabled: UiText,
     ) : BiometricMode
 }
 

@@ -19,7 +19,6 @@ package eu.europa.ec.issuancefeature.ui.offer
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
-import eu.europa.ec.businesslogic.extension.ifEmptyOrNull
 import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.commonfeature.config.IssuanceSuccessUiConfig
 import eu.europa.ec.commonfeature.config.OfferCodeUiConfig
@@ -33,13 +32,14 @@ import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
 import eu.europa.ec.issuancefeature.interactor.IssueDocumentsInteractorPartialState
 import eu.europa.ec.issuancefeature.interactor.ResolveDocumentOfferInteractorPartialState
 import eu.europa.ec.issuancefeature.ui.offer.transformer.DocumentOfferTransformer.toListItemDataUiList
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
@@ -74,6 +74,13 @@ data class State(
     val documents: List<ListItemDataUi> = emptyList(),
     val noDocument: Boolean = false,
     val txCodeLength: Int? = null,
+
+    /**
+     * The issuer's name as plain text, kept alongside [headerConfig] because two consumers need a
+     * resolved `String`: the interactor formats it into the deferred-success copy, and it travels
+     * on to `OfferCodeUiConfig`. The interactor guarantees it is never blank.
+     */
+    val issuerName: String = "",
 
     val isBottomSheetOpen: Boolean = false,
     val bottomSheetClosingInProgress: Boolean = false,
@@ -131,7 +138,6 @@ sealed class DocumentOfferBottomSheetContent {
 
 @KoinViewModel
 class DocumentOfferViewModel(
-    private val resourceProvider: ResourceProvider,
     @InjectedParam private val offerUiConfig: OfferUiConfig,
     documentOfferInteractor: DocumentOfferInteractor? = null
 ) : MviViewModel<Event, State, Effect>() {
@@ -177,9 +183,7 @@ class DocumentOfferViewModel(
                 issueDocuments(
                     context = event.context,
                     offerUri = viewState.value.offerUiConfig.offerUri,
-                    issuerName = viewState.value.headerConfig.relyingPartyData?.name.ifEmptyOrNull(
-                        default = resourceProvider.getString(Res.string.issuance_document_offer_relying_party_default_name)
-                    ),
+                    issuerName = viewState.value.issuerName,
                     onSuccessNavigation = viewState.value.offerUiConfig.onSuccessNavigation,
                     txCodeLength = viewState.value.txCodeLength
                 )
@@ -266,7 +270,7 @@ class DocumentOfferViewModel(
                                 isLoading = false,
                                 isInitialised = false,
                                 error = ContentErrorConfig(
-                                    errorSubTitle = response.errorMessage,
+                                    errorSubTitle = response.errorMessage.asUiText(),
                                     onCancel = {
                                         setEvent(Event.DismissError)
                                         doNavigation(viewState.value.offerUiConfig.onCancelNavigation)
@@ -296,6 +300,7 @@ class DocumentOfferViewModel(
                                 isInitialised = true,
                                 noDocument = false,
                                 txCodeLength = response.txCodeLength,
+                                issuerName = response.issuerName,
                                 headerConfig = headerConfig.copy(
                                     relyingPartyData = getHeaderConfigIssuerData(
                                         issuerName = response.issuerName,
@@ -316,6 +321,7 @@ class DocumentOfferViewModel(
                                 documents = emptyList(),
                                 isInitialised = true,
                                 noDocument = true,
+                                issuerName = response.issuerName,
                                 headerConfig = headerConfig.copy(
                                     relyingPartyData = getHeaderConfigIssuerData(
                                         issuerName = response.issuerName,
@@ -332,12 +338,12 @@ class DocumentOfferViewModel(
 
     private fun getInitialHeaderConfig(): ContentHeaderConfig {
         return ContentHeaderConfig(
-            description = resourceProvider.getString(Res.string.issuance_document_offer_description),
-            mainText = resourceProvider.getString(Res.string.issuance_document_offer_header_main_text),
+            description = UiText.Resource(Res.string.issuance_document_offer_description),
+            mainText = UiText.Resource(Res.string.issuance_document_offer_header_main_text),
             relyingPartyData = RelyingPartyDataUi(
                 isVerified = false,
-                name = resourceProvider.getString(Res.string.issuance_document_offer_relying_party_default_name),
-                description = resourceProvider.getString(Res.string.issuance_document_offer_relying_party_description)
+                name = UiText.Resource(Res.string.issuance_document_offer_relying_party_default_name),
+                description = UiText.Resource(Res.string.issuance_document_offer_relying_party_description)
             )
         )
     }
@@ -349,8 +355,8 @@ class DocumentOfferViewModel(
         return RelyingPartyDataUi(
             logo = issuerLogo?.toString(),
             isVerified = false,
-            name = issuerName,
-            description = resourceProvider.getString(Res.string.issuance_document_offer_relying_party_description)
+            name = issuerName.asUiText(),
+            description = UiText.Resource(Res.string.issuance_document_offer_relying_party_description)
         )
     }
 
@@ -391,7 +397,7 @@ class DocumentOfferViewModel(
                             copy(
                                 isLoading = false,
                                 error = ContentErrorConfig(
-                                    errorSubTitle = response.errorMessage,
+                                    errorSubTitle = response.errorMessage.asUiText(),
                                     onCancel = { setEvent(Event.DismissError) }
                                 )
                             )

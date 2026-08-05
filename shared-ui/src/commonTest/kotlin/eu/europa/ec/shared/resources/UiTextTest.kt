@@ -67,7 +67,7 @@ class UiTextTest {
     @Test
     fun multiple_arguments_keep_their_order() {
         val two = UiText.Resource(key, 3, "05:00")
-        assertEquals(listOf<Any>(3, "05:00"), two.args)
+        assertEquals(listOf("3", "05:00"), two.args)
     }
 
     @Test

@@ -31,7 +31,7 @@ import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.navigation.SuccessRoute
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -74,15 +74,15 @@ data class State(
     private val pinFlow: PinFlow,
     val isLoading: Boolean = false,
     val quickPinError: String? = null,
-    val subtitle: String = "",
-    val title: String = "",
-    val pinInputLabel: String? = null,
+    val subtitle: UiText = UiText.Empty,
+    val title: UiText = UiText.Empty,
+    val pinInputLabel: UiText? = null,
     val resetPin: Boolean = false,
     val pinState: PinValidationState,
     val isBottomSheetOpen: Boolean = false,
     val quickPinSize: Int = 6,
     val isLockedOut: Boolean = false,
-    val lockoutMessage: String? = null
+    val lockoutMessage: UiText? = null
 ) : ViewState {
     val action: ScreenNavigateAction
         get() {
@@ -132,7 +132,6 @@ sealed class Effect : ViewSideEffect {
 @KoinViewModel
 class PinViewModel(
     private val interactor: QuickPinInteractor,
-    private val resourceProvider: ResourceProvider,
     @InjectedParam private val pinFlow: PinFlow
 ) : MviViewModel<Event, State, Effect>() {
 
@@ -140,23 +139,22 @@ class PinViewModel(
     private var lockoutTickJob: Job? = null
 
     override fun setInitialState(): State {
-        val title: String
-        val subtitle: String
-        val pinInputLabel: String?
+        val title: UiText
+        val subtitle: UiText
+        val pinInputLabel: UiText?
         val pinState: PinValidationState
 
         when (pinFlow) {
             PinFlow.CREATE_WITH_ACTIVATION, PinFlow.CREATE_WITHOUT_ACTIVATION -> {
-                title = resourceProvider.getString(Res.string.quick_pin_create_title)
-                subtitle = resourceProvider.getString(Res.string.quick_pin_create_subtitle)
+                title = UiText.Resource(Res.string.quick_pin_create_title)
+                subtitle = UiText.Resource(Res.string.quick_pin_create_subtitle)
                 pinState = PinValidationState.ENTER
                 pinInputLabel = calculatePinInputLabel(pinState)
             }
 
             PinFlow.UPDATE -> {
-                title = resourceProvider.getString(Res.string.quick_pin_change_title)
-                subtitle =
-                    resourceProvider.getString(Res.string.quick_pin_change_validate_current_subtitle)
+                title = UiText.Resource(Res.string.quick_pin_change_title)
+                subtitle = UiText.Resource(Res.string.quick_pin_change_validate_current_subtitle)
                 pinState = PinValidationState.VALIDATE
                 pinInputLabel = calculatePinInputLabel(pinState)
             }
@@ -407,42 +405,42 @@ class PinViewModel(
         }
     }
 
-    private fun buildLockoutMessage(remainingMs: Long): String {
+    private fun buildLockoutMessage(remainingMs: Long): UiText {
         val totalSeconds = ((remainingMs + 999L) / 1000L).coerceAtLeast(0L)
         val minutes = totalSeconds / 60L
         val seconds = totalSeconds % 60L
         val mmss = "%02d:%02d".format(minutes, seconds)
-        return resourceProvider.getString(
+        return UiText.Resource(
             Res.string.quick_pin_locked_out,
             interactor.maxFailedPinAttempts,
             mmss
         )
     }
 
-    private fun calculateSubtitle(pinState: PinValidationState): String {
-        return when (pinFlow) {
-            PinFlow.UPDATE -> {
-                when (pinState) {
-                    PinValidationState.ENTER -> resourceProvider.getString(Res.string.quick_pin_change_enter_new_subtitle)
-                    PinValidationState.REENTER -> resourceProvider.getString(Res.string.quick_pin_change_reenter_new_subtitle)
-                    PinValidationState.VALIDATE -> resourceProvider.getString(Res.string.quick_pin_change_validate_current_subtitle)
+    private fun calculateSubtitle(pinState: PinValidationState): UiText {
+        return UiText.Resource(
+            when (pinFlow) {
+                PinFlow.UPDATE -> {
+                    when (pinState) {
+                        PinValidationState.ENTER -> Res.string.quick_pin_change_enter_new_subtitle
+                        PinValidationState.REENTER -> Res.string.quick_pin_change_reenter_new_subtitle
+                        PinValidationState.VALIDATE -> Res.string.quick_pin_change_validate_current_subtitle
+                    }
                 }
-            }
 
-            PinFlow.CREATE_WITH_ACTIVATION,
-            PinFlow.CREATE_WITHOUT_ACTIVATION -> {
-                resourceProvider.getString(Res.string.quick_pin_create_subtitle)
+                PinFlow.CREATE_WITH_ACTIVATION,
+                PinFlow.CREATE_WITHOUT_ACTIVATION -> Res.string.quick_pin_create_subtitle
             }
-        }
+        )
     }
 
-    private fun calculatePinInputLabel(pinState: PinValidationState): String? {
+    private fun calculatePinInputLabel(pinState: PinValidationState): UiText? {
         return when (pinFlow) {
             PinFlow.CREATE_WITHOUT_ACTIVATION,
             PinFlow.CREATE_WITH_ACTIVATION -> {
                 when (pinState) {
-                    PinValidationState.ENTER -> resourceProvider.getString(Res.string.quick_pin_create_enter_pin_input_label)
-                    PinValidationState.REENTER -> resourceProvider.getString(Res.string.quick_pin_create_reenter_pin_input_label)
+                    PinValidationState.ENTER -> UiText.Resource(Res.string.quick_pin_create_enter_pin_input_label)
+                    PinValidationState.REENTER -> UiText.Resource(Res.string.quick_pin_create_reenter_pin_input_label)
                     PinValidationState.VALIDATE -> null
                 }
             }
@@ -486,21 +484,21 @@ class PinViewModel(
         return SuccessRoute(
             config = SuccessUIConfig(
                 textElementsConfig = SuccessUIConfig.TextElementsConfig(
-                    text = when (pinFlow) {
-                        PinFlow.CREATE_WITH_ACTIVATION, PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
-                            Res.string.quick_pin_create_success_text
-                        )
+                    text = UiText.Resource(
+                        when (pinFlow) {
+                            PinFlow.CREATE_WITH_ACTIVATION,
+                            PinFlow.CREATE_WITHOUT_ACTIVATION -> Res.string.quick_pin_create_success_text
 
-                        PinFlow.UPDATE -> resourceProvider.getString(Res.string.quick_pin_change_success_text)
-                    },
-                    description = when (pinFlow) {
-                        PinFlow.CREATE_WITH_ACTIVATION -> resourceProvider.getString(Res.string.quick_pin_create_success_description)
-                        PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
-                            Res.string.quick_pin_create_success_no_activation_description
-                        )
-
-                        PinFlow.UPDATE -> resourceProvider.getString(Res.string.quick_pin_change_success_description)
-                    }
+                            PinFlow.UPDATE -> Res.string.quick_pin_change_success_text
+                        }
+                    ),
+                    description = UiText.Resource(
+                        when (pinFlow) {
+                            PinFlow.CREATE_WITH_ACTIVATION -> Res.string.quick_pin_create_success_description
+                            PinFlow.CREATE_WITHOUT_ACTIVATION -> Res.string.quick_pin_create_success_no_activation_description
+                            PinFlow.UPDATE -> Res.string.quick_pin_change_success_description
+                        }
+                    )
                 ),
                 imageConfig = when (pinFlow) {
                     PinFlow.CREATE_WITH_ACTIVATION, PinFlow.CREATE_WITHOUT_ACTIVATION -> SuccessUIConfig.ImageConfig(
@@ -514,17 +512,13 @@ class PinViewModel(
                 },
                 buttonConfig = listOf(
                     SuccessUIConfig.ButtonConfig(
-                        text = when (pinFlow) {
-                            PinFlow.CREATE_WITH_ACTIVATION -> resourceProvider.getString(
-                                Res.string.quick_pin_create_success_btn
-                            )
-
-                            PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
-                                Res.string.quick_pin_create_success_no_activation_btn
-                            )
-
-                            PinFlow.UPDATE -> resourceProvider.getString(Res.string.quick_pin_change_success_btn)
-                        },
+                        text = UiText.Resource(
+                            when (pinFlow) {
+                                PinFlow.CREATE_WITH_ACTIVATION -> Res.string.quick_pin_create_success_btn
+                                PinFlow.CREATE_WITHOUT_ACTIVATION -> Res.string.quick_pin_create_success_no_activation_btn
+                                PinFlow.UPDATE -> Res.string.quick_pin_change_success_btn
+                            }
+                        ),
                         style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
                         navigation = when (pinFlow) {
                             PinFlow.CREATE_WITH_ACTIVATION -> navigationAfterCreate

@@ -16,18 +16,36 @@
 
 package eu.europa.ec.shared.navigation
 
+import eu.europa.ec.commonfeature.config.BiometricMode
+import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.OfferUiConfig
+import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.RequestUriConfig
+import eu.europa.ec.commonfeature.config.SuccessUIConfig
 import eu.europa.ec.commonfeature.model.PinFlow
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.biometric_login_biometrics_enabled_subtitle
+import eu.europa.ec.shared.resources.biometric_login_biometrics_not_enabled_subtitle
+import eu.europa.ec.shared.resources.biometric_login_title
+import eu.europa.ec.shared.resources.generic_close
+import eu.europa.ec.shared.resources.generic_error_message
+import eu.europa.ec.shared.resources.generic_success
+import eu.europa.ec.shared.resources.home_screen_welcome_user_message
+import eu.europa.ec.shared.resources.request_relying_party_description
+import eu.europa.ec.uilogic.component.RelyingPartyDataUi
+import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 /**
  * Proves the Nav3 type-safe routing model on both Android (JVM) and iOS (Kotlin/Native): routes
@@ -164,6 +182,93 @@ class AppRouteTest {
         assertEquals(null, AppRouteCodec.decode(null))
         assertEquals(null, AppRouteCodec.decode(""))
         assertEquals(null, AppRouteCodec.decode("PRESENTATION_REQUEST?requestUriConfig="))
+    }
+
+    /**
+     * Phase 3a: a route payload carries its display text as a resource *key*, not as resolved
+     * characters, so the view-model that builds it needs no string resolver.
+     *
+     * This is the round-trip Nav3 performs on every process death, and the only place it can fail is
+     * at runtime — so it is asserted here over the richest payload in the app: two levels of nested
+     * config, a formatted resource, and runtime text side by side.
+     */
+    @Test
+    fun a_route_payload_round_trips_text_as_resource_keys() {
+        val route = SuccessRoute(
+            SuccessUIConfig(
+                textElementsConfig = SuccessUIConfig.TextElementsConfig(
+                    text = UiText.Resource(Res.string.generic_success),
+                    description = UiText.Resource(
+                        Res.string.home_screen_welcome_user_message,
+                        "Martin",
+                    ),
+                ),
+                headerConfig = ContentHeaderConfig(
+                    description = UiText.Resource(Res.string.generic_error_message),
+                    relyingPartyData = RelyingPartyDataUi(
+                        isVerified = true,
+                        name = "Verifier Signer dev".asUiText(),
+                        description = UiText.Resource(Res.string.request_relying_party_description),
+                    ),
+                ),
+                imageConfig = SuccessUIConfig.ImageConfig(),
+                buttonConfig = listOf(
+                    SuccessUIConfig.ButtonConfig(
+                        text = UiText.Resource(Res.string.generic_close),
+                        style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
+                        navigation = ConfigNavigation(NavigationType.PopTo(DashboardRoute)),
+                    )
+                ),
+                onBackScreenToNavigate = ConfigNavigation(NavigationType.Pop),
+            )
+        )
+
+        val encoded = Json.encodeToString(SuccessRoute.serializer(), route)
+        val restored = Json.decodeFromString(SuccessRoute.serializer(), encoded)
+
+        assertEquals(route, restored)
+        // The wire form holds keys, so the payload stays locale-independent across the restore.
+        assertTrue(
+            encoded.contains(Res.string.generic_success.key),
+            "expected a resource key in $encoded",
+        )
+        val restoredDescription =
+            assertIs<UiText.Resource>(restored.config.textElementsConfig.description)
+        assertEquals(listOf("Martin"), restoredDescription.args)
+        assertEquals(
+            "Verifier Signer dev".asUiText(),
+            restored.config.headerConfig.relyingPartyData?.name,
+        )
+    }
+
+    /** The same, for the other config that gained keyed text: the biometric prompt copy. */
+    @Test
+    fun the_biometric_prompt_copy_round_trips() {
+        val route = BiometricRoute(
+            BiometricUiConfig(
+                mode = BiometricMode.Login(
+                    title = UiText.Resource(Res.string.biometric_login_title),
+                    subTitleWhenBiometricsEnabled = UiText.Resource(Res.string.biometric_login_biometrics_enabled_subtitle),
+                    subTitleWhenBiometricsNotEnabled = UiText.Resource(Res.string.biometric_login_biometrics_not_enabled_subtitle),
+                ),
+                onSuccessNavigation = ConfigNavigation(NavigationType.PushRoute(DashboardRoute)),
+                onBackNavigationConfig = OnBackNavigationConfig(
+                    onBackNavigation = null,
+                    hasToolbarBackIcon = false,
+                ),
+            )
+        )
+
+        val restored = Json.decodeFromString(
+            BiometricRoute.serializer(),
+            Json.encodeToString(BiometricRoute.serializer(), route),
+        )
+
+        assertEquals(route, restored)
+        assertEquals(
+            UiText.Resource(Res.string.biometric_login_title),
+            assertIs<BiometricMode.Login>(restored.config.mode).title,
+        )
     }
 
     @Test

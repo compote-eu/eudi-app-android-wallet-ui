@@ -44,6 +44,7 @@ import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.biometric_default_mode_text_above_pin_field
 import eu.europa.ec.shared.resources.loading_biometry_biometrics_enabled_description
 import eu.europa.ec.shared.resources.loading_biometry_biometrics_not_enabled_description
@@ -80,7 +81,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
-import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun BiometricScreen(
@@ -261,7 +261,7 @@ private fun MainContent(
                         .applyTestTag(TestTag.BiometricScreen.PIN_TEXT)
                         .fillMaxWidth()
                         .padding(vertical = SPACING_SMALL.dp),
-                    text = mode.textAbovePin,
+                    text = mode.textAbovePin.resolve(),
                     style = MaterialTheme.typography.titleMedium.copy(
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -296,7 +296,7 @@ private fun MainContent(
                 verticalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp, Alignment.Top)
             ) {
                 Text(
-                    text = mode.title,
+                    text = mode.title.resolve(),
                     modifier = Modifier.applyTestTag(TestTag.BiometricScreen.PIN_TITLE),
                     style = MaterialTheme.typography.headlineMedium.copy(
                         color = MaterialTheme.colorScheme.onSurface
@@ -309,7 +309,7 @@ private fun MainContent(
                     mode.subTitleWhenBiometricsNotEnabled
                 }
                 Text(
-                    text = subtitle,
+                    text = subtitle.resolve(),
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -366,9 +366,9 @@ private fun PreviewBiometricScreen() {
             state = State(
                 config = BiometricUiConfig(
                     mode = BiometricMode.Default(
-                        descriptionWhenBiometricsEnabled = stringResource(Res.string.loading_biometry_biometrics_enabled_description),
-                        descriptionWhenBiometricsNotEnabled = stringResource(Res.string.loading_biometry_biometrics_not_enabled_description),
-                        textAbovePin = stringResource(Res.string.biometric_default_mode_text_above_pin_field),
+                        descriptionWhenBiometricsEnabled = UiText.Resource(Res.string.loading_biometry_biometrics_enabled_description),
+                        descriptionWhenBiometricsNotEnabled = UiText.Resource(Res.string.loading_biometry_biometrics_not_enabled_description),
+                        textAbovePin = UiText.Resource(Res.string.biometric_default_mode_text_above_pin_field),
                     ),
                     isPreAuthorization = true,
                     onSuccessNavigation = ConfigNavigation(

@@ -31,6 +31,7 @@ import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.quick_pin_locked_out
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -161,7 +162,7 @@ class BiometricViewModel(
                         setState {
                             copy(
                                 error = ContentErrorConfig(
-                                    errorSubTitle = availability.errorMessage,
+                                    errorSubTitle = availability.errorMessage.asUiText(),
                                     onCancel = { setEvent(Event.OnErrorDismiss) }
                                 )
                             )

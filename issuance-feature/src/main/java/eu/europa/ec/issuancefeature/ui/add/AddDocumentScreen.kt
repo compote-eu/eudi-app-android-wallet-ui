@@ -40,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.resolve
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -265,8 +267,8 @@ private fun MainContent(
     ) {
         ContentTitle(
             modifier = Modifier.fillMaxWidth(),
-            title = state.title,
-            subtitle = state.subtitle,
+            title = state.title.resolve(),
+            subtitle = state.subtitle.resolve(),
             subtitleTestTag = TestTag.AddDocumentScreen.SUBTITLE,
         )
 
@@ -375,8 +377,8 @@ private fun IssuanceAddDocumentScreenPreview() {
                     flowType = IssuanceFlowType.NoDocument
                 ),
                 navigatableAction = ScreenNavigateAction.NONE,
-                title = stringResource(Res.string.issuance_add_document_title),
-                subtitle = stringResource(Res.string.issuance_add_document_subtitle),
+                title = UiText.Resource(Res.string.issuance_add_document_title),
+                subtitle = UiText.Resource(Res.string.issuance_add_document_subtitle),
                 options = listOf(
                     Pair(
                         "issuer1",
@@ -436,8 +438,8 @@ private fun DashboardAddDocumentScreenPreview() {
                     )
                 ),
                 navigatableAction = ScreenNavigateAction.BACKABLE,
-                title = stringResource(Res.string.issuance_add_document_title),
-                subtitle = stringResource(Res.string.issuance_add_document_subtitle),
+                title = UiText.Resource(Res.string.issuance_add_document_title),
+                subtitle = UiText.Resource(Res.string.issuance_add_document_subtitle),
                 options = listOf(
                     Pair(
                         "issuer1",

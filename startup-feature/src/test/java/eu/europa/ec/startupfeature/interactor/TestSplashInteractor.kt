@@ -28,6 +28,7 @@ import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.BiometricRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -178,8 +179,6 @@ class TestSplashInteractor {
             whenever(quickPinInteractor.hasPin()).thenReturn(true)
             whenever(configLogic.forcePidActivation).thenReturn(false)
             whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
-            mockBiometricLoginStrings()
-
             // When
             val result = interactor.getAfterSplashRoute()
 
@@ -207,8 +206,6 @@ class TestSplashInteractor {
             whenever(configLogic.forcePidActivation).thenReturn(true)
             whenever(walletEngine.getAllDocuments())
                 .thenReturn(listOf(WalletDocument(id = "mocked_id")))
-            mockBiometricLoginStrings()
-
             // When
             val result = interactor.getAfterSplashRoute()
 
@@ -237,8 +234,6 @@ class TestSplashInteractor {
             whenever(quickPinInteractor.hasPin()).thenReturn(true)
             whenever(configLogic.forcePidActivation).thenReturn(true)
             whenever(walletEngine.getAllDocuments()).thenReturn(emptyList())
-            mockBiometricLoginStrings()
-
             // When
             val result = interactor.getAfterSplashRoute()
 
@@ -253,21 +248,12 @@ class TestSplashInteractor {
     //endregion
 
     //region helper functions
-    private fun mockBiometricLoginStrings() {
-        whenever(resourceProvider.getString(Res.string.biometric_login_title))
-            .thenReturn(mockedBiometricLoginTitle)
-        whenever(resourceProvider.getString(Res.string.biometric_login_biometrics_enabled_subtitle))
-            .thenReturn(mockedBiometricLoginSubtitleEnabled)
-        whenever(resourceProvider.getString(Res.string.biometric_login_biometrics_not_enabled_subtitle))
-            .thenReturn(mockedBiometricLoginSubtitleNotEnabled)
-    }
-
     private fun buildBiometricUiConfig(shouldActivateWithPid: Boolean): BiometricUiConfig {
         return BiometricUiConfig(
             mode = BiometricMode.Login(
-                title = mockedBiometricLoginTitle,
-                subTitleWhenBiometricsEnabled = mockedBiometricLoginSubtitleEnabled,
-                subTitleWhenBiometricsNotEnabled = mockedBiometricLoginSubtitleNotEnabled
+                title = UiText.Resource(Res.string.biometric_login_title),
+                subTitleWhenBiometricsEnabled = UiText.Resource(Res.string.biometric_login_biometrics_enabled_subtitle),
+                subTitleWhenBiometricsNotEnabled = UiText.Resource(Res.string.biometric_login_biometrics_not_enabled_subtitle)
             ),
             isPreAuthorization = true,
             shouldInitializeBiometricAuthOnCreate = true,
@@ -288,10 +274,4 @@ class TestSplashInteractor {
     }
     //endregion
 
-    //region mocked objects
-    private val mockedBiometricLoginTitle = "Biometric login title"
-    private val mockedBiometricLoginSubtitleEnabled = "Biometric subtitle when biometrics enabled"
-    private val mockedBiometricLoginSubtitleNotEnabled =
-        "Biometric subtitle when biometrics not enabled"
-    //endregion
 }

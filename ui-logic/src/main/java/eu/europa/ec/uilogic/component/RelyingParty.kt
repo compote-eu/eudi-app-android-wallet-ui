@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.resourceslogic.theme.values.success
+import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.TextLengthPreviewProvider
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
@@ -82,7 +84,7 @@ fun RelyingParty(
                 }
                 WrapText(
                     modifier = Modifier.wrapContentWidth(),
-                    text = name,
+                    text = name.resolve(),
                     textConfig = nameTextConfig ?: TextConfig(
                         styleKey = TextStyleKey.TitleMedium,
                         textAlignKey = commonTextAlign,
@@ -93,7 +95,7 @@ fun RelyingParty(
             description?.let { safeDescription ->
                 WrapText(
                     modifier = Modifier.fillMaxWidth(),
-                    text = safeDescription,
+                    text = safeDescription.resolve(),
                     textConfig = descriptionTextConfig ?: TextConfig(
                         styleKey = TextStyleKey.BodySmall,
                         textAlignKey = commonTextAlign,
@@ -113,8 +115,8 @@ private fun RelyingPartyPreview(
         RelyingParty(
             relyingPartyData = RelyingPartyDataUi(
                 isVerified = true,
-                name = "Relying Party Name: $text",
-                description = "Relying Party Description: $text",
+                name = "Relying Party Name: $text".asUiText(),
+                description = "Relying Party Description: $text".asUiText(),
             )
         )
     }

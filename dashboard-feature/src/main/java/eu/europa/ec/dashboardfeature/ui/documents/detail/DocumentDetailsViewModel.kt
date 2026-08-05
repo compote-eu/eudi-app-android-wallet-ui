@@ -35,13 +35,14 @@ import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.detail.transformer.DocumentDetailsTransformer.transformToDocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.document_details_bottom_sheet_badge_subtitle
 import eu.europa.ec.shared.resources.document_details_bottom_sheet_badge_title
 import eu.europa.ec.shared.resources.document_details_bottom_sheet_bookmark_info_message
@@ -164,7 +165,6 @@ sealed class DocumentDetailsBottomSheetContent {
 @KoinViewModel
 class DocumentDetailsViewModel(
     private val documentDetailsInteractor: DocumentDetailsInteractor,
-    private val resourceProvider: ResourceProvider,
     @InjectedParam private val documentId: DocumentId,
 ) : MviViewModel<Event, State, Effect>() {
     override fun setInitialState(): State = State()
@@ -348,7 +348,7 @@ class DocumentDetailsViewModel(
                                 isLoading = false,
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(event) },
-                                    errorSubTitle = response.error,
+                                    errorSubTitle = response.error.asUiText(),
                                     onCancel = { setEvent(Event.Pop) }
                                 )
                             )
@@ -423,7 +423,7 @@ class DocumentDetailsViewModel(
                                 isLoading = false,
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(event) },
-                                    errorSubTitle = response.errorMessage,
+                                    errorSubTitle = response.errorMessage.asUiText(),
                                     onCancel = { setEvent(Event.DismissError) }
                                 )
                             )
@@ -487,22 +487,22 @@ class DocumentDetailsViewModel(
 
     private fun getBookmarkStoredBottomSheetTextData(): BottomSheetTextDataUi {
         return BottomSheetTextDataUi(
-            title = resourceProvider.getString(Res.string.document_details_bottom_sheet_bookmark_info_title),
-            message = resourceProvider.getString(Res.string.document_details_bottom_sheet_bookmark_info_message)
+            title = UiText.Resource(Res.string.document_details_bottom_sheet_bookmark_info_title),
+            message = UiText.Resource(Res.string.document_details_bottom_sheet_bookmark_info_message)
         )
     }
 
     private fun getBookmarkRemovedBottomSheetTextData(): BottomSheetTextDataUi {
         return BottomSheetTextDataUi(
-            title = resourceProvider.getString(Res.string.document_details_bottom_sheet_bookmark_removed_info_title),
-            message = resourceProvider.getString(Res.string.document_details_bottom_sheet_bookmark_removed_info_message)
+            title = UiText.Resource(Res.string.document_details_bottom_sheet_bookmark_removed_info_title),
+            message = UiText.Resource(Res.string.document_details_bottom_sheet_bookmark_removed_info_message)
         )
     }
 
     private fun getTrustedRelyingPartyBottomSheetTextData(): BottomSheetTextDataUi {
         return BottomSheetTextDataUi(
-            title = resourceProvider.getString(Res.string.document_details_bottom_sheet_badge_title),
-            message = resourceProvider.getString(Res.string.document_details_bottom_sheet_badge_subtitle)
+            title = UiText.Resource(Res.string.document_details_bottom_sheet_badge_title),
+            message = UiText.Resource(Res.string.document_details_bottom_sheet_badge_subtitle)
         )
     }
 
@@ -531,7 +531,7 @@ class DocumentDetailsViewModel(
                                 isLoading = false,
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(event) },
-                                    errorSubTitle = it.errorMessage,
+                                    errorSubTitle = it.errorMessage.asUiText(),
                                     onCancel = { setEvent(Event.DismissError) }
                                 )
                             )

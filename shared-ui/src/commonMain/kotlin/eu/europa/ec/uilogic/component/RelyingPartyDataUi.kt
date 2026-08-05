@@ -16,11 +16,16 @@
 
 package eu.europa.ec.uilogic.component
 
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.uilogic.component.wrap.TextConfig
 import kotlinx.serialization.Serializable
 
 /**
  * Data class representing information about a Relying Party.
+ *
+ * [name] is the one field here that is usually *runtime* text — the verifier or issuer name that
+ * came off the request — so it is normally a `UiText.Raw`, falling back to a `UiText.Resource`
+ * default when the request carried none. [description] is the opposite: always a resource.
  *
  * @property logo An optional logo URL string for the Relying Party (KMP-clean; the image loader
  *   accepts a String source directly).
@@ -34,8 +39,8 @@ import kotlinx.serialization.Serializable
 data class RelyingPartyDataUi(
     val logo: String? = null,
     val isVerified: Boolean,
-    val name: String,
+    val name: UiText,
     val nameTextConfig: TextConfig? = null,
-    val description: String? = null,
+    val description: UiText? = null,
     val descriptionTextConfig: TextConfig? = null,
 )

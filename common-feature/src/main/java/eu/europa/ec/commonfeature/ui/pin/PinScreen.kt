@@ -37,7 +37,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import org.jetbrains.compose.resources.stringResource
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.resolve
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.authenticationlogic.secure.SecurePin
@@ -187,14 +188,14 @@ private fun Content(
             verticalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp, Alignment.Top)
         ) {
             Text(
-                text = state.title,
+                text = state.title.resolve(),
                 modifier = Modifier.applyTestTag(TestTag.PinScreen.TITLE),
                 style = MaterialTheme.typography.headlineMedium.copy(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             )
             Text(
-                text = state.subtitle,
+                text = state.subtitle.resolve(),
                 style = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -209,7 +210,7 @@ private fun Content(
         ) {
             state.pinInputLabel?.let { safePinInputLabel ->
                 Text(
-                    text = safePinInputLabel,
+                    text = safePinInputLabel.resolve(),
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.titleMedium,
                 )
@@ -258,10 +259,10 @@ private fun SheetContent(
 ) {
     DialogBottomSheet(
         textData = BottomSheetTextDataUi(
-            title = stringResource(Res.string.quick_pin_bottom_sheet_cancel_title),
-            message = stringResource(Res.string.quick_pin_bottom_sheet_cancel_subtitle),
-            positiveButtonText = stringResource(Res.string.quick_pin_bottom_sheet_cancel_primary_button_text),
-            negativeButtonText = stringResource(Res.string.quick_pin_bottom_sheet_cancel_secondary_button_text),
+            title = UiText.Resource(Res.string.quick_pin_bottom_sheet_cancel_title),
+            message = UiText.Resource(Res.string.quick_pin_bottom_sheet_cancel_subtitle),
+            positiveButtonText = UiText.Resource(Res.string.quick_pin_bottom_sheet_cancel_primary_button_text),
+            negativeButtonText = UiText.Resource(Res.string.quick_pin_bottom_sheet_cancel_secondary_button_text),
         ),
         onPositiveClick = { onEventSent(Event.BottomSheet.Cancel.PrimaryButtonPressed) },
         onNegativeClick = { onEventSent(Event.BottomSheet.Cancel.SecondaryButtonPressed) }
@@ -282,7 +283,7 @@ private fun PinFieldLayout(
         onPinLengthChanged = onPinInput,
         onPinComplete = onPinComplete,
         hasError = !state.quickPinError.isNullOrEmpty() || state.isLockedOut,
-        errorMessage = state.lockoutMessage ?: state.quickPinError,
+        errorMessage = state.lockoutMessage?.resolve() ?: state.quickPinError,
         pinWidth = 42.dp,
         clearCode = state.resetPin,
         focusOnCreate = !state.isLockedOut,

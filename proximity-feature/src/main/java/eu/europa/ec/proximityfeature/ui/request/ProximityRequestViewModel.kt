@@ -17,7 +17,6 @@
 package eu.europa.ec.proximityfeature.ui.request
 
 import androidx.lifecycle.viewModelScope
-import eu.europa.ec.businesslogic.extension.ifEmptyOrNull
 import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
@@ -29,12 +28,14 @@ import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractorPartialState
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.BiometricRoute
 import eu.europa.ec.shared.navigation.ProximityLoadingRoute
 import eu.europa.ec.shared.navigation.ProximityRequestRoute
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.asUiTextOr
 import eu.europa.ec.shared.resources.biometric_default_mode_text_above_pin_field
 import eu.europa.ec.shared.resources.loading_biometry_biometrics_enabled_description
 import eu.europa.ec.shared.resources.loading_biometry_biometrics_not_enabled_description
@@ -54,14 +55,13 @@ import org.koin.core.annotation.KoinViewModel
 @KoinViewModel
 class ProximityRequestViewModel(
     private val interactor: ProximityRequestInteractor,
-    private val resourceProvider: ResourceProvider,
     @InjectedParam private val presentationScopeId: String
 ) : RequestViewModel() {
 
     override fun getHeaderConfig(): ContentHeaderConfig {
         return ContentHeaderConfig(
-            description = resourceProvider.getString(Res.string.request_header_description),
-            mainText = resourceProvider.getString(Res.string.request_header_main_text),
+            description = UiText.Resource(Res.string.request_header_description),
+            mainText = UiText.Resource(Res.string.request_header_main_text),
             relyingPartyData = getRelyingPartyData(
                 name = null,
                 isVerified = false,
@@ -73,9 +73,9 @@ class ProximityRequestViewModel(
         return BiometricRoute(
             BiometricUiConfig(
                 mode = BiometricMode.Default(
-                    descriptionWhenBiometricsEnabled = resourceProvider.getString(Res.string.loading_biometry_biometrics_enabled_description),
-                    descriptionWhenBiometricsNotEnabled = resourceProvider.getString(Res.string.loading_biometry_biometrics_not_enabled_description),
-                    textAbovePin = resourceProvider.getString(Res.string.biometric_default_mode_text_above_pin_field),
+                    descriptionWhenBiometricsEnabled = UiText.Resource(Res.string.loading_biometry_biometrics_enabled_description),
+                    descriptionWhenBiometricsNotEnabled = UiText.Resource(Res.string.loading_biometry_biometrics_not_enabled_description),
+                    textAbovePin = UiText.Resource(Res.string.biometric_default_mode_text_above_pin_field),
                 ),
                 isPreAuthorization = false,
                 shouldInitializeBiometricAuthOnCreate = true,
@@ -119,7 +119,7 @@ class ProximityRequestViewModel(
                                 isLoading = false,
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(Event.DoWork) },
-                                    errorSubTitle = response.error,
+                                    errorSubTitle = response.error.asUiText(),
                                     onCancel = { setEvent(Event.OnBack) }
                                 )
                             )
@@ -205,10 +205,10 @@ class ProximityRequestViewModel(
     ): RelyingPartyDataUi {
         return RelyingPartyDataUi(
             isVerified = isVerified,
-            name = name.ifEmptyOrNull(
-                default = resourceProvider.getString(Res.string.request_relying_party_default_name)
+            name = name.asUiTextOr(
+                fallback = UiText.Resource(Res.string.request_relying_party_default_name)
             ),
-            description = resourceProvider.getString(Res.string.request_relying_party_description),
+            description = UiText.Resource(Res.string.request_relying_party_description),
         )
     }
 }

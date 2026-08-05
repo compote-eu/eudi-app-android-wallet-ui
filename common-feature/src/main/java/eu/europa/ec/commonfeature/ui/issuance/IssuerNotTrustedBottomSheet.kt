@@ -18,7 +18,7 @@ package eu.europa.ec.commonfeature.ui.issuance
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import org.jetbrains.compose.resources.stringResource
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -36,9 +36,9 @@ fun IssuerNotTrustedSheetContent(
 ) {
     DialogBottomSheet(
         textData = BottomSheetTextDataUi(
-            title = stringResource(Res.string.issuance_blocked_bottom_sheet_title),
-            message = stringResource(Res.string.issuance_blocked_bottom_sheet_message),
-            positiveButtonText = stringResource(Res.string.issuance_blocked_bottom_sheet_primary_button_text),
+            title = UiText.Resource(Res.string.issuance_blocked_bottom_sheet_title),
+            message = UiText.Resource(Res.string.issuance_blocked_bottom_sheet_message),
+            positiveButtonText = UiText.Resource(Res.string.issuance_blocked_bottom_sheet_primary_button_text),
         ),
         leadingIcon = AppIcons.Warning,
         leadingIconTint = MaterialTheme.colorScheme.warning,

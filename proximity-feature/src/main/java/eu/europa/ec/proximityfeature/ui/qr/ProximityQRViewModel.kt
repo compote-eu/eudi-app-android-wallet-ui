@@ -24,6 +24,7 @@ import eu.europa.ec.proximityfeature.interactor.ProximityQRInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityQRPartialState
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.ProximityRequestRoute
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
@@ -118,7 +119,7 @@ class ProximityQRViewModel(
                                 isLoading = false,
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(Event.Init) },
-                                    errorSubTitle = response.error,
+                                    errorSubTitle = response.error.asUiText(),
                                     onCancel = { setEvent(Event.GoBack) }
                                 )
                             )

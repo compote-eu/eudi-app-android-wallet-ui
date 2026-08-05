@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import eu.europa.ec.shared.resources.UiText
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -343,12 +344,12 @@ private fun ContentPreview() {
             ),
             noDocument = false,
             headerConfig = ContentHeaderConfig(
-                description = stringResource(Res.string.issuance_document_offer_description),
-                mainText = stringResource(Res.string.issuance_document_offer_header_main_text),
+                description = UiText.Resource(Res.string.issuance_document_offer_description),
+                mainText = UiText.Resource(Res.string.issuance_document_offer_header_main_text),
                 relyingPartyData = RelyingPartyDataUi(
                     isVerified = true,
-                    name = stringResource(Res.string.issuance_document_offer_relying_party_default_name),
-                    description = stringResource(Res.string.issuance_document_offer_relying_party_description)
+                    name = UiText.Resource(Res.string.issuance_document_offer_relying_party_default_name),
+                    description = UiText.Resource(Res.string.issuance_document_offer_relying_party_description)
                 )
             ),
             offerUiConfig = OfferUiConfig(

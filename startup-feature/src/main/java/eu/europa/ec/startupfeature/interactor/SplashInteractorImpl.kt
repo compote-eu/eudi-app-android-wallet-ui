@@ -32,6 +32,7 @@ import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.BiometricRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -81,9 +82,9 @@ class SplashInteractorImpl(
         return BiometricRoute(
             BiometricUiConfig(
                 mode = BiometricMode.Login(
-                    title = resourceProvider.getString(Res.string.biometric_login_title),
-                    subTitleWhenBiometricsEnabled = resourceProvider.getString(Res.string.biometric_login_biometrics_enabled_subtitle),
-                    subTitleWhenBiometricsNotEnabled = resourceProvider.getString(Res.string.biometric_login_biometrics_not_enabled_subtitle),
+                    title = UiText.Resource(Res.string.biometric_login_title),
+                    subTitleWhenBiometricsEnabled = UiText.Resource(Res.string.biometric_login_biometrics_enabled_subtitle),
+                    subTitleWhenBiometricsNotEnabled = UiText.Resource(Res.string.biometric_login_biometrics_not_enabled_subtitle),
                 ),
                 isPreAuthorization = true,
                 shouldInitializeBiometricAuthOnCreate = true,

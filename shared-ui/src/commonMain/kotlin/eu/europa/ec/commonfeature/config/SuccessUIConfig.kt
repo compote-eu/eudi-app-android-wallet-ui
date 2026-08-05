@@ -19,6 +19,7 @@
 // had to be typed for this to become KMP-clean.
 package eu.europa.ec.commonfeature.config
 
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.IconDataUi
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
@@ -60,7 +61,7 @@ data class SuccessUIConfig(
 
     @Serializable
     data class ButtonConfig(
-        val text: String,
+        val text: UiText,
         val style: Style,
         val navigation: ConfigNavigation,
     ) {
@@ -72,8 +73,8 @@ data class SuccessUIConfig(
 
     @Serializable
     data class TextElementsConfig(
-        val text: String,
-        val description: String,
+        val text: UiText,
+        val description: UiText,
         val color: ColorKey = ColorKey.Success
     )
 }

@@ -18,14 +18,23 @@
 // as defaults by the serialized UI-model (SuccessUIConfig.ImageConfig.screenPercentageSize), which
 // lives in commonMain. Package unchanged so call sites don't churn.
 // Phase 3b: the error-screen config split out of ContentError.kt. Almost every view-model holds one
-// in its state, so it gates their move to commonMain. Its text fields stay `String` rather than
-// `UiText`: 21 of the 23 assignments in the app are runtime error messages produced by interactors,
-// not string resources.
+// in its state, so it gates their move to commonMain.
 package eu.europa.ec.uilogic.component.content
 
+import eu.europa.ec.shared.resources.UiText
+
+/**
+ * The error banner/screen a view-model puts in its state.
+ *
+ * Both text fields are [UiText] even though most assignments are runtime interactor messages
+ * (`response.error`, `response.errorMessage`), which arrive as `UiText.Raw`. The reason is the
+ * minority: the two loading view-models fill [errorSubTitle] with a generic-error *resource*, and
+ * that single use was the last thing keeping a string resolver in their constructors. Not
+ * `@Serializable` — the lambdas rule that out — so this is state only, never a route payload.
+ */
 data class ContentErrorConfig(
-    val errorTitle: String? = null,
-    val errorSubTitle: String? = null,
+    val errorTitle: UiText? = null,
+    val errorSubTitle: UiText? = null,
     val onCancel: () -> Unit,
     val onRetry: (() -> Unit)? = null
 )

@@ -36,13 +36,11 @@ import eu.europa.ec.issuancefeature.util.mockedIssuerId
 import eu.europa.ec.issuancefeature.util.mockedMdlOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedPhotoIdOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedPidOptionItemUi
-import eu.europa.ec.issuancefeature.util.mockedPrimaryButtonText
 import eu.europa.ec.issuancefeature.util.mockedScopedDocuments
 import eu.europa.ec.issuancefeature.util.mockedSuccessContentDescription
-import eu.europa.ec.issuancefeature.util.mockedSuccessDescription
-import eu.europa.ec.issuancefeature.util.mockedSuccessText
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.testfeature.util.mockedDefaultLocale
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
@@ -955,14 +953,8 @@ class TestAddDocumentInteractor {
     }
 
     private fun mockDocumentIssuanceStrings() {
-        whenever(resourceProvider.getString(Res.string.issuance_add_document_deferred_success_text))
-            .thenReturn(mockedSuccessText)
-        whenever(resourceProvider.getString(Res.string.issuance_add_document_deferred_success_primary_button_text))
-            .thenReturn(mockedPrimaryButtonText)
         whenever(resourceProvider.getString(AppIcons.InProgress.contentDescriptionRes))
             .thenReturn(mockedSuccessContentDescription)
-        whenever(resourceProvider.getString(Res.string.issuance_add_document_deferred_success_description))
-            .thenReturn(mockedSuccessDescription)
     }
 
     //endregion
@@ -971,8 +963,8 @@ class TestAddDocumentInteractor {
     private val mockedTripleObject by lazy {
         Triple(
             first = SuccessUIConfig.TextElementsConfig(
-                text = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_text),
-                description = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_description),
+                text = UiText.Resource(Res.string.issuance_add_document_deferred_success_text),
+                description = UiText.Resource(Res.string.issuance_add_document_deferred_success_description),
                 color = ColorKey.Pending
             ),
             second = SuccessUIConfig.ImageConfig(
@@ -980,7 +972,7 @@ class TestAddDocumentInteractor {
                 tint = ColorKey.Primary,
                 screenPercentageSize = PERCENTAGE_25,
             ),
-            third = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_primary_button_text)
+            third = UiText.Resource(Res.string.issuance_add_document_deferred_success_primary_button_text)
         )
     }
     //endregion

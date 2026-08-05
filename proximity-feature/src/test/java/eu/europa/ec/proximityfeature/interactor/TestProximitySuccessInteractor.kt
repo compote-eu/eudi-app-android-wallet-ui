@@ -22,6 +22,8 @@ import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
 import eu.europa.ec.shared.resources.document_success_header_description
 import eu.europa.ec.shared.resources.document_success_header_description_when_error
@@ -165,9 +167,9 @@ class TestProximitySuccessInteractor {
                 val expectedResult = ProximitySuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
                     headerConfig = ContentHeaderConfig(
-                        description = mockedErrorDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedDefaultRelyingPartyName,
+                            name = UiText.Resource(Res.string.document_success_relying_party_default_name),
                             isVerified = false,
                         )
                     )
@@ -241,9 +243,9 @@ class TestProximitySuccessInteractor {
 
                 assertEquals(
                     ContentHeaderConfig(
-                        description = mockedNormalDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedVerifierName,
+                            name = mockedVerifierName.asUiText(),
                             isVerified = true,
                         )
                     ),
@@ -288,9 +290,9 @@ class TestProximitySuccessInteractor {
                 val expectedResult = ProximitySuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
                     headerConfig = ContentHeaderConfig(
-                        description = mockedErrorDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedVerifierName,
+                            name = mockedVerifierName.asUiText(),
                             isVerified = true,
                         )
                     )
@@ -333,9 +335,9 @@ class TestProximitySuccessInteractor {
                 val expectedResult = ProximitySuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
                     headerConfig = ContentHeaderConfig(
-                        description = mockedErrorDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedVerifierName,
+                            name = mockedVerifierName.asUiText(),
                             isVerified = false,
                         )
                     )
@@ -400,21 +402,12 @@ class TestProximitySuccessInteractor {
 
     //region helper functions
     private fun mockSuccessHeaderStrings() {
-        whenever(resourceProvider.getString(Res.string.document_success_header_description_when_error))
-            .thenReturn(mockedErrorDescription)
-        whenever(resourceProvider.getString(Res.string.document_success_header_description))
-            .thenReturn(mockedNormalDescription)
-        whenever(resourceProvider.getString(Res.string.document_success_relying_party_default_name))
-            .thenReturn(mockedDefaultRelyingPartyName)
         whenever(resourceProvider.getString(Res.string.document_success_collapsed_supporting_text))
             .thenReturn(mockedDocumentSupportingText)
     }
     //endregion
 
     //region mocked objects
-    private val mockedErrorDescription = "Mocked error description"
-    private val mockedNormalDescription = "Mocked normal description"
-    private val mockedDefaultRelyingPartyName = "Mocked default relying party name"
     private val mockedDocumentSupportingText = "Mocked document supporting text"
     //endregion
 }

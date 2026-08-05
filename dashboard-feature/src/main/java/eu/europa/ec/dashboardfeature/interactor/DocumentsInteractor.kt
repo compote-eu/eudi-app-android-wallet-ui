@@ -59,6 +59,7 @@ import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.content_description_issuer_logo_icon
 import eu.europa.ec.shared.resources.dashboard_document_credentials_info_text
+import eu.europa.ec.shared.resources.dashboard_document_deferred_failed
 import eu.europa.ec.shared.resources.dashboard_document_deferred_pending
 import eu.europa.ec.shared.resources.dashboard_document_has_expired
 import eu.europa.ec.shared.resources.dashboard_document_has_not_expired
@@ -189,6 +190,15 @@ interface DocumentsInteractor {
     ): Filters
 
     fun getFilters(): Filters
+
+    /**
+     * The supporting line shown under a deferred document whose issuance failed.
+     *
+     * It belongs here rather than in the view-model because `ListItemDataUi.supportingText` is a
+     * resolved `String` — this interactor already fills it for the *pending* case a few lines away —
+     * and exposing it is what lets `DocumentsViewModel` stop injecting a resolver of its own.
+     */
+    val deferredFailedSupportingText: String
 }
 
 class DocumentsInteractorImpl(
@@ -202,6 +212,9 @@ class DocumentsInteractorImpl(
 
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
+
+    override val deferredFailedSupportingText: String
+        get() = resourceProvider.getString(Res.string.dashboard_document_deferred_failed)
 
     override fun onFilterStateChange(): Flow<DocumentInteractorFilterPartialState> =
         filterValidator.onFilterStateChange().map { result ->

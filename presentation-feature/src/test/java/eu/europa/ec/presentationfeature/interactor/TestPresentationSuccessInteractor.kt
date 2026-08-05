@@ -22,6 +22,8 @@ import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.getMockedFullPid
 import eu.europa.ec.testfeature.util.getMockedSdJwtFullPid
@@ -217,9 +219,9 @@ class TestPresentationSuccessInteractor {
                 val expectedResult = PresentationSuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
                     headerConfig = ContentHeaderConfig(
-                        description = mockedErrorDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedDefaultRelyingPartyName,
+                            name = UiText.Resource(Res.string.document_success_relying_party_default_name),
                             isVerified = false,
                         )
                     )
@@ -293,9 +295,9 @@ class TestPresentationSuccessInteractor {
 
                 assertEquals(
                     ContentHeaderConfig(
-                        description = mockedNormalDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedVerifierName,
+                            name = mockedVerifierName.asUiText(),
                             isVerified = true,
                         )
                     ),
@@ -340,9 +342,9 @@ class TestPresentationSuccessInteractor {
                 val expectedResult = PresentationSuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
                     headerConfig = ContentHeaderConfig(
-                        description = mockedErrorDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedVerifierName,
+                            name = mockedVerifierName.asUiText(),
                             isVerified = true,
                         )
                     )
@@ -385,9 +387,9 @@ class TestPresentationSuccessInteractor {
                 val expectedResult = PresentationSuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
                     headerConfig = ContentHeaderConfig(
-                        description = mockedErrorDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedVerifierName,
+                            name = mockedVerifierName.asUiText(),
                             isVerified = false,
                         )
                     )
@@ -577,12 +579,6 @@ class TestPresentationSuccessInteractor {
     }
 
     private fun mockSuccessHeaderStrings() {
-        whenever(resourceProvider.getString(Res.string.document_success_header_description_when_error))
-            .thenReturn(mockedErrorDescription)
-        whenever(resourceProvider.getString(Res.string.document_success_header_description))
-            .thenReturn(mockedNormalDescription)
-        whenever(resourceProvider.getString(Res.string.document_success_relying_party_default_name))
-            .thenReturn(mockedDefaultRelyingPartyName)
         whenever(resourceProvider.getString(Res.string.document_success_collapsed_supporting_text))
             .thenReturn(mockedDocumentSupportingText)
     }
@@ -591,9 +587,6 @@ class TestPresentationSuccessInteractor {
     //region mocked objects
     private val mockedInitiatorRoute = "mockedInitiatorRoute"
     private val mockedRedirectUriString = "https://example.com/redirect"
-    private val mockedErrorDescription = "Mocked error description"
-    private val mockedNormalDescription = "Mocked normal description"
-    private val mockedDefaultRelyingPartyName = "Mocked default relying party name"
     private val mockedDocumentSupportingText = "Mocked document supporting text"
     //endregion
 }

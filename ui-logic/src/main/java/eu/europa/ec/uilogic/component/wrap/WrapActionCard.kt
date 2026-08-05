@@ -35,6 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.IconDataUi
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -45,10 +48,10 @@ import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 
 data class ActionCardConfig(
-    val title: String,
+    val title: UiText,
     val icon: IconDataUi,
-    val primaryButtonText: String,
-    val secondaryButtonText: String,
+    val primaryButtonText: UiText,
+    val secondaryButtonText: UiText,
 )
 
 @Composable
@@ -80,7 +83,7 @@ fun WrapActionCard(
                     modifier = Modifier
                         .weight(1f)
                         .padding(end = SPACING_MEDIUM.dp),
-                    text = config.title,
+                    text = config.title.resolve(),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -104,7 +107,7 @@ fun WrapActionCard(
                         onClick = onActionClick
                     ),
                 ) {
-                    Text(config.primaryButtonText)
+                    Text(config.primaryButtonText.resolve())
                 }
 
                 WrapButton(
@@ -124,7 +127,7 @@ fun WrapActionCard(
                     HSpacer.Small()
 
                     Text(
-                        text = config.secondaryButtonText,
+                        text = config.secondaryButtonText.resolve(),
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -139,10 +142,10 @@ private fun WrapActionCardPreview() {
     PreviewTheme {
         WrapActionCard(
             config = ActionCardConfig(
-                title = "Authenticate, authorise transactions and share your digital documents in person or online.",
+                title = "Authenticate, authorise transactions and share your digital documents in person or online.".asUiText(),
                 icon = AppIcons.WalletActivated,
-                primaryButtonText = "Authenticate",
-                secondaryButtonText = "Learn more",
+                primaryButtonText = "Authenticate".asUiText(),
+                secondaryButtonText = "Learn more".asUiText(),
             )
         )
     }

@@ -35,9 +35,14 @@ sealed interface QrScanFlow {
     data object Signature : QrScanFlow
 }
 
+/**
+ * Which flow opened the scanner. That is the *whole* payload: the screen's title and subtitle were
+ * previously carried here as resolved strings, but every one of the four call sites derived them
+ * from [qrScanFlow] and nothing else — the same relationship `QrScanViewModel.informativeText`
+ * already expressed as a `when`. Deriving them at the destination removes both the duplication and
+ * three of this config's callers' reasons to resolve strings at all.
+ */
 @Serializable
 data class QrScanUiConfig(
-    val title: String,
-    val subTitle: String,
     val qrScanFlow: QrScanFlow
 )

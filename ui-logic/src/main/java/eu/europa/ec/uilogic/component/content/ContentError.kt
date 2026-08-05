@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import eu.europa.ec.shared.resources.resolve
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -43,10 +44,10 @@ internal fun ContentError(
 ) {
     Column(modifier = modifier) {
         ContentTitle(
-            title = config.errorTitle ?: stringResource(
+            title = config.errorTitle?.resolve() ?: stringResource(
                 Res.string.generic_error_message
             ),
-            subtitle = config.errorSubTitle ?: stringResource(
+            subtitle = config.errorSubTitle?.resolve() ?: stringResource(
                 Res.string.generic_error_retry
             ),
             subTitleMaxLines = 10

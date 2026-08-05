@@ -22,6 +22,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenti
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.businesslogic.config.ConfigLogic
+import eu.europa.ec.businesslogic.extension.ifEmptyOrNull
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.businesslogic.util.safeLet
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
@@ -29,6 +30,8 @@ import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.ResolveDocumentOfferPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_default_name
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.documentIdentifier
 import eu.europa.ec.corelogic.extension.getIssuerLogo
@@ -138,6 +141,12 @@ class DocumentOfferInteractorImpl(
     override fun resolveDocumentOffer(offerUri: String): Flow<ResolveDocumentOfferInteractorPartialState> =
         flow {
             val userLocale = resourceProvider.getLocale()
+            // An offer need not name its issuer, but every consumer of the name formats it into
+            // user-facing copy ("... issued by %1$s", "%1$s requires verification"). Defaulting it
+            // here, in the layer that already holds resolved strings, is what lets
+            // DocumentOfferViewModel carry the name as UiText and drop its resolver.
+            val defaultIssuerName =
+                resourceProvider.getString(Res.string.issuance_document_offer_relying_party_default_name)
             walletCoreDocumentsController.resolveDocumentOffer(
                 offerUri = offerUri
             ).map { response ->
@@ -157,7 +166,8 @@ class DocumentOfferInteractorImpl(
                         val offerHasNoDocuments = response.offer.offeredDocuments.isEmpty()
                         if (offerHasNoDocuments) {
                             ResolveDocumentOfferInteractorPartialState.NoDocument(
-                                issuerName = response.offer.getIssuerName(userLocale),
+                                issuerName = response.offer.getIssuerName(userLocale)
+                                    .ifEmptyOrNull(default = defaultIssuerName),
                                 issuerLogo = response.offer.getIssuerLogo(userLocale),
                             )
                         } else {
@@ -198,7 +208,8 @@ class DocumentOfferInteractorImpl(
                                             title = offeredDocument.getName(userLocale).orEmpty(),
                                         )
                                     },
-                                    issuerName = response.offer.getIssuerName(userLocale),
+                                    issuerName = response.offer.getIssuerName(userLocale)
+                                        .ifEmptyOrNull(default = defaultIssuerName),
                                     issuerLogo = response.offer.getIssuerLogo(userLocale),
                                     txCodeLength = response.offer.txCodeSpec?.length
                                 )
@@ -270,7 +281,7 @@ class DocumentOfferInteractorImpl(
                         is IssueDocumentsPartialState.DeferredSuccess -> {
                             IssueDocumentsInteractorPartialState.DeferredSuccess(
                                 successRoute = buildGenericSuccessRouteForDeferred(
-                                    description = resourceProvider.getString(
+                                    description = UiText.Resource(
                                         Res.string.issuance_document_offer_deferred_success_description,
                                         issuerName
                                     ),
@@ -324,19 +335,19 @@ class DocumentOfferInteractorImpl(
     }
 
     private fun buildGenericSuccessRouteForDeferred(
-        description: String,
+        description: UiText,
         navigation: ConfigNavigation
     ): AppRoute {
         return SuccessRoute(getDeferredSuccessConfig(description, navigation))
     }
 
     private fun getDeferredSuccessConfig(
-        description: String,
+        description: UiText,
         navigation: ConfigNavigation
     ): SuccessUIConfig {
         val (textElementsConfig, imageConfig, buttonText) = Triple(
             first = SuccessUIConfig.TextElementsConfig(
-                text = resourceProvider.getString(Res.string.issuance_document_offer_deferred_success_text),
+                text = UiText.Resource(Res.string.issuance_document_offer_deferred_success_text),
                 description = description,
                 color = ColorKey.Pending
             ),
@@ -347,7 +358,7 @@ class DocumentOfferInteractorImpl(
                 tint = ColorKey.Primary,
                 screenPercentageSize = PERCENTAGE_25,
             ),
-            third = resourceProvider.getString(Res.string.issuance_document_offer_deferred_success_primary_button_text)
+            third = UiText.Resource(Res.string.issuance_document_offer_deferred_success_primary_button_text)
         )
 
         return SuccessUIConfig(

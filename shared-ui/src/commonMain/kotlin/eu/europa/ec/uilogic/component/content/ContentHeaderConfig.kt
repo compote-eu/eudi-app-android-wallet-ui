@@ -16,6 +16,7 @@
 
 package eu.europa.ec.uilogic.component.content
 
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.wrap.TextConfig
@@ -25,6 +26,12 @@ import kotlinx.serialization.Serializable
  * Data class representing the configuration for a content header.
  * This header typically displays information like app icon, name, description,
  * and potentially relying party details.
+ *
+ * The text is [UiText], not `String`: this config is held by view-model state *and* embedded in
+ * [eu.europa.ec.commonfeature.config.SuccessUIConfig], which is a Nav3 route payload. Carrying the
+ * resource key is what lets the view-models that build it — Presentation/Proximity request and
+ * loading, DocumentOffer — stop injecting a string resolver. Runtime text (an issuer name, an
+ * error) still fits, as `UiText.Raw`.
  *
  * @property appIconAndTextData Data for displaying the app icon and text.
  * @property description A descriptive text for the content.
@@ -36,9 +43,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ContentHeaderConfig(
     val appIconAndTextData: AppIconAndTextDataUi = AppIconAndTextDataUi(),
-    val description: String?,
+    val description: UiText?,
     val descriptionTextConfig: TextConfig? = null,
-    val mainText: String? = null,
+    val mainText: UiText? = null,
     val mainTextConfig: TextConfig? = null,
     val relyingPartyData: RelyingPartyDataUi? = null,
 )

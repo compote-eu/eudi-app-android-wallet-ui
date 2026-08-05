@@ -28,12 +28,14 @@ import eu.europa.ec.corelogic.model.AuthenticationData
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingObserveResponsePartialState
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingSendRequestedDocumentPartialState
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.PresentationLoadingRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.PresentationSuccessRoute
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.NavigationType
@@ -49,14 +51,13 @@ import eu.europa.ec.shared.resources.loading_header_description
 
 @KoinViewModel
 class PresentationLoadingViewModel(
-    private val resourceProvider: ResourceProvider,
     private val interactor: PresentationLoadingInteractor,
     @InjectedParam private val presentationScopeId: String
 ) : LoadingViewModel() {
 
     override fun getHeaderConfig(): ContentHeaderConfig {
         return ContentHeaderConfig(
-            description = resourceProvider.getString(Res.string.loading_header_description),
+            description = UiText.Resource(Res.string.loading_header_description),
         )
     }
 
@@ -103,7 +104,7 @@ class PresentationLoadingViewModel(
                             copy(
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(Event.DoWork(context)) },
-                                    errorSubTitle = it.error,
+                                    errorSubTitle = it.error.asUiText(),
                                     onCancel = {
                                         setEvent(Event.DismissError)
                                         doNavigation(NavigationType.PopTo(getPreviousRoute()))
@@ -160,7 +161,7 @@ class PresentationLoadingViewModel(
                         copy(
                             error = ContentErrorConfig(
                                 onRetry = { setEvent(event) },
-                                errorSubTitle = result.error,
+                                errorSubTitle = result.error.asUiText(),
                                 onCancel = {
                                     setEvent(Event.DismissError)
                                     doNavigation(
@@ -189,7 +190,7 @@ class PresentationLoadingViewModel(
             setState {
                 copy(
                     error = ContentErrorConfig(
-                        errorSubTitle = resourceProvider.genericErrorMessage(),
+                        errorSubTitle = UiText.Resource(Res.string.generic_error_message),
                         onCancel = {
                             setEvent(Event.DismissError)
                             doNavigation(NavigationType.PopTo(getPreviousRoute()))

@@ -19,11 +19,11 @@ package eu.europa.ec.issuancefeature.interactor
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.issuancefeature.util.mockedErrorDescription
 import eu.europa.ec.issuancefeature.util.mockedMdocPidClaims
 import eu.europa.ec.issuancefeature.util.mockedSdJwtPidClaims
-import eu.europa.ec.issuancefeature.util.mockedSuccessDescription
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockGetUiItemsStrings
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockIssuerName
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToDocumentDetailsDomainStrings
@@ -121,7 +121,6 @@ class TestDocumentIssuanceSuccessInteractor {
     fun `Given Case 1, When getUiItems is called, Then Success state with full document UI and header config is returned`() {
         coroutineRule.runTest {
             // Given
-            mockHeaderConfigDescription(isErrorCase = false)
             mockTransformToDocumentDetailsDomainStrings(resourceProvider)
             mockGetUiItemsStrings(
                 resourceProvider = resourceProvider,
@@ -153,9 +152,9 @@ class TestDocumentIssuanceSuccessInteractor {
                             )
                         ),
                         headerConfig = ContentHeaderConfig(
-                            description = mockedSuccessDescription,
+                            description = UiText.Resource(Res.string.issuance_success_header_description),
                             relyingPartyData = RelyingPartyDataUi(
-                                name = mockedIssuerName,
+                                name = mockedIssuerName.asUiText(),
                                 logo = null,
                                 isVerified = false
                             )
@@ -180,7 +179,6 @@ class TestDocumentIssuanceSuccessInteractor {
     fun `Given Case 2, When getUiItems is called, Then Success state with full document UI is returned`() {
         coroutineRule.runTest {
             // Given
-            mockHeaderConfigDescription(isErrorCase = false)
             mockTransformToDocumentDetailsDomainStrings(resourceProvider)
             mockGetUiItemsStrings(
                 resourceProvider = resourceProvider,
@@ -198,9 +196,9 @@ class TestDocumentIssuanceSuccessInteractor {
                 assertEquals(
                     DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success(
                         headerConfig = ContentHeaderConfig(
-                            description = mockedSuccessDescription,
+                            description = UiText.Resource(Res.string.issuance_success_header_description),
                             relyingPartyData = RelyingPartyDataUi(
-                                name = mockedIssuerName,
+                                name = mockedIssuerName.asUiText(),
                                 logo = null,
                                 isVerified = false
                             )
@@ -240,7 +238,6 @@ class TestDocumentIssuanceSuccessInteractor {
     fun `Given Case 3, When getUiItems is called, Then Success state with one document UI is returned`() {
         coroutineRule.runTest {
             // Given
-            mockHeaderConfigDescription(isErrorCase = false)
             mockTransformToDocumentDetailsDomainStrings(resourceProvider)
             mockGetUiItemsStrings(
                 resourceProvider = resourceProvider,
@@ -273,9 +270,9 @@ class TestDocumentIssuanceSuccessInteractor {
                             )
                         ),
                         headerConfig = ContentHeaderConfig(
-                            description = mockedSuccessDescription,
+                            description = UiText.Resource(Res.string.issuance_success_header_description),
                             relyingPartyData = RelyingPartyDataUi(
-                                name = mockedIssuerName,
+                                name = mockedIssuerName.asUiText(),
                                 logo = null,
                                 isVerified = false
                             )
@@ -299,7 +296,6 @@ class TestDocumentIssuanceSuccessInteractor {
     fun `Given Case 4, When getUiItems is called, Then Success state with empty list is returned`() {
         coroutineRule.runTest {
             // Given
-            mockHeaderConfigDescription(isErrorCase = true)
             mockTransformToDocumentDetailsDomainStrings(resourceProvider)
             mockGetUiItemsStrings(
                 resourceProvider = resourceProvider,
@@ -317,9 +313,9 @@ class TestDocumentIssuanceSuccessInteractor {
                     DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success(
                         documentsUi = listOf(),
                         headerConfig = ContentHeaderConfig(
-                            description = mockedErrorDescription,
+                            description = UiText.Resource(Res.string.issuance_success_header_description_when_error),
                             relyingPartyData = RelyingPartyDataUi(
-                                name = mockedIssuerName,
+                                name = mockedIssuerName.asUiText(),
                                 logo = null,
                                 isVerified = false
                             )
@@ -342,7 +338,6 @@ class TestDocumentIssuanceSuccessInteractor {
     fun `Given Case 5, When getUiItems is called, Then Success state with empty list is returned`() {
         coroutineRule.runTest {
             // Given
-            mockHeaderConfigDescription(isErrorCase = true)
             mockTransformToDocumentDetailsDomainStrings(resourceProvider)
             mockGetUiItemsStrings(
                 resourceProvider = resourceProvider,
@@ -360,9 +355,9 @@ class TestDocumentIssuanceSuccessInteractor {
                     DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success(
                         documentsUi = listOf(),
                         headerConfig = ContentHeaderConfig(
-                            description = mockedErrorDescription,
+                            description = UiText.Resource(Res.string.issuance_success_header_description_when_error),
                             relyingPartyData = RelyingPartyDataUi(
-                                name = mockedIssuerName,
+                                name = mockedIssuerName.asUiText(),
                                 logo = null,
                                 isVerified = false
                             )
@@ -385,7 +380,6 @@ class TestDocumentIssuanceSuccessInteractor {
     fun `Given Case 6, When getUiItems is called, Then Success state with full document UI list is returned`() {
         coroutineRule.runTest {
             // Given
-            mockHeaderConfigDescription(isErrorCase = false)
             mockTransformToDocumentDetailsDomainStrings(resourceProvider)
             mockGetUiItemsStrings(
                 resourceProvider = resourceProvider,
@@ -409,9 +403,9 @@ class TestDocumentIssuanceSuccessInteractor {
                 assertEquals(
                     DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success(
                         headerConfig = ContentHeaderConfig(
-                            description = mockedSuccessDescription,
+                            description = UiText.Resource(Res.string.issuance_success_header_description),
                             relyingPartyData = RelyingPartyDataUi(
-                                name = mockedIssuerName,
+                                name = mockedIssuerName.asUiText(),
                                 logo = null,
                                 isVerified = false
                             )
@@ -516,7 +510,6 @@ class TestDocumentIssuanceSuccessInteractor {
     fun `Given Case 8, When getUiItems is called, Then Success state is returned`() {
         coroutineRule.runTest {
             // Given
-            mockHeaderConfigDescription(isErrorCase = false)
             mockTransformToDocumentDetailsDomainStrings(resourceProvider)
             mockGetUiItemsStrings(
                 resourceProvider = resourceProvider,
@@ -548,9 +541,9 @@ class TestDocumentIssuanceSuccessInteractor {
                             )
                         ),
                         headerConfig = ContentHeaderConfig(
-                            description = mockedSuccessDescription,
+                            description = UiText.Resource(Res.string.issuance_success_header_description),
                             relyingPartyData = RelyingPartyDataUi(
-                                name = mockedIssuerName,
+                                name = mockedIssuerName.asUiText(),
                                 logo = mockedIssuerLogo,
                                 isVerified = false
                             )
@@ -565,20 +558,6 @@ class TestDocumentIssuanceSuccessInteractor {
     // endregion
 
     //region Mock Calls
-
-    private fun mockHeaderConfigDescription(
-        isErrorCase: Boolean
-    ) {
-        val description = if (isErrorCase) mockedErrorDescription else mockedSuccessDescription
-
-        if (isErrorCase) {
-            whenever(resourceProvider.getString(Res.string.issuance_success_header_description_when_error))
-                .thenReturn(description)
-        } else {
-            whenever(resourceProvider.getString(Res.string.issuance_success_header_description))
-                .thenReturn(description)
-        }
-    }
 
     private fun mockGetDocumentByIdCall(response: IssuedDocument?) {
         whenever(walletCoreDocumentsController.getDocumentById(anyString()))

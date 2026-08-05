@@ -24,13 +24,13 @@ import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractorGetUserNameViaMainPidDocumentPartialState
 import eu.europa.ec.dashboardfeature.ui.home.HomeScreenBottomSheetContent.Bluetooth
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentSignRoute
 import eu.europa.ec.shared.navigation.ProximityQrRoute
 import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.home_screen_authenticate
 import eu.europa.ec.shared.resources.home_screen_authentication_card_title
 import eu.europa.ec.shared.resources.home_screen_learn_more
@@ -38,10 +38,6 @@ import eu.europa.ec.shared.resources.home_screen_sign
 import eu.europa.ec.shared.resources.home_screen_sign_card_title
 import eu.europa.ec.shared.resources.home_screen_welcome
 import eu.europa.ec.shared.resources.home_screen_welcome_user_message
-import eu.europa.ec.shared.resources.presentation_qr_scan_subtitle
-import eu.europa.ec.shared.resources.presentation_qr_scan_title
-import eu.europa.ec.shared.resources.signature_qr_scan_subtitle
-import eu.europa.ec.shared.resources.signature_qr_scan_title
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.wrap.ActionCardConfig
 import eu.europa.ec.uilogic.mvi.MviViewModel
@@ -60,7 +56,7 @@ data class State(
     val isBottomSheetOpen: Boolean = false,
     val sheetContent: HomeScreenBottomSheetContent = HomeScreenBottomSheetContent.Authenticate,
 
-    val welcomeUserMessage: String,
+    val welcomeUserMessage: UiText,
     val authenticateCardConfig: ActionCardConfig,
     val signCardConfig: ActionCardConfig,
 
@@ -134,23 +130,22 @@ sealed class HomeScreenBottomSheetContent {
 @KoinViewModel
 class HomeViewModel(
     private val homeInteractor: HomeInteractor,
-    private val resourceProvider: ResourceProvider
 ) : MviViewModel<Event, State, Effect>() {
 
     override fun setInitialState(): State {
         return State(
-            welcomeUserMessage = resourceProvider.getString(Res.string.home_screen_welcome),
+            welcomeUserMessage = UiText.Resource(Res.string.home_screen_welcome),
             authenticateCardConfig = ActionCardConfig(
-                title = resourceProvider.getString(Res.string.home_screen_authentication_card_title),
+                title = UiText.Resource(Res.string.home_screen_authentication_card_title),
                 icon = AppIcons.IdCards,
-                primaryButtonText = resourceProvider.getString(Res.string.home_screen_authenticate),
-                secondaryButtonText = resourceProvider.getString(Res.string.home_screen_learn_more)
+                primaryButtonText = UiText.Resource(Res.string.home_screen_authenticate),
+                secondaryButtonText = UiText.Resource(Res.string.home_screen_learn_more)
             ),
             signCardConfig = ActionCardConfig(
-                title = resourceProvider.getString(Res.string.home_screen_sign_card_title),
+                title = UiText.Resource(Res.string.home_screen_sign_card_title),
                 icon = AppIcons.Contract,
-                primaryButtonText = resourceProvider.getString(Res.string.home_screen_sign),
-                secondaryButtonText = resourceProvider.getString(Res.string.home_screen_learn_more)
+                primaryButtonText = UiText.Resource(Res.string.home_screen_sign),
+                secondaryButtonText = UiText.Resource(Res.string.home_screen_learn_more)
             ),
             isBleCentralClientModeEnabled = homeInteractor.isBleCentralClientModeEnabled(),
         )
@@ -307,11 +302,7 @@ class HomeViewModel(
     private fun navigateToQrSignatureScan() {
         val navigationEffect = Effect.Navigation.SwitchScreen(
             route = QrScanRoute(
-                config = QrScanUiConfig(
-                    title = resourceProvider.getString(Res.string.signature_qr_scan_title),
-                    subTitle = resourceProvider.getString(Res.string.signature_qr_scan_subtitle),
-                    qrScanFlow = QrScanFlow.Signature
-                )
+                config = QrScanUiConfig(qrScanFlow = QrScanFlow.Signature)
             )
         )
         setEffect {
@@ -322,11 +313,7 @@ class HomeViewModel(
     private fun navigateToQrScan() {
         val navigationEffect = Effect.Navigation.SwitchScreen(
             route = QrScanRoute(
-                config = QrScanUiConfig(
-                    title = resourceProvider.getString(Res.string.presentation_qr_scan_title),
-                    subTitle = resourceProvider.getString(Res.string.presentation_qr_scan_subtitle),
-                    qrScanFlow = QrScanFlow.Presentation
-                )
+                config = QrScanUiConfig(qrScanFlow = QrScanFlow.Presentation)
             )
         )
         setEffect {
@@ -356,11 +343,11 @@ class HomeViewModel(
                             copy(
                                 isLoading = false,
                                 welcomeUserMessage = if (response.userFirstName.isNotBlank()) {
-                                    resourceProvider.getString(
+                                    UiText.Resource(
                                         Res.string.home_screen_welcome_user_message,
                                         response.userFirstName
                                     )
-                                } else resourceProvider.getString(Res.string.home_screen_welcome)
+                                } else UiText.Resource(Res.string.home_screen_welcome)
                             )
                         }
                     }

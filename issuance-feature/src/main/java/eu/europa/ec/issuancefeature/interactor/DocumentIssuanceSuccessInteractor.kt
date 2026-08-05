@@ -26,6 +26,8 @@ import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -129,16 +131,18 @@ class DocumentIssuanceSuccessInteractorImpl(
                 }
             }
 
-            val headerConfigDescription = if (documentsUi.isEmpty()) {
-                resourceProvider.getString(Res.string.issuance_success_header_description_when_error)
-            } else {
-                resourceProvider.getString(Res.string.issuance_success_header_description)
-            }
+            val headerConfigDescription = UiText.Resource(
+                if (documentsUi.isEmpty()) {
+                    Res.string.issuance_success_header_description_when_error
+                } else {
+                    Res.string.issuance_success_header_description
+                }
+            )
             val headerConfig = ContentHeaderConfig(
                 description = headerConfigDescription,
                 relyingPartyData = RelyingPartyDataUi(
                     logo = issuerLogo?.toString(),
-                    name = issuerName,
+                    name = issuerName.asUiText(),
                     isVerified = issuerIsTrusted,
                 )
             )

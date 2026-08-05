@@ -35,7 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import org.jetbrains.compose.resources.stringResource
+import eu.europa.ec.shared.resources.UiText
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -272,10 +272,10 @@ private fun DashboardSheetContent(
         is DashboardBottomSheetContent.DocumentRevocation -> {
             BottomSheetWithOptionsList(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(
+                    title = UiText.Resource(
                         Res.string.dashboard_bottom_sheet_revoked_document_dialog_title
                     ),
-                    message = stringResource(
+                    message = UiText.Resource(
                         Res.string.dashboard_bottom_sheet_revoked_document_dialog_subtitle
                     ),
                 ),

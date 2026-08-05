@@ -60,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import eu.europa.ec.shared.resources.UiText
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -615,8 +616,8 @@ private fun DocumentsSheetContent(
         is DocumentsBottomSheetContent.AddDocument -> {
             BottomSheetWithTwoBigIcons(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(Res.string.documents_screen_add_document_title),
-                    message = stringResource(Res.string.documents_screen_add_document_description)
+                    title = UiText.Resource(Res.string.documents_screen_add_document_title),
+                    message = UiText.Resource(Res.string.documents_screen_add_document_description)
                 ),
                 options = listOf(
                     ModalOptionUi(
@@ -638,14 +639,14 @@ private fun DocumentsSheetContent(
         is DocumentsBottomSheetContent.DeferredDocumentPressed -> {
             DialogBottomSheet(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(
+                    title = UiText.Resource(
                         Res.string.dashboard_bottom_sheet_deferred_document_pressed_title
                     ),
-                    message = stringResource(
+                    message = UiText.Resource(
                         Res.string.dashboard_bottom_sheet_deferred_document_pressed_subtitle
                     ),
-                    positiveButtonText = stringResource(Res.string.dashboard_bottom_sheet_deferred_document_pressed_primary_button_text),
-                    negativeButtonText = stringResource(Res.string.dashboard_bottom_sheet_deferred_document_pressed_secondary_button_text),
+                    positiveButtonText = UiText.Resource(Res.string.dashboard_bottom_sheet_deferred_document_pressed_primary_button_text),
+                    negativeButtonText = UiText.Resource(Res.string.dashboard_bottom_sheet_deferred_document_pressed_secondary_button_text),
                 ),
                 onPositiveClick = {
                     onEventSent(
@@ -667,10 +668,10 @@ private fun DocumentsSheetContent(
         is DocumentsBottomSheetContent.DeferredDocumentsReady -> {
             BottomSheetWithOptionsList(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(
+                    title = UiText.Resource(
                         Res.string.dashboard_bottom_sheet_deferred_documents_ready_title
                     ),
-                    message = stringResource(
+                    message = UiText.Resource(
                         Res.string.dashboard_bottom_sheet_deferred_documents_ready_subtitle
                     ),
                 ),

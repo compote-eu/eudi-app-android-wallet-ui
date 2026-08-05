@@ -56,12 +56,8 @@ internal const val mockedSuccessContentDescription = "Content description"
 internal const val mockedIssuanceErrorMessage = "Issuance error message"
 internal const val mockedInvalidCodeFormatMessage = "Invalid code format message"
 internal const val mockedWalletActivationErrorMessage = "Wallet activation error message"
-internal const val mockedPrimaryButtonText = "Primary button text"
 internal const val mockedTxCode = "mockedTxCode"
-internal const val mockedSuccessText = "Success text"
 internal const val mockedCombinedPid = "PID Combined"
-internal const val mockedSuccessDescription = "Success description"
-internal const val mockedErrorDescription = "Error description"
 internal const val mockedIssuerId = "issuerId"
 internal const val mockedIssuerOrder = 0
 

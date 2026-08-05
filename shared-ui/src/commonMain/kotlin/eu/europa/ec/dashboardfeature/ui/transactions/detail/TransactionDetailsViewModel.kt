@@ -31,6 +31,7 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorPart
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.transaction_details_screen_title
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
@@ -142,7 +143,7 @@ class TransactionDetailsViewModel(
                                 isLoading = false,
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(event) },
-                                    errorSubTitle = response.error,
+                                    errorSubTitle = response.error.asUiText(),
                                     onCancel = { setEvent(Event.Pop) }
                                 )
                             )

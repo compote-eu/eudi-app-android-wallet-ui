@@ -33,7 +33,6 @@ import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorIssueDocumentsPartialState
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorScopedPartialState
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
@@ -42,10 +41,10 @@ import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.issuance_add_document_subtitle
 import eu.europa.ec.shared.resources.issuance_add_document_title
-import eu.europa.ec.shared.resources.issuance_qr_scan_subtitle
-import eu.europa.ec.shared.resources.issuance_qr_scan_title
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -73,8 +72,8 @@ data class State(
     val isInitialised: Boolean = false,
     val notifyOnAuthenticationFailure: Boolean = false,
 
-    val title: String = "",
-    val subtitle: String = "",
+    val title: UiText = UiText.Empty,
+    val subtitle: UiText = UiText.Empty,
     val options: List<Pair<String, List<AddDocumentUi>>> = emptyList(),
     val noOptions: Boolean = false,
 
@@ -118,7 +117,6 @@ sealed class Effect : ViewSideEffect {
 @KoinViewModel
 class AddDocumentViewModel(
     private val addDocumentInteractor: AddDocumentInteractor,
-    private val resourceProvider: ResourceProvider,
     @InjectedParam private val issuanceConfig: IssuanceUiConfig,
 ) : MviViewModel<Event, State, Effect>() {
 
@@ -129,8 +127,8 @@ class AddDocumentViewModel(
             issuanceConfig = issuanceConfig,
             navigatableAction = getNavigatableAction(issuanceConfig.flowType),
             onBackAction = getOnBackAction(issuanceConfig.flowType),
-            title = resourceProvider.getString(Res.string.issuance_add_document_title),
-            subtitle = resourceProvider.getString(Res.string.issuance_add_document_subtitle),
+            title = UiText.Resource(Res.string.issuance_add_document_title),
+            subtitle = UiText.Resource(Res.string.issuance_add_document_subtitle),
         )
     }
 
@@ -240,7 +238,7 @@ class AddDocumentViewModel(
                                 error = if (deepLinkAction == null) {
                                     ContentErrorConfig(
                                         onRetry = { setEvent(event) },
-                                        errorSubTitle = response.error,
+                                        errorSubTitle = response.error.asUiText(),
                                         onCancel = { setEvent(Event.DismissError) }
                                     )
                                 } else {
@@ -300,7 +298,7 @@ class AddDocumentViewModel(
                             copy(
                                 error = ContentErrorConfig(
                                     onRetry = null,
-                                    errorSubTitle = response.errorMessage,
+                                    errorSubTitle = response.errorMessage.asUiText(),
                                     onCancel = { setEvent(Event.DismissError) }
                                 ),
                                 isLoading = false
@@ -407,8 +405,6 @@ class AddDocumentViewModel(
             Effect.Navigation.SwitchScreen(
                 route = QrScanRoute(
                     QrScanUiConfig(
-                        title = resourceProvider.getString(Res.string.issuance_qr_scan_title),
-                        subTitle = resourceProvider.getString(Res.string.issuance_qr_scan_subtitle),
                         qrScanFlow = QrScanFlow.Issuance(viewState.value.issuanceConfig.flowType)
                     )
                 ),

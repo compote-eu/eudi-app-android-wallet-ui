@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
+import eu.europa.ec.shared.resources.resolve
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isUnspecified
@@ -62,8 +63,8 @@ fun InlineSnackbar(
     modifier: Modifier = Modifier,
     maxMessageLines: Int = 4,
 ) {
-    val message = error.errorTitle
-        ?: error.errorSubTitle
+    val message = error.errorTitle?.resolve()
+        ?: error.errorSubTitle?.resolve()
         ?: stringResource(Res.string.generic_error_message)
     InlineSnackbar(
         message = message,

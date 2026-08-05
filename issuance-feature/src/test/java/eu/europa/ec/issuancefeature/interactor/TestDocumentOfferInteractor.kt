@@ -27,6 +27,8 @@ import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.ResolveDocumentOfferPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_default_name
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.getIssuerName
@@ -51,9 +53,6 @@ import eu.europa.ec.issuancefeature.util.mockedIssuanceErrorMessage
 import eu.europa.ec.issuancefeature.util.mockedOfferTxCodeFourDigits
 import eu.europa.ec.issuancefeature.util.mockedOfferedDocumentDocType
 import eu.europa.ec.issuancefeature.util.mockedOfferedDocumentName
-import eu.europa.ec.issuancefeature.util.mockedPrimaryButtonText
-import eu.europa.ec.issuancefeature.util.mockedSuccessDescription
-import eu.europa.ec.issuancefeature.util.mockedSuccessText
 import eu.europa.ec.issuancefeature.util.mockedTxCode
 import eu.europa.ec.issuancefeature.util.mockedTxCodeFourDigits
 import eu.europa.ec.issuancefeature.util.mockedWalletActivationErrorMessage
@@ -149,6 +148,10 @@ class TestDocumentOfferInteractor {
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
         whenever(resourceProvider.getLocale()).thenReturn(mockedDefaultLocale)
+        // resolveDocumentOffer now substitutes this when the offer names no issuer, so that every
+        // consumer of the name receives something printable.
+        whenever(resourceProvider.getString(Res.string.issuance_document_offer_relying_party_default_name))
+            .thenReturn(mockedDefaultIssuerName)
         whenever(configLogic.forcePidActivation).thenReturn(true)
     }
 
@@ -810,14 +813,6 @@ class TestDocumentOfferInteractor {
     fun `Given Case 5, When issueDocuments is called, Then Case 5 Expected Result is returned`() =
         coroutineRule.runTest {
             // Given
-            whenever(
-                resourceProvider.getString(
-                    Res.string.issuance_document_offer_deferred_success_description,
-                    mockedIssuerName
-                )
-            ).thenReturn(mockedSuccessDescription)
-
-            mockIssuanceDocumentOfferDeferredSuccessStrings()
             mockWalletDocumentsControllerIssueByUriEventEmission(
                 offerUri = mockedUriPath1,
                 event = IssueDocumentsPartialState.DeferredSuccess(
@@ -827,8 +822,11 @@ class TestDocumentOfferInteractor {
 
             val mockedTripleObject = Triple(
                 first = SuccessUIConfig.TextElementsConfig(
-                    text = mockedSuccessText,
-                    description = mockedSuccessDescription,
+                    text = UiText.Resource(Res.string.issuance_document_offer_deferred_success_text),
+                    description = UiText.Resource(
+                        Res.string.issuance_document_offer_deferred_success_description,
+                        mockedIssuerName
+                    ),
                     color = ColorKey.Pending
                 ),
                 second = SuccessUIConfig.ImageConfig(
@@ -836,7 +834,7 @@ class TestDocumentOfferInteractor {
                     tint = ColorKey.Primary,
                     screenPercentageSize = PERCENTAGE_25,
                 ),
-                third = resourceProvider.getString(Res.string.issuance_document_offer_deferred_success_primary_button_text)
+                third = UiText.Resource(Res.string.issuance_document_offer_deferred_success_primary_button_text)
             )
 
             val config = SuccessUIConfig(
@@ -1278,13 +1276,6 @@ class TestDocumentOfferInteractor {
         )
     }
 
-    private fun mockIssuanceDocumentOfferDeferredSuccessStrings() {
-        whenever(resourceProvider.getString(Res.string.issuance_document_offer_deferred_success_text))
-            .thenReturn(mockedSuccessText)
-        whenever(resourceProvider.getString(Res.string.issuance_document_offer_deferred_success_primary_button_text))
-            .thenReturn(mockedPrimaryButtonText)
-    }
-
     private fun mockOffer(
         issuerName: String,
         offeredDocuments: List<Offer.OfferedDocument> = listOf(),
@@ -1357,6 +1348,7 @@ class TestDocumentOfferInteractor {
     //endregion
 
     //region mocked objects
+    private val mockedDefaultIssuerName = "Digital Credentials Issuer"
     private val mockedOfferedDocumentsList = listOf(
         mockOfferedDocument()
     )

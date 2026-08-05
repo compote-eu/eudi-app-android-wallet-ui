@@ -29,6 +29,7 @@ import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.issuance_code_caption
 import eu.europa.ec.shared.resources.issuance_code_title
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
@@ -193,7 +194,7 @@ class DocumentOfferCodeViewModel(
                         copy(
                             isLoading = false,
                             error = ContentErrorConfig(
-                                errorSubTitle = response.errorMessage,
+                                errorSubTitle = response.errorMessage.asUiText(),
                                 onCancel = { setEvent(Event.DismissError) }
                             )
                         )

@@ -35,7 +35,6 @@ import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsBottomSheetConte
 import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsBottomSheetContent.Filters
 import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentUi
 import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute
@@ -43,10 +42,7 @@ import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.shared.navigation.SplashRoute
-import eu.europa.ec.shared.resources.Res
-import eu.europa.ec.shared.resources.dashboard_document_deferred_failed
-import eu.europa.ec.shared.resources.issuance_qr_scan_subtitle
-import eu.europa.ec.shared.resources.issuance_qr_scan_title
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.ModalOptionUi
@@ -164,7 +160,6 @@ sealed class DocumentsBottomSheetContent {
 @KoinViewModel
 class DocumentsViewModel(
     private val interactor: DocumentsInteractor,
-    private val resourceProvider: ResourceProvider,
 ) : MviViewModel<Event, State, Effect>() {
 
     private var retryDeferredDocsJob: Job? = null
@@ -330,7 +325,7 @@ class DocumentsViewModel(
                                     isLoading = false,
                                     error = ContentErrorConfig(
                                         onRetry = { setEvent(event) },
-                                        errorSubTitle = response.error,
+                                        errorSubTitle = response.error.asUiText(),
                                         onCancel = {
                                             setState { copy(error = null) }
                                             setEvent(Event.Pop)
@@ -391,7 +386,7 @@ class DocumentsViewModel(
                 data.copy(
                     documentIssuanceState = DocumentIssuanceStateUi.Failed,
                     uiData = data.uiData.copy(
-                        supportingText = resourceProvider.getString(Res.string.dashboard_document_deferred_failed),
+                        supportingText = interactor.deferredFailedSupportingText,
                         trailingContentData = ListItemTrailingContentDataUi.Icon(
                             iconData = AppIcons.ErrorFilled,
                             tint = ColorKey.Error
@@ -433,7 +428,7 @@ class DocumentsViewModel(
                                 isLoading = false,
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(event) },
-                                    errorSubTitle = response.errorMessage,
+                                    errorSubTitle = response.errorMessage.asUiText(),
                                     onCancel = {
                                         setState { copy(error = null) }
                                     }
@@ -525,7 +520,7 @@ class DocumentsViewModel(
                                 isLoading = false,
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(event) },
-                                    errorSubTitle = response.errorMessage,
+                                    errorSubTitle = response.errorMessage.asUiText(),
                                     onCancel = {
                                         setState {
                                             copy(error = null)
@@ -568,8 +563,6 @@ class DocumentsViewModel(
             Effect.Navigation.SwitchScreen(
                 route = QrScanRoute(
                     config = QrScanUiConfig(
-                        title = resourceProvider.getString(Res.string.issuance_qr_scan_title),
-                        subTitle = resourceProvider.getString(Res.string.issuance_qr_scan_subtitle),
                         qrScanFlow = QrScanFlow.Issuance(
                             issuanceFlowType = IssuanceFlowType.ExtraDocument(
                                 formatType = null

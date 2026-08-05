@@ -44,10 +44,13 @@ import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.generic_success
 import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_description
 import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_text
 import eu.europa.ec.shared.resources.quick_pin_change_success_description
+import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -74,7 +77,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
-import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SuccessScreen(
@@ -175,7 +177,7 @@ private fun SuccessScreenView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = SPACING_SMALL.dp),
-                text = state.successConfig.textElementsConfig.text,
+                text = state.successConfig.textElementsConfig.text.resolve(),
                 style = MaterialTheme.typography.headlineLarge.copy(
                     color = state.successConfig.textElementsConfig.color.toColor()
                 ),
@@ -186,7 +188,7 @@ private fun SuccessScreenView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = SPACING_SMALL.dp),
-                text = state.successConfig.textElementsConfig.description,
+                text = state.successConfig.textElementsConfig.description.resolve(),
                 style = MaterialTheme.typography.bodyLarge.copy(
                     color = MaterialTheme.colorScheme.onSurface
                 ),
@@ -232,7 +234,7 @@ private fun Button(
                     .applyTestTag(TestTag.SuccessScreen.PRIMARY_BUTTON)
                     .fillMaxWidth(),
             ) {
-                ButtonRow(text = config.text)
+                ButtonRow(text = config.text.resolve())
             }
         }
 
@@ -246,7 +248,7 @@ private fun Button(
                     .applyTestTag(TestTag.SuccessScreen.SECONDARY_BUTTON)
                     .fillMaxWidth(),
             ) {
-                ButtonRow(text = config.text)
+                ButtonRow(text = config.text.resolve())
             }
         }
     }
@@ -271,13 +273,13 @@ private fun SuccessDefaultPreview() {
             state = State(
                 successConfig = SuccessUIConfig(
                     textElementsConfig = SuccessUIConfig.TextElementsConfig(
-                        text = stringResource(Res.string.generic_success),
-                        description = stringResource(Res.string.quick_pin_change_success_description),
+                        text = UiText.Resource(Res.string.generic_success),
+                        description = UiText.Resource(Res.string.quick_pin_change_success_description),
                     ),
                     imageConfig = SuccessUIConfig.ImageConfig(),
                     buttonConfig = listOf(
                         SuccessUIConfig.ButtonConfig(
-                            text = "Back",
+                            text = "Back".asUiText(),
                             style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
                             navigation = ConfigNavigation(
                                 navigationType = NavigationType.PopTo(SplashRoute),
@@ -305,8 +307,8 @@ private fun SuccessPendingPreview() {
             state = State(
                 successConfig = SuccessUIConfig(
                     textElementsConfig = SuccessUIConfig.TextElementsConfig(
-                        text = stringResource(Res.string.issuance_add_document_deferred_success_text),
-                        description = stringResource(Res.string.issuance_add_document_deferred_success_description),
+                        text = UiText.Resource(Res.string.issuance_add_document_deferred_success_text),
+                        description = UiText.Resource(Res.string.issuance_add_document_deferred_success_description),
                         color = ColorKey.Pending,
                     ),
                     imageConfig = SuccessUIConfig.ImageConfig(
@@ -316,7 +318,7 @@ private fun SuccessPendingPreview() {
                     ),
                     buttonConfig = listOf(
                         SuccessUIConfig.ButtonConfig(
-                            text = "back",
+                            text = "back".asUiText(),
                             style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
                             navigation = ConfigNavigation(
                                 navigationType = NavigationType.PopTo(SplashRoute),

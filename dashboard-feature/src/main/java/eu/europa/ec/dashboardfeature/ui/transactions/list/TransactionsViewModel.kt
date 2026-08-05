@@ -30,6 +30,7 @@ import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionUi
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.TransactionDetailsRoute
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.uilogic.component.DatePickerDialogConfig
 import eu.europa.ec.uilogic.component.DatePickerDialogType
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
@@ -473,7 +474,7 @@ class TransactionsViewModel(
                                 isLoading = false,
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(event) },
-                                    errorSubTitle = response.error,
+                                    errorSubTitle = response.error.asUiText(),
                                     onCancel = {
                                         setState { copy(error = null) }
                                     }
