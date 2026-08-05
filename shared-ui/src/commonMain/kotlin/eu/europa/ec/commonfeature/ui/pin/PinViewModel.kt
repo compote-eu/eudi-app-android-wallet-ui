@@ -14,6 +14,19 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the fourth feature view-model in commonMain, and the one that carries the app's PIN rules —
+// the enter/re-enter/validate progression, the "PINs do not match" retry, and the lockout countdown are
+// now decided once for both platforms.
+//
+// Getting here needed four contracts lifted rather than any change to this file: `SecurePin` (+ the
+// `SecurePinData` handle) and `PinLockoutState` to :shared-logic, and `QuickPinInteractor` plus the
+// stranded `ScreenNavigateAction` enum to this module. The PIN implementations deliberately stayed
+// Android-side — see the note on `@Synchronized` in :shared-logic's SecurePin.kt. Packages are
+// unchanged, so `PinScreen`, `WrapSecurePinTextField` and the entryProviders are untouched.
+//
+// Note this view-model never sees PIN characters: `SecurePin` reaches it from the screen as an opaque,
+// single-use handle that it forwards to the interactor, which is what lets the whole flow be shared
+// without the PIN itself becoming platform-neutral data.
 package eu.europa.ec.commonfeature.ui.pin
 
 import androidx.lifecycle.viewModelScope
@@ -414,11 +427,15 @@ class PinViewModel(
         }
     }
 
+    private fun Long.pad2(): String = toString().padStart(2, '0')
+
     private fun buildLockoutMessage(remainingMs: Long): UiText {
         val totalSeconds = ((remainingMs + 999L) / 1000L).coerceAtLeast(0L)
         val minutes = totalSeconds / 60L
         val seconds = totalSeconds % 60L
-        val mmss = "%02d:%02d".format(minutes, seconds)
+        // `String.format` is JVM-only; `padStart` is exactly equivalent to "%02d" here, since
+        // `totalSeconds` is coerced non-negative above.
+        val mmss = "${minutes.pad2()}:${seconds.pad2()}"
         return UiText.Resource(
             Res.string.quick_pin_locked_out,
             interactor.maxFailedPinAttempts,

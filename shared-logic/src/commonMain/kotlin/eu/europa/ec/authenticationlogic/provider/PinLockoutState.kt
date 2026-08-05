@@ -14,26 +14,18 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: split out of PinThrottleProvider.kt. `PinViewModel` holds this in its own state (it drives
+// the lockout countdown), so it has to be commonMain for that view-model to move; `PinThrottleProvider`
+// itself stays in :authentication-logic with the storage that backs it. Already KMP — two variants over
+// `kotlin.time.Duration`. Package unchanged.
 package eu.europa.ec.authenticationlogic.provider
 
-interface PinThrottleProvider {
+import kotlin.time.Duration
 
-    /**
-     * Returns the current lockout state, evaluating wall-clock time against persisted values.
-     */
-    suspend fun getState(): PinLockoutState
-
-    /**
-     * Records a failed PIN attempt. If the failure count reaches the configured threshold,
-     * a new lockout is started using the next duration from the configured list.
-     *
-     * @return The resulting [PinLockoutState] after recording the failure.
-     */
-    suspend fun recordFailure(): PinLockoutState
-
-    /**
-     * Clears all throttle state (counters, lockout level, timestamps).
-     * Called after a successful authentication (PIN or biometric).
-     */
-    suspend fun recordSuccess()
+sealed interface PinLockoutState {
+    data object Idle : PinLockoutState
+    data class Active(
+        val remaining: Duration,
+        val total: Duration
+    ) : PinLockoutState
 }

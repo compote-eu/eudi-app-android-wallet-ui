@@ -91,10 +91,6 @@ data class ToolbarConfig(
     val maxVisibleActions: Int = MAX_TOOLBAR_ACTIONS,
 )
 
-enum class ScreenNavigateAction {
-    BACKABLE, CANCELABLE, NONE
-}
-
 enum class ImePaddingConfig {
     NO_PADDING, WITH_BOTTOM_BAR, ONLY_CONTENT
 }

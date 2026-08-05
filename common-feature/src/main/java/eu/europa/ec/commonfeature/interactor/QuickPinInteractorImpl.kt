@@ -29,23 +29,6 @@ import eu.europa.ec.shared.resources.quick_pin_non_match
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-interface QuickPinInteractor {
-    val maxFailedPinAttempts: Int
-
-    fun setPin(newPin: SecurePin, initialPin: SecurePin): Flow<QuickPinInteractorSetPinPartialState>
-
-    fun changePin(
-        newPin: SecurePin
-    ): Flow<QuickPinInteractorSetPinPartialState>
-
-    fun isCurrentPinValid(pin: SecurePin): Flow<QuickPinInteractorPinValidPartialState>
-    suspend fun hasPin(): Boolean
-
-    suspend fun getPinLockoutState(): PinLockoutState
-    suspend fun recordPinFailure(): PinLockoutState
-    suspend fun resetPinThrottle()
-}
-
 class QuickPinInteractorImpl(
     private val pinStorageController: PinStorageController,
     private val resourceProvider: ResourceProvider,
@@ -142,12 +125,3 @@ class QuickPinInteractorImpl(
         }
 }
 
-sealed class QuickPinInteractorSetPinPartialState {
-    data object Success : QuickPinInteractorSetPinPartialState()
-    data class Failed(val errorMessage: String) : QuickPinInteractorSetPinPartialState()
-}
-
-sealed class QuickPinInteractorPinValidPartialState {
-    data object Success : QuickPinInteractorPinValidPartialState()
-    data class Failed(val errorMessage: String) : QuickPinInteractorPinValidPartialState()
-}
