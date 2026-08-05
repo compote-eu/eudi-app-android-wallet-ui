@@ -20,13 +20,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.svg.SvgDecoder
 import eu.europa.ec.uilogic.component.IconDataUi
-import eu.europa.ec.uilogic.component.resourceId
+import eu.europa.ec.uilogic.component.drawableResource
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun WrapAsyncImage(
@@ -53,8 +53,8 @@ fun WrapAsyncImage(
         imageLoader = imageLoader,
         contentDescription = contentDescription,
         contentScale = contentScale,
-        error = error?.resourceId?.let { painterResource(it) },
-        fallback = fallback?.resourceId?.let { painterResource(it) },
-        placeholder = placeholder?.resourceId?.let { painterResource(it) }
+        error = error?.drawableResource?.let { painterResource(it) },
+        fallback = fallback?.drawableResource?.let { painterResource(it) },
+        placeholder = placeholder?.drawableResource?.let { painterResource(it) }
     )
 }

@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
@@ -41,19 +40,20 @@ import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.IconDataUi
 import eu.europa.ec.uilogic.component.contentDescriptionRes
 import eu.europa.ec.uilogic.component.imageVector
-import eu.europa.ec.uilogic.component.resourceId
+import eu.europa.ec.uilogic.component.drawableResource
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.ALPHA_DISABLED
 import eu.europa.ec.uilogic.component.utils.ALPHA_ENABLED
 import eu.europa.ec.uilogic.component.utils.DEFAULT_ICON_SIZE
 import eu.europa.ec.uilogic.extension.throttledClickable
+import org.jetbrains.compose.resources.painterResource
 
 /**
  * Reusable Wrapper Composable to be used instead of plain Icon.
  * If you need control over its enabled/disabled state and/or want it to be clickable consider using [WrapIconButton] instead.
  * @param modifier the [Modifier] to be applied to the Composable.
- * @param iconData The actual data ([IconDataUi]) the Icon has, like its resourceId and its contentDescriptionRes.
+ * @param iconData The actual data ([IconDataUi]) the Icon has, like its drawableResource and its contentDescriptionRes.
  * @param customTint Nullable Color value to be applied as its tint. If null, it will use its default tint Color.
  * @param enabled Whether the icon should be displayed as enabled or disabled. This affects the alpha value of the tint color.
  */
@@ -73,10 +73,10 @@ fun WrapIcon(
     )
     val iconContentDescription = stringResource(iconData.contentDescriptionRes)
 
-    iconData.resourceId?.let { resId ->
+    iconData.drawableResource?.let { drawable ->
         Icon(
             modifier = modifier,
-            painter = painterResource(id = resId),
+            painter = painterResource(drawable),
             tint = iconTint,
             contentDescription = iconContentDescription
         )
@@ -96,7 +96,7 @@ fun WrapIcon(
  * Reusable Wrapper Composable to be used instead of plain IconButton.
  * @param modifier the [Modifier] to be applied to this icon button.
  * DO NOT set the size from the [modifier], instead, use the [size] parameter.
- * @param iconData The actual data ([IconDataUi]) the Icon has, like its resourceId and its contentDescriptionRes.
+ * @param iconData The actual data ([IconDataUi]) the Icon has, like its drawableResource and its contentDescriptionRes.
  * @param customTint Nullable Color value to be applied as its tint. If null, it will use its default tint Color. Default value is null.
  * @param enabled controls the enabled state of this icon button. When `false`, this component will
  * not respond to user input, and it will appear visually disabled and disabled to accessibility

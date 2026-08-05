@@ -23,12 +23,12 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import org.jetbrains.compose.resources.stringResource
 import eu.europa.ec.uilogic.component.IconDataUi
 import eu.europa.ec.uilogic.component.contentDescriptionRes
 import eu.europa.ec.uilogic.component.imageVector
-import eu.europa.ec.uilogic.component.resourceId
+import eu.europa.ec.uilogic.component.drawableResource
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun WrapImage(
@@ -39,10 +39,10 @@ fun WrapImage(
 ) {
     val iconContentDescription = stringResource(iconData.contentDescriptionRes)
 
-    iconData.resourceId?.let { resId ->
+    iconData.drawableResource?.let { drawable ->
         Image(
             modifier = modifier,
-            painter = painterResource(id = resId),
+            painter = painterResource(drawable),
             contentDescription = iconContentDescription,
             colorFilter = colorFilter,
             contentScale = contentScale ?: ContentScale.FillBounds,

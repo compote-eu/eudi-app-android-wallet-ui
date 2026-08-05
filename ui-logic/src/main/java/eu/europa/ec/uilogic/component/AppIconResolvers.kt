@@ -85,83 +85,9 @@ import eu.europa.ec.shared.resources.content_description_wallet_secured_icon
 import eu.europa.ec.shared.resources.content_description_warning_icon
 import org.jetbrains.compose.resources.StringResource
 
-/**
- * Android-side resolvers for [AppIconKey] / [IconDataUi].
- *
- * The pure key/data (enum + [IconDataUi] wrapper + [AppIcons] aliases) lives in :shared-ui
- * commonMain and carries no Android resource references. These extensions reproduce the concrete
- * `R.drawable.*` / `Res.string.*` / `Icons.*` mapping for each key — the same pattern as
- * `ColorKey.toColor()` and friends.
- *
- * Invariant (previously enforced by the enum's `init {}` block): every key must resolve to a
- * non-null [resourceId] or [imageVector]. The exhaustive `when` blocks below make that invariant a
- * compile-time check — a new key with neither a drawable nor an image vector is impossible to add
- * without leaving both branches null, which is caught in review of these resolvers.
- */
-
-@get:DrawableRes
-val AppIconKey.resourceId: Int?
-    get() = when (this) {
-        AppIconKey.ArrowBack -> null
-        AppIconKey.Close -> null
-        AppIconKey.VerticalMore -> R.drawable.ic_more
-        AppIconKey.Warning -> R.drawable.ic_warning
-        AppIconKey.Error -> R.drawable.ic_error
-        AppIconKey.ErrorFilled -> null
-        AppIconKey.Delete -> R.drawable.ic_delete
-        AppIconKey.TouchId -> R.drawable.ic_touch_id
-        AppIconKey.QR -> R.drawable.ic_qr
-        AppIconKey.NFC -> R.drawable.ic_nfc
-        AppIconKey.User -> R.drawable.ic_user
-        AppIconKey.Id -> R.drawable.ic_id
-        AppIconKey.IdStroke -> R.drawable.ic_id_stroke
-        AppIconKey.LogoIcon -> R.drawable.ic_logo_icon
-        AppIconKey.LogoIconAndText -> R.drawable.ic_logo_icon_and_text
-        AppIconKey.KeyboardArrowDown -> null
-        AppIconKey.KeyboardArrowUp -> null
-        AppIconKey.Visibility -> R.drawable.ic_visibility_on
-        AppIconKey.VisibilityOff -> R.drawable.ic_visibility_off
-        AppIconKey.Add -> R.drawable.ic_add
-        AppIconKey.Edit -> R.drawable.ic_edit
-        AppIconKey.Sign -> R.drawable.ic_sign_document
-        AppIconKey.QrScanner -> R.drawable.ic_qr_scanner
-        AppIconKey.Verified -> R.drawable.ic_verified
-        AppIconKey.Message -> R.drawable.ic_message
-        AppIconKey.ClockTimer -> R.drawable.ic_clock_timer
-        AppIconKey.OpenNew -> R.drawable.ic_open_new
-        AppIconKey.KeyboardArrowRight -> null
-        AppIconKey.HandleBar -> R.drawable.ic_handle_bar
-        AppIconKey.Search -> R.drawable.ic_search
-        AppIconKey.PresentDocumentInPerson -> R.drawable.ic_present_document_same_device
-        AppIconKey.PresentDocumentOnline -> R.drawable.ic_present_document_cross_device
-        AppIconKey.AddDocumentFromList -> R.drawable.ic_add_document_from_list
-        AppIconKey.AddDocumentFromQr -> R.drawable.ic_add_document_from_qr
-        AppIconKey.Bookmark -> R.drawable.ic_bookmark
-        AppIconKey.BookmarkFilled -> R.drawable.ic_bookmark_filled
-        AppIconKey.Certified -> R.drawable.ic_certified
-        AppIconKey.Success -> R.drawable.ic_success
-        AppIconKey.Documents -> R.drawable.ic_documents
-        AppIconKey.Download -> R.drawable.ic_download
-        AppIconKey.Filters -> R.drawable.ic_filters
-        AppIconKey.Home -> R.drawable.ic_home
-        AppIconKey.Menu -> R.drawable.ic_menu
-        AppIconKey.Contract -> R.drawable.ic_contract
-        AppIconKey.InProgress -> R.drawable.ic_in_progress
-        AppIconKey.Notifications -> R.drawable.ic_notifications
-        AppIconKey.Transactions -> R.drawable.ic_transactions
-        AppIconKey.WalletActivated -> R.drawable.ic_wallet_activated
-        AppIconKey.WalletSecured -> R.drawable.ic_wallet_secured
-        AppIconKey.Info -> R.drawable.ic_info
-        AppIconKey.IdCards -> R.drawable.ic_authenticate_id_cards
-        AppIconKey.SignDocumentFromDevice -> R.drawable.ic_sign_document_from_device
-        AppIconKey.SignDocumentFromQr -> R.drawable.ic_sign_document_from_qr
-        AppIconKey.ChangePin -> R.drawable.ic_change_pin
-        AppIconKey.Check -> R.drawable.ic_check
-        AppIconKey.OpenInBrowser -> R.drawable.ic_open_in_browser
-        AppIconKey.DateRange -> null
-        AppIconKey.Settings -> R.drawable.ic_settings
-        AppIconKey.BatchIssuanceCounter -> R.drawable.ic_batch_issuance_counter
-    }
+// `AppIconKey.resourceId` is gone: icons now resolve to compose-resources `DrawableResource`s through
+// `AppIconKey.drawableResource` in :shared-ui/commonMain, which serves both platforms. The drawable
+// corpus lives there too, so :resources-logic no longer ships a `res/drawable` directory.
 
 val AppIconKey.contentDescriptionRes: StringResource
     get() = when (this) {
@@ -239,8 +165,6 @@ val AppIconKey.imageVector: ImageVector?
     }
 
 @get:DrawableRes
-val IconDataUi.resourceId: Int?
-    get() = iconKey.resourceId
 
 val IconDataUi.contentDescriptionRes: StringResource
     get() = iconKey.contentDescriptionRes
