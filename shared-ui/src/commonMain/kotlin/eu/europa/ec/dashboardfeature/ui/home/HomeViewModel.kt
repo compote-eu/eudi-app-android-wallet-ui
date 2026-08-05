@@ -14,6 +14,16 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the third feature view-model in commonMain, and the first whose whole job is navigation —
+// every path out of Home (proximity, QR presentation, QR signature, document signing) is now a typed
+// `AppRoute` built here, so iOS gets the routing decisions for free and only has to render the cards.
+//
+// It moved with just one extraction: `ActionCardConfig`, which was co-located with `WrapActionCard` in
+// :ui-logic despite being KMP-clean data. Nothing else was in the way — the Phase-3a string seam had
+// already made the welcome message and both card configs `UiText`, so no `ResourceProvider` is
+// injected, and the BLE state it tracks is plain enums decided by the screen's permission composable
+// rather than any Android type reaching in here. Package unchanged, so `HomeScreen` and the dashboard
+// `entryProvider` are untouched.
 package eu.europa.ec.dashboardfeature.ui.home
 
 import androidx.lifecycle.viewModelScope

@@ -26,22 +26,6 @@ import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-sealed class HomeInteractorGetUserNameViaMainPidDocumentPartialState {
-    data class Success(
-        val userFirstName: String,
-    ) : HomeInteractorGetUserNameViaMainPidDocumentPartialState()
-
-    data class Failure(
-        val error: String
-    ) : HomeInteractorGetUserNameViaMainPidDocumentPartialState()
-}
-
-interface HomeInteractor {
-    fun isBleAvailable(): Boolean
-    fun isBleCentralClientModeEnabled(): Boolean
-    fun getUserNameViaMainPidDocument(): Flow<HomeInteractorGetUserNameViaMainPidDocumentPartialState>
-}
-
 class HomeInteractorImpl(
     private val resourceProvider: ResourceProvider,
     private val walletEngine: WalletEngine,
