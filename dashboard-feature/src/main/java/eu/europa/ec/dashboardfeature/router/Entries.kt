@@ -17,10 +17,10 @@
 // Nav3 Stage 5: this module's contribution to the host's `entryProvider`, replacing
 // `featureDashboardGraph`.
 //
-// Note that `DashboardScreen` keeps its own nested `NavHost` for the three bottom-navigation tabs.
-// That controller is self-contained tab state (with `saveState`/`restoreState` for per-tab
-// preservation) and has no relationship to the app's back stack, so it is untouched here — the
-// dashboard entry simply passes it the app [AppNavigator] for the destinations the tabs navigate to.
+// Note that the three bottom-navigation tabs are not entries here. They are a selection inside
+// `DashboardScreen` (see [eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem]), never
+// destinations on the app's back stack; the dashboard entry simply passes them the app
+// [AppNavigator] for the destinations the tabs navigate to.
 package eu.europa.ec.dashboardfeature.router
 
 import androidx.navigation3.runtime.EntryProviderScope

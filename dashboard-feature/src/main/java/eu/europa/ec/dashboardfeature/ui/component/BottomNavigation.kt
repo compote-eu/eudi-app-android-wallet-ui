@@ -22,82 +22,93 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Modifier
-import org.jetbrains.compose.resources.StringResource
-import org.jetbrains.compose.resources.stringResource
-import androidx.navigation.NavController
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import eu.europa.ec.dashboardfeature.util.TestTag
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.documents_screen_title
+import eu.europa.ec.shared.resources.home_screen_title
+import eu.europa.ec.shared.resources.transactions_screen_title
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.IconDataUi
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
 import eu.europa.ec.uilogic.extension.applyTestTag
-import eu.europa.ec.shared.resources.Res
-import eu.europa.ec.shared.resources.documents_screen_title
-import eu.europa.ec.shared.resources.home_screen_title
-import eu.europa.ec.shared.resources.transactions_screen_title
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
-sealed class BottomNavigationItem(
-    val route: String,
+/**
+ * The dashboard's three bottom-navigation tabs.
+ *
+ * These used to be navigation-compose destinations of a nested `NavHost` (the last user of that
+ * library after the Nav3 cutover). They are not app destinations: they never appeared on the app's
+ * back stack, and — because every tab screen goes through `ContentScreen`, which installs an
+ * unconditional `BackHandler`, deeper in the composition than any nav host's — the tab back stack
+ * was never popped by a back press either. So a tab is just a selection, and [DashboardScreen]
+ * switches on it directly instead of routing to it.
+ *
+ * [id] is a stable identifier, used to build test tags and to key per-tab saved UI state. Its values
+ * are the lowercased former route strings, so the tags they feed are unchanged.
+ */
+enum class BottomNavigationItem(
+    val id: String,
     val titleRes: StringResource,
     val icon: IconDataUi,
 ) {
-    data object Home : BottomNavigationItem(
-        route = "HOME",
+    Home(
+        id = "home",
         titleRes = Res.string.home_screen_title,
-        icon = AppIcons.Home
-    )
-
-    data object Documents : BottomNavigationItem(
-        route = "DOCUMENTS",
+        icon = AppIcons.Home,
+    ),
+    Documents(
+        id = "documents",
         titleRes = Res.string.documents_screen_title,
-        icon = AppIcons.Documents
-    )
-
-    data object Transactions : BottomNavigationItem(
-        route = "TRANSACTIONS",
+        icon = AppIcons.Documents,
+    ),
+    Transactions(
+        id = "transactions",
         titleRes = Res.string.transactions_screen_title,
-        icon = AppIcons.Transactions
-    )
+        icon = AppIcons.Transactions,
+    );
+
+    companion object {
+        /**
+         * Persists the selected tab as its [id] rather than relying on JVM serialization of the enum,
+         * so the state survives configuration change and process death without an Android-only
+         * `Bundle` capability. An unrecognised [id] restores as `null`, which makes `rememberSaveable`
+         * fall back to its initial value.
+         */
+        val Saver: Saver<BottomNavigationItem, String> = Saver(
+            save = { it.id },
+            restore = { id -> entries.firstOrNull { it.id == id } },
+        )
+    }
 }
 
 @Composable
-fun BottomNavigationBar(navController: NavController) {
-    val navItems = listOf(
-        BottomNavigationItem.Home,
-        BottomNavigationItem.Documents,
-        BottomNavigationItem.Transactions,
-    )
-
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
-
+fun BottomNavigationBar(
+    selectedItem: BottomNavigationItem,
+    onItemSelected: (BottomNavigationItem) -> Unit,
+) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
-        navItems.forEach { screen ->
-            val selected = currentDestination?.hierarchy?.any {
-                it.route == screen.route
-            } == true
+        BottomNavigationItem.entries.forEach { item ->
+            val selected = item == selectedItem
 
             NavigationBarItem(
                 modifier = Modifier.applyTestTag(
                     TestTag.DashboardScreen.bottomNavigationItem(
-                        navItem = screen.route.lowercase()
+                        navItem = item.id
                     )
                 ),
                 icon = {
                     WrapIcon(
-                        iconData = screen.icon,
+                        iconData = item.icon,
                     )
                 },
-                label = { Text(text = stringResource(screen.titleRes)) },
+                label = { Text(text = stringResource(item.titleRes)) },
                 colors = NavigationBarItemDefaults.colors()
                     .copy(
                         selectedIndicatorColor = MaterialTheme.colorScheme.primary,
@@ -107,13 +118,7 @@ fun BottomNavigationBar(navController: NavController) {
                 selected = selected,
                 onClick = {
                     if (!selected) {
-                        navController.navigate(screen.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        onItemSelected(item)
                     }
                 }
             )
@@ -125,6 +130,9 @@ fun BottomNavigationBar(navController: NavController) {
 @Composable
 private fun BottomNavigationBarPreview() {
     PreviewTheme {
-        BottomNavigationBar(rememberNavController())
+        BottomNavigationBar(
+            selectedItem = BottomNavigationItem.Home,
+            onItemSelected = {},
+        )
     }
 }

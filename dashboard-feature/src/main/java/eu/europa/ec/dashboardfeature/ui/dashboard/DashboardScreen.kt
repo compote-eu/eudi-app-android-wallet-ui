@@ -18,6 +18,7 @@ package eu.europa.ec.dashboardfeature.ui.dashboard
 
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -32,16 +33,17 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import eu.europa.ec.shared.resources.UiText
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import eu.europa.ec.businesslogic.extension.getParcelableArrayListExtra
 import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
 import eu.europa.ec.corelogic.util.CoreActions
@@ -76,6 +78,9 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.dashboard_bottom_sheet_revoked_document_dialog_subtitle
 import eu.europa.ec.shared.resources.dashboard_bottom_sheet_revoked_document_dialog_title
 
+/** `NavHost`'s default `fadeIn`/`fadeOut` duration, carried over so tab switches look unchanged. */
+private const val TAB_CROSSFADE_DURATION_MS = 700
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun DashboardScreen(
@@ -87,7 +92,14 @@ internal fun DashboardScreen(
 ) {
     val context = LocalContext.current
 
-    val bottomNavigationController = rememberNavController()
+    var selectedTab by rememberSaveable(stateSaver = BottomNavigationItem.Saver) {
+        mutableStateOf(BottomNavigationItem.Home)
+    }
+    // What the nested NavHost's `saveState`/`restoreState` pair used to provide: each tab's
+    // `rememberSaveable`-backed UI state (scroll positions, the documents FAB visibility) is kept
+    // under its own key while the tab is off screen, and handed back when it returns.
+    val tabStateHolder = rememberSaveableStateHolder()
+
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
@@ -96,46 +108,54 @@ internal fun DashboardScreen(
     )
 
     Scaffold(
-        bottomBar = { BottomNavigationBar(bottomNavigationController) }
+        bottomBar = {
+            BottomNavigationBar(
+                selectedItem = selectedTab,
+                onItemSelected = { selectedTab = it },
+            )
+        }
     ) { padding ->
         val paddingValues = PaddingValues(
             bottom = padding.calculateBottomPadding()
         )
 
-        NavHost(
+        // `Crossfade` matches what `NavHost` did by default between destinations: a plain
+        // 700ms fade, with the outgoing tab left composed until it finishes.
+        Crossfade(
+            targetState = selectedTab,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .consumeWindowInsets(paddingValues),
-            navController = bottomNavigationController,
-            startDestination = BottomNavigationItem.Home.route
-        ) {
-            composable(BottomNavigationItem.Home.route) {
-                HomeScreen(
-                    navigator,
-                    homeViewModel,
-                    onDashboardEventSent = { event ->
-                        viewModel.setEvent(event)
-                    }
-                )
-            }
-            composable(BottomNavigationItem.Documents.route) {
-                DocumentsScreen(
-                    navigator,
-                    documentsViewModel,
-                    onDashboardEventSent = { event ->
-                        viewModel.setEvent(event)
-                    }
-                )
-            }
-            composable(BottomNavigationItem.Transactions.route) {
-                TransactionsScreen(
-                    navigator,
-                    transactionsViewModel,
-                    onDashboardEventSent = { event ->
-                        viewModel.setEvent(event)
-                    }
-                )
+            animationSpec = tween(TAB_CROSSFADE_DURATION_MS),
+            label = "bottomNavigationTab",
+        ) { tab ->
+            tabStateHolder.SaveableStateProvider(tab.id) {
+                when (tab) {
+                    BottomNavigationItem.Home -> HomeScreen(
+                        navigator,
+                        homeViewModel,
+                        onDashboardEventSent = { event ->
+                            viewModel.setEvent(event)
+                        }
+                    )
+
+                    BottomNavigationItem.Documents -> DocumentsScreen(
+                        navigator,
+                        documentsViewModel,
+                        onDashboardEventSent = { event ->
+                            viewModel.setEvent(event)
+                        }
+                    )
+
+                    BottomNavigationItem.Transactions -> TransactionsScreen(
+                        navigator,
+                        transactionsViewModel,
+                        onDashboardEventSent = { event ->
+                            viewModel.setEvent(event)
+                        }
+                    )
+                }
             }
         }
 

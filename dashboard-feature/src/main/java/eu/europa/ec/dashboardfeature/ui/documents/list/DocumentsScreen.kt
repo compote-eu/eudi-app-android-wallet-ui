@@ -632,7 +632,7 @@ private fun DocumentsSheetContent(
                     )
                 ),
                 onEventSent = onEventSent,
-                hostTab = BottomNavigationItem.Documents.route.lowercase(),
+                hostTab = BottomNavigationItem.Documents.id,
             )
         }
 

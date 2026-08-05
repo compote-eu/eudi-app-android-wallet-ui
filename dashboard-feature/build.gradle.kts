@@ -32,16 +32,6 @@ moduleConfig {
     module = LibraryModule.DashboardFeature
 }
 
-dependencies {
-    // Legacy navigation-compose survives ONLY for the dashboard's nested bottom-navigation NavHost
-    // (self-contained tab state with saveState/restoreState, unrelated to the app's Nav3 back stack).
-    // App routing is Navigation 3 — see RouterHostImpl.StartFlow. Migrating the tabs off this would
-    // change per-tab back behaviour, so it is deliberately left as a separate follow-up. This is the
-    // only module that still needs it; it used to be added to every Compose module by
-    // AndroidCompose.kt.
-    implementation(libs.androidx.navigation.compose)
-}
-
 excludeFromKoverReport(
     excludedClasses = KoverExclusionRules.DashboardFeature.classes,
     excludedPackages = KoverExclusionRules.DashboardFeature.packages,
