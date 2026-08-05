@@ -246,17 +246,8 @@ class BiometricAuthenticationControllerImpl(
     }
 }
 
-sealed class BiometricsAuthenticate {
-    data object Success : BiometricsAuthenticate()
-    data class Failed(val errorMessage: String) : BiometricsAuthenticate()
-    data object Cancelled : BiometricsAuthenticate()
-}
-
-sealed class BiometricsAvailability {
-    data object CanAuthenticate : BiometricsAvailability()
-    data object NonEnrolled : BiometricsAvailability()
-    data class Failure(val errorMessage: String) : BiometricsAvailability()
-}
+// `BiometricsAuthenticate` and `BiometricsAvailability` moved to :shared-logic/commonMain (same
+// package) so the authenticating view-models could follow. See DeviceAuthenticationTypes.kt there.
 
 data class BiometricPromptData(
     val authenticationResult: AuthenticationResult?,

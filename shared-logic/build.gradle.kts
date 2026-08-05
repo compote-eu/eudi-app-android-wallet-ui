@@ -62,10 +62,13 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
-            // `api`, not implementation: ComponentActivity IS the androidMain `PlatformActivity`
-            // (an actual typealias), so it appears in this module's public Android signatures.
-            // Plain `activity`, never activity-compose — this module stays Compose-UI-free.
+            // `api`, not implementation: these types ARE the androidMain platform handles (actual
+            // typealiases), so they appear in this module's public Android signatures —
+            // ComponentActivity is `PlatformActivity` and BiometricPrompt.CryptoObject is
+            // `PlatformCryptoObject`. Plain `activity`, never activity-compose: this module stays
+            // Compose-UI-free.
             api(libs.androidx.activity)
+            api(libs.androidx.biometric)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

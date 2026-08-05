@@ -14,11 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.corelogic.model
+package eu.europa.ec.shared.platform
 
-import eu.europa.ec.authenticationlogic.model.BiometricCrypto
+import android.content.Context
 
-data class AuthenticationData(
-    val crypto: BiometricCrypto,
-    val onAuthenticationSuccess: () -> Unit
-)
+actual typealias PlatformContext = Context

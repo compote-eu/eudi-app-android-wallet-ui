@@ -86,8 +86,5 @@ class DeviceAuthenticationControllerImpl(
     }
 }
 
-data class DeviceAuthenticationResult(
-    val onAuthenticationSuccess: suspend () -> Unit = {},
-    val onAuthenticationError: () -> Unit = {},
-    val onAuthenticationFailure: () -> Unit = {},
-)
+// `DeviceAuthenticationResult` moved to :shared-logic/commonMain (same package) — view-models
+// construct it directly. See DeviceAuthenticationTypes.kt there.

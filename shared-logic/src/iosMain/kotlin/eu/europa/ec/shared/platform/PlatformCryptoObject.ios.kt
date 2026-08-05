@@ -14,8 +14,10 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.authenticationlogic.model
+package eu.europa.ec.shared.platform
 
-import androidx.biometric.BiometricPrompt
-
-data class BiometricCrypto(val cryptoObject: BiometricPrompt.CryptoObject?)
+/**
+ * Uninhabited until iOS implements biometrics; LocalAuthentication has no direct equivalent, so the
+ * shape is deliberately left open rather than guessed at.
+ */
+actual class PlatformCryptoObject private constructor()
