@@ -27,26 +27,7 @@ import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import kotlinx.coroutines.flow.Flow
 
-interface BiometricInteractor {
-    val maxFailedPinAttempts: Int
-
-    fun getBiometricsAvailability(): BiometricsAvailability
-    suspend fun getBiometricUserSelection(): Boolean
-    suspend fun storeBiometricsUsageDecision(shouldUseBiometrics: Boolean)
-    fun authenticateWithBiometrics(
-        context: Context,
-        notifyOnAuthenticationFailure: Boolean,
-        listener: (BiometricsAuthenticate) -> Unit
-    )
-
-    fun launchBiometricSystemScreen()
-    fun isPinValid(pin: SecurePin): Flow<QuickPinInteractorPinValidPartialState>
-
-    suspend fun getPinLockoutState(): PinLockoutState
-    suspend fun recordPinFailure(): PinLockoutState
-    suspend fun resetPinThrottle()
-}
-
+// Phase 3b: the contract moved to :shared-ui/commonMain (same package).
 class BiometricInteractorImpl(
     private val biometryStorageController: BiometryStorageController,
     private val biometricAuthenticationController: BiometricAuthenticationController,

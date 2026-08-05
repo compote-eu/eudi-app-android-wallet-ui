@@ -16,6 +16,7 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
+import android.content.Intent
 import android.net.Uri
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.businesslogic.config.ConfigLogic
@@ -37,15 +38,7 @@ import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.SwitchDataUi
 
-interface SettingsInteractor : BiometricInteractor {
-    fun getAppVersion(): String
-    fun getChangelogUrl(): String?
-    fun retrieveLogFileUris(): ArrayList<Uri>
-    suspend fun getSettingsItemsUi(changelogUrl: String?): List<SettingsItemUi>
-    suspend fun toggleBiometricsAuthentication()
-    suspend fun toggleShowBatchIssuanceCounter()
-}
-
+// Phase 3b: the contract moved to :shared-ui/commonMain (same package).
 class SettingsInteractorImpl(
     private val biometricInteractor: BiometricInteractor,
     private val configLogic: ConfigLogic,
@@ -59,7 +52,24 @@ class SettingsInteractorImpl(
 
     override fun getChangelogUrl(): String? = configLogic.changelogUrl
 
-    override fun retrieveLogFileUris(): ArrayList<Uri> {
+    /**
+     * Builds the log-sharing intent here rather than in the view-model, which can no longer construct
+     * one: an intent is an opaque `PlatformIntent` in shared code. Returns null when there is nothing
+     * to share, which is the emptiness check the view-model used to perform itself.
+     */
+    override fun getLogShareIntent(): Intent? {
+        val logs = retrieveLogFileUris()
+        if (logs.isEmpty()) return null
+
+        return Intent().apply {
+            action = Intent.ACTION_SEND_MULTIPLE
+            putParcelableArrayListExtra(Intent.EXTRA_STREAM, logs)
+            type = "text/*"
+        }
+    }
+
+    // Not on the shared contract: an ArrayList<Uri> is a platform detail only this implementation needs.
+    fun retrieveLogFileUris(): ArrayList<Uri> {
         return ArrayList(logController.retrieveLogFileUris())
     }
 

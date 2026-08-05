@@ -72,7 +72,9 @@ class TestSettingsInteractor {
     @Mock
     private lateinit var prefKeys: PrefKeys
 
-    private lateinit var interactor: SettingsInteractor
+    // Typed as the implementation: `retrieveLogFileUris` is no longer on the shared contract, being an
+    // ArrayList<Uri>. Everything else here exercises the interface just the same.
+    private lateinit var interactor: SettingsInteractorImpl
 
     private lateinit var closeable: AutoCloseable
 

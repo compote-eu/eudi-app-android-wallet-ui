@@ -14,21 +14,24 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the last view-model freed by the platform-handle layer, and the only one that needed a real
+// refactor rather than a retype. It used to BUILD the log-sharing intent itself, which shared code cannot
+// do — a `PlatformIntent` is opaque — so that construction moved into `SettingsInteractorImpl`, which
+// already owned the log files, behind `getLogShareIntent()`. The host `Context` became a
+// `PlatformContext` and the changelog URL a `String`. Package unchanged, so `SettingsScreen` only had to
+// parse that URL at the point of use.
 package eu.europa.ec.dashboardfeature.ui.settings
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
-import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
+import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
-import eu.europa.ec.shared.resources.settings_intent_chooser_logs_share_title
 import eu.europa.ec.shared.resources.settings_screen_title
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
@@ -53,7 +56,7 @@ sealed class Event : ViewEvent {
     data object LaunchBiometricSystemScreen : Event()
     data class ItemClicked(
         val itemType: SettingsMenuItemType,
-        val context: Context
+        val context: PlatformContext
     ) : Event()
 }
 
@@ -62,10 +65,14 @@ sealed class Effect : ViewSideEffect {
         data object Pop : Navigation()
         data object LaunchBiometricsSystemScreen : Navigation()
 
-        data class OpenUrlExternally(val url: Uri) : Navigation()
+        /**
+         * The URL stays a `String` rather than an `android.net.Uri`; the screen parses it at the
+         * point of use, as with the deep-link effects elsewhere.
+         */
+        data class OpenUrlExternally(val url: String) : Navigation()
     }
 
-    data class ShareLogFile(val intent: Intent) : Effect()
+    data class ShareLogFile(val intent: PlatformIntent) : Effect()
     data class ShowSnackbar(val message: String) : Effect()
 }
 
@@ -127,7 +134,7 @@ class SettingsViewModel(
 
     private fun handleSettingsMenuItemClicked(
         itemType: SettingsMenuItemType,
-        context: Context,
+        context: PlatformContext,
     ) {
         when (itemType) {
             SettingsMenuItemType.BIOMETRICS_AUTHENTICATION -> {
@@ -165,16 +172,11 @@ class SettingsViewModel(
             }
 
             SettingsMenuItemType.RETRIEVE_LOGS -> {
-                val logs = settingsInteractor.retrieveLogFileUris()
-                if (logs.isNotEmpty()) {
+                // The interactor builds the intent: shared code cannot construct a PlatformIntent, and
+                // it returns null when there are no logs — the emptiness check that used to live here.
+                settingsInteractor.getLogShareIntent()?.let { logShareIntent ->
                     setEffect {
-                        Effect.ShareLogFile(
-                            intent = Intent().apply {
-                                action = Intent.ACTION_SEND_MULTIPLE
-                                putParcelableArrayListExtra(Intent.EXTRA_STREAM, logs)
-                                type = "text/*"
-                            },
-                        )
+                        Effect.ShareLogFile(intent = logShareIntent)
                     }
                 }
             }
@@ -184,7 +186,7 @@ class SettingsViewModel(
                 if (changelogUrl != null) {
                     setEffect {
                         Effect.Navigation.OpenUrlExternally(
-                            url = changelogUrl.toUri()
+                            url = changelogUrl
                         )
                     }
                 }
@@ -192,7 +194,7 @@ class SettingsViewModel(
         }
     }
 
-    private fun authenticate(context: Context) {
+    private fun authenticate(context: PlatformContext) {
         settingsInteractor.authenticateWithBiometrics(
             context = context,
             notifyOnAuthenticationFailure = true,

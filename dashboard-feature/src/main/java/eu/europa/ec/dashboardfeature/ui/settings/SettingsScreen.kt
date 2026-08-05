@@ -16,6 +16,7 @@
 
 package eu.europa.ec.dashboardfeature.ui.settings
 
+import androidx.core.net.toUri
 import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,7 +50,6 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.shared.resources.settings_intent_chooser_logs_share_title
 import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
-import eu.europa.ec.shared.resources.settings_screen_title
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
@@ -127,7 +127,7 @@ private fun handleNavigationEffect(
 
         is Effect.Navigation.LaunchBiometricsSystemScreen -> onLaunchBiometricSystemScreen()
 
-        is Effect.Navigation.OpenUrlExternally -> context.openUrl(uri = navigationEffect.url)
+        is Effect.Navigation.OpenUrlExternally -> context.openUrl(uri = navigationEffect.url.toUri())
     }
 }
 
