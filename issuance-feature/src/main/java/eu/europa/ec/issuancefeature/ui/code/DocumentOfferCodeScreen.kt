@@ -44,6 +44,8 @@ import eu.europa.ec.commonfeature.config.OfferCodeUiConfig
 import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.commonfeature.ui.issuance.IssuerPartiallyTrustedSheetContent
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -97,8 +99,8 @@ fun DocumentOfferCodeScreen(
     ) { paddingValues ->
         Content(
             context = context,
-            title = state.screenTitle,
-            subTitle = state.screenSubtitle,
+            title = state.screenTitle.resolve(),
+            subTitle = state.screenSubtitle.resolve(),
             pinInputState = pinInputState,
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
@@ -285,8 +287,8 @@ private fun DocumentOfferCodeScreenEmptyPreview() {
                 isLoading = false,
                 error = null,
                 notifyOnAuthenticationFailure = false,
-                screenTitle = "Demo Issuer requires verification",
-                screenSubtitle = "Type the 5-digit transaction code you received.",
+                screenTitle = UiText.Raw("Demo Issuer requires verification"),
+                screenSubtitle = UiText.Raw("Type the 5-digit transaction code you received."),
                 offerCodeUiConfig = OfferCodeUiConfig(
                     offerUri = "https://offer.uri.com",
                     txCodeLength = 5,

@@ -20,8 +20,12 @@ import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.ClaimItemId
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
+import eu.europa.ec.shared.resources.document_success_header_description
+import eu.europa.ec.shared.resources.document_success_header_description_when_error
+import eu.europa.ec.shared.resources.document_success_relying_party_default_name
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.getMockedFullPid
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
@@ -396,13 +400,13 @@ class TestProximitySuccessInteractor {
 
     //region helper functions
     private fun mockSuccessHeaderStrings() {
-        whenever(resourceProvider.getString(R.string.document_success_header_description_when_error))
+        whenever(resourceProvider.getString(Res.string.document_success_header_description_when_error))
             .thenReturn(mockedErrorDescription)
-        whenever(resourceProvider.getString(R.string.document_success_header_description))
+        whenever(resourceProvider.getString(Res.string.document_success_header_description))
             .thenReturn(mockedNormalDescription)
-        whenever(resourceProvider.getString(R.string.document_success_relying_party_default_name))
+        whenever(resourceProvider.getString(Res.string.document_success_relying_party_default_name))
             .thenReturn(mockedDefaultRelyingPartyName)
-        whenever(resourceProvider.getString(R.string.document_success_collapsed_supporting_text))
+        whenever(resourceProvider.getString(Res.string.document_success_collapsed_supporting_text))
             .thenReturn(mockedDocumentSupportingText)
     }
     //endregion

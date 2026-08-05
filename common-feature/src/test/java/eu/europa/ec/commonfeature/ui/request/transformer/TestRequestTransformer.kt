@@ -32,8 +32,9 @@ import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcData
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.request_collapsed_supporting_text
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.copy
 import eu.europa.ec.testfeature.util.getMockedMdlWithBasicFields
@@ -91,7 +92,7 @@ class TestRequestTransformer {
         // materialising the claim tree; this helper stubs all of them (and getLocale()).
         mockTransformToUiItemsStrings(resourceProvider)
         // Document header's collapsed supporting text (used by transformToUiItems).
-        whenever(resourceProvider.getString(R.string.request_collapsed_supporting_text))
+        whenever(resourceProvider.getString(Res.string.request_collapsed_supporting_text))
             .thenReturn(mockedRequestCollapsedSupportingText)
     }
 

@@ -17,8 +17,10 @@
 package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.dashboard_side_menu_option_change_pin
+import eu.europa.ec.shared.resources.dashboard_side_menu_option_settings
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockResourceProviderStrings
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
@@ -93,9 +95,9 @@ class TestDashboardInteractor {
 
         // Verify that getString was called exactly once per resource ID
         verify(resourceProvider, times(1))
-            .getString(R.string.dashboard_side_menu_option_change_pin)
+            .getString(Res.string.dashboard_side_menu_option_change_pin)
         verify(resourceProvider, times(1))
-            .getString(R.string.dashboard_side_menu_option_settings)
+            .getString(Res.string.dashboard_side_menu_option_settings)
     }
     //endregion
 
@@ -104,8 +106,8 @@ class TestDashboardInteractor {
         mockResourceProviderStrings(
             resourcesProvider,
             listOf(
-                R.string.dashboard_side_menu_option_change_pin to changePinText,
-                R.string.dashboard_side_menu_option_settings to settingsText,
+                Res.string.dashboard_side_menu_option_change_pin to changePinText,
+                Res.string.dashboard_side_menu_option_settings to settingsText,
             )
         )
     }

@@ -18,8 +18,10 @@ package eu.europa.ec.dashboardfeature.ui.transactions.model
 
 import eu.europa.ec.corelogic.model.TransactionLogDataDomain
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
+import eu.europa.ec.shared.resources.transactions_filter_item_status_failed
 
 enum class TransactionStatusUi {
     Completed, Failed;
@@ -27,8 +29,8 @@ enum class TransactionStatusUi {
     companion object {
         fun TransactionStatusUi.toUiText(resourceProvider: ResourceProvider): String {
             return when (this) {
-                Completed -> resourceProvider.getString(R.string.transactions_filter_item_status_completed)
-                Failed -> resourceProvider.getString(R.string.transactions_filter_item_status_failed)
+                Completed -> resourceProvider.getString(Res.string.transactions_filter_item_status_completed)
+                Failed -> resourceProvider.getString(Res.string.transactions_filter_item_status_failed)
             }
         }
     }

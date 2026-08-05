@@ -33,19 +33,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
 import eu.europa.ec.commonfeature.util.TestTag
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.SplashRoute
-import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
-import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.generic_success
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_description
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_text
+import eu.europa.ec.shared.resources.quick_pin_change_success_description
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -56,20 +58,23 @@ import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
 import eu.europa.ec.uilogic.component.utils.SIZE_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
-import eu.europa.ec.uilogic.component.wrap.ColorKey
-import eu.europa.ec.uilogic.component.wrap.toColor
 import eu.europa.ec.uilogic.component.wrap.ButtonType
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.WrapButton
 import eu.europa.ec.uilogic.component.wrap.WrapImage
+import eu.europa.ec.uilogic.component.wrap.toColor
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.cacheUri
+import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
+import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SuccessScreen(
@@ -105,7 +110,7 @@ fun SuccessScreen(
                     }
 
                     is Effect.Navigation.DeepLink -> {
-                        context.cacheUri(navigationEffect.link)
+                        context.cacheUri(navigationEffect.link.toUri())
                         navigationEffect.routeToPop?.let {
                             navigator.popBackStackTo(
                                 route = it,
@@ -266,8 +271,8 @@ private fun SuccessDefaultPreview() {
             state = State(
                 successConfig = SuccessUIConfig(
                     textElementsConfig = SuccessUIConfig.TextElementsConfig(
-                        text = stringResource(R.string.generic_success),
-                        description = stringResource(R.string.quick_pin_change_success_description),
+                        text = stringResource(Res.string.generic_success),
+                        description = stringResource(Res.string.quick_pin_change_success_description),
                     ),
                     imageConfig = SuccessUIConfig.ImageConfig(),
                     buttonConfig = listOf(
@@ -300,8 +305,8 @@ private fun SuccessPendingPreview() {
             state = State(
                 successConfig = SuccessUIConfig(
                     textElementsConfig = SuccessUIConfig.TextElementsConfig(
-                        text = stringResource(R.string.issuance_add_document_deferred_success_text),
-                        description = stringResource(R.string.issuance_add_document_deferred_success_description),
+                        text = stringResource(Res.string.issuance_add_document_deferred_success_text),
+                        description = stringResource(Res.string.issuance_add_document_deferred_success_description),
                         color = ColorKey.Pending,
                     ),
                     imageConfig = SuccessUIConfig.ImageConfig(

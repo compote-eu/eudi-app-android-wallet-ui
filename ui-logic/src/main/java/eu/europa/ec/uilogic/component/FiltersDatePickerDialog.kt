@@ -24,11 +24,13 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
-import eu.europa.ec.resourceslogic.R
+import org.jetbrains.compose.resources.stringResource
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.generic_cancel
+import eu.europa.ec.shared.resources.generic_ok
 
 enum class DatePickerDialogType {
     SelectStartDate, SelectEndDate
@@ -73,12 +75,12 @@ fun FiltersDatePickerDialog(
                     onDismiss()
                 }
             ) {
-                Text(stringResource(R.string.generic_ok))
+                Text(stringResource(Res.string.generic_ok))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.generic_cancel))
+                Text(stringResource(Res.string.generic_cancel))
             }
         }
     ) {

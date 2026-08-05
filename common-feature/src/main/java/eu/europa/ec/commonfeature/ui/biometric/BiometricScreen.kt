@@ -34,7 +34,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.authenticationlogic.secure.SecurePin
@@ -42,9 +41,13 @@ import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.util.TestTag
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.biometric_default_mode_text_above_pin_field
+import eu.europa.ec.shared.resources.loading_biometry_biometrics_enabled_description
+import eu.europa.ec.shared.resources.loading_biometry_biometrics_not_enabled_description
+import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.AppIcons
@@ -77,6 +80,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun BiometricScreen(
@@ -343,7 +347,7 @@ private fun PinFieldLayout(
         onPinLengthChanged = onPinInput,
         onPinComplete = onPinComplete,
         hasError = !state.quickPinError.isNullOrEmpty() || state.isLockedOut,
-        errorMessage = state.lockoutMessage ?: state.quickPinError,
+        errorMessage = state.lockoutMessage?.resolve() ?: state.quickPinError,
         pinWidth = 42.dp,
         focusOnCreate = !state.userBiometricsAreEnabled && !state.isLockedOut,
         shouldHideKeyboardOnCompletion = true,
@@ -362,9 +366,9 @@ private fun PreviewBiometricScreen() {
             state = State(
                 config = BiometricUiConfig(
                     mode = BiometricMode.Default(
-                        descriptionWhenBiometricsEnabled = stringResource(R.string.loading_biometry_biometrics_enabled_description),
-                        descriptionWhenBiometricsNotEnabled = stringResource(R.string.loading_biometry_biometrics_not_enabled_description),
-                        textAbovePin = stringResource(R.string.biometric_default_mode_text_above_pin_field),
+                        descriptionWhenBiometricsEnabled = stringResource(Res.string.loading_biometry_biometrics_enabled_description),
+                        descriptionWhenBiometricsNotEnabled = stringResource(Res.string.loading_biometry_biometrics_not_enabled_description),
+                        textAbovePin = stringResource(Res.string.biometric_default_mode_text_above_pin_field),
                     ),
                     isPreAuthorization = true,
                     onSuccessNavigation = ConfigNavigation(

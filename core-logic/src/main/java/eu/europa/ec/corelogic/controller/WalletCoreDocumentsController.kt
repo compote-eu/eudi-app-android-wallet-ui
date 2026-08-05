@@ -59,7 +59,6 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OfferResult
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.trust.IssuerNotTrustedException
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
@@ -81,6 +80,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.URLDecoder
 import java.util.Locale
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_generic_error
 
 enum class IssuanceMethod {
     OPENID4VCI
@@ -269,7 +270,7 @@ class WalletCoreDocumentsControllerImpl(
         get() = resourceProvider.genericErrorMessage()
 
     private val documentErrorMessage
-        get() = resourceProvider.getString(R.string.issuance_generic_error)
+        get() = resourceProvider.getString(Res.string.issuance_generic_error)
 
     /**
      * A map of [OpenId4VciManager] instances, keyed by their [VciConfig].

@@ -34,14 +34,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.proximityfeature.ui.qr.component.rememberQrBitmapPainter
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -62,6 +61,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.content_description_qr_code_icon
+import eu.europa.ec.shared.resources.proximity_qr_hold_near_reader
+import eu.europa.ec.shared.resources.proximity_qr_subtitle
+import eu.europa.ec.shared.resources.proximity_qr_title
+import eu.europa.ec.shared.resources.proximity_qr_use_nfc
 
 @Composable
 fun ProximityQRScreen(
@@ -143,8 +148,8 @@ private fun Content(
         ) {
             ContentTitle(
                 modifier = Modifier.fillMaxWidth(),
-                title = stringResource(id = R.string.proximity_qr_title),
-                subtitle = stringResource(id = R.string.proximity_qr_subtitle)
+                title = stringResource(Res.string.proximity_qr_title),
+                subtitle = stringResource(Res.string.proximity_qr_subtitle)
             )
 
             Box(
@@ -189,13 +194,13 @@ private fun NFCSection(paddingValues: PaddingValues) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = stringResource(id = R.string.proximity_qr_use_nfc),
+            text = stringResource(Res.string.proximity_qr_use_nfc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
         WrapImage(iconData = AppIcons.NFC)
         Text(
-            text = stringResource(id = R.string.proximity_qr_hold_near_reader),
+            text = stringResource(Res.string.proximity_qr_hold_near_reader),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -215,7 +220,7 @@ private fun QRCode(
                 content = qrCode,
                 size = qrSize
             ),
-            contentDescription = stringResource(id = R.string.content_description_qr_code_icon)
+            contentDescription = stringResource(Res.string.content_description_qr_code_icon)
         )
     }
 }

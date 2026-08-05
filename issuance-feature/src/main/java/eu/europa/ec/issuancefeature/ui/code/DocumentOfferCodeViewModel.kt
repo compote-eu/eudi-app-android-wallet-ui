@@ -25,10 +25,12 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.issuancefeature.di.getOrCreateCredentialOfferScope
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
 import eu.europa.ec.issuancefeature.interactor.IssueDocumentsInteractorPartialState
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.issuance_code_caption
+import eu.europa.ec.shared.resources.issuance_code_title
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.mvi.MviViewModel
@@ -46,8 +48,8 @@ data class State(
     val error: ContentErrorConfig? = null,
     val notifyOnAuthenticationFailure: Boolean = false,
 
-    val screenTitle: String,
-    val screenSubtitle: String,
+    val screenTitle: UiText,
+    val screenSubtitle: UiText,
 
     val isBottomSheetOpen: Boolean = false,
     val bottomSheetClosingInProgress: Boolean = false,
@@ -89,7 +91,6 @@ sealed class DocumentOfferCodeBottomSheetContent {
 
 @KoinViewModel
 class DocumentOfferCodeViewModel(
-    private val resourceProvider: ResourceProvider,
     @InjectedParam private val offerCodeUiConfig: OfferCodeUiConfig,
     documentOfferInteractor: DocumentOfferInteractor? = null
 ) : MviViewModel<Event, State, Effect>() {
@@ -284,13 +285,13 @@ class DocumentOfferCodeViewModel(
         }
     }
 
-    private fun calculateScreenTitle(issuerName: String): String = resourceProvider.getString(
-        R.string.issuance_code_title,
+    private fun calculateScreenTitle(issuerName: String): UiText = UiText.Resource(
+        Res.string.issuance_code_title,
         issuerName
     )
 
-    private fun calculateScreenCaption(txCodeLength: Int): String =
-        resourceProvider.getString(R.string.issuance_code_caption, txCodeLength)
+    private fun calculateScreenCaption(txCodeLength: Int): UiText =
+        UiText.Resource(Res.string.issuance_code_caption, txCodeLength)
 
     private fun hideBottomSheet() {
         setEffect {

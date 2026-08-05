@@ -42,7 +42,6 @@ import eu.europa.ec.dashboardfeature.util.mockedBookmarkId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocData
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker
 import eu.europa.ec.testfeature.util.copy
@@ -85,6 +84,8 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.net.URI
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_details_document_credentials_info_text
 
 class TestDocumentDetailsInteractor {
 
@@ -1563,7 +1564,7 @@ class TestDocumentDetailsInteractor {
             availableCredentials = availableCredentials,
             totalCredentials = totalCredentials,
             title = resourceProvider.getString(
-                R.string.document_details_document_credentials_info_text,
+                Res.string.document_details_document_credentials_info_text,
                 availableCredentials,
                 totalCredentials
             ),

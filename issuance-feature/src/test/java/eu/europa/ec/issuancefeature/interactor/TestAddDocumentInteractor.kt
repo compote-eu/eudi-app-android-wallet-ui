@@ -41,7 +41,6 @@ import eu.europa.ec.issuancefeature.util.mockedScopedDocuments
 import eu.europa.ec.issuancefeature.util.mockedSuccessContentDescription
 import eu.europa.ec.issuancefeature.util.mockedSuccessDescription
 import eu.europa.ec.issuancefeature.util.mockedSuccessText
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.uilogic.component.wrap.ColorKey
@@ -59,7 +58,7 @@ import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
-import eu.europa.ec.uilogic.component.contentDescriptionId
+import eu.europa.ec.uilogic.component.contentDescriptionRes
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
 import junit.framework.TestCase.assertEquals
 import org.junit.After
@@ -73,6 +72,12 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_description
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_primary_button_text
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_text
+import eu.europa.ec.shared.resources.issuance_add_document_no_options
+import eu.europa.ec.shared.resources.issuance_add_document_pid_combined
 
 class TestAddDocumentInteractor {
 
@@ -139,7 +144,7 @@ class TestAddDocumentInteractor {
             )
             mockGetScopedDocumentsResponse(expectedResponse)
 
-            whenever(resourceProvider.getString(R.string.issuance_add_document_pid_combined))
+            whenever(resourceProvider.getString(Res.string.issuance_add_document_pid_combined))
                 .thenReturn(mockedCombinedPid)
 
             // When
@@ -178,7 +183,7 @@ class TestAddDocumentInteractor {
             )
             mockGetScopedDocumentsResponse(expectedResponse)
 
-            whenever(resourceProvider.getString(R.string.issuance_add_document_pid_combined))
+            whenever(resourceProvider.getString(Res.string.issuance_add_document_pid_combined))
                 .thenReturn(mockedCombinedPid)
 
             // When
@@ -943,20 +948,20 @@ class TestAddDocumentInteractor {
         val noDocumentsMsg = "No available documents"
 
         whenever(
-            resourceProvider.getString(R.string.issuance_add_document_no_options)
+            resourceProvider.getString(Res.string.issuance_add_document_no_options)
         ).thenReturn(noDocumentsMsg)
 
         return noDocumentsMsg
     }
 
     private fun mockDocumentIssuanceStrings() {
-        whenever(resourceProvider.getString(R.string.issuance_add_document_deferred_success_text))
+        whenever(resourceProvider.getString(Res.string.issuance_add_document_deferred_success_text))
             .thenReturn(mockedSuccessText)
-        whenever(resourceProvider.getString(R.string.issuance_add_document_deferred_success_primary_button_text))
+        whenever(resourceProvider.getString(Res.string.issuance_add_document_deferred_success_primary_button_text))
             .thenReturn(mockedPrimaryButtonText)
-        whenever(resourceProvider.getString(AppIcons.InProgress.contentDescriptionId))
+        whenever(resourceProvider.getString(AppIcons.InProgress.contentDescriptionRes))
             .thenReturn(mockedSuccessContentDescription)
-        whenever(resourceProvider.getString(R.string.issuance_add_document_deferred_success_description))
+        whenever(resourceProvider.getString(Res.string.issuance_add_document_deferred_success_description))
             .thenReturn(mockedSuccessDescription)
     }
 
@@ -966,8 +971,8 @@ class TestAddDocumentInteractor {
     private val mockedTripleObject by lazy {
         Triple(
             first = SuccessUIConfig.TextElementsConfig(
-                text = resourceProvider.getString(R.string.issuance_add_document_deferred_success_text),
-                description = resourceProvider.getString(R.string.issuance_add_document_deferred_success_description),
+                text = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_text),
+                description = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_description),
                 color = ColorKey.Pending
             ),
             second = SuccessUIConfig.ImageConfig(
@@ -975,7 +980,7 @@ class TestAddDocumentInteractor {
                 tint = ColorKey.Primary,
                 screenPercentageSize = PERCENTAGE_25,
             ),
-            third = resourceProvider.getString(R.string.issuance_add_document_deferred_success_primary_button_text)
+            third = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_primary_button_text)
         )
     }
     //endregion

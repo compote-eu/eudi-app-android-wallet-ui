@@ -14,10 +14,14 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: moved to commonMain — shared verbatim by Android and iOS. Everything it touches was
+// already KMP (SuccessUIConfig, ConfigNavigation/NavigationType, AppRoute/AppRouteCodec, the MVI
+// base); the single Android leaf was `android.net.Uri` in the deep-link effect, now a `String` that
+// the consuming screen parses. The package is unchanged, so `SuccessScreen` and :common-feature's
+// `entryProvider` are untouched, and `@KoinViewModel` is picked up by `SharedUiModule`'s scan
+// instead of `FeatureCommonModule`'s.
 package eu.europa.ec.commonfeature.ui.success
 
-import android.net.Uri
-import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
@@ -53,8 +57,12 @@ sealed class Effect : ViewSideEffect {
 
         data object Pop : Navigation()
 
+        /**
+         * The link stays a `String` rather than an `android.net.Uri`: this view-model lives in
+         * commonMain, and parsing to a platform URI is the consuming screen's job.
+         */
         data class DeepLink(
-            val link: Uri,
+            val link: String,
             val routeToPop: AppRoute?
         ) : Navigation()
     }
@@ -92,7 +100,7 @@ class SuccessViewModel(
             }
 
             is NavigationType.Deeplink -> Effect.Navigation.DeepLink(
-                nav.link.toUri(),
+                nav.link,
                 AppRouteCodec.decode(nav.routeToPop)
             )
 

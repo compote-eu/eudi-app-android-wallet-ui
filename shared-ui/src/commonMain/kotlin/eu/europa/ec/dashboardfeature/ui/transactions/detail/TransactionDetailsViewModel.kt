@@ -14,14 +14,24 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the second feature view-model in commonMain, and the one that proves the Phase-3a string
+// seam end to end — its screen title is a `UiText` resolved by the composable on both platforms, so
+// no resolver is injected and `setInitialState()` stays synchronous.
+//
+// Moving it required the UI model it holds to come along: `ContentErrorConfig`,
+// `ListItemTrailingContentDataUi` and `ExpandableListItemUi` were extracted out of the :ui-logic
+// composable files they were co-located with (they were always KMP-clean data), and the interactor
+// contract split from its Android implementation. Package unchanged, so `TransactionDetailsScreen`
+// and the dashboard `entryProvider` are untouched.
 package eu.europa.ec.dashboardfeature.ui.transactions.detail
 
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorPartialState
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.transaction_details_screen_title
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
@@ -39,7 +49,7 @@ data class State(
     val isLoading: Boolean = false,
     val error: ContentErrorConfig? = null,
 
-    val title: String,
+    val title: UiText = UiText.Resource(Res.string.transaction_details_screen_title),
     val transactionDetailsUi: TransactionDetailsUi? = null,
 ) : ViewState
 
@@ -61,14 +71,13 @@ sealed class Effect : ViewSideEffect {
 }
 
 @KoinViewModel
-internal class TransactionDetailsViewModel(
+// Was `internal` while it lived in :dashboard-feature; now that it is in :shared-ui the screen
+// consumes it across a module boundary.
+class TransactionDetailsViewModel(
     private val interactor: TransactionDetailsInteractor,
-    private val resourceProvider: ResourceProvider,
     @InjectedParam private val transactionId: String,
 ) : MviViewModel<Event, State, Effect>() {
-    override fun setInitialState(): State = State(
-        title = resourceProvider.getString(R.string.transaction_details_screen_title),
-    )
+    override fun setInitialState(): State = State()
 
     override fun handleEvents(event: Event) {
         when (event) {

@@ -34,7 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -46,7 +46,6 @@ import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.commonfeature.ui.issuance.IssuerPartiallyTrustedSheetContent
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.issuancefeature.util.TestTag
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
@@ -87,6 +86,13 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_document_offer_description
+import eu.europa.ec.shared.resources.issuance_document_offer_error_no_document
+import eu.europa.ec.shared.resources.issuance_document_offer_header_main_text
+import eu.europa.ec.shared.resources.issuance_document_offer_primary_button_text_add
+import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_default_name
+import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_description
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,7 +130,7 @@ fun DocumentOfferScreen(
                     )
                 )
             ) {
-                Text(text = stringResource(R.string.issuance_document_offer_primary_button_text_add))
+                Text(text = stringResource(Res.string.issuance_document_offer_primary_button_text_add))
             }
         },
         broadcastAction = BroadcastAction(
@@ -226,7 +232,7 @@ private fun Content(
         if (state.noDocument) {
             ErrorInfo(
                 modifier = Modifier.fillMaxSize(),
-                informativeText = stringResource(id = R.string.issuance_document_offer_error_no_document)
+                informativeText = stringResource(Res.string.issuance_document_offer_error_no_document)
             )
         } else {
             // Screen Main Content
@@ -337,12 +343,12 @@ private fun ContentPreview() {
             ),
             noDocument = false,
             headerConfig = ContentHeaderConfig(
-                description = stringResource(R.string.issuance_document_offer_description),
-                mainText = stringResource(R.string.issuance_document_offer_header_main_text),
+                description = stringResource(Res.string.issuance_document_offer_description),
+                mainText = stringResource(Res.string.issuance_document_offer_header_main_text),
                 relyingPartyData = RelyingPartyDataUi(
                     isVerified = true,
-                    name = stringResource(R.string.issuance_document_offer_relying_party_default_name),
-                    description = stringResource(R.string.issuance_document_offer_relying_party_description)
+                    name = stringResource(Res.string.issuance_document_offer_relying_party_default_name),
+                    description = stringResource(Res.string.issuance_document_offer_relying_party_description)
                 )
             ),
             offerUiConfig = OfferUiConfig(

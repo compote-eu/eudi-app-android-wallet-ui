@@ -30,7 +30,6 @@ import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testfeature.util.getMockedFullDocuments
 import eu.europa.ec.testlogic.extension.runTest
@@ -45,6 +44,10 @@ import org.junit.Test
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.whenever
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.biometric_login_biometrics_enabled_subtitle
+import eu.europa.ec.shared.resources.biometric_login_biometrics_not_enabled_subtitle
+import eu.europa.ec.shared.resources.biometric_login_title
 
 class TestSplashInteractor {
 
@@ -251,11 +254,11 @@ class TestSplashInteractor {
 
     //region helper functions
     private fun mockBiometricLoginStrings() {
-        whenever(resourceProvider.getString(R.string.biometric_login_title))
+        whenever(resourceProvider.getString(Res.string.biometric_login_title))
             .thenReturn(mockedBiometricLoginTitle)
-        whenever(resourceProvider.getString(R.string.biometric_login_biometrics_enabled_subtitle))
+        whenever(resourceProvider.getString(Res.string.biometric_login_biometrics_enabled_subtitle))
             .thenReturn(mockedBiometricLoginSubtitleEnabled)
-        whenever(resourceProvider.getString(R.string.biometric_login_biometrics_not_enabled_subtitle))
+        whenever(resourceProvider.getString(Res.string.biometric_login_biometrics_not_enabled_subtitle))
             .thenReturn(mockedBiometricLoginSubtitleNotEnabled)
     }
 

@@ -32,7 +32,7 @@ import kotlinx.serialization.Serializable
  *
  * KMP-clean: the actual resource / [androidx.compose.ui.graphics.vector.ImageVector] mapping lives
  * in the androidMain resolvers in :ui-logic (`AppIconKey.resourceId`, `AppIconKey.imageVector`,
- * `AppIconKey.contentDescriptionId` and the matching [IconDataUi] extensions) — the same pattern as
+ * `AppIconKey.contentDescriptionRes` and the matching [IconDataUi] extensions) — the same pattern as
  * [eu.europa.ec.uilogic.component.wrap.ColorKey].
  */
 @Stable
@@ -44,7 +44,7 @@ data class IconDataUi(val iconKey: AppIconKey)
  *
  * The enum is the single source of truth for icon assets: callers reference icons by their key,
  * never by raw resource id or `ImageVector`. Each key resolves to either a drawable `resourceId`,
- * an `imageVector`, or both — and a `contentDescriptionId` — through the androidMain resolvers in
+ * an `imageVector`, or both — and a `contentDescriptionRes` — through the androidMain resolvers in
  * :ui-logic. That resolver enforces the invariant that every key has a non-null `resourceId` or
  * `imageVector`; adding a key without either fails its exhaustive `when` at compile time.
  *

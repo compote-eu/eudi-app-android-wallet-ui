@@ -27,8 +27,6 @@ import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuItemUi
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
 import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
@@ -36,6 +34,9 @@ import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.navigation.SettingsRoute
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.dashboard_side_menu_title
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ModalOptionUi
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -55,7 +56,7 @@ data class State(
 
     // side menu
     val isSideMenuVisible: Boolean = false,
-    val sideMenuTitle: String,
+    val sideMenuTitle: UiText = UiText.Resource(Res.string.dashboard_side_menu_title),
     val sideMenuOptions: List<SideMenuItemUi>,
     val sideMenuAnimation: SideMenuAnimation = SideMenuAnimation.SLIDE,
     val menuAnimationDuration: Int = 1500,
@@ -121,8 +122,6 @@ sealed class Effect : ViewSideEffect {
         data class OpenUrlExternally(val url: Uri) : Navigation()
     }
 
-    data class ShareLogFile(val intent: Intent, val chooserTitle: String) : Effect()
-
     data object ShowBottomSheet : Effect()
     data object CloseBottomSheet : Effect()
 }
@@ -140,11 +139,9 @@ enum class SideMenuAnimation {
 @KoinViewModel
 class DashboardViewModel(
     private val dashboardInteractor: DashboardInteractor,
-    private val resourceProvider: ResourceProvider,
 ) : MviViewModel<Event, State, Effect>() {
     override fun setInitialState(): State {
         return State(
-            sideMenuTitle = resourceProvider.getString(R.string.dashboard_side_menu_title),
             sideMenuOptions = dashboardInteractor.getSideMenuOptions(),
         )
     }

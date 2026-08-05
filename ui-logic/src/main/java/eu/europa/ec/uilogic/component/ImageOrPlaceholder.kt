@@ -19,11 +19,12 @@ package eu.europa.ec.uilogic.component
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
-import eu.europa.ec.resourceslogic.R
+import org.jetbrains.compose.resources.stringResource
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.wrap.WrapImage
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.content_description_image_or_placeholder_icon
 
 @Composable
 fun ImageOrPlaceholder(
@@ -36,7 +37,7 @@ fun ImageOrPlaceholder(
         WrapImage(
             modifier = modifier,
             bitmap = rememberBase64DecodedBitmap(base64Image = base64Image),
-            contentDescription = stringResource(id = R.string.content_description_image_or_placeholder_icon),
+            contentDescription = stringResource(Res.string.content_description_image_or_placeholder_icon),
             contentScale = contentScale,
         )
     } else {

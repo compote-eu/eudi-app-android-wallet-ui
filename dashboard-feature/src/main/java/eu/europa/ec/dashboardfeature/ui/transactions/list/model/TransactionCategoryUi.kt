@@ -16,7 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.transactions.list.model
 
-import androidx.annotation.StringRes
 import eu.europa.ec.businesslogic.util.endOfDay
 import eu.europa.ec.businesslogic.util.endOfMonth
 import eu.europa.ec.businesslogic.util.endOfWeek
@@ -24,32 +23,36 @@ import eu.europa.ec.businesslogic.util.monthYearFormatter
 import eu.europa.ec.businesslogic.util.startOfDay
 import eu.europa.ec.businesslogic.util.startOfMonth
 import eu.europa.ec.businesslogic.util.startOfWeek
-import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.transaction_category_month_year
+import eu.europa.ec.shared.resources.transaction_category_this_week
+import eu.europa.ec.shared.resources.transaction_category_today
+import org.jetbrains.compose.resources.StringResource
 import java.time.LocalDateTime
 
 sealed class TransactionCategoryUi(
-    @param:StringRes val stringResId: Int,
+    val nameRes: StringResource,
     val id: Int,
     val order: Int,
     val dateRange: ClosedRange<LocalDateTime>? = null,
     val displayName: String? = null
 ) {
     data object Today : TransactionCategoryUi(
-        stringResId = R.string.transaction_category_today,
+        nameRes = Res.string.transaction_category_today,
         id = 1,
         order = Int.MAX_VALUE,
         dateRange = LocalDateTime.now().startOfDay()..LocalDateTime.now().endOfDay()
     )
 
     data object ThisWeek : TransactionCategoryUi(
-        stringResId = R.string.transaction_category_this_week,
+        nameRes = Res.string.transaction_category_this_week,
         id = 2,
         order = Int.MAX_VALUE - 1,
         dateRange = LocalDateTime.now().startOfWeek()..LocalDateTime.now().endOfWeek()
     )
 
     class Month(dateTime: LocalDateTime) : TransactionCategoryUi(
-        stringResId = R.string.transaction_category_month_year,
+        nameRes = Res.string.transaction_category_month_year,
         id = generateMonthId(dateTime),
         order = calculateMonthOrder(dateTime),
         dateRange = dateTime.startOfMonth()..dateTime.endOfMonth(),

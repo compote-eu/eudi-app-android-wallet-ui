@@ -50,8 +50,8 @@ import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi.C
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionTypeUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionStatusUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionTypeUi
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -64,6 +64,21 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalDateTime
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.transactions_filter_item_no_relying_party_transactions
+import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
+import eu.europa.ec.shared.resources.transactions_filter_item_status_failed
+import eu.europa.ec.shared.resources.transactions_screen_0_minutes_ago_message
+import eu.europa.ec.shared.resources.transactions_screen_filter_by_date_period
+import eu.europa.ec.shared.resources.transactions_screen_filter_by_status
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_relying_party
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_issuance
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_presentation
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_signing
+import eu.europa.ec.shared.resources.transactions_screen_filters_sort_by
+import eu.europa.ec.shared.resources.transactions_screen_filters_sort_transaction_date
+import eu.europa.ec.shared.resources.transactions_screen_some_minutes_ago_message
 
 sealed class TransactionInteractorFilterPartialState {
     data class FilterApplyResult(
@@ -128,6 +143,7 @@ interface TransactionsInteractor {
 
 class TransactionsInteractorImpl(
     private val resourceProvider: ResourceProvider,
+    private val stringResolver: StringResolver,
     private val filterValidator: FilterValidator,
     private val walletCoreDocumentsController: WalletCoreDocumentsController
 ) : TransactionsInteractor {
@@ -337,11 +353,11 @@ class TransactionsInteractorImpl(
             // Filter by Transaction date
             FilterGroup.SingleSelectionFilterGroup(
                 id = TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_GROUP_ID,
-                name = resourceProvider.getString(R.string.transactions_screen_filter_by_date_period),
+                name = resourceProvider.getString(Res.string.transactions_screen_filter_by_date_period),
                 filters = listOf(
                     FilterElement.DateTimeRangeFilterItem(
                         id = TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_RANGE,
-                        name = resourceProvider.getString(R.string.transactions_screen_filter_by_date_period),
+                        name = resourceProvider.getString(Res.string.transactions_screen_filter_by_date_period),
                         selected = true,
                         isDefault = true,
                         startDateTime = LocalDateTime.MIN,
@@ -359,17 +375,17 @@ class TransactionsInteractorImpl(
             // Filter by Status
             FilterGroup.MultipleSelectionFilterGroup(
                 id = TransactionFilterIds.FILTER_BY_STATUS_GROUP_ID,
-                name = resourceProvider.getString(R.string.transactions_screen_filter_by_status),
+                name = resourceProvider.getString(Res.string.transactions_screen_filter_by_status),
                 filters = listOf(
                     FilterItem(
                         id = TransactionFilterIds.FILTER_BY_STATUS_COMPLETE,
-                        name = resourceProvider.getString(R.string.transactions_filter_item_status_completed),
+                        name = resourceProvider.getString(Res.string.transactions_filter_item_status_completed),
                         selected = true,
                         isDefault = true,
                     ),
                     FilterItem(
                         id = TransactionFilterIds.FILTER_BY_STATUS_FAILED,
-                        name = resourceProvider.getString(R.string.transactions_filter_item_status_failed),
+                        name = resourceProvider.getString(Res.string.transactions_filter_item_status_failed),
                         selected = true,
                         isDefault = true,
                     )
@@ -390,7 +406,7 @@ class TransactionsInteractorImpl(
             // Filter by Relying Party
             FilterGroup.MultipleSelectionFilterGroup(
                 id = TransactionFilterIds.FILTER_BY_RELYING_PARTY_GROUP_ID,
-                name = resourceProvider.getString(R.string.transactions_screen_filters_filter_by_relying_party),
+                name = resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_relying_party),
                 filters = emptyList(),
                 filterableAction = FilterMultipleAction<TransactionsFilterableAttributes> { attributes, filter ->
                     // Check if it is the "no relying party" filter
@@ -412,23 +428,23 @@ class TransactionsInteractorImpl(
             // Filter by Transaction Type
             FilterGroup.MultipleSelectionFilterGroup(
                 id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_GROUP_ID,
-                name = resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type),
+                name = resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type),
                 filters = listOf(
                     FilterItem(
                         id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_PRESENTATION,
-                        name = resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_presentation),
+                        name = resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation),
                         selected = true,
                         isDefault = true,
                     ),
                     FilterItem(
                         id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_ISSUANCE,
-                        name = resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_issuance),
+                        name = resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance),
                         selected = true,
                         isDefault = true,
                     ),
                     FilterItem(
                         id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_SIGNING,
-                        name = resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_signing),
+                        name = resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_signing),
                         selected = true,
                         isDefault = true,
                     ),
@@ -454,11 +470,11 @@ class TransactionsInteractorImpl(
         ),
         sort = FilterSort(
             id = TransactionFilterIds.FILTER_SORT_GROUP_ID,
-            name = resourceProvider.getString(R.string.transactions_screen_filters_sort_by),
+            name = resourceProvider.getString(Res.string.transactions_screen_filters_sort_by),
             filters = listOf(
                 FilterItem(
                     id = TransactionFilterIds.FILTER_SORT_TRANSACTION_DATE,
-                    name = resourceProvider.getString(R.string.transactions_screen_filters_sort_transaction_date),
+                    name = resourceProvider.getString(Res.string.transactions_screen_filters_sort_transaction_date),
                     selected = true,
                     isDefault = true,
                     filterableAction = FilterAction.Sort<TransactionsFilterableAttributes, LocalDateTime> { attributes ->
@@ -513,15 +529,21 @@ class TransactionsInteractorImpl(
         }
     }
 
-    private fun LocalDateTime.toFormattedDisplayableDate(): String {
+    /**
+     * `suspend` for the plural branch only: choosing a plural form needs the locale's CLDR
+     * categories, which compose-resources applies during a suspend read — so plurals resolve
+     * through [StringResolver] rather than the synchronous [eu.europa.ec.shared.resources.StringCatalog].
+     * The sole caller already runs inside `flow { }`, so this costs nothing.
+     */
+    private suspend fun LocalDateTime.toFormattedDisplayableDate(): String {
         return runCatching {
             when (val dateTimeState = this.toDateTimeState()) {
                 is TransactionInteractorDateTimeCategoryPartialState.JustNow -> resourceProvider.getString(
-                    R.string.transactions_screen_0_minutes_ago_message
+                    Res.string.transactions_screen_0_minutes_ago_message
                 )
 
-                is TransactionInteractorDateTimeCategoryPartialState.WithinLastHour -> resourceProvider.getQuantityString(
-                    R.plurals.transactions_screen_some_minutes_ago_message,
+                is TransactionInteractorDateTimeCategoryPartialState.WithinLastHour -> stringResolver.resolvePlural(
+                    Res.plurals.transactions_screen_some_minutes_ago_message,
                     dateTimeState.minutes.toInt(),
                     dateTimeState.minutes
                 )
@@ -555,7 +577,7 @@ class TransactionsInteractorImpl(
         return listOf(
             FilterItem(
                 id = TransactionFilterIds.FILTER_BY_RELYING_PARTY_WITHOUT_NAME,
-                name = resourceProvider.getString(R.string.transactions_filter_item_no_relying_party_transactions),
+                name = resourceProvider.getString(Res.string.transactions_filter_item_no_relying_party_transactions),
                 selected = true,
                 isDefault = true,
             )

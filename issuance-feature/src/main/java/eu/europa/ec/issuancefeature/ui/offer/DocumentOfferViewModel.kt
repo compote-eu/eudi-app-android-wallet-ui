@@ -33,7 +33,6 @@ import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
 import eu.europa.ec.issuancefeature.interactor.IssueDocumentsInteractorPartialState
 import eu.europa.ec.issuancefeature.interactor.ResolveDocumentOfferInteractorPartialState
 import eu.europa.ec.issuancefeature.ui.offer.transformer.DocumentOfferTransformer.toListItemDataUiList
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
@@ -57,6 +56,11 @@ import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 import java.net.URI
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_document_offer_description
+import eu.europa.ec.shared.resources.issuance_document_offer_header_main_text
+import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_default_name
+import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_description
 
 data class State(
     val offerUiConfig: OfferUiConfig,
@@ -174,7 +178,7 @@ class DocumentOfferViewModel(
                     context = event.context,
                     offerUri = viewState.value.offerUiConfig.offerUri,
                     issuerName = viewState.value.headerConfig.relyingPartyData?.name.ifEmptyOrNull(
-                        default = resourceProvider.getString(R.string.issuance_document_offer_relying_party_default_name)
+                        default = resourceProvider.getString(Res.string.issuance_document_offer_relying_party_default_name)
                     ),
                     onSuccessNavigation = viewState.value.offerUiConfig.onSuccessNavigation,
                     txCodeLength = viewState.value.txCodeLength
@@ -328,12 +332,12 @@ class DocumentOfferViewModel(
 
     private fun getInitialHeaderConfig(): ContentHeaderConfig {
         return ContentHeaderConfig(
-            description = resourceProvider.getString(R.string.issuance_document_offer_description),
-            mainText = resourceProvider.getString(R.string.issuance_document_offer_header_main_text),
+            description = resourceProvider.getString(Res.string.issuance_document_offer_description),
+            mainText = resourceProvider.getString(Res.string.issuance_document_offer_header_main_text),
             relyingPartyData = RelyingPartyDataUi(
                 isVerified = false,
-                name = resourceProvider.getString(R.string.issuance_document_offer_relying_party_default_name),
-                description = resourceProvider.getString(R.string.issuance_document_offer_relying_party_description)
+                name = resourceProvider.getString(Res.string.issuance_document_offer_relying_party_default_name),
+                description = resourceProvider.getString(Res.string.issuance_document_offer_relying_party_description)
             )
         )
     }
@@ -346,7 +350,7 @@ class DocumentOfferViewModel(
             logo = issuerLogo?.toString(),
             isVerified = false,
             name = issuerName,
-            description = resourceProvider.getString(R.string.issuance_document_offer_relying_party_description)
+            description = resourceProvider.getString(Res.string.issuance_document_offer_relying_party_description)
         )
     }
 

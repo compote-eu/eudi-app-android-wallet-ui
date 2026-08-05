@@ -29,12 +29,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.dashboardfeature.ui.document_sign.model.DocumentSignButtonUi
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_sign_select_document
+import eu.europa.ec.shared.resources.document_sign_subtitle
+import eu.europa.ec.shared.resources.document_sign_title
+import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -53,6 +56,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun DocumentSignScreen(
@@ -99,8 +103,8 @@ private fun Content(
             .padding(paddingValues)
     ) {
         ContentTitle(
-            title = state.title,
-            subtitle = state.subtitle,
+            title = state.title.resolve(),
+            subtitle = state.subtitle.resolve(),
         )
 
         VSpacer.Medium()
@@ -155,13 +159,11 @@ private fun DocumentSignScreenPreview() {
     PreviewTheme {
         Content(
             state = State(
-                title = stringResource(R.string.document_sign_title),
-                subtitle = stringResource(R.string.document_sign_subtitle),
                 buttonUi = DocumentSignButtonUi(
                     data = ListItemDataUi(
                         itemId = "0",
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = stringResource(R.string.document_sign_select_document),
+                            text = stringResource(Res.string.document_sign_select_document),
                         ),
                         trailingContentData = ListItemTrailingContentDataUi.Icon(
                             iconData = AppIcons.Add

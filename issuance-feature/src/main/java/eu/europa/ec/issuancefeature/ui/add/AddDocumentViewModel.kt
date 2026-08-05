@@ -33,7 +33,6 @@ import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorIssueDocumentsPartialState
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorScopedPartialState
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute
@@ -42,6 +41,11 @@ import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.QrScanRoute
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_add_document_subtitle
+import eu.europa.ec.shared.resources.issuance_add_document_title
+import eu.europa.ec.shared.resources.issuance_qr_scan_subtitle
+import eu.europa.ec.shared.resources.issuance_qr_scan_title
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -125,8 +129,8 @@ class AddDocumentViewModel(
             issuanceConfig = issuanceConfig,
             navigatableAction = getNavigatableAction(issuanceConfig.flowType),
             onBackAction = getOnBackAction(issuanceConfig.flowType),
-            title = resourceProvider.getString(R.string.issuance_add_document_title),
-            subtitle = resourceProvider.getString(R.string.issuance_add_document_subtitle),
+            title = resourceProvider.getString(Res.string.issuance_add_document_title),
+            subtitle = resourceProvider.getString(Res.string.issuance_add_document_subtitle),
         )
     }
 
@@ -403,8 +407,8 @@ class AddDocumentViewModel(
             Effect.Navigation.SwitchScreen(
                 route = QrScanRoute(
                     QrScanUiConfig(
-                        title = resourceProvider.getString(R.string.issuance_qr_scan_title),
-                        subTitle = resourceProvider.getString(R.string.issuance_qr_scan_subtitle),
+                        title = resourceProvider.getString(Res.string.issuance_qr_scan_title),
+                        subTitle = resourceProvider.getString(Res.string.issuance_qr_scan_subtitle),
                         qrScanFlow = QrScanFlow.Issuance(viewState.value.issuanceConfig.flowType)
                     )
                 ),

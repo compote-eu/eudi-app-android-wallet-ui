@@ -24,8 +24,12 @@ import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
+import eu.europa.ec.shared.resources.settings_screen_option_changelog
+import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
+import eu.europa.ec.shared.resources.settings_screen_option_show_batch_issuance_counter
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
@@ -70,7 +74,7 @@ class SettingsInteractorImpl(
                         data = ListItemDataUi(
                             itemId = SettingsMenuItemType.BIOMETRICS_AUTHENTICATION.itemId,
                             mainContentData = ListItemMainContentDataUi.Text(
-                                text = resourceProvider.getString(R.string.settings_screen_option_biometrics_authentication)
+                                text = resourceProvider.getString(Res.string.settings_screen_option_biometrics_authentication)
                             ),
                             leadingContentData = ListItemLeadingContentDataUi.Icon(
                                 iconData = AppIcons.TouchId
@@ -92,7 +96,7 @@ class SettingsInteractorImpl(
                     data = ListItemDataUi(
                         itemId = SettingsMenuItemType.SHOW_BATCH_ISSUANCE_COUNTER.itemId,
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(R.string.settings_screen_option_show_batch_issuance_counter)
+                            text = resourceProvider.getString(Res.string.settings_screen_option_show_batch_issuance_counter)
                         ),
                         leadingContentData = ListItemLeadingContentDataUi.Icon(
                             iconData = AppIcons.BatchIssuanceCounter
@@ -113,7 +117,7 @@ class SettingsInteractorImpl(
                     data = ListItemDataUi(
                         itemId = SettingsMenuItemType.RETRIEVE_LOGS.itemId,
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(R.string.settings_screen_option_retrieve_logs)
+                            text = resourceProvider.getString(Res.string.settings_screen_option_retrieve_logs)
                         ),
                         leadingContentData = ListItemLeadingContentDataUi.Icon(
                             iconData = AppIcons.OpenNew
@@ -132,7 +136,7 @@ class SettingsInteractorImpl(
                         data = ListItemDataUi(
                             itemId = SettingsMenuItemType.CHANGELOG.itemId,
                             mainContentData = ListItemMainContentDataUi.Text(
-                                text = resourceProvider.getString(R.string.settings_screen_option_changelog)
+                                text = resourceProvider.getString(Res.string.settings_screen_option_changelog)
                             ),
                             leadingContentData = ListItemLeadingContentDataUi.Icon(
                                 iconData = AppIcons.OpenInBrowser

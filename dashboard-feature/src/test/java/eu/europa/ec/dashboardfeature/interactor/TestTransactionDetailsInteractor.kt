@@ -28,7 +28,6 @@ import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedClaim
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.mockedDefaultLocale
@@ -55,6 +54,13 @@ import org.mockito.kotlin.whenever
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.Locale
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.transaction_details_collapsed_supporting_text
+import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
+import eu.europa.ec.shared.resources.transactions_filter_item_status_failed
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_issuance
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_presentation
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_signing
 
 class TestTransactionDetailsInteractor {
 
@@ -562,17 +568,17 @@ class TestTransactionDetailsInteractor {
 
     //region helper functions
     private fun mockTransactionDetailsStrings() {
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_issuance))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance))
             .thenReturn(mockedIssuanceLabel)
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_presentation))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation))
             .thenReturn(mockedPresentationLabel)
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_signing))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_signing))
             .thenReturn(mockedSigningLabel)
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_status_completed))
+        whenever(resourceProvider.getString(Res.string.transactions_filter_item_status_completed))
             .thenReturn(mockedCompletedLabel)
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_status_failed))
+        whenever(resourceProvider.getString(Res.string.transactions_filter_item_status_failed))
             .thenReturn(mockedFailedLabel)
-        whenever(resourceProvider.getString(R.string.transaction_details_collapsed_supporting_text))
+        whenever(resourceProvider.getString(Res.string.transaction_details_collapsed_supporting_text))
             .thenReturn(mockedTransactionDetailsSupportingText)
     }
     //endregion

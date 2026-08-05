@@ -32,11 +32,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.commonfeature.util.TestTag
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -58,6 +57,8 @@ import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_success_sticky_button_text
 
 @Composable
 fun DocumentSuccessScreen(
@@ -85,7 +86,7 @@ fun DocumentSuccessScreen(
                     )
                 )
             ) {
-                Text(text = stringResource(R.string.document_success_sticky_button_text))
+                Text(text = stringResource(Res.string.document_success_sticky_button_text))
             }
         },
         navigatableAction = ScreenNavigateAction.NONE,

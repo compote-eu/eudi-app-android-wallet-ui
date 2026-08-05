@@ -28,11 +28,6 @@ import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.SPACING_EXTRA_SMALL
 
-data class SwitchDataUi(
-    val isChecked: Boolean,
-    val enabled: Boolean = true,
-)
-
 @Composable
 fun WrapSwitch(
     switchData: SwitchDataUi,

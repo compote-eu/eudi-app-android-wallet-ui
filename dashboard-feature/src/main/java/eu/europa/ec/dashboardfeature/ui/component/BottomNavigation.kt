@@ -16,7 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.component
 
-import androidx.annotation.StringRes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -25,41 +24,45 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import eu.europa.ec.dashboardfeature.util.TestTag
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.IconDataUi
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
 import eu.europa.ec.uilogic.extension.applyTestTag
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.documents_screen_title
+import eu.europa.ec.shared.resources.home_screen_title
+import eu.europa.ec.shared.resources.transactions_screen_title
 
 sealed class BottomNavigationItem(
     val route: String,
-    @param:StringRes val titleRes: Int,
+    val titleRes: StringResource,
     val icon: IconDataUi,
 ) {
     data object Home : BottomNavigationItem(
         route = "HOME",
-        titleRes = R.string.home_screen_title,
+        titleRes = Res.string.home_screen_title,
         icon = AppIcons.Home
     )
 
     data object Documents : BottomNavigationItem(
         route = "DOCUMENTS",
-        titleRes = R.string.documents_screen_title,
+        titleRes = Res.string.documents_screen_title,
         icon = AppIcons.Documents
     )
 
     data object Transactions : BottomNavigationItem(
         route = "TRANSACTIONS",
-        titleRes = R.string.transactions_screen_title,
+        titleRes = Res.string.transactions_screen_title,
         icon = AppIcons.Transactions
     )
 }

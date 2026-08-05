@@ -18,8 +18,10 @@ package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuItemUi
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.dashboard_side_menu_option_change_pin
+import eu.europa.ec.shared.resources.dashboard_side_menu_option_settings
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
@@ -42,7 +44,7 @@ class DashboardInteractorImpl(
                     data = ListItemDataUi(
                         itemId = SideMenuTypeUi.CHANGE_PIN.itemId,
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(R.string.dashboard_side_menu_option_change_pin)
+                            text = resourceProvider.getString(Res.string.dashboard_side_menu_option_change_pin)
                         ),
                         leadingContentData = ListItemLeadingContentDataUi.Icon(
                             iconData = AppIcons.ChangePin
@@ -60,7 +62,7 @@ class DashboardInteractorImpl(
                     data = ListItemDataUi(
                         itemId = SideMenuTypeUi.SETTINGS.itemId,
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(R.string.dashboard_side_menu_option_settings)
+                            text = resourceProvider.getString(Res.string.dashboard_side_menu_option_settings)
                         ),
                         leadingContentData = ListItemLeadingContentDataUi.Icon(
                             iconData = AppIcons.Settings

@@ -31,7 +31,6 @@ import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.navigation.SuccessRoute
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
@@ -46,6 +45,24 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.quick_pin_change_enter_new_subtitle
+import eu.europa.ec.shared.resources.quick_pin_change_reenter_new_subtitle
+import eu.europa.ec.shared.resources.quick_pin_change_success_btn
+import eu.europa.ec.shared.resources.quick_pin_change_success_description
+import eu.europa.ec.shared.resources.quick_pin_change_success_text
+import eu.europa.ec.shared.resources.quick_pin_change_title
+import eu.europa.ec.shared.resources.quick_pin_change_validate_current_subtitle
+import eu.europa.ec.shared.resources.quick_pin_create_enter_pin_input_label
+import eu.europa.ec.shared.resources.quick_pin_create_reenter_pin_input_label
+import eu.europa.ec.shared.resources.quick_pin_create_subtitle
+import eu.europa.ec.shared.resources.quick_pin_create_success_btn
+import eu.europa.ec.shared.resources.quick_pin_create_success_description
+import eu.europa.ec.shared.resources.quick_pin_create_success_no_activation_btn
+import eu.europa.ec.shared.resources.quick_pin_create_success_no_activation_description
+import eu.europa.ec.shared.resources.quick_pin_create_success_text
+import eu.europa.ec.shared.resources.quick_pin_create_title
+import eu.europa.ec.shared.resources.quick_pin_locked_out
 
 enum class PinValidationState {
     ENTER,
@@ -130,16 +147,16 @@ class PinViewModel(
 
         when (pinFlow) {
             PinFlow.CREATE_WITH_ACTIVATION, PinFlow.CREATE_WITHOUT_ACTIVATION -> {
-                title = resourceProvider.getString(R.string.quick_pin_create_title)
-                subtitle = resourceProvider.getString(R.string.quick_pin_create_subtitle)
+                title = resourceProvider.getString(Res.string.quick_pin_create_title)
+                subtitle = resourceProvider.getString(Res.string.quick_pin_create_subtitle)
                 pinState = PinValidationState.ENTER
                 pinInputLabel = calculatePinInputLabel(pinState)
             }
 
             PinFlow.UPDATE -> {
-                title = resourceProvider.getString(R.string.quick_pin_change_title)
+                title = resourceProvider.getString(Res.string.quick_pin_change_title)
                 subtitle =
-                    resourceProvider.getString(R.string.quick_pin_change_validate_current_subtitle)
+                    resourceProvider.getString(Res.string.quick_pin_change_validate_current_subtitle)
                 pinState = PinValidationState.VALIDATE
                 pinInputLabel = calculatePinInputLabel(pinState)
             }
@@ -396,7 +413,7 @@ class PinViewModel(
         val seconds = totalSeconds % 60L
         val mmss = "%02d:%02d".format(minutes, seconds)
         return resourceProvider.getString(
-            R.string.quick_pin_locked_out,
+            Res.string.quick_pin_locked_out,
             interactor.maxFailedPinAttempts,
             mmss
         )
@@ -406,15 +423,15 @@ class PinViewModel(
         return when (pinFlow) {
             PinFlow.UPDATE -> {
                 when (pinState) {
-                    PinValidationState.ENTER -> resourceProvider.getString(R.string.quick_pin_change_enter_new_subtitle)
-                    PinValidationState.REENTER -> resourceProvider.getString(R.string.quick_pin_change_reenter_new_subtitle)
-                    PinValidationState.VALIDATE -> resourceProvider.getString(R.string.quick_pin_change_validate_current_subtitle)
+                    PinValidationState.ENTER -> resourceProvider.getString(Res.string.quick_pin_change_enter_new_subtitle)
+                    PinValidationState.REENTER -> resourceProvider.getString(Res.string.quick_pin_change_reenter_new_subtitle)
+                    PinValidationState.VALIDATE -> resourceProvider.getString(Res.string.quick_pin_change_validate_current_subtitle)
                 }
             }
 
             PinFlow.CREATE_WITH_ACTIVATION,
             PinFlow.CREATE_WITHOUT_ACTIVATION -> {
-                resourceProvider.getString(R.string.quick_pin_create_subtitle)
+                resourceProvider.getString(Res.string.quick_pin_create_subtitle)
             }
         }
     }
@@ -424,8 +441,8 @@ class PinViewModel(
             PinFlow.CREATE_WITHOUT_ACTIVATION,
             PinFlow.CREATE_WITH_ACTIVATION -> {
                 when (pinState) {
-                    PinValidationState.ENTER -> resourceProvider.getString(R.string.quick_pin_create_enter_pin_input_label)
-                    PinValidationState.REENTER -> resourceProvider.getString(R.string.quick_pin_create_reenter_pin_input_label)
+                    PinValidationState.ENTER -> resourceProvider.getString(Res.string.quick_pin_create_enter_pin_input_label)
+                    PinValidationState.REENTER -> resourceProvider.getString(Res.string.quick_pin_create_reenter_pin_input_label)
                     PinValidationState.VALIDATE -> null
                 }
             }
@@ -471,18 +488,18 @@ class PinViewModel(
                 textElementsConfig = SuccessUIConfig.TextElementsConfig(
                     text = when (pinFlow) {
                         PinFlow.CREATE_WITH_ACTIVATION, PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
-                            R.string.quick_pin_create_success_text
+                            Res.string.quick_pin_create_success_text
                         )
 
-                        PinFlow.UPDATE -> resourceProvider.getString(R.string.quick_pin_change_success_text)
+                        PinFlow.UPDATE -> resourceProvider.getString(Res.string.quick_pin_change_success_text)
                     },
                     description = when (pinFlow) {
-                        PinFlow.CREATE_WITH_ACTIVATION -> resourceProvider.getString(R.string.quick_pin_create_success_description)
+                        PinFlow.CREATE_WITH_ACTIVATION -> resourceProvider.getString(Res.string.quick_pin_create_success_description)
                         PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
-                            R.string.quick_pin_create_success_no_activation_description
+                            Res.string.quick_pin_create_success_no_activation_description
                         )
 
-                        PinFlow.UPDATE -> resourceProvider.getString(R.string.quick_pin_change_success_description)
+                        PinFlow.UPDATE -> resourceProvider.getString(Res.string.quick_pin_change_success_description)
                     }
                 ),
                 imageConfig = when (pinFlow) {
@@ -499,14 +516,14 @@ class PinViewModel(
                     SuccessUIConfig.ButtonConfig(
                         text = when (pinFlow) {
                             PinFlow.CREATE_WITH_ACTIVATION -> resourceProvider.getString(
-                                R.string.quick_pin_create_success_btn
+                                Res.string.quick_pin_create_success_btn
                             )
 
                             PinFlow.CREATE_WITHOUT_ACTIVATION -> resourceProvider.getString(
-                                R.string.quick_pin_create_success_no_activation_btn
+                                Res.string.quick_pin_create_success_no_activation_btn
                             )
 
-                            PinFlow.UPDATE -> resourceProvider.getString(R.string.quick_pin_change_success_btn)
+                            PinFlow.UPDATE -> resourceProvider.getString(Res.string.quick_pin_change_success_btn)
                         },
                         style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
                         navigation = when (pinFlow) {

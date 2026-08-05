@@ -39,7 +39,6 @@ import eu.europa.ec.eudi.openid4vci.TxCodeInputMode
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.issuancefeature.ui.offer.model.DocumentOfferUi
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.navigation.AppRoute
@@ -52,6 +51,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import java.net.URI
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_description
+import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_primary_button_text
+import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_text
+import eu.europa.ec.shared.resources.issuance_document_offer_error_invalid_txcode_format
+import eu.europa.ec.shared.resources.issuance_document_offer_error_missing_pid_text
 
 sealed class ResolveDocumentOfferInteractorPartialState {
     data class Success(
@@ -168,7 +173,7 @@ class DocumentOfferInteractorImpl(
                                 if ((length !in codeMinLength..codeMaxLength) || inputMode == TxCodeInputMode.TEXT) {
                                     return@map ResolveDocumentOfferInteractorPartialState.Failure(
                                         errorMessage = resourceProvider.getString(
-                                            R.string.issuance_document_offer_error_invalid_txcode_format,
+                                            Res.string.issuance_document_offer_error_invalid_txcode_format,
                                             codeMinLength,
                                             codeMaxLength
                                         )
@@ -200,7 +205,7 @@ class DocumentOfferInteractorImpl(
                             } else {
                                 ResolveDocumentOfferInteractorPartialState.Failure(
                                     errorMessage = resourceProvider.getString(
-                                        R.string.issuance_document_offer_error_missing_pid_text
+                                        Res.string.issuance_document_offer_error_missing_pid_text
                                     )
                                 )
                             }
@@ -266,7 +271,7 @@ class DocumentOfferInteractorImpl(
                             IssueDocumentsInteractorPartialState.DeferredSuccess(
                                 successRoute = buildGenericSuccessRouteForDeferred(
                                     description = resourceProvider.getString(
-                                        R.string.issuance_document_offer_deferred_success_description,
+                                        Res.string.issuance_document_offer_deferred_success_description,
                                         issuerName
                                     ),
                                     navigation = navigation
@@ -331,7 +336,7 @@ class DocumentOfferInteractorImpl(
     ): SuccessUIConfig {
         val (textElementsConfig, imageConfig, buttonText) = Triple(
             first = SuccessUIConfig.TextElementsConfig(
-                text = resourceProvider.getString(R.string.issuance_document_offer_deferred_success_text),
+                text = resourceProvider.getString(Res.string.issuance_document_offer_deferred_success_text),
                 description = description,
                 color = ColorKey.Pending
             ),
@@ -342,7 +347,7 @@ class DocumentOfferInteractorImpl(
                 tint = ColorKey.Primary,
                 screenPercentageSize = PERCENTAGE_25,
             ),
-            third = resourceProvider.getString(R.string.issuance_document_offer_deferred_success_primary_button_text)
+            third = resourceProvider.getString(Res.string.issuance_document_offer_deferred_success_primary_button_text)
         )
 
         return SuccessUIConfig(

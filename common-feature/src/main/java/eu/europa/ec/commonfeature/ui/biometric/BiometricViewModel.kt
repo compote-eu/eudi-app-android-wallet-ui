@@ -27,10 +27,11 @@ import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorPinValidPartialState
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.quick_pin_locked_out
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
@@ -68,7 +69,7 @@ data class State(
     val notifyOnAuthenticationFailure: Boolean = true,
     val quickPinSize: Int = 6,
     val isLockedOut: Boolean = false,
-    val lockoutMessage: String? = null
+    val lockoutMessage: UiText? = null
 ) : ViewState
 
 sealed class Effect : ViewSideEffect {
@@ -98,7 +99,6 @@ sealed class Effect : ViewSideEffect {
 @KoinViewModel
 class BiometricViewModel(
     private val biometricInteractor: BiometricInteractor,
-    private val resourceProvider: ResourceProvider,
     @InjectedParam private val config: BiometricUiConfig
 ) : MviViewModel<Event, State, Effect>() {
 
@@ -325,13 +325,13 @@ class BiometricViewModel(
         }
     }
 
-    private fun buildLockoutMessage(remainingMs: Long): String {
+    private fun buildLockoutMessage(remainingMs: Long): UiText {
         val totalSeconds = ((remainingMs + 999L) / 1000L).coerceAtLeast(0L)
         val minutes = totalSeconds / 60L
         val seconds = totalSeconds % 60L
         val mmss = "%02d:%02d".format(minutes, seconds)
-        return resourceProvider.getString(
-            R.string.quick_pin_locked_out,
+        return UiText.Resource(
+            Res.string.quick_pin_locked_out,
             biometricInteractor.maxFailedPinAttempts,
             mmss
         )

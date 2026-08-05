@@ -30,8 +30,9 @@ import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsDo
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_details_document_credentials_info_text
 
 object DocumentDetailsTransformer {
 
@@ -95,7 +96,7 @@ object DocumentDetailsTransformer {
             availableCredentials = availableCredentials,
             totalCredentials = totalCredentials,
             title = resourceProvider.getString(
-                R.string.document_details_document_credentials_info_text,
+                Res.string.document_details_document_credentials_info_text,
                 availableCredentials,
                 totalCredentials
             )

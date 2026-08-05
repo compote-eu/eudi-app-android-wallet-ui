@@ -23,14 +23,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.VSpacer
 import eu.europa.ec.uilogic.extension.optionalTestTag
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.proximity_qr_subtitle
+import eu.europa.ec.shared.resources.proximity_qr_title
 
 @Composable
 fun ContentTitle(
@@ -80,8 +82,8 @@ private fun ContentTitlePreview() {
     PreviewTheme {
         ContentTitle(
             modifier = Modifier.fillMaxWidth(),
-            title = stringResource(id = R.string.proximity_qr_title),
-            subtitle = stringResource(id = R.string.proximity_qr_subtitle)
+            title = stringResource(Res.string.proximity_qr_title),
+            subtitle = stringResource(Res.string.proximity_qr_subtitle)
         )
     }
 }
@@ -92,7 +94,7 @@ private fun ContentTitleNoSubtitlePreview() {
     PreviewTheme {
         ContentTitle(
             modifier = Modifier.fillMaxWidth(),
-            title = stringResource(id = R.string.proximity_qr_title),
+            title = stringResource(Res.string.proximity_qr_title),
             subtitle = null
         )
     }

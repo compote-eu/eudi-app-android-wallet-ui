@@ -17,22 +17,32 @@
 package eu.europa.ec.testfeature.util
 
 import androidx.annotation.VisibleForTesting
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_details_boolean_item_false_readable_value
+import eu.europa.ec.shared.resources.document_details_boolean_item_true_readable_value
+import eu.europa.ec.shared.resources.document_details_document_credentials_info_text
+import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
+import eu.europa.ec.shared.resources.issuance_success_header_issuer_default_name
+import eu.europa.ec.shared.resources.request_gender_female
+import eu.europa.ec.shared.resources.request_gender_male
+import eu.europa.ec.shared.resources.request_gender_not_applicable
+import eu.europa.ec.shared.resources.request_gender_not_known
+import org.jetbrains.compose.resources.StringResource
 import org.mockito.kotlin.whenever
 
 @VisibleForTesting(otherwise = VisibleForTesting.Companion.NONE)
 object StringResourceProviderMocker {
 
     /**
-     * Mocks ResourceProvider.getString(...) for each (resId → returnValue) pair.
+     * Mocks ResourceProvider.getString(...) for each (resource → returnValue) pair.
      */
     fun mockResourceProviderStrings(
         resourceProvider: ResourceProvider,
-        pairs: List<Pair<Int, String>>,
+        pairs: List<Pair<StringResource, String>>,
     ) {
-        pairs.forEach { (resId, returnValue) ->
-            whenever(resourceProvider.getString(resId)).thenReturn(returnValue)
+        pairs.forEach { (resource, returnValue) ->
+            whenever(resourceProvider.getString(resource)).thenReturn(returnValue)
         }
     }
 
@@ -57,7 +67,7 @@ object StringResourceProviderMocker {
     ) {
         whenever(
             resourceProvider.getString(
-                R.string.document_details_document_credentials_info_text,
+                Res.string.document_details_document_credentials_info_text,
                 availableCredentials,
                 totalCredentials
             )
@@ -70,8 +80,8 @@ object StringResourceProviderMocker {
 
     fun mockCreateKeyValueStrings(resourceProvider: ResourceProvider) {
         val mockedStrings = listOf(
-            R.string.document_details_boolean_item_true_readable_value to "yes",
-            R.string.document_details_boolean_item_false_readable_value to "no",
+            Res.string.document_details_boolean_item_true_readable_value to "yes",
+            Res.string.document_details_boolean_item_false_readable_value to "no",
         )
 
         mockResourceProviderStrings(resourceProvider, mockedStrings)
@@ -80,10 +90,10 @@ object StringResourceProviderMocker {
 
     fun mockGetGenderValueStrings(resourceProvider: ResourceProvider) {
         val mockedStrings = listOf(
-            R.string.request_gender_male to "Male",
-            R.string.request_gender_female to "Female",
-            R.string.request_gender_not_known to "Not known",
-            R.string.request_gender_not_applicable to "Not applicable",
+            Res.string.request_gender_male to "Male",
+            Res.string.request_gender_female to "Female",
+            Res.string.request_gender_not_known to "Not known",
+            Res.string.request_gender_not_applicable to "Not applicable",
         )
 
         mockResourceProviderStrings(resourceProvider, mockedStrings)
@@ -102,7 +112,7 @@ object StringResourceProviderMocker {
         resourceProvider: ResourceProvider,
         name: String
     ) {
-        whenever(resourceProvider.getString(R.string.issuance_success_header_issuer_default_name))
+        whenever(resourceProvider.getString(Res.string.issuance_success_header_issuer_default_name))
             .thenReturn(name)
     }
 
@@ -110,7 +120,7 @@ object StringResourceProviderMocker {
         resourceProvider: ResourceProvider,
         supportingText: String,
     ) {
-        whenever(resourceProvider.getString(R.string.document_success_collapsed_supporting_text))
+        whenever(resourceProvider.getString(Res.string.document_success_collapsed_supporting_text))
             .thenReturn(supportingText)
     }
 }

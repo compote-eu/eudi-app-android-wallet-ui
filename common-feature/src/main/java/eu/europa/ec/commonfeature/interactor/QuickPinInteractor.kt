@@ -22,8 +22,10 @@ import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleControlle
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.businesslogic.extension.safeAsync
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.quick_pin_invalid_error
+import eu.europa.ec.shared.resources.quick_pin_non_match
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -80,7 +82,7 @@ class QuickPinInteractorImpl(
                 if (!initialPin.contentEquals(newPin)) {
                     emit(
                         QuickPinInteractorSetPinPartialState.Failed(
-                            resourceProvider.getString(R.string.quick_pin_non_match)
+                            resourceProvider.getString(Res.string.quick_pin_non_match)
                         )
                     )
                     return@flow
@@ -126,7 +128,7 @@ class QuickPinInteractorImpl(
                     emit(
                         QuickPinInteractorPinValidPartialState.Failed(
                             resourceProvider.getString(
-                                R.string.quick_pin_invalid_error
+                                Res.string.quick_pin_invalid_error
                             )
                         )
                     )

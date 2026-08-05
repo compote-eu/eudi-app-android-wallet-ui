@@ -40,7 +40,6 @@ import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -51,37 +50,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import java.util.Locale
-
-sealed class TransactionDetailsInteractorPartialState {
-    data class Success(
-        val transactionDetailsUi: TransactionDetailsUi,
-    ) : TransactionDetailsInteractorPartialState()
-
-    data class Failure(val error: String) : TransactionDetailsInteractorPartialState()
-}
-
-sealed class TransactionDetailsInteractorRequestDataDeletionPartialState {
-    data object Success : TransactionDetailsInteractorRequestDataDeletionPartialState()
-    data class Failure(
-        val errorMessage: String
-    ) : TransactionDetailsInteractorRequestDataDeletionPartialState()
-}
-
-sealed class TransactionDetailsInteractorReportSuspiciousTransactionPartialState {
-    data object Success : TransactionDetailsInteractorReportSuspiciousTransactionPartialState()
-    data class Failure(
-        val errorMessage: String
-    ) : TransactionDetailsInteractorReportSuspiciousTransactionPartialState()
-}
-
-interface TransactionDetailsInteractor {
-    fun getTransactionDetails(
-        transactionId: String
-    ): Flow<TransactionDetailsInteractorPartialState>
-
-    fun requestDataDeletion(transactionId: String): Flow<TransactionDetailsInteractorRequestDataDeletionPartialState>
-    fun reportSuspiciousTransaction(transactionId: String): Flow<TransactionDetailsInteractorReportSuspiciousTransactionPartialState>
-}
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.transaction_details_collapsed_supporting_text
 
 class TransactionDetailsInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
@@ -118,7 +88,7 @@ class TransactionDetailsInteractorImpl(
                             relyingPartyData = transaction.relyingParty
 
                             dataShared = transaction.documents.toGroupedNestedClaims(
-                                documentSupportingText = resourceProvider.getString(R.string.transaction_details_collapsed_supporting_text),
+                                documentSupportingText = resourceProvider.getString(Res.string.transaction_details_collapsed_supporting_text),
                                 itemIdentifierPrefix = TRANSACTION_DETAILS_DATA_SHARED_ITEM_ID_PREFIX,
                                 userLocale = userLocale,
                                 resourceProvider = resourceProvider,
@@ -215,7 +185,6 @@ class TransactionDetailsInteractorImpl(
                         },
                         type = claimType,
                     )
-
 
                     createKeyValue(
                         item = safePresentedClaimValue,

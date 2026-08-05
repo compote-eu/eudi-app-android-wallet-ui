@@ -20,8 +20,10 @@ import android.content.Context
 import android.net.Uri
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
 import eu.europa.ec.dashboardfeature.ui.document_sign.model.DocumentSignButtonUi
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.document_sign_subtitle
+import eu.europa.ec.shared.resources.document_sign_title
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
@@ -32,8 +34,8 @@ import org.koin.core.annotation.KoinViewModel
 data class State(
     val isLoading: Boolean = false,
     val error: ContentErrorConfig? = null,
-    val title: String,
-    val subtitle: String,
+    val title: UiText = UiText.Resource(Res.string.document_sign_title),
+    val subtitle: UiText = UiText.Resource(Res.string.document_sign_subtitle),
     val buttonUi: DocumentSignButtonUi
 ) : ViewState
 
@@ -54,12 +56,9 @@ sealed class Effect : ViewSideEffect {
 @KoinViewModel
 class DocumentSignViewModel(
     private val documentSignInteractor: DocumentSignInteractor,
-    private val resourceProvider: ResourceProvider,
 ) : MviViewModel<Event, State, Effect>() {
 
     override fun setInitialState(): State = State(
-        title = resourceProvider.getString(R.string.document_sign_title),
-        subtitle = resourceProvider.getString(R.string.document_sign_subtitle),
         buttonUi = documentSignInteractor.getItemUi(),
     )
 

@@ -55,7 +55,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -69,7 +69,6 @@ import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionFilte
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
 import eu.europa.ec.eudi.rqesui.domain.util.safeLet
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
@@ -110,6 +109,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.transactions_screen_filters_apply
+import eu.europa.ec.shared.resources.transactions_screen_filters_date_from
+import eu.europa.ec.shared.resources.transactions_screen_filters_date_to
+import eu.europa.ec.shared.resources.transactions_screen_filters_reset
+import eu.europa.ec.shared.resources.transactions_screen_filters_title
+import eu.europa.ec.shared.resources.transactions_screen_search_label
+import eu.europa.ec.shared.resources.transactions_screen_search_no_results
+import eu.europa.ec.shared.resources.transactions_screen_text_field_date_pattern
+import eu.europa.ec.shared.resources.transactions_screen_title
 
 typealias DashboardEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event
 typealias OpenSideMenuEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event.SideMenu.Open
@@ -243,7 +252,7 @@ private fun Content(
         ) {
             item {
                 val searchItemUi =
-                    SearchItemUi(searchLabel = stringResource(R.string.transactions_screen_search_label))
+                    SearchItemUi(searchLabel = stringResource(Res.string.transactions_screen_search_label))
                 FiltersSearchBar(
                     placeholder = searchItemUi.searchLabel,
                     onValueChange = { onEventSend(Event.OnSearchQueryChanged(it)) },
@@ -349,7 +358,7 @@ private fun TransactionCategory(
     ) {
         SectionTitle(
             modifier = Modifier.fillMaxWidth(),
-            text = category.displayName ?: stringResource(category.stringResId)
+            text = category.displayName ?: stringResource(category.nameRes)
         )
 
         val transactionMap = remember(key1 = transactions) {
@@ -401,7 +410,7 @@ private fun NoResults(
             item = ListItemDataUi(
                 itemId = TRANSACTIONS_NO_RESULTS_ITEM_ID,
                 mainContentData = ListItemMainContentDataUi.Text(
-                    text = stringResource(R.string.transactions_screen_search_no_results)
+                    text = stringResource(Res.string.transactions_screen_search_no_results)
                 ),
             ),
             onItemClick = null,
@@ -435,7 +444,7 @@ private fun TopBar(
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.headlineMedium,
-            text = stringResource(R.string.transactions_screen_title)
+            text = stringResource(Res.string.transactions_screen_title)
         )
     }
 }
@@ -452,7 +461,7 @@ private fun TransactionsSheetContent(
             GenericBottomSheet(
                 titleContent = {
                     Text(
-                        text = stringResource(R.string.transactions_screen_filters_title),
+                        text = stringResource(Res.string.transactions_screen_filters_title),
                         style = MaterialTheme.typography.headlineSmall
                     )
                 },
@@ -501,14 +510,14 @@ private fun TransactionsSheetContent(
                                                 ) {
                                                     FiltersDatePickerField(
                                                         dialogType = DatePickerDialogType.SelectStartDate,
-                                                        selectDateLabel = stringResource(R.string.transactions_screen_filters_date_from),
+                                                        selectDateLabel = stringResource(Res.string.transactions_screen_filters_date_from),
                                                         displayedSelectedDate = snapshotFilterDateRangeData.displayedStartDate,
                                                         onEventSent = onEventSent
                                                     )
 
                                                     FiltersDatePickerField(
                                                         dialogType = DatePickerDialogType.SelectEndDate,
-                                                        selectDateLabel = stringResource(R.string.transactions_screen_filters_date_to),
+                                                        selectDateLabel = stringResource(Res.string.transactions_screen_filters_date_to),
                                                         displayedSelectedDate = snapshotFilterDateRangeData.displayedEndDate,
                                                         onEventSent = onEventSent
                                                     )
@@ -567,7 +576,7 @@ private fun TransactionsSheetContent(
                                     }
                                 )
                             ) {
-                                Text(text = stringResource(R.string.transactions_screen_filters_reset))
+                                Text(text = stringResource(Res.string.transactions_screen_filters_reset))
                             }
                             HSpacer.Small()
                             WrapButton(
@@ -579,7 +588,7 @@ private fun TransactionsSheetContent(
                                     }
                                 )
                             ) {
-                                Text(text = stringResource(R.string.transactions_screen_filters_apply))
+                                Text(text = stringResource(Res.string.transactions_screen_filters_apply))
                             }
                         }
                     }
@@ -602,7 +611,7 @@ fun FiltersDatePickerField(
         value = displayedSelectedDate,
         onValueChange = {},
         label = { Text(selectDateLabel) },
-        placeholder = { Text(stringResource(R.string.transactions_screen_text_field_date_pattern)) },
+        placeholder = { Text(stringResource(Res.string.transactions_screen_text_field_date_pattern)) },
         trailingIcon = { WrapIcon(AppIcons.DateRange) },
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,

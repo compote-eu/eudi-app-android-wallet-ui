@@ -35,13 +35,19 @@ import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.detail.transformer.DocumentDetailsTransformer.transformToDocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.SplashRoute
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_details_bottom_sheet_badge_subtitle
+import eu.europa.ec.shared.resources.document_details_bottom_sheet_badge_title
+import eu.europa.ec.shared.resources.document_details_bottom_sheet_bookmark_info_message
+import eu.europa.ec.shared.resources.document_details_bottom_sheet_bookmark_info_title
+import eu.europa.ec.shared.resources.document_details_bottom_sheet_bookmark_removed_info_message
+import eu.europa.ec.shared.resources.document_details_bottom_sheet_bookmark_removed_info_title
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
@@ -481,22 +487,22 @@ class DocumentDetailsViewModel(
 
     private fun getBookmarkStoredBottomSheetTextData(): BottomSheetTextDataUi {
         return BottomSheetTextDataUi(
-            title = resourceProvider.getString(R.string.document_details_bottom_sheet_bookmark_info_title),
-            message = resourceProvider.getString(R.string.document_details_bottom_sheet_bookmark_info_message)
+            title = resourceProvider.getString(Res.string.document_details_bottom_sheet_bookmark_info_title),
+            message = resourceProvider.getString(Res.string.document_details_bottom_sheet_bookmark_info_message)
         )
     }
 
     private fun getBookmarkRemovedBottomSheetTextData(): BottomSheetTextDataUi {
         return BottomSheetTextDataUi(
-            title = resourceProvider.getString(R.string.document_details_bottom_sheet_bookmark_removed_info_title),
-            message = resourceProvider.getString(R.string.document_details_bottom_sheet_bookmark_removed_info_message)
+            title = resourceProvider.getString(Res.string.document_details_bottom_sheet_bookmark_removed_info_title),
+            message = resourceProvider.getString(Res.string.document_details_bottom_sheet_bookmark_removed_info_message)
         )
     }
 
     private fun getTrustedRelyingPartyBottomSheetTextData(): BottomSheetTextDataUi {
         return BottomSheetTextDataUi(
-            title = resourceProvider.getString(R.string.document_details_bottom_sheet_badge_title),
-            message = resourceProvider.getString(R.string.document_details_bottom_sheet_badge_subtitle)
+            title = resourceProvider.getString(Res.string.document_details_bottom_sheet_badge_title),
+            message = resourceProvider.getString(Res.string.document_details_bottom_sheet_badge_subtitle)
         )
     }
 

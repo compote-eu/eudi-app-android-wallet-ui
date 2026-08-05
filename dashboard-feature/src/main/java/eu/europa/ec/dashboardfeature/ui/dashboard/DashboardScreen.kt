@@ -35,7 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,7 +54,6 @@ import eu.europa.ec.dashboardfeature.ui.home.HomeScreen
 import eu.europa.ec.dashboardfeature.ui.home.HomeViewModel
 import eu.europa.ec.dashboardfeature.ui.transactions.list.TransactionsScreen
 import eu.europa.ec.dashboardfeature.ui.transactions.list.TransactionsViewModel
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.SystemBroadcastReceiver
 import eu.europa.ec.uilogic.component.utils.LifecycleEffect
@@ -73,6 +72,9 @@ import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_revoked_document_dialog_subtitle
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_revoked_document_dialog_title
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -203,12 +205,6 @@ internal fun DashboardScreen(
                     viewModel.setEvent(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
                 }
 
-                is Effect.ShareLogFile -> {
-                    context.openIntentChooser(
-                        effect.intent,
-                        effect.chooserTitle
-                    )
-                }
             }
         }.collect()
     }
@@ -277,10 +273,10 @@ private fun DashboardSheetContent(
             BottomSheetWithOptionsList(
                 textData = BottomSheetTextDataUi(
                     title = stringResource(
-                        id = R.string.dashboard_bottom_sheet_revoked_document_dialog_title
+                        Res.string.dashboard_bottom_sheet_revoked_document_dialog_title
                     ),
                     message = stringResource(
-                        id = R.string.dashboard_bottom_sheet_revoked_document_dialog_subtitle
+                        Res.string.dashboard_bottom_sheet_revoked_document_dialog_subtitle
                     ),
                 ),
                 options = sheetContent.options,

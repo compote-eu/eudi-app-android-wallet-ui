@@ -25,8 +25,12 @@ import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.dashboardfeature.util.mockedChangeLogUrl
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
+import eu.europa.ec.shared.resources.settings_screen_option_changelog
+import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
+import eu.europa.ec.shared.resources.settings_screen_option_show_batch_issuance_counter
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockResourceProviderStrings
 import eu.europa.ec.testfeature.util.mockedUriPath1
 import eu.europa.ec.testfeature.util.mockedUriPath2
@@ -465,8 +469,8 @@ class TestSettingsInteractor {
         mockResourceProviderStrings(
             resourcesProvider,
             listOf(
-                R.string.settings_screen_option_retrieve_logs to retrieveLogsText,
-                R.string.settings_screen_option_show_batch_issuance_counter to showBatchIssuanceCounterText,
+                Res.string.settings_screen_option_retrieve_logs to retrieveLogsText,
+                Res.string.settings_screen_option_show_batch_issuance_counter to showBatchIssuanceCounterText,
             )
         )
 
@@ -474,7 +478,7 @@ class TestSettingsInteractor {
             mockResourceProviderStrings(
                 resourcesProvider,
                 listOf(
-                    R.string.settings_screen_option_biometrics_authentication to biometricsAuthenticationText,
+                    Res.string.settings_screen_option_biometrics_authentication to biometricsAuthenticationText,
                 )
             )
         }
@@ -483,7 +487,7 @@ class TestSettingsInteractor {
             mockResourceProviderStrings(
                 resourcesProvider,
                 listOf(
-                    R.string.settings_screen_option_changelog to changelogText,
+                    Res.string.settings_screen_option_changelog to changelogText,
                 )
             )
         }

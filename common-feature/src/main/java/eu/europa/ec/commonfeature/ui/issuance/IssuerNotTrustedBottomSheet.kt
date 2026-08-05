@@ -18,14 +18,17 @@ package eu.europa.ec.commonfeature.ui.issuance
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
-import eu.europa.ec.resourceslogic.R
+import org.jetbrains.compose.resources.stringResource
 import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
 import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_blocked_bottom_sheet_message
+import eu.europa.ec.shared.resources.issuance_blocked_bottom_sheet_primary_button_text
+import eu.europa.ec.shared.resources.issuance_blocked_bottom_sheet_title
 
 @Composable
 fun IssuerNotTrustedSheetContent(
@@ -33,9 +36,9 @@ fun IssuerNotTrustedSheetContent(
 ) {
     DialogBottomSheet(
         textData = BottomSheetTextDataUi(
-            title = stringResource(id = R.string.issuance_blocked_bottom_sheet_title),
-            message = stringResource(id = R.string.issuance_blocked_bottom_sheet_message),
-            positiveButtonText = stringResource(id = R.string.issuance_blocked_bottom_sheet_primary_button_text),
+            title = stringResource(Res.string.issuance_blocked_bottom_sheet_title),
+            message = stringResource(Res.string.issuance_blocked_bottom_sheet_message),
+            positiveButtonText = stringResource(Res.string.issuance_blocked_bottom_sheet_primary_button_text),
         ),
         leadingIcon = AppIcons.Warning,
         leadingIconTint = MaterialTheme.colorScheme.warning,

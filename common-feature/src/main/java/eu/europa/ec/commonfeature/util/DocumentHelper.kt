@@ -34,8 +34,14 @@ import eu.europa.ec.eudi.wallet.document.format.DocumentClaim
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocClaim
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcClaim
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_details_boolean_item_false_readable_value
+import eu.europa.ec.shared.resources.document_details_boolean_item_true_readable_value
+import eu.europa.ec.shared.resources.request_gender_female
+import eu.europa.ec.shared.resources.request_gender_male
+import eu.europa.ec.shared.resources.request_gender_not_applicable
+import eu.europa.ec.shared.resources.request_gender_not_known
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -74,19 +80,19 @@ private fun keyIsGender(key: String): Boolean {
 private fun getGenderValue(value: String, resourceProvider: ResourceProvider): String =
     when (value) {
         "0" -> {
-            resourceProvider.getString(R.string.request_gender_not_known)
+            resourceProvider.getString(Res.string.request_gender_not_known)
         }
 
         "1" -> {
-            resourceProvider.getString(R.string.request_gender_male)
+            resourceProvider.getString(Res.string.request_gender_male)
         }
 
         "2" -> {
-            resourceProvider.getString(R.string.request_gender_female)
+            resourceProvider.getString(Res.string.request_gender_female)
         }
 
         "9" -> {
-            resourceProvider.getString(R.string.request_gender_not_applicable)
+            resourceProvider.getString(Res.string.request_gender_not_applicable)
         }
 
         else -> {
@@ -275,10 +281,10 @@ fun createKeyValue(
                 keyIsUserPseudonym(groupKey) -> item.toString().decodeFromBase64ToString()
                 date != null -> date
                 item is Boolean -> resourceProvider.getString(
-                    resId = if (item)
-                        R.string.document_details_boolean_item_true_readable_value
+                    if (item)
+                        Res.string.document_details_boolean_item_true_readable_value
                     else
-                        R.string.document_details_boolean_item_false_readable_value
+                        Res.string.document_details_boolean_item_false_readable_value
                 )
 
                 else -> item.toString()

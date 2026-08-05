@@ -28,8 +28,12 @@ import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
+import eu.europa.ec.shared.resources.document_success_header_description
+import eu.europa.ec.shared.resources.document_success_header_description_when_error
+import eu.europa.ec.shared.resources.document_success_relying_party_default_name
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -112,7 +116,7 @@ class ProximitySuccessInteractorImpl(
                                     queryId = selection.queryId,
                                 ).encode(),
                                 mainContentData = ListItemMainContentDataUi.Text(text = document.name),
-                                supportingText = resourceProvider.getString(R.string.document_success_collapsed_supporting_text),
+                                supportingText = resourceProvider.getString(Res.string.document_success_collapsed_supporting_text),
                                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                                     iconData = AppIcons.KeyboardArrowDown
                                 )
@@ -128,15 +132,15 @@ class ProximitySuccessInteractorImpl(
             }
 
             val headerConfigDescription = if (documentsUi.isEmpty()) {
-                resourceProvider.getString(R.string.document_success_header_description_when_error)
+                resourceProvider.getString(Res.string.document_success_header_description_when_error)
             } else {
-                resourceProvider.getString(R.string.document_success_header_description)
+                resourceProvider.getString(Res.string.document_success_header_description)
             }
             val headerConfig = ContentHeaderConfig(
                 description = headerConfigDescription,
                 relyingPartyData = RelyingPartyDataUi(
                     name = verifierName.ifEmptyOrNull(
-                        default = resourceProvider.getString(R.string.document_success_relying_party_default_name)
+                        default = resourceProvider.getString(Res.string.document_success_relying_party_default_name)
                     ),
                     isVerified = isVerified,
                 )

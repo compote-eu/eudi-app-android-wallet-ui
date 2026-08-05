@@ -36,7 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.commonfeature.ui.request.model.DocumentFormatDomain
@@ -48,7 +48,6 @@ import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimType
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
@@ -95,6 +94,21 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.request_blocked_bottom_sheet_message
+import eu.europa.ec.shared.resources.request_blocked_bottom_sheet_primary_button_text
+import eu.europa.ec.shared.resources.request_blocked_bottom_sheet_title
+import eu.europa.ec.shared.resources.request_bottom_sheet_warning_subtitle
+import eu.europa.ec.shared.resources.request_bottom_sheet_warning_title
+import eu.europa.ec.shared.resources.request_collapsed_supporting_text
+import eu.europa.ec.shared.resources.request_combination_option_title
+import eu.europa.ec.shared.resources.request_header_description
+import eu.europa.ec.shared.resources.request_header_main_text
+import eu.europa.ec.shared.resources.request_no_data
+import eu.europa.ec.shared.resources.request_relying_party_default_name
+import eu.europa.ec.shared.resources.request_relying_party_description
+import eu.europa.ec.shared.resources.request_sticky_button_text
+import eu.europa.ec.shared.resources.request_warning_text
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,7 +147,7 @@ fun RequestScreen(
                     )
                 )
             ) {
-                Text(text = stringResource(R.string.request_sticky_button_text))
+                Text(text = stringResource(Res.string.request_sticky_button_text))
             }
         },
         contentErrorConfig = state.error
@@ -281,7 +295,7 @@ private fun DisplayRequestContent(
 
         is RequestDataUi.NoData -> ErrorInfo(
             modifier = modifier.fillMaxSize(),
-            informativeText = stringResource(id = R.string.request_no_data),
+            informativeText = stringResource(Res.string.request_no_data),
         )
 
         is RequestDataUi.Single -> DisplayRequestItems(
@@ -316,7 +330,7 @@ private fun DisplayCombinationCards(
             WrapSelectableCard(
                 modifier = Modifier.fillMaxWidth(),
                 title = stringResource(
-                    R.string.request_combination_option_title,
+                    Res.string.request_combination_option_title,
                     index + 1,
                     requestDataUi.combinations.size,
                 ),
@@ -399,7 +413,7 @@ private fun RequestWarningNote(
 ) {
     SectionTitle(
         modifier = modifier,
-        text = stringResource(R.string.request_warning_text),
+        text = stringResource(Res.string.request_warning_text),
         textConfig = TextConfig(
             styleKey = TextStyleKey.BodySmall,
             colorKey = ColorKey.OnSurface,
@@ -416,8 +430,8 @@ private fun SheetContent(
         RequestBottomSheetContent.WARNING -> {
             SimpleBottomSheet(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(id = R.string.request_bottom_sheet_warning_title),
-                    message = stringResource(id = R.string.request_bottom_sheet_warning_subtitle),
+                    title = stringResource(Res.string.request_bottom_sheet_warning_title),
+                    message = stringResource(Res.string.request_bottom_sheet_warning_subtitle),
                 ),
                 leadingIcon = AppIcons.Warning,
                 leadingIconTint = MaterialTheme.colorScheme.warning
@@ -427,9 +441,9 @@ private fun SheetContent(
         RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
             DialogBottomSheet(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(id = R.string.request_blocked_bottom_sheet_title),
-                    message = stringResource(id = R.string.request_blocked_bottom_sheet_message),
-                    positiveButtonText = stringResource(id = R.string.request_blocked_bottom_sheet_primary_button_text),
+                    title = stringResource(Res.string.request_blocked_bottom_sheet_title),
+                    message = stringResource(Res.string.request_blocked_bottom_sheet_message),
+                    positiveButtonText = stringResource(Res.string.request_blocked_bottom_sheet_primary_button_text),
                 ),
                 leadingIcon = AppIcons.Warning,
                 leadingIconTint = MaterialTheme.colorScheme.warning,
@@ -447,12 +461,12 @@ private fun ContentPreview() {
         Content(
             state = State(
                 headerConfig = ContentHeaderConfig(
-                    description = stringResource(R.string.request_header_description),
-                    mainText = stringResource(R.string.request_header_main_text),
+                    description = stringResource(Res.string.request_header_description),
+                    mainText = stringResource(Res.string.request_header_main_text),
                     relyingPartyData = RelyingPartyDataUi(
                         isVerified = true,
-                        name = stringResource(R.string.request_relying_party_default_name),
-                        description = stringResource(R.string.request_relying_party_description)
+                        name = stringResource(Res.string.request_relying_party_default_name),
+                        description = stringResource(Res.string.request_relying_party_description)
                     )
                 ),
                 requestDataUi = RequestDataUi.Single(
@@ -480,12 +494,12 @@ private fun ContentNoDataPreview() {
         Content(
             state = State(
                 headerConfig = ContentHeaderConfig(
-                    description = stringResource(R.string.request_header_description),
-                    mainText = stringResource(R.string.request_header_main_text),
+                    description = stringResource(Res.string.request_header_description),
+                    mainText = stringResource(Res.string.request_header_main_text),
                     relyingPartyData = RelyingPartyDataUi(
                         isVerified = true,
-                        name = stringResource(R.string.request_relying_party_default_name),
-                        description = stringResource(R.string.request_relying_party_description)
+                        name = stringResource(Res.string.request_relying_party_default_name),
+                        description = stringResource(Res.string.request_relying_party_description)
                     )
                 ),
                 requestDataUi = RequestDataUi.NoData,
@@ -509,12 +523,12 @@ private fun ContentMultipleCombinationsPreview() {
         Content(
             state = State(
                 headerConfig = ContentHeaderConfig(
-                    description = stringResource(R.string.request_header_description),
-                    mainText = stringResource(R.string.request_header_main_text),
+                    description = stringResource(Res.string.request_header_description),
+                    mainText = stringResource(Res.string.request_header_main_text),
                     relyingPartyData = RelyingPartyDataUi(
                         isVerified = true,
-                        name = stringResource(R.string.request_relying_party_default_name),
-                        description = stringResource(R.string.request_relying_party_description)
+                        name = stringResource(Res.string.request_relying_party_default_name),
+                        description = stringResource(Res.string.request_relying_party_description)
                     )
                 ),
                 requestDataUi = RequestDataUi.Multiple(
@@ -565,7 +579,7 @@ private fun previewRequestDocumentItem(): RequestDocumentItemUi {
             header = ListItemDataUi(
                 itemId = "000",
                 mainContentData = ListItemMainContentDataUi.Text(text = "Digital ID"),
-                supportingText = stringResource(R.string.request_collapsed_supporting_text),
+                supportingText = stringResource(Res.string.request_collapsed_supporting_text),
                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                     iconData = AppIcons.KeyboardArrowDown
                 ),

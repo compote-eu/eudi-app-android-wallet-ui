@@ -40,7 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -52,7 +52,6 @@ import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.issuancefeature.util.TestTag
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ErrorInfo
@@ -90,6 +89,10 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_add_document_no_options
+import eu.europa.ec.shared.resources.issuance_add_document_subtitle
+import eu.europa.ec.shared.resources.issuance_add_document_title
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -270,7 +273,7 @@ private fun MainContent(
         if (state.noOptions) {
             ErrorInfo(
                 modifier = Modifier.fillMaxSize(),
-                informativeText = stringResource(R.string.issuance_add_document_no_options)
+                informativeText = stringResource(Res.string.issuance_add_document_no_options)
             )
         } else {
 
@@ -372,8 +375,8 @@ private fun IssuanceAddDocumentScreenPreview() {
                     flowType = IssuanceFlowType.NoDocument
                 ),
                 navigatableAction = ScreenNavigateAction.NONE,
-                title = stringResource(R.string.issuance_add_document_title),
-                subtitle = stringResource(R.string.issuance_add_document_subtitle),
+                title = stringResource(Res.string.issuance_add_document_title),
+                subtitle = stringResource(Res.string.issuance_add_document_subtitle),
                 options = listOf(
                     Pair(
                         "issuer1",
@@ -433,8 +436,8 @@ private fun DashboardAddDocumentScreenPreview() {
                     )
                 ),
                 navigatableAction = ScreenNavigateAction.BACKABLE,
-                title = stringResource(R.string.issuance_add_document_title),
-                subtitle = stringResource(R.string.issuance_add_document_subtitle),
+                title = stringResource(Res.string.issuance_add_document_title),
+                subtitle = stringResource(Res.string.issuance_add_document_subtitle),
                 options = listOf(
                     Pair(
                         "issuer1",

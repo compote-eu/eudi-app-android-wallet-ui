@@ -23,7 +23,6 @@ import eu.europa.ec.issuancefeature.util.mockedErrorDescription
 import eu.europa.ec.issuancefeature.util.mockedMdocPidClaims
 import eu.europa.ec.issuancefeature.util.mockedSdJwtPidClaims
 import eu.europa.ec.issuancefeature.util.mockedSuccessDescription
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockGetUiItemsStrings
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockIssuerName
@@ -60,6 +59,9 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.whenever
 import java.net.URI
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_success_header_description
+import eu.europa.ec.shared.resources.issuance_success_header_description_when_error
 
 class TestDocumentIssuanceSuccessInteractor {
 
@@ -570,10 +572,10 @@ class TestDocumentIssuanceSuccessInteractor {
         val description = if (isErrorCase) mockedErrorDescription else mockedSuccessDescription
 
         if (isErrorCase) {
-            whenever(resourceProvider.getString(R.string.issuance_success_header_description_when_error))
+            whenever(resourceProvider.getString(Res.string.issuance_success_header_description_when_error))
                 .thenReturn(description)
         } else {
-            whenever(resourceProvider.getString(R.string.issuance_success_header_description))
+            whenever(resourceProvider.getString(Res.string.issuance_success_header_description))
                 .thenReturn(description)
         }
     }

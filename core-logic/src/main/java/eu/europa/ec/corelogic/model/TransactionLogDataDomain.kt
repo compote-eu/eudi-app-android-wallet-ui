@@ -20,6 +20,10 @@ import eu.europa.ec.corelogic.extension.getLocalizedDocumentName
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_issuance
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_presentation
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_signing
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.Locale
@@ -61,9 +65,9 @@ sealed interface TransactionLogDataDomain {
     companion object {
         fun TransactionLogDataDomain.getTransactionTypeLabel(resourceProvider: ResourceProvider): String {
             return when (this) {
-                is PresentationLog -> resourceProvider.getString(eu.europa.ec.resourceslogic.R.string.transactions_screen_filters_filter_by_transaction_type_presentation)
-                is IssuanceLog -> resourceProvider.getString(eu.europa.ec.resourceslogic.R.string.transactions_screen_filters_filter_by_transaction_type_issuance)
-                is SigningLog -> resourceProvider.getString(eu.europa.ec.resourceslogic.R.string.transactions_screen_filters_filter_by_transaction_type_signing)
+                is PresentationLog -> resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation)
+                is IssuanceLog -> resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance)
+                is SigningLog -> resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_signing)
             }
         }
 

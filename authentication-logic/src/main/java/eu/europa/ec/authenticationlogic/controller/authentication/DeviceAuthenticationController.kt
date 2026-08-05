@@ -22,8 +22,10 @@ import androidx.biometric.BiometricPrompt
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.biometric_prompt_subtitle
+import eu.europa.ec.shared.resources.biometric_prompt_title
 import kotlinx.coroutines.launch
 
 interface DeviceAuthenticationController {
@@ -61,8 +63,8 @@ class DeviceAuthenticationControllerImpl(
                     activity = activity,
                     biometryCrypto = biometryCrypto,
                     promptInfo = BiometricPrompt.PromptInfo.Builder()
-                        .setTitle(resourceProvider.getString(R.string.biometric_prompt_title))
-                        .setSubtitle(resourceProvider.getString(R.string.biometric_prompt_subtitle))
+                        .setTitle(resourceProvider.getString(Res.string.biometric_prompt_title))
+                        .setSubtitle(resourceProvider.getString(Res.string.biometric_prompt_subtitle))
                         .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                         .build(),
                     notifyOnAuthenticationFailure = notifyOnAuthenticationFailure

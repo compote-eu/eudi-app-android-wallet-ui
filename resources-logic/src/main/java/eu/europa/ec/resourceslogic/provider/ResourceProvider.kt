@@ -18,68 +18,64 @@ package eu.europa.ec.resourceslogic.provider
 
 import android.content.ContentResolver
 import android.content.Context
-import androidx.annotation.PluralsRes
 import androidx.annotation.RawRes
-import androidx.annotation.StringRes
-import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_description
+import eu.europa.ec.shared.resources.generic_network_error_message
+import org.jetbrains.compose.resources.StringResource
 import java.util.Locale
 
+/**
+ * Android-side resource access for the interactor/controller layer.
+ *
+ * Phase 3a moved the string corpus to compose-resources, so the string methods now take a
+ * [StringResource] and delegate to the shared [StringCatalog] — there is one corpus, resolvable
+ * from `commonMain`. The `@StringRes Int` overloads are gone rather than kept alongside, so any
+ * unconverted call site is a compile error instead of a lookup against a corpus that no longer
+ * exists.
+ *
+ * What is left here is what genuinely needs Android: a [Context], a [ContentResolver], raw
+ * resources, and the platform [Locale]. View-models no longer use this type at all — their state
+ * carries `UiText` and the composable resolves it.
+ *
+ * Plurals are deliberately absent; see [StringCatalog] for why they resolve through the suspend
+ * path instead.
+ */
 interface ResourceProvider {
 
     fun provideContext(): Context
     fun provideContentResolver(): ContentResolver
-    fun getString(@StringRes resId: Int): String
+    fun getString(resource: StringResource): String
+    fun getString(resource: StringResource, vararg formatArgs: Any): String
     fun getStringFromRaw(@RawRes resId: Int): String
-    fun getQuantityString(@PluralsRes resId: Int, quantity: Int, vararg formatArgs: Any): String
-    fun getString(@StringRes resId: Int, vararg formatArgs: Any): String
     fun genericErrorMessage(): String
     fun genericNetworkErrorMessage(): String
     fun getLocale(): Locale
 }
 
 class ResourceProviderImpl(
-    private val context: Context
+    private val context: Context,
+    private val stringCatalog: StringCatalog,
 ) : ResourceProvider {
 
     override fun provideContext() = context
 
     override fun provideContentResolver(): ContentResolver = context.contentResolver
 
-    override fun genericErrorMessage() =
-        context.getString(R.string.generic_error_description)
+    override fun genericErrorMessage() = stringCatalog[Res.string.generic_error_description]
 
     override fun genericNetworkErrorMessage() =
-        context.getString(R.string.generic_network_error_message)
+        stringCatalog[Res.string.generic_network_error_message]
 
+    override fun getString(resource: StringResource): String = stringCatalog[resource]
 
-    override fun getString(@StringRes resId: Int): String =
-        try {
-            context.getString(resId)
-        } catch (_: Exception) {
-            ""
-        }
+    override fun getString(resource: StringResource, vararg formatArgs: Any): String =
+        stringCatalog.get(resource, *formatArgs)
 
     override fun getStringFromRaw(@RawRes resId: Int): String =
         try {
             context.resources.openRawResource(resId).bufferedReader().use { it.readText() }
-        } catch (_: Exception) {
-            ""
-        }
-
-    override fun getQuantityString(
-        @PluralsRes resId: Int,
-        quantity: Int,
-        vararg formatArgs: Any
-    ): String =
-        try {
-            context.resources.getQuantityString(resId, quantity, *formatArgs)
-        } catch (_: Exception) {
-            ""
-        }
-
-    override fun getString(resId: Int, vararg formatArgs: Any): String =
-        try {
-            context.getString(resId, *formatArgs)
         } catch (_: Exception) {
             ""
         }

@@ -28,13 +28,16 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.dashboardfeature.ui.dashboard.Event
 import eu.europa.ec.dashboardfeature.ui.dashboard.State
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuItemUi
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
-import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.dashboard_side_menu_option_change_pin
+import eu.europa.ec.shared.resources.dashboard_side_menu_option_settings
+import eu.europa.ec.shared.resources.dashboard_side_menu_title
+import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
@@ -48,6 +51,7 @@ import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 internal fun SideMenuScreen(
@@ -85,7 +89,7 @@ private fun Content(
         Column(modifier = Modifier.weight(1f)) {
             ContentTitle(
                 modifier = Modifier.fillMaxWidth(),
-                title = state.sideMenuTitle,
+                title = state.sideMenuTitle.resolve(),
             )
 
             SideMenuOptions(
@@ -135,14 +139,13 @@ private fun SideMenuContentPreview() {
         Content(
             state = State(
                 isSideMenuVisible = true,
-                sideMenuTitle = stringResource(R.string.dashboard_side_menu_title),
-                sideMenuOptions = listOf(
+                                sideMenuOptions = listOf(
                     SideMenuItemUi(
                         type = SideMenuTypeUi.CHANGE_PIN,
                         data = ListItemDataUi(
                             itemId = SideMenuTypeUi.CHANGE_PIN.itemId,
                             mainContentData = ListItemMainContentDataUi.Text(
-                                text = stringResource(R.string.dashboard_side_menu_option_change_pin)
+                                text = stringResource(Res.string.dashboard_side_menu_option_change_pin)
                             ),
                             leadingContentData = ListItemLeadingContentDataUi.Icon(
                                 iconData = AppIcons.ChangePin
@@ -157,7 +160,7 @@ private fun SideMenuContentPreview() {
                         data = ListItemDataUi(
                             itemId = SideMenuTypeUi.SETTINGS.itemId,
                             mainContentData = ListItemMainContentDataUi.Text(
-                                text = stringResource(R.string.dashboard_side_menu_option_settings)
+                                text = stringResource(Res.string.dashboard_side_menu_option_settings)
                             ),
                             leadingContentData = ListItemLeadingContentDataUi.Icon(
                                 iconData = AppIcons.Settings

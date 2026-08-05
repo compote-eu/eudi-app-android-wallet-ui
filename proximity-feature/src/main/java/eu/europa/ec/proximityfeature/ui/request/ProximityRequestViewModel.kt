@@ -29,12 +29,19 @@ import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractorPartialState
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.BiometricRoute
 import eu.europa.ec.shared.navigation.ProximityLoadingRoute
 import eu.europa.ec.shared.navigation.ProximityRequestRoute
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.biometric_default_mode_text_above_pin_field
+import eu.europa.ec.shared.resources.loading_biometry_biometrics_enabled_description
+import eu.europa.ec.shared.resources.loading_biometry_biometrics_not_enabled_description
+import eu.europa.ec.shared.resources.request_header_description
+import eu.europa.ec.shared.resources.request_header_main_text
+import eu.europa.ec.shared.resources.request_relying_party_default_name
+import eu.europa.ec.shared.resources.request_relying_party_description
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
@@ -53,8 +60,8 @@ class ProximityRequestViewModel(
 
     override fun getHeaderConfig(): ContentHeaderConfig {
         return ContentHeaderConfig(
-            description = resourceProvider.getString(R.string.request_header_description),
-            mainText = resourceProvider.getString(R.string.request_header_main_text),
+            description = resourceProvider.getString(Res.string.request_header_description),
+            mainText = resourceProvider.getString(Res.string.request_header_main_text),
             relyingPartyData = getRelyingPartyData(
                 name = null,
                 isVerified = false,
@@ -66,9 +73,9 @@ class ProximityRequestViewModel(
         return BiometricRoute(
             BiometricUiConfig(
                 mode = BiometricMode.Default(
-                    descriptionWhenBiometricsEnabled = resourceProvider.getString(R.string.loading_biometry_biometrics_enabled_description),
-                    descriptionWhenBiometricsNotEnabled = resourceProvider.getString(R.string.loading_biometry_biometrics_not_enabled_description),
-                    textAbovePin = resourceProvider.getString(R.string.biometric_default_mode_text_above_pin_field),
+                    descriptionWhenBiometricsEnabled = resourceProvider.getString(Res.string.loading_biometry_biometrics_enabled_description),
+                    descriptionWhenBiometricsNotEnabled = resourceProvider.getString(Res.string.loading_biometry_biometrics_not_enabled_description),
+                    textAbovePin = resourceProvider.getString(Res.string.biometric_default_mode_text_above_pin_field),
                 ),
                 isPreAuthorization = false,
                 shouldInitializeBiometricAuthOnCreate = true,
@@ -199,9 +206,9 @@ class ProximityRequestViewModel(
         return RelyingPartyDataUi(
             isVerified = isVerified,
             name = name.ifEmptyOrNull(
-                default = resourceProvider.getString(R.string.request_relying_party_default_name)
+                default = resourceProvider.getString(Res.string.request_relying_party_default_name)
             ),
-            description = resourceProvider.getString(R.string.request_relying_party_description),
+            description = resourceProvider.getString(Res.string.request_relying_party_description),
         )
     }
 }

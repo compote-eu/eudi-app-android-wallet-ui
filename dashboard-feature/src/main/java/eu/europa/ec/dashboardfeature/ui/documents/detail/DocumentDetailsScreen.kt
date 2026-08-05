@@ -38,7 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -50,7 +50,6 @@ import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.dashboardfeature.util.TestTag
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.shared.navigation.AppNavigator
@@ -96,6 +95,17 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_details_bottom_sheet_delete_primary_button_text
+import eu.europa.ec.shared.resources.document_details_bottom_sheet_delete_secondary_button_text
+import eu.europa.ec.shared.resources.document_details_bottom_sheet_delete_subtitle
+import eu.europa.ec.shared.resources.document_details_bottom_sheet_delete_title
+import eu.europa.ec.shared.resources.document_details_document_credentials_info_text
+import eu.europa.ec.shared.resources.document_details_issuer_section_text
+import eu.europa.ec.shared.resources.document_details_main_section_text
+import eu.europa.ec.shared.resources.document_details_secondary_button_text
+import eu.europa.ec.shared.resources.document_details_toolbar_action_reissue
+import eu.europa.ec.shared.resources.document_details_toolbar_action_remove
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -232,14 +242,14 @@ private fun getToolbarConfig(
                     throttleClicks = true,
                 ),
                 ToolbarActionUi(
-                    text = stringResource(R.string.document_details_toolbar_action_reissue),
+                    text = stringResource(Res.string.document_details_toolbar_action_reissue),
                     icon = null,
                     onClick = { onEventSend(Event.IssuerDetails.OnActionButtonClicked(context)) },
                     enabled = !state.isLoading && state.issuerDetails?.documentState != IssuerDetailsCardDataUi.DocumentState.Revoked,
                     throttleClicks = true,
                 ),
                 ToolbarActionUi(
-                    text = stringResource(R.string.document_details_toolbar_action_remove),
+                    text = stringResource(Res.string.document_details_toolbar_action_remove),
                     icon = null,
                     onClick = { onEventSend(Event.SecondaryButtonPressed) },
                     enabled = !state.isLoading,
@@ -389,13 +399,13 @@ private fun SheetContent(
             DialogBottomSheet(
                 textData = BottomSheetTextDataUi(
                     title = stringResource(
-                        id = R.string.document_details_bottom_sheet_delete_title
+                        Res.string.document_details_bottom_sheet_delete_title
                     ),
                     message = stringResource(
-                        id = R.string.document_details_bottom_sheet_delete_subtitle
+                        Res.string.document_details_bottom_sheet_delete_subtitle
                     ),
-                    positiveButtonText = stringResource(id = R.string.document_details_bottom_sheet_delete_primary_button_text),
-                    negativeButtonText = stringResource(id = R.string.document_details_bottom_sheet_delete_secondary_button_text),
+                    positiveButtonText = stringResource(Res.string.document_details_bottom_sheet_delete_primary_button_text),
+                    negativeButtonText = stringResource(Res.string.document_details_bottom_sheet_delete_secondary_button_text),
                     isPositiveButtonWarning = true,
                 ),
                 leadingIcon = AppIcons.Delete,
@@ -453,7 +463,7 @@ private fun IssuerDetails(
     ) {
         SectionTitle(
             modifier = Modifier.fillMaxWidth(),
-            text = stringResource(R.string.document_details_issuer_section_text),
+            text = stringResource(Res.string.document_details_issuer_section_text),
         )
         IssuerDetailsCard(
             modifier = Modifier.fillMaxWidth(),
@@ -481,7 +491,7 @@ private fun DocumentDetails(
     ) {
         SectionTitle(
             modifier = Modifier.fillMaxWidth(),
-            text = stringResource(R.string.document_details_main_section_text),
+            text = stringResource(Res.string.document_details_main_section_text),
             icon = if (hideSensitiveContent) AppIcons.Visibility else AppIcons.VisibilityOff,
             onIconClick = { onEventSend(Event.ChangeContentVisibility) },
             iconEnabled = !isLoading,
@@ -520,7 +530,7 @@ private fun BottomSection(
             )
         ) {
             Text(
-                text = stringResource(id = R.string.document_details_secondary_button_text),
+                text = stringResource(Res.string.document_details_secondary_button_text),
                 style = MaterialTheme.typography.labelLarge
             )
         }
@@ -558,7 +568,7 @@ private fun DocumentDetailsScreenPreview() {
                 availableCredentials = availableCredentials,
                 totalCredentials = totalCredentials,
                 title = stringResource(
-                    R.string.document_details_document_credentials_info_text,
+                    Res.string.document_details_document_credentials_info_text,
                     availableCredentials,
                     totalCredentials
                 ),

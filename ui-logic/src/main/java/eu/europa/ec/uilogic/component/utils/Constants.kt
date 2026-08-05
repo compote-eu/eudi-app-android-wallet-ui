@@ -55,15 +55,6 @@ const val ALPHA_ENABLED = 1.0f
 /** Value 0.38 */
 const val ALPHA_DISABLED = 0.38f
 
-/** Value 24 */
-const val DEFAULT_ICON_SIZE = 24
-
-/** Value 80 */
-const val DEFAULT_BIG_ICON_SIZE = 80
-
-/** Value 40 */
-const val ICON_SIZE_40 = 40
-
 /** Value 2 */
 const val MAX_TOOLBAR_ACTIONS = 2
 

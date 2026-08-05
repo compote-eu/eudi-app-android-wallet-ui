@@ -32,8 +32,9 @@ import eu.europa.ec.corelogic.model.PresentationCombinationDomain
 import eu.europa.ec.corelogic.model.PresentationMatchDomain
 import eu.europa.ec.corelogic.model.PresentationSelectionDomain
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.request_collapsed_supporting_text
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -151,7 +152,7 @@ object RequestTransformer {
                             queryId = documentDomain.queryId,
                         ).encode(),
                         mainContentData = ListItemMainContentDataUi.Text(text = documentDomain.docName),
-                        supportingText = resourceProvider.getString(R.string.request_collapsed_supporting_text),
+                        supportingText = resourceProvider.getString(Res.string.request_collapsed_supporting_text),
                         trailingContentData = ListItemTrailingContentDataUi.Icon(
                             iconData = AppIcons.KeyboardArrowDown
                         )

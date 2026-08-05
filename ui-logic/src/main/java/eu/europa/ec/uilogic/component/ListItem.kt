@@ -54,6 +54,7 @@ import eu.europa.ec.uilogic.component.wrap.SwitchDataUi
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.TextConfig
 import eu.europa.ec.uilogic.component.wrap.TextStyleKey
+import eu.europa.ec.uilogic.component.wrap.toColor
 import eu.europa.ec.uilogic.component.wrap.WrapAsyncImage
 import eu.europa.ec.uilogic.component.wrap.WrapCheckbox
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
@@ -61,120 +62,6 @@ import eu.europa.ec.uilogic.component.wrap.WrapIconButton
 import eu.europa.ec.uilogic.component.wrap.WrapRadioButton
 import eu.europa.ec.uilogic.component.wrap.WrapSwitch
 import eu.europa.ec.uilogic.component.wrap.WrapText
-
-/**
- * Represents the data displayed within a single item in a list.
- *
- * This class encapsulates all the information needed to render a list item,
- * including its content, optional visual elements like leading/trailing icons or checkboxes,
- * and any associated data.
- *
- * @param itemId A unique identifier for this specific list item. This is crucial for identifying
- * the item within the list, especially when handling interactions.
- * @param mainContentData The primary content displayed in the list item. This is typically text
- * but could be other UI elements. See [ListItemMainContentDataUi] for details on how to structure
- * the main content.
- * @param overlineText Optional text displayed above the `mainContentData`, providing context
- * or a brief heading for the item.
- * @param supportingText Optional text displayed below the `mainContentData`, offering
- * additional details or description to supplement the main content.
- * @param leadingContentData Optional data for content displayed at the beginning of the list item.
- * This could be an icon, image, or other visual element. See [ListItemLeadingContentDataUi]
- * for details on supported leading content types.
- * @param trailingContentData Optional data for content displayed at the end of the list item.
- * This could be an icon, checkbox, or other interactive element. See [ListItemTrailingContentDataUi]
- * for details on supported trailing content types.
- */
-data class ListItemDataUi(
-    val itemId: String,
-    val mainContentData: ListItemMainContentDataUi,
-    val overlineText: String? = null,
-    val supportingText: String? = null,
-    val leadingContentData: ListItemLeadingContentDataUi? = null,
-    val trailingContentData: ListItemTrailingContentDataUi? = null,
-)
-
-/**
- * Represents the main content data for an item in a list.
- * This sealed class provides different types of content that can be displayed:
- * - [Text]: Simple text content.
- * - [Image]: An image represented as a Base64 encoded string.
- */
-sealed class ListItemMainContentDataUi {
-    data class Text(val text: String) : ListItemMainContentDataUi()
-    data class Image(val base64Image: String) : ListItemMainContentDataUi()
-}
-
-/**
- * Represents data for the leading content within a list item.
- *
- * This sealed class provides a structured way to define the different types of
- * content that can be displayed at the leading edge of a list item. It supports
- * icons, user images (loaded from base64 strings), images loaded asynchronously
- * from URLs, and radio buttons (for single-choice rows such as selectable cards'
- * headers).
- *
- * Each subclass of `ListItemLeadingContentData` represents a distinct type of
- * leading content, allowing for flexible and varied visual elements in lists.
- *
- * @property size The size (width and height) of the leading content in dp. This determines
- *                 the visual dimensions of the icon, image, etc.
- */
-sealed class ListItemLeadingContentDataUi {
-    abstract val size: Int?
-
-    data class Icon(
-        override val size: Int = DEFAULT_ICON_SIZE,
-        val iconData: IconDataUi,
-        val tint: Color? = null,
-    ) : ListItemLeadingContentDataUi()
-
-    data class UserImage(
-        override val size: Int = ICON_SIZE_40,
-        val userBase64Image: String,
-    ) : ListItemLeadingContentDataUi()
-
-    data class AsyncImage(
-        override val size: Int = ICON_SIZE_40,
-        val imageUrl: String,
-        val contentDescription: String?,
-        val errorImage: IconDataUi? = null,
-        val placeholderImage: IconDataUi? = null,
-    ) : ListItemLeadingContentDataUi()
-
-    data class RadioButton(
-        override val size: Int? = null,
-        val radioButtonData: RadioButtonDataUi,
-    ) : ListItemLeadingContentDataUi()
-}
-
-/**
- * Represents the data for the trailing content of a list item.
- *
- * This sealed class defines the possible types of trailing content that can be displayed
- * in a list item, allowing for different visual elements such as icons, checkboxes, and
- * radio buttons.
- *
- * The possible types are:
- *  - [Icon]: Represents an icon to be displayed as trailing content.
- *  - [Checkbox]: Represents a checkbox to be displayed as trailing content.
- *  - [RadioButton]: Represents a radio button to be displayed as trailing content.
- *  - [Switch]: Represents a switch to be displayed as trailing content.
- *  - [TextWithIcon]: Represents text and an icon to be displayed as trailing content.
- */
-sealed class ListItemTrailingContentDataUi {
-    data class Icon(val iconData: IconDataUi, val tint: Color? = null) :
-        ListItemTrailingContentDataUi()
-
-    data class Checkbox(val checkboxData: CheckboxDataUi) : ListItemTrailingContentDataUi()
-    data class RadioButton(val radioButtonData: RadioButtonDataUi) : ListItemTrailingContentDataUi()
-    data class Switch(val switchData: SwitchDataUi) : ListItemTrailingContentDataUi()
-    data class TextWithIcon(
-        val text: String,
-        val iconData: IconDataUi,
-        val tint: Color? = null
-    ) : ListItemTrailingContentDataUi()
-}
 
 /**
  * Represents the clickable area of a [ListItem].
@@ -296,7 +183,7 @@ fun ListItem(
                     is ListItemLeadingContentDataUi.Icon -> WrapIcon(
                         modifier = leadingContentModifier,
                         iconData = safeLeadingContentData.iconData,
-                        customTint = safeLeadingContentData.tint
+                        customTint = safeLeadingContentData.tint?.toColor()
                             ?: MaterialTheme.colorScheme.primary,
                     )
 
@@ -346,7 +233,7 @@ fun ListItem(
                                 .wrapContentWidth()
                                 .padding(top = SPACING_SMALL.dp)
                                 .then(blurModifier),
-                            base64Image = mainContentData.base64Image,
+                            base64Image = (mainContentData as ListItemMainContentDataUi.Image).base64Image,
                             contentScale = ContentScale.Fit,
                         )
 
@@ -354,17 +241,21 @@ fun ListItem(
                             modifier = Modifier
                                 .weight(1f)
                                 .then(blurModifier),
-                            text = mainContentData.text,
+                            text = (mainContentData as ListItemMainContentDataUi.Text).text,
                             style = mainTextStyle,
                             overflow = textOverflow,
                         )
                     }
 
                     if (trailingContentData is ListItemTrailingContentDataUi.TextWithIcon) {
+                        // Bound to a local: `trailingContentData` is declared in :shared-ui now, so
+                        // Kotlin will not smart-cast a public API property across modules.
+                        val textWithIcon =
+                            trailingContentData as ListItemTrailingContentDataUi.TextWithIcon
                         WrapText(
                             modifier = Modifier
                                 .padding(start = SIZE_MEDIUM.dp),
-                            text = trailingContentData.text,
+                            text = textWithIcon.text,
                             textConfig = TextConfig(
                                 styleKey = TextStyleKey.LabelSmall,
                                 colorKey = ColorKey.OnSurfaceVariant,
@@ -376,8 +267,8 @@ fun ListItem(
                             modifier = Modifier
                                 .padding(start = SPACING_SMALL.dp)
                                 .size(DEFAULT_ICON_SIZE.dp),
-                            iconData = trailingContentData.iconData,
-                            customTint = trailingContentData.tint
+                            iconData = textWithIcon.iconData,
+                            customTint = textWithIcon.tint?.toColor()
                                 ?: MaterialTheme.colorScheme.primary,
                             onClick = if (clickableAreas.contains(TRAILING_CONTENT)) {
                                 { onItemClick?.invoke(item) }
@@ -418,7 +309,7 @@ fun ListItem(
                             .padding(start = SIZE_MEDIUM.dp)
                             .size(DEFAULT_ICON_SIZE.dp),
                         iconData = safeTrailingContentData.iconData,
-                        customTint = safeTrailingContentData.tint
+                        customTint = safeTrailingContentData.tint?.toColor()
                             ?: MaterialTheme.colorScheme.primary,
                         onClick = if (clickableAreas.contains(TRAILING_CONTENT)) {
                             { onItemClick?.invoke(item) }

@@ -57,7 +57,6 @@ import eu.europa.ec.issuancefeature.util.mockedSuccessText
 import eu.europa.ec.issuancefeature.util.mockedTxCode
 import eu.europa.ec.issuancefeature.util.mockedTxCodeFourDigits
 import eu.europa.ec.issuancefeature.util.mockedWalletActivationErrorMessage
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.uilogic.component.wrap.ColorKey
@@ -95,6 +94,13 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.net.URL
 import java.util.Locale
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_description
+import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_primary_button_text
+import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_text
+import eu.europa.ec.shared.resources.issuance_document_offer_error_invalid_txcode_format
+import eu.europa.ec.shared.resources.issuance_document_offer_error_missing_pid_text
+import eu.europa.ec.shared.resources.issuance_generic_error
 
 class TestDocumentOfferInteractor {
 
@@ -215,7 +221,7 @@ class TestDocumentOfferInteractor {
             val codeMaxLength = 6
             whenever(
                 resourceProvider.getString(
-                    R.string.issuance_document_offer_error_invalid_txcode_format,
+                    Res.string.issuance_document_offer_error_invalid_txcode_format,
                     codeMinLength,
                     codeMaxLength
                 )
@@ -262,7 +268,7 @@ class TestDocumentOfferInteractor {
             val codeMaxLength = 6
             whenever(
                 resourceProvider.getString(
-                    R.string.issuance_document_offer_error_invalid_txcode_format,
+                    Res.string.issuance_document_offer_error_invalid_txcode_format,
                     codeMinLength,
                     codeMaxLength
                 )
@@ -421,7 +427,7 @@ class TestDocumentOfferInteractor {
                 mainPid = null
             )
 
-            whenever(resourceProvider.getString(R.string.issuance_document_offer_error_missing_pid_text))
+            whenever(resourceProvider.getString(Res.string.issuance_document_offer_error_missing_pid_text))
                 .thenReturn(mockedWalletActivationErrorMessage)
             mockWalletDocumentsControllerResolveOfferEventEmission(
                 event = ResolveDocumentOfferPartialState.Success(mockedOffer)
@@ -558,7 +564,7 @@ class TestDocumentOfferInteractor {
             mockGetMainPidDocumentCall(mainPid = getMockedMainPid())
             whenever(
                 resourceProvider.getString(
-                    R.string.issuance_document_offer_error_invalid_txcode_format,
+                    Res.string.issuance_document_offer_error_invalid_txcode_format,
                     4,
                     6,
                 )
@@ -597,7 +603,7 @@ class TestDocumentOfferInteractor {
             mockGetMainPidDocumentCall(mainPid = getMockedMainPid())
             whenever(
                 resourceProvider.getString(
-                    R.string.issuance_document_offer_error_invalid_txcode_format,
+                    Res.string.issuance_document_offer_error_invalid_txcode_format,
                     4,
                     6,
                 )
@@ -727,7 +733,7 @@ class TestDocumentOfferInteractor {
     fun `Given Case 3, When issueDocuments is called, Then Case 3 Expected Result is returned`() =
         coroutineRule.runTest {
             // Given
-            whenever(resourceProvider.getString(R.string.issuance_generic_error))
+            whenever(resourceProvider.getString(Res.string.issuance_generic_error))
                 .thenReturn(mockedIssuanceErrorMessage)
 
             mockWalletDocumentsControllerIssueByUriEventEmission(
@@ -806,7 +812,7 @@ class TestDocumentOfferInteractor {
             // Given
             whenever(
                 resourceProvider.getString(
-                    R.string.issuance_document_offer_deferred_success_description,
+                    Res.string.issuance_document_offer_deferred_success_description,
                     mockedIssuerName
                 )
             ).thenReturn(mockedSuccessDescription)
@@ -830,7 +836,7 @@ class TestDocumentOfferInteractor {
                     tint = ColorKey.Primary,
                     screenPercentageSize = PERCENTAGE_25,
                 ),
-                third = resourceProvider.getString(R.string.issuance_document_offer_deferred_success_primary_button_text)
+                third = resourceProvider.getString(Res.string.issuance_document_offer_deferred_success_primary_button_text)
             )
 
             val config = SuccessUIConfig(
@@ -1273,9 +1279,9 @@ class TestDocumentOfferInteractor {
     }
 
     private fun mockIssuanceDocumentOfferDeferredSuccessStrings() {
-        whenever(resourceProvider.getString(R.string.issuance_document_offer_deferred_success_text))
+        whenever(resourceProvider.getString(Res.string.issuance_document_offer_deferred_success_text))
             .thenReturn(mockedSuccessText)
-        whenever(resourceProvider.getString(R.string.issuance_document_offer_deferred_success_primary_button_text))
+        whenever(resourceProvider.getString(Res.string.issuance_document_offer_deferred_success_primary_button_text))
             .thenReturn(mockedPrimaryButtonText)
     }
 

@@ -47,12 +47,6 @@ import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
  * governing permissions and limitations under the Licence.
  */
 
-data class RadioButtonDataUi(
-    val isSelected: Boolean,
-    val enabled: Boolean = true,
-    val onCheckedChange: (() -> Unit)? = null,
-)
-
 @Composable
 fun WrapRadioButton(
     radioButtonData: RadioButtonDataUi,

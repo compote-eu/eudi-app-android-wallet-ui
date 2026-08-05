@@ -34,6 +34,8 @@ enum class ColorKey {
     Success,
     Pending,
     Primary,
+    Warning,
+    Error,
 }
 
 @Serializable

@@ -60,7 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -74,7 +74,6 @@ import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentIssuanceStateUi
 import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentUi
 import eu.europa.ec.dashboardfeature.util.TestTag
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
@@ -126,6 +125,24 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_deferred_document_pressed_primary_button_text
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_deferred_document_pressed_secondary_button_text
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_deferred_document_pressed_subtitle
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_deferred_document_pressed_title
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_deferred_documents_ready_subtitle
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_deferred_documents_ready_title
+import eu.europa.ec.shared.resources.documents_screen_add_document_description
+import eu.europa.ec.shared.resources.documents_screen_add_document_fab
+import eu.europa.ec.shared.resources.documents_screen_add_document_option_list
+import eu.europa.ec.shared.resources.documents_screen_add_document_option_qr
+import eu.europa.ec.shared.resources.documents_screen_add_document_title
+import eu.europa.ec.shared.resources.documents_screen_filters_apply
+import eu.europa.ec.shared.resources.documents_screen_filters_reset
+import eu.europa.ec.shared.resources.documents_screen_filters_title
+import eu.europa.ec.shared.resources.documents_screen_search_label
+import eu.europa.ec.shared.resources.documents_screen_search_no_results
+import eu.europa.ec.shared.resources.documents_screen_title
 
 typealias DashboardEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event
 typealias OpenSideMenuEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event.SideMenu.Open
@@ -262,7 +279,7 @@ private fun AddDocumentFab(
     ) {
         WrapPrimaryExtendedFab(
             data = FabDataUi(
-                text = { Text(text = stringResource(R.string.documents_screen_add_document_fab)) },
+                text = { Text(text = stringResource(Res.string.documents_screen_add_document_fab)) },
                 icon = { WrapIcon(iconData = AppIcons.Add) },
                 onClick = onClick
             ),
@@ -314,7 +331,7 @@ private fun TopBar(
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.headlineMedium,
-            text = stringResource(R.string.documents_screen_title)
+            text = stringResource(Res.string.documents_screen_title)
         )
     }
 }
@@ -343,7 +360,7 @@ private fun Content(
         ) {
             item {
                 val searchItemUi =
-                    SearchItemUi(searchLabel = stringResource(R.string.documents_screen_search_label))
+                    SearchItemUi(searchLabel = stringResource(Res.string.documents_screen_search_label))
                 FiltersSearchBar(
                     placeholder = searchItemUi.searchLabel,
                     onValueChange = { onEventSend(Event.OnSearchQueryChanged(it)) },
@@ -447,7 +464,7 @@ private fun DocumentCategory(
     ) {
         SectionTitle(
             modifier = Modifier.fillMaxWidth(),
-            text = stringResource(category.stringResId)
+            text = stringResource(category.nameRes)
         )
 
         Column(
@@ -496,7 +513,7 @@ private fun NoResults(
         WrapListItem(
             item = ListItemDataUi(
                 itemId = DOCUMENTS_NO_RESULTS_ITEM_ID,
-                mainContentData = ListItemMainContentDataUi.Text(text = stringResource(R.string.documents_screen_search_no_results)),
+                mainContentData = ListItemMainContentDataUi.Text(text = stringResource(Res.string.documents_screen_search_no_results)),
             ),
             onItemClick = null,
             modifier = Modifier.fillMaxWidth(),
@@ -516,7 +533,7 @@ private fun DocumentsSheetContent(
             GenericBottomSheet(
                 titleContent = {
                     Text(
-                        text = stringResource(R.string.documents_screen_filters_title),
+                        text = stringResource(Res.string.documents_screen_filters_title),
                         style = MaterialTheme.typography.headlineSmall
                     )
                 },
@@ -575,7 +592,7 @@ private fun DocumentsSheetContent(
                                     }
                                 )
                             ) {
-                                Text(text = stringResource(R.string.documents_screen_filters_reset))
+                                Text(text = stringResource(Res.string.documents_screen_filters_reset))
                             }
                             HSpacer.Small()
                             WrapButton(
@@ -587,7 +604,7 @@ private fun DocumentsSheetContent(
                                     }
                                 )
                             ) {
-                                Text(text = stringResource(R.string.documents_screen_filters_apply))
+                                Text(text = stringResource(Res.string.documents_screen_filters_apply))
                             }
                         }
                     }
@@ -598,17 +615,17 @@ private fun DocumentsSheetContent(
         is DocumentsBottomSheetContent.AddDocument -> {
             BottomSheetWithTwoBigIcons(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(R.string.documents_screen_add_document_title),
-                    message = stringResource(R.string.documents_screen_add_document_description)
+                    title = stringResource(Res.string.documents_screen_add_document_title),
+                    message = stringResource(Res.string.documents_screen_add_document_description)
                 ),
                 options = listOf(
                     ModalOptionUi(
-                        title = stringResource(R.string.documents_screen_add_document_option_list),
+                        title = stringResource(Res.string.documents_screen_add_document_option_list),
                         leadingIcon = AppIcons.AddDocumentFromList,
                         event = Event.BottomSheet.AddDocument.FromList,
                     ),
                     ModalOptionUi(
-                        title = stringResource(R.string.documents_screen_add_document_option_qr),
+                        title = stringResource(Res.string.documents_screen_add_document_option_qr),
                         leadingIcon = AppIcons.AddDocumentFromQr,
                         event = Event.BottomSheet.AddDocument.ScanQr,
                     )
@@ -622,13 +639,13 @@ private fun DocumentsSheetContent(
             DialogBottomSheet(
                 textData = BottomSheetTextDataUi(
                     title = stringResource(
-                        id = R.string.dashboard_bottom_sheet_deferred_document_pressed_title
+                        Res.string.dashboard_bottom_sheet_deferred_document_pressed_title
                     ),
                     message = stringResource(
-                        id = R.string.dashboard_bottom_sheet_deferred_document_pressed_subtitle
+                        Res.string.dashboard_bottom_sheet_deferred_document_pressed_subtitle
                     ),
-                    positiveButtonText = stringResource(id = R.string.dashboard_bottom_sheet_deferred_document_pressed_primary_button_text),
-                    negativeButtonText = stringResource(id = R.string.dashboard_bottom_sheet_deferred_document_pressed_secondary_button_text),
+                    positiveButtonText = stringResource(Res.string.dashboard_bottom_sheet_deferred_document_pressed_primary_button_text),
+                    negativeButtonText = stringResource(Res.string.dashboard_bottom_sheet_deferred_document_pressed_secondary_button_text),
                 ),
                 onPositiveClick = {
                     onEventSent(
@@ -651,10 +668,10 @@ private fun DocumentsSheetContent(
             BottomSheetWithOptionsList(
                 textData = BottomSheetTextDataUi(
                     title = stringResource(
-                        id = R.string.dashboard_bottom_sheet_deferred_documents_ready_title
+                        Res.string.dashboard_bottom_sheet_deferred_documents_ready_title
                     ),
                     message = stringResource(
-                        id = R.string.dashboard_bottom_sheet_deferred_documents_ready_subtitle
+                        Res.string.dashboard_bottom_sheet_deferred_documents_ready_subtitle
                     ),
                 ),
                 options = sheetContent.options,

@@ -44,11 +44,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.divider
 import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.uilogic.component.AppIcons
@@ -71,6 +70,8 @@ import eu.europa.ec.uilogic.extension.optionalTestTag
 import eu.europa.ec.uilogic.extension.throttledClickable
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.util.TestTag
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.documents_screen_add_document_option_or
 
 private val defaultBottomSheetPadding: PaddingValues = PaddingValues(
     start = SPACING_LARGE.dp,
@@ -345,7 +346,7 @@ fun <T : ViewEvent> BottomSheetWithTwoBigIcons(
                             Text(
                                 modifier = Modifier.align(Alignment.CenterVertically),
                                 text = stringResource(
-                                    R.string.documents_screen_add_document_option_or
+                                    Res.string.documents_screen_add_document_option_or
                                 ),
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant

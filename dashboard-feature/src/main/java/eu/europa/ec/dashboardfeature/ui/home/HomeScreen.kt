@@ -41,12 +41,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
@@ -81,6 +80,27 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_bluetooth_primary_button_text
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_bluetooth_secondary_button_text
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_bluetooth_subtitle
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_bluetooth_title
+import eu.europa.ec.shared.resources.home_screen_add_document_option_online
+import eu.europa.ec.shared.resources.home_screen_authenticate
+import eu.europa.ec.shared.resources.home_screen_authenticate_description
+import eu.europa.ec.shared.resources.home_screen_authenticate_learn_more_description
+import eu.europa.ec.shared.resources.home_screen_authenticate_learn_more_inner_title
+import eu.europa.ec.shared.resources.home_screen_authenticate_option_in_person
+import eu.europa.ec.shared.resources.home_screen_authentication_card_title
+import eu.europa.ec.shared.resources.home_screen_learn_more
+import eu.europa.ec.shared.resources.home_screen_sign
+import eu.europa.ec.shared.resources.home_screen_sign_card_title
+import eu.europa.ec.shared.resources.home_screen_sign_document
+import eu.europa.ec.shared.resources.home_screen_sign_document_description
+import eu.europa.ec.shared.resources.home_screen_sign_document_option_from_device
+import eu.europa.ec.shared.resources.home_screen_sign_document_option_scan_qr
+import eu.europa.ec.shared.resources.home_screen_sign_learn_more_description
+import eu.europa.ec.shared.resources.home_screen_sign_learn_more_inner_title
 
 typealias DashboardEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event
 typealias OpenSideMenuEvent = eu.europa.ec.dashboardfeature.ui.dashboard.Event.SideMenu.Open
@@ -295,17 +315,17 @@ private fun HomeScreenSheetContent(
         is HomeScreenBottomSheetContent.Authenticate -> {
             BottomSheetWithTwoBigIcons(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(R.string.home_screen_authenticate),
-                    message = stringResource(R.string.home_screen_authenticate_description)
+                    title = stringResource(Res.string.home_screen_authenticate),
+                    message = stringResource(Res.string.home_screen_authenticate_description)
                 ),
                 options = listOf(
                     ModalOptionUi(
-                        title = stringResource(R.string.home_screen_authenticate_option_in_person),
+                        title = stringResource(Res.string.home_screen_authenticate_option_in_person),
                         leadingIcon = AppIcons.PresentDocumentInPerson,
                         event = Event.BottomSheet.Authenticate.OpenAuthenticateInPerson,
                     ),
                     ModalOptionUi(
-                        title = stringResource(R.string.home_screen_add_document_option_online),
+                        title = stringResource(Res.string.home_screen_add_document_option_online),
                         leadingIcon = AppIcons.PresentDocumentOnline,
                         event = Event.BottomSheet.Authenticate.OpenAuthenticateOnLine,
                     )
@@ -319,18 +339,18 @@ private fun HomeScreenSheetContent(
         is HomeScreenBottomSheetContent.Sign -> {
             BottomSheetWithTwoBigIcons(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(R.string.home_screen_sign_document),
-                    message = stringResource(R.string.home_screen_sign_document_description)
+                    title = stringResource(Res.string.home_screen_sign_document),
+                    message = stringResource(Res.string.home_screen_sign_document_description)
                 ),
                 options = listOf(
                     ModalOptionUi(
-                        title = stringResource(R.string.home_screen_sign_document_option_from_device),
+                        title = stringResource(Res.string.home_screen_sign_document_option_from_device),
                         leadingIcon = AppIcons.SignDocumentFromDevice,
                         leadingIconTint = MaterialTheme.colorScheme.primary,
                         event = Event.BottomSheet.SignDocument.OpenFromDevice,
                     ),
                     ModalOptionUi(
-                        title = stringResource(R.string.home_screen_sign_document_option_scan_qr),
+                        title = stringResource(Res.string.home_screen_sign_document_option_scan_qr),
                         leadingIcon = AppIcons.SignDocumentFromQr,
                         leadingIconTint = MaterialTheme.colorScheme.primary,
                         event = Event.BottomSheet.SignDocument.OpenScanQR,
@@ -354,7 +374,7 @@ private fun HomeScreenSheetContent(
                         )
                         HSpacer.Small()
                         Text(
-                            text = stringResource(R.string.home_screen_authenticate),
+                            text = stringResource(Res.string.home_screen_authenticate),
                             style = MaterialTheme.typography.headlineSmall.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
@@ -364,13 +384,13 @@ private fun HomeScreenSheetContent(
                 bodyContent = {
                     Column(verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)) {
                         Text(
-                            stringResource(R.string.home_screen_sign_learn_more_inner_title),
+                            stringResource(Res.string.home_screen_sign_learn_more_inner_title),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         )
                         Text(
-                            stringResource(R.string.home_screen_sign_learn_more_description),
+                            stringResource(Res.string.home_screen_sign_learn_more_description),
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -392,7 +412,7 @@ private fun HomeScreenSheetContent(
                         )
                         HSpacer.Small()
                         Text(
-                            stringResource(R.string.home_screen_sign),
+                            stringResource(Res.string.home_screen_sign),
                             style = MaterialTheme.typography.headlineSmall.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -402,13 +422,13 @@ private fun HomeScreenSheetContent(
                 bodyContent = {
                     Column(verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)) {
                         Text(
-                            stringResource(R.string.home_screen_authenticate_learn_more_inner_title),
+                            stringResource(Res.string.home_screen_authenticate_learn_more_inner_title),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         )
                         Text(
-                            stringResource(R.string.home_screen_authenticate_learn_more_description),
+                            stringResource(Res.string.home_screen_authenticate_learn_more_description),
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -421,10 +441,10 @@ private fun HomeScreenSheetContent(
         is HomeScreenBottomSheetContent.Bluetooth -> {
             DialogBottomSheet(
                 textData = BottomSheetTextDataUi(
-                    title = stringResource(id = R.string.dashboard_bottom_sheet_bluetooth_title),
-                    message = stringResource(id = R.string.dashboard_bottom_sheet_bluetooth_subtitle),
-                    positiveButtonText = stringResource(id = R.string.dashboard_bottom_sheet_bluetooth_primary_button_text),
-                    negativeButtonText = stringResource(id = R.string.dashboard_bottom_sheet_bluetooth_secondary_button_text),
+                    title = stringResource(Res.string.dashboard_bottom_sheet_bluetooth_title),
+                    message = stringResource(Res.string.dashboard_bottom_sheet_bluetooth_subtitle),
+                    positiveButtonText = stringResource(Res.string.dashboard_bottom_sheet_bluetooth_primary_button_text),
+                    negativeButtonText = stringResource(Res.string.dashboard_bottom_sheet_bluetooth_secondary_button_text),
                 ),
                 onPositiveClick = {
                     onEventSent(
@@ -496,16 +516,16 @@ private fun HomeScreenContentPreview() {
                     isBottomSheetOpen = false,
                     welcomeUserMessage = "Welcome back, Alex",
                     authenticateCardConfig = ActionCardConfig(
-                        title = stringResource(R.string.home_screen_authentication_card_title),
+                        title = stringResource(Res.string.home_screen_authentication_card_title),
                         icon = AppIcons.WalletActivated,
-                        primaryButtonText = stringResource(R.string.home_screen_authenticate),
-                        secondaryButtonText = stringResource(R.string.home_screen_learn_more),
+                        primaryButtonText = stringResource(Res.string.home_screen_authenticate),
+                        secondaryButtonText = stringResource(Res.string.home_screen_learn_more),
                     ),
                     signCardConfig = ActionCardConfig(
-                        title = stringResource(R.string.home_screen_sign_card_title),
+                        title = stringResource(Res.string.home_screen_sign_card_title),
                         icon = AppIcons.Contract,
-                        primaryButtonText = stringResource(R.string.home_screen_sign),
-                        secondaryButtonText = stringResource(R.string.home_screen_learn_more),
+                        primaryButtonText = stringResource(Res.string.home_screen_sign),
+                        secondaryButtonText = stringResource(Res.string.home_screen_learn_more),
                     )
 
                 ),

@@ -39,14 +39,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.resolve
+import eu.europa.ec.shared.resources.settings_intent_chooser_logs_share_title
+import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
+import eu.europa.ec.shared.resources.settings_screen_title
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
@@ -68,6 +71,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun SettingsScreen(
@@ -149,7 +153,7 @@ private fun Content(
         Column(modifier = Modifier.weight(1f)) {
             ContentTitle(
                 modifier = Modifier.fillMaxWidth(),
-                title = state.screenTitle,
+                title = state.screenTitle.resolve(),
             )
 
             SettingsItems(
@@ -173,6 +177,10 @@ private fun Content(
         )
     }
 
+    // Resolved here rather than in the view-model: the effect collector below is a coroutine, not a
+    // composable, so `UiText.resolve()` is unavailable there — and a chooser title is pure presentation.
+    val logShareChooserTitle = stringResource(Res.string.settings_intent_chooser_logs_share_title)
+
     LaunchedEffect(Unit) {
         effectFlow.onEach { effect ->
             when (effect) {
@@ -180,7 +188,7 @@ private fun Content(
                 is Effect.ShareLogFile -> {
                     context.openIntentChooser(
                         effect.intent,
-                        effect.chooserTitle
+                        logShareChooserTitle
                     )
                 }
 
@@ -249,7 +257,7 @@ private fun SettingsScreenPreview() {
                 data = ListItemDataUi(
                     itemId = SettingsMenuItemType.RETRIEVE_LOGS.itemId,
                     mainContentData = ListItemMainContentDataUi.Text(
-                        text = stringResource(R.string.settings_screen_option_retrieve_logs)
+                        text = stringResource(Res.string.settings_screen_option_retrieve_logs)
                     ),
                     leadingContentData = ListItemLeadingContentDataUi.Icon(
                         iconData = AppIcons.OpenNew
@@ -263,7 +271,6 @@ private fun SettingsScreenPreview() {
 
         Content(
             state = State(
-                screenTitle = stringResource(R.string.settings_screen_title),
                 settingsItems = settingsItems,
                 appVersion = "1.0.0",
                 changelogUrl = "",

@@ -19,8 +19,9 @@ package eu.europa.ec.dashboardfeature.interactor
 import android.content.Context
 import android.net.Uri
 import eu.europa.ec.dashboardfeature.ui.document_sign.model.DocumentSignButtonUi
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_sign_select_document
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -89,7 +90,7 @@ class TestDocumentSignInteractor {
     @Test
     fun `When getItemUi is called, Then the expected DocumentSignButtonUi is returned`() {
         // Given
-        whenever(resourceProvider.getString(R.string.document_sign_select_document))
+        whenever(resourceProvider.getString(Res.string.document_sign_select_document))
             .thenReturn(mockedSelectDocumentText)
 
         // When

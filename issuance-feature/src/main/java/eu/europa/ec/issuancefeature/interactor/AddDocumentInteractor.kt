@@ -32,7 +32,6 @@ import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.navigation.AddDocumentRoute
@@ -49,6 +48,12 @@ import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_description
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_primary_button_text
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_text
+import eu.europa.ec.shared.resources.issuance_add_document_no_options
+import eu.europa.ec.shared.resources.issuance_add_document_pid_combined
 
 sealed class AddDocumentInteractorIssueDocumentsPartialState {
     data class Success(val documentIds: List<DocumentId>) :
@@ -149,7 +154,7 @@ class AddDocumentInteractorImpl(
                                                     itemId = "${issuer}_${pidIds.joinToString(",")}",
                                                     mainContentData = ListItemMainContentDataUi.Text(
                                                         text = resourceProvider.getString(
-                                                            R.string.issuance_add_document_pid_combined
+                                                            Res.string.issuance_add_document_pid_combined
                                                         )
                                                     ),
                                                     trailingContentData = ListItemTrailingContentDataUi.Icon(
@@ -191,7 +196,7 @@ class AddDocumentInteractorImpl(
                     if (options.isEmpty()) {
                         emit(
                             AddDocumentInteractorScopedPartialState.NoOptions(
-                                errorMsg = resourceProvider.getString(R.string.issuance_add_document_no_options)
+                                errorMsg = resourceProvider.getString(Res.string.issuance_add_document_no_options)
                             )
                         )
                     } else {
@@ -335,8 +340,8 @@ class AddDocumentInteractorImpl(
     ): SuccessUIConfig {
         val (textElementsConfig, imageConfig, buttonText) = Triple(
             first = SuccessUIConfig.TextElementsConfig(
-                text = resourceProvider.getString(R.string.issuance_add_document_deferred_success_text),
-                description = resourceProvider.getString(R.string.issuance_add_document_deferred_success_description),
+                text = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_text),
+                description = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_description),
                 color = ColorKey.Pending
             ),
             second = SuccessUIConfig.ImageConfig(
@@ -344,7 +349,7 @@ class AddDocumentInteractorImpl(
                 tint = ColorKey.Primary,
                 screenPercentageSize = PERCENTAGE_25,
             ),
-            third = resourceProvider.getString(R.string.issuance_add_document_deferred_success_primary_button_text)
+            third = resourceProvider.getString(Res.string.issuance_add_document_deferred_success_primary_button_text)
         )
 
         return SuccessUIConfig(

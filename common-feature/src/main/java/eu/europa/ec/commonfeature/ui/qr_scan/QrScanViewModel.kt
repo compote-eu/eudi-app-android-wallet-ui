@@ -29,13 +29,16 @@ import eu.europa.ec.commonfeature.config.QrScanUiConfig
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.interactor.QrScanInteractor
 import eu.europa.ec.eudi.rqesui.domain.extension.toUriOrEmpty
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.qr_scan_informative_text_issuance_flow
+import eu.europa.ec.shared.resources.qr_scan_informative_text_presentation_flow
+import eu.europa.ec.shared.resources.qr_scan_informative_text_signature_flow
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.mvi.MviViewModel
@@ -56,7 +59,7 @@ data class State(
 
     val failedScanAttempts: Int = 0,
     val showInformativeText: Boolean = false,
-    val informativeText: String,
+    val informativeText: UiText,
 ) : ViewState
 
 sealed class Event : ViewEvent {
@@ -78,7 +81,6 @@ sealed class Effect : ViewSideEffect {
 @KoinViewModel
 class QrScanViewModel(
     private val interactor: QrScanInteractor,
-    private val resourceProvider: ResourceProvider,
     @InjectedParam private val qrScannedConfig: QrScanUiConfig,
 ) : MviViewModel<Event, State, Effect>() {
 
@@ -189,14 +191,14 @@ class QrScanViewModel(
 
     private fun calculateInformativeText(
         qrScanFlow: QrScanFlow,
-    ): String {
-        return with(resourceProvider) {
+    ): UiText {
+        return UiText.Resource(
             when (qrScanFlow) {
-                is QrScanFlow.Presentation -> getString(R.string.qr_scan_informative_text_presentation_flow)
-                is QrScanFlow.Issuance -> getString(R.string.qr_scan_informative_text_issuance_flow)
-                is QrScanFlow.Signature -> getString(R.string.qr_scan_informative_text_signature_flow)
+                is QrScanFlow.Presentation -> Res.string.qr_scan_informative_text_presentation_flow
+                is QrScanFlow.Issuance -> Res.string.qr_scan_informative_text_issuance_flow
+                is QrScanFlow.Signature -> Res.string.qr_scan_informative_text_signature_flow
             }
-        }
+        )
     }
 
     private fun navigateToPresentationRequest(scanResult: String) {

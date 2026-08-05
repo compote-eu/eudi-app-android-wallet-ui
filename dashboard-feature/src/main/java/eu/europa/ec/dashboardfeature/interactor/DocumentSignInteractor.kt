@@ -21,8 +21,9 @@ import android.net.Uri
 import eu.europa.ec.dashboardfeature.ui.document_sign.model.DocumentSignButtonUi
 import eu.europa.ec.eudi.rqesui.infrastructure.DocumentUri
 import eu.europa.ec.eudi.rqesui.infrastructure.EudiRQESUi
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_sign_select_document
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -49,7 +50,7 @@ class DocumentSignInteractorImpl(
             data = ListItemDataUi(
                 itemId = DOCUMENT_SIGN_BUTTON_ID,
                 mainContentData = ListItemMainContentDataUi.Text(
-                    text = resourceProvider.getString(R.string.document_sign_select_document)
+                    text = resourceProvider.getString(Res.string.document_sign_select_document)
                 ),
                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                     iconData = AppIcons.Add

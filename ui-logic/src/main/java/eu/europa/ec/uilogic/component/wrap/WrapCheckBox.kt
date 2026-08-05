@@ -31,12 +31,6 @@ import androidx.compose.ui.unit.Dp
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 
-data class CheckboxDataUi(
-    val isChecked: Boolean,
-    val enabled: Boolean = true,
-    val onCheckedChange: ((Boolean) -> Unit)? = null,
-)
-
 @Composable
 fun WrapCheckbox(
     checkboxData: CheckboxDataUi,

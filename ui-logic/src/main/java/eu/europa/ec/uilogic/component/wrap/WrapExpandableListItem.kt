@@ -25,11 +25,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ClickableArea
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -38,20 +37,8 @@ import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
-
-sealed class ExpandableListItemUi {
-    abstract val header: ListItemDataUi
-
-    data class SingleListItem(
-        override val header: ListItemDataUi,
-    ) : ExpandableListItemUi()
-
-    data class NestedListItem(
-        override val header: ListItemDataUi,
-        val nestedItems: List<ExpandableListItemUi>,
-        val isExpanded: Boolean,
-    ) : ExpandableListItemUi()
-}
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.request_collapsed_supporting_text
 
 @Composable
 fun WrapExpandableListItem(
@@ -148,7 +135,7 @@ private fun WrapExpandableListItemPreview() {
             header = ListItemDataUi(
                 itemId = "0",
                 mainContentData = ListItemMainContentDataUi.Text(text = "Digital ID"),
-                supportingText = stringResource(R.string.request_collapsed_supporting_text),
+                supportingText = stringResource(Res.string.request_collapsed_supporting_text),
                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                     iconData = AppIcons.KeyboardArrowDown
                 ),

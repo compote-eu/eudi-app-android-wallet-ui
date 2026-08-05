@@ -57,6 +57,8 @@ fun ColorKey.toColor(): Color = when (this) {
     ColorKey.Success -> ThemeColors.success
     ColorKey.Pending -> ThemeColors.pending
     ColorKey.Primary -> ThemeColors.primary
+    ColorKey.Warning -> ThemeColors.warning
+    ColorKey.Error -> ThemeColors.error
 }
 
 /** Resolves a [TextAlignKey] to a Compose [TextAlign]. */

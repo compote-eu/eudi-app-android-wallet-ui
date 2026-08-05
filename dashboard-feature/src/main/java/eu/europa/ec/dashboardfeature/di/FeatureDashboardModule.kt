@@ -43,6 +43,7 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.StringResolver
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -107,10 +108,12 @@ fun provideDocumentsInteractor(
 @Factory
 fun provideTransactionInteractor(
     resourceProvider: ResourceProvider,
+    stringResolver: StringResolver,
     filterValidator: FilterValidator,
     walletCoreDocumentsController: WalletCoreDocumentsController,
 ): TransactionsInteractor = TransactionsInteractorImpl(
     resourceProvider,
+    stringResolver,
     filterValidator,
     walletCoreDocumentsController
 )

@@ -38,11 +38,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isUnspecified
 import androidx.compose.ui.unit.sp
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
@@ -53,6 +52,9 @@ import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
 import eu.europa.ec.uilogic.extension.clickableNoRipple
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.generic_error_button_retry
+import eu.europa.ec.shared.resources.generic_error_message
 
 @Composable
 fun InlineSnackbar(
@@ -62,7 +64,7 @@ fun InlineSnackbar(
 ) {
     val message = error.errorTitle
         ?: error.errorSubTitle
-        ?: stringResource(R.string.generic_error_message)
+        ?: stringResource(Res.string.generic_error_message)
     InlineSnackbar(
         message = message,
         onRetry = error.onRetry,
@@ -113,7 +115,7 @@ fun InlineSnackbar(
 
                 onRetry?.let { retry ->
                     Text(
-                        text = stringResource(R.string.generic_error_button_retry),
+                        text = stringResource(Res.string.generic_error_button_retry),
                         color = MaterialTheme.colorScheme.inversePrimary,
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier

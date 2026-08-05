@@ -36,7 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
@@ -45,7 +45,6 @@ import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDet
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsDataSharedHolderUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsDataSignedHolderUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
@@ -76,6 +75,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.onEach
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.resolve
+import eu.europa.ec.shared.resources.transaction_details_data_shared_section_title
+import eu.europa.ec.shared.resources.transaction_details_data_signed_section_title
+import eu.europa.ec.shared.resources.transaction_details_report_transaction_button
+import eu.europa.ec.shared.resources.transaction_details_report_transaction_message
+import eu.europa.ec.shared.resources.transaction_details_request_deletion_button
+import eu.europa.ec.shared.resources.transaction_details_request_deletion_message
+import eu.europa.ec.shared.resources.transaction_details_screen_card_date_label
+import eu.europa.ec.shared.resources.transaction_details_screen_title
 
 @Composable
 internal fun TransactionDetailsScreen(
@@ -120,7 +129,7 @@ private fun Content(
             .verticalScroll(rememberScrollState())
             .navigationBarsPadding()
     ) {
-        ContentTitle(title = state.title)
+        ContentTitle(title = state.title.resolve())
 
         state.transactionDetailsUi?.let { safeTransactionDetailsUi ->
             TransactionDetailsCard(
@@ -139,7 +148,7 @@ private fun Content(
             state.transactionDetailsUi?.transactionDetailsDataShared?.let { safeTransactionDetailsDataShared ->
                 ExpandableDataSection(
                     modifier = Modifier.fillMaxWidth(),
-                    sectionTitle = stringResource(R.string.transaction_details_data_shared_section_title),
+                    sectionTitle = stringResource(Res.string.transaction_details_data_shared_section_title),
                     dataItems = safeTransactionDetailsDataShared.dataSharedItems,
                     onEventSend = onEventSend,
                 )
@@ -148,7 +157,7 @@ private fun Content(
             state.transactionDetailsUi?.transactionDetailsDataSigned?.dataSignedItems?.let { safeDataSignedItems ->
                 ExpandableDataSection(
                     modifier = Modifier.fillMaxWidth(),
-                    sectionTitle = stringResource(R.string.transaction_details_data_signed_section_title),
+                    sectionTitle = stringResource(Res.string.transaction_details_data_signed_section_title),
                     dataItems = safeDataSignedItems,
                     onEventSend = onEventSend,
                 )
@@ -237,7 +246,7 @@ private fun TransactionDetailsCard(
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(
-                        text = stringResource(R.string.transaction_details_screen_card_date_label),
+                        text = stringResource(Res.string.transaction_details_screen_card_date_label),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold
@@ -320,7 +329,7 @@ private fun ButtonsSection(onEventSend: (Event) -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp)) {
             Text(
                 modifier = Modifier.fillMaxWidth(),
-                text = stringResource(R.string.transaction_details_request_deletion_message),
+                text = stringResource(Res.string.transaction_details_request_deletion_message),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -334,7 +343,7 @@ private fun ButtonsSection(onEventSend: (Event) -> Unit) {
                 )
             ) {
                 Text(
-                    text = stringResource(R.string.transaction_details_request_deletion_button),
+                    text = stringResource(Res.string.transaction_details_request_deletion_button),
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -343,7 +352,7 @@ private fun ButtonsSection(onEventSend: (Event) -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp)) {
             Text(
                 modifier = Modifier.fillMaxWidth(),
-                text = stringResource(R.string.transaction_details_report_transaction_message),
+                text = stringResource(Res.string.transaction_details_report_transaction_message),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -357,7 +366,7 @@ private fun ButtonsSection(onEventSend: (Event) -> Unit) {
                 )
             ) {
                 Text(
-                    text = stringResource(R.string.transaction_details_report_transaction_button),
+                    text = stringResource(Res.string.transaction_details_report_transaction_button),
                     style = MaterialTheme.typography.labelLarge
                 )
             }
@@ -443,7 +452,6 @@ private fun ContentPreview() {
     val mockedDataSignedList = TransactionDetailsDataSignedHolderUi(dataSignedItems = items)
 
     val state = State(
-        title = stringResource(R.string.transaction_details_screen_title),
         transactionDetailsUi = TransactionDetailsUi(
             transactionId = "id",
             transactionDetailsCardUi = TransactionDetailsCardUi(

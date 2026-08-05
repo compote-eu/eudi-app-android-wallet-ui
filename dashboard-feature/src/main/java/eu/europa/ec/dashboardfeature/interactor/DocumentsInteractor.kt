@@ -38,7 +38,6 @@ import eu.europa.ec.businesslogic.validator.model.SortOrder
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDeferredDocumentPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
-import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.getExpiryDate
 import eu.europa.ec.corelogic.extension.isExpired
 import eu.europa.ec.corelogic.extension.localizedIssuerMetadata
@@ -55,15 +54,37 @@ import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoU
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.content_description_issuer_logo_icon
+import eu.europa.ec.shared.resources.dashboard_document_credentials_info_text
+import eu.europa.ec.shared.resources.dashboard_document_deferred_pending
+import eu.europa.ec.shared.resources.dashboard_document_has_expired
+import eu.europa.ec.shared.resources.dashboard_document_has_not_expired
+import eu.europa.ec.shared.resources.dashboard_document_revoked
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_category
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_expiry_period
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_expiry_period_1
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_expiry_period_2
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_expiry_period_3
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_expiry_period_4
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_issuer
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_state
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_state_expired
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_state_revoked
+import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_state_valid
+import eu.europa.ec.shared.resources.documents_screen_filters_sort_by
+import eu.europa.ec.shared.resources.documents_screen_filters_sort_default
+import eu.europa.ec.shared.resources.documents_screen_filters_unknown_issuer
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.CheckboxDataUi
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import eu.europa.ec.uilogic.component.wrap.RadioButtonDataUi
 import kotlinx.coroutines.CoroutineDispatcher
@@ -308,7 +329,7 @@ class DocumentsInteractorImpl(
                                 document.localizedIssuerMetadata(userLocale)
 
                             val issuerName = localizedIssuerMetadata?.name
-                                ?: resourceProvider.getString(R.string.documents_screen_filters_unknown_issuer)
+                                ?: resourceProvider.getString(Res.string.documents_screen_filters_unknown_issuer)
 
                             val documentIdentifier = document.toDocumentIdentifier()
 
@@ -335,11 +356,11 @@ class DocumentsInteractorImpl(
                             }
 
                             val supportingText = when {
-                                documentIsRevoked -> resourceProvider.getString(R.string.dashboard_document_revoked)
-                                documentHasExpired -> resourceProvider.getString(R.string.dashboard_document_has_expired)
+                                documentIsRevoked -> resourceProvider.getString(Res.string.dashboard_document_revoked)
+                                documentHasExpired -> resourceProvider.getString(Res.string.dashboard_document_has_expired)
                                 documentExpirationDate == null -> null
                                 else -> resourceProvider.getString(
-                                    R.string.dashboard_document_has_not_expired,
+                                    Res.string.dashboard_document_has_not_expired,
                                     documentExpirationDate.formatInstant()
                                 )
                             }
@@ -347,7 +368,7 @@ class DocumentsInteractorImpl(
                             val trailingContentData = if (documentIsRevoked) {
                                 ListItemTrailingContentDataUi.Icon(
                                     iconData = AppIcons.ErrorFilled,
-                                    tint = ThemeColors.error
+                                    tint = ColorKey.Error
                                 )
                             } else {
                                 val documentAvailableCredentials = document.credentialsCount()
@@ -357,7 +378,7 @@ class DocumentsInteractorImpl(
                                     availableCredentials = documentAvailableCredentials,
                                     totalCredentials = documentTotalCredentials,
                                     title = resourceProvider.getString(
-                                        R.string.dashboard_document_credentials_info_text,
+                                        Res.string.dashboard_document_credentials_info_text,
                                         documentAvailableCredentials,
                                         documentTotalCredentials
                                     )
@@ -383,7 +404,7 @@ class DocumentsInteractorImpl(
                                         supportingText = supportingText,
                                         leadingContentData = ListItemLeadingContentDataUi.AsyncImage(
                                             imageUrl = localizedIssuerMetadata?.logo?.uri.toString(),
-                                            contentDescription = resourceProvider.getString(R.string.content_description_issuer_logo_icon),
+                                            contentDescription = resourceProvider.getString(Res.string.content_description_issuer_logo_icon),
                                             errorImage = AppIcons.Id,
                                         ),
                                         trailingContentData = trailingContentData
@@ -408,7 +429,7 @@ class DocumentsInteractorImpl(
                                 document.localizedIssuerMetadata(userLocale)
 
                             val issuerName = localizedIssuerMetadata?.name
-                                ?: resourceProvider.getString(R.string.documents_screen_filters_unknown_issuer)
+                                ?: resourceProvider.getString(Res.string.documents_screen_filters_unknown_issuer)
 
                             val documentIdentifier = document.toDocumentIdentifier()
 
@@ -432,15 +453,15 @@ class DocumentsInteractorImpl(
                                         itemId = document.id,
                                         mainContentData = ListItemMainContentDataUi.Text(text = documentName),
                                         overlineText = issuerName,
-                                        supportingText = resourceProvider.getString(R.string.dashboard_document_deferred_pending),
+                                        supportingText = resourceProvider.getString(Res.string.dashboard_document_deferred_pending),
                                         leadingContentData = ListItemLeadingContentDataUi.AsyncImage(
                                             imageUrl = localizedIssuerMetadata?.logo?.uri.toString(),
-                                            contentDescription = resourceProvider.getString(R.string.content_description_issuer_logo_icon),
+                                            contentDescription = resourceProvider.getString(Res.string.content_description_issuer_logo_icon),
                                             errorImage = AppIcons.Id,
                                         ),
                                         trailingContentData = ListItemTrailingContentDataUi.Icon(
                                             iconData = AppIcons.ClockTimer,
-                                            tint = ThemeColors.warning,
+                                            tint = ColorKey.Warning,
                                         )
                                     ),
                                     documentIdentifier = documentIdentifier,
@@ -479,7 +500,7 @@ class DocumentsInteractorImpl(
         showBatchIssuanceCounter: Boolean,
     ): ListItemTrailingContentDataUi {
         val lowOnCredentialsIcon = AppIcons.ErrorFilled
-        val lowOnCredentialsIconTint = ThemeColors.warning
+        val lowOnCredentialsIconTint = ColorKey.Warning
 
         return when {
             showBatchIssuanceCounter && documentLowOnCredentials -> {
@@ -681,11 +702,11 @@ class DocumentsInteractorImpl(
             // Filter by expiry period
             FilterGroup.SingleSelectionFilterGroup(
                 id = DocumentFilterIds.FILTER_BY_PERIOD_GROUP_ID,
-                name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_expiry_period),
+                name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_expiry_period),
                 filters = listOf(
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_PERIOD_DEFAULT,
-                        name = resourceProvider.getString(R.string.documents_screen_filters_sort_default),
+                        name = resourceProvider.getString(Res.string.documents_screen_filters_sort_default),
                         selected = true,
                         isDefault = true,
                         filterableAction = FilterAction.Filter<DocumentsFilterableAttributes> { _, _ ->
@@ -694,7 +715,7 @@ class DocumentsInteractorImpl(
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_PERIOD_NEXT_7,
-                        name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_expiry_period_1),
+                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_expiry_period_1),
                         selected = false,
                         filterableAction = FilterAction.Filter<DocumentsFilterableAttributes> { attributes, _ ->
                             attributes.expiryDate?.isWithinNextDays(7) == true
@@ -702,7 +723,7 @@ class DocumentsInteractorImpl(
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_PERIOD_NEXT_30,
-                        name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_expiry_period_2),
+                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_expiry_period_2),
                         selected = false,
                         filterableAction = FilterAction.Filter<DocumentsFilterableAttributes> { attributes, _ ->
                             attributes.expiryDate?.isWithinNextDays(30) == true
@@ -710,7 +731,7 @@ class DocumentsInteractorImpl(
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_PERIOD_BEYOND_30,
-                        name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_expiry_period_3),
+                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_expiry_period_3),
                         selected = false,
                         filterableAction = FilterAction.Filter<DocumentsFilterableAttributes> { attributes, _ ->
                             attributes.expiryDate?.isBeyondNextDays(30) == true
@@ -718,7 +739,7 @@ class DocumentsInteractorImpl(
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_PERIOD_EXPIRED,
-                        name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_expiry_period_4),
+                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_expiry_period_4),
                         selected = false,
                         filterableAction = FilterAction.Filter<DocumentsFilterableAttributes> { attributes, _ ->
                             attributes.expiryDate?.isExpired() == true
@@ -729,7 +750,7 @@ class DocumentsInteractorImpl(
             // Filter by Issuer
             FilterGroup.MultipleSelectionFilterGroup(
                 id = DocumentFilterIds.FILTER_BY_ISSUER_GROUP_ID,
-                name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_issuer),
+                name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_issuer),
                 filters = emptyList(),
                 filterableAction = FilterMultipleAction<DocumentsFilterableAttributes> { attributes, filter ->
                     attributes.issuer == filter.name
@@ -738,7 +759,7 @@ class DocumentsInteractorImpl(
             // Filter by category
             FilterGroup.MultipleSelectionFilterGroup(
                 id = DocumentFilterIds.FILTER_BY_DOCUMENT_CATEGORY_GROUP_ID,
-                name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_category),
+                name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_category),
                 filters = emptyList(),
                 filterableAction = FilterMultipleAction<DocumentsFilterableAttributes> { attributes, filter ->
                     attributes.category.id.toString() == filter.id
@@ -747,23 +768,23 @@ class DocumentsInteractorImpl(
             // Filter by State
             FilterGroup.MultipleSelectionFilterGroup(
                 id = DocumentFilterIds.FILTER_BY_STATE_GROUP_ID,
-                name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_state),
+                name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_state),
                 filters = listOf(
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_STATE_VALID,
-                        name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_state_valid),
+                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_state_valid),
                         selected = true,
                         isDefault = true,
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_STATE_EXPIRED,
-                        name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_state_expired),
+                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_state_expired),
                         selected = false,
                         isDefault = false,
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_STATE_REVOKED,
-                        name = resourceProvider.getString(R.string.documents_screen_filters_filter_by_state_revoked),
+                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_state_revoked),
                         selected = false,
                         isDefault = false,
                     ),
@@ -785,11 +806,11 @@ class DocumentsInteractorImpl(
         sortOrder = SortOrder.Ascending(isDefault = true),
         sort = FilterSort(
             id = DocumentFilterIds.FILTER_SORT_GROUP_ID,
-            name = resourceProvider.getString(R.string.documents_screen_filters_sort_by),
+            name = resourceProvider.getString(Res.string.documents_screen_filters_sort_by),
             filters = listOf(
                 FilterItem(
                     id = DocumentFilterIds.FILTER_SORT_DEFAULT,
-                    name = resourceProvider.getString(R.string.documents_screen_filters_sort_default),
+                    name = resourceProvider.getString(Res.string.documents_screen_filters_sort_default),
                     selected = true,
                     isDefault = true,
                     filterableAction = FilterAction.Sort<DocumentsFilterableAttributes, String> { attributes ->
@@ -807,7 +828,7 @@ class DocumentsInteractorImpl(
                 with(filterableItem.attributes as DocumentsFilterableAttributes) {
                     FilterItem(
                         id = category.id.toString(),
-                        name = resourceProvider.getString(category.stringResId),
+                        name = resourceProvider.getString(category.nameRes),
                         selected = true,
                         isDefault = true
                     )

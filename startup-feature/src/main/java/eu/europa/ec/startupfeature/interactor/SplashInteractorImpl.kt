@@ -33,10 +33,13 @@ import eu.europa.ec.shared.navigation.BiometricRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.wallet.WalletEngine
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.biometric_login_biometrics_enabled_subtitle
+import eu.europa.ec.shared.resources.biometric_login_biometrics_not_enabled_subtitle
+import eu.europa.ec.shared.resources.biometric_login_title
 
 class SplashInteractorImpl(
     private val quickPinInteractor: QuickPinInteractor,
@@ -78,9 +81,9 @@ class SplashInteractorImpl(
         return BiometricRoute(
             BiometricUiConfig(
                 mode = BiometricMode.Login(
-                    title = resourceProvider.getString(R.string.biometric_login_title),
-                    subTitleWhenBiometricsEnabled = resourceProvider.getString(R.string.biometric_login_biometrics_enabled_subtitle),
-                    subTitleWhenBiometricsNotEnabled = resourceProvider.getString(R.string.biometric_login_biometrics_not_enabled_subtitle),
+                    title = resourceProvider.getString(Res.string.biometric_login_title),
+                    subTitleWhenBiometricsEnabled = resourceProvider.getString(Res.string.biometric_login_biometrics_enabled_subtitle),
+                    subTitleWhenBiometricsNotEnabled = resourceProvider.getString(Res.string.biometric_login_biometrics_not_enabled_subtitle),
                 ),
                 isPreAuthorization = true,
                 shouldInitializeBiometricAuthOnCreate = true,

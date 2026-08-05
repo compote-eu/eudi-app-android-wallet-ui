@@ -46,7 +46,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -59,8 +58,11 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import eu.europa.ec.commonfeature.ui.qr_scan.component.QrCodeAnalyzer
 import eu.europa.ec.commonfeature.ui.qr_scan.component.qrBorderCanvas
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.qr_scan_informative_text_presentation_flow
+import eu.europa.ec.shared.resources.qr_scan_permission_not_granted
+import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ErrorInfo
 import eu.europa.ec.uilogic.component.content.ContentScreen
@@ -80,10 +82,11 @@ import eu.europa.ec.uilogic.extension.openAppSettings
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.extension.throttledClickable
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
+import java.util.concurrent.Executors
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
-import java.util.concurrent.Executors
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun QrScanScreen(
@@ -186,7 +189,7 @@ private fun AnimatedInformativeText(state: State, paddingValues: PaddingValues) 
                 paddingValues.calculateBottomPadding()
             )
         ) {
-            InformativeText(text = state.informativeText)
+            InformativeText(text = state.informativeText.resolve())
         }
     }
 }
@@ -286,7 +289,7 @@ private fun OpenCamera(
         } else if (shouldShowPermissionRational) {
             ErrorInfo(
                 modifier = Modifier.throttledClickable { onEventSend(Event.GoToAppSettings) },
-                informativeText = stringResource(id = R.string.qr_scan_permission_not_granted),
+                informativeText = stringResource(Res.string.qr_scan_permission_not_granted),
                 contentColor = Color.White,
                 isIconEnabled = true,
             )
@@ -332,7 +335,7 @@ private fun InformativeText(text: String) {
 private fun InformativeTextPreview() {
     PreviewTheme {
         InformativeText(
-            text = stringResource(R.string.qr_scan_informative_text_presentation_flow)
+            text = stringResource(Res.string.qr_scan_informative_text_presentation_flow)
         )
     }
 }

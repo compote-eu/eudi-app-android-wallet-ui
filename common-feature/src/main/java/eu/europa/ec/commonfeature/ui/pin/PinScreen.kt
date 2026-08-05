@@ -37,13 +37,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.commonfeature.util.TestTag
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
@@ -69,6 +68,11 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.quick_pin_bottom_sheet_cancel_primary_button_text
+import eu.europa.ec.shared.resources.quick_pin_bottom_sheet_cancel_secondary_button_text
+import eu.europa.ec.shared.resources.quick_pin_bottom_sheet_cancel_subtitle
+import eu.europa.ec.shared.resources.quick_pin_bottom_sheet_cancel_title
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -254,10 +258,10 @@ private fun SheetContent(
 ) {
     DialogBottomSheet(
         textData = BottomSheetTextDataUi(
-            title = stringResource(id = R.string.quick_pin_bottom_sheet_cancel_title),
-            message = stringResource(id = R.string.quick_pin_bottom_sheet_cancel_subtitle),
-            positiveButtonText = stringResource(id = R.string.quick_pin_bottom_sheet_cancel_primary_button_text),
-            negativeButtonText = stringResource(id = R.string.quick_pin_bottom_sheet_cancel_secondary_button_text),
+            title = stringResource(Res.string.quick_pin_bottom_sheet_cancel_title),
+            message = stringResource(Res.string.quick_pin_bottom_sheet_cancel_subtitle),
+            positiveButtonText = stringResource(Res.string.quick_pin_bottom_sheet_cancel_primary_button_text),
+            negativeButtonText = stringResource(Res.string.quick_pin_bottom_sheet_cancel_secondary_button_text),
         ),
         onPositiveClick = { onEventSent(Event.BottomSheet.Cancel.PrimaryButtonPressed) },
         onNegativeClick = { onEventSent(Event.BottomSheet.Cancel.SecondaryButtonPressed) }

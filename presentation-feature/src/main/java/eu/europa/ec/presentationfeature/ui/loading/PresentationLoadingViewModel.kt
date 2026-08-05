@@ -28,7 +28,6 @@ import eu.europa.ec.corelogic.model.AuthenticationData
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingObserveResponsePartialState
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingSendRequestedDocumentPartialState
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
@@ -45,6 +44,8 @@ import org.koin.core.annotation.KoinViewModel
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.loading_header_description
 
 @KoinViewModel
 class PresentationLoadingViewModel(
@@ -55,7 +56,7 @@ class PresentationLoadingViewModel(
 
     override fun getHeaderConfig(): ContentHeaderConfig {
         return ContentHeaderConfig(
-            description = resourceProvider.getString(R.string.loading_header_description),
+            description = resourceProvider.getString(Res.string.loading_header_description),
         )
     }
 

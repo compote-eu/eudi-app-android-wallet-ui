@@ -26,8 +26,10 @@ import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.settings_intent_chooser_logs_share_title
+import eu.europa.ec.shared.resources.settings_screen_title
 import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
@@ -37,7 +39,7 @@ import org.koin.core.annotation.KoinViewModel
 
 data class State(
     val isLoading: Boolean = false,
-    val screenTitle: String,
+    val screenTitle: UiText = UiText.Resource(Res.string.settings_screen_title),
 
     val settingsItems: List<SettingsItemUi> = emptyList(),
 
@@ -63,18 +65,16 @@ sealed class Effect : ViewSideEffect {
         data class OpenUrlExternally(val url: Uri) : Navigation()
     }
 
-    data class ShareLogFile(val intent: Intent, val chooserTitle: String) : Effect()
+    data class ShareLogFile(val intent: Intent) : Effect()
     data class ShowSnackbar(val message: String) : Effect()
 }
 
 @KoinViewModel
 class SettingsViewModel(
     private val settingsInteractor: SettingsInteractor,
-    private val resourceProvider: ResourceProvider,
 ) : MviViewModel<Event, State, Effect>() {
     override fun setInitialState(): State {
         return State(
-            screenTitle = resourceProvider.getString(R.string.settings_screen_title),
             appVersion = settingsInteractor.getAppVersion(),
             changelogUrl = settingsInteractor.getChangelogUrl(),
         )
@@ -166,7 +166,6 @@ class SettingsViewModel(
                                 putParcelableArrayListExtra(Intent.EXTRA_STREAM, logs)
                                 type = "text/*"
                             },
-                            chooserTitle = resourceProvider.getString(R.string.settings_intent_chooser_logs_share_title)
                         )
                     }
                 }

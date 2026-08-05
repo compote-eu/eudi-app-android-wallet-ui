@@ -34,7 +34,6 @@ import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.controller.crypto.CryptoController
 import eu.europa.ec.businesslogic.extension.decodeFromPemBase64String
 import eu.europa.ec.businesslogic.extension.encodeToPemBase64String
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +43,13 @@ import kotlinx.coroutines.withContext
 import java.nio.charset.StandardCharsets
 import javax.crypto.Cipher
 import kotlin.coroutines.resume
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.biometric_no_hardware
+import eu.europa.ec.shared.resources.biometric_prompt_subtitle
+import eu.europa.ec.shared.resources.biometric_prompt_title
+import eu.europa.ec.shared.resources.biometric_unknown_error
+import eu.europa.ec.shared.resources.generic_cancel
+import eu.europa.ec.shared.resources.generic_error_description
 
 enum class BiometricsAuthError(val code: Int) {
     Cancel(10), CancelByUser(13)
@@ -81,9 +87,9 @@ class BiometricAuthenticationControllerImpl(
             BiometricManager.BIOMETRIC_SUCCESS -> BiometricsAvailability.CanAuthenticate
             BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> BiometricsAvailability.NonEnrolled
             BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE, BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED ->
-                BiometricsAvailability.Failure(resourceProvider.getString(R.string.biometric_no_hardware))
+                BiometricsAvailability.Failure(resourceProvider.getString(Res.string.biometric_no_hardware))
 
-            else -> BiometricsAvailability.Failure(resourceProvider.getString(R.string.biometric_unknown_error))
+            else -> BiometricsAvailability.Failure(resourceProvider.getString(Res.string.biometric_unknown_error))
         }
     }
 
@@ -102,7 +108,7 @@ class BiometricAuthenticationControllerImpl(
 
                 if (cipher == null) {
                     listener.invoke(
-                        BiometricsAuthenticate.Failed(context.getString(R.string.generic_error_description))
+                        BiometricsAuthenticate.Failed(resourceProvider.getString(Res.string.generic_error_description))
                     )
                     return@launch
                 }
@@ -111,9 +117,9 @@ class BiometricAuthenticationControllerImpl(
                     activity = activity,
                     biometryCrypto = BiometricCrypto(BiometricPrompt.CryptoObject(cipher)),
                     promptInfo = BiometricPrompt.PromptInfo.Builder()
-                        .setTitle(activity.getString(R.string.biometric_prompt_title))
-                        .setSubtitle(activity.getString(R.string.biometric_prompt_subtitle))
-                        .setNegativeButtonText(activity.getString(R.string.generic_cancel))
+                        .setTitle(resourceProvider.getString(Res.string.biometric_prompt_title))
+                        .setSubtitle(resourceProvider.getString(Res.string.biometric_prompt_subtitle))
+                        .setNegativeButtonText(resourceProvider.getString(Res.string.generic_cancel))
                         .build(),
                     notifyOnAuthenticationFailure = notifyOnAuthenticationFailure
                 )
@@ -233,10 +239,10 @@ class BiometricAuthenticationControllerImpl(
                 ) {
                     BiometricsAuthenticate.Success
                 } else {
-                    BiometricsAuthenticate.Failed(context.getString(R.string.generic_error_description))
+                    BiometricsAuthenticate.Failed(resourceProvider.getString(Res.string.generic_error_description))
                 }
             }
-        } ?: BiometricsAuthenticate.Failed(context.getString(R.string.generic_error_description))
+        } ?: BiometricsAuthenticate.Failed(resourceProvider.getString(Res.string.generic_error_description))
     }
 }
 

@@ -40,8 +40,8 @@ import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionTypeUi
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.testfeature.util.mockedDefaultLocale
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
@@ -70,9 +70,25 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.mockito.kotlin.wheneverBlocking
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.transactions_filter_item_no_relying_party_transactions
+import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
+import eu.europa.ec.shared.resources.transactions_filter_item_status_failed
+import eu.europa.ec.shared.resources.transactions_screen_0_minutes_ago_message
+import eu.europa.ec.shared.resources.transactions_screen_filter_by_date_period
+import eu.europa.ec.shared.resources.transactions_screen_filter_by_status
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_relying_party
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_issuance
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_presentation
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_signing
+import eu.europa.ec.shared.resources.transactions_screen_filters_sort_by
+import eu.europa.ec.shared.resources.transactions_screen_filters_sort_transaction_date
+import eu.europa.ec.shared.resources.transactions_screen_some_minutes_ago_message
 
 class TestTransactionsInteractor {
 
@@ -81,6 +97,9 @@ class TestTransactionsInteractor {
 
     @Mock
     private lateinit var resourceProvider: ResourceProvider
+
+    @Mock
+    private lateinit var stringResolver: StringResolver
 
     @Mock
     private lateinit var filterValidator: FilterValidator
@@ -98,6 +117,7 @@ class TestTransactionsInteractor {
 
         interactor = TransactionsInteractorImpl(
             resourceProvider = resourceProvider,
+            stringResolver = stringResolver,
             filterValidator = filterValidator,
             walletCoreDocumentsController = walletCoreDocumentsController,
         )
@@ -224,7 +244,7 @@ class TestTransactionsInteractor {
     @Test
     fun `When initializeFilters is called, Then filterValidator#initializeValidator is invoked with some Filters and the source list`() {
         // Given
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_no_relying_party_transactions))
+        whenever(resourceProvider.getString(Res.string.transactions_filter_item_no_relying_party_transactions))
             .thenReturn(mockedNoRelyingPartyFilterName)
         mockGetFiltersStrings()
         val list = FilterableList(items = emptyList())
@@ -506,7 +526,7 @@ class TestTransactionsInteractor {
     @Test
     fun `Given Case 1, When addDynamicFilters is called, Then the relying-party group is populated with both the no-relying-party filter and one filter per distinct relying party`() {
         // Given
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_no_relying_party_transactions))
+        whenever(resourceProvider.getString(Res.string.transactions_filter_item_no_relying_party_transactions))
             .thenReturn(mockedNoRelyingPartyFilterName)
         val initialFilters = Filters(
             filterGroups = listOf(
@@ -974,50 +994,50 @@ class TestTransactionsInteractor {
 
     //region helper functions
     private fun mockGetFiltersStrings() {
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_sort_by))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_sort_by))
             .thenReturn("Sort by")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_sort_transaction_date))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_sort_transaction_date))
             .thenReturn("Transaction date")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filter_by_date_period))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filter_by_date_period))
             .thenReturn("Date period")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filter_by_status))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filter_by_status))
             .thenReturn("Status")
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_status_completed))
+        whenever(resourceProvider.getString(Res.string.transactions_filter_item_status_completed))
             .thenReturn("Completed")
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_status_failed))
+        whenever(resourceProvider.getString(Res.string.transactions_filter_item_status_failed))
             .thenReturn("Failed")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_relying_party))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_relying_party))
             .thenReturn("Relying party")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type))
             .thenReturn("Transaction type")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_presentation))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation))
             .thenReturn("Presentation")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_issuance))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance))
             .thenReturn("Issuance")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_signing))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_signing))
             .thenReturn("Signing")
     }
 
     private fun mockTransactionRowStrings() {
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_presentation))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation))
             .thenReturn("Presentation")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_issuance))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance))
             .thenReturn("Issuance")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_signing))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_signing))
             .thenReturn("Signing")
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_status_completed))
+        whenever(resourceProvider.getString(Res.string.transactions_filter_item_status_completed))
             .thenReturn("Completed")
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_status_failed))
+        whenever(resourceProvider.getString(Res.string.transactions_filter_item_status_failed))
             .thenReturn("Failed")
-        whenever(resourceProvider.getString(R.string.transactions_screen_0_minutes_ago_message))
+        whenever(resourceProvider.getString(Res.string.transactions_screen_0_minutes_ago_message))
             .thenReturn("Just now")
-        whenever(
-            resourceProvider.getQuantityString(
-                eq(R.plurals.transactions_screen_some_minutes_ago_message),
+        wheneverBlocking {
+            stringResolver.resolvePlural(
+                eq(Res.plurals.transactions_screen_some_minutes_ago_message),
                 org.mockito.kotlin.any(),
                 org.mockito.kotlin.any()
             )
-        ).thenReturn("30 min ago")
+        }.thenReturn("30 min ago")
     }
 
     private fun filterableItemWithRelyingParty(name: String?): FilterableItem {

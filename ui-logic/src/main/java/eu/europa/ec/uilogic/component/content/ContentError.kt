@@ -23,15 +23,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.SIZE_MEDIUM
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.WrapButton
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.generic_error_button_retry
+import eu.europa.ec.shared.resources.generic_error_message
+import eu.europa.ec.shared.resources.generic_error_retry
 
 @Composable
 internal fun ContentError(
@@ -41,10 +44,10 @@ internal fun ContentError(
     Column(modifier = modifier) {
         ContentTitle(
             title = config.errorTitle ?: stringResource(
-                id = R.string.generic_error_message
+                Res.string.generic_error_message
             ),
             subtitle = config.errorSubTitle ?: stringResource(
-                id = R.string.generic_error_retry
+                Res.string.generic_error_retry
             ),
             subTitleMaxLines = 10
         )
@@ -62,19 +65,12 @@ internal fun ContentError(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = stringResource(id = R.string.generic_error_button_retry)
+                    text = stringResource(Res.string.generic_error_button_retry)
                 )
             }
         }
     }
 }
-
-data class ContentErrorConfig(
-    val errorTitle: String? = null,
-    val errorSubTitle: String? = null,
-    val onCancel: () -> Unit,
-    val onRetry: (() -> Unit)? = null
-)
 
 @ThemeModePreviews
 @Composable
