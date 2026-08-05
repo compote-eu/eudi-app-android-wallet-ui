@@ -19,13 +19,17 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // KMP business/presentation LOGIC shared by both platforms — deliberately Compose-UI-free
 // (no compose-ui/foundation/material on the classpath) so a future partial native-SwiftUI iOS
 // path can consume it directly. The Compose Multiplatform UI lives in the sibling :shared-ui.
-// See wiki/KMP_FEASIBILITY.md. Plugins are applied by id without a version: Kotlin/AGP are
-// already on the build classpath via the `build-logic` included build.
+// See wiki/KMP_FEASIBILITY.md.
 plugins {
+    // These two MUST stay `id(...)` without a version, and cannot become `alias(...)`: they ship
+    // inside kotlin-gradle-plugin / AGP, which `build-logic` puts on the buildscript classpath, and
+    // `alias()` always carries the catalog's version. Requesting a version for a plugin already on
+    // the classpath fails: "the plugin is already on the classpath with an unknown version, so
+    // compatibility cannot be checked". Everything else here uses `alias()`.
     id("org.jetbrains.kotlin.multiplatform")
     id("com.android.kotlin.multiplatform.library")
     // @Serializable Nav3 route keys (kotlinx.serialization core is KMP; no Compose involved).
-    id("org.jetbrains.kotlin.plugin.serialization")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {

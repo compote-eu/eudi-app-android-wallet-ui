@@ -22,14 +22,19 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // exports :shared-logic so iOS gets a single umbrella framework with logic + UI. See
 // wiki/KMP_FEASIBILITY.md.
 plugins {
+    // `id(...)` without a version is REQUIRED for these two — see the note in
+    // :shared-logic's build file. They come from kotlin-gradle-plugin / AGP, which are already on
+    // the buildscript classpath via `build-logic`, so the version that `alias()` would carry makes
+    // the plugin request unsatisfiable. The serialization and Compose plugins below are separate
+    // artifacts, not on that classpath, so they can and do use `alias()`.
     id("org.jetbrains.kotlin.multiplatform")
     id("com.android.kotlin.multiplatform.library")
     // Compose Multiplatform + the (Kotlin-bundled) Compose compiler plugin.
     alias(libs.plugins.jetbrains.compose)
-    id("org.jetbrains.kotlin.plugin.compose")
+    alias(libs.plugins.compose.compiler)
     // @Serializable UI-model data classes (TextConfig, IconDataUi, ContentHeaderConfig, …) that
     // become Nav3 route-argument payloads. Data-class serializers must be generated in this module.
-    id("org.jetbrains.kotlin.plugin.serialization")
+    alias(libs.plugins.kotlin.serialization)
     // Koin annotations for the shared view-models (Phase 3b). Unlike the Android modules, which get
     // this via the `project.android.koin` convention plugin, a KMP module wires it by hand — the
     // convention plugin also adds Android-only artifacts (koin-android, workmanager). Koin 1.1.0's
@@ -42,6 +47,9 @@ kotlin {
         namespace = "eu.europa.ec.shared.ui"
         compileSdk = 37
         minSdk = 29
+        androidResources {
+            enable = true
+        }
         withHostTest {}
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)

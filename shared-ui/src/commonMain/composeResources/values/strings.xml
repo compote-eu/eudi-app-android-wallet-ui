@@ -208,7 +208,7 @@
     <!--endregion-->
 
     <!-- region Dashboard -->
-    <string name="dashboard_document_has_not_expired">Valid until:\ %1$s</string>
+    <string name="dashboard_document_has_not_expired">Valid until: %1$s</string>
     <string name="dashboard_document_has_expired">Expired</string>
     <string name="dashboard_document_deferred_pending">Pending</string>
     <string name="dashboard_document_deferred_failed">Issuance failed</string>
@@ -355,14 +355,14 @@
     <string name="document_details_main_section_text">DOCUMENT DATA</string>
     <string name="document_details_issuer_section_text">ISSUER DETAILS</string>
     <string name="document_details_issuer_card_unknown_issuer">Unknown</string>
-    <string name="document_details_issuer_card_expires_on_text">Expires on:\ %1$s</string>
+    <string name="document_details_issuer_card_expires_on_text">Expires on: %1$s</string>
     <string name="document_details_issuer_card_revoked_text">Document revoked</string>
-    <string name="document_details_issuer_card_issued_on_text">Issued on:\ %1$s</string>
+    <string name="document_details_issuer_card_issued_on_text">Issued on: %1$s</string>
     <string name="document_details_issuer_card_issued_message_text">You may reissue this document at any time.</string>
     <string name="document_details_issuer_card_issued_action_btn_text">Reissue document</string>
     <string name="document_details_issuer_card_revoked_message_text">This document cannot be used for verification.</string>
     <string name="document_details_issuer_card_expired_action_btn_text">Reissue document</string>
-    <string name="document_details_issuer_card_expired_on_text">Expired on:\ %1$s</string>
+    <string name="document_details_issuer_card_expired_on_text">Expired on: %1$s</string>
     <string name="document_details_issuer_card_expired_text">Expired</string>
     <string name="document_details_issuer_card_expired_message_text">This document has expired. You may reissue it.</string>
     <string name="document_details_secondary_button_text">Remove from wallet</string>
