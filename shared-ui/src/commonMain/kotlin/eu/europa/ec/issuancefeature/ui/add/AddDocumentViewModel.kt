@@ -16,8 +16,6 @@
 
 package eu.europa.ec.issuancefeature.ui.add
 
-import android.content.Context
-import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
@@ -33,6 +31,7 @@ import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorIssueDocumentsPartialState
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorScopedPartialState
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
@@ -53,9 +52,8 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.helper.DeepLinkAction
-import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
-import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkKind
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -81,7 +79,7 @@ data class State(
 ) : ViewState
 
 sealed class Event : ViewEvent {
-    data class Init(val deepLink: Uri?) : Event()
+    data class Init(val deepLink: String?) : Event()
     data object GoToQrScan : Event()
     data object Pop : Event()
     data object OnPause : Event()
@@ -93,7 +91,7 @@ sealed class Event : ViewEvent {
         val issuanceMethod: IssuanceMethod,
         val issuerId: String,
         val configIds: List<String>,
-        val context: Context
+        val context: PlatformContext
     ) : Event()
 
     sealed class BottomSheet : Event() {
@@ -107,7 +105,7 @@ sealed class Effect : ViewSideEffect {
         data object Pop : Navigation()
         data object Finish : Navigation()
         data class SwitchScreen(val route: AppRoute, val inclusive: Boolean) : Navigation()
-        data class OpenDeepLinkAction(val deepLinkUri: Uri, val route: AppRoute?) : Navigation()
+        data class OpenDeepLinkAction(val deepLinkUri: String, val route: AppRoute?) : Navigation()
     }
 
     data object ShowBottomSheet : Effect()
@@ -117,6 +115,7 @@ sealed class Effect : ViewSideEffect {
 @KoinViewModel
 class AddDocumentViewModel(
     private val addDocumentInteractor: AddDocumentInteractor,
+    private val deepLinkClassifier: DeepLinkClassifier,
     @InjectedParam private val issuanceConfig: IssuanceUiConfig,
 ) : MviViewModel<Event, State, Effect>() {
 
@@ -202,7 +201,7 @@ class AddDocumentViewModel(
         }
     }
 
-    private fun getOptions(event: Event, deepLinkUri: Uri?) {
+    private fun getOptions(event: Event, deepLink: String?) {
 
         setState {
             copy(
@@ -226,12 +225,12 @@ class AddDocumentViewModel(
                                 isLoading = false
                             )
                         }
-                        handleDeepLink(deepLinkUri)
+                        handleDeepLink(deepLink)
                     }
 
                     is AddDocumentInteractorScopedPartialState.Failure -> {
 
-                        val deepLinkAction = getDeepLinkAction(deepLinkUri)
+                        val deepLinkAction = deepLinkAction(deepLink)
 
                         setState {
                             copy(
@@ -250,8 +249,10 @@ class AddDocumentViewModel(
                                 isLoading = false
                             )
                         }
-                        deepLinkAction?.let {
-                            handleDeepLink(it.first, it.second)
+                        // The options failed to load, but a deep link still has somewhere to go —
+                        // hence no error card above when one arrived.
+                        deepLinkAction?.let { (link, kind) ->
+                            handleDeepLink(link, kind)
                         }
                     }
 
@@ -275,7 +276,7 @@ class AddDocumentViewModel(
         issuanceMethod: IssuanceMethod,
         issuerId: String,
         configIds: List<String>,
-        context: Context
+        context: PlatformContext
     ) {
         issuanceJob?.cancel()
         issuanceJob = viewModelScope.launch {
@@ -432,29 +433,31 @@ class AddDocumentViewModel(
         }
     }
 
-    private fun getDeepLinkAction(deepLinkUri: Uri?): Pair<Uri, DeepLinkAction>? {
-        return deepLinkUri?.let { uri ->
-            hasDeepLink(uri)?.let {
-                uri to it
-            }
+    /**
+     * The link paired with its kind, or null when there is no link or it is not a deep link at all.
+     * Callers use the null case to mean "nothing arrived by deep link", which is what decides whether
+     * a failure to load the options is worth an error card.
+     */
+    private fun deepLinkAction(deepLink: String?): Pair<String, DeepLinkKind>? =
+        deepLink?.let { link ->
+            deepLinkClassifier.classify(link)?.let { kind -> link to kind }
+        }
+
+    private fun handleDeepLink(deepLink: String?) {
+        deepLinkAction(deepLink)?.let { (link, kind) ->
+            handleDeepLink(link, kind)
         }
     }
 
-    private fun handleDeepLink(deepLinkUri: Uri?) {
-        getDeepLinkAction(deepLinkUri)?.let { pair ->
-            handleDeepLink(pair.first, pair.second)
-        }
-    }
-
-    private fun handleDeepLink(uri: Uri, action: DeepLinkAction) {
-        when (action.type) {
-            DeepLinkType.CREDENTIAL_OFFER -> {
+    private fun handleDeepLink(link: String, kind: DeepLinkKind) {
+        when (kind) {
+            DeepLinkKind.CREDENTIAL_OFFER -> {
                 setEffect {
                     Effect.Navigation.OpenDeepLinkAction(
-                        deepLinkUri = uri,
+                        deepLinkUri = link,
                         route = DocumentOfferRoute(
                             OfferUiConfig(
-                                offerUri = action.link.toString(),
+                                offerUri = link,
                                 onSuccessNavigation = ConfigNavigation(
                                     navigationType = NavigationType.PushRoute(
                                         route = DashboardRoute,
@@ -470,10 +473,10 @@ class AddDocumentViewModel(
                 }
             }
 
-            DeepLinkType.EXTERNAL -> {
+            DeepLinkKind.EXTERNAL -> {
                 setEffect {
                     Effect.Navigation.OpenDeepLinkAction(
-                        deepLinkUri = uri,
+                        deepLinkUri = link,
                         route = null
                     )
                 }

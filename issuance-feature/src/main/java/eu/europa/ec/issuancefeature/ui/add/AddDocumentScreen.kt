@@ -80,6 +80,7 @@ import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapText
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.finish
+import androidx.core.net.toUri
 import eu.europa.ec.uilogic.extension.getPendingUri
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
@@ -167,7 +168,7 @@ fun AddDocumentScreen(
                     is Effect.Navigation.OpenDeepLinkAction -> handleDeepLinkAction(
                         navigator = navigator,
                         context = context,
-                        uri = navigationEffect.deepLinkUri,
+                        uri = navigationEffect.deepLinkUri.toUri(),
                         route = navigationEffect.route
                     )
                 }
@@ -207,7 +208,7 @@ fun AddDocumentScreen(
         lifecycleOwner = LocalLifecycleOwner.current,
         lifecycleEvent = Lifecycle.Event.ON_RESUME
     ) {
-        viewModel.setEvent(Event.Init(context.getPendingUri()))
+        viewModel.setEvent(Event.Init(context.getPendingUri()?.toString()))
     }
 }
 

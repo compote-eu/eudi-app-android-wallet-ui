@@ -28,10 +28,8 @@ import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 
-interface DashboardInteractor {
-    fun getSideMenuOptions(): List<SideMenuItemUi>
-}
-
+// Phase 2: the Android implementation of the (now KMP) `DashboardInteractor` contract, which moved to
+// :shared-ui/commonMain with `DashboardViewModel`.
 class DashboardInteractorImpl(
     private val resourceProvider: ResourceProvider,
 ) : DashboardInteractor {

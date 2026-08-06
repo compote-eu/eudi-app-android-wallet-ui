@@ -16,8 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.dashboard
 
-import android.content.Intent
-import android.net.Uri
 import eu.europa.ec.commonfeature.config.OfferUiConfig
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.RequestUriConfig
@@ -26,7 +24,6 @@ import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuItemUi
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
-import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
@@ -45,11 +42,10 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkKind
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.IntentType
-import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
-import eu.europa.ec.uilogic.navigation.helper.hasIntentAction
 import org.koin.core.annotation.KoinViewModel
 
 data class State(
@@ -68,8 +64,17 @@ data class State(
 ) : ViewState
 
 sealed class Event : ViewEvent {
+    /**
+     * @param deepLink the pending intent's data URI, if any.
+     * @param intentAction the pending intent classified as an app action, if it is one.
+     *
+     * Both are extracted by the host from the *same* pending intent — `getPendingIntent()` is
+     * one-shot — mirroring `RequestViewModel.Event.Init`, which already takes a ready-made
+     * [IntentAction].
+     */
     data class Init(
-        val intent: Intent?
+        val deepLink: String?,
+        val intentAction: IntentAction?,
     ) : Event()
 
     data object Pop : Event()
@@ -109,7 +114,7 @@ sealed class Effect : ViewSideEffect {
          * [route] is the destination the link resolves to, fully typed. Non-navigating link types
          * (a broadcast, an external URL) carry `null`.
          */
-        data class OpenDeepLinkAction(val deepLinkUri: Uri, val route: AppRoute?) :
+        data class OpenDeepLinkAction(val deepLinkUri: String, val route: AppRoute?) :
             Navigation()
 
         data class OpenIntentAction(
@@ -119,7 +124,7 @@ sealed class Effect : ViewSideEffect {
 
         data object OnAppSettings : Navigation()
         data object OnSystemSettings : Navigation()
-        data class OpenUrlExternally(val url: Uri) : Navigation()
+        data class OpenUrlExternally(val url: String) : Navigation()
     }
 
     data object ShowBottomSheet : Effect()
@@ -139,6 +144,7 @@ enum class SideMenuAnimation {
 @KoinViewModel
 class DashboardViewModel(
     private val dashboardInteractor: DashboardInteractor,
+    private val deepLinkClassifier: DeepLinkClassifier,
 ) : MviViewModel<Event, State, Effect>() {
     override fun setInitialState(): State {
         return State(
@@ -148,7 +154,7 @@ class DashboardViewModel(
 
     override fun handleEvents(event: Event) {
         when (event) {
-            is Event.Init -> handleDeepLink(event.intent)
+            is Event.Init -> handleDeepLink(event.deepLink, event.intentAction)
 
             is Event.Pop -> setEffect { Effect.Navigation.Pop }
 
@@ -196,7 +202,7 @@ class DashboardViewModel(
         }
     }
 
-    private fun goToDocumentDetails(docId: DocumentId) {
+    private fun goToDocumentDetails(docId: String) {
         setEffect {
             Effect.Navigation.SwitchScreen(
                 route = DocumentDetailsRoute(documentId = docId)
@@ -258,25 +264,25 @@ class DashboardViewModel(
         }
     }
 
-    private fun handleDeepLink(intent: Intent?) {
-        intent?.data?.let { uri ->
-            hasDeepLink(uri)?.let {
-                val route: AppRoute? = when (it.type) {
-                    DeepLinkType.OPENID4VP -> {
+    private fun handleDeepLink(deepLink: String?, intentAction: IntentAction?) {
+        deepLink?.let { link ->
+            deepLinkClassifier.classify(link)?.let { kind ->
+                val route: AppRoute? = when (kind) {
+                    DeepLinkKind.OPENID4VP -> {
                         PresentationRequestRoute(
                             config = RequestUriConfig(
                                 PresentationMode.OpenId4Vp(
-                                    uri.toString(),
+                                    link,
                                     DashboardRoute
                                 )
                             )
                         )
                     }
 
-                    DeepLinkType.CREDENTIAL_OFFER -> {
+                    DeepLinkKind.CREDENTIAL_OFFER -> {
                         DocumentOfferRoute(
                             config = OfferUiConfig(
-                                offerUri = it.link.toString(),
+                                offerUri = link,
                                 onSuccessNavigation = ConfigNavigation(
                                     navigationType = NavigationType.PopTo(
                                         route = DashboardRoute
@@ -293,12 +299,12 @@ class DashboardViewModel(
                 }
                 setEffect {
                     Effect.Navigation.OpenDeepLinkAction(
-                        deepLinkUri = uri,
+                        deepLinkUri = link,
                         route = route
                     )
                 }
             }
-        } ?: hasIntentAction(intent)?.let { action ->
+        } ?: intentAction?.let { action ->
             when (action.type) {
                 IntentType.DC_API -> {
                     val route = PresentationRequestRoute(

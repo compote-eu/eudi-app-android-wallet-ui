@@ -43,6 +43,7 @@ import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkKind
+import eu.europa.ec.uilogic.navigation.helper.FakeDeepLinkClassifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -195,18 +196,6 @@ internal class FakeDocumentDetailsInteractor(
 
     override fun resumeOpenId4VciWithAuthorization(uri: String) {
         resumedUris.add(uri)
-    }
-}
-
-internal class FakeDeepLinkClassifier(
-    private val kind: DeepLinkKind? = null,
-) : DeepLinkClassifier {
-    var classifiedLinks: MutableList<String> = mutableListOf()
-        private set
-
-    override fun classify(link: String): DeepLinkKind? {
-        classifiedLinks.add(link)
-        return kind
     }
 }
 

@@ -16,22 +16,19 @@
 
 package eu.europa.ec.issuancefeature.ui.offer
 
-import android.content.Context
-import android.net.Uri
 import androidx.lifecycle.viewModelScope
-import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.commonfeature.config.IssuanceSuccessUiConfig
 import eu.europa.ec.commonfeature.config.OfferCodeUiConfig
 import eu.europa.ec.commonfeature.config.OfferUiConfig
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.RequestUriConfig
-import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.issuancefeature.di.getOrCreateCredentialOfferScope
 import eu.europa.ec.issuancefeature.di.getOrNullCredentialOfferScope
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
 import eu.europa.ec.issuancefeature.interactor.IssueDocumentsInteractorPartialState
 import eu.europa.ec.issuancefeature.interactor.ResolveDocumentOfferInteractorPartialState
 import eu.europa.ec.issuancefeature.ui.offer.transformer.DocumentOfferTransformer.toListItemDataUiList
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
@@ -50,12 +47,11 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
-import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkKind
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
-import java.net.URI
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.issuance_document_offer_description
 import eu.europa.ec.shared.resources.issuance_document_offer_header_main_text
@@ -88,14 +84,14 @@ data class State(
 ) : ViewState
 
 sealed class Event : ViewEvent {
-    data class Init(val deepLink: Uri?) : Event()
+    data class Init(val deepLink: String?) : Event()
     data object BackButtonPressed : Event()
     data object OnPause : Event()
     data class OnResumeIssuance(val uri: String) : Event()
     data class OnDynamicPresentation(val uri: String) : Event()
     data object DismissError : Event()
 
-    data class StickyButtonPressed(val context: Context) : Event()
+    data class StickyButtonPressed(val context: PlatformContext) : Event()
 
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
@@ -119,7 +115,7 @@ sealed class Effect : ViewSideEffect {
         data object Pop : Navigation()
 
         data class DeepLink(
-            val link: Uri,
+            val link: String,
             val routeToPop: AppRoute? = null
         ) : Navigation()
     }
@@ -132,12 +128,13 @@ sealed class DocumentOfferBottomSheetContent {
     data object IssuerNotTrusted : DocumentOfferBottomSheetContent()
 
     data class PartialSuccessWithUntrustedIssuer(
-        val issuedDocumentIds: List<DocumentId>,
+        val issuedDocumentIds: List<String>,
     ) : DocumentOfferBottomSheetContent()
 }
 
 @KoinViewModel
 class DocumentOfferViewModel(
+    private val deepLinkClassifier: DeepLinkClassifier,
     @InjectedParam private val offerUiConfig: OfferUiConfig,
     documentOfferInteractor: DocumentOfferInteractor? = null
 ) : MviViewModel<Event, State, Effect>() {
@@ -252,7 +249,7 @@ class DocumentOfferViewModel(
         }
     }
 
-    private fun resolveDocumentOffer(offerUri: String, deepLink: Uri? = null) {
+    private fun resolveDocumentOffer(offerUri: String, deepLink: String? = null) {
         setState {
             copy(
                 isLoading = documents.isEmpty(),
@@ -350,10 +347,10 @@ class DocumentOfferViewModel(
 
     private fun getHeaderConfigIssuerData(
         issuerName: String,
-        issuerLogo: URI?,
+        issuerLogo: String?,
     ): RelyingPartyDataUi {
         return RelyingPartyDataUi(
-            logo = issuerLogo?.toString(),
+            logo = issuerLogo,
             isVerified = false,
             name = issuerName.asUiText(),
             description = UiText.Resource(Res.string.issuance_document_offer_relying_party_description)
@@ -361,7 +358,7 @@ class DocumentOfferViewModel(
     }
 
     private fun issueDocuments(
-        context: Context,
+        context: PlatformContext,
         offerUri: String,
         issuerName: String,
         onSuccessNavigation: ConfigNavigation,
@@ -472,7 +469,7 @@ class DocumentOfferViewModel(
     }
 
     private fun goToDocumentIssuanceSuccessScreen(
-        documentIds: List<DocumentId>,
+        documentIds: List<String>,
         onSuccessNavigation: ConfigNavigation,
     ) {
         setEffect {
@@ -505,7 +502,7 @@ class DocumentOfferViewModel(
             }
 
             is NavigationType.Deeplink -> Effect.Navigation.DeepLink(
-                nav.link.toUri(),
+                nav.link,
                 AppRouteCodec.decode(nav.routeToPop)
             )
 
@@ -540,18 +537,13 @@ class DocumentOfferViewModel(
         }
     }
 
-    private fun handleDeepLink(deepLinkUri: Uri?) {
-        deepLinkUri?.let { uri ->
-            hasDeepLink(uri)?.let {
-                when (it.type) {
-
-                    DeepLinkType.EXTERNAL -> {
-                        setEffect {
-                            Effect.Navigation.DeepLink(uri)
-                        }
-                    }
-
-                    else -> {}
+    private fun handleDeepLink(deepLink: String?) {
+        deepLink?.let { link ->
+            // Only an external link concerns this screen; any other kind belongs to the flow already
+            // handling it.
+            if (deepLinkClassifier.classify(link) == DeepLinkKind.EXTERNAL) {
+                setEffect {
+                    Effect.Navigation.DeepLink(link)
                 }
             }
         }

@@ -34,9 +34,7 @@ import org.koin.core.annotation.Factory
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Scope
 import org.koin.core.annotation.Scoped
-import org.koin.mp.KoinPlatform
 
-private const val CREDENTIAL_OFFER_ISSUANCE_SCOPE_ID = "credential_offer_scope_id"
 
 @Module
 @Configuration
@@ -82,13 +80,3 @@ fun provideDocumentOfferInteractor(
         resourceProvider,
         configLogic
     )
-
-@Scope
-class CredentialOfferIssuanceScope
-
-fun getOrCreateCredentialOfferScope(scopeId: String = CREDENTIAL_OFFER_ISSUANCE_SCOPE_ID): org.koin.core.scope.Scope =
-    KoinPlatform.getKoin()
-        .getOrCreateScope<CredentialOfferIssuanceScope>(scopeId)
-
-fun getOrNullCredentialOfferScope(scopeId: String = CREDENTIAL_OFFER_ISSUANCE_SCOPE_ID): org.koin.core.scope.Scope? =
-    KoinPlatform.getKoin().getScopeOrNull(scopeId)

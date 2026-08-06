@@ -14,13 +14,13 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.corelogic.model
+// Phase 2: a one-method contract over an already-shared UI model, so it moves to commonMain next to
+// `DashboardViewModel`. `DashboardInteractorImpl` stays in :dashboard-feature — it resolves the menu
+// labels through ResourceProvider. Package unchanged.
+package eu.europa.ec.dashboardfeature.interactor
 
-import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
+import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuItemUi
 
-@Parcelize
-data class RevokedDocumentDataDomain(
-    val name: String,
-    val id: String,
-) : Parcelable
+interface DashboardInteractor {
+    fun getSideMenuOptions(): List<SideMenuItemUi>
+}

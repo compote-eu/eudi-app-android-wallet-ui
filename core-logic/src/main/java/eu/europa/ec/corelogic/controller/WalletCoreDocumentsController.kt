@@ -83,10 +83,6 @@ import java.util.Locale
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.issuance_generic_error
 
-enum class IssuanceMethod {
-    OPENID4VCI
-}
-
 sealed class IssueDocumentsPartialState {
     data class Success(val documentIds: List<DocumentId>) : IssueDocumentsPartialState()
     data class DeferredSuccess(val deferredDocuments: Map<DocumentId, FormatType>) :

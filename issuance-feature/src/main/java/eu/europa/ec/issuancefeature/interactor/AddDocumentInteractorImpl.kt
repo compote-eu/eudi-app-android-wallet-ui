@@ -16,7 +16,6 @@
 
 package eu.europa.ec.issuancefeature.interactor
 
-import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
@@ -30,10 +29,10 @@ import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.model.FormatType
-import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
@@ -56,53 +55,8 @@ import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_text
 import eu.europa.ec.shared.resources.issuance_add_document_no_options
 import eu.europa.ec.shared.resources.issuance_add_document_pid_combined
 
-sealed class AddDocumentInteractorIssueDocumentsPartialState {
-    data class Success(val documentIds: List<DocumentId>) :
-        AddDocumentInteractorIssueDocumentsPartialState()
-
-    data object DeferredSuccess : AddDocumentInteractorIssueDocumentsPartialState()
-
-    data class Failure(val errorMessage: String) : AddDocumentInteractorIssueDocumentsPartialState()
-
-    data object IssuerNotTrusted : AddDocumentInteractorIssueDocumentsPartialState()
-
-    data class UserAuthRequired(
-        val crypto: BiometricCrypto,
-        val resultHandler: DeviceAuthenticationResult,
-    ) : AddDocumentInteractorIssueDocumentsPartialState()
-}
-
-sealed class AddDocumentInteractorScopedPartialState {
-    data class Success(val options: List<Pair<String, List<AddDocumentUi>>>) :
-        AddDocumentInteractorScopedPartialState()
-
-    data class NoOptions(val errorMsg: String) : AddDocumentInteractorScopedPartialState()
-    data class Failure(val error: String) : AddDocumentInteractorScopedPartialState()
-}
-
-interface AddDocumentInteractor {
-    fun getAddDocumentOption(
-        flowType: IssuanceFlowType,
-    ): Flow<AddDocumentInteractorScopedPartialState>
-
-    fun issueDocuments(
-        issuanceMethod: IssuanceMethod,
-        configIds: List<String>,
-        issuerId: String
-    ): Flow<AddDocumentInteractorIssueDocumentsPartialState>
-
-    fun handleUserAuth(
-        context: Context,
-        crypto: BiometricCrypto,
-        notifyOnAuthenticationFailure: Boolean,
-        resultHandler: DeviceAuthenticationResult
-    )
-
-    fun buildGenericSuccessRouteForDeferred(flowType: IssuanceFlowType): AppRoute
-
-    fun resumeOpenId4VciWithAuthorization(uri: String)
-}
-
+// Phase 2: the Android implementation of the (now KMP) `AddDocumentInteractor` contract, which moved
+// to :shared-ui/commonMain with `AddDocumentViewModel`.
 class AddDocumentInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
     private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
@@ -289,7 +243,7 @@ class AddDocumentInteractorImpl(
     }
 
     override fun handleUserAuth(
-        context: Context,
+        context: PlatformContext,
         crypto: BiometricCrypto,
         notifyOnAuthenticationFailure: Boolean,
         resultHandler: DeviceAuthenticationResult

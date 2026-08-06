@@ -29,6 +29,7 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorIssuanc
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorPartialState
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
+import eu.europa.ec.uilogic.navigation.helper.FakeDeepLinkClassifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async

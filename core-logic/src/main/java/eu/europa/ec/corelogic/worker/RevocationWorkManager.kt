@@ -22,7 +22,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.shared.wallet.WalletEngine
-import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
+import eu.europa.ec.corelogic.model.RevokedDocumentParcel
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.corelogic.util.CoreActions.REVOCATION_IDS_DETAILS_EXTRA
 import eu.europa.ec.eudi.statium.Status
@@ -140,7 +140,7 @@ class RevocationWorkManager(
                 CoreActions.REVOCATION_IDS_EXTRA,
                 ArrayList(
                     revokedDocuments.map {
-                        RevokedDocumentDataDomain(name = it.name, id = it.id)
+                        RevokedDocumentParcel(name = it.name, id = it.id)
                     }
                 )
             )

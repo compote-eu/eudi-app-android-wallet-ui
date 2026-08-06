@@ -45,7 +45,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.businesslogic.extension.getParcelableArrayListExtra
-import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
+import eu.europa.ec.corelogic.model.RevokedDocumentParcel
+import eu.europa.ec.corelogic.model.toDomain
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationBar
 import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
@@ -63,6 +64,7 @@ import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
 import eu.europa.ec.uilogic.component.wrap.BottomSheetWithOptionsList
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.extension.finish
+import androidx.core.net.toUri
 import eu.europa.ec.uilogic.extension.getPendingIntent
 import eu.europa.ec.uilogic.extension.openAppSettings
 import eu.europa.ec.uilogic.extension.openBleSettings
@@ -70,6 +72,7 @@ import eu.europa.ec.uilogic.extension.openIntentChooser
 import eu.europa.ec.uilogic.extension.openUrl
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.handleIntentAction
+import eu.europa.ec.uilogic.navigation.helper.hasIntentAction
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -199,9 +202,13 @@ internal fun DashboardScreen(
         lifecycleOwner = LocalLifecycleOwner.current,
         lifecycleEvent = Lifecycle.Event.ON_RESUME
     ) {
+        // `getPendingIntent()` is one-shot, so read it once and hand the view-model both readings of
+        // it: the link it carries and, failing that, the app action it is.
+        val pendingIntent = context.getPendingIntent()
         viewModel.setEvent(
             Event.Init(
-                intent = context.getPendingIntent()
+                deepLink = pendingIntent?.data?.toString(),
+                intentAction = hasIntentAction(pendingIntent),
             )
         )
     }
@@ -234,11 +241,11 @@ internal fun DashboardScreen(
             CoreActions.REVOCATION_WORK_MESSAGE_ACTION
         )
     ) { intent ->
-        intent.getParcelableArrayListExtra<RevokedDocumentDataDomain>(
+        intent.getParcelableArrayListExtra<RevokedDocumentParcel>(
             action = CoreActions.REVOCATION_IDS_EXTRA
-        )?.let {
+        )?.let { parcels ->
             viewModel.setEvent(
-                Event.DocumentRevocationNotificationReceived(it)
+                Event.DocumentRevocationNotificationReceived(parcels.map { it.toDomain() })
             )
         }
     }
@@ -263,7 +270,7 @@ private fun handleNavigationEffect(
             handleDeepLinkAction(
                 navigator = navigator,
                 context = context,
-                uri = navigationEffect.deepLinkUri,
+                uri = navigationEffect.deepLinkUri.toUri(),
                 route = navigationEffect.route
             )
         }
@@ -279,7 +286,7 @@ private fun handleNavigationEffect(
 
         is Effect.Navigation.OnAppSettings -> context.openAppSettings()
         is Effect.Navigation.OnSystemSettings -> context.openBleSettings()
-        is Effect.Navigation.OpenUrlExternally -> context.openUrl(uri = navigationEffect.url)
+        is Effect.Navigation.OpenUrlExternally -> context.openUrl(uri = navigationEffect.url.toUri())
     }
 }
 

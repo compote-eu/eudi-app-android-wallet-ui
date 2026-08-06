@@ -16,7 +16,6 @@
 
 package eu.europa.ec.issuancefeature.interactor
 
-import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
@@ -32,6 +31,7 @@ import eu.europa.ec.corelogic.controller.ResolveDocumentOfferPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_default_name
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.documentIdentifier
 import eu.europa.ec.corelogic.extension.getIssuerLogo
@@ -39,7 +39,6 @@ import eu.europa.ec.corelogic.extension.getIssuerName
 import eu.europa.ec.corelogic.extension.getName
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.eudi.openid4vci.TxCodeInputMode
-import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.issuancefeature.ui.offer.model.DocumentOfferUi
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -53,7 +52,6 @@ import eu.europa.ec.uilogic.config.ConfigNavigation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import java.net.URI
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_description
 import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_primary_button_text
@@ -61,70 +59,8 @@ import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_te
 import eu.europa.ec.shared.resources.issuance_document_offer_error_invalid_txcode_format
 import eu.europa.ec.shared.resources.issuance_document_offer_error_missing_pid_text
 
-sealed class ResolveDocumentOfferInteractorPartialState {
-    data class Success(
-        val documents: List<DocumentOfferUi>,
-        val issuerName: String,
-        val issuerLogo: URI?,
-        val txCodeLength: Int?
-    ) : ResolveDocumentOfferInteractorPartialState()
-
-    data class NoDocument(
-        val issuerName: String,
-        val issuerLogo: URI?,
-    ) : ResolveDocumentOfferInteractorPartialState()
-
-    data class Failure(val errorMessage: String) : ResolveDocumentOfferInteractorPartialState()
-
-    data object IssuerNotTrusted : ResolveDocumentOfferInteractorPartialState()
-}
-
-sealed class IssueDocumentsInteractorPartialState {
-    data class Success(
-        val documentIds: List<DocumentId>,
-    ) : IssueDocumentsInteractorPartialState()
-
-    data class PartialSuccessWithUntrustedIssuer(
-        val issuedDocumentIds: List<DocumentId>,
-    ) : IssueDocumentsInteractorPartialState()
-
-    data class DeferredSuccess(
-        val successRoute: AppRoute,
-    ) : IssueDocumentsInteractorPartialState()
-
-    data class Failure(val errorMessage: String) : IssueDocumentsInteractorPartialState()
-
-    data object IssuerNotTrusted : IssueDocumentsInteractorPartialState()
-
-    data class UserAuthRequired(
-        val crypto: BiometricCrypto,
-        val resultHandler: DeviceAuthenticationResult
-    ) : IssueDocumentsInteractorPartialState()
-}
-
-interface DocumentOfferInteractor {
-
-    val credentialOffers: MutableMap<String, Offer>
-
-    fun resolveDocumentOffer(offerUri: String): Flow<ResolveDocumentOfferInteractorPartialState>
-
-    fun issueDocuments(
-        offerUri: String,
-        issuerName: String,
-        navigation: ConfigNavigation,
-        txCode: SecurePin? = null
-    ): Flow<IssueDocumentsInteractorPartialState>
-
-    fun handleUserAuthentication(
-        context: Context,
-        crypto: BiometricCrypto,
-        notifyOnAuthenticationFailure: Boolean,
-        resultHandler: DeviceAuthenticationResult
-    )
-
-    fun resumeOpenId4VciWithAuthorization(uri: String)
-}
-
+// Phase 2: the Android implementation of the (now KMP) `DocumentOfferInteractor` contract, which
+// moved to :shared-ui/commonMain with `DocumentOfferViewModel`.
 class DocumentOfferInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
     private val walletEngine: WalletEngine,
@@ -136,7 +72,9 @@ class DocumentOfferInteractorImpl(
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
 
-    override val credentialOffers: MutableMap<String, Offer> = mutableMapOf()
+    /** Resolve-then-issue cache: `issueDocuments` needs the `Offer` that `resolveDocumentOffer`
+     * fetched. Implementation detail, deliberately not on the KMP contract. */
+    val credentialOffers: MutableMap<String, Offer> = mutableMapOf()
 
     override fun resolveDocumentOffer(offerUri: String): Flow<ResolveDocumentOfferInteractorPartialState> =
         flow {
@@ -168,7 +106,7 @@ class DocumentOfferInteractorImpl(
                             ResolveDocumentOfferInteractorPartialState.NoDocument(
                                 issuerName = response.offer.getIssuerName(userLocale)
                                     .ifEmptyOrNull(default = defaultIssuerName),
-                                issuerLogo = response.offer.getIssuerLogo(userLocale),
+                                issuerLogo = response.offer.getIssuerLogo(userLocale)?.toString(),
                             )
                         } else {
 
@@ -210,7 +148,7 @@ class DocumentOfferInteractorImpl(
                                     },
                                     issuerName = response.offer.getIssuerName(userLocale)
                                         .ifEmptyOrNull(default = defaultIssuerName),
-                                    issuerLogo = response.offer.getIssuerLogo(userLocale),
+                                    issuerLogo = response.offer.getIssuerLogo(userLocale)?.toString(),
                                     txCodeLength = response.offer.txCodeSpec?.length
                                 )
                             } else {
@@ -305,7 +243,7 @@ class DocumentOfferInteractorImpl(
         }
 
     override fun handleUserAuthentication(
-        context: Context,
+        context: PlatformContext,
         crypto: BiometricCrypto,
         notifyOnAuthenticationFailure: Boolean,
         resultHandler: DeviceAuthenticationResult

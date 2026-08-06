@@ -127,7 +127,9 @@ class TestDocumentOfferInteractor {
     @Mock
     private lateinit var context: Context
 
-    private lateinit var interactor: DocumentOfferInteractor
+    // Declared as the implementation, not the contract: these tests reach into `credentialOffers`,
+    // the resolve-then-issue cache, which is deliberately not on the (now KMP) interface.
+    private lateinit var interactor: DocumentOfferInteractorImpl
 
     private lateinit var closeable: AutoCloseable
 
