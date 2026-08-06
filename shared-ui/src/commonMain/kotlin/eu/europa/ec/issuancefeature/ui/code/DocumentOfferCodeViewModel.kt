@@ -16,15 +16,14 @@
 
 package eu.europa.ec.issuancefeature.ui.code
 
-import android.content.Context
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.commonfeature.config.IssuanceSuccessUiConfig
 import eu.europa.ec.commonfeature.config.OfferCodeUiConfig
-import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.issuancefeature.di.getOrCreateCredentialOfferScope
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
 import eu.europa.ec.issuancefeature.interactor.IssueDocumentsInteractorPartialState
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.resources.Res
@@ -60,7 +59,7 @@ data class State(
 sealed class Event : ViewEvent {
     data object Pop : Event()
     data object DismissError : Event()
-    data class OnPinEntered(val code: SecurePin, val context: Context) : Event()
+    data class OnPinEntered(val code: SecurePin, val context: PlatformContext) : Event()
 
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
@@ -86,7 +85,7 @@ sealed class DocumentOfferCodeBottomSheetContent {
     data object IssuerNotTrusted : DocumentOfferCodeBottomSheetContent()
 
     data class PartialSuccessWithUntrustedIssuer(
-        val issuedDocumentIds: List<DocumentId>,
+        val issuedDocumentIds: List<String>,
     ) : DocumentOfferCodeBottomSheetContent()
 }
 
@@ -168,7 +167,7 @@ class DocumentOfferCodeViewModel(
     }
 
     private fun issueDocuments(
-        context: Context,
+        context: PlatformContext,
         offerUri: String,
         issuerName: String,
         onSuccessNavigation: ConfigNavigation,
@@ -263,7 +262,7 @@ class DocumentOfferCodeViewModel(
     }
 
     private fun goToDocumentIssuanceSuccessScreen(
-        documentIds: List<DocumentId>,
+        documentIds: List<String>,
         onSuccessNavigation: ConfigNavigation,
     ) {
         setEffect {
