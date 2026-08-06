@@ -14,6 +14,9 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Implementation only. `ProximityRequestInteractor` and its partial state moved to :shared-ui's
+// commonMain with ProximityRequestViewModel — same package, so nothing here needs an import for them.
+// This half stays because it drives WalletCorePresentationController and RequestTransformer.
 package eu.europa.ec.proximityfeature.interactor
 
 import eu.europa.ec.businesslogic.extension.safeAsync
@@ -29,30 +32,6 @@ import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
-
-sealed class ProximityRequestInteractorPartialState {
-    data class Success(
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
-        val combinationsUi: List<RequestCombinationUi>,
-        val claimsAreSelectable: Boolean,
-    ) : ProximityRequestInteractorPartialState()
-
-    data class NoData(
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
-    ) : ProximityRequestInteractorPartialState()
-
-    data class Failure(val error: String) : ProximityRequestInteractorPartialState()
-    data object VerifierNotTrusted : ProximityRequestInteractorPartialState()
-    data object Disconnect : ProximityRequestInteractorPartialState()
-}
-
-interface ProximityRequestInteractor : ScopedPresentationInteractor {
-    fun getRequestDocuments(): Flow<ProximityRequestInteractorPartialState>
-    fun stopPresentation()
-    fun updateRequestedDocuments(selectedCombination: RequestCombinationUi?)
-}
 
 class ProximityRequestInteractorImpl(
     private val resourceProvider: ResourceProvider,

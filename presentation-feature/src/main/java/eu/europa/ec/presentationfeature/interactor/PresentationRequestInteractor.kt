@@ -14,6 +14,10 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Implementation only. `PresentationRequestInteractor` and its partial state moved to :shared-ui's
+// commonMain with PresentationRequestViewModel — same package, so nothing here needs an import for
+// them. This half stays because it drives WalletCorePresentationController and RequestTransformer,
+// and because `setConfig` ends in `toDomainConfig`, which unwraps the IntentAction's real Intent.
 package eu.europa.ec.presentationfeature.interactor
 
 import eu.europa.ec.businesslogic.extension.safeAsync
@@ -32,31 +36,6 @@ import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
-
-sealed class PresentationRequestInteractorPartialState {
-    data class Success(
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
-        val combinationsUi: List<RequestCombinationUi>,
-        val claimsAreSelectable: Boolean,
-    ) : PresentationRequestInteractorPartialState()
-
-    data class NoData(
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
-    ) : PresentationRequestInteractorPartialState()
-
-    data class Failure(val error: String) : PresentationRequestInteractorPartialState()
-    data object VerifierNotTrusted : PresentationRequestInteractorPartialState()
-    data object Disconnect : PresentationRequestInteractorPartialState()
-}
-
-interface PresentationRequestInteractor : ScopedPresentationInteractor {
-    fun getRequestDocuments(): Flow<PresentationRequestInteractorPartialState>
-    fun stopPresentation()
-    fun updateRequestedDocuments(selectedCombination: RequestCombinationUi?)
-    fun setConfig(config: RequestUriConfig, intentAction: IntentAction?)
-}
 
 class PresentationRequestInteractorImpl(
     private val resourceProvider: ResourceProvider,
