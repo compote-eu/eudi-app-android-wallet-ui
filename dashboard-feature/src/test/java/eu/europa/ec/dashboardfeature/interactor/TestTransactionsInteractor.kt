@@ -71,9 +71,11 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.mockito.kotlin.wheneverBlocking
+import kotlinx.datetime.toKotlinLocalDateTime
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime as KotlinLocalDateTime
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.transactions_filter_item_no_relying_party_transactions
 import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
@@ -197,7 +199,7 @@ class TestTransactionsInteractor {
 
     //region updateDateFilterById
     @Test
-    fun `When updateDateFilterById is called, Then filterValidator#updateDateFilter is invoked with the same arguments`() {
+    fun `When updateDateFilterById is called, Then filterValidator#updateDateFilter is invoked with the same instants`() {
         // Given
         val groupId = "groupId"
         val filterId = "filterId"
@@ -213,8 +215,15 @@ class TestTransactionsInteractor {
         )
 
         // Then
+        // The filter framework is KMP and speaks kotlinx-datetime; the interactor converts this
+        // feature's java.time values at that boundary.
         verify(filterValidator, times(1))
-            .updateDateFilter(groupId, filterId, lower, upper)
+            .updateDateFilter(
+                groupId,
+                filterId,
+                lower.toKotlinLocalDateTime(),
+                upper.toKotlinLocalDateTime(),
+            )
     }
     //endregion
 
@@ -748,8 +757,8 @@ class TestTransactionsInteractor {
             name = "Range",
             selected = true,
             isDefault = true,
-            startDateTime = LocalDateTime.of(2026, 1, 1, 0, 0),
-            endDateTime = LocalDateTime.of(2026, 12, 31, 23, 59),
+            startDateTime = KotlinLocalDateTime(2026, 1, 1, 0, 0),
+            endDateTime = KotlinLocalDateTime(2026, 12, 31, 23, 59),
         )
         val inRange = attributes(creationLocalDateTime = LocalDateTime.of(2026, 5, 1, 12, 0))
         val outOfRange = attributes(creationLocalDateTime = LocalDateTime.of(2027, 5, 1, 12, 0))

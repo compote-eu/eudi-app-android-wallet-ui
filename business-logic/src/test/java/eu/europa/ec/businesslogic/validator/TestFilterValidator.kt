@@ -47,7 +47,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.Rule
 import org.junit.Test
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 import kotlin.test.assertEquals
 
 @ExperimentalCoroutinesApi
@@ -672,8 +672,8 @@ class TestFilterValidator {
                             name = "Range",
                             selected = true,
                             isDefault = true,
-                            startDateTime = LocalDateTime.MIN,
-                            endDateTime = LocalDateTime.MAX,
+                            startDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_START,
+                            endDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_END,
                         ),
                     ),
                     filterableAction = FilterMultipleAction { _, _ -> true },
@@ -688,8 +688,8 @@ class TestFilterValidator {
                 filterValidator.updateDateFilter(
                     filterGroupId = group.id,
                     filterId = "mdr1",
-                    lowerLimit = LocalDateTime.of(2026, 1, 1, 0, 0),
-                    upperLimit = LocalDateTime.of(2026, 12, 31, 0, 0),
+                    lowerLimit = LocalDateTime(2026, 1, 1, 0, 0),
+                    upperLimit = LocalDateTime(2026, 12, 31, 0, 0),
                 )
 
                 // Then
@@ -712,8 +712,8 @@ class TestFilterValidator {
                             name = "Range",
                             selected = true,
                             isDefault = true,
-                            startDateTime = LocalDateTime.MIN,
-                            endDateTime = LocalDateTime.MAX,
+                            startDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_START,
+                            endDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_END,
                         ),
                     ),
                 )
@@ -727,8 +727,8 @@ class TestFilterValidator {
                 filterValidator.updateDateFilter(
                     filterGroupId = group.id,
                     filterId = "rsdr1",
-                    lowerLimit = LocalDateTime.of(2026, 1, 1, 0, 0),
-                    upperLimit = LocalDateTime.of(2026, 12, 31, 0, 0),
+                    lowerLimit = LocalDateTime(2026, 1, 1, 0, 0),
+                    upperLimit = LocalDateTime(2026, 12, 31, 0, 0),
                 )
 
                 // Then
@@ -751,8 +751,8 @@ class TestFilterValidator {
                             name = "Range",
                             selected = true,
                             isDefault = true,
-                            startDateTime = LocalDateTime.MIN,
-                            endDateTime = LocalDateTime.MAX,
+                            startDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_START,
+                            endDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_END,
                         ),
                     ),
                     filterableAction = FilterMultipleAction { _, _ -> true },
@@ -767,8 +767,8 @@ class TestFilterValidator {
                 filterValidator.updateDateFilter(
                     filterGroupId = group.id,
                     filterId = "rmdr1",
-                    lowerLimit = LocalDateTime.of(2026, 1, 1, 0, 0),
-                    upperLimit = LocalDateTime.of(2026, 12, 31, 0, 0),
+                    lowerLimit = LocalDateTime(2026, 1, 1, 0, 0),
+                    upperLimit = LocalDateTime(2026, 12, 31, 0, 0),
                 )
 
                 // Then
@@ -926,8 +926,8 @@ class TestFilterValidator {
                 name = "Range",
                 selected = true,
                 isDefault = true,
-                startDateTime = LocalDateTime.MIN,
-                endDateTime = LocalDateTime.MAX,
+                startDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_START,
+                endDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_END,
             ),
         ),
     )
@@ -943,8 +943,8 @@ class TestFilterValidator {
             filterValidator.onFilterStateChange().runFlowTest {
                 // Given
                 filterValidator.initializeValidator(filtersWithDateRange, filterableList)
-                val newStart = LocalDateTime.of(2026, 1, 1, 0, 0)
-                val newEnd = LocalDateTime.of(2026, 12, 31, 23, 59)
+                val newStart = LocalDateTime(2026, 1, 1, 0, 0)
+                val newEnd = LocalDateTime(2026, 12, 31, 23, 59)
 
                 // When
                 filterValidator.updateDateFilter(

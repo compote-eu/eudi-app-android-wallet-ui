@@ -19,4 +19,4 @@ package eu.europa.ec.businesslogic.extension
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 
-internal actual val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+actual val ioDispatcher: CoroutineDispatcher = Dispatchers.IO

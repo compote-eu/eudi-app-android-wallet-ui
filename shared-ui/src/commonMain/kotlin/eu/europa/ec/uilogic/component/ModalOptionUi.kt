@@ -14,21 +14,17 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.dashboardfeature.ui.documents.detail.model
+package eu.europa.ec.uilogic.component
 
-import eu.europa.ec.corelogic.model.DocumentIdentifier
-import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import eu.europa.ec.uilogic.component.wrap.ColorKey
+import eu.europa.ec.uilogic.mvi.ViewEvent
 
-enum class DocumentIssuanceStateUi {
-    Issued, Pending, Failed, Expired, Revoked
-}
-
-data class DocumentDetailsUi(
-    val documentId: DocumentId,
-    val issuerId: String,
-    val documentConfigId: String,
-    val documentName: String,
-    val documentIdentifier: DocumentIdentifier,
-    val documentClaims: List<ExpandableListItemUi>,
+data class ModalOptionUi<T : ViewEvent>(
+    val title: String,
+    val leadingIcon: IconDataUi? = null,
+    val leadingIconTint: ColorKey? = null,
+    val trailingIcon: IconDataUi? = null,
+    val trailingIconTint: ColorKey? = null,
+    val enabled: Boolean = true,
+    val event: T,
 )

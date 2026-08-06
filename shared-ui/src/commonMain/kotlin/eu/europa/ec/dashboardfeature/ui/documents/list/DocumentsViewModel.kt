@@ -34,8 +34,6 @@ import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentIssuanceS
 import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsBottomSheetContent.DeferredDocumentPressed
 import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsBottomSheetContent.Filters
 import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentUi
-import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
@@ -69,7 +67,7 @@ data class State(
 
     val documentsUi: List<Pair<DocumentCategory, List<DocumentUi>>> = emptyList(),
     val showNoResultsFound: Boolean = false,
-    val deferredFailedDocIds: List<DocumentId> = emptyList(),
+    val deferredFailedDocIds: List<String> = emptyList(),
     val searchText: String = "",
     val allowUserInteraction: Boolean = true,
     val isFromOnPause: Boolean = true,
@@ -82,9 +80,9 @@ data class State(
 sealed class Event : ViewEvent {
     data object GetDocuments : Event()
     data object OnPause : Event()
-    data class TryIssuingDeferredDocuments(val deferredDocs: Map<DocumentId, FormatType>) : Event()
+    data class TryIssuingDeferredDocuments(val deferredDocs: Map<String, FormatType>) : Event()
     data object Pop : Event()
-    data class GoToDocumentDetails(val docId: DocumentId) : Event()
+    data class GoToDocumentDetails(val docId: String) : Event()
     data class OnSearchQueryChanged(val query: String) : Event()
     data class OnFilterSelectionChanged(val filterId: String, val groupId: String) : Event()
     data class OnFilterGroupExpansionChanged(val groupId: String) : Event()
@@ -104,23 +102,23 @@ sealed class Event : ViewEvent {
 
         sealed class DeferredDocument : BottomSheet() {
             sealed class DeferredNotReadyYet(
-                open val documentId: DocumentId,
+                open val documentId: String,
             ) : DeferredDocument() {
                 data class DocumentSelected(
-                    override val documentId: DocumentId,
+                    override val documentId: String,
                 ) : DeferredNotReadyYet(documentId)
 
                 data class PrimaryButtonPressed(
-                    override val documentId: DocumentId,
+                    override val documentId: String,
                 ) : DeferredNotReadyYet(documentId)
 
                 data class SecondaryButtonPressed(
-                    override val documentId: DocumentId,
+                    override val documentId: String,
                 ) : DeferredNotReadyYet(documentId)
             }
 
             data class OptionListItemForSuccessfullyIssuingDeferredDocumentSelected(
-                val documentId: DocumentId,
+                val documentId: String,
             ) : DeferredDocument()
         }
     }
@@ -136,7 +134,7 @@ sealed class Effect : ViewSideEffect {
         ) : Navigation()
     }
 
-    data class DocumentsFetched(val deferredDocs: Map<DocumentId, FormatType>) : Effect()
+    data class DocumentsFetched(val deferredDocs: Map<String, FormatType>) : Effect()
 
     data object ShowBottomSheet : Effect()
     data object CloseBottomSheet : Effect()
@@ -149,7 +147,7 @@ sealed class DocumentsBottomSheetContent {
         DocumentsBottomSheetContent()
 
     data object AddDocument : DocumentsBottomSheetContent()
-    data class DeferredDocumentPressed(val documentId: DocumentId) : DocumentsBottomSheetContent()
+    data class DeferredDocumentPressed(val documentId: String) : DocumentsBottomSheetContent()
     data class DeferredDocumentsReady(
         val successfullyIssuedDeferredDocuments: List<DeferredDocumentDataDomain>,
         val options: List<ModalOptionUi<Event>>,
@@ -313,7 +311,7 @@ class DocumentsViewModel(
 
     private fun getDocuments(
         event: Event,
-        deferredFailedDocIds: List<DocumentId>,
+        deferredFailedDocIds: List<String>,
     ) {
         setState {
             copy(
@@ -342,7 +340,7 @@ class DocumentsViewModel(
                         }
 
                         is DocumentInteractorGetDocumentsPartialState.Success -> {
-                            val deferredDocs: MutableMap<DocumentId, FormatType> = mutableMapOf()
+                            val deferredDocs: MutableMap<String, FormatType> = mutableMapOf()
                             response.allDocuments.items.filter { document ->
                                 with(document.payload as DocumentUi) {
                                     documentIssuanceState == DocumentIssuanceStateUi.Pending
@@ -385,7 +383,7 @@ class DocumentsViewModel(
         }
     }
 
-    private fun FilterableList.generateFailedDeferredDocs(deferredFailedDocIds: List<DocumentId>): FilterableList {
+    private fun FilterableList.generateFailedDeferredDocs(deferredFailedDocIds: List<String>): FilterableList {
         return copy(items = items.map { filterableItem ->
             val data = filterableItem.payload as DocumentUi
             val failedUiItem = if (data.uiData.itemId in deferredFailedDocIds) {
@@ -409,7 +407,7 @@ class DocumentsViewModel(
 
     private fun tryIssuingDeferredDocuments(
         event: Event,
-        deferredDocs: Map<DocumentId, FormatType>,
+        deferredDocs: Map<String, FormatType>,
     ) {
         setState {
             copy(
@@ -483,7 +481,7 @@ class DocumentsViewModel(
         }
     }
 
-    private fun deleteDocument(event: Event, documentId: DocumentId) {
+    private fun deleteDocument(event: Event, documentId: String) {
         setState {
             copy(
                 isLoading = true,
@@ -541,7 +539,7 @@ class DocumentsViewModel(
         }
     }
 
-    private fun goToDocumentDetails(docId: DocumentId) {
+    private fun goToDocumentDetails(docId: String) {
         setEffect {
             Effect.Navigation.SwitchScreen(
                 route = DocumentDetailsRoute(documentId = docId)

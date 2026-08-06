@@ -14,12 +14,20 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.corelogic.model
+package eu.europa.ec.dashboardfeature.ui.documents.detail.model
 
-import eu.europa.ec.eudi.wallet.document.DocumentId
+import eu.europa.ec.corelogic.model.DocumentIdentifier
+import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 
-data class DeferredDocumentDataDomain(
-    val documentId: DocumentId,
-    val formatType: FormatType,
-    val docName: String,
+enum class DocumentIssuanceStateUi {
+    Issued, Pending, Failed, Expired, Revoked
+}
+
+data class DocumentDetailsUi(
+    val documentId: String,
+    val issuerId: String,
+    val documentConfigId: String,
+    val documentName: String,
+    val documentIdentifier: DocumentIdentifier,
+    val documentClaims: List<ExpandableListItemUi>,
 )

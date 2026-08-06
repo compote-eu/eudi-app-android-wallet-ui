@@ -20,7 +20,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 
 /**
  * `Dispatchers.IO` is not exposed by the coroutines `commonMain` API (it lives in the
- * JVM + Native source sets), so it is bridged here per platform. Both Android and iOS
- * resolve to `Dispatchers.IO`.
+ * JVM + Native source sets), so it is bridged here per platform: `Dispatchers.IO` on Android,
+ * `Dispatchers.Default` on iOS (Kotlin/Native has no separate IO pool).
  */
-internal expect val ioDispatcher: CoroutineDispatcher
+expect val ioDispatcher: CoroutineDispatcher

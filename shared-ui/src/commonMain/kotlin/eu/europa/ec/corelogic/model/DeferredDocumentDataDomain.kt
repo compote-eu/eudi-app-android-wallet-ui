@@ -14,17 +14,10 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.uilogic.component
+package eu.europa.ec.corelogic.model
 
-import androidx.compose.ui.graphics.Color
-import eu.europa.ec.uilogic.mvi.ViewEvent
-
-data class ModalOptionUi<T : ViewEvent>(
-    val title: String,
-    val leadingIcon: IconDataUi? = null,
-    val leadingIconTint: Color? = null,
-    val trailingIcon: IconDataUi? = null,
-    val trailingIconTint: Color? = null,
-    val enabled: Boolean = true,
-    val event: T,
+data class DeferredDocumentDataDomain(
+    val documentId: String,
+    val formatType: FormatType,
+    val docName: String,
 )

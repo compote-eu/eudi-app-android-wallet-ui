@@ -479,7 +479,7 @@ private fun <T : ViewEvent> OptionListItem(
             WrapIcon(
                 modifier = Modifier.size(DEFAULT_ICON_SIZE.dp),
                 iconData = safeLeadingIcon,
-                customTint = item.leadingIconTint,
+                customTint = item.leadingIconTint?.toColor(),
             )
         }
 
@@ -497,7 +497,7 @@ private fun <T : ViewEvent> OptionListItem(
             WrapIcon(
                 modifier = Modifier.size(DEFAULT_ICON_SIZE.dp),
                 iconData = safeTrailingIcon,
-                customTint = item.trailingIconTint,
+                customTint = item.trailingIconTint?.toColor(),
             )
         }
     }
@@ -592,29 +592,29 @@ private fun BottomSheetWithOptionsListPreview() {
                         ModalOptionUi(
                             title = "Option with leading icon",
                             leadingIcon = AppIcons.Verified,
-                            leadingIconTint = MaterialTheme.colorScheme.primary,
+                            leadingIconTint = ColorKey.Primary,
                             event = DummyEventForPreview,
                         ),
                         ModalOptionUi(
                             title = "Option with leading icon",
                             trailingIcon = AppIcons.Edit,
-                            trailingIconTint = MaterialTheme.colorScheme.primary,
+                            trailingIconTint = ColorKey.Primary,
                             event = DummyEventForPreview,
                         ),
                         ModalOptionUi(
                             title = "Option with leading and trailing icon",
                             leadingIcon = AppIcons.Add,
-                            leadingIconTint = MaterialTheme.colorScheme.primary,
+                            leadingIconTint = ColorKey.Primary,
                             trailingIcon = AppIcons.ClockTimer,
-                            trailingIconTint = MaterialTheme.colorScheme.primary,
+                            trailingIconTint = ColorKey.Primary,
                             event = DummyEventForPreview,
                         ),
                         ModalOptionUi(
                             title = "Option with leading and trailing icon and really really really really really long text",
                             leadingIcon = AppIcons.Add,
-                            leadingIconTint = MaterialTheme.colorScheme.primary,
+                            leadingIconTint = ColorKey.Primary,
                             trailingIcon = AppIcons.ClockTimer,
-                            trailingIconTint = MaterialTheme.colorScheme.primary,
+                            trailingIconTint = ColorKey.Primary,
                             event = DummyEventForPreview,
                         ),
                     )
@@ -640,14 +640,14 @@ private fun BottomSheetWithTwoBigIconsEvenTextPreview() {
                         ModalOptionUi(
                             title = "Enabled Option with leading icon",
                             leadingIcon = AppIcons.PresentDocumentInPerson,
-                            leadingIconTint = MaterialTheme.colorScheme.primary,
+                            leadingIconTint = ColorKey.Primary,
                             event = DummyEventForPreview,
                             enabled = true,
                         ),
                         ModalOptionUi(
                             title = "Disabled Option with leading icon",
                             leadingIcon = AppIcons.PresentDocumentOnline,
-                            leadingIconTint = MaterialTheme.colorScheme.primary,
+                            leadingIconTint = ColorKey.Primary,
                             event = DummyEventForPreview,
                             enabled = false,
                         ),
@@ -674,14 +674,14 @@ private fun BottomSheetWithTwoBigIconsUnevenTextPreview() {
                         ModalOptionUi(
                             title = "Enabled Option a lot of text",
                             leadingIcon = AppIcons.PresentDocumentInPerson,
-                            leadingIconTint = MaterialTheme.colorScheme.primary,
+                            leadingIconTint = ColorKey.Primary,
                             event = DummyEventForPreview,
                             enabled = true,
                         ),
                         ModalOptionUi(
                             title = "Enabled Option",
                             leadingIcon = AppIcons.PresentDocumentOnline,
-                            leadingIconTint = MaterialTheme.colorScheme.primary,
+                            leadingIconTint = ColorKey.Primary,
                             event = DummyEventForPreview,
                             enabled = true,
                         ),

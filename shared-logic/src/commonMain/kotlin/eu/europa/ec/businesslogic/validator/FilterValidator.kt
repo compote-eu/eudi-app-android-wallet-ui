@@ -18,6 +18,7 @@ package eu.europa.ec.businesslogic.validator
 
 import eu.europa.ec.businesslogic.extension.applySort
 import eu.europa.ec.businesslogic.extension.filterByQuery
+import eu.europa.ec.businesslogic.extension.ioDispatcher
 import eu.europa.ec.businesslogic.validator.model.FilterAction
 import eu.europa.ec.businesslogic.validator.model.FilterElement
 import eu.europa.ec.businesslogic.validator.model.FilterElement.FilterItem
@@ -27,7 +28,6 @@ import eu.europa.ec.businesslogic.validator.model.FilterableList
 import eu.europa.ec.businesslogic.validator.model.Filters
 import eu.europa.ec.businesslogic.validator.model.SortOrder
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -35,7 +35,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 sealed interface FilterValidatorPartialState {
     val updatedFilters: Filters
@@ -85,7 +85,7 @@ interface FilterValidator {
 }
 
 class FilterValidatorImpl(
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO),
+    private val scope: CoroutineScope = CoroutineScope(ioDispatcher),
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(5000L),
 ) : FilterValidator {
 

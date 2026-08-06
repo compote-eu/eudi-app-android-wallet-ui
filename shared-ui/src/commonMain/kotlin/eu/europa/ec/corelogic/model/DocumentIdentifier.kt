@@ -16,10 +16,6 @@
 
 package eu.europa.ec.corelogic.model
 
-import eu.europa.ec.eudi.wallet.document.Document
-import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
-import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
-
 typealias FormatType = String
 
 sealed interface DocumentIdentifier {
@@ -48,25 +44,6 @@ fun FormatType.toDocumentIdentifier(): DocumentIdentifier = when (this.lowercase
     DocumentIdentifier.SdJwtPid.formatType.lowercase() -> DocumentIdentifier.SdJwtPid
     else -> DocumentIdentifier.OTHER(formatType = this)
 }
-
-fun Document.toDocumentIdentifier(): DocumentIdentifier {
-    val formatType = when (val f = format) {
-        is MsoMdocFormat -> f.docType
-        is SdJwtVcFormat -> f.vct
-    }
-    return createDocumentIdentifier(formatType)
-}
-
-private fun createDocumentIdentifier(
-    formatType: FormatType
-): DocumentIdentifier {
-    return when (formatType.lowercase()) {
-        DocumentIdentifier.MdocPid.formatType.lowercase() -> DocumentIdentifier.MdocPid
-        DocumentIdentifier.SdJwtPid.formatType.lowercase() -> DocumentIdentifier.SdJwtPid
-        else -> DocumentIdentifier.OTHER(formatType = formatType)
-    }
-}
-
 
 /**
  * Converts a [DocumentIdentifier] to a [DocumentCategory] based on a provided set of [DocumentCategories].

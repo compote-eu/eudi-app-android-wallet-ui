@@ -38,11 +38,7 @@ import eu.europa.ec.businesslogic.validator.model.SortOrder
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDeferredDocumentPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
-import eu.europa.ec.corelogic.extension.getExpiryDate
-import eu.europa.ec.corelogic.extension.isExpired
-import eu.europa.ec.corelogic.extension.localizedIssuerMetadata
 import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
-import eu.europa.ec.corelogic.model.DocumentCategory
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.corelogic.model.toDocumentCategory
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
@@ -52,10 +48,7 @@ import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentUi
 import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentsFilterableAttributes
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.content_description_issuer_logo_icon
 import eu.europa.ec.shared.resources.dashboard_document_credentials_info_text
@@ -78,6 +71,7 @@ import eu.europa.ec.shared.resources.documents_screen_filters_filter_by_state_va
 import eu.europa.ec.shared.resources.documents_screen_filters_sort_by
 import eu.europa.ec.shared.resources.documents_screen_filters_sort_default
 import eu.europa.ec.shared.resources.documents_screen_filters_unknown_issuer
+import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -98,109 +92,11 @@ import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
-sealed class DocumentInteractorFilterPartialState {
-    data class FilterApplyResult(
-        val documents: List<Pair<DocumentCategory, List<DocumentUi>>>,
-        val filters: List<ExpandableListItemUi.NestedListItem>,
-        val allDefaultFiltersAreSelected: Boolean,
-    ) : DocumentInteractorFilterPartialState()
-
-    data class FilterUpdateResult(
-        val filters: List<ExpandableListItemUi.NestedListItem>,
-    ) : DocumentInteractorFilterPartialState()
-}
-
-sealed class DocumentInteractorGetDocumentsPartialState {
-    data class Success(
-        val allDocuments: FilterableList,
-        val shouldAllowUserInteraction: Boolean,
-    ) : DocumentInteractorGetDocumentsPartialState()
-
-    data class Failure(val error: String) : DocumentInteractorGetDocumentsPartialState()
-}
-
-sealed class DocumentInteractorDeleteDocumentPartialState {
-    data object SingleDocumentDeleted : DocumentInteractorDeleteDocumentPartialState()
-    data object AllDocumentsDeleted : DocumentInteractorDeleteDocumentPartialState()
-    data class Failure(val errorMessage: String) :
-        DocumentInteractorDeleteDocumentPartialState()
-}
-
-sealed class DocumentInteractorRetryIssuingDeferredDocumentPartialState {
-    data class Success(
-        val deferredDocumentData: DeferredDocumentDataDomain,
-    ) : DocumentInteractorRetryIssuingDeferredDocumentPartialState()
-
-    data class NotReady(
-        val deferredDocumentData: DeferredDocumentDataDomain,
-    ) : DocumentInteractorRetryIssuingDeferredDocumentPartialState()
-
-    data class Failure(
-        val documentId: DocumentId,
-        val errorMessage: String,
-    ) : DocumentInteractorRetryIssuingDeferredDocumentPartialState()
-
-    data class Expired(
-        val documentId: DocumentId,
-    ) : DocumentInteractorRetryIssuingDeferredDocumentPartialState()
-
-    data class IssuerNotTrusted(
-        val documentId: DocumentId,
-    ) : DocumentInteractorRetryIssuingDeferredDocumentPartialState()
-}
-
-sealed class DocumentInteractorRetryIssuingDeferredDocumentsPartialState {
-    data class Result(
-        val successfullyIssuedDeferredDocuments: List<DeferredDocumentDataDomain>,
-        val failedIssuedDeferredDocuments: List<DocumentId>,
-    ) : DocumentInteractorRetryIssuingDeferredDocumentsPartialState()
-
-    data class Failure(
-        val errorMessage: String,
-    ) : DocumentInteractorRetryIssuingDeferredDocumentsPartialState()
-}
-
-interface DocumentsInteractor {
-    fun getDocuments(): Flow<DocumentInteractorGetDocumentsPartialState>
-
-    fun tryIssuingDeferredDocumentsFlow(
-        deferredDocuments: Map<DocumentId, FormatType>,
-        dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    ): Flow<DocumentInteractorRetryIssuingDeferredDocumentsPartialState>
-
-    fun deleteDocument(
-        documentId: String,
-    ): Flow<DocumentInteractorDeleteDocumentPartialState>
-
-    fun onFilterStateChange(): Flow<DocumentInteractorFilterPartialState>
-    fun initializeFilters(
-        filterableList: FilterableList,
-    )
-
-    fun updateLists(filterableList: FilterableList)
-    fun applyFilters()
-    fun applySearch(query: String)
-    fun resetFilters()
-    fun revertFilters()
-    fun updateFilter(filterGroupId: String, filterId: String)
-    fun updateSort(filterId: String)
-    fun addDynamicFilters(
-        documents: FilterableList,
-        filters: Filters = Filters.emptyFilters(),
-    ): Filters
-
-    fun getFilters(): Filters
-
-    /**
-     * The supporting line shown under a deferred document whose issuance failed.
-     *
-     * It belongs here rather than in the view-model because `ListItemDataUi.supportingText` is a
-     * resolved `String` — this interactor already fills it for the *pending* case a few lines away —
-     * and exposing it is what lets `DocumentsViewModel` stop injecting a resolver of its own.
-     */
-    val deferredFailedSupportingText: String
-}
-
+// Phase 2: the Android implementation of the (now KMP) `DocumentsInteractor` contract, which moved
+// to :shared-ui/commonMain with `DocumentsViewModel`. This side stays Android-only: it resolves
+// strings through ResourceProvider and drives wallet-core's issuance/deletion controller. The
+// document *list* it builds now reads the WalletEngine seam, so it holds no wallet-core document
+// types at all.
 class DocumentsInteractorImpl(
     private val resourceProvider: ResourceProvider,
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
@@ -331,168 +227,108 @@ class DocumentsInteractorImpl(
             val showBatchIssuanceCounter = prefKeys.getShowBatchIssuanceCounter()
 
             val allDocuments = FilterableList(
-                items = walletCoreDocumentsController.getAllDocuments().map { document ->
+                items = walletEngine
+                    .getAllDocumentsWithDetails(locale = userLocale.toLanguageTag())
+                    .map { document ->
+                        val issuerName = document.issuerName
+                            ?: resourceProvider.getString(Res.string.documents_screen_filters_unknown_issuer)
 
-                    val documentIsRevoked =
-                        walletEngine.isDocumentRevoked(document.id)
+                        val documentIdentifier = document.formatType.toDocumentIdentifier()
 
-                    when (document) {
-                        is IssuedDocument -> {
-                            val localizedIssuerMetadata =
-                                document.localizedIssuerMetadata(userLocale)
+                        val documentCategory = documentIdentifier.toDocumentCategory(
+                            allCategories = documentCategories
+                        )
 
-                            val issuerName = localizedIssuerMetadata?.name
-                                ?: resourceProvider.getString(Res.string.documents_screen_filters_unknown_issuer)
+                        val documentSearchTags = buildList {
+                            add(document.name)
+                            if (issuerName.isNotBlank()) {
+                                add(issuerName)
+                            }
+                        }
 
-                            val documentIdentifier = document.toDocumentIdentifier()
+                        val isPending =
+                            document.issuanceState == WalletDocumentIssuanceState.Pending
 
-                            val documentCategory = documentIdentifier.toDocumentCategory(
-                                allCategories = documentCategories
+                        val documentIssuanceState = when {
+                            isPending -> DocumentIssuanceStateUi.Pending
+                            document.isRevoked -> DocumentIssuanceStateUi.Revoked
+                            document.isExpired -> DocumentIssuanceStateUi.Expired
+                            else -> DocumentIssuanceStateUi.Issued
+                        }
+
+                        // Bound to a local because WalletDocument lives in another module, where a
+                        // null-check on its `val` does not smart-cast.
+                        val expiresAt = document.expiresAt
+                        val supportingText = when {
+                            isPending -> resourceProvider.getString(Res.string.dashboard_document_deferred_pending)
+                            document.isRevoked -> resourceProvider.getString(Res.string.dashboard_document_revoked)
+                            document.isExpired -> resourceProvider.getString(Res.string.dashboard_document_has_expired)
+                            expiresAt == null -> null
+                            else -> resourceProvider.getString(
+                                Res.string.dashboard_document_has_not_expired,
+                                expiresAt.formatInstant()
+                            )
+                        }
+
+                        val trailingContentData = when {
+                            isPending -> ListItemTrailingContentDataUi.Icon(
+                                iconData = AppIcons.ClockTimer,
+                                tint = ColorKey.Warning,
                             )
 
-                            val documentName = document.name
+                            document.isRevoked -> ListItemTrailingContentDataUi.Icon(
+                                iconData = AppIcons.ErrorFilled,
+                                tint = ColorKey.Error
+                            )
 
-                            val documentSearchTags = buildList {
-                                add(documentName)
-                                if (issuerName.isNotBlank()) {
-                                    add(issuerName)
-                                }
-                            }
-
-                            val documentExpirationDate = document.getExpiryDate()
-                            val documentHasExpired = document.isExpired()
-
-                            val documentIssuanceState = when {
-                                documentIsRevoked -> DocumentIssuanceStateUi.Revoked
-                                documentHasExpired -> DocumentIssuanceStateUi.Expired
-                                else -> DocumentIssuanceStateUi.Issued
-                            }
-
-                            val supportingText = when {
-                                documentIsRevoked -> resourceProvider.getString(Res.string.dashboard_document_revoked)
-                                documentHasExpired -> resourceProvider.getString(Res.string.dashboard_document_has_expired)
-                                documentExpirationDate == null -> null
-                                else -> resourceProvider.getString(
-                                    Res.string.dashboard_document_has_not_expired,
-                                    documentExpirationDate.formatInstant()
-                                )
-                            }
-
-                            val trailingContentData = if (documentIsRevoked) {
-                                ListItemTrailingContentDataUi.Icon(
-                                    iconData = AppIcons.ErrorFilled,
-                                    tint = ColorKey.Error
-                                )
-                            } else {
-                                val documentAvailableCredentials = document.credentialsCount()
-                                val documentTotalCredentials = document.initialCredentialsCount()
-
+                            else -> {
                                 val documentCredentialsInfoUi = DocumentCredentialsInfoUi(
-                                    availableCredentials = documentAvailableCredentials,
-                                    totalCredentials = documentTotalCredentials,
+                                    availableCredentials = document.credentialsCount,
+                                    totalCredentials = document.initialCredentialsCount,
                                     title = resourceProvider.getString(
                                         Res.string.dashboard_document_credentials_info_text,
-                                        documentAvailableCredentials,
-                                        documentTotalCredentials
+                                        document.credentialsCount,
+                                        document.initialCredentialsCount
                                     )
                                 )
 
-                                val documentLowOnCredentials = walletCoreDocumentsController
-                                    .isDocumentLowOnCredentials(document)
-
                                 createDocumentTrailingContentData(
                                     documentCredentialsInfoUi = documentCredentialsInfoUi,
-                                    documentLowOnCredentials = documentLowOnCredentials,
+                                    documentLowOnCredentials = document.isLowOnCredentials,
                                     showBatchIssuanceCounter = showBatchIssuanceCounter
                                 )
                             }
-
-                            FilterableItem(
-                                payload = DocumentUi(
-                                    documentIssuanceState = documentIssuanceState,
-                                    uiData = ListItemDataUi(
-                                        itemId = document.id,
-                                        mainContentData = ListItemMainContentDataUi.Text(text = documentName),
-                                        overlineText = issuerName,
-                                        supportingText = supportingText,
-                                        leadingContentData = ListItemLeadingContentDataUi.AsyncImage(
-                                            imageUrl = localizedIssuerMetadata?.logo?.uri.toString(),
-                                            contentDescription = resourceProvider.getString(Res.string.content_description_issuer_logo_icon),
-                                            errorImage = AppIcons.Id,
-                                        ),
-                                        trailingContentData = trailingContentData
-                                    ),
-                                    documentIdentifier = documentIdentifier,
-                                    documentCategory = documentCategory,
-                                ),
-                                attributes = DocumentsFilterableAttributes(
-                                    searchTags = documentSearchTags,
-                                    issuedDate = document.issuedAt,
-                                    expiryDate = documentExpirationDate,
-                                    issuer = issuerName,
-                                    name = documentName,
-                                    category = documentCategory,
-                                    isRevoked = documentIsRevoked
-                                )
-                            )
                         }
 
-                        is UnsignedDocument -> {
-                            val localizedIssuerMetadata =
-                                document.localizedIssuerMetadata(userLocale)
-
-                            val issuerName = localizedIssuerMetadata?.name
-                                ?: resourceProvider.getString(Res.string.documents_screen_filters_unknown_issuer)
-
-                            val documentIdentifier = document.toDocumentIdentifier()
-
-                            val documentCategory = documentIdentifier.toDocumentCategory(
-                                allCategories = documentCategories
-                            )
-
-                            val documentName = document.name
-
-                            val documentSearchTags = buildList {
-                                add(documentName)
-                                if (issuerName.isNotBlank()) {
-                                    add(issuerName)
-                                }
-                            }
-
-                            FilterableItem(
-                                payload = DocumentUi(
-                                    documentIssuanceState = DocumentIssuanceStateUi.Pending,
-                                    uiData = ListItemDataUi(
-                                        itemId = document.id,
-                                        mainContentData = ListItemMainContentDataUi.Text(text = documentName),
-                                        overlineText = issuerName,
-                                        supportingText = resourceProvider.getString(Res.string.dashboard_document_deferred_pending),
-                                        leadingContentData = ListItemLeadingContentDataUi.AsyncImage(
-                                            imageUrl = localizedIssuerMetadata?.logo?.uri.toString(),
-                                            contentDescription = resourceProvider.getString(Res.string.content_description_issuer_logo_icon),
-                                            errorImage = AppIcons.Id,
-                                        ),
-                                        trailingContentData = ListItemTrailingContentDataUi.Icon(
-                                            iconData = AppIcons.ClockTimer,
-                                            tint = ColorKey.Warning,
-                                        )
+                        FilterableItem(
+                            payload = DocumentUi(
+                                documentIssuanceState = documentIssuanceState,
+                                uiData = ListItemDataUi(
+                                    itemId = document.id,
+                                    mainContentData = ListItemMainContentDataUi.Text(text = document.name),
+                                    overlineText = issuerName,
+                                    supportingText = supportingText,
+                                    leadingContentData = ListItemLeadingContentDataUi.AsyncImage(
+                                        imageUrl = document.issuerLogoUri.orEmpty(),
+                                        contentDescription = resourceProvider.getString(Res.string.content_description_issuer_logo_icon),
+                                        errorImage = AppIcons.Id,
                                     ),
-                                    documentIdentifier = documentIdentifier,
-                                    documentCategory = documentCategory,
+                                    trailingContentData = trailingContentData
                                 ),
-                                attributes = DocumentsFilterableAttributes(
-                                    searchTags = documentSearchTags,
-                                    issuedDate = null,
-                                    expiryDate = null,
-                                    issuer = issuerName,
-                                    name = documentName,
-                                    category = documentCategory,
-                                    isRevoked = documentIsRevoked
-                                )
+                                documentIdentifier = documentIdentifier,
+                                documentCategory = documentCategory,
+                            ),
+                            attributes = DocumentsFilterableAttributes(
+                                searchTags = documentSearchTags,
+                                issuedDate = document.issuedAt,
+                                expiryDate = document.expiresAt,
+                                issuer = issuerName,
+                                name = document.name,
+                                category = documentCategory,
+                                isRevoked = document.isRevoked
                             )
-                        }
+                        )
                     }
-                }
             )
 
             emit(

@@ -62,6 +62,8 @@ import eu.europa.ec.uilogic.component.wrap.RadioButtonDataUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDateTime
 import java.time.LocalDate
 import java.time.LocalDateTime
 import eu.europa.ec.shared.resources.Res
@@ -360,8 +362,8 @@ class TransactionsInteractorImpl(
                         name = resourceProvider.getString(Res.string.transactions_screen_filter_by_date_period),
                         selected = true,
                         isDefault = true,
-                        startDateTime = LocalDateTime.MIN,
-                        endDateTime = LocalDateTime.MAX,
+                        startDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_START,
+                        endDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_END,
                         filterableAction = FilterAction.Filter<TransactionsFilterableAttributes> { attributes, filter ->
                             return@Filter isDateAttributeWithinFilterRange(
                                 filter = filter,
@@ -496,11 +498,13 @@ class TransactionsInteractorImpl(
         lowerLimitDate: LocalDateTime,
         upperLimitDate: LocalDateTime
     ) {
+        // The filter framework is KMP (shared-logic) and speaks kotlinx-datetime; this feature is
+        // still on java.time (its date migration is deferred), so convert at the boundary only.
         filterValidator.updateDateFilter(
             filterGroupId,
             filterId,
-            lowerLimitDate,
-            upperLimitDate
+            lowerLimitDate.toKotlinLocalDateTime(),
+            upperLimitDate.toKotlinLocalDateTime()
         )
     }
 
@@ -590,8 +594,8 @@ class TransactionsInteractorImpl(
     ): Boolean {
         val creationDate = attributes.creationLocalDateTime?.toLocalDate()
         return if (filter is FilterElement.DateTimeRangeFilterItem && creationDate != null) {
-            val startDate = filter.startDateTime.toLocalDate()
-            val endDate = filter.endDateTime.toLocalDate()
+            val startDate = filter.startDateTime.toJavaLocalDateTime().toLocalDate()
+            val endDate = filter.endDateTime.toJavaLocalDateTime().toLocalDate()
             creationDate in startDate..endDate
         } else {
             true

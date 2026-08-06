@@ -64,6 +64,7 @@ import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.ActionCardConfig
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
 import eu.europa.ec.uilogic.component.wrap.BottomSheetWithTwoBigIcons
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
 import eu.europa.ec.uilogic.component.wrap.GenericBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapActionCard
@@ -345,13 +346,13 @@ private fun HomeScreenSheetContent(
                     ModalOptionUi(
                         title = stringResource(Res.string.home_screen_sign_document_option_from_device),
                         leadingIcon = AppIcons.SignDocumentFromDevice,
-                        leadingIconTint = MaterialTheme.colorScheme.primary,
+                        leadingIconTint = ColorKey.Primary,
                         event = Event.BottomSheet.SignDocument.OpenFromDevice,
                     ),
                     ModalOptionUi(
                         title = stringResource(Res.string.home_screen_sign_document_option_scan_qr),
                         leadingIcon = AppIcons.SignDocumentFromQr,
-                        leadingIconTint = MaterialTheme.colorScheme.primary,
+                        leadingIconTint = ColorKey.Primary,
                         event = Event.BottomSheet.SignDocument.OpenScanQR,
                     )
                 ),

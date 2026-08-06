@@ -35,6 +35,7 @@ import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDeferredDocumentPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.shared.wallet.WalletDocument
+import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
 import eu.europa.ec.corelogic.model.DocumentCategories
@@ -49,17 +50,14 @@ import eu.europa.ec.dashboardfeature.util.mockedPendingMdlUi
 import eu.europa.ec.dashboardfeature.util.mockedPendingPidUi
 import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.eudi.wallet.document.UnsignedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testfeature.util.copy
 import eu.europa.ec.testfeature.util.getMockedFullDocuments
-import eu.europa.ec.testfeature.util.getMockedFullPid
 import eu.europa.ec.testfeature.util.mockedDefaultLocale
+import eu.europa.ec.testfeature.util.mockedMdocPidDocType
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
 import eu.europa.ec.testfeature.util.mockedGenericErrorMessage
-import eu.europa.ec.testfeature.util.mockedMdocPidFormat
 import eu.europa.ec.testfeature.util.mockedPlainFailureMessage
 import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest
@@ -148,7 +146,7 @@ class TestDocumentsInteractor {
 
     private fun documentsAttributes(
         name: String = "PID",
-        issuedDate: Instant? = null,
+        issuedDate: kotlin.time.Instant? = null,
         expiryDate: kotlin.time.Instant? = null,
         issuer: String = "Issuer",
         category: DocumentCategory = DocumentCategory.Government,
@@ -655,12 +653,12 @@ class TestDocumentsInteractor {
     fun `Given two issued documents, When getDocuments is called, Then Success with the documents is emitted`() {
         coroutineRule.runTest {
             // Given
-            val mockedFullDocuments = getMockedFullDocuments()
-            mockShowBatchIssuanceCounterPreference(response = true)
-            mockGetDocumentsBaseCalls(
-                documents = mockedFullDocuments,
-                mainPid = mockedFullDocuments[0],
+            val documents = listOf(
+                issuedWalletDocument(id = "doc-1"),
+                issuedWalletDocument(id = "doc-2"),
             )
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockGetDocumentsBaseCalls(documents = documents)
             mockGetDocumentsResourceStrings()
 
             // When
@@ -669,7 +667,7 @@ class TestDocumentsInteractor {
                 val state = awaitItem()
                 assertTrue(state is DocumentInteractorGetDocumentsPartialState.Success)
                 assertEquals(true, state.shouldAllowUserInteraction)
-                assertEquals(mockedFullDocuments.size, state.allDocuments.items.size)
+                assertEquals(documents.size, state.allDocuments.items.size)
             }
         }
     }
@@ -678,12 +676,9 @@ class TestDocumentsInteractor {
     fun `Given a revoked document, When getDocuments is called, Then documentState is Revoked`() {
         coroutineRule.runTest {
             // Given
-            val mockedFullDocuments = getMockedFullDocuments()
             mockShowBatchIssuanceCounterPreference(response = true)
             mockGetDocumentsBaseCalls(
-                documents = mockedFullDocuments,
-                mainPid = mockedFullDocuments[0],
-                documentIsRevoked = true,
+                documents = listOf(issuedWalletDocument(isRevoked = true)),
             )
             mockGetDocumentsResourceStrings()
 
@@ -703,12 +698,9 @@ class TestDocumentsInteractor {
     fun `Given a low-on-credentials document and show batch issuance counter preference is true, When getDocuments is called, Then TextWithIcon trailing is set`() {
         coroutineRule.runTest {
             // Given
-            val mockedFullDocuments = getMockedFullDocuments()
             mockShowBatchIssuanceCounterPreference(response = true)
             mockGetDocumentsBaseCalls(
-                documents = mockedFullDocuments,
-                mainPid = mockedFullDocuments[0],
-                documentLowOnCredentials = true,
+                documents = listOf(issuedWalletDocument(isLowOnCredentials = true)),
             )
             mockGetDocumentsResourceStrings()
 
@@ -728,11 +720,9 @@ class TestDocumentsInteractor {
     fun `Given show batch issuance counter preference is false, When getDocuments is called, Then counter text is hidden`() {
         coroutineRule.runTest {
             // Given
-            val mockedFullDocuments = getMockedFullDocuments()
             mockShowBatchIssuanceCounterPreference(response = false)
             mockGetDocumentsBaseCalls(
-                documents = mockedFullDocuments,
-                mainPid = mockedFullDocuments[0],
+                documents = listOf(issuedWalletDocument()),
             )
             mockGetDocumentsResourceStrings()
 
@@ -753,10 +743,7 @@ class TestDocumentsInteractor {
         coroutineRule.runTest {
             // Given
             mockShowBatchIssuanceCounterPreference(response = true)
-            whenever(walletEngine.getMainPidDocument()).thenReturn(null)
-            whenever(walletCoreDocumentsController.getAllDocuments()).thenReturn(emptyList())
-            whenever(walletCoreDocumentsController.getAllDocumentCategories())
-                .thenReturn(DocumentCategories(value = emptyMap()))
+            mockGetDocumentsBaseCalls(documents = emptyList(), hasMainPid = false)
             whenever(resourceProvider.getLocale())
                 .thenReturn(mockedDefaultLocale)
 
@@ -772,12 +759,12 @@ class TestDocumentsInteractor {
     }
 
     @Test
-    fun `Given getAllDocuments throws with message, When getDocuments is called, Then Failure is emitted`() {
+    fun `Given the wallet engine throws with message, When getDocuments is called, Then Failure is emitted`() {
         coroutineRule.runTest {
             // Given
             mockShowBatchIssuanceCounterPreference(response = true)
             whenever(walletEngine.getMainPidDocument()).thenReturn(null)
-            whenever(walletCoreDocumentsController.getAllDocuments())
+            whenever(walletEngine.getAllDocumentsWithDetails(anyString()))
                 .thenThrow(mockedExceptionWithMessage)
             whenever(walletCoreDocumentsController.getAllDocumentCategories())
                 .thenReturn(DocumentCategories(value = emptyMap()))
@@ -798,12 +785,12 @@ class TestDocumentsInteractor {
     }
 
     @Test
-    fun `Given getAllDocuments throws no message, When getDocuments is called, Then Failure with generic message is emitted`() {
+    fun `Given the wallet engine throws no message, When getDocuments is called, Then Failure with generic message is emitted`() {
         coroutineRule.runTest {
             // Given
             mockShowBatchIssuanceCounterPreference(response = true)
             whenever(walletEngine.getMainPidDocument()).thenReturn(null)
-            whenever(walletCoreDocumentsController.getAllDocuments())
+            whenever(walletEngine.getAllDocumentsWithDetails(anyString()))
                 .thenThrow(mockedExceptionWithNoMessage)
             whenever(walletCoreDocumentsController.getAllDocumentCategories())
                 .thenReturn(DocumentCategories(value = emptyMap()))
@@ -939,48 +926,26 @@ class TestDocumentsInteractor {
     }
     //endregion
 
-    //region getDocuments — UnsignedDocument & expired
+    //region getDocuments — pending & expired documents
 
     @Test
-    fun `Given an UnsignedDocument among getAllDocuments, When getDocuments is called, Then it is mapped with Pending state`() {
+    fun `Given a pending document from the seam, When getDocuments is called, Then it is mapped with Pending state`() {
         coroutineRule.runTest {
-            // Given
-            val mockedFullDocuments = getMockedFullDocuments()
+            // Given a document the seam reports as not-yet-issued (wallet-core's UnsignedDocument /
+            // DeferredDocument), alongside a normal issued one.
             mockShowBatchIssuanceCounterPreference(response = true)
-            val unsignedDoc =
-                mock<UnsignedDocument>()
-            whenever(unsignedDoc.id).thenReturn("unsigned-id")
-            whenever(unsignedDoc.name).thenReturn("Unsigned Doc")
-            whenever(unsignedDoc.format).thenReturn(mockedMdocPidFormat)
-            whenever(unsignedDoc.issuerMetadata).thenReturn(null)
-
-            whenever(walletEngine.getMainPidDocument())
-                .thenReturn(WalletDocument(id = "mocked_pid_id"))
-            // Cast to List<Document> since both IssuedDocument and UnsignedDocument implement Document.
-            @Suppress("UNCHECKED_CAST")
-            whenever(walletCoreDocumentsController.getAllDocuments())
-                .thenReturn(mockedFullDocuments + listOf(unsignedDoc) as List<Document>)
-            whenever(walletCoreDocumentsController.getAllDocumentCategories())
-                .thenReturn(DocumentCategories(value = emptyMap()))
-            whenever(walletEngine.isDocumentRevoked(anyString())).thenReturn(false)
-            whenever(walletCoreDocumentsController.isDocumentLowOnCredentials(any()))
-                .thenReturn(false)
-            whenever(resourceProvider.getLocale())
-                .thenReturn(mockedDefaultLocale)
-            whenever(resourceProvider.getString(any())).thenReturn("mocked")
-            whenever(
-                resourceProvider.getString(
-                    any(),
-                    any<Int>(),
-                    any<Int>()
-                )
-            ).thenReturn("mocked-credentials-info")
-            whenever(
-                resourceProvider.getString(
-                    any(),
-                    any<String>()
-                )
-            ).thenReturn("mocked-expiry-message")
+            mockGetDocumentsBaseCalls(
+                documents = listOf(
+                    issuedWalletDocument(id = "issued-id"),
+                    WalletDocument(
+                        id = "unsigned-id",
+                        name = "Unsigned Doc",
+                        formatType = mockedMdocPidDocType,
+                        issuanceState = WalletDocumentIssuanceState.Pending,
+                    ),
+                ),
+            )
+            mockGetDocumentsResourceStrings()
 
             // When
             interactor.getDocuments().runFlowTest {
@@ -993,21 +958,62 @@ class TestDocumentsInteractor {
                 assertNotNull(unsignedItem)
                 val payload = unsignedItem!!.payload as DocumentUi
                 assertEquals(DocumentIssuanceStateUi.Pending, payload.documentIssuanceState)
+                // A pending document shows the waiting clock, never a credential counter.
+                assertTrue(payload.uiData.trailingContentData is ListItemTrailingContentDataUi.Icon)
+                assertEquals(
+                    AppIcons.ClockTimer,
+                    (payload.uiData.trailingContentData as ListItemTrailingContentDataUi.Icon).iconData
+                )
             }
         }
     }
 
     @Test
-    fun `Given an expired IssuedDocument, When getDocuments is called, Then documentIssuanceState is Expired`() {
+    fun `Given a pending document that the seam also reports revoked, When getDocuments is called, Then Pending wins`() {
         coroutineRule.runTest {
-            // Given a PID whose credential expired in the past.
+            // Given — pending is checked first, so a not-yet-issued document never renders as
+            // revoked or expired even if those flags happen to be set.
             mockShowBatchIssuanceCounterPreference(response = true)
-            val expiredPid = getMockedFullPid().copy(
-                validUntil = Result.success(Instant.parse("2020-01-01T00:00:00Z")),
-            )
             mockGetDocumentsBaseCalls(
-                documents = listOf(expiredPid),
-                mainPid = expiredPid,
+                documents = listOf(
+                    WalletDocument(
+                        id = "unsigned-id",
+                        name = "Unsigned Doc",
+                        formatType = mockedMdocPidDocType,
+                        issuanceState = WalletDocumentIssuanceState.Pending,
+                        isRevoked = true,
+                    ),
+                ),
+            )
+            mockGetDocumentsResourceStrings()
+
+            // When
+            interactor.getDocuments().runFlowTest {
+                // Then
+                val state = awaitItem()
+                assertTrue(state is DocumentInteractorGetDocumentsPartialState.Success)
+                val payload = state.allDocuments.items.first().payload as DocumentUi
+                assertEquals(DocumentIssuanceStateUi.Pending, payload.documentIssuanceState)
+                // ...but the attribute the filters read still carries the engine's verdict.
+                val attributes =
+                    state.allDocuments.items.first().attributes as DocumentsFilterableAttributes
+                assertEquals(true, attributes.isRevoked)
+            }
+        }
+    }
+
+    @Test
+    fun `Given an expired document, When getDocuments is called, Then documentIssuanceState is Expired`() {
+        coroutineRule.runTest {
+            // Given
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockGetDocumentsBaseCalls(
+                documents = listOf(
+                    issuedWalletDocument(
+                        isExpired = true,
+                        expiresAt = kotlin.time.Instant.parse("2020-01-01T00:00:00Z"),
+                    ),
+                ),
             )
             mockGetDocumentsResourceStrings()
 
@@ -1018,6 +1024,28 @@ class TestDocumentsInteractor {
                 assertTrue(state is DocumentInteractorGetDocumentsPartialState.Success)
                 val payload = state.allDocuments.items.first().payload as DocumentUi
                 assertEquals(DocumentIssuanceStateUi.Expired, payload.documentIssuanceState)
+            }
+        }
+    }
+
+    @Test
+    fun `Given a document with no issuer name, When getDocuments is called, Then the unknown-issuer wording is used`() {
+        coroutineRule.runTest {
+            // Given the engine found no localized issuer display for this document. Resolving the
+            // fallback wording is the interactor's job, not the engine's.
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockGetDocumentsBaseCalls(
+                documents = listOf(issuedWalletDocument().copy(issuerName = null)),
+            )
+            mockGetDocumentsResourceStrings(genericString = "unknown-issuer")
+
+            // When
+            interactor.getDocuments().runFlowTest {
+                // Then
+                val state = awaitItem()
+                assertTrue(state is DocumentInteractorGetDocumentsPartialState.Success)
+                val payload = state.allDocuments.items.first().payload as DocumentUi
+                assertEquals("unknown-issuer", payload.uiData.overlineText)
             }
         }
     }
@@ -1415,22 +1443,43 @@ class TestDocumentsInteractor {
         whenever(suspend { prefKeys.getShowBatchIssuanceCounter() }).thenReturn(response)
     }
 
+    /**
+     * A [WalletDocument] as the seam hands it over: already mapped, so the interactor's list-builder
+     * has no wallet-core types left to see. Mirrors what `WalletEngineImpl` produces for an issued
+     * document (whose own mapping is covered by `TestWalletEngineImpl` in :core-logic).
+     */
+    private fun issuedWalletDocument(
+        id: String = "doc-1",
+        name: String = "PID",
+        isRevoked: Boolean = false,
+        isExpired: Boolean = false,
+        expiresAt: kotlin.time.Instant? = kotlin.time.Instant.parse("2099-01-01T00:00:00Z"),
+        isLowOnCredentials: Boolean = false,
+    ) = WalletDocument(
+        id = id,
+        name = name,
+        formatType = mockedMdocPidDocType,
+        issuanceState = WalletDocumentIssuanceState.Issued,
+        issuedAt = kotlin.time.Instant.parse("2024-01-01T00:00:00Z"),
+        expiresAt = expiresAt,
+        isExpired = isExpired,
+        isRevoked = isRevoked,
+        credentialsCount = 2,
+        initialCredentialsCount = 5,
+        isLowOnCredentials = isLowOnCredentials,
+        issuerName = "Issuer",
+    )
+
     private suspend fun mockGetDocumentsBaseCalls(
-        documents: List<Document>,
-        mainPid: IssuedDocument?,
-        documentIsRevoked: Boolean = false,
-        documentLowOnCredentials: Boolean = false,
+        documents: List<WalletDocument>,
+        hasMainPid: Boolean = true,
     ) {
         whenever(walletEngine.getMainPidDocument())
-            .thenReturn(WalletDocument(id = "mocked_pid_id"))
-        whenever(walletCoreDocumentsController.getAllDocuments())
+            .thenReturn(if (hasMainPid) WalletDocument(id = "mocked_pid_id") else null)
+        whenever(walletEngine.getAllDocumentsWithDetails(anyString()))
             .thenReturn(documents)
         whenever(walletCoreDocumentsController.getAllDocumentCategories())
             .thenReturn(DocumentCategories(value = emptyMap()))
-        whenever(walletEngine.isDocumentRevoked(anyString()))
-            .thenReturn(documentIsRevoked)
-        whenever(walletCoreDocumentsController.isDocumentLowOnCredentials(any()))
-            .thenReturn(documentLowOnCredentials)
     }
 
     private fun mockGetDocumentsResourceStrings(

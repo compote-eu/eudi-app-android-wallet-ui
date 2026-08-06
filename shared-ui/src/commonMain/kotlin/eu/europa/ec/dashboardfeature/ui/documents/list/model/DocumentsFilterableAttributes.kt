@@ -18,14 +18,15 @@ package eu.europa.ec.dashboardfeature.ui.documents.list.model
 
 import eu.europa.ec.businesslogic.validator.model.FilterableAttributes
 import eu.europa.ec.corelogic.model.DocumentCategory
-import java.time.Instant
+import kotlin.time.Instant
 
 data class DocumentsFilterableAttributes(
     override val searchTags: List<String>,
     val name: String,
-    // Stage 1 of the date migration: the expiry chain is on kotlin.time.Instant (matching the
-    // underlying credential data). issuedDate stays on java.time.Instant until a later stage.
-    val expiryDate: kotlin.time.Instant?,
+    // Both dates now come off the WalletEngine seam as kotlin.time.Instant, matching the
+    // underlying credential data. (issuedDate was the last java.time.Instant here; the SDK's
+    // java.time value is converted once, inside the Android WalletEngine mapping.)
+    val expiryDate: Instant?,
     val issuedDate: Instant?,
     val issuer: String,
     val category: DocumentCategory,

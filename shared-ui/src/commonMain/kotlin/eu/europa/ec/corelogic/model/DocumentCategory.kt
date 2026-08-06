@@ -26,6 +26,7 @@ import eu.europa.ec.shared.resources.document_category_retail
 import eu.europa.ec.shared.resources.document_category_social_security
 import eu.europa.ec.shared.resources.document_category_travel
 import org.jetbrains.compose.resources.StringResource
+import kotlin.jvm.JvmInline
 
 /**
  * Represents a collection of document categories and their associated document identifiers.

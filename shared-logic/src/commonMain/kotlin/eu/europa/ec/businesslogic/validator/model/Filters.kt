@@ -17,7 +17,7 @@
 package eu.europa.ec.businesslogic.validator.model
 
 import eu.europa.ec.businesslogic.extension.sortByOrder
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 data class Filters(
     val filterGroups: List<FilterGroup>,
@@ -107,7 +107,20 @@ sealed class FilterElement {
         val startDateTime: LocalDateTime,
         val endDateTime: LocalDateTime,
         override val filterableAction: FilterAction = DefaultFilterAction,
-    ) : FilterElement()
+    ) : FilterElement() {
+        companion object {
+            /**
+             * Open bounds for a range the user has not narrowed yet. `java.time.LocalDateTime`'s
+             * `MIN`/`MAX` have no kotlinx-datetime counterpart — there they exist but are
+             * `internal` — so the framework owns explicit sentinels instead. Year 1 to year 9999
+             * brackets every timestamp a wallet can hold, which is all these ever needed to do:
+             * the framework only stores the bounds, and the owning feature compares against them
+             * exclusively once its filter is selected, i.e. after real limits were supplied.
+             */
+            val OPEN_START: LocalDateTime = LocalDateTime(1, 1, 1, 0, 0)
+            val OPEN_END: LocalDateTime = LocalDateTime(9999, 12, 31, 23, 59, 59)
+        }
+    }
 }
 
 data object DefaultFilterAction : FilterAction() {

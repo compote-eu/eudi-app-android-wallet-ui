@@ -50,6 +50,24 @@ interface WalletEngine {
      */
     fun getMainPidDocument(): WalletDocument?
 
-    /** All documents currently in the wallet, as app-owned [WalletDocument]s. */
+    /**
+     * All documents currently in the wallet, as app-owned [WalletDocument]s carrying **identity
+     * only**. For callers that just need to know what exists (or whether anything does); it does no
+     * per-credential I/O. Use [getAllDocumentsWithDetails] when the fields actually matter.
+     */
     fun getAllDocuments(): List<WalletDocument>
+
+    /**
+     * All documents currently in the wallet, with every [WalletDocument] field populated: name,
+     * format, issuance state, issuance/expiry instants, revocation, credential counts and the
+     * issuer's display name and logo.
+     *
+     * Suspending and materially more expensive than [getAllDocuments] — resolving expiry, credential
+     * counts and the low-on-credentials policy reads each document's credentials — so this is the
+     * document-list accessor, not a general-purpose one.
+     *
+     * @param locale a BCP-47 language tag (e.g. `en-GB`) used to pick the issuer's localized
+     * display name and logo. Localization of the *app's own* strings stays with the caller.
+     */
+    suspend fun getAllDocumentsWithDetails(locale: String): List<WalletDocument>
 }

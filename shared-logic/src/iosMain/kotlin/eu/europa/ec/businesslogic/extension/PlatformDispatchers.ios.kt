@@ -21,4 +21,4 @@ import kotlinx.coroutines.Dispatchers
 
 // Kotlin/Native has no public Dispatchers.IO (it's internal); Dispatchers.Default is the
 // idiomatic choice for offloaded work on iOS.
-internal actual val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
+actual val ioDispatcher: CoroutineDispatcher = Dispatchers.Default

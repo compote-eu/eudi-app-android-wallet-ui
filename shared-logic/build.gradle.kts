@@ -59,6 +59,10 @@ kotlin {
             // MviViewModel extends androidx.lifecycle.ViewModel; AppRoute uses NavKey).
             api(libs.kotlinx.coroutines)
             api(libs.androidx.lifecycle.viewmodel)
+            // `api`: LocalDateTime is part of the filter framework's public surface
+            // (FilterElement.DateTimeRangeFilterItem / FilterValidator.updateDateFilter), so
+            // consumers in other modules must see the type.
+            api(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
         }
         androidMain.dependencies {
