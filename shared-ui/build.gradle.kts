@@ -132,6 +132,19 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
         }
+        // Android-only tests, for the handful of assertions that CANNOT be written in common code:
+        // anything needing an inhabited `PlatformContext` or `PlatformIntent`. Both are `expect class`
+        // with no common constructor — and on iOS they are deliberately uninhabited — so a view-model
+        // path that takes one can only be driven where the actual type is the real Android class.
+        // Mockito is needed because `android.content.Context` is abstract; `Intent` is instantiable
+        // directly. Everything else stays in commonTest so it runs on both targets.
+        // No generated accessor for this one (unlike commonTest/iosMain), so it is named explicitly.
+        getByName("androidHostTest").dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.mockito.core)
+            implementation(libs.mockito.kotlin)
+        }
     }
 }
 
