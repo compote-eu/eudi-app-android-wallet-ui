@@ -102,7 +102,13 @@ class ProximityRequestViewModel(
             copy(
                 isLoading = true,
                 error = null,
-                presentationScopeId = presentationScopeId
+                // Qualified deliberately. `setState` takes a `State.() -> State`, so an unqualified
+                // `presentationScopeId` here binds to the RECEIVER's property, not the constructor
+                // param — making this line a self-assignment that left State's copy empty. Latent
+                // today (this view-model reads the constructor param in getNextRoute/cleanUp), but a
+                // trap for anyone who later reads it off the state. Pre-existing, from upstream
+                // c8805096.
+                presentationScopeId = this@ProximityRequestViewModel.presentationScopeId
             )
         }
 
