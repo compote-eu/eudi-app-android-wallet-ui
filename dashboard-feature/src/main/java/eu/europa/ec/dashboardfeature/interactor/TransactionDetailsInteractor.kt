@@ -34,7 +34,7 @@ import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDet
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsDataSharedHolderUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
-import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi.Companion.toUiText
+import eu.europa.ec.dashboardfeature.ui.transactions.model.toUiText
 import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionStatusUi
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat

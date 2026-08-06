@@ -17,7 +17,7 @@
 package eu.europa.ec.dashboardfeature.ui.transactions.list.model
 
 import eu.europa.ec.businesslogic.util.toDisplayedDate
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 data class FilterDateRangeSelectionUi(
     val startDate: LocalDate? = null,

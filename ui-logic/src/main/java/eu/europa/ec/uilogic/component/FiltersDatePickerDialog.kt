@@ -25,23 +25,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import org.jetbrains.compose.resources.stringResource
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
+import eu.europa.ec.businesslogic.util.OPEN_END_DATE
+import eu.europa.ec.businesslogic.util.OPEN_START_DATE
+import eu.europa.ec.businesslogic.util.utcMillisToLocalDate
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.generic_cancel
 import eu.europa.ec.shared.resources.generic_ok
-
-enum class DatePickerDialogType {
-    SelectStartDate, SelectEndDate
-}
-
-data class DatePickerDialogConfig(
-    val type: DatePickerDialogType,
-    val lowerLimit: LocalDate? = LocalDate.MIN,
-    val upperLimit: LocalDate? = LocalDate.MAX,
-    val selectedUtcDateMillis: Long? = null
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,13 +41,12 @@ fun FiltersDatePickerDialog(
 ) {
     val customSelectableDates = object : SelectableDates {
         override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-            val date = Instant.ofEpochMilli(utcTimeMillis)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-
-            val min = datePickerDialogConfig.lowerLimit ?: LocalDate.MIN
-            val max = datePickerDialogConfig.upperLimit ?: LocalDate.MAX
-            return !date.isBefore(min) && !date.isAfter(max)
+            // The config's limits are kotlinx-datetime now, so compare in those terms; the shared
+            // helper is the same conversion this used to do inline.
+            val date = utcMillisToLocalDate(utcTimeMillis)
+            val min = datePickerDialogConfig.lowerLimit ?: OPEN_START_DATE
+            val max = datePickerDialogConfig.upperLimit ?: OPEN_END_DATE
+            return date >= min && date <= max
         }
     }
 

@@ -71,6 +71,7 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.mockito.kotlin.wheneverBlocking
+import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -210,13 +211,12 @@ class TestTransactionsInteractor {
         interactor.updateDateFilterById(
             filterGroupId = groupId,
             filterId = filterId,
-            lowerLimitDate = lower,
-            upperLimitDate = upper,
+            lowerLimitDate = lower.toKotlinLocalDateTime(),
+            upperLimitDate = upper.toKotlinLocalDateTime(),
         )
 
-        // Then
-        // The filter framework is KMP and speaks kotlinx-datetime; the interactor converts this
-        // feature's java.time values at that boundary.
+        // Then — both the contract and the filter framework are on kotlinx-datetime now, so the
+        // interactor passes the limits straight through.
         verify(filterValidator, times(1))
             .updateDateFilter(
                 groupId,
@@ -282,7 +282,7 @@ class TestTransactionsInteractor {
         val today = LocalDateTime.now()
 
         // When
-        val result = interactor.getTransactionCategory(dateTime = today)
+        val result = interactor.getTransactionCategory(dateTime = today.toKotlinLocalDateTime())
 
         // Then
         assertEquals(TransactionCategoryUi.Today, result)
@@ -302,7 +302,7 @@ class TestTransactionsInteractor {
         }
 
         // When
-        val result = interactor.getTransactionCategory(dateTime = thisWeekNotToday)
+        val result = interactor.getTransactionCategory(dateTime = thisWeekNotToday.toKotlinLocalDateTime())
 
         // Then
         assertEquals(TransactionCategoryUi.ThisWeek, result)
@@ -316,11 +316,11 @@ class TestTransactionsInteractor {
         val twoMonthsAgo = LocalDateTime.now().minusMonths(2)
 
         // When
-        val result = interactor.getTransactionCategory(dateTime = twoMonthsAgo)
+        val result = interactor.getTransactionCategory(dateTime = twoMonthsAgo.toKotlinLocalDateTime())
 
         // Then
         assertTrue(result is TransactionCategoryUi.Month)
-        assertEquals(TransactionCategoryUi.Month(twoMonthsAgo), result)
+        assertEquals(TransactionCategoryUi.Month(twoMonthsAgo.toKotlinLocalDateTime()), result)
     }
     //endregion
 
@@ -429,8 +429,9 @@ class TestTransactionsInteractor {
                 assertEquals(4, result.allTransactions.items.size)
                 val availableDates = result.availableDates
                 assertNotNull(availableDates)
-                assertEquals(twoMonthsAgo.toLocalDate(), availableDates!!.first)
-                assertEquals(justNow.toLocalDate(), availableDates.second)
+                // availableDates crosses the contract as kotlinx-datetime now.
+                assertEquals(twoMonthsAgo.toLocalDate().toKotlinLocalDate(), availableDates!!.first)
+                assertEquals(justNow.toLocalDate().toKotlinLocalDate(), availableDates.second)
 
                 val presentationItem = result.allTransactions.items[1]
                 val presentationAttrs =

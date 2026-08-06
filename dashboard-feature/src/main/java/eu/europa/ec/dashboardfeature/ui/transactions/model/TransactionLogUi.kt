@@ -23,23 +23,16 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
 import eu.europa.ec.shared.resources.transactions_filter_item_status_failed
 
-enum class TransactionStatusUi {
-    Completed, Failed;
-
-    companion object {
-        fun TransactionStatusUi.toUiText(resourceProvider: ResourceProvider): String {
-            return when (this) {
-                Completed -> resourceProvider.getString(Res.string.transactions_filter_item_status_completed)
-                Failed -> resourceProvider.getString(Res.string.transactions_filter_item_status_failed)
-            }
-        }
+/**
+ * The status's display label. Lifted out of `TransactionStatusUi`'s companion when the enum moved to
+ * commonMain — it needs a ResourceProvider, which is Android-side. Same package, so the only change at
+ * the call site is dropping `.Companion` from the import.
+ */
+fun TransactionStatusUi.toUiText(resourceProvider: ResourceProvider): String {
+    return when (this) {
+        TransactionStatusUi.Completed -> resourceProvider.getString(Res.string.transactions_filter_item_status_completed)
+        TransactionStatusUi.Failed -> resourceProvider.getString(Res.string.transactions_filter_item_status_failed)
     }
-}
-
-enum class TransactionTypeUi {
-    PRESENTATION,
-    ISSUANCE,
-    SIGNING;
 }
 
 fun TransactionLog.Status.toTransactionStatusUi(): TransactionStatusUi {

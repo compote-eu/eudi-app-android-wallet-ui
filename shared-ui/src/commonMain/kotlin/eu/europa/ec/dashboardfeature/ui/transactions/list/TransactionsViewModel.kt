@@ -17,6 +17,8 @@
 package eu.europa.ec.dashboardfeature.ui.transactions.list
 
 import androidx.lifecycle.viewModelScope
+import eu.europa.ec.businesslogic.util.OPEN_END_DATE
+import eu.europa.ec.businesslogic.util.OPEN_START_DATE
 import eu.europa.ec.businesslogic.util.localDateToUtcMillis
 import eu.europa.ec.businesslogic.util.toLocalDateTime
 import eu.europa.ec.businesslogic.util.utcMillisToLocalDate
@@ -44,7 +46,7 @@ import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
-import java.time.LocalDate
+import kotlinx.datetime.LocalDate
 
 data class State(
     val isLoading: Boolean,
@@ -264,8 +266,8 @@ class TransactionsViewModel(
                 }
 
                 updateDateRangeFilter(
-                    lowerLimit = datePickerSelectionData.startDate ?: LocalDate.MIN,
-                    upperLimit = datePickerSelectionData.endDate ?: LocalDate.MAX,
+                    lowerLimit = datePickerSelectionData.startDate ?: OPEN_START_DATE,
+                    upperLimit = datePickerSelectionData.endDate ?: OPEN_END_DATE,
                 )
             }
 
@@ -284,8 +286,8 @@ class TransactionsViewModel(
                 }
 
                 updateDateRangeFilter(
-                    lowerLimit = datePickerSelectionData.startDate ?: LocalDate.MIN,
-                    upperLimit = datePickerSelectionData.endDate ?: LocalDate.MAX,
+                    lowerLimit = datePickerSelectionData.startDate ?: OPEN_START_DATE,
+                    upperLimit = datePickerSelectionData.endDate ?: OPEN_END_DATE,
                 )
             }
 

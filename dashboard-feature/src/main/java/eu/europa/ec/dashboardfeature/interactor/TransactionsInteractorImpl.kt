@@ -46,7 +46,7 @@ import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionFilte
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionUi
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionsFilterableAttributes
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
-import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi.Companion.toUiText
+import eu.europa.ec.dashboardfeature.ui.transactions.model.toUiText
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionTypeUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionStatusUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionTypeUi
@@ -63,8 +63,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toKotlinLocalDateTime
-import java.time.LocalDate
+import kotlinx.datetime.LocalDateTime as KotlinLocalDateTime
 import java.time.LocalDateTime
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.transactions_filter_item_no_relying_party_transactions
@@ -82,67 +83,9 @@ import eu.europa.ec.shared.resources.transactions_screen_filters_sort_by
 import eu.europa.ec.shared.resources.transactions_screen_filters_sort_transaction_date
 import eu.europa.ec.shared.resources.transactions_screen_some_minutes_ago_message
 
-sealed class TransactionInteractorFilterPartialState {
-    data class FilterApplyResult(
-        val transactions: List<Pair<TransactionCategoryUi, List<TransactionUi>>>,
-        val filters: List<ExpandableListItemUi.NestedListItem>,
-        val sortOrder: SortOrder,
-        val allDefaultFiltersAreSelected: Boolean,
-    ) : TransactionInteractorFilterPartialState()
 
-    data class FilterUpdateResult(
-        val filters: List<ExpandableListItemUi.NestedListItem>,
-        val sortOrder: SortOrder,
-    ) : TransactionInteractorFilterPartialState()
-}
-
-sealed class TransactionInteractorGetTransactionsPartialState {
-    data class Success(
-        val allTransactions: FilterableList,
-        val availableDates: Pair<LocalDate, LocalDate>?
-    ) : TransactionInteractorGetTransactionsPartialState()
-
-    data class Failure(val error: String) : TransactionInteractorGetTransactionsPartialState()
-}
-
-sealed class TransactionInteractorDateTimeCategoryPartialState {
-    data object JustNow : TransactionInteractorDateTimeCategoryPartialState()
-    data class WithinLastHour(val minutes: Long) :
-        TransactionInteractorDateTimeCategoryPartialState()
-
-    data class Today(val time: String) : TransactionInteractorDateTimeCategoryPartialState()
-    data class WithinMonth(val date: String) : TransactionInteractorDateTimeCategoryPartialState()
-}
-
-interface TransactionsInteractor {
-
-    fun getTransactions(): Flow<TransactionInteractorGetTransactionsPartialState>
-
-    fun getTransactionCategory(dateTime: LocalDateTime): TransactionCategoryUi
-
-    fun initializeFilters(
-        filterableList: FilterableList,
-    )
-
-    fun applySearch(query: String)
-    fun applyFilters()
-    fun updateFilter(filterGroupId: String, filterId: String)
-    fun updateDateFilterById(
-        filterGroupId: String,
-        filterId: String,
-        lowerLimitDate: LocalDateTime,
-        upperLimitDate: LocalDateTime
-    )
-
-    fun addDynamicFilters(transactions: FilterableList, filters: Filters): Filters
-    fun getFilters(): Filters
-    fun resetFilters()
-    fun onFilterStateChange(): Flow<TransactionInteractorFilterPartialState>
-    fun updateSort(filterId: String)
-    fun revertFilters()
-    fun updateLists(filterableList: FilterableList)
-}
-
+// Phase 2: the Android implementation of the (now KMP) `TransactionsInteractor` contract, which
+// moved to :shared-ui/commonMain with `TransactionsViewModel`.
 class TransactionsInteractorImpl(
     private val resourceProvider: ResourceProvider,
     private val stringResolver: StringResolver,
@@ -273,7 +216,9 @@ class TransactionsInteractorImpl(
                             )
                         ),
                         uiStatus = transaction.status.toTransactionStatusUi(),
-                        transactionCategoryUi = getTransactionCategory(dateTime = transaction.creationLocalDateTime),
+                        transactionCategoryUi = getTransactionCategory(
+                            dateTime = transaction.creationLocalDateTime.toKotlinLocalDateTime()
+                        ),
                     ),
                     attributes = TransactionsFilterableAttributes(
                         searchTags = buildList {
@@ -294,9 +239,14 @@ class TransactionsInteractorImpl(
                 )
             }
 
+            // The transaction logs are still java.time; the contract is kotlinx-datetime, so the
+            // conversion happens here, at the boundary.
             val creationDates = filterableItems
                 .mapNotNull {
-                    (it.attributes as? TransactionsFilterableAttributes)?.creationLocalDateTime?.toLocalDate()
+                    (it.attributes as? TransactionsFilterableAttributes)
+                        ?.creationLocalDateTime
+                        ?.toLocalDate()
+                        ?.toKotlinLocalDate()
                 }
 
             emit(
@@ -316,10 +266,12 @@ class TransactionsInteractorImpl(
             )
         }
 
-    override fun getTransactionCategory(dateTime: LocalDateTime): TransactionCategoryUi {
+    override fun getTransactionCategory(dateTime: KotlinLocalDateTime): TransactionCategoryUi {
+        // `isToday`/`isWithinThisWeek` are the java.time helpers this feature still uses internally.
+        val javaDateTime = dateTime.toJavaLocalDateTime()
         val transactionCategoryUi = when {
-            dateTime.isToday() -> TransactionCategoryUi.Today
-            dateTime.isWithinThisWeek() -> TransactionCategoryUi.ThisWeek
+            javaDateTime.isToday() -> TransactionCategoryUi.Today
+            javaDateTime.isWithinThisWeek() -> TransactionCategoryUi.ThisWeek
             else -> TransactionCategoryUi.Month(dateTime = dateTime)
         }
         return transactionCategoryUi
@@ -495,16 +447,16 @@ class TransactionsInteractorImpl(
     override fun updateDateFilterById(
         filterGroupId: String,
         filterId: String,
-        lowerLimitDate: LocalDateTime,
-        upperLimitDate: LocalDateTime
+        lowerLimitDate: KotlinLocalDateTime,
+        upperLimitDate: KotlinLocalDateTime
     ) {
-        // The filter framework is KMP (shared-logic) and speaks kotlinx-datetime; this feature is
-        // still on java.time (its date migration is deferred), so convert at the boundary only.
+        // Both the contract and the filter framework are on kotlinx-datetime now, so this is a
+        // straight pass-through — the conversion that used to sit here is gone.
         filterValidator.updateDateFilter(
             filterGroupId,
             filterId,
-            lowerLimitDate.toKotlinLocalDateTime(),
-            upperLimitDate.toKotlinLocalDateTime()
+            lowerLimitDate,
+            upperLimitDate
         )
     }
 
