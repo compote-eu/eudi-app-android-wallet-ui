@@ -18,10 +18,6 @@ package eu.europa.ec.commonfeature.ui.request.model
 
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.PresentationMatchDomain
-import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.eudi.wallet.document.format.DocumentFormat
-import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
-import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 
 /**
@@ -40,7 +36,8 @@ data class RequestDocumentItemUi(
 
 data class DocumentPayloadDomain(
     val docName: String,
-    val docId: DocumentId,
+    /** Was typed `DocumentId`, which is `typealias DocumentId = String` in wallet-document-manager. */
+    val docId: String,
     val docFormatDomain: DocumentFormatDomain,
     val docClaimsDomain: List<ClaimDomain>,
     /**
@@ -54,12 +51,10 @@ sealed class DocumentFormatDomain {
     data object SdJwtVc : DocumentFormatDomain()
     data object MsoMdoc : DocumentFormatDomain()
 
-    companion object {
-        fun getFormat(format: DocumentFormat): DocumentFormatDomain {
-            return when (format) {
-                is SdJwtVcFormat -> SdJwtVc
-                is MsoMdocFormat -> MsoMdoc
-            }
-        }
-    }
+    /**
+     * Empty, but kept so :common-feature's `DocumentFormatDomainMapper.kt` can extend it with
+     * `getFormat(DocumentFormat)` — that mapper names wallet-core format types, so it stays
+     * Android-side while this model lives in commonMain.
+     */
+    companion object
 }

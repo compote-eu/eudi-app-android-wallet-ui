@@ -14,54 +14,33 @@
  * governing permissions and limitations under the Licence.
  */
 
+// The multipaz-facing half of [PresentationMatchDomain], split out when the model itself moved to
+// :shared-logic's commonMain. Only this file names multipaz types, which is the whole reason the
+// model could move: the data was already a "flat, pure-domain snapshot" — just co-located with its
+// mapper.
+//
+// `from` is an extension on the model's (now empty) companion rather than a top-level function, so
+// the existing `PresentationMatchDomain.from(match)` call site in WalletCorePresentationController
+// reads exactly as before; it only needs this file's import.
 package eu.europa.ec.corelogic.model
 
 import eu.europa.ec.corelogic.extension.toClaimPath
-import eu.europa.ec.corelogic.model.PresentationMatchDomain.Companion.from
 import org.multipaz.presentment.CredentialMatchSourceIso18013
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 
-/**
- * One way to satisfy the verifier's request — the user picks one. A 1:1 projection of a Wallet Core
- * `presentmentSelections` entry; the Wallet Core SDK has already done the DCQL expansion, so the
- * app does none of its own.
- *
- * @property matches the documents disclosed for this combination, in Wallet Core's order.
- */
-data class PresentationCombinationDomain(
-    val matches: List<PresentationMatchDomain>,
-)
-
-/**
- * A flat, pure-domain snapshot of one Wallet Core SDK match — a candidate credential the verifier
- * asked for and the wallet can fulfil. Built via [from], so it holds no Wallet Core types; the raw
- * match stays in the controller.
- *
- * @property documentId Wallet Core's `Document.identifier`.
- * @property credentialId Wallet Core's `Credential.identifier`.
- * @property requestedClaims the claim paths the verifier asked for and the wallet matched, as the
- * app's own [ClaimPathDomain].
- */
-data class PresentationMatchDomain(
-    val documentId: String,
-    val credentialId: String,
-    val queryId: String?,
-    val requestedClaims: List<ClaimPathDomain>,
-) {
-    companion object {
-        fun from(match: CredentialPresentmentSetOptionMemberMatch): PresentationMatchDomain {
-            val (documentId, credentialId, queryId) = match.identityKey
-            return PresentationMatchDomain(
-                documentId = documentId,
-                credentialId = credentialId,
-                queryId = queryId,
-                requestedClaims = match.claims.keys.map { requestedClaim ->
-                    requestedClaim.toClaimPath()
-                },
-            )
-        }
-    }
+fun PresentationMatchDomain.Companion.from(
+    match: CredentialPresentmentSetOptionMemberMatch,
+): PresentationMatchDomain {
+    val (documentId, credentialId, queryId) = match.identityKey
+    return PresentationMatchDomain(
+        documentId = documentId,
+        credentialId = credentialId,
+        queryId = queryId,
+        requestedClaims = match.claims.keys.map { requestedClaim ->
+            requestedClaim.toClaimPath()
+        },
+    )
 }
 
 /**

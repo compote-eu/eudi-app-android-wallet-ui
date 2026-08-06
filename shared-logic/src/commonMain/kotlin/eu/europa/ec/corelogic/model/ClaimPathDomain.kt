@@ -14,9 +14,10 @@
  * governing permissions and limitations under the Licence.
  */
 
+// `NameSpace` used to be imported from the Android-only wallet-document-manager library, where it is
+// `typealias NameSpace = String` — a documentation alias, not a type. It is re-declared here so this
+// model can live in commonMain, exactly as `DocumentId` is treated elsewhere in the shared modules.
 package eu.europa.ec.corelogic.model
-
-import eu.europa.ec.eudi.wallet.document.NameSpace
 
 /**
  * A path to a claim within a credential — the app's platform-agnostic claim-path pointer,
@@ -106,7 +107,9 @@ data class ClaimPathDomain(
 
 sealed interface ClaimType {
     data object SdJwtVc : ClaimType
-    data class MsoMdoc(val namespace: NameSpace) : ClaimType
+
+    /** [namespace] was typed `NameSpace` — see the note at the top of this file; it is a `String`. */
+    data class MsoMdoc(val namespace: String) : ClaimType
 }
 
 /** A single step in a [ClaimPathDomain]. */

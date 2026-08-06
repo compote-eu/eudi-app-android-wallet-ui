@@ -28,6 +28,7 @@ import eu.europa.ec.corelogic.extension.toClaimPath
 import eu.europa.ec.corelogic.model.AuthenticationData
 import eu.europa.ec.corelogic.model.PresentationCombinationDomain
 import eu.europa.ec.corelogic.model.PresentationMatchDomain
+import eu.europa.ec.corelogic.model.from
 import eu.europa.ec.corelogic.model.PresentationSelectionDomain
 import eu.europa.ec.corelogic.model.identityKey
 import eu.europa.ec.corelogic.util.EudiWalletListenerWrapper

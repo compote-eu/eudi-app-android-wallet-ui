@@ -16,14 +16,13 @@
 
 package eu.europa.ec.corelogic.model
 
-import eu.europa.ec.eudi.wallet.document.NameSpace
-
 sealed class ClaimDomain {
     abstract val key: String
     abstract val displayTitle: String
     abstract val path: ClaimPathDomain
 
-    val nameSpace: NameSpace?
+    /** Was typed `NameSpace`, which is `typealias NameSpace = String` — see [ClaimPathDomain]. */
+    val nameSpace: String?
         get() = when (val type = path.type) {
             is ClaimType.MsoMdoc -> type.namespace
             is ClaimType.SdJwtVc -> null
