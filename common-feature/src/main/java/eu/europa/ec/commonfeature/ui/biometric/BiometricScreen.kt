@@ -16,6 +16,7 @@
 
 package eu.europa.ec.commonfeature.ui.biometric
 
+import eu.europa.ec.businesslogic.extension.toUri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -127,8 +128,12 @@ fun BiometricScreen(
                     }
 
                     is Effect.Navigation.Deeplink -> {
+                        // The effect carries the link as a `String` so the view-model stays in
+                        // commonMain; it becomes an Android `Uri` here, at the edge, where the
+                        // Android APIs that need one live.
+                        val linkUri = navigationEffect.link.toUri()
                         navigationEffect.routeToPop?.let { route ->
-                            context.cacheUri(navigationEffect.link)
+                            context.cacheUri(linkUri)
                             if (navigationEffect.isPreAuthorization) {
                                 navigator.navigateReplacingCurrent(route)
                             } else {
@@ -140,7 +145,7 @@ fun BiometricScreen(
                         } ?: handleDeepLinkAction(
                             navigator = navigator,
                             context = context,
-                            uri = navigationEffect.link
+                            uri = linkUri
                         )
                     }
 

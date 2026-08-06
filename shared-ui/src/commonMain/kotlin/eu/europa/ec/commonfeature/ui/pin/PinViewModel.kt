@@ -427,21 +427,11 @@ class PinViewModel(
         }
     }
 
-    private fun Long.pad2(): String = toString().padStart(2, '0')
-
-    private fun buildLockoutMessage(remainingMs: Long): UiText {
-        val totalSeconds = ((remainingMs + 999L) / 1000L).coerceAtLeast(0L)
-        val minutes = totalSeconds / 60L
-        val seconds = totalSeconds % 60L
-        // `String.format` is JVM-only; `padStart` is exactly equivalent to "%02d" here, since
-        // `totalSeconds` is coerced non-negative above.
-        val mmss = "${minutes.pad2()}:${seconds.pad2()}"
-        return UiText.Resource(
-            Res.string.quick_pin_locked_out,
-            interactor.maxFailedPinAttempts,
-            mmss
+    private fun buildLockoutMessage(remainingMs: Long): UiText =
+        buildPinLockoutMessage(
+            remainingMs = remainingMs,
+            maxFailedPinAttempts = interactor.maxFailedPinAttempts,
         )
-    }
 
     private fun calculateSubtitle(pinState: PinValidationState): UiText {
         return UiText.Resource(

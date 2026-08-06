@@ -14,21 +14,31 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b. Only two things held this view-model back, and both already had an established answer:
+//
+//  * `android.content.Context`, forwarded to `BiometricInteractor.authenticateWithBiometrics` — which
+//    was ALREADY declared in commonMain taking a `PlatformContext`. On Android that resolved through
+//    `actual typealias PlatformIntent`-style aliasing, so this VM was the only thing still naming the
+//    Android type. It is now the opaque handle, carried and never inspected.
+//  * `android.net.Uri` on the deep-link effect. Per the `SuccessViewModel.Effect.Navigation.DeepLink`
+//    precedent, a URI crossing into shared code becomes a `String` — and here that *removes* a hop
+//    rather than adding one: `NavigationType.Deeplink.link` was already a `String`, which this VM was
+//    converting with `.toUri()` only for `BiometricScreen` to hand it back to Android APIs. The
+//    conversion now happens once, at the screen, where the Android types actually live.
 package eu.europa.ec.commonfeature.ui.biometric
 
-import android.content.Context
-import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePin
-import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorPinValidPartialState
+import eu.europa.ec.commonfeature.ui.pin.buildPinLockoutMessage
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
@@ -48,7 +58,7 @@ import org.koin.core.annotation.KoinViewModel
 
 sealed class Event : ViewEvent {
     data class OnBiometricsClicked(
-        val context: Context,
+        val context: PlatformContext,
         val shouldThrowErrorIfNotAvailable: Boolean
     ) : Event()
 
@@ -87,7 +97,7 @@ sealed class Effect : ViewSideEffect {
 
         data object LaunchBiometricsSystemScreen : Navigation()
         data class Deeplink(
-            val link: Uri,
+            val link: String,
             val isPreAuthorization: Boolean,
             val routeToPop: AppRoute? = null
         ) : Navigation()
@@ -274,7 +284,7 @@ class BiometricViewModel(
         }
     }
 
-    private fun authenticate(context: Context) {
+    private fun authenticate(context: PlatformContext) {
         biometricInteractor.authenticateWithBiometrics(
             context = context,
             notifyOnAuthenticationFailure = viewState.value.notifyOnAuthenticationFailure
@@ -336,17 +346,11 @@ class BiometricViewModel(
         }
     }
 
-    private fun buildLockoutMessage(remainingMs: Long): UiText {
-        val totalSeconds = ((remainingMs + 999L) / 1000L).coerceAtLeast(0L)
-        val minutes = totalSeconds / 60L
-        val seconds = totalSeconds % 60L
-        val mmss = "%02d:%02d".format(minutes, seconds)
-        return UiText.Resource(
-            Res.string.quick_pin_locked_out,
-            biometricInteractor.maxFailedPinAttempts,
-            mmss
+    private fun buildLockoutMessage(remainingMs: Long): UiText =
+        buildPinLockoutMessage(
+            remainingMs = remainingMs,
+            maxFailedPinAttempts = biometricInteractor.maxFailedPinAttempts,
         )
-    }
 
     private fun doNavigation(navigation: ConfigNavigation) {
         val navigationEffect: Effect.Navigation = when (val nav = navigation.navigationType) {
@@ -363,7 +367,7 @@ class BiometricViewModel(
             }
 
             is NavigationType.Deeplink -> Effect.Navigation.Deeplink(
-                link = nav.link.toUri(),
+                link = nav.link,
                 isPreAuthorization = viewState.value.config.isPreAuthorization,
                 // `routeToPop` is the opaque token that travelled through :core-logic — see
                 // AppRouteCodec. It becomes a destination again here, at the edge of the UI layer.
