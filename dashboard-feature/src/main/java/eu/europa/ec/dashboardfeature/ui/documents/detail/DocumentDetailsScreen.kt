@@ -84,6 +84,7 @@ import eu.europa.ec.uilogic.component.wrap.WrapListItems
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.extension.cacheUri
+import androidx.core.net.toUri
 import eu.europa.ec.uilogic.extension.getPendingUri
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
@@ -223,7 +224,7 @@ fun DocumentDetailsScreen(
         lifecycleOwner = LocalLifecycleOwner.current,
         lifecycleEvent = Lifecycle.Event.ON_RESUME
     ) {
-        viewModel.setEvent(Event.Init(context.getPendingUri()))
+        viewModel.setEvent(Event.Init(context.getPendingUri()?.toString()))
     }
 }
 
@@ -279,8 +280,9 @@ private fun handleNavigationEffect(
         }
 
         is Effect.Navigation.DeepLink -> {
+            val link = navigationEffect.link.toUri()
             navigationEffect.routeToPop?.let {
-                context.cacheUri(navigationEffect.link)
+                context.cacheUri(link)
                 navigator.popBackStackTo(
                     route = it,
                     inclusive = false
@@ -288,7 +290,7 @@ private fun handleNavigationEffect(
             } ?: handleDeepLinkAction(
                 navigator = navigator,
                 context = context,
-                uri = navigationEffect.link
+                uri = link
             )
         }
 

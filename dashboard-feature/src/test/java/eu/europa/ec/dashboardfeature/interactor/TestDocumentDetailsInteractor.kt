@@ -83,7 +83,6 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import java.net.URI
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.document_details_document_credentials_info_text
 
@@ -1573,7 +1572,7 @@ class TestDocumentDetailsInteractor {
 
     private fun getMockedIssuerDetailsCardDataUi(
         issuerName: String? = null,
-        issuerLogo: URI? = null,
+        issuerLogo: String? = null,
         documentState: IssuerDetailsCardDataUi.DocumentState = IssuerDetailsCardDataUi.DocumentState.Issued(
             issuanceDate = mockedFormattedIssuanceDate,
             expirationDate = mockedFormattedExpirationDate

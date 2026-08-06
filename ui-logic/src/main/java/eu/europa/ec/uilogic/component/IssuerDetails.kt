@@ -36,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -51,107 +50,14 @@ import eu.europa.ec.uilogic.component.wrap.WrapButton
 import eu.europa.ec.uilogic.component.wrap.WrapCard
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableCard
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
-import java.net.URI
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.content_description_issuer_logo_icon
-import eu.europa.ec.shared.resources.document_details_issuer_card_expired_action_btn_text
-import eu.europa.ec.shared.resources.document_details_issuer_card_expired_message_text
 import eu.europa.ec.shared.resources.document_details_issuer_card_expired_on_text
 import eu.europa.ec.shared.resources.document_details_issuer_card_expired_text
 import eu.europa.ec.shared.resources.document_details_issuer_card_expires_on_text
-import eu.europa.ec.shared.resources.document_details_issuer_card_issued_action_btn_text
-import eu.europa.ec.shared.resources.document_details_issuer_card_issued_message_text
 import eu.europa.ec.shared.resources.document_details_issuer_card_issued_on_text
-import eu.europa.ec.shared.resources.document_details_issuer_card_revoked_message_text
 import eu.europa.ec.shared.resources.document_details_issuer_card_revoked_text
 import eu.europa.ec.shared.resources.document_details_issuer_card_unknown_issuer
-
-/**
- * Data class representing the UI state for the issuer details card.
- *
- * @property issuerName The name of the entity that issued the document.
- * @property issuerLogo The [URI] pointing to the issuer's logo image.
- * @property documentState The current state of the document (e.g., Issued or Revoked),
- * containing relevant dates.
- * @property isExpanded Boolean flag indicating whether the card is currently in its expanded state.
- */
-data class IssuerDetailsCardDataUi(
-    val issuerName: String?,
-    val issuerLogo: URI?,
-    val documentState: DocumentState,
-    val isExpanded: Boolean,
-) {
-    sealed class DocumentState {
-        data class Issued(
-            val issuanceDate: String,
-            val expirationDate: String?
-        ) : DocumentState()
-
-        data class Expired(
-            val issuanceDate: String,
-            val expirationDate: String?
-        ) : DocumentState()
-
-        data object Revoked : DocumentState()
-    }
-
-    /**
-     * The shared string resource for the message text displayed when the card is expanded.
-     * The value depends on whether the document is in an [DocumentState.Issued] or [DocumentState.Revoked] state.
-     */
-    val expandedMessageTextRes: StringResource
-        get() {
-            return when (documentState) {
-                is DocumentState.Issued -> {
-                    Res.string.document_details_issuer_card_issued_message_text
-                }
-
-                is DocumentState.Expired -> {
-                    Res.string.document_details_issuer_card_expired_message_text
-                }
-
-                is DocumentState.Revoked -> {
-                    Res.string.document_details_issuer_card_revoked_message_text
-                }
-            }
-        }
-
-    /**
-     * The shared string resource for the text displayed on the action button in the expanded state.
-     * Returns a resource for [DocumentState.Issued] or null if the document is [DocumentState.Revoked].
-     */
-    val expandedActionButtonTextRes: StringResource?
-        get() {
-            return when (documentState) {
-                is DocumentState.Issued -> {
-                    Res.string.document_details_issuer_card_issued_action_btn_text
-                }
-
-                is DocumentState.Expired -> {
-                    Res.string.document_details_issuer_card_expired_action_btn_text
-                }
-
-                is DocumentState.Revoked -> {
-                    null
-                }
-            }
-        }
-
-
-    /**
-     * Indicates whether the card should bypass its expandable behavior and only display its
-     * expanded content. This occurs when the collapsed header would be empty (no issuer name
-     * and no expiration date for an issued document). Documents in Expired or Revoked states
-     * always show status information, so this property remains false for those states.
-     */
-    val showsExpandedContentOnly: Boolean
-        get() {
-            val state = documentState
-            return issuerName == null
-                    && state is DocumentState.Issued
-                    && state.expirationDate == null
-        }
-}
 
 /**
  * A composable function that displays an issuer details card.
@@ -200,15 +106,18 @@ fun IssuerDetailsCard(
 
                 val leadingContent = remember(data.issuerLogo) {
                     ListItemLeadingContentDataUi.AsyncImage(
-                        imageUrl = data.issuerLogo?.toString().orEmpty(),
+                        imageUrl = data.issuerLogo.orEmpty(),
                         contentDescription = issuerLogoContentDescription,
                         errorImage = AppIcons.Id,
                     )
                 }
 
-                val (supportingText: String?, supportingTextColor: Color) = when (data.documentState) {
+                // Bound to a local: IssuerDetailsCardDataUi now lives in :shared-ui, and a `when` over a
+                // public property of another module's class does not smart-cast.
+                val documentState = data.documentState
+                val (supportingText: String?, supportingTextColor: Color) = when (documentState) {
                     is IssuerDetailsCardDataUi.DocumentState.Issued -> {
-                        data.documentState.expirationDate?.let { safeExpirationDate ->
+                        documentState.expirationDate?.let { safeExpirationDate ->
                             stringResource(
                                 Res.string.document_details_issuer_card_expires_on_text,
                                 safeExpirationDate
@@ -218,7 +127,7 @@ fun IssuerDetailsCard(
 
                     is IssuerDetailsCardDataUi.DocumentState.Expired -> {
                         val expiredText =
-                            data.documentState.expirationDate?.let { safeExpirationDate ->
+                            documentState.expirationDate?.let { safeExpirationDate ->
                                 stringResource(
                                     Res.string.document_details_issuer_card_expired_on_text,
                                     safeExpirationDate

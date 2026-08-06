@@ -16,7 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
-import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
@@ -29,15 +28,14 @@ import eu.europa.ec.corelogic.controller.DeleteAllDocumentsPartialState
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.isExpired
 import eu.europa.ec.corelogic.extension.localizedIssuerMetadata
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
-import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsDomain
 import eu.europa.ec.dashboardfeature.ui.documents.detail.transformer.DocumentDetailsTransformer
 import eu.europa.ec.dashboardfeature.ui.documents.detail.transformer.DocumentDetailsTransformer.createDocumentCredentialsInfoUi
-import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
@@ -47,84 +45,6 @@ import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-
-sealed class DocumentDetailsInteractorIssuancePartialState {
-    data object Success : DocumentDetailsInteractorIssuancePartialState()
-
-    data class Failure(val errorMessage: String) : DocumentDetailsInteractorIssuancePartialState()
-
-    data object IssuerNotTrusted : DocumentDetailsInteractorIssuancePartialState()
-
-    data class UserAuthRequired(
-        val crypto: BiometricCrypto,
-        val resultHandler: DeviceAuthenticationResult,
-    ) : DocumentDetailsInteractorIssuancePartialState()
-}
-
-sealed class DocumentDetailsInteractorPartialState {
-    data class Success(
-        val issuerDetails: IssuerDetailsCardDataUi,
-        val documentDetailsDomain: DocumentDetailsDomain,
-        val documentIsBookmarked: Boolean,
-        val documentCredentialsInfoUi: DocumentCredentialsInfoUi?,
-    ) : DocumentDetailsInteractorPartialState()
-
-    data class Failure(val error: String) : DocumentDetailsInteractorPartialState()
-}
-
-sealed class DocumentDetailsInteractorDeleteDocumentPartialState {
-    data object SingleDocumentDeleted : DocumentDetailsInteractorDeleteDocumentPartialState()
-    data object AllDocumentsDeleted : DocumentDetailsInteractorDeleteDocumentPartialState()
-    data class Failure(
-        val errorMessage: String
-    ) : DocumentDetailsInteractorDeleteDocumentPartialState()
-}
-
-sealed class DocumentDetailsInteractorStoreBookmarkPartialState {
-    data class Success(
-        val bookmarkId: String
-    ) : DocumentDetailsInteractorStoreBookmarkPartialState()
-
-    data object Failure : DocumentDetailsInteractorStoreBookmarkPartialState()
-}
-
-sealed class DocumentDetailsInteractorDeleteBookmarkPartialState {
-    data object Success : DocumentDetailsInteractorDeleteBookmarkPartialState()
-    data object Failure : DocumentDetailsInteractorDeleteBookmarkPartialState()
-}
-
-interface DocumentDetailsInteractor {
-    fun getDocumentDetails(
-        documentId: DocumentId,
-        wasIssuerDetailsExpanded: Boolean?
-    ): Flow<DocumentDetailsInteractorPartialState>
-
-    fun deleteDocument(
-        documentId: DocumentId
-    ): Flow<DocumentDetailsInteractorDeleteDocumentPartialState>
-
-    fun storeBookmark(
-        documentId: String
-    ): Flow<DocumentDetailsInteractorStoreBookmarkPartialState>
-
-    fun deleteBookmark(
-        documentId: String
-    ): Flow<DocumentDetailsInteractorDeleteBookmarkPartialState>
-
-    fun reIssueDocument(
-        documentId: String,
-        issuerId: String
-    ): Flow<DocumentDetailsInteractorIssuancePartialState>
-
-    fun handleUserAuth(
-        context: Context,
-        crypto: BiometricCrypto,
-        notifyOnAuthenticationFailure: Boolean,
-        resultHandler: DeviceAuthenticationResult
-    )
-
-    fun resumeOpenId4VciWithAuthorization(uri: String)
-}
 
 class DocumentDetailsInteractorImpl(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
@@ -176,7 +96,7 @@ class DocumentDetailsInteractorImpl(
                 val documentIsRevoked = walletEngine.isDocumentRevoked(documentId)
                 val issuerDetails = IssuerDetailsCardDataUi(
                     issuerName = issuerName,
-                    issuerLogo = issuerLogo?.uri,
+                    issuerLogo = issuerLogo?.uri?.toString(),
                     documentState = when {
                         documentIsRevoked -> IssuerDetailsCardDataUi.DocumentState.Revoked
 
@@ -354,7 +274,7 @@ class DocumentDetailsInteractorImpl(
     }
 
     override fun handleUserAuth(
-        context: Context,
+        context: PlatformContext,
         crypto: BiometricCrypto,
         notifyOnAuthenticationFailure: Boolean,
         resultHandler: DeviceAuthenticationResult

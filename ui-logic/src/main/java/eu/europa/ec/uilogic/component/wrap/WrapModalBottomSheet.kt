@@ -44,7 +44,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.resolve
 import org.jetbrains.compose.resources.stringResource
@@ -95,28 +94,6 @@ private val bottomSheetDefaultBackgroundColor: Color
 
 private val bottomSheetDefaultTextColor: Color
     @Composable get() = MaterialTheme.colorScheme.onSurface
-
-/**
- * Data class representing the text content for a bottom sheet.
- *
- * This class holds the title, message, and button texts for a bottom sheet.
- * It also includes flags to indicate if a button should be styled as a warning.
- *
- * @property title The title of the bottom sheet.
- * @property message The message displayed in the bottom sheet.
- * @property positiveButtonText The text for the positive button (e.g., "OK", "Confirm"). Can be null if no positive button is needed.
- * @property isPositiveButtonWarning A flag indicating if the positive button should be styled as a warning (e.g., red color). Defaults to false.
- * @property negativeButtonText The text for the negative button (e.g., "Cancel", "Dismiss"). Can be null if no negative button is needed.
- * @property isNegativeButtonWarning A flag indicating if the negative button should be styled as a warning (e.g., red color). Defaults to false.
- */
-data class BottomSheetTextDataUi(
-    val title: UiText,
-    val message: UiText,
-    val positiveButtonText: UiText? = null,
-    val isPositiveButtonWarning: Boolean = false,
-    val negativeButtonText: UiText? = null,
-    val isNegativeButtonWarning: Boolean = false,
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

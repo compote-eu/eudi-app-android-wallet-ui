@@ -21,13 +21,11 @@ import eu.europa.ec.businesslogic.util.DAY_MONTH_YEAR_FULL_PATTERN
 import eu.europa.ec.businesslogic.util.FULL_DATETIME_PATTERN_24H_SEPARATED_BY_DASH
 import eu.europa.ec.businesslogic.util.formatInstant
 import kotlin.time.toKotlinInstant
-import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
 import eu.europa.ec.corelogic.extension.getExpiryDate
 import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsDomain
-import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -65,23 +63,6 @@ object DocumentDetailsTransformer {
             documentExpirationDate = document.getExpiryDate()?.formatInstant(
                 pattern = DAY_MONTH_YEAR_FULL_PATTERN
             ),
-        )
-    }
-
-    fun DocumentDetailsDomain.transformToDocumentDetailsUi(): DocumentDetailsUi {
-        val documentDetailsUi = this.documentClaims.map { domainClaim ->
-            domainClaim.toExpandableListItems(
-                docId = this.docId,
-                queryId = null,
-            )
-        }
-        return DocumentDetailsUi(
-            documentId = this.docId,
-            documentName = this.docName,
-            issuerId = this.issuerId,
-            documentConfigId = this.documentConfigId,
-            documentIdentifier = this.documentIdentifier,
-            documentClaims = documentDetailsUi,
         )
     }
 

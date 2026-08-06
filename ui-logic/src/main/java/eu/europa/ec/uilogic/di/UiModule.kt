@@ -22,6 +22,8 @@ import eu.europa.ec.uilogic.config.ConfigUILogic
 import eu.europa.ec.uilogic.config.ConfigUILogicImpl
 import eu.europa.ec.uilogic.navigation.RouterHost
 import eu.europa.ec.uilogic.navigation.RouterHostImpl
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifierImpl
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -42,3 +44,5 @@ fun provideRouterHost(
 @Single
 fun provideConfigUILogic(): ConfigUILogic = ConfigUILogicImpl()
 
+@Factory
+fun provideDeepLinkClassifier(): DeepLinkClassifier = DeepLinkClassifierImpl()

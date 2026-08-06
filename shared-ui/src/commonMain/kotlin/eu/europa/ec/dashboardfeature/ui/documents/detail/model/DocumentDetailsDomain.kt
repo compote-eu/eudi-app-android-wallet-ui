@@ -18,11 +18,10 @@ package eu.europa.ec.dashboardfeature.ui.documents.detail.model
 
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.DocumentIdentifier
-import eu.europa.ec.eudi.wallet.document.DocumentId
 
 data class DocumentDetailsDomain(
     val docName: String,
-    val docId: DocumentId,
+    val docId: String,
     val issuerId: String,
     val documentConfigId: String,
     val documentIdentifier: DocumentIdentifier,

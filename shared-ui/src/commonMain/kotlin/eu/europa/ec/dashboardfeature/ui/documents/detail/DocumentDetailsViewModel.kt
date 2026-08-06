@@ -16,8 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.documents.detail
 
-import android.content.Context
-import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.commonfeature.config.PresentationMode
@@ -32,9 +30,9 @@ import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsBottomSh
 import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsBottomSheetContent.BookmarkStoredInfo
 import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsBottomSheetContent.TrustedRelyingPartyInfo
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsUi
-import eu.europa.ec.dashboardfeature.ui.documents.detail.transformer.DocumentDetailsTransformer.transformToDocumentDetailsUi
+import eu.europa.ec.dashboardfeature.ui.documents.detail.transformer.transformToDocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
-import eu.europa.ec.eudi.wallet.document.DocumentId
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
@@ -57,8 +55,8 @@ import eu.europa.ec.uilogic.mvi.MviViewModel
 import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
-import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
-import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkKind
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -82,7 +80,7 @@ data class State(
 ) : ViewState
 
 sealed class Event : ViewEvent {
-    data class Init(val deepLink: Uri?) : Event()
+    data class Init(val deepLink: String?) : Event()
     data object Pop : Event()
     data class ClaimClicked(val itemId: String) : Event()
     data object SecondaryButtonPressed : Event()
@@ -112,7 +110,7 @@ sealed class Event : ViewEvent {
 
     sealed class IssuerDetails : Event() {
         data object OnExpandedStateChanged : IssuerDetails()
-        data class OnActionButtonClicked(val context: Context) : IssuerDetails()
+        data class OnActionButtonClicked(val context: PlatformContext) : IssuerDetails()
     }
 
     data object OnPause : Event()
@@ -132,7 +130,7 @@ sealed class Effect : ViewSideEffect {
         ) : Navigation()
 
         data class DeepLink(
-            val link: Uri,
+            val link: String,
             val routeToPop: AppRoute? = null
         ) : Navigation()
     }
@@ -165,7 +163,8 @@ sealed class DocumentDetailsBottomSheetContent {
 @KoinViewModel
 class DocumentDetailsViewModel(
     private val documentDetailsInteractor: DocumentDetailsInteractor,
-    @InjectedParam private val documentId: DocumentId,
+    private val deepLinkClassifier: DeepLinkClassifier,
+    @InjectedParam private val documentId: String,
 ) : MviViewModel<Event, State, Effect>() {
     override fun setInitialState(): State = State()
 
@@ -508,7 +507,7 @@ class DocumentDetailsViewModel(
 
     private fun reIssueDocument(
         event: Event,
-        context: Context,
+        context: PlatformContext,
         document: DocumentDetailsUi
     ) {
 
@@ -586,7 +585,7 @@ class DocumentDetailsViewModel(
 
     private fun handleIssuerDetailsAction(
         event: Event,
-        context: Context,
+        context: PlatformContext,
         documentState: IssuerDetailsCardDataUi.DocumentState
     ) {
         when (documentState) {
@@ -607,18 +606,13 @@ class DocumentDetailsViewModel(
         }
     }
 
-    private fun handleDeepLink(deepLinkUri: Uri?) {
-        deepLinkUri?.let { uri ->
-            hasDeepLink(uri)?.let {
-                when (it.type) {
-
-                    DeepLinkType.EXTERNAL -> {
-                        setEffect {
-                            Effect.Navigation.DeepLink(uri)
-                        }
-                    }
-
-                    else -> {}
+    private fun handleDeepLink(deepLink: String?) {
+        deepLink?.let { link ->
+            // Only an external link is this screen's business — everything else belongs to the flow
+            // that is already handling it, and re-emitting it here would hijack that flow.
+            if (deepLinkClassifier.classify(link) == DeepLinkKind.EXTERNAL) {
+                setEffect {
+                    Effect.Navigation.DeepLink(link)
                 }
             }
         }
