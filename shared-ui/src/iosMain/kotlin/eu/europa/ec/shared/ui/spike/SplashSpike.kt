@@ -37,11 +37,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,6 +57,9 @@ import androidx.compose.ui.window.ComposeUIViewController
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.SplashRoute
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.ic_logo_lockup_mark
+import eu.europa.ec.shared.resources.ic_logo_lockup_wordmark
 import eu.europa.ec.shared.ui.navigation.IosNavHost
 import eu.europa.ec.uilogic.component.AppIconKey
 import eu.europa.ec.uilogic.component.drawableResource
@@ -134,6 +141,15 @@ private fun DashboardSpikeScreen() {
             "icon corpus: ${keys.size} drawable-backed keys",
             style = MaterialTheme.typography.bodySmall,
         )
+
+        // The brand lockup, drawn the way `AppIconAndText` draws it: the coloured mark with the wordmark
+        // overlaid and tinted from the scheme. Shown under both schemes because that is the whole point
+        // of splitting the asset — upstream the wordmark used `?colorOnSurface`, which compose-resources
+        // cannot resolve, so a single image would be stuck at one theme's colour.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MaterialTheme(colorScheme = lightColorScheme()) { LockupLayers(label = "light") }
+            MaterialTheme(colorScheme = darkColorScheme()) { LockupLayers(label = "dark") }
+        }
         LazyVerticalGrid(
             columns = GridCells.Fixed(6),
             modifier = Modifier.fillMaxSize(),
@@ -150,6 +166,29 @@ private fun DashboardSpikeScreen() {
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
+            }
+        }
+    }
+}
+
+
+/** The two-layer lockup, mirroring `AppIconAndText` in :ui-logic. */
+@Composable
+private fun LockupLayers(label: String) {
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, style = MaterialTheme.typography.labelSmall)
+            Box {
+                Image(
+                    painter = painterResource(Res.drawable.ic_logo_lockup_mark),
+                    contentDescription = null,
+                )
+                Icon(
+                    painter = painterResource(Res.drawable.ic_logo_lockup_wordmark),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.matchParentSize(),
+                )
             }
         }
     }

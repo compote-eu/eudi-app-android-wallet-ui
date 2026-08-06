@@ -35,12 +35,11 @@
 //   * `@android:color/white` -> `#FFFFFFFF` (ic_clock_timer), a framework reference compose-resources
 //     cannot resolve.
 //
-// KNOWN GAP — `LogoIconAndText`: its wordmark used `android:fillColor="?colorOnSurface"`, a *theme*
-// attribute compose-resources cannot resolve (light #1D1B20 vs dark #E5E2E1). The shared copy pins the
-// light value, so it would be wrong in dark mode. Fixing it properly means splitting the asset so the
-// wordmark can be tinted from `MaterialTheme.colorScheme.onSurface` at render time — a decision about
-// the app's most visible icon, left open rather than guessed at. Android is unaffected, still reading
-// its own themed drawable.
+// `LogoIconAndText` resolves to the lockup's **mark** layer only. The wordmark is a second asset
+// (`ic_logo_lockup_wordmark`) that `AppIconAndText` overlays and tints from
+// `MaterialTheme.colorScheme.onSurface`, because upstream it was painted with `?colorOnSurface` — a theme
+// attribute compose-resources cannot resolve. Both layers keep the original 161x52 viewport, so stacking
+// them reproduces the artwork exactly with no coordinate maths, and the wordmark follows light/dark again.
 package eu.europa.ec.uilogic.component
 
 import eu.europa.ec.shared.resources.Res
@@ -69,7 +68,7 @@ import eu.europa.ec.shared.resources.ic_id_stroke
 import eu.europa.ec.shared.resources.ic_in_progress
 import eu.europa.ec.shared.resources.ic_info
 import eu.europa.ec.shared.resources.ic_logo_icon
-import eu.europa.ec.shared.resources.ic_logo_icon_and_text
+import eu.europa.ec.shared.resources.ic_logo_lockup_mark
 import eu.europa.ec.shared.resources.ic_menu
 import eu.europa.ec.shared.resources.ic_message
 import eu.europa.ec.shared.resources.ic_more
@@ -115,7 +114,7 @@ val AppIconKey.drawableResource: DrawableResource?
         AppIconKey.Id -> Res.drawable.ic_id
         AppIconKey.IdStroke -> Res.drawable.ic_id_stroke
         AppIconKey.LogoIcon -> Res.drawable.ic_logo_icon
-        AppIconKey.LogoIconAndText -> Res.drawable.ic_logo_icon_and_text
+        AppIconKey.LogoIconAndText -> Res.drawable.ic_logo_lockup_mark
         AppIconKey.Visibility -> Res.drawable.ic_visibility_on
         AppIconKey.VisibilityOff -> Res.drawable.ic_visibility_off
         AppIconKey.Add -> Res.drawable.ic_add

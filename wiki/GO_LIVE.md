@@ -151,7 +151,7 @@ Keep these files under strict review:
 | `business-logic/src/main/java/eu/europa/ec/businesslogic/controller/storage/PrefsController.kt`           | Encrypted DataStore and database key storage.                                                        |
 | `storage-logic/src/main/java/eu/europa/ec/storagelogic/di/LogicStorageModule.kt`                          | SQLCipher database setup and migration behavior.                                                     |
 | `resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/values/ThemeColors.kt`                   | Brand color palette (light and dark) plus extra semantic colors. See [THEMING.md](THEMING.md).       |
-| `shared-ui/src/commonMain/composeResources/drawable/ic_logo_icon.xml`, `ic_logo_icon_and_text.xml`        | In-app brand logos used on the splash and content headers. Compose-resources, so one copy serves Android and iOS. |
+| `shared-ui/src/commonMain/composeResources/drawable/ic_logo_icon.xml`, `ic_logo_lockup_mark.xml`, `ic_logo_lockup_wordmark.xml` | In-app brand logos used on the splash and content headers. Compose-resources, so one copy serves Android and iOS. The wordmark is a separate, theme-tinted layer. |
 | `resources-logic/src/<flavor>/res/mipmap-*`                                                               | Per-flavor launcher icons.                                                                           |
 
 ## Create A Production Flavor
@@ -303,7 +303,7 @@ Surfaces to review before release:
 | Color palette (light and dark) | `resources-logic/.../theme/values/ThemeColors.kt`                                     | Both palettes plus the extra `success`/`warning`/`pending`/`divider` roles. Verify contrast in both modes.   |
 | Typography and fonts           | `resources-logic/src/main/res/font/` and `.../theme/values/ThemeTypography.kt`        | Replace the bundled Roboto fonts and the type scale if your brand requires it.                               |
 | Shapes                         | `resources-logic/.../theme/values/ThemeShapes.kt`                                     | Corner radii.                                                                                                |
-| In-app logos                   | `shared-ui/src/commonMain/composeResources/drawable/ic_logo_icon.xml`, `ic_logo_icon_and_text.xml` | Used on the splash and content headers; brand colors are baked into the vectors.                 |
+| In-app logos                   | `shared-ui/src/commonMain/composeResources/drawable/ic_logo_icon.xml`, `ic_logo_lockup_mark.xml`, `ic_logo_lockup_wordmark.xml` | Splash and content headers. Mark colours are baked in; the wordmark layer is tinted from the theme. |
 | Splash screen                  | `resources-logic/src/main/res/values-v31/themes.xml` and the in-app `SplashScreen`    | System window splash plus the Compose splash logo.                                                           |
 | System bars                    | `assembly-logic/.../ui/MainActivity.kt` (`enableEdgeToEdge`)                          | Edge-to-edge; controlled here, not by the XML theme.                                                         |
 | RQES signing UI                | `business-logic/src/<flavor>/.../RQESConfigImpl.kt`                                   | The RQES SDK carries its own theme; a wallet rebrand does not restyle it unless you override `themeManager`. |

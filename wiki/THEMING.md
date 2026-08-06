@@ -97,7 +97,7 @@ The minimum set of files to change for a full rebrand. Each row links to its det
 | Fonts                              | [`res/font/`](../resources-logic/src/main/res/font) + [`theme/values/ThemeTypography.kt`](../resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/values/ThemeTypography.kt)                                   | See [Typography and fonts](#typography-and-fonts).                                               |
 | Type scale                         | [`theme/values/ThemeTypography.kt`](../resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/values/ThemeTypography.kt)                                                                                         | 15 Material 3 text styles.                                                                       |
 | Corner shapes                      | [`theme/values/ThemeShapes.kt`](../resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/values/ThemeShapes.kt)                                                                                                 | See [Shapes](#shapes).                                                                           |
-| In-app logos                       | [`composeResources/drawable/ic_logo_icon.xml`](../shared-ui/src/commonMain/composeResources/drawable/ic_logo_icon.xml), `ic_logo_icon_and_text.xml`                                                                        | Brand colors are baked into the vectors. See [Logos](#logos-and-in-app-imagery).                 |
+| In-app logos                       | [`composeResources/drawable/ic_logo_icon.xml`](../shared-ui/src/commonMain/composeResources/drawable/ic_logo_icon.xml), `ic_logo_lockup_mark.xml`, `ic_logo_lockup_wordmark.xml`                                           | Mark colors are baked in; the wordmark is tinted from the theme. See [Logos](#logos-and-in-app-imagery). |
 | Launcher icon                      | `resources-logic/src/demo/res/mipmap-*` **and** `resources-logic/src/dev/res/mipmap-*` (foreground per flavor) + shared [`ic_launcher_background.xml`](../resources-logic/src/main/res/values/ic_launcher_background.xml) | Icon bitmaps per flavor; background color is shared. See [Launcher icon](#launcher-icon).        |
 | App display name                   | [`assembly-logic/build.gradle.kts`](../assembly-logic/build.gradle.kts) (`appName`) + [`AppFlavor.kt`](../build-logic/convention/src/main/kotlin/project/convention/logic/AppFlavor.kt) (suffix)                          | See [App name](#app-name-and-package-identity).                                                  |
 | Package / application id           | `androidApp/build.gradle.kts` (`applicationId`) + `AppFlavor.kt` (`.dev` suffix)                                                                                                                                                 | Don't change after public release.                                                               |
@@ -240,7 +240,8 @@ The wallet uses two vector logos in
 | Drawable                    | `AppIcons` key             | Where it appears                                                                                                                                                |
 |-----------------------------|----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `ic_logo_icon.xml`          | `AppIcons.LogoIcon`        | [Splash screen](../shared-ui/src/commonMain/kotlin/eu/europa/ec/startupfeature/ui/splash/SplashScreen.kt) — the icon-only mark (a shared screen; renders on Android and iOS)                                    |
-| `ic_logo_icon_and_text.xml` | `AppIcons.LogoIconAndText` | Content header, via [`AppIconAndText`](../ui-logic/src/main/java/eu/europa/ec/uilogic/component/AppIconAndText.kt) — a single combined icon-plus-wordmark image |
+| `ic_logo_lockup_mark.xml`     | `AppIcons.LogoIconAndText` | Content header, via [`AppIconAndText`](../ui-logic/src/main/java/eu/europa/ec/uilogic/component/AppIconAndText.kt) — the coloured mark of the lockup |
+| `ic_logo_lockup_wordmark.xml` | *(none — used directly)*   | The lockup's "EU Digital Identity Wallet" text, overlaid by `AppIconAndText` and **tinted from `MaterialTheme.colorScheme.onSurface`** so it follows light/dark |
 
 The key-to-drawable mapping lives in
 [`AppIconDrawables.kt`](../shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/AppIconDrawables.kt)
@@ -264,9 +265,11 @@ own vectors (keep the file names so the `AppIcons` mapping and all call sites ke
 > `<aapt:attr>` gradients are unsupported too. If you bring your own vectors, keep every `fillColor` a
 > literal `#AARRGGBB` and do colouring in Compose.
 >
-> `ic_logo_icon_and_text.xml` is the one asset that still wants this: upstream it painted its wordmark
-> with `?colorOnSurface`, and the shared copy pins the light value, so it does not adapt to dark mode
-> yet. Splitting the wordmark out so it can be tinted at render time is the open fix.
+> The lockup is the worked example. Upstream it was a single asset painting its wordmark with
+> `?colorOnSurface`; it is now split into `ic_logo_lockup_mark.xml` (brand colours, untinted) and
+> `ic_logo_lockup_wordmark.xml` (tinted at render time). Both keep the original 161x52 viewport, so
+> `AppIconAndText` stacks them with `matchParentSize()` and the artwork is unchanged apart from the
+> wordmark following the theme — on iOS as well, which the XML attribute never did.
 
 The same folder holds ~50 functional UI icons (`ic_*.xml`). These are generally not brand-specific,
 but review them if your design system requires custom iconography. Adding one means: drop the vector
