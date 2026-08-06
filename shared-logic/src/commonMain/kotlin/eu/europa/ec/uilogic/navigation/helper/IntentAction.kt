@@ -14,19 +14,27 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Moved to commonMain on the `PlatformIntent` handle. The intent is *carried, never inspected* here —
+// only `type` is read by shared code (RequestViewModel) — which is exactly the case the handle exists
+// for; the one place that needs the real Intent is :common-feature's RequestUriConfigMapper, which
+// stays Android-side.
+//
+// `@Parcelize`/`Parcelable` was dropped rather than abstracted: nothing parcels an IntentAction any
+// more. It is never put in or read from a Bundle, and INTENT_ACTION_KEY below has no reader at all —
+// both are leftovers of the pre-Nav3 navigation, which passed the action through a bundle argument.
+// Our own `b49a7d84` (Nav3 Stage 5) replaced that with the activity-scoped one-shot slot in
+// `EudiComponentActivity`, which holds a plain field. The key is upstream's (from the DC API commit
+// `0348e3d9`) so it is left in place rather than deleted.
 package eu.europa.ec.uilogic.navigation.helper
 
-import android.content.Intent
-import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
+import eu.europa.ec.shared.platform.PlatformIntent
 
 const val INTENT_ACTION_KEY = "intent_action"
 
-@Parcelize
 data class IntentAction(
-    val intent: Intent,
+    val intent: PlatformIntent,
     val type: IntentType
-) : Parcelable
+)
 
 enum class IntentType(val associatedActions: List<String>) {
     DC_API(
