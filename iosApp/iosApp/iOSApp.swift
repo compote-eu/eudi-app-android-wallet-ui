@@ -15,9 +15,18 @@
  */
 
 import SwiftUI
+import class SharedKit.WalletEngineProbeKt
 
 @main
 struct iOSApp: App {
+    init() {
+        // SPIKE: hand a Swift-implemented WalletEngine to Kotlin coroutine code and see whether the
+        // suspend calls actually round-trip. Result goes to the console.
+        WalletEngineProbeKt.probeWalletEngine(engine: SwiftWalletEngine()) { result in
+            print("WALLET-ENGINE-SPIKE: \(result)")
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             // The Compose Multiplatform spike is the root while we establish that shared view-models
