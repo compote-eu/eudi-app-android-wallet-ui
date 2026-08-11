@@ -17,17 +17,25 @@
 package eu.europa.ec.uilogic.component.wrap
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.svg.SvgDecoder
 import eu.europa.ec.uilogic.component.IconDataUi
 import eu.europa.ec.uilogic.component.drawableResource
 import org.jetbrains.compose.resources.painterResource
 
+/**
+ * Loads a remote image, with SVG support — issuer logos are frequently SVG.
+ *
+ * Shared rather than per-platform because Coil 3 is multiplatform: the only Android-specific thing here
+ * was `LocalContext`, and Coil supplies `LocalPlatformContext` for exactly this, resolving to the
+ * `Context` on Android and to a platform-appropriate handle elsewhere.
+ */
 @Composable
 fun WrapAsyncImage(
     source: String,
@@ -38,12 +46,16 @@ fun WrapAsyncImage(
     error: IconDataUi? = null,
     fallback: IconDataUi? = null,
 ) {
-    val context = LocalContext.current
-    val imageLoader = ImageLoader.Builder(context)
-        .components {
-            add(SvgDecoder.Factory())
-        }
-        .build()
+    val context = LocalPlatformContext.current
+    // Remembered, unlike before: an `ImageLoader` owns a memory and disk cache, so building one per
+    // recomposition gave every pass a fresh empty cache and re-fetched the same image repeatedly.
+    val imageLoader = remember(context) {
+        ImageLoader.Builder(context)
+            .components {
+                add(SvgDecoder.Factory())
+            }
+            .build()
+    }
 
     AsyncImage(
         modifier = modifier,

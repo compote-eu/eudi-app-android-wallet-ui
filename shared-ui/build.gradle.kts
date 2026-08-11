@@ -121,6 +121,13 @@ kotlin {
             // drawable of their own (ArrowBack, Close, KeyboardArrow*, DateRange, Info). Via the
             // Compose plugin accessor, since androidx's `material-icons-extended` is Android-only.
             api(compose.materialIconsExtended)
+            // Coil 3 is multiplatform — `coil`, `coil-compose` and `coil-svg` all publish iOS
+            // variants (checked against Maven Central, not just the local cache) — which is what lets
+            // `WrapAsyncImage` be shared. `api`, since `AsyncImage`'s types appear in its signature.
+            // The Android modules keep getting these from the `AndroidCompose` convention plugin.
+            api(libs.coil.kt)
+            api(libs.coil.kt.compose)
+            api(libs.coil.kt.svg)
             // `collectAsStateWithLifecycle` — multiplatform since lifecycle 2.11, so the shared screens
             // keep Android's lifecycle-aware collection rather than downgrading to `collectAsState`.
             api(libs.androidx.lifecycle.runtimeCompose)
