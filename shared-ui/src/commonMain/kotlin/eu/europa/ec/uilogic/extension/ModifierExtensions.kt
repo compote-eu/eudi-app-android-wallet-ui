@@ -16,7 +16,6 @@
 
 package eu.europa.ec.uilogic.extension
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.Indication
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
@@ -43,15 +42,13 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.debugInspectorInfo
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.time.Clock
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
@@ -102,7 +99,7 @@ fun Modifier.throttledClickable(
         .clickable(
             enabled = enabled,
             onClickLabel = onClickLabel,
-            onClick = { debounceState.tryEmit(ClickState(onClick, System.currentTimeMillis())) },
+            onClick = { debounceState.tryEmit(ClickState(onClick, Clock.System.now().toEpochMilliseconds())) },
             role = role,
             indication = indication ?: LocalIndication.current,
             interactionSource = interactionSource ?: remember { MutableInteractionSource() }
@@ -206,22 +203,5 @@ fun Modifier.optionalTestTag(testTag: String?): Modifier {
     )
 }
 
-fun Modifier.exposeTestTagsAsResourceId(): Modifier {
-    return this
-        .semantics {
-            this.testTagsAsResourceId = true
-        }
-}
-
-@SuppressLint("UnnecessaryComposedModifier")
-fun Modifier.applyTestTag(testTag: String): Modifier = composed {
-    val finalTestTag = createTestTag(
-        applicationId = LocalContext.current.packageName,
-        testTag = testTag
-    )
-    return@composed this.then(Modifier.testTag(finalTestTag))
-}
-
-private fun createTestTag(applicationId: String, testTag: String): String {
-    return "$applicationId:id/$testTag"
-}
+// applyTestTag / exposeTestTagsAsResourceId live in TestTagModifiers.kt — they are the one part of
+// this file that genuinely differs per platform.

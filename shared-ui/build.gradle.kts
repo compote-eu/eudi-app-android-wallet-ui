@@ -117,6 +117,10 @@ kotlin {
             // `backgroundColor` — the light/dark preview *pairs* the Android-only annotation used to
             // generate are not expressible here; see ThemePreviews.kt.
             api(compose.components.uiToolingPreview)
+            // The seven Material `ImageVector` icons `AppIconResolvers` falls back to for keys with no
+            // drawable of their own (ArrowBack, Close, KeyboardArrow*, DateRange, Info). Via the
+            // Compose plugin accessor, since androidx's `material-icons-extended` is Android-only.
+            api(compose.materialIconsExtended)
             // `collectAsStateWithLifecycle` — multiplatform since lifecycle 2.11, so the shared screens
             // keep Android's lifecycle-aware collection rather than downgrading to `collectAsState`.
             api(libs.androidx.lifecycle.runtimeCompose)

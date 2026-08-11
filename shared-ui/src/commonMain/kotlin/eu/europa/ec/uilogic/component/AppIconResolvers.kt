@@ -16,7 +16,6 @@
 
 package eu.europa.ec.uilogic.component
 
-import androidx.annotation.DrawableRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -26,7 +25,6 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.ui.graphics.vector.ImageVector
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.content_description_add_document_from_list_icon
 import eu.europa.ec.shared.resources.content_description_add_document_from_qr_icon
@@ -163,8 +161,6 @@ val AppIconKey.imageVector: ImageVector?
         AppIconKey.DateRange -> Icons.Default.DateRange
         else -> null
     }
-
-@get:DrawableRes
 
 val IconDataUi.contentDescriptionRes: StringResource
     get() = iconKey.contentDescriptionRes

@@ -16,8 +16,6 @@
 
 package eu.europa.ec.uilogic.component.content
 
-import android.content.Intent
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,8 +51,10 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.IconDataUi
+import eu.europa.ec.uilogic.component.PlatformBackHandler
 import eu.europa.ec.uilogic.component.SystemBroadcastReceiver
 import eu.europa.ec.uilogic.component.loader.LoadingIndicator
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -95,7 +95,10 @@ enum class ImePaddingConfig {
     NO_PADDING, WITH_BOTTOM_BAR, ONLY_CONTENT
 }
 
-data class BroadcastAction(val intentFilters: List<String>, val callback: (Intent?) -> Unit)
+data class BroadcastAction(
+    val intentFilters: List<String>,
+    val callback: (PlatformIntent?) -> Unit,
+)
 
 @Composable
 fun ContentScreen(
@@ -230,7 +233,7 @@ fun ContentScreen(
         }
     }
 
-    BackHandler(enabled = true) {
+    PlatformBackHandler(enabled = true) {
         contentErrorConfig?.let {
             contentErrorConfig.onCancel()
         } ?: onBack?.invoke()
