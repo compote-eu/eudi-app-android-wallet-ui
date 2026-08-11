@@ -311,6 +311,54 @@ must be confirmed for the iOS host; and refactoring Compose-type fields out of t
 those configs + their screen consumers. Effort: multi-week (touches ~39 nav files + 24 serialize
 sites + 9 configs + `RouterHost`), executed feature-by-feature behind the current system.
 
+## 15b. Status — the iOS document layer exists (Phase 2, route (b), mdoc-only)
+
+The Phase-2 row "Multipaz as explicit shared engine" is no longer theoretical: **iOS now has a real
+`WalletEngine` written in Kotlin over multipaz's `DocumentStore`.** It answers `getAllDocuments()`,
+`getAllDocumentsWithDetails(locale)` and `getMainPidDocument()`, plus bookmarks, and it was verified on
+the simulator against a fixture mdoc it mints through multipaz itself (real Secure-Enclave keys, a real
+MSO-certified `MdocCredential`).
+
+This is **route (b)** — our own thin KMP layer on multipaz — taken for the document half only, and it
+came out much smaller than §10's "3–5 mo" suggests, for a reason worth recording:
+`eudi-lib-android-wallet-document-manager` has **zero `android.*` imports**. The `-android` in its name
+is packaging. Of its ~2,000-LOC read path the substance is roughly 120 lines — `IssuedDocument`'s
+credential filtering and selection — and its whole JVM crypto/CBOR stack (upokecenter, cose-java,
+nimbus, bouncycastle) is confined to three *certification* files, i.e. issuance. So the read path
+reimplements in the low hundreds of lines over already-multiplatform APIs.
+
+**How it is split, and why.** The parts that make decisions about a document are platform-neutral and
+live in `:shared-logic/commonMain` — issuer metadata + locale selection, the credential policy, the
+usable-credential filter, and the `StoredDocument -> WalletDocument` projection — so they are covered by
+`commonTest` running on **both** platforms and cannot silently diverge from the Android engine. Only the
+multipaz-facing adapter is in `iosMain`. multipaz is declared as an **`iosMain`-only** dependency on
+purpose: Android reaches the very same multipaz through wallet-core, so putting it in `commonMain` would
+add a second version request to the app's classpath for no gain (verified: `:androidApp`'s
+`devDebugRuntimeClasspath` is unchanged).
+
+**Three limits, all deliberate:**
+
+- **mdoc-only claims.** SD-JWT VC claim parsing needs `eudi-lib-jvm-sdjwt-kt`, which has no iOS
+  artifact. Everything *else* about an SD-JWT document (name, format, credential counts, validity,
+  issuer display) reads fine, so such a document still lists correctly — only its claims are absent.
+- **No revocation.** Android's revoked-id list comes from a WorkManager job caching status-list results
+  in Room; neither half exists on iOS yet. Note the status-list library is *not* the blocker —
+  `eudi-lib-kmp-statium` is already multiplatform.
+- **No issuance.** OpenID4VCI stays JVM-only, which is exactly the boundary the hybrid draws: the
+  Swift `eudi-lib-ios-wallet-kit` is the intended provider behind the same `WalletEngine` seam.
+
+**One upstream divergence to know about:** multipaz's iOS `SecureEnclaveSecureArea.getKeyInvalidated`
+returns a hardcoded `false`. The usable-credential filter therefore cannot exclude invalidated
+credentials on iOS, so counts can over-report and a document whose key is gone stays listed and fails at
+*signing* time. Accepted rather than worked around — answering it honestly means probing the Secure
+Enclave per credential, which can raise an authentication prompt and is far too expensive for rendering
+a list. The code still calls `isInvalidated()`, so iOS inherits the correct behaviour as soon as
+multipaz implements it.
+
+**Worth an upstream ask:** a library with zero Android imports, four JVM-stdlib couplings and all its
+JVM crypto in three issuance files is a strong candidate for EUDI to publish as KMP themselves — they
+already ship `eudi-lib-kmp-statium`. That would remove most of this work.
+
 ## 16. References
 
 - Android app: this repo (`core-logic`, `build-logic/convention`, `gradle/libs.versions.toml`; Gradle cache shows `org.multipaz` 0.99.0).

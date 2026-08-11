@@ -57,6 +57,11 @@ koinPlugin = "1.1.0"
 eudiWalletCore = "0.29.0"
 rqesUiSDK = "0.3.9"
 eudiLibKmpEtsi1196x2 = "0.4.0-alpha.1"
+# Multipaz — the KMP identity-credential engine underneath eudi-lib-android-wallet-core. Already on
+# the Android classpath transitively at this exact version; declared explicitly because the iOS
+# document layer reads its DocumentStore directly (there is no KMP wallet-core / document manager).
+# Keep in step with whatever eudiWalletCore resolves, or Gradle reconciles two requests on Android.
+multipaz = "0.99.0"
 
 # Logging
 slf4j = "2.0.18"
@@ -199,6 +204,7 @@ koin-workmanager = { group = "io.insert-koin", name = "koin-androidx-workmanager
 eudi-wallet-core = { group = "eu.europa.ec.eudi", name = "eudi-lib-android-wallet-core", version.ref = "eudiWalletCore" }
 rqes-ui-sdk = { group = "eu.europa.ec.eudi", name = "eudi-lib-android-rqes-ui", version.ref = "rqesUiSDK" }
 eudi-lib-kmp-etsi119602-consultation = { module = "eu.europa.ec.eudi:etsi-119602-consultation", version.ref = "eudiLibKmpEtsi1196x2" }
+multipaz = { group = "org.multipaz", name = "multipaz", version.ref = "multipaz" }
 
 # Logging
 slf4j = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }

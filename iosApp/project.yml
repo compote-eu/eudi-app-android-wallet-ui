@@ -45,6 +45,14 @@ targets:
           - $(inherited)
           - -framework
           - SharedKit
+          # System SQLite, required by the shared document layer. multipaz stores documents and
+          # credentials in SQLite through `androidx.sqlite`'s NativeSQLiteDriver, which reaches
+          # libsqlite3 by **cinterop**: the klib records the `sqlite3_*` symbols but carries no
+          # implementation, so the final link has to resolve them and only the consuming Xcode target
+          # can. Without this the app fails to link with ~23 undefined `_sqlite3_*` symbols even
+          # though `:shared-ui:linkDebugFrameworkIosSimulatorArm64` succeeds — another case of a green
+          # Kotlin framework link not proving the Swift app builds.
+          - -lsqlite3
     preBuildScripts:
       - name: Compile Kotlin Framework (SharedKit)
         basedOnDependencyAnalysis: false

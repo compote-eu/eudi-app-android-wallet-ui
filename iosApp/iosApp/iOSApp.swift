@@ -25,6 +25,13 @@ struct iOSApp: App {
         WalletEngineProbeKt.probeWalletEngine(engine: SwiftWalletEngine()) { result in
             print("WALLET-ENGINE-SPIKE: \(result)")
         }
+
+        // The real thing: the Kotlin-over-multipaz iOS document layer, reading a fixture document it
+        // seeds into multipaz's DocumentStore. iOS has no issuance yet and the Documents screen is
+        // not shared, so the console is the only place this is visible.
+        WalletEngineProbeKt.probeMultipazWalletEngine { line in
+            print("MULTIPAZ-ENGINE: \(line)")
+        }
     }
 
     var body: some Scene {

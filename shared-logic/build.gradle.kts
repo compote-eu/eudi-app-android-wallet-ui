@@ -65,6 +65,16 @@ kotlin {
             api(libs.kotlinx.datetime)
             implementation(libs.kotlinx.serialization.json)
         }
+        // iOS-only: the document layer reads multipaz's DocumentStore directly, because there is no
+        // KMP build of eudi-lib-android-wallet-core or of the document manager (see the three-way
+        // split in wiki/KMP_FEASIBILITY.md — multipaz IS fully KMP, the EUDI wrappers are not).
+        // Deliberately NOT in commonMain: Android reaches the very same multipaz through wallet-core,
+        // so putting it in commonMain would add a second version *request* to the app's classpath and
+        // couple half the Android app to multipaz for no gain. `implementation`, since no multipaz
+        // type appears in this module's public API — the seam is WalletDocument/WalletEngine.
+        iosMain.dependencies {
+            implementation(libs.multipaz)
+        }
         androidMain.dependencies {
             // `api`, not implementation: these types ARE the androidMain platform handles (actual
             // typealiases), so they appear in this module's public Android signatures —
