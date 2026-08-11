@@ -76,6 +76,16 @@ internal class MultipazWalletEngine(
             ?.toStoredDocument(readClaims = true)
             ?.let { WalletDocument(id = it.id, claims = it.claims) }
 
+    /**
+     * Deletes [documentId] and its credentials, and drops any bookmark it had — the bookmark table is
+     * keyed by document id, so leaving the row would silently re-apply to a future document that reused
+     * the id.
+     */
+    suspend fun deleteDocument(documentId: String): Result<Unit> = runCatching {
+        store.documentStore.deleteDocument(documentId)
+        deleteBookmark(documentId)
+    }
+
     //region bookmarks
 
     override suspend fun isDocumentBookmarked(documentId: String): Boolean =

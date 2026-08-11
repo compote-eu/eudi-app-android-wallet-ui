@@ -37,6 +37,13 @@ class IosWalletEngine : WalletEngine {
     private val mutex = Mutex()
     private var delegate: WalletEngine? = null
 
+    /** Deletes a document. Not on [WalletEngine]: Android deletes through its wallet-core controller. */
+    suspend fun deleteDocument(documentId: String): Result<Unit> =
+        (delegate() as MultipazWalletEngine).deleteDocument(documentId)
+
+    /** Whether the wallet holds any document at all, which deletion needs in order to report which. */
+    suspend fun hasAnyDocument(): Boolean = getAllDocuments().isNotEmpty()
+
     private suspend fun delegate(): WalletEngine =
         delegate ?: mutex.withLock {
             // Re-check inside the lock: another caller may have opened it while we waited.

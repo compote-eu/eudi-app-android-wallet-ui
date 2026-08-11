@@ -25,6 +25,7 @@ import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
@@ -33,7 +34,9 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
+import eu.europa.ec.dashboardfeature.interactor.AndroidDocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
@@ -87,22 +90,38 @@ fun provideHomeInteractor(
     walletCoreConfig,
 )
 
+/**
+ * Android's half of the documents feature: wallet-core deferred issuance and deletion, plus the
+ * preferences and build config the shared interactor cannot read for itself.
+ */
 @Factory
-fun provideDocumentsInteractor(
+fun provideDocumentsPlatformBridge(
     resourceProvider: ResourceProvider,
     documentsController: WalletCoreDocumentsController,
-    walletEngine: WalletEngine,
-    filterValidator: FilterValidator,
+    walletCoreConfig: WalletCoreConfig,
     configLogic: ConfigLogic,
     prefKeys: PrefKeys,
+): DocumentsPlatformBridge =
+    AndroidDocumentsPlatformBridge(
+        resourceProvider = resourceProvider,
+        walletCoreDocumentsController = documentsController,
+        walletCoreConfig = walletCoreConfig,
+        configLogic = configLogic,
+        prefKeys = prefKeys,
+    )
+
+@Factory
+fun provideDocumentsInteractor(
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
+    filterValidator: FilterValidator,
+    platform: DocumentsPlatformBridge,
 ): DocumentsInteractor =
     DocumentsInteractorImpl(
-        resourceProvider,
-        documentsController,
-        walletEngine,
-        filterValidator,
-        configLogic,
-        prefKeys,
+        strings = strings,
+        walletEngine = walletEngine,
+        filterValidator = filterValidator,
+        platform = platform,
     )
 
 @Factory

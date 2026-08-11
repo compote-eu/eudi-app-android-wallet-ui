@@ -53,19 +53,32 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.ComposeUIViewController
+import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.ic_logo_lockup_mark
 import eu.europa.ec.shared.resources.ic_logo_lockup_wordmark
+import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsScreen
+import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsViewModel
 import eu.europa.ec.dashboardfeature.ui.home.HomeScreen
 import eu.europa.ec.dashboardfeature.ui.home.HomeViewModel
 import eu.europa.ec.resourceslogic.theme.ThemeManager
 import eu.europa.ec.shared.ui.di.SharedUiModule
 import eu.europa.ec.shared.ui.di.module as sharedUiDefinitions
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.ui.navigation.IosNavHost
 import eu.europa.ec.uilogic.component.AppIconKey
 import eu.europa.ec.uilogic.component.drawableResource
@@ -73,6 +86,7 @@ import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.startupfeature.ui.splash.SplashScreen
 import eu.europa.ec.startupfeature.ui.splash.SplashViewModel
 import org.jetbrains.compose.resources.painterResource
+import kotlinx.coroutines.runBlocking
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
@@ -87,6 +101,10 @@ import platform.UIKit.UIViewController
  */
 fun SplashSpikeViewController(): UIViewController {
     startKoinIfNeeded()
+    // The string catalog resolves synchronously once warmed, which is what lets shared interactors read
+    // strings outside a coroutine — so it must be warmed before anything renders. Android does this in
+    // `Application.onCreate`; this is the iOS equivalent.
+    runBlocking { KoinPlatform.getKoin().get<StringCatalog>().warm() }
     return ComposeUIViewController {
         // The wallet's real theme, not bare Material — it lives in commonMain as of the theme port,
         // so iOS finally renders the app's own colours, shapes and typography.
@@ -108,17 +126,54 @@ fun SplashSpikeViewController(): UIViewController {
                         )
                     }
                     entry<DashboardRoute> {
-                        // The REAL shared HomeScreen, driven by the iOS HomeInteractor over the
-                        // Kotlin-over-multipaz WalletEngine — so the name it greets you with comes
-                        // out of a credential stored in multipaz's DocumentStore.
-                        val homeInteractor = remember { KoinPlatform.getKoin().get<HomeInteractor>() }
-                        HomeScreen(
-                            navigator = navigator,
-                            viewModel = remember { HomeViewModel(homeInteractor) },
-                            onDashboardEventSent = {},
-                        )
+                        // Stands in for DashboardScreen's bottom nav, which is still Android-only:
+                        // Home and Documents are *tabs* there rather than routes, so there is no
+                        // route to hang Documents off. Both shared screens stay reachable, and this
+                        // grows a tab per screen as more are shared.
+                        SharedScreenSwitcher(navigator = navigator)
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * The shared screens available on iOS so far, selected by a plain button row. Deliberately crude — it is
+ * scaffolding until `DashboardScreen` itself is shared and brings the real bottom navigation.
+ */
+@Composable
+private fun SharedScreenSwitcher(navigator: AppNavigator) {
+    // Defaults to Documents, the most recently shared screen — it is what a fresh run should show,
+    // and `simctl` cannot synthesise taps, so the default is the only thing a screenshot can verify.
+    var showDocuments by remember { mutableStateOf(true) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            TextButton(onClick = { showDocuments = false }) { Text("Home") }
+            TextButton(onClick = { showDocuments = true }) { Text("Documents") }
+        }
+
+        Box(modifier = Modifier.weight(1f)) {
+            if (showDocuments) {
+                // The real shared Documents list over the multipaz WalletEngine: interactor, filter
+                // validator and string catalog all resolve from Koin.
+                val documentsInteractor =
+                    remember { KoinPlatform.getKoin().get<DocumentsInteractor>() }
+                DocumentsScreen(
+                    navigator = navigator,
+                    viewModel = remember { DocumentsViewModel(documentsInteractor) },
+                    onDashboardEventSent = {},
+                )
+            } else {
+                // The real shared HomeScreen — the name it greets you with comes out of a credential
+                // stored in multipaz's DocumentStore.
+                val homeInteractor = remember { KoinPlatform.getKoin().get<HomeInteractor>() }
+                HomeScreen(
+                    navigator = navigator,
+                    viewModel = remember { HomeViewModel(homeInteractor) },
+                    onDashboardEventSent = {},
+                )
             }
         }
     }

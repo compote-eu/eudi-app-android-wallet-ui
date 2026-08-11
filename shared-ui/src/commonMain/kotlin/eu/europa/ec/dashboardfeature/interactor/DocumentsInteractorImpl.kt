@@ -16,8 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
-import eu.europa.ec.businesslogic.config.ConfigLogic
-import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.extension.isBeyondNextDays
 import eu.europa.ec.businesslogic.extension.isExpired
 import eu.europa.ec.businesslogic.extension.isValid
@@ -35,9 +33,6 @@ import eu.europa.ec.businesslogic.validator.model.FilterableItem
 import eu.europa.ec.businesslogic.validator.model.FilterableList
 import eu.europa.ec.businesslogic.validator.model.Filters
 import eu.europa.ec.businesslogic.validator.model.SortOrder
-import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
-import eu.europa.ec.corelogic.controller.IssueDeferredDocumentPartialState
-import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.corelogic.model.toDocumentCategory
@@ -47,9 +42,9 @@ import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentFilterIds
 import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentUi
 import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentsFilterableAttributes
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
-import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.content_description_issuer_logo_icon
 import eu.europa.ec.shared.resources.dashboard_document_credentials_info_text
 import eu.europa.ec.shared.resources.dashboard_document_deferred_failed
@@ -98,19 +93,17 @@ import kotlinx.coroutines.withContext
 // document *list* it builds now reads the WalletEngine seam, so it holds no wallet-core document
 // types at all.
 class DocumentsInteractorImpl(
-    private val resourceProvider: ResourceProvider,
-    private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val strings: StringCatalog,
     private val walletEngine: WalletEngine,
     private val filterValidator: FilterValidator,
-    private val configLogic: ConfigLogic,
-    private val prefKeys: PrefKeys,
+    private val platform: DocumentsPlatformBridge,
 ) : DocumentsInteractor {
 
     private val genericErrorMsg
-        get() = resourceProvider.genericErrorMessage()
+        get() = strings[Res.string.generic_error_message]
 
     override val deferredFailedSupportingText: String
-        get() = resourceProvider.getString(Res.string.dashboard_document_deferred_failed)
+        get() = strings.get(Res.string.dashboard_document_deferred_failed)
 
     override fun onFilterStateChange(): Flow<DocumentInteractorFilterPartialState> =
         filterValidator.onFilterStateChange().map { result ->
@@ -220,18 +213,18 @@ class DocumentsInteractorImpl(
             val shouldAllowUserInteraction =
                 walletEngine.getMainPidDocument() != null
 
-            val documentCategories = walletCoreDocumentsController.getAllDocumentCategories()
+            val documentCategories = platform.documentCategories
 
-            val userLocale = resourceProvider.getLocale()
+            val userLocaleTag = platform.localeTag()
 
-            val showBatchIssuanceCounter = prefKeys.getShowBatchIssuanceCounter()
+            val showBatchIssuanceCounter = platform.showBatchIssuanceCounter()
 
             val allDocuments = FilterableList(
                 items = walletEngine
-                    .getAllDocumentsWithDetails(locale = userLocale.toLanguageTag())
+                    .getAllDocumentsWithDetails(locale = userLocaleTag)
                     .map { document ->
                         val issuerName = document.issuerName
-                            ?: resourceProvider.getString(Res.string.documents_screen_filters_unknown_issuer)
+                            ?: strings.get(Res.string.documents_screen_filters_unknown_issuer)
 
                         val documentIdentifier = document.formatType.toDocumentIdentifier()
 
@@ -260,11 +253,11 @@ class DocumentsInteractorImpl(
                         // null-check on its `val` does not smart-cast.
                         val expiresAt = document.expiresAt
                         val supportingText = when {
-                            isPending -> resourceProvider.getString(Res.string.dashboard_document_deferred_pending)
-                            document.isRevoked -> resourceProvider.getString(Res.string.dashboard_document_revoked)
-                            document.isExpired -> resourceProvider.getString(Res.string.dashboard_document_has_expired)
+                            isPending -> strings.get(Res.string.dashboard_document_deferred_pending)
+                            document.isRevoked -> strings.get(Res.string.dashboard_document_revoked)
+                            document.isExpired -> strings.get(Res.string.dashboard_document_has_expired)
                             expiresAt == null -> null
-                            else -> resourceProvider.getString(
+                            else -> strings.get(
                                 Res.string.dashboard_document_has_not_expired,
                                 expiresAt.formatInstant()
                             )
@@ -285,7 +278,7 @@ class DocumentsInteractorImpl(
                                 val documentCredentialsInfoUi = DocumentCredentialsInfoUi(
                                     availableCredentials = document.credentialsCount,
                                     totalCredentials = document.initialCredentialsCount,
-                                    title = resourceProvider.getString(
+                                    title = strings.get(
                                         Res.string.dashboard_document_credentials_info_text,
                                         document.credentialsCount,
                                         document.initialCredentialsCount
@@ -310,7 +303,7 @@ class DocumentsInteractorImpl(
                                     supportingText = supportingText,
                                     leadingContentData = ListItemLeadingContentDataUi.AsyncImage(
                                         imageUrl = document.issuerLogoUri.orEmpty(),
-                                        contentDescription = resourceProvider.getString(Res.string.content_description_issuer_logo_icon),
+                                        contentDescription = strings.get(Res.string.content_description_issuer_logo_icon),
                                         errorImage = AppIcons.Id,
                                     ),
                                     trailingContentData = trailingContentData
@@ -339,7 +332,7 @@ class DocumentsInteractorImpl(
             )
         }.safeAsync {
             DocumentInteractorGetDocumentsPartialState.Failure(
-                error = it.localizedMessage ?: genericErrorMsg
+                error = it.message ?: genericErrorMsg
             )
         }
 
@@ -383,132 +376,14 @@ class DocumentsInteractorImpl(
     }
 
     override fun tryIssuingDeferredDocumentsFlow(
-        deferredDocuments: Map<DocumentId, FormatType>,
+        deferredDocuments: Map<String, FormatType>,
         dispatcher: CoroutineDispatcher,
-    ): Flow<DocumentInteractorRetryIssuingDeferredDocumentsPartialState> = flow {
-
-        val successResults: MutableList<DeferredDocumentDataDomain> = mutableListOf()
-        val failedResults: MutableList<DocumentId> = mutableListOf()
-
-        withContext(dispatcher) {
-            val allJobs = deferredDocuments.keys.map { deferredDocumentId ->
-                async {
-                    tryIssuingDeferredDocumentSuspend(deferredDocumentId)
-                }
-            }
-
-            allJobs.forEach { job ->
-                when (val result = job.await()) {
-                    is DocumentInteractorRetryIssuingDeferredDocumentPartialState.Failure -> {
-                        failedResults.add(result.documentId)
-                    }
-
-                    is DocumentInteractorRetryIssuingDeferredDocumentPartialState.Success -> {
-                        successResults.add(result.deferredDocumentData)
-                    }
-
-                    is DocumentInteractorRetryIssuingDeferredDocumentPartialState.NotReady -> {}
-
-                    is DocumentInteractorRetryIssuingDeferredDocumentPartialState.Expired -> {
-                        deleteDocument(result.documentId).lastOrNull()
-                    }
-
-                    is DocumentInteractorRetryIssuingDeferredDocumentPartialState.IssuerNotTrusted -> {
-                        deleteDocument(result.documentId).lastOrNull()
-                    }
-                }
-            }
-        }
-
-        emit(
-            DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result(
-                successfullyIssuedDeferredDocuments = successResults,
-                failedIssuedDeferredDocuments = failedResults
-            )
-        )
-
-    }.safeAsync {
-        DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Failure(
-            errorMessage = it.localizedMessage ?: genericErrorMsg
-        )
-    }
-
-    private suspend fun tryIssuingDeferredDocumentSuspend(
-        deferredDocumentId: DocumentId,
-        dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    ): DocumentInteractorRetryIssuingDeferredDocumentPartialState {
-        return withContext(dispatcher) {
-            walletCoreDocumentsController.issueDeferredDocument(deferredDocumentId)
-                .map { result ->
-                    when (result) {
-                        is IssueDeferredDocumentPartialState.Failed -> {
-                            DocumentInteractorRetryIssuingDeferredDocumentPartialState.Failure(
-                                documentId = result.documentId,
-                                errorMessage = result.errorMessage
-                            )
-                        }
-
-                        is IssueDeferredDocumentPartialState.Issued -> {
-                            DocumentInteractorRetryIssuingDeferredDocumentPartialState.Success(
-                                deferredDocumentData = result.deferredDocumentData
-                            )
-                        }
-
-                        is IssueDeferredDocumentPartialState.NotReady -> {
-                            DocumentInteractorRetryIssuingDeferredDocumentPartialState.NotReady(
-                                deferredDocumentData = result.deferredDocumentData
-                            )
-                        }
-
-                        is IssueDeferredDocumentPartialState.Expired -> {
-                            DocumentInteractorRetryIssuingDeferredDocumentPartialState.Expired(
-                                documentId = result.documentId
-                            )
-                        }
-
-                        is IssueDeferredDocumentPartialState.IssuerNotTrusted -> {
-                            DocumentInteractorRetryIssuingDeferredDocumentPartialState.IssuerNotTrusted(
-                                documentId = result.documentId
-                            )
-                        }
-                    }
-                }.firstOrNull()
-                ?: DocumentInteractorRetryIssuingDeferredDocumentPartialState.Failure(
-                    documentId = deferredDocumentId,
-                    errorMessage = genericErrorMsg
-                )
-        }
-    }
+    ): Flow<DocumentInteractorRetryIssuingDeferredDocumentsPartialState> =
+        platform.tryIssuingDeferredDocuments(deferredDocuments, dispatcher)
 
     override fun deleteDocument(
         documentId: String,
-    ): Flow<DocumentInteractorDeleteDocumentPartialState> =
-        flow {
-            walletCoreDocumentsController.deleteDocument(documentId).collect { response ->
-                when (response) {
-                    is DeleteDocumentPartialState.Failure -> {
-                        emit(
-                            DocumentInteractorDeleteDocumentPartialState.Failure(
-                                errorMessage = response.errorMessage
-                            )
-                        )
-                    }
-
-                    is DeleteDocumentPartialState.Success -> {
-                        if (configLogic.forcePidActivation
-                            && walletCoreDocumentsController.getAllDocuments().isEmpty()
-                        ) {
-                            emit(DocumentInteractorDeleteDocumentPartialState.AllDocumentsDeleted)
-                        } else
-                            emit(DocumentInteractorDeleteDocumentPartialState.SingleDocumentDeleted)
-                    }
-                }
-            }
-        }.safeAsync {
-            DocumentInteractorDeleteDocumentPartialState.Failure(
-                errorMessage = it.localizedMessage ?: genericErrorMsg
-            )
-        }
+    ): Flow<DocumentInteractorDeleteDocumentPartialState> = platform.deleteDocument(documentId)
 
     override fun addDynamicFilters(documents: FilterableList, filters: Filters): Filters {
         return filters.copy(
@@ -551,11 +426,11 @@ class DocumentsInteractorImpl(
             // Filter by expiry period
             FilterGroup.SingleSelectionFilterGroup(
                 id = DocumentFilterIds.FILTER_BY_PERIOD_GROUP_ID,
-                name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_expiry_period),
+                name = strings.get(Res.string.documents_screen_filters_filter_by_expiry_period),
                 filters = listOf(
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_PERIOD_DEFAULT,
-                        name = resourceProvider.getString(Res.string.documents_screen_filters_sort_default),
+                        name = strings.get(Res.string.documents_screen_filters_sort_default),
                         selected = true,
                         isDefault = true,
                         filterableAction = FilterAction.Filter<DocumentsFilterableAttributes> { _, _ ->
@@ -564,7 +439,7 @@ class DocumentsInteractorImpl(
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_PERIOD_NEXT_7,
-                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_expiry_period_1),
+                        name = strings.get(Res.string.documents_screen_filters_filter_by_expiry_period_1),
                         selected = false,
                         filterableAction = FilterAction.Filter<DocumentsFilterableAttributes> { attributes, _ ->
                             attributes.expiryDate?.isWithinNextDays(7) == true
@@ -572,7 +447,7 @@ class DocumentsInteractorImpl(
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_PERIOD_NEXT_30,
-                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_expiry_period_2),
+                        name = strings.get(Res.string.documents_screen_filters_filter_by_expiry_period_2),
                         selected = false,
                         filterableAction = FilterAction.Filter<DocumentsFilterableAttributes> { attributes, _ ->
                             attributes.expiryDate?.isWithinNextDays(30) == true
@@ -580,7 +455,7 @@ class DocumentsInteractorImpl(
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_PERIOD_BEYOND_30,
-                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_expiry_period_3),
+                        name = strings.get(Res.string.documents_screen_filters_filter_by_expiry_period_3),
                         selected = false,
                         filterableAction = FilterAction.Filter<DocumentsFilterableAttributes> { attributes, _ ->
                             attributes.expiryDate?.isBeyondNextDays(30) == true
@@ -588,7 +463,7 @@ class DocumentsInteractorImpl(
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_PERIOD_EXPIRED,
-                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_expiry_period_4),
+                        name = strings.get(Res.string.documents_screen_filters_filter_by_expiry_period_4),
                         selected = false,
                         filterableAction = FilterAction.Filter<DocumentsFilterableAttributes> { attributes, _ ->
                             attributes.expiryDate?.isExpired() == true
@@ -599,7 +474,7 @@ class DocumentsInteractorImpl(
             // Filter by Issuer
             FilterGroup.MultipleSelectionFilterGroup(
                 id = DocumentFilterIds.FILTER_BY_ISSUER_GROUP_ID,
-                name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_issuer),
+                name = strings.get(Res.string.documents_screen_filters_filter_by_issuer),
                 filters = emptyList(),
                 filterableAction = FilterMultipleAction<DocumentsFilterableAttributes> { attributes, filter ->
                     attributes.issuer == filter.name
@@ -608,7 +483,7 @@ class DocumentsInteractorImpl(
             // Filter by category
             FilterGroup.MultipleSelectionFilterGroup(
                 id = DocumentFilterIds.FILTER_BY_DOCUMENT_CATEGORY_GROUP_ID,
-                name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_category),
+                name = strings.get(Res.string.documents_screen_filters_filter_by_category),
                 filters = emptyList(),
                 filterableAction = FilterMultipleAction<DocumentsFilterableAttributes> { attributes, filter ->
                     attributes.category.id.toString() == filter.id
@@ -617,23 +492,23 @@ class DocumentsInteractorImpl(
             // Filter by State
             FilterGroup.MultipleSelectionFilterGroup(
                 id = DocumentFilterIds.FILTER_BY_STATE_GROUP_ID,
-                name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_state),
+                name = strings.get(Res.string.documents_screen_filters_filter_by_state),
                 filters = listOf(
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_STATE_VALID,
-                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_state_valid),
+                        name = strings.get(Res.string.documents_screen_filters_filter_by_state_valid),
                         selected = true,
                         isDefault = true,
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_STATE_EXPIRED,
-                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_state_expired),
+                        name = strings.get(Res.string.documents_screen_filters_filter_by_state_expired),
                         selected = false,
                         isDefault = false,
                     ),
                     FilterItem(
                         id = DocumentFilterIds.FILTER_BY_STATE_REVOKED,
-                        name = resourceProvider.getString(Res.string.documents_screen_filters_filter_by_state_revoked),
+                        name = strings.get(Res.string.documents_screen_filters_filter_by_state_revoked),
                         selected = false,
                         isDefault = false,
                     ),
@@ -655,11 +530,11 @@ class DocumentsInteractorImpl(
         sortOrder = SortOrder.Ascending(isDefault = true),
         sort = FilterSort(
             id = DocumentFilterIds.FILTER_SORT_GROUP_ID,
-            name = resourceProvider.getString(Res.string.documents_screen_filters_sort_by),
+            name = strings.get(Res.string.documents_screen_filters_sort_by),
             filters = listOf(
                 FilterItem(
                     id = DocumentFilterIds.FILTER_SORT_DEFAULT,
-                    name = resourceProvider.getString(Res.string.documents_screen_filters_sort_default),
+                    name = strings.get(Res.string.documents_screen_filters_sort_default),
                     selected = true,
                     isDefault = true,
                     filterableAction = FilterAction.Sort<DocumentsFilterableAttributes, String> { attributes ->
@@ -677,7 +552,7 @@ class DocumentsInteractorImpl(
                 with(filterableItem.attributes as DocumentsFilterableAttributes) {
                     FilterItem(
                         id = category.id.toString(),
-                        name = resourceProvider.getString(category.nameRes),
+                        name = strings.get(category.nameRes),
                         selected = true,
                         isDefault = true
                     )

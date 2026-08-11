@@ -36,6 +36,9 @@ import eu.europa.ec.corelogic.controller.IssueDeferredDocumentPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
 import eu.europa.ec.corelogic.model.DocumentCategories
@@ -50,7 +53,6 @@ import eu.europa.ec.dashboardfeature.util.mockedPendingMdlUi
 import eu.europa.ec.dashboardfeature.util.mockedPendingPidUi
 import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.DocumentId
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testfeature.util.copy
 import eu.europa.ec.testfeature.util.getMockedFullDocuments
 import eu.europa.ec.testfeature.util.mockedDefaultLocale
@@ -95,22 +97,16 @@ class TestDocumentsInteractor {
     val coroutineRule = CoroutineTestRule()
 
     @Mock
-    private lateinit var resourceProvider: ResourceProvider
+    private lateinit var strings: StringCatalog
 
     @Mock
-    private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
+    private lateinit var platform: DocumentsPlatformBridge
 
     @Mock
     private lateinit var walletEngine: WalletEngine
 
     @Mock
     private lateinit var filterValidator: FilterValidator
-
-    @Mock
-    private lateinit var configLogic: ConfigLogic
-
-    @Mock
-    private lateinit var prefKeys: PrefKeys
 
     private lateinit var interactor: DocumentsInteractor
 
@@ -124,16 +120,13 @@ class TestDocumentsInteractor {
         closeable = MockitoAnnotations.openMocks(this)
 
         interactor = DocumentsInteractorImpl(
-            resourceProvider = resourceProvider,
-            walletCoreDocumentsController = walletCoreDocumentsController,
+            strings = strings,
             walletEngine = walletEngine,
             filterValidator = filterValidator,
-            configLogic = configLogic,
-            prefKeys = prefKeys,
+            platform = platform,
         )
 
-        whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
-        whenever(configLogic.forcePidActivation).thenReturn(true)
+        whenever(strings[Res.string.generic_error_message]).thenReturn(mockedGenericErrorMessage)
 
         mockDocumentId = "mockDocumentId"
         mockDocumentName = "mockDocumentName"
@@ -162,406 +155,6 @@ class TestDocumentsInteractor {
             isRevoked = isRevoked,
         )
 
-    // region deleteDocument
-    // Case 1:
-    // walletCoreDocumentsController.getAllDocuments() returns a list of Documents
-    // with a size of two.
-
-    // Case 1 Expected Result:
-    // DocumentInteractorDeleteDocumentPartialState.SingleDocumentDeleted state.
-    @Test
-    fun `Given Case 1, When deleteDocument is called, Then Case 1 Expected Result is returned`() {
-        coroutineRule.runTest {
-            // Given
-            val mockedFullDocuments = getMockedFullDocuments()
-            whenever(walletCoreDocumentsController.getAllDocuments())
-                .thenReturn(mockedFullDocuments)
-            assert(walletCoreDocumentsController.getAllDocuments().size == 2)
-            mockDeleteDocumentCall(response = DeleteDocumentPartialState.Success)
-
-            // When
-            interactor.deleteDocument(mockDocumentId).runFlowTest {
-                // Then
-                val expectedFlow =
-                    DocumentInteractorDeleteDocumentPartialState.SingleDocumentDeleted
-
-                assertEquals(expectedFlow, awaitItem())
-            }
-        }
-    }
-
-    // Case 2:
-    // walletCoreDocumentsController.getAllDocuments() returns an empty list.
-
-    // Case 2 Expected Result:
-    // DocumentInteractorDeleteDocumentPartialState.AllDocumentsDeleted state
-    @Test
-    fun `Given Case 2, When deleteDocument is called, Then Case 2 Expected Result is returned`() {
-        coroutineRule.runTest {
-            // Given
-            val mockDocumentsList = mock<List<Document>>()
-            whenever(walletCoreDocumentsController.getAllDocuments()).thenReturn(mockDocumentsList)
-            whenever(mockDocumentsList.isEmpty()).thenReturn(true)
-            assert(walletCoreDocumentsController.getAllDocuments().isEmpty())
-
-            mockDeleteDocumentCall(response = DeleteDocumentPartialState.Success)
-
-            // When
-            interactor.deleteDocument(mockDocumentId).runFlowTest {
-                val expectedFlow = DocumentInteractorDeleteDocumentPartialState.AllDocumentsDeleted
-
-                // Then
-                assertEquals(expectedFlow, awaitItem())
-            }
-        }
-    }
-
-    // Case 3:
-    // walletCoreDocumentsController.getAllDocuments() returns Failure
-
-    // Case 3 Expected Result:
-    // DocumentInteractorDeleteDocumentPartialState.Failure state.
-    @Test
-    fun `Given Case 3, When deleteDocument is called, Then Case 3 Expected Result is returned`() =
-        coroutineRule.runTest {
-            // Given
-            mockDeleteDocumentCall(
-                response = DeleteDocumentPartialState.Failure(
-                    errorMessage = mockedPlainFailureMessage
-                )
-            )
-
-            // When
-            interactor.deleteDocument(mockDocumentId).runFlowTest {
-                // Then
-                assertEquals(
-                    DocumentInteractorDeleteDocumentPartialState.Failure(
-                        errorMessage = mockedPlainFailureMessage
-                    ),
-                    awaitItem()
-                )
-            }
-        }
-
-    // Case 4:
-    // walletCoreDocumentsController.deleteDocument() throws an exception with a message.
-
-    // Case 4 Expected Result:
-    // DocumentInteractorDeleteDocumentPartialState.Failure state with exception's localized message.
-    @Test
-    fun `Given Case 4, When deleteDocument is called, Then Case 4 Expected Result is returned`() =
-        coroutineRule.runTest {
-            // Given
-            whenever(walletCoreDocumentsController.deleteDocument(mockDocumentId))
-                .thenThrow(mockedExceptionWithMessage)
-
-            // When
-            interactor.deleteDocument(mockDocumentId).runFlowTest {
-                // Then
-                assertEquals(
-                    DocumentInteractorDeleteDocumentPartialState.Failure(
-                        errorMessage = mockedExceptionWithMessage.localizedMessage!!
-                    ),
-                    awaitItem()
-                )
-            }
-        }
-
-    // Case 5:
-    // walletCoreDocumentsController.deleteDocument() throws an exception with no message.
-
-    // Case 5 Expected Result:
-    // DocumentInteractorDeleteDocumentPartialState.Failure state with the generic error message.
-    @Test
-    fun `Given Case 5, When deleteDocument is called, Then Case 5 Expected Result is returned`() =
-        coroutineRule.runTest {
-            // Given
-            whenever(walletCoreDocumentsController.deleteDocument(mockDocumentId))
-                .thenThrow(mockedExceptionWithNoMessage)
-
-            // When
-            interactor.deleteDocument(mockDocumentId).runFlowTest {
-                // Then
-                assertEquals(
-                    DocumentInteractorDeleteDocumentPartialState.Failure(
-                        errorMessage = mockedGenericErrorMessage
-                    ),
-                    awaitItem()
-                )
-            }
-        }
-    //endregion
-
-    //region tryIssuingDeferredDocumentsFlow
-
-    // Case 1:
-    // When issueDeferredDocument was called:
-    // 1. IssueDeferredDocumentPartialState.Issued was emitted, with
-    //  - successData, the successfully issued deferred document's DeferredDocumentData, and also,
-    // 2. IssueDeferredDocumentPartialState.Failed was emitted, with
-    //  - documentId, the failed deferred document's DocumentId.
-
-    // Case 1 Expected Result:
-    // DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result state, with
-    //  - successfullyIssuedDeferredDocuments: a list with the successfully issued deferred document's DeferredDocumentData,
-    //  - failedIssuedDeferredDocuments: a list with the failed deferred document's DocumentId.
-    @Test
-    fun `Given Case 1, When tryIssuingDeferredDocumentsFlow is called, Then Case 1 Expected Result is returned`() =
-        coroutineRule.runTest {
-            // Given
-            val mockDeferredPendingDocId1 = mockedPendingPidUi.documentId
-            val mockDeferredPendingType1 = mockedPendingPidUi.documentIdentifier.formatType
-            val mockDeferredPendingName1 = mockedPendingPidUi.documentName
-
-            val mockDeferredPendingDocId2 = mockedPendingMdlUi.documentId
-            val mockDeferredPendingType2 = mockedPendingMdlUi.documentIdentifier.formatType
-
-            val deferredDocuments: Map<DocumentId, FormatType> = mapOf(
-                mockDeferredPendingDocId1 to mockDeferredPendingType1,
-                mockDeferredPendingDocId2 to mockDeferredPendingType2
-            )
-            val successData = DeferredDocumentDataDomain(
-                documentId = mockDeferredPendingDocId1,
-                formatType = mockDeferredPendingType1,
-                docName = mockDeferredPendingName1
-            )
-
-            mockIssueDeferredDocumentCall(
-                docId = mockDeferredPendingDocId1,
-                response = IssueDeferredDocumentPartialState.Issued(
-                    deferredDocumentData = successData
-                )
-            )
-            mockIssueDeferredDocumentCall(
-                docId = mockDeferredPendingDocId2,
-                response = IssueDeferredDocumentPartialState.Failed(
-                    documentId = mockDeferredPendingDocId2,
-                    errorMessage = mockedPlainFailureMessage
-                )
-            )
-
-            // When
-            interactor.tryIssuingDeferredDocumentsFlow(deferredDocuments)
-                .runFlowTest {
-                    // Then
-                    val expectedResult =
-                        DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result(
-                            successfullyIssuedDeferredDocuments = listOf(successData),
-                            failedIssuedDeferredDocuments = listOf(mockDeferredPendingDocId2)
-                        )
-                    assertEquals(expectedResult, awaitItem())
-                }
-        }
-
-    // Case 2:
-    // IssueDeferredDocumentPartialState.Expired was emitted when issueDeferredDocument was called.
-
-    // Case 2 Expected Result:
-    // DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result with,
-    // - successfullyIssuedDeferredDocuments = emptyList.
-    // - failedIssuedDeferredDocuments = emptyList.
-    @Test
-    fun `Given Case 2, When tryIssuingDeferredDocumentsFlow is called, Then Case 2 Expected Result is returned`() =
-        coroutineRule.runTest {
-            // Given
-            val mockDeferredExpiredDocId = mockedPendingPidUi.documentId
-            val mockDeferredExpiredDocType = mockedPendingPidUi.documentIdentifier.formatType
-
-            val deferredDocuments: Map<DocumentId, FormatType> = mapOf(
-                mockDeferredExpiredDocId to mockDeferredExpiredDocType
-            )
-
-            mockIssueDeferredDocumentCall(
-                docId = mockDeferredExpiredDocId,
-                response = IssueDeferredDocumentPartialState.Expired(
-                    documentId = mockDeferredExpiredDocId
-                )
-            )
-
-            // When
-            interactor.tryIssuingDeferredDocumentsFlow(deferredDocuments)
-                .runFlowTest {
-                    // Then
-                    val expectedResult =
-                        DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result(
-                            successfullyIssuedDeferredDocuments = emptyList(),
-                            failedIssuedDeferredDocuments = emptyList()
-                        )
-                    assertEquals(expectedResult, awaitItem())
-                }
-        }
-
-    // Case 3:
-    // IssueDeferredDocumentPartialState.NotReady was emitted when issueDeferredDocument was called.
-
-    // Case 3 Expected Result:
-    // DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result with,
-    // - successfullyIssuedDeferredDocuments = emptyList.
-    // - failedIssuedDeferredDocuments = emptyList.
-    @Test
-    fun `Given Case 3, When tryIssuingDeferredDocumentsFlow is called, Then Case 3 Expected Result is returned`() =
-        coroutineRule.runTest {
-            val mockDeferredPendingDocId = mockedPendingPidUi.documentId
-            val mockDeferredPendingType = mockedPendingPidUi.documentIdentifier.formatType
-            val mockDeferredPendingName = mockedPendingPidUi.documentName
-
-            val deferredDocuments: Map<DocumentId, FormatType> = mapOf(
-                mockDeferredPendingDocId to mockDeferredPendingType
-            )
-            val successData = DeferredDocumentDataDomain(
-                documentId = mockDeferredPendingDocId,
-                formatType = mockDeferredPendingType,
-                docName = mockDeferredPendingName
-            )
-
-            mockIssueDeferredDocumentCall(
-                docId = mockDeferredPendingDocId,
-                response = IssueDeferredDocumentPartialState.NotReady(
-                    deferredDocumentData = successData
-                )
-            )
-
-            // When
-            interactor.tryIssuingDeferredDocumentsFlow(deferredDocuments).runFlowTest {
-                // Then
-                val expectedResult =
-                    DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result(
-                        successfullyIssuedDeferredDocuments = emptyList(),
-                        failedIssuedDeferredDocuments = emptyList()
-                    )
-                assertEquals(expectedResult, awaitItem())
-            }
-        }
-
-    // Case 4:
-    // walletCoreDocumentsController.issueDeferredDocument() throws an exception with a message.
-
-    // Case 4 Expected Result:
-    // DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Failure state with exception's localized message.
-    @Test
-    fun `Given Case 4, When tryIssuingDeferredDocumentsFlow is called, Then Case 4 Expected Result is returned`() =
-        coroutineRule.runTest {
-            // Given
-            val mockDeferredPendingDocId = mockedPendingPidUi.documentId
-            val mockDeferredPendingType = mockedPendingPidUi.documentIdentifier.formatType
-
-            val deferredDocuments: Map<DocumentId, FormatType> = mapOf(
-                mockDeferredPendingDocId to mockDeferredPendingType
-            )
-            whenever(walletCoreDocumentsController.issueDeferredDocument(mockDeferredPendingDocId))
-                .thenThrow(mockedExceptionWithMessage)
-
-            // When
-            interactor.tryIssuingDeferredDocumentsFlow(deferredDocuments).runFlowTest {
-                // Then
-                assertEquals(
-                    DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Failure(
-                        errorMessage = mockedExceptionWithMessage.localizedMessage!!
-                    ),
-                    awaitItem()
-                )
-            }
-        }
-
-    // Case 5:
-    // walletCoreDocumentsController.issueDeferredDocument() throws an exception with no message.
-
-    // Case 5 Expected Result:
-    // DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Failure state with the generic error message.
-    @Test
-    fun `Given Case 5, When tryIssuingDeferredDocumentsFlow is called, Then Case 5 Expected Result is returned`() =
-        coroutineRule.runTest {
-            // Given
-            val mockDeferredPendingDocId = mockedPendingPidUi.documentId
-            val mockDeferredPendingType = mockedPendingPidUi.documentIdentifier.formatType
-
-            val deferredDocuments: Map<DocumentId, FormatType> = mapOf(
-                mockDeferredPendingDocId to mockDeferredPendingType
-            )
-            whenever(walletCoreDocumentsController.issueDeferredDocument(mockDeferredPendingDocId))
-                .thenThrow(mockedExceptionWithNoMessage)
-
-            // When
-            interactor.tryIssuingDeferredDocumentsFlow(deferredDocuments).runFlowTest {
-                // Then
-                assertEquals(
-                    DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Failure(
-                        errorMessage = mockedGenericErrorMessage
-                    ),
-                    awaitItem()
-                )
-            }
-        }
-
-    // Case 6:
-    // emptyFlow was returned when issueDeferredDocument was called.
-
-    // Case 6 Expected Result:
-    // DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result state.
-    @Test
-    fun `Given Case 6, When tryIssuingDeferredDocumentsFlow is called, Then Case 6 Expected Result is returned`() =
-        coroutineRule.runTest {
-            // Given
-            val mockDeferredPendingDocId = mockedPendingPidUi.documentId
-            val mockDeferredPendingType = mockedPendingPidUi.documentIdentifier.formatType
-
-            val deferredDocuments: Map<DocumentId, FormatType> = mapOf(
-                mockDeferredPendingDocId to mockDeferredPendingType
-            )
-            whenever(walletCoreDocumentsController.issueDeferredDocument(mockDeferredPendingDocId))
-                .thenReturn(emptyFlow())
-
-            // When
-            interactor.tryIssuingDeferredDocumentsFlow(deferredDocuments).runFlowTest {
-                // Then
-                val expectedResult =
-                    DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result(
-                        successfullyIssuedDeferredDocuments = emptyList(),
-                        failedIssuedDeferredDocuments = listOf(mockDeferredPendingDocId)
-                    )
-                assertEquals(expectedResult, awaitItem())
-            }
-        }
-
-    // A trust-caused deferred failure (IssueDeferredDocumentPartialState.IssuerNotTrusted) is
-    // terminal: the pending document is deleted (so the polling loop stops retrying it) and it
-    // is never reported as a failed deferred document.
-    @Test
-    fun `Given a deferred document from an untrusted issuer, When tryIssuingDeferredDocumentsFlow is called, Then the document is deleted and not reported as failed`() =
-        coroutineRule.runTest {
-            // Given
-            val mockDeferredUntrustedDocId = mockedPendingPidUi.documentId
-            val mockDeferredUntrustedType = mockedPendingPidUi.documentIdentifier.formatType
-
-            val deferredDocuments: Map<DocumentId, FormatType> = mapOf(
-                mockDeferredUntrustedDocId to mockDeferredUntrustedType
-            )
-
-            mockIssueDeferredDocumentCall(
-                docId = mockDeferredUntrustedDocId,
-                response = IssueDeferredDocumentPartialState.IssuerNotTrusted(
-                    documentId = mockDeferredUntrustedDocId
-                )
-            )
-            // A completing flow — the shared toFlow()/StateFlow stub never completes, which would
-            // hang the SUT's deleteDocument(...).lastOrNull().
-            whenever(walletCoreDocumentsController.deleteDocument(mockDeferredUntrustedDocId))
-                .thenReturn(flowOf(DeleteDocumentPartialState.Success))
-
-            // When
-            interactor.tryIssuingDeferredDocumentsFlow(deferredDocuments)
-                .runFlowTest {
-                    // Then
-                    val expectedResult =
-                        DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result(
-                            successfullyIssuedDeferredDocuments = emptyList(),
-                            failedIssuedDeferredDocuments = emptyList()
-                        )
-                    assertEquals(expectedResult, awaitItem())
-                    verify(walletCoreDocumentsController)
-                        .deleteDocument(mockDeferredUntrustedDocId)
-                }
-        }
 
     // Case 7:
     // Empty state was returned when onFilterStateChange is collected.
@@ -744,8 +337,8 @@ class TestDocumentsInteractor {
             // Given
             mockShowBatchIssuanceCounterPreference(response = true)
             mockGetDocumentsBaseCalls(documents = emptyList(), hasMainPid = false)
-            whenever(resourceProvider.getLocale())
-                .thenReturn(mockedDefaultLocale)
+            whenever(platform.localeTag())
+                .thenReturn(mockedDefaultLocale.toLanguageTag())
 
             // When
             interactor.getDocuments().runFlowTest {
@@ -766,10 +359,10 @@ class TestDocumentsInteractor {
             whenever(walletEngine.getMainPidDocument()).thenReturn(null)
             whenever(walletEngine.getAllDocumentsWithDetails(anyString()))
                 .thenThrow(mockedExceptionWithMessage)
-            whenever(walletCoreDocumentsController.getAllDocumentCategories())
+            whenever(platform.documentCategories)
                 .thenReturn(DocumentCategories(value = emptyMap()))
-            whenever(resourceProvider.getLocale())
-                .thenReturn(mockedDefaultLocale)
+            whenever(platform.localeTag())
+                .thenReturn(mockedDefaultLocale.toLanguageTag())
 
             // When
             interactor.getDocuments().runFlowTest {
@@ -792,10 +385,10 @@ class TestDocumentsInteractor {
             whenever(walletEngine.getMainPidDocument()).thenReturn(null)
             whenever(walletEngine.getAllDocumentsWithDetails(anyString()))
                 .thenThrow(mockedExceptionWithNoMessage)
-            whenever(walletCoreDocumentsController.getAllDocumentCategories())
+            whenever(platform.documentCategories)
                 .thenReturn(DocumentCategories(value = emptyMap()))
-            whenever(resourceProvider.getLocale())
-                .thenReturn(mockedDefaultLocale)
+            whenever(platform.localeTag())
+                .thenReturn(mockedDefaultLocale.toLanguageTag())
 
             // When
             interactor.getDocuments().runFlowTest {
@@ -911,7 +504,7 @@ class TestDocumentsInteractor {
     @Test
     fun `When initializeFilters is called, Then filterValidator#initializeValidator is invoked`() {
         // Given
-        whenever(resourceProvider.getString(any())).thenReturn("mocked")
+        whenever(strings.get(any())).thenReturn("mocked")
         val list = FilterableList(items = emptyList())
 
         // When
@@ -1090,7 +683,7 @@ class TestDocumentsInteractor {
     @Test
     fun `When getFilters is called, Then the expected static filter groups are returned`() {
         // Given
-        whenever(resourceProvider.getString(any())).thenReturn("mocked")
+        whenever(strings.get(any())).thenReturn("mocked")
 
         // When
         val filters = interactor.getFilters()
@@ -1115,7 +708,7 @@ class TestDocumentsInteractor {
     @Test
     fun `When the default sort selector is applied, Then it returns the normalized document name`() {
         // Given
-        whenever(resourceProvider.getString(any())).thenReturn("mocked")
+        whenever(strings.get(any())).thenReturn("mocked")
         val attrs = documentsAttributes(
             name = "PID",
         )
@@ -1136,7 +729,7 @@ class TestDocumentsInteractor {
     @Test
     fun `When the issuer filter predicate is applied, Then it matches by issuer name`() {
         // Given
-        whenever(resourceProvider.getString(any())).thenReturn("mocked")
+        whenever(strings.get(any())).thenReturn("mocked")
         val group = interactor.getFilters().filterGroups.first {
             it.id == DocumentFilterIds.FILTER_BY_ISSUER_GROUP_ID
         }
@@ -1159,7 +752,7 @@ class TestDocumentsInteractor {
     @Test
     fun `When the category filter predicate is applied, Then it matches by category id`() {
         // Given
-        whenever(resourceProvider.getString(any())).thenReturn("mocked")
+        whenever(strings.get(any())).thenReturn("mocked")
         val group = interactor.getFilters().filterGroups.first {
             it.id == DocumentFilterIds.FILTER_BY_DOCUMENT_CATEGORY_GROUP_ID
         }
@@ -1190,7 +783,7 @@ class TestDocumentsInteractor {
     @Test
     fun `When the state filter predicate is applied, Then VALID EXPIRED REVOKED and else arms all evaluate`() {
         // Given
-        whenever(resourceProvider.getString(any())).thenReturn("mocked")
+        whenever(strings.get(any())).thenReturn("mocked")
         val group = interactor.getFilters().filterGroups.first {
             it.id == DocumentFilterIds.FILTER_BY_STATE_GROUP_ID
         }
@@ -1257,7 +850,7 @@ class TestDocumentsInteractor {
     @Test
     fun `When addDynamicFilters is called without filters, Then the default emptyFilters is used`() {
         // Given
-        whenever(resourceProvider.getString(any())).thenReturn("mocked")
+        whenever(strings.get(any())).thenReturn("mocked")
         val documents = FilterableList(items = emptyList())
 
         // When
@@ -1274,7 +867,7 @@ class TestDocumentsInteractor {
     @Test
     fun `Given a documents list with issuers and categories, When addDynamicFilters is called, Then the ISSUER and CATEGORY groups are populated`() {
         // Given
-        whenever(resourceProvider.getString(any())).thenReturn("mocked")
+        whenever(strings.get(any())).thenReturn("mocked")
         val itemAcme = FilterableItem(
             payload = stubDocumentUi(),
             attributes = documentsAttributes(
@@ -1310,7 +903,7 @@ class TestDocumentsInteractor {
     @Suppress("UNCHECKED_CAST") // FilterAction.Filter<T> is erased at runtime — the test asserts the predicate type from the filter group definition.
     fun `When the period filter predicates are applied, Then default issuance and expiry-window predicates evaluate as expected`() {
         // Given
-        whenever(resourceProvider.getString(any())).thenReturn("mocked")
+        whenever(strings.get(any())).thenReturn("mocked")
         val periodGroup = interactor.getFilters().filterGroups.first {
             it.id == DocumentFilterIds.FILTER_BY_PERIOD_GROUP_ID
         }
@@ -1440,7 +1033,7 @@ class TestDocumentsInteractor {
 
     //region Mock Calls of the Dependencies
     private fun mockShowBatchIssuanceCounterPreference(response: Boolean) {
-        whenever(suspend { prefKeys.getShowBatchIssuanceCounter() }).thenReturn(response)
+        whenever(suspend { platform.showBatchIssuanceCounter() }).thenReturn(response)
     }
 
     /**
@@ -1478,7 +1071,7 @@ class TestDocumentsInteractor {
             .thenReturn(if (hasMainPid) WalletDocument(id = "mocked_pid_id") else null)
         whenever(walletEngine.getAllDocumentsWithDetails(anyString()))
             .thenReturn(documents)
-        whenever(walletCoreDocumentsController.getAllDocumentCategories())
+        whenever(platform.documentCategories)
             .thenReturn(DocumentCategories(value = emptyMap()))
     }
 
@@ -1487,37 +1080,28 @@ class TestDocumentsInteractor {
         credentialsInfoText: String = "mocked-credentials-info",
         expiryMessage: String = "mocked-expiry-message",
     ) {
-        whenever(resourceProvider.getLocale())
-            .thenReturn(mockedDefaultLocale)
-        whenever(resourceProvider.getString(any()))
+        whenever(platform.localeTag())
+            .thenReturn(mockedDefaultLocale.toLanguageTag())
+        whenever(strings.get(any()))
             .thenReturn(genericString)
+        // The two argument-taking overloads are distinguished by arity, matching what the interactor
+        // asks for: the credentials counter passes two Ints, the expiry message one String.
         whenever(
-            resourceProvider.getString(
+            strings.get(
                 any(),
                 any<Int>(),
                 any<Int>()
             )
         ).thenReturn(credentialsInfoText)
         whenever(
-            resourceProvider.getString(
+            strings.get(
                 any(),
                 any<String>()
             )
         ).thenReturn(expiryMessage)
     }
 
-    private fun mockDeleteDocumentCall(response: DeleteDocumentPartialState) {
-        whenever(walletCoreDocumentsController.deleteDocument(anyString()))
-            .thenReturn(response.toFlow())
-    }
 
-    private fun mockIssueDeferredDocumentCall(
-        docId: DocumentId,
-        response: IssueDeferredDocumentPartialState,
-    ) {
-        whenever(walletCoreDocumentsController.issueDeferredDocument(docId))
-            .thenReturn(response.toFlow())
-    }
 
     private fun mockOnFilterChangedEvent(response: FilterValidatorPartialState) {
         whenever(filterValidator.onFilterStateChange())

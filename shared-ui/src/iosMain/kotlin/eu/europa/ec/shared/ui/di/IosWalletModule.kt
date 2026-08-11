@@ -16,7 +16,13 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.businesslogic.validator.FilterValidator
+import eu.europa.ec.businesslogic.validator.FilterValidatorImpl
+import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
+import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
@@ -33,9 +39,38 @@ import org.koin.core.annotation.Single
  *
  * `@Single` rather than `@Factory` for the engine: it lazily opens the multipaz document store, and one
  * store per process is the point.
+ *
+ * The engine is bound under **both** types from one instance — the concrete class for what is not on the
+ * `WalletEngine` contract (deletion), the interface for everything else.
  */
 @Single
-fun provideIosWalletEngine(): WalletEngine = IosWalletEngine()
+fun provideIosWalletEngineImpl(): IosWalletEngine = IosWalletEngine()
+
+@Single
+fun provideIosWalletEngine(engine: IosWalletEngine): WalletEngine = engine
+
+@Single
+fun provideIosFilterValidator(): FilterValidator = FilterValidatorImpl()
+
+@Single
+fun provideIosDocumentsPlatformBridge(engine: IosWalletEngine): DocumentsPlatformBridge =
+    IosDocumentsPlatformBridge(
+        deleteDocument = { documentId -> engine.deleteDocument(documentId) },
+        hasAnyDocument = { engine.hasAnyDocument() },
+    )
+
+@Single
+fun provideIosDocumentsInteractor(
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
+    filterValidator: FilterValidator,
+    platform: DocumentsPlatformBridge,
+): DocumentsInteractor = DocumentsInteractorImpl(
+    strings = strings,
+    walletEngine = walletEngine,
+    filterValidator = filterValidator,
+    platform = platform,
+)
 
 @Single
 fun provideIosHomeInteractor(
