@@ -16,16 +16,22 @@
 
 package eu.europa.ec.uilogic.component.preview
 
-import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.Composable
+import eu.europa.ec.resourceslogic.theme.ThemeManager
 
 /**
- * Provides different strings in order to test view's behavior based on string length
- * */
-class TextLengthPreviewProvider : PreviewParameterProvider<String> {
-    override val values: Sequence<String>
-        get() = sequenceOf(
-            "Short Text",
-            "A bit longer text.",
-            "This one is really, really long. Like, really really really really really really really really really long!"
-        )
+ * Wraps a preview in the wallet's real theme, so previewed components look like the app rather than
+ * like default Material.
+ *
+ * [darkTheme] exists because [ThemeModePreviews] can no longer force the preview's night mode the way
+ * the Android-only annotation did — pass `true` from a second preview function to see a component's
+ * dark rendering.
+ */
+@Composable
+fun PreviewTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    ThemeManager.instance.Theme(darkTheme = darkTheme) { content() }
 }
