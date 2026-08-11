@@ -25,6 +25,11 @@ package eu.europa.ec.shared.wallet
  *
  * The interface grows one capability at a time; this first slice covers revocation, whose
  * signatures are already platform-neutral (String / Boolean).
+ *
+ * **Every accessor is `suspend`.** Reading the document store is I/O on both platforms — Android's
+ * wallet-core hides that behind `runBlocking`, but on iOS the store is SQLite reached through
+ * multipaz's suspending API, so a synchronous accessor could only be honoured by blocking the
+ * calling thread, which on iOS is the UI thread. All consumers already call from a coroutine.
  */
 interface WalletEngine {
 
@@ -46,16 +51,16 @@ interface WalletEngine {
     /**
      * The wallet's main PID document as an app-owned [WalletDocument], or null if there is
      * none. First domain-model capability: [WalletDocument] replaces the wallet-core Document
-     * type at the seam. Non-suspend to mirror the current Android source.
+     * type at the seam.
      */
-    fun getMainPidDocument(): WalletDocument?
+    suspend fun getMainPidDocument(): WalletDocument?
 
     /**
      * All documents currently in the wallet, as app-owned [WalletDocument]s carrying **identity
      * only**. For callers that just need to know what exists (or whether anything does); it does no
      * per-credential I/O. Use [getAllDocumentsWithDetails] when the fields actually matter.
      */
-    fun getAllDocuments(): List<WalletDocument>
+    suspend fun getAllDocuments(): List<WalletDocument>
 
     /**
      * All documents currently in the wallet, with every [WalletDocument] field populated: name,

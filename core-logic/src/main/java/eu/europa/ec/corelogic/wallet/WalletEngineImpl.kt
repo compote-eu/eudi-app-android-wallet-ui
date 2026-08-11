@@ -59,7 +59,7 @@ class WalletEngineImpl(
     override suspend fun deleteBookmark(bookmarkId: String) =
         documentsController.deleteBookmark(bookmarkId)
 
-    override fun getMainPidDocument(): WalletDocument? =
+    override suspend fun getMainPidDocument(): WalletDocument? =
         documentsController.getMainPidDocument()?.let { doc ->
             WalletDocument(
                 id = doc.id,
@@ -69,7 +69,7 @@ class WalletEngineImpl(
             )
         }
 
-    override fun getAllDocuments(): List<WalletDocument> =
+    override suspend fun getAllDocuments(): List<WalletDocument> =
         documentsController.getAllDocuments().map { WalletDocument(id = it.id) }
 
     override suspend fun getAllDocumentsWithDetails(locale: String): List<WalletDocument> {

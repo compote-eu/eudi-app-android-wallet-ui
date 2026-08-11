@@ -25,13 +25,15 @@ class SwiftWalletEngine: WalletEngine {
         issuerLogoUri: nil
     )
 
-    // MARK: - non-suspend members
-
-    func getMainPidDocument() -> WalletDocument? { sample }
-
-    func getAllDocuments() -> [WalletDocument] { [sample] }
-
     // MARK: - suspend members, exported with completion handlers
+
+    func getMainPidDocument(completionHandler: @escaping (WalletDocument?, Error?) -> Void) {
+        completionHandler(sample, nil)
+    }
+
+    func getAllDocuments(completionHandler: @escaping ([WalletDocument]?, Error?) -> Void) {
+        completionHandler([sample], nil)
+    }
 
     func getRevokedDocumentIds(completionHandler: @escaping ([String]?, Error?) -> Void) {
         completionHandler([], nil)

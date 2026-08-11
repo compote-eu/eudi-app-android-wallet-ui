@@ -1503,7 +1503,7 @@ class TestDocumentDetailsInteractor {
             .thenReturn(response)
     }
 
-    private fun mockGetMainPidDocument(response: IssuedDocument?) {
+    private suspend fun mockGetMainPidDocument(response: IssuedDocument?) {
         // Map outside whenever(): touching the mock's `id` inside the stubbing would trip
         // Mockito's UnfinishedStubbingException.
         val mapped = response?.let { WalletDocument(id = it.id) }

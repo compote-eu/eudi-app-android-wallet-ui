@@ -1232,7 +1232,7 @@ class TestDocumentOfferInteractor {
     //endregion
 
     //region helper functions
-    private fun mockGetMainPidDocumentCall(mainPid: IssuedDocument?) {
+    private suspend fun mockGetMainPidDocumentCall(mainPid: IssuedDocument?) {
         // Only presence matters for DocumentOffer; map to a WalletDocument outside whenever()
         // to avoid Mockito's UnfinishedStubbingException.
         val mapped = mainPid?.let { WalletDocument(id = "offer_pid") }

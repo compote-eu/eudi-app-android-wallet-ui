@@ -49,11 +49,11 @@ class SplashInteractorImpl(
     private val configLogic: ConfigLogic
 ) : SplashInteractor {
 
-    private val hasDocuments: Boolean
-        get() = walletEngine.getAllDocuments().isNotEmpty()
+    private suspend fun hasDocuments(): Boolean =
+        walletEngine.getAllDocuments().isNotEmpty()
 
-    private val shouldActivateWithPid: Boolean
-        get() = configLogic.forcePidActivation && !hasDocuments
+    private suspend fun shouldActivateWithPid(): Boolean =
+        configLogic.forcePidActivation && !hasDocuments()
 
     override suspend fun getAfterSplashRoute(): AppRoute = when (quickPinInteractor.hasPin()) {
         true -> {
@@ -65,9 +65,9 @@ class SplashInteractorImpl(
         }
     }
 
-    private fun getQuickPinConfig(): AppRoute {
+    private suspend fun getQuickPinConfig(): AppRoute {
         return QuickPinRoute(
-            if (shouldActivateWithPid) {
+            if (shouldActivateWithPid()) {
                 PinFlow.CREATE_WITH_ACTIVATION
             } else {
                 PinFlow.CREATE_WITHOUT_ACTIVATION
@@ -75,9 +75,9 @@ class SplashInteractorImpl(
         )
     }
 
-    private fun getBiometricsConfig(): AppRoute {
+    private suspend fun getBiometricsConfig(): AppRoute {
 
-        val shouldActivateWithPid = configLogic.forcePidActivation && !hasDocuments
+        val shouldActivateWithPid = shouldActivateWithPid()
 
         return BiometricRoute(
             BiometricUiConfig(

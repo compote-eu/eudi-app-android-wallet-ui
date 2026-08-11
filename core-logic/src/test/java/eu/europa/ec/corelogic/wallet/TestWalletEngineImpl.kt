@@ -285,22 +285,24 @@ class TestWalletEngineImpl {
 
     @Test
     fun `Given documents, When getAllDocuments is called, Then only ids are mapped`() {
-        // Given — this projection deliberately does no per-credential I/O, so the rest of the model
-        // keeps its absent defaults even for a fully issued document.
-        // `Document` itself is a sealed interface and cannot be mocked, so use a concrete subtype;
-        // the projection reads only `id` regardless.
-        val document = mock<IssuedDocument>()
-        whenever(document.id).thenReturn("cheap-1")
-        whenever(documentsController.getAllDocuments()).thenReturn(listOf(document))
+        coroutineRule.runTest {
+            // Given — this projection deliberately does no per-credential I/O, so the rest of the
+            // model keeps its absent defaults even for a fully issued document.
+            // `Document` itself is a sealed interface and cannot be mocked, so use a concrete
+            // subtype; the projection reads only `id` regardless.
+            val document = mock<IssuedDocument>()
+            whenever(document.id).thenReturn("cheap-1")
+            whenever(documentsController.getAllDocuments()).thenReturn(listOf(document))
 
-        // When
-        val mapped = engine.getAllDocuments().single()
+            // When
+            val mapped = engine.getAllDocuments().single()
 
-        // Then
-        assertEquals("cheap-1", mapped.id)
-        assertEquals("", mapped.name)
-        assertEquals("", mapped.formatType)
-        assertEquals(0, mapped.credentialsCount)
+            // Then
+            assertEquals("cheap-1", mapped.id)
+            assertEquals("", mapped.name)
+            assertEquals("", mapped.formatType)
+            assertEquals(0, mapped.credentialsCount)
+        }
     }
 
     //endregion
