@@ -121,6 +121,14 @@ kotlin {
             // keep Android's lifecycle-aware collection rather than downgrading to `collectAsState`.
             api(libs.androidx.lifecycle.runtimeCompose)
         }
+        // Android-only: the platform half of the seams whose iOS half Compose Multiplatform supplies
+        // directly. `androidx.activity.compose.BackHandler` is the Android answer for
+        // `PlatformBackHandler` (CMP's own `androidx.compose.ui.backhandler` exists for iOS but not
+        // for Android, where CMP maps onto Google's Compose artifacts). Unlike :shared-logic, which
+        // deliberately takes plain `activity` only, this module already *is* the Compose UI layer.
+        androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
+        }
         // iOS-only: the navigation host's pieces. The Compose UI artifacts moved to commonMain with
         // the first shared screen.
         iosMain.dependencies {

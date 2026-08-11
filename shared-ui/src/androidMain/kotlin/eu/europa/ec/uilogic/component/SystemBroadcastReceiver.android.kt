@@ -24,11 +24,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import eu.europa.ec.shared.platform.PlatformIntent
 
 @Composable
-fun SystemBroadcastReceiver(
+actual fun SystemBroadcastReceiver(
     intentFilters: List<String>,
-    onTrigger: (intent: Intent?) -> Unit
+    onTrigger: (intent: PlatformIntent?) -> Unit
 ) {
     val context = LocalContext.current
 
