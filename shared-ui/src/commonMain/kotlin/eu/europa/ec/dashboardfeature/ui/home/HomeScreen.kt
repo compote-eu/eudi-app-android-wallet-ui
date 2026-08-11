@@ -16,9 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.home
 
-import android.Manifest
-import android.content.Context
-import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,20 +37,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.resolve
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.AppIcons
+import eu.europa.ec.uilogic.component.EnsureProximityPermissions
 import eu.europa.ec.uilogic.component.ModalOptionUi
+import eu.europa.ec.uilogic.component.PlatformScreenActions
+import eu.europa.ec.uilogic.component.ProximityPermissionsOutcome
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -71,9 +69,6 @@ import eu.europa.ec.uilogic.component.wrap.WrapActionCard
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
 import eu.europa.ec.uilogic.component.wrap.WrapIconButton
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
-import eu.europa.ec.uilogic.extension.finish
-import eu.europa.ec.uilogic.extension.openAppSettings
-import eu.europa.ec.uilogic.extension.openBleSettings
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import kotlinx.coroutines.CoroutineScope
@@ -115,7 +110,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onDashboardEventSent: (DashboardEvent) -> Unit
 ) {
-    val context = LocalContext.current
+    val platformActions = rememberPlatformScreenActions()
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
     val isBottomSheetOpen = state.isBottomSheetOpen
     val scope = rememberCoroutineScope()
@@ -126,7 +121,7 @@ fun HomeScreen(
     ContentScreen(
         isLoading = state.isLoading,
         navigatableAction = ScreenNavigateAction.NONE,
-        onBack = { context.finish() },
+        onBack = { platformActions.finishApp() },
         topBar = {
             TopBar(
                 onEventSent = onDashboardEventSent
@@ -140,7 +135,7 @@ fun HomeScreen(
                 viewModel.setEvent(event)
             },
             onNavigationRequested = {
-                handleNavigationEffect(it, navigator, context)
+                handleNavigationEffect(it, navigator, platformActions)
             },
             coroutineScope = scope,
             modalBottomSheetState = bottomSheetState,
@@ -289,7 +284,7 @@ private fun Content(
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
     navigator: AppNavigator,
-    context: Context
+    platformActions: PlatformScreenActions,
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
@@ -300,8 +295,8 @@ private fun handleNavigationEffect(
             )
         }
 
-        is Effect.Navigation.OnAppSettings -> context.openAppSettings()
-        is Effect.Navigation.OnSystemSettings -> context.openBleSettings()
+        is Effect.Navigation.OnAppSettings -> platformActions.openAppSettings()
+        is Effect.Navigation.OnSystemSettings -> platformActions.openBluetoothSettings()
     }
 }
 
@@ -459,38 +454,23 @@ private fun HomeScreenSheetContent(
     }
 }
 
-@OptIn(ExperimentalPermissionsApi::class)
+/**
+ * Bridges the platform permission seam to this screen's events. The Android/iOS split lives in
+ * `EnsureProximityPermissions`; what each outcome *means* to Home stays here.
+ */
 @Composable
 private fun RequiredPermissionsAsk(
     state: State,
     onEventSend: (Event) -> Unit
 ) {
-    val permissions: MutableList<String> = mutableListOf()
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
-        permissions.add(Manifest.permission.BLUETOOTH_SCAN)
-        permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
-    }
-
-    if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2 && state.isBleCentralClientModeEnabled) {
-        permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
-        permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION)
-    }
-
-    val permissionsState = rememberMultiplePermissionsState(permissions = permissions)
-
-    when {
-        permissionsState.allPermissionsGranted -> onEventSend(Event.StartProximityFlow)
-        !permissionsState.allPermissionsGranted && permissionsState.shouldShowRationale -> {
-            onEventSend(Event.OnShowPermissionsRational)
-        }
-
-        else -> {
-            onEventSend(Event.OnPermissionStateChanged(BleAvailability.UNKNOWN))
-            LaunchedEffect(Unit) {
-                permissionsState.launchMultiplePermissionRequest()
-            }
+    EnsureProximityPermissions(
+        isBleCentralClientModeEnabled = state.isBleCentralClientModeEnabled,
+    ) { outcome ->
+        when (outcome) {
+            ProximityPermissionsOutcome.Granted -> onEventSend(Event.StartProximityFlow)
+            ProximityPermissionsOutcome.NeedsRationale -> onEventSend(Event.OnShowPermissionsRational)
+            ProximityPermissionsOutcome.Pending ->
+                onEventSend(Event.OnPermissionStateChanged(BleAvailability.UNKNOWN))
         }
     }
 }

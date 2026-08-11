@@ -132,6 +132,10 @@ kotlin {
         // deliberately takes plain `activity` only, this module already *is* the Compose UI layer.
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            // Runtime BLE permissions for the proximity flow — the Android half of
+            // `EnsureProximityPermissions`. Android-only by nature: iOS asks for Bluetooth on first
+            // CoreBluetooth use rather than up front.
+            implementation(libs.accompanist.permissions)
         }
         // iOS-only: the navigation host's pieces. The Compose UI artifacts moved to commonMain with
         // the first shared screen.
