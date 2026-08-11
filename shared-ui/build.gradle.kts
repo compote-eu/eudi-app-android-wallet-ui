@@ -143,6 +143,9 @@ kotlin {
             // `EnsureProximityPermissions`. Android-only by nature: iOS asks for Bluetooth on first
             // CoreBluetooth use rather than up front.
             implementation(libs.accompanist.permissions)
+            // The pre-API-31 blur fallback behind `sensitiveContentBlur`. Android-only library; iOS
+            // blurs through Skia with no fallback needed.
+            implementation(libs.compose.cloudy)
         }
         // iOS-only: the navigation host's pieces. The Compose UI artifacts moved to commonMain with
         // the first shared screen.

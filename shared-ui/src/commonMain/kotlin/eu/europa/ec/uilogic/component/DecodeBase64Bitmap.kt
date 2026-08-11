@@ -16,8 +16,6 @@
 
 package eu.europa.ec.uilogic.component
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,7 +23,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import eu.europa.ec.businesslogic.extension.decodeBase64ToByteArrays
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -33,7 +30,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun rememberBase64DecodedBitmap(base64Image: String): ImageBitmap? {
     var decodedBitmap by remember(base64Image) {
-        mutableStateOf<Bitmap?>(null)
+        mutableStateOf<ImageBitmap?>(null)
     }
 
     LaunchedEffect(base64Image) {
@@ -42,23 +39,19 @@ fun rememberBase64DecodedBitmap(base64Image: String): ImageBitmap? {
         }
     }
 
-    return remember(decodedBitmap) {
-        decodedBitmap?.asImageBitmap()
-    }
+    return decodedBitmap
 }
 
-private fun decodeBase64Bitmap(value: String): Bitmap? {
-    return value.decodeBase64ToByteArrays().toBitmapOrNull()
-}
+/**
+ * Walks every candidate `decodeBase64ToByteArrays` returned until one is genuinely an image — which is
+ * exactly why that function returns a list: the same payload can decode under both Base64 alphabets and
+ * only one result will be valid image bytes.
+ */
+private fun decodeBase64Bitmap(value: String): ImageBitmap? =
+    value.decodeBase64ToByteArrays().firstNotNullOfOrNull { bytes -> bytes.toImageBitmapOrNull() }
 
-private fun List<ByteArray>.toBitmapOrNull(): Bitmap? {
-    return firstNotNullOfOrNull { decodedBytes ->
-        runCatching {
-            BitmapFactory.decodeByteArray(
-                decodedBytes,
-                0,
-                decodedBytes.size
-            )
-        }.getOrNull()
-    }
-}
+/**
+ * Decodes encoded image bytes (PNG/JPEG/…) into an [ImageBitmap], or null when they are not an image.
+ * The only platform-specific step: Android decodes through `BitmapFactory`, iOS through Skia.
+ */
+internal expect fun ByteArray.toImageBitmapOrNull(): ImageBitmap?

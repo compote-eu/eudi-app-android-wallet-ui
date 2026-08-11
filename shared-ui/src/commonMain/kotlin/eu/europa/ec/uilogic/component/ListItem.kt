@@ -16,7 +16,6 @@
 
 package eu.europa.ec.uilogic.component
 
-import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -38,7 +37,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.skydoves.cloudy.cloudy
 import eu.europa.ec.uilogic.component.ClickableArea.ENTIRE_ROW
 import eu.europa.ec.uilogic.component.ClickableArea.TRAILING_CONTENT
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -125,10 +123,8 @@ fun ListItem(
         color = MaterialTheme.colorScheme.onSurface
     )
 
-    val blurModifier = if (hideSensitiveContent && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        Modifier.blur(10.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
-    } else if (hideSensitiveContent) {
-        Modifier.cloudy(radius = 20)
+    val blurModifier = if (hideSensitiveContent) {
+        Modifier.sensitiveContentBlur()
     } else {
         Modifier
     }
