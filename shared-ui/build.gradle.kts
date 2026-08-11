@@ -111,6 +111,12 @@ kotlin {
             api(compose.material3)
             api(compose.ui)
             api(compose.animation)
+            // Compose Multiplatform's own `@Preview`, so a shared component can keep its previews in
+            // commonMain. `api`, since `ThemeModePreviews` is annotated with it and every component's
+            // preview functions carry that annotation. NB it has neither `uiMode` nor
+            // `backgroundColor` — the light/dark preview *pairs* the Android-only annotation used to
+            // generate are not expressible here; see ThemePreviews.kt.
+            api(compose.components.uiToolingPreview)
             // `collectAsStateWithLifecycle` — multiplatform since lifecycle 2.11, so the shared screens
             // keep Android's lifecycle-aware collection rather than downgrading to `collectAsState`.
             api(libs.androidx.lifecycle.runtimeCompose)

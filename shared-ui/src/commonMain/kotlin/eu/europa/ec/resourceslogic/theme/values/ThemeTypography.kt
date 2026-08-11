@@ -16,7 +16,9 @@
 
 package eu.europa.ec.resourceslogic.theme.values
 
-import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.roboto_medium
+import eu.europa.ec.shared.resources.roboto_regular
 import eu.europa.ec.resourceslogic.theme.templates.ThemeTextStyle
 import eu.europa.ec.resourceslogic.theme.templates.ThemeTypographyTemplate
 import eu.europa.ec.resourceslogic.theme.templates.structures.ThemeFont
@@ -140,12 +142,12 @@ internal class ThemeTypography {
 }
 
 internal val RobotoRegular = ThemeFont(
-    res = R.font.roboto_regular,
+    res = Res.font.roboto_regular,
     weight = ThemeFontWeight.W400,
     style = ThemeFontStyle.Normal,
 )
 internal val RobotoMedium = ThemeFont(
-    res = R.font.roboto_medium,
+    res = Res.font.roboto_medium,
     weight = ThemeFontWeight.W500,
     style = ThemeFontStyle.Normal,
 )

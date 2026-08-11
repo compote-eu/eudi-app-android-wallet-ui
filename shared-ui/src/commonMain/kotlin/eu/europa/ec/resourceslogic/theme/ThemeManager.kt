@@ -15,14 +15,9 @@
  */
 package eu.europa.ec.resourceslogic.theme
 
-import android.os.Build
-import androidx.annotation.ChecksSdkIntAtLeast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 import eu.europa.ec.resourceslogic.theme.sets.ThemeSet
 import eu.europa.ec.resourceslogic.theme.templates.ThemeColorsTemplate
 import eu.europa.ec.resourceslogic.theme.templates.ThemeColorsTemplate.Companion.toColorScheme
@@ -45,8 +40,11 @@ class ThemeManager {
     /**
      * Defines if dynamic theming is supported. Notice that Dynamic color is available on Android 12+.
      */
-    @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.S)
-    val dynamicThemeSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    /**
+     * Whether the platform can derive a colour scheme from the user's wallpaper (Material You).
+     * True only on Android 12+; iOS has no equivalent, so it is always false there.
+     */
+    val dynamicThemeSupported: Boolean get() = platformSupportsDynamicTheming
 
     @Composable
     fun Theme(
@@ -57,14 +55,12 @@ class ThemeManager {
         val lightColorScheme = set.lightColors
         val darkColorScheme = set.darkColors
 
-        val colorScheme = when {
-            !disableDynamicTheming && dynamicThemeSupported -> {
-                when {
-                    darkTheme -> dynamicDarkColorScheme(LocalContext.current)
-                    else -> dynamicLightColorScheme(LocalContext.current)
-                }
-            }
+        val dynamicColorScheme = when {
+            disableDynamicTheming -> null
+            else -> platformDynamicColorScheme(darkTheme)
+        }
 
+        val colorScheme = dynamicColorScheme ?: when {
             darkTheme -> darkColorScheme
             else -> lightColorScheme
         }
@@ -74,7 +70,9 @@ class ThemeManager {
         MaterialTheme(
             colorScheme = colorScheme,
             shapes = set.shapes,
-            typography = set.typo,
+            // Resolved here rather than in the builder: the font faces are compose-resources, which
+            // only load from a `@Composable`.
+            typography = set.typo.toTypography(),
             content = content
         )
     }
@@ -115,7 +113,7 @@ class ThemeManager {
                 isInDarkMode = builder.isInDarkMode == true,
                 lightColors = builder.lightColors.toColorScheme(),
                 darkColors = builder.darkColors.toColorScheme(),
-                typo = builder.typography.toTypography(),
+                typo = builder.typography,
                 shapes = builder.shapes.toShapes(),
                 dimens = builder.dimensions
             )

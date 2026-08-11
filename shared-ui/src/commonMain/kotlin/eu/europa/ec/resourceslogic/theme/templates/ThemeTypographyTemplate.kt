@@ -17,6 +17,7 @@
 package eu.europa.ec.resourceslogic.theme.templates
 
 import androidx.compose.material3.Typography
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -53,6 +54,7 @@ data class ThemeTypographyTemplate(
     val labelSmall: ThemeTextStyle
 ) {
     companion object {
+        @Composable
         fun ThemeTypographyTemplate.toTypography(): Typography = Typography(
             displayLarge = displayLarge.toTextStyle(),
             displayMedium = displayMedium.toTextStyle(),
@@ -86,6 +88,7 @@ data class ThemeTextStyle(
     val textAlign: ThemeTextAlign? = null,
 ) {
     companion object {
+        @Composable
         fun ThemeTextStyle.toTextStyle(): TextStyle {
             // Transform values.
             val mColor = try {

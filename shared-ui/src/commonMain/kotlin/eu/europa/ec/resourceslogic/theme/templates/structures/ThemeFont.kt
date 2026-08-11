@@ -16,19 +16,30 @@
 
 package eu.europa.ec.resourceslogic.theme.templates.structures
 
-import androidx.annotation.FontRes
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.Font
 import eu.europa.ec.resourceslogic.theme.templates.structures.ThemeFontStyle.Companion.toFontStyle
 import eu.europa.ec.resourceslogic.theme.templates.structures.ThemeFontWeight.Companion.toFontWeight
+import org.jetbrains.compose.resources.FontResource
 
+/**
+ * A font face in the theme, as a *description* rather than a loaded [Font].
+ *
+ * [res] is a compose-resources [FontResource] rather than the Android `@FontRes` int it used to be,
+ * so the theme's typography works on both platforms — the same migration the drawable corpus went
+ * through. The consequence is that [toFont] is `@Composable`, because that is how compose-resources
+ * loads a font, which is why the typography is resolved inside `ThemeManager.Theme()` rather than
+ * eagerly in its builder.
+ */
 data class ThemeFont(
-    @param:FontRes val res: Int,
+    val res: FontResource,
     val weight: ThemeFontWeight,
     val style: ThemeFontStyle
 ) {
     companion object {
-        fun ThemeFont.toFont(): Font = Font(
-            resId = res,
+        @Composable
+        fun ThemeFont.toFont(): Font = org.jetbrains.compose.resources.Font(
+            resource = res,
             weight = weight.toFontWeight(),
             style = style.toFontStyle()
         )

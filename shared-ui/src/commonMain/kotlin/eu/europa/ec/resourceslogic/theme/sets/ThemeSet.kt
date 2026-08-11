@@ -18,14 +18,20 @@ package eu.europa.ec.resourceslogic.theme.sets
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Shapes
-import androidx.compose.material3.Typography
 import eu.europa.ec.resourceslogic.theme.templates.ThemeDimensTemplate
+import eu.europa.ec.resourceslogic.theme.templates.ThemeTypographyTemplate
 
 data class ThemeSet(
     val isInDarkMode: Boolean,
     val lightColors: ColorScheme,
     val darkColors: ColorScheme,
-    val typo: Typography,
+    /**
+     * The typography as an **unresolved template**, not a `Typography`. compose-resources loads a
+     * font from a `@Composable`, so the font faces can only be resolved inside composition —
+     * `ThemeManager.Theme()` does that. Keeping the template here (rather than one font family
+     * applied afterwards) preserves each text style's own font family exactly as before.
+     */
+    val typo: ThemeTypographyTemplate,
     val shapes: Shapes,
     val dimens: ThemeDimensTemplate
 )
