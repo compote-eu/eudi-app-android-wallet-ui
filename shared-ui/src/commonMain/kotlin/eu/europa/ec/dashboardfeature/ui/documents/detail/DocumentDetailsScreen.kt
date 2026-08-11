@@ -16,7 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.documents.detail
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -37,7 +36,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import eu.europa.ec.shared.resources.UiText
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +52,12 @@ import eu.europa.ec.dashboardfeature.util.TestTag
 import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.platformAction
+import eu.europa.ec.shared.platform.platformStringExtra
+import eu.europa.ec.shared.platform.platformStringListExtra
+import eu.europa.ec.uilogic.component.rememberPlatformContextOrNull
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.IssuerDetailsCard
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
@@ -83,11 +87,7 @@ import eu.europa.ec.uilogic.component.wrap.WrapButton
 import eu.europa.ec.uilogic.component.wrap.WrapListItems
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.extension.applyTestTag
-import eu.europa.ec.uilogic.extension.cacheUri
-import androidx.core.net.toUri
-import eu.europa.ec.uilogic.extension.getPendingUri
 import eu.europa.ec.uilogic.extension.paddingFrom
-import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.CoroutineScope
@@ -114,6 +114,23 @@ import eu.europa.ec.shared.resources.document_details_toolbar_action_remove
 fun DocumentDetailsScreen(
     navigator: AppNavigator,
     viewModel: DocumentDetailsViewModel,
+    /**
+     * The external deep link waiting to be handled, if any. Injected rather than read through a seam
+     * because reading it *consumes* it on Android (it clears the cached intent), so it must be a call
+     * the screen makes once per resume rather than a remembered value.
+     */
+    pendingDeepLink: () -> String? = { null },
+    /**
+     * Hands an external deep link to whatever flow owns it, popping back to [AppRoute] first when one
+     * is given.
+     *
+     * Injected by the host instead of hidden behind an expect/actual, because the Android
+     * implementation is `handleDeepLinkAction`, which lives in `:ui-logic` and reaches the RQES UI SDK
+     * and `EudiComponentActivity` — and `:ui-logic` depends on `:shared-ui`, so an actual in this
+     * module could not call it without inverting the dependency. The iOS default does nothing; iOS deep
+     * links arrive through the app delegate and are not wired yet.
+     */
+    onExternalDeepLink: (link: String, routeToPop: AppRoute?) -> Unit = { _, _ -> },
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
 
@@ -122,10 +139,10 @@ fun DocumentDetailsScreen(
     val bottomSheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
-    val context = LocalContext.current
+    val platformContext = rememberPlatformContextOrNull()
 
     val toolbarConfig = getToolbarConfig(
-        context = context,
+        platformContext = platformContext,
         state = state,
         onEventSend = { viewModel.setEvent(it) }
     )
@@ -144,30 +161,26 @@ fun DocumentDetailsScreen(
                 CoreActions.VCI_DYNAMIC_PRESENTATION
             ),
             callback = {
-                when (it?.action) {
-                    CoreActions.VCI_RESUME_ACTION -> it.extras?.getString("uri")?.let { link ->
+                when (it?.platformAction()) {
+                    CoreActions.VCI_RESUME_ACTION -> it.platformStringExtra("uri")?.let { link ->
                         viewModel.setEvent(Event.OnResumeIssuance(link))
                     }
 
-                    CoreActions.VCI_DYNAMIC_PRESENTATION -> it.extras?.getString("uri")
+                    CoreActions.VCI_DYNAMIC_PRESENTATION -> it.platformStringExtra("uri")
                         ?.let { link ->
                             viewModel.setEvent(Event.OnDynamicPresentation(link))
                         }
 
                     CoreActions.REVOCATION_IDS_DETAILS_EXTRA -> {
-                        val ids = it
-                            .getStringArrayListExtra(CoreActions.REVOCATION_IDS_DETAILS_EXTRA)
-                            ?.toList()
-                            ?: emptyList()
+                        val ids =
+                            it.platformStringListExtra(CoreActions.REVOCATION_IDS_DETAILS_EXTRA)
 
                         viewModel.setEvent(Event.OnRevocationStatusChanged(ids))
                     }
 
                     CoreActions.RE_ISSUANCE_WORK_REFRESH_DETAILS_ACTION -> {
-                        val ids = it
-                            .getStringArrayListExtra(CoreActions.RE_ISSUANCE_IDS_DETAILS_EXTRA)
-                            ?.toList()
-                            ?: emptyList()
+                        val ids =
+                            it.platformStringListExtra(CoreActions.RE_ISSUANCE_IDS_DETAILS_EXTRA)
 
                         viewModel.setEvent(Event.OnReIssuanceTriggered(ids))
                     }
@@ -176,15 +189,15 @@ fun DocumentDetailsScreen(
         )
     ) { paddingValues ->
         Content(
-            context = context,
+            platformContext = platformContext,
             state = state,
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
                 handleNavigationEffect(
-                    context = context,
                     navigationEffect = navigationEffect,
-                    navigator = navigator
+                    navigator = navigator,
+                    onExternalDeepLink = onExternalDeepLink,
                 )
             },
             paddingValues = paddingValues,
@@ -224,13 +237,13 @@ fun DocumentDetailsScreen(
         lifecycleOwner = LocalLifecycleOwner.current,
         lifecycleEvent = Lifecycle.Event.ON_RESUME
     ) {
-        viewModel.setEvent(Event.Init(context.getPendingUri()?.toString()))
+        viewModel.setEvent(Event.Init(pendingDeepLink()))
     }
 }
 
 @Composable
 private fun getToolbarConfig(
-    context: Context,
+    platformContext: PlatformContext?,
     state: State,
     onEventSend: (Event) -> Unit
 ): ToolbarConfig {
@@ -246,7 +259,13 @@ private fun getToolbarConfig(
                 ToolbarActionUi(
                     text = stringResource(Res.string.document_details_toolbar_action_reissue),
                     icon = null,
-                    onClick = { onEventSend(Event.IssuerDetails.OnActionButtonClicked(context)) },
+                    // Re-issuance needs the Android platform handle; there is nothing to re-issue
+                    // through on iOS, where this is null.
+                    onClick = {
+                        platformContext?.let {
+                            onEventSend(Event.IssuerDetails.OnActionButtonClicked(it))
+                        }
+                    },
                     enabled = !state.isLoading && state.issuerDetails?.documentState != IssuerDetailsCardDataUi.DocumentState.Revoked,
                     throttleClicks = true,
                 ),
@@ -266,9 +285,9 @@ private fun getToolbarConfig(
 }
 
 private fun handleNavigationEffect(
-    context: Context,
     navigationEffect: Effect.Navigation,
     navigator: AppNavigator,
+    onExternalDeepLink: (link: String, routeToPop: AppRoute?) -> Unit,
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
@@ -279,20 +298,10 @@ private fun handleNavigationEffect(
             )
         }
 
-        is Effect.Navigation.DeepLink -> {
-            val link = navigationEffect.link.toUri()
-            navigationEffect.routeToPop?.let {
-                context.cacheUri(link)
-                navigator.popBackStackTo(
-                    route = it,
-                    inclusive = false
-                )
-            } ?: handleDeepLinkAction(
-                navigator = navigator,
-                context = context,
-                uri = link
-            )
-        }
+        is Effect.Navigation.DeepLink -> onExternalDeepLink(
+            navigationEffect.link,
+            navigationEffect.routeToPop,
+        )
 
         is Effect.Navigation.Pop -> navigator.pop()
     }
@@ -301,7 +310,7 @@ private fun handleNavigationEffect(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
-    context: Context,
+    platformContext: PlatformContext?,
     state: State,
     effectFlow: Flow<Effect>,
     onEventSend: (Event) -> Unit,
@@ -337,7 +346,7 @@ private fun Content(
                             onEventSend(Event.IssuerDetails.OnExpandedStateChanged)
                         },
                         onActionButtonClick = {
-                            onEventSend(Event.IssuerDetails.OnActionButtonClicked(context))
+                            platformContext?.let { onEventSend(Event.IssuerDetails.OnActionButtonClicked(it)) }
                         }
                     )
                 }
@@ -621,7 +630,7 @@ private fun DocumentDetailsScreenPreview() {
         )
 
         Content(
-            context = LocalContext.current,
+            platformContext = rememberPlatformContextOrNull(),
             state = state,
             effectFlow = Channel<Effect>().receiveAsFlow(),
             onEventSend = {},

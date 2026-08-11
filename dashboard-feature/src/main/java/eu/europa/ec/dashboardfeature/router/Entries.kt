@@ -36,6 +36,12 @@ import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.DocumentSignRoute
 import eu.europa.ec.shared.navigation.SettingsRoute
 import eu.europa.ec.shared.navigation.TransactionDetailsRoute
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
+import eu.europa.ec.uilogic.extension.cacheUri
+import eu.europa.ec.uilogic.extension.getPendingUri
+import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
+import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -62,9 +68,25 @@ fun EntryProviderScope<NavKey>.featureDashboardEntries(navigator: AppNavigator) 
     }
 
     entry<DocumentDetailsRoute> { route ->
+        // DocumentDetailsScreen is shared, so the Android-only deep-link plumbing is supplied here
+        // rather than reached from commonMain: `handleDeepLinkAction` lives in :ui-logic, which
+        // depends on :shared-ui, so the screen cannot call it directly.
+        val context = LocalContext.current
         DocumentDetailsScreen(
-            navigator,
-            koinViewModel(parameters = { parametersOf(route.documentId) })
+            navigator = navigator,
+            viewModel = koinViewModel(parameters = { parametersOf(route.documentId) }),
+            pendingDeepLink = { context.getPendingUri()?.toString() },
+            onExternalDeepLink = { link, routeToPop ->
+                val uri = link.toUri()
+                routeToPop?.let {
+                    context.cacheUri(uri)
+                    navigator.popBackStackTo(route = it, inclusive = false)
+                } ?: handleDeepLinkAction(
+                    navigator = navigator,
+                    context = context,
+                    uri = uri,
+                )
+            },
         )
     }
 
