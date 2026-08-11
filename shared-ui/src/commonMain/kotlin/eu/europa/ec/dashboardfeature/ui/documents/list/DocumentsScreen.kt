@@ -16,7 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.documents.list
 
-import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
@@ -58,7 +57,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import eu.europa.ec.shared.resources.UiText
 import org.jetbrains.compose.resources.stringResource
@@ -85,7 +83,9 @@ import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ModalOptionUi
 import eu.europa.ec.uilogic.component.SectionTitle
 import eu.europa.ec.uilogic.component.content.BroadcastAction
+import eu.europa.ec.uilogic.component.PlatformScreenActions
 import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
@@ -114,7 +114,6 @@ import eu.europa.ec.uilogic.component.wrap.WrapListItemDefaults
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapPrimaryExtendedFab
 import eu.europa.ec.uilogic.extension.applyTestTag
-import eu.europa.ec.uilogic.extension.finish
 import eu.europa.ec.uilogic.extension.isScrollingUp
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
@@ -158,7 +157,7 @@ fun DocumentsScreen(
     onDashboardEventSent: (DashboardEvent) -> Unit,
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val platformActions = rememberPlatformScreenActions()
 
     val isBottomSheetOpen = state.isBottomSheetOpen
     val scope = rememberCoroutineScope()
@@ -186,7 +185,7 @@ fun DocumentsScreen(
     ContentScreen(
         isLoading = state.isLoading,
         navigatableAction = ScreenNavigateAction.NONE,
-        onBack = { context.finish() },
+        onBack = { platformActions.finishApp() },
         contentErrorConfig = null,
         topBar = {
             TopBar(
@@ -224,7 +223,7 @@ fun DocumentsScreen(
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(navigationEffect, navigator, context)
+                handleNavigationEffect(navigationEffect, navigator, platformActions)
             },
             scrollState = listScrollState,
             paddingValues = paddingValues,
@@ -293,10 +292,10 @@ private fun AddDocumentFab(
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
     navigator: AppNavigator,
-    context: Context,
+    platformActions: PlatformScreenActions,
 ) {
     when (navigationEffect) {
-        is Effect.Navigation.Pop -> context.finish()
+        is Effect.Navigation.Pop -> platformActions.finishApp()
         is Effect.Navigation.SwitchScreen -> {
             navigator.navigateToRoute(
                 route = navigationEffect.route,
