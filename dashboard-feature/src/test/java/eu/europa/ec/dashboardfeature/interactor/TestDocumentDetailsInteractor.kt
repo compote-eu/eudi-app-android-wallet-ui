@@ -29,6 +29,9 @@ import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.shared.wallet.WalletDocument
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimPathDomain
@@ -83,13 +86,15 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.document_details_document_credentials_info_text
 
 class TestDocumentDetailsInteractor {
 
     @get:Rule
     val coroutineRule = CoroutineTestRule()
+
+    @Mock
+    private lateinit var strings: StringCatalog
 
     @Mock
     private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
@@ -126,17 +131,27 @@ class TestDocumentDetailsInteractor {
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
 
+        // The REAL Android bridge, wired into the shared interactor — which is exactly the pair that
+        // ships on Android. Keeping it whole means all 43 cases below still assert end-to-end
+        // behaviour against the same wallet-core stubs, instead of being weakened into
+        // "the interactor delegates" checks on one side and bridge unit tests on the other.
         interactor = DocumentDetailsInteractorImpl(
-            walletCoreDocumentsController = walletCoreDocumentsController,
+            strings = strings,
             walletEngine = walletEngine,
-            deviceAuthenticationInteractor = deviceAuthenticationInteractor,
-            resourceProvider = resourceProvider,
-            uuidProvider = uuidProvider,
-            configLogic = configLogic,
-            prefKeys = prefKeys,
+            platform = AndroidDocumentDetailsPlatformBridge(
+                walletCoreDocumentsController = walletCoreDocumentsController,
+                walletEngine = walletEngine,
+                deviceAuthenticationInteractor = deviceAuthenticationInteractor,
+                resourceProvider = resourceProvider,
+                uuidProvider = uuidProvider,
+                configLogic = configLogic,
+                prefKeys = prefKeys,
+            ),
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
+        // The interactor's own failures now resolve through the shared string catalog.
+        whenever(strings[Res.string.generic_error_message]).thenReturn(mockedGenericErrorMessage)
         whenever(resourceProvider.getLocale()).thenReturn(mockedDefaultLocale)
         whenever(configLogic.forcePidActivation).thenReturn(true)
     }

@@ -37,7 +37,6 @@ private val dtoDateFormatters = listOf(
 )
 
 private const val DAY_MONTH_YEAR_SHORT_PATTERN = "dd MMM yyyy"
-const val DAY_MONTH_YEAR_FULL_PATTERN = "dd MMMM yyyy"
 const val FULL_DATETIME_PATTERN = "dd MMM yyyy hh:mm a"
 const val FULL_DATETIME_PATTERN_24H_SEPARATED_BY_DASH = "dd MMMM yyyy - HH:mm"
 private const val HOURS_MINUTES_DATETIME_PATTERN = "hh:mm a"

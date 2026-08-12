@@ -3,10 +3,14 @@ package eu.europa.ec.shared.ui.spike
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.multipaz.createIosWalletEngine
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorPartialState
 import eu.europa.ec.shared.wallet.multipaz.spike.seedIosWalletFixture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.koin.mp.KoinPlatform
 
 /**
  * SPIKE: calls a [WalletEngine] from Kotlin coroutine code, so a Swift implementation can be driven
@@ -69,6 +73,33 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             }
 
             onResult("revoked=${engine.getRevokedDocumentIds()} (revocation not wired up on iOS)")
+
+            // The details path end to end — bridge builds the claim tree, shared interactor turns it
+            // into the screen's state. Verified here because `simctl` cannot synthesise the tap that
+            // would open the screen.
+            cheap.firstOrNull()?.id?.let { documentId ->
+                val details = KoinPlatform.getKoin().get<DocumentDetailsInteractor>()
+                details.getDocumentDetails(documentId, wasIssuerDetailsExpanded = false)
+                    .first()
+                    .let { state ->
+                        onResult(
+                            when (state) {
+                                is DocumentDetailsInteractorPartialState.Success ->
+                                    "getDocumentDetails -> ${state.documentDetailsDomain.docName} " +
+                                            "claims=${state.documentDetailsDomain.documentClaims.size} " +
+                                            "state=${state.issuerDetails?.documentState} " +
+                                            "issuer=${state.issuerDetails?.issuerName} " +
+                                            "bookmarked=${state.documentIsBookmarked} " +
+                                            "counter=${state.documentCredentialsInfoUi?.title} " +
+                                            "firstClaim=${state.documentDetailsDomain.documentClaims.firstOrNull()?.displayTitle}"
+
+                                is DocumentDetailsInteractorPartialState.Failure ->
+                                    "getDocumentDetails FAILED: ${state.error}"
+                            }
+                        )
+                    }
+            }
+
             onResult("OK")
         } catch (t: Throwable) {
             onResult("FAILED: ${t::class.simpleName}: ${t.message}")

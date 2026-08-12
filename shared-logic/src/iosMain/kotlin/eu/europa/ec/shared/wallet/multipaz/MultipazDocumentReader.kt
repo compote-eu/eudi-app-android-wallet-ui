@@ -80,6 +80,37 @@ private suspend fun SecureAreaBoundCredential.toStoredCredential() = StoredCrede
 )
 
 /**
+ * One stored mdoc data element: its namespace and its rendered value. Richer than the flat
+ * `WalletDocument.claims` map, which drops the namespace — the details screen needs it, because
+ * `ClaimDomain` carries the namespace in its path.
+ */
+data class StoredMdocClaim(
+    val nameSpace: String?,
+    val value: String,
+)
+
+/**
+ * The document's mdoc claims keyed by data-element identifier, each with its namespace.
+ *
+ * mdoc only, like [readClaims], and for the same reason: SD-JWT VC parsing needs the JVM-only
+ * `eudi-lib-jvm-sdjwt-kt`.
+ */
+internal suspend fun Document.readNamespacedClaims(): Map<String, StoredMdocClaim> {
+    val mdoc = getCertifiedCredentials()
+        .filterIsInstance<SecureAreaBoundCredential>()
+        .filterIsInstance<MdocCredential>()
+        .firstOrNull()
+        ?: return emptyMap()
+
+    return mdoc.getClaims(documentTypeRepository = null).associate { claim ->
+        claim.dataElementName to StoredMdocClaim(
+            nameSpace = claim.namespaceName,
+            value = claim.value.toClaimString(),
+        )
+    }
+}
+
+/**
  * The document's top-level claims, flattened to `identifier -> value` across namespaces, matching
  * `WalletDocument.claims` on Android (which keys mdoc claims by `dataElementName`).
  *

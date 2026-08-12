@@ -41,12 +41,20 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import java.util.Locale
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
-class DocumentDetailsInteractorImpl(
+/**
+ * Android's [DocumentDetailsPlatformBridge]: the claim tree from wallet-core's nested `DocumentClaim`
+ * structure, plus deletion, re-issuance and the biometric prompt.
+ *
+ * These bodies are unchanged from when they lived in `DocumentDetailsInteractorImpl` — only the seam
+ * around them moved, so Android's claim rendering is byte-for-byte what it was.
+ */
+class AndroidDocumentDetailsPlatformBridge(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
     private val walletEngine: WalletEngine,
     private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
@@ -54,79 +62,45 @@ class DocumentDetailsInteractorImpl(
     private val uuidProvider: UuidProvider,
     private val configLogic: ConfigLogic,
     private val prefKeys: PrefKeys,
-) : DocumentDetailsInteractor {
+) : DocumentDetailsPlatformBridge {
 
     private val genericErrorMsg
         get() = resourceProvider.genericErrorMessage()
 
-    override fun getDocumentDetails(
-        documentId: DocumentId,
-        wasIssuerDetailsExpanded: Boolean?,
-    ): Flow<DocumentDetailsInteractorPartialState> =
-        flow {
-            val issuedDocument =
-                walletCoreDocumentsController.getDocumentById(documentId = documentId)
-                        as? IssuedDocument
+    override suspend fun getDocumentDetails(
+        documentId: String,
+        locale: String,
+    ): PlatformDocumentDetails? {
+        val issuedDocument = walletCoreDocumentsController
+            .getDocumentById(documentId = documentId) as? IssuedDocument
+            ?: return null
 
-            issuedDocument?.let { safeIssuedDocument ->
-                val documentDetailsDomainResult =
-                    DocumentDetailsTransformer.transformToDocumentDetailsDomain(
-                        document = safeIssuedDocument,
-                        resourceProvider = resourceProvider,
-                        uuidProvider = uuidProvider
-                    )
-                val documentDetailsDomain = documentDetailsDomainResult.getOrThrow()
+        val documentDetailsDomain = DocumentDetailsTransformer.transformToDocumentDetailsDomain(
+            document = issuedDocument,
+            resourceProvider = resourceProvider,
+            uuidProvider = uuidProvider,
+        ).getOrThrow()
 
-                val documentCredentialsInfo = if (prefKeys.getShowBatchIssuanceCounter()) {
-                    createDocumentCredentialsInfoUi(
-                        document = safeIssuedDocument,
-                        resourceProvider = resourceProvider
-                    )
-                } else {
-                    null
-                }
+        val userLocale = Locale.forLanguageTag(locale)
+        val issuerDisplay = issuedDocument.localizedIssuerMetadata(userLocale)
 
-                val userLocale = resourceProvider.getLocale()
-                val issuerName = safeIssuedDocument.localizedIssuerMetadata(userLocale)?.name
-                val issuerLogo = safeIssuedDocument.localizedIssuerMetadata(userLocale)?.logo
-
-                val documentIsBookmarked =
-                    walletEngine.isDocumentBookmarked(documentId)
-
-                val documentIsRevoked = walletEngine.isDocumentRevoked(documentId)
-                val issuerDetails = IssuerDetailsCardDataUi(
-                    issuerName = issuerName,
-                    issuerLogo = issuerLogo?.uri?.toString(),
-                    documentState = when {
-                        documentIsRevoked -> IssuerDetailsCardDataUi.DocumentState.Revoked
-
-                        safeIssuedDocument.isExpired() -> IssuerDetailsCardDataUi.DocumentState.Expired(
-                            issuanceDate = documentDetailsDomain.documentIssuanceDate,
-                            expirationDate = documentDetailsDomain.documentExpirationDate
-                        )
-
-                        else -> IssuerDetailsCardDataUi.DocumentState.Issued(
-                            issuanceDate = documentDetailsDomain.documentIssuanceDate,
-                            expirationDate = documentDetailsDomain.documentExpirationDate
-                        )
-                    },
-                    isExpanded = wasIssuerDetailsExpanded ?: false
+        return PlatformDocumentDetails(
+            documentDetailsDomain = documentDetailsDomain,
+            issuerName = issuerDisplay?.name,
+            issuerLogoUri = issuerDisplay?.logo?.uri?.toString(),
+            isExpired = issuedDocument.isExpired(),
+            credentialsInfo = if (prefKeys.getShowBatchIssuanceCounter()) {
+                createDocumentCredentialsInfoUi(
+                    document = issuedDocument,
+                    resourceProvider = resourceProvider,
                 )
+            } else {
+                null
+            },
+        )
+    }
 
-                emit(
-                    DocumentDetailsInteractorPartialState.Success(
-                        issuerDetails = issuerDetails,
-                        documentDetailsDomain = documentDetailsDomain,
-                        documentIsBookmarked = documentIsBookmarked,
-                        documentCredentialsInfoUi = documentCredentialsInfo,
-                    )
-                )
-            } ?: emit(DocumentDetailsInteractorPartialState.Failure(error = genericErrorMsg))
-        }.safeAsync {
-            DocumentDetailsInteractorPartialState.Failure(
-                error = it.localizedMessage ?: genericErrorMsg
-            )
-        }
+    override fun localeTag(): String = resourceProvider.getLocale().toLanguageTag()
 
     override fun deleteDocument(
         documentId: DocumentId
@@ -185,22 +159,6 @@ class DocumentDetailsInteractorImpl(
             DocumentDetailsInteractorDeleteDocumentPartialState.Failure(
                 errorMessage = it.localizedMessage ?: genericErrorMsg
             )
-        }
-
-    override fun storeBookmark(documentId: DocumentId): Flow<DocumentDetailsInteractorStoreBookmarkPartialState> =
-        flow {
-            walletEngine.storeBookmark(documentId)
-            emit(DocumentDetailsInteractorStoreBookmarkPartialState.Success(documentId))
-        }.safeAsync {
-            DocumentDetailsInteractorStoreBookmarkPartialState.Failure
-        }
-
-    override fun deleteBookmark(documentId: DocumentId): Flow<DocumentDetailsInteractorDeleteBookmarkPartialState> =
-        flow {
-            walletEngine.deleteBookmark(documentId)
-            emit(DocumentDetailsInteractorDeleteBookmarkPartialState.Success)
-        }.safeAsync {
-            DocumentDetailsInteractorDeleteBookmarkPartialState.Failure
         }
 
     override fun reIssueDocument(

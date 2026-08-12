@@ -27,6 +27,12 @@ import kotlin.time.Instant
 /** Previous DAY_MONTH_YEAR_SHORT_PATTERN — the default when no pattern is supplied. */
 const val DEFAULT_DATE_PATTERN: String = "dd MMM yyyy"
 
+/**
+ * The long form the document-details screen uses. Moved here from `:business-logic`'s `DateUtils` —
+ * same package, so no consumer changed — because the shared details path needs it on both platforms.
+ */
+const val DAY_MONTH_YEAR_FULL_PATTERN: String = "dd MMMM yyyy"
+
 /** Previous LocaleUtils.PROJECT_DEFAULT_LOCALE. */
 const val DEFAULT_LANGUAGE_TAG: String = "en-GB"
 

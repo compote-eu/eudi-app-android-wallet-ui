@@ -86,6 +86,12 @@ internal class MultipazWalletEngine(
         deleteBookmark(documentId)
     }
 
+    /** The document's mdoc claims with their namespaces, for the details screen. */
+    suspend fun getNamespacedClaims(documentId: String): Map<String, StoredMdocClaim> =
+        ownDocuments().firstOrNull { it.identifier == documentId }
+            ?.readNamespacedClaims()
+            ?: emptyMap()
+
     //region bookmarks
 
     override suspend fun isDocumentBookmarked(documentId: String): Boolean =

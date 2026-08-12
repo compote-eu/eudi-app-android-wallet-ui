@@ -41,6 +41,10 @@ class IosWalletEngine : WalletEngine {
     suspend fun deleteDocument(documentId: String): Result<Unit> =
         (delegate() as MultipazWalletEngine).deleteDocument(documentId)
 
+    /** The document's mdoc claims with namespaces; see `StoredMdocClaim`. */
+    suspend fun getNamespacedClaims(documentId: String): Map<String, StoredMdocClaim> =
+        (delegate() as MultipazWalletEngine).getNamespacedClaims(documentId)
+
     /** Whether the wallet holds any document at all, which deletion needs in order to report which. */
     suspend fun hasAnyDocument(): Boolean = getAllDocuments().isNotEmpty()
 

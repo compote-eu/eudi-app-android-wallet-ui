@@ -18,14 +18,19 @@ package eu.europa.ec.shared.ui.di
 
 import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.businesslogic.validator.FilterValidatorImpl
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
 import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
+import org.koin.core.annotation.Factory
 import org.koin.core.annotation.Single
 
 /**
@@ -69,6 +74,28 @@ fun provideIosDocumentsInteractor(
     strings = strings,
     walletEngine = walletEngine,
     filterValidator = filterValidator,
+    platform = platform,
+)
+
+@Single
+fun provideIosDeepLinkClassifier(): DeepLinkClassifier = IosDeepLinkClassifier()
+
+@Single
+fun provideIosDocumentDetailsPlatformBridge(engine: IosWalletEngine): DocumentDetailsPlatformBridge =
+    IosDocumentDetailsPlatformBridge(engine = engine)
+
+/**
+ * `@Factory`, not `@Single`, mirroring Android: the details interactor is scoped to one document's
+ * screen, so a new one per view-model is correct.
+ */
+@Factory
+fun provideIosDocumentDetailsInteractor(
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
+    platform: DocumentDetailsPlatformBridge,
+): DocumentDetailsInteractor = DocumentDetailsInteractorImpl(
+    strings = strings,
+    walletEngine = walletEngine,
     platform = platform,
 )
 

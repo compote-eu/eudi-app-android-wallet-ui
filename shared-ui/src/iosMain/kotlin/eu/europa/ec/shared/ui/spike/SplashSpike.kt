@@ -65,12 +65,16 @@ import androidx.compose.ui.window.ComposeUIViewController
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.ic_logo_lockup_mark
 import eu.europa.ec.shared.resources.ic_logo_lockup_wordmark
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsScreen
+import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsViewModel
 import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsScreen
 import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsViewModel
 import eu.europa.ec.dashboardfeature.ui.home.HomeScreen
@@ -123,6 +127,22 @@ fun SplashSpikeViewController(): UIViewController {
                         SplashScreen(
                             navigator = navigator,
                             viewModel = remember { SplashViewModel(interactor) },
+                        )
+                    }
+                    entry<DocumentDetailsRoute> { route ->
+                        // The shared details screen. The two deep-link lambdas keep their no-op
+                        // defaults: iOS deep links arrive through the app delegate and are not wired.
+                        val detailsInteractor =
+                            remember { KoinPlatform.getKoin().get<DocumentDetailsInteractor>() }
+                        DocumentDetailsScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                DocumentDetailsViewModel(
+                                    documentDetailsInteractor = detailsInteractor,
+                                    deepLinkClassifier = KoinPlatform.getKoin().get(),
+                                    documentId = route.documentId,
+                                )
+                            },
                         )
                     }
                     entry<DashboardRoute> {

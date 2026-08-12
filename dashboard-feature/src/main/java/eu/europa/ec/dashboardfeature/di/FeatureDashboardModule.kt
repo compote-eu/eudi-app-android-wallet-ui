@@ -30,7 +30,9 @@ import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
+import eu.europa.ec.dashboardfeature.interactor.AndroidDocumentDetailsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
@@ -144,8 +146,12 @@ fun provideDocumentSignInteractor(
     resourceProvider,
 )
 
+/**
+ * Android's half of the details feature: the wallet-core claim tree, deletion, re-issuance and the
+ * biometric prompt.
+ */
 @Factory
-fun provideDocumentDetailsInteractor(
+fun provideDocumentDetailsPlatformBridge(
     walletCoreDocumentsController: WalletCoreDocumentsController,
     walletEngine: WalletEngine,
     deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
@@ -153,15 +159,27 @@ fun provideDocumentDetailsInteractor(
     uuidProvider: UuidProvider,
     configLogic: ConfigLogic,
     prefKeys: PrefKeys,
+): DocumentDetailsPlatformBridge =
+    AndroidDocumentDetailsPlatformBridge(
+        walletCoreDocumentsController = walletCoreDocumentsController,
+        walletEngine = walletEngine,
+        deviceAuthenticationInteractor = deviceAuthenticationInteractor,
+        resourceProvider = resourceProvider,
+        uuidProvider = uuidProvider,
+        configLogic = configLogic,
+        prefKeys = prefKeys,
+    )
+
+@Factory
+fun provideDocumentDetailsInteractor(
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
+    platform: DocumentDetailsPlatformBridge,
 ): DocumentDetailsInteractor =
     DocumentDetailsInteractorImpl(
-        walletCoreDocumentsController,
-        walletEngine,
-        deviceAuthenticationInteractor,
-        resourceProvider,
-        uuidProvider,
-        configLogic,
-        prefKeys,
+        strings = strings,
+        walletEngine = walletEngine,
+        platform = platform,
     )
 
 @Factory
