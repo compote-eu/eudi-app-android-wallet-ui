@@ -18,8 +18,8 @@ package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuItemUi
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.dashboard_side_menu_option_change_pin
 import eu.europa.ec.shared.resources.dashboard_side_menu_option_settings
 import eu.europa.ec.uilogic.component.AppIcons
@@ -31,7 +31,7 @@ import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 // Phase 2: the Android implementation of the (now KMP) `DashboardInteractor` contract, which moved to
 // :shared-ui/commonMain with `DashboardViewModel`.
 class DashboardInteractorImpl(
-    private val resourceProvider: ResourceProvider,
+    private val strings: StringCatalog,
 ) : DashboardInteractor {
 
     override fun getSideMenuOptions(): List<SideMenuItemUi> {
@@ -42,7 +42,7 @@ class DashboardInteractorImpl(
                     data = ListItemDataUi(
                         itemId = SideMenuTypeUi.CHANGE_PIN.itemId,
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(Res.string.dashboard_side_menu_option_change_pin)
+                            text = strings.get(Res.string.dashboard_side_menu_option_change_pin)
                         ),
                         leadingContentData = ListItemLeadingContentDataUi.Icon(
                             iconData = AppIcons.ChangePin
@@ -60,7 +60,7 @@ class DashboardInteractorImpl(
                     data = ListItemDataUi(
                         itemId = SideMenuTypeUi.SETTINGS.itemId,
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(Res.string.dashboard_side_menu_option_settings)
+                            text = strings.get(Res.string.dashboard_side_menu_option_settings)
                         ),
                         leadingContentData = ListItemLeadingContentDataUi.Icon(
                             iconData = AppIcons.Settings

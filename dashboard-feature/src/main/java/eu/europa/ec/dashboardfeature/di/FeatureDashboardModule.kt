@@ -61,9 +61,9 @@ class FeatureDashboardModule
 
 @Factory
 fun provideDashboardInteractor(
-    resourceProvider: ResourceProvider,
+    strings: StringCatalog,
 ): DashboardInteractor = DashboardInteractorImpl(
-    resourceProvider,
+    strings = strings,
 )
 
 @Factory

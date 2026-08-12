@@ -54,7 +54,11 @@ import eu.europa.ec.uilogic.component.wrap.WrapListItem
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun SideMenuScreen(
+/**
+ * Not `internal`: `DashboardScreen` still lives in `:dashboard-feature` and renders this. It can go back
+ * to module-internal once that screen is shared too.
+ */
+fun SideMenuScreen(
     state: State,
     onEventSent: (Event) -> Unit,
 ) {

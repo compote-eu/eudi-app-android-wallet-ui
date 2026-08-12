@@ -17,7 +17,7 @@
 package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.dashboard_side_menu_option_change_pin
 import eu.europa.ec.shared.resources.dashboard_side_menu_option_settings
@@ -34,11 +34,12 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 class TestDashboardInteractor {
 
     @Mock
-    private lateinit var resourceProvider: ResourceProvider
+    private lateinit var strings: StringCatalog
 
     private lateinit var interactor: DashboardInteractor
 
@@ -49,7 +50,7 @@ class TestDashboardInteractor {
         closeable = MockitoAnnotations.openMocks(this)
 
         interactor = DashboardInteractorImpl(
-            resourceProvider = resourceProvider,
+            strings = strings,
         )
     }
 
@@ -62,7 +63,7 @@ class TestDashboardInteractor {
     @Test
     fun `When getSideMenuOptions is called, Then it returns two items with correct data`() {
         // Arrange
-        mockStringsNeededForGetSideMenuOptions(resourceProvider)
+        mockStringsNeededForGetSideMenuOptions()
 
         // When
         val sideMenuItems = interactor.getSideMenuOptions()
@@ -94,22 +95,17 @@ class TestDashboardInteractor {
         assertEquals(AppIcons.KeyboardArrowRight, trailingIcon2.iconData)
 
         // Verify that getString was called exactly once per resource ID
-        verify(resourceProvider, times(1))
-            .getString(Res.string.dashboard_side_menu_option_change_pin)
-        verify(resourceProvider, times(1))
-            .getString(Res.string.dashboard_side_menu_option_settings)
+        verify(strings, times(1)).get(Res.string.dashboard_side_menu_option_change_pin)
+        verify(strings, times(1)).get(Res.string.dashboard_side_menu_option_settings)
     }
     //endregion
 
     //region Mock Calls
-    private fun mockStringsNeededForGetSideMenuOptions(resourcesProvider: ResourceProvider) {
-        mockResourceProviderStrings(
-            resourcesProvider,
-            listOf(
-                Res.string.dashboard_side_menu_option_change_pin to changePinText,
-                Res.string.dashboard_side_menu_option_settings to settingsText,
-            )
-        )
+    private fun mockStringsNeededForGetSideMenuOptions() {
+        whenever(strings.get(Res.string.dashboard_side_menu_option_change_pin))
+            .thenReturn(changePinText)
+        whenever(strings.get(Res.string.dashboard_side_menu_option_settings))
+            .thenReturn(settingsText)
     }
     //endregion
 
