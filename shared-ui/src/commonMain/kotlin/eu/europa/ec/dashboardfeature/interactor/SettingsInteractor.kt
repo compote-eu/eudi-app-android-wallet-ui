@@ -27,19 +27,45 @@
 // the implementation needs now.
 package eu.europa.ec.dashboardfeature.interactor
 
-import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
+import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.platform.PlatformIntent
 
-interface SettingsInteractor : BiometricInteractor {
+/**
+ * No longer `: BiometricInteractor`.
+ *
+ * The inheritance was convenience — `SettingsInteractorImpl` satisfied it with
+ * `BiometricInteractor by biometricInteractor` — but it made the settings screen depend on the
+ * *whole* authentication contract, PIN validation and lockout throttling included. That is 11 members
+ * of which this screen uses three, and it would have forced iOS (which has no authentication layer at
+ * all yet) to answer questions about PIN lockout in order to render a settings list.
+ *
+ * So the three that are actually used are declared here — same names and signatures, so nothing
+ * calling them had to change — and [SettingsPlatformBridge] supplies them per platform.
+ */
+interface SettingsInteractor {
     fun getAppVersion(): String
     fun getChangelogUrl(): String?
 
     /**
-     * An intent that shares the collected log files, or null when there are none to share.
+     * An intent that shares the collected log files, or null when there are none to share — which on
+     * iOS is *always*, since a `PlatformIntent` cannot be constructed there at all.
      */
     fun getLogShareIntent(): PlatformIntent?
     suspend fun getSettingsItemsUi(changelogUrl: String?): List<SettingsItemUi>
     suspend fun toggleBiometricsAuthentication()
     suspend fun toggleShowBatchIssuanceCounter()
+
+    // Previously inherited from BiometricInteractor; see the note above.
+    fun getBiometricsAvailability(): BiometricsAvailability
+
+    fun authenticateWithBiometrics(
+        context: PlatformContext,
+        notifyOnAuthenticationFailure: Boolean,
+        listener: (BiometricsAuthenticate) -> Unit
+    )
+
+    fun launchBiometricSystemScreen()
 }

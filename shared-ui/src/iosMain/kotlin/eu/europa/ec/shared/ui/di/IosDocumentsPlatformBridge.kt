@@ -68,10 +68,12 @@ internal class IosDocumentsPlatformBridge(
         NSLocale.currentLocale.languageCode
 
     /**
-     * True, matching the Android default: the counter is informative and iOS has no preferences store
-     * wired up yet to override it.
+     * The user's own choice, from the same store the settings screen's switch writes to — so flipping
+     * that switch changes what these rows show, as on Android. Defaults to true, as Android's
+     * preference does.
      */
-    override suspend fun showBatchIssuanceCounter(): Boolean = true
+    override suspend fun showBatchIssuanceCounter(): Boolean =
+        IosPreferences.showBatchIssuanceCounter()
 
     override fun deleteDocument(
         documentId: String,

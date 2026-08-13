@@ -25,6 +25,7 @@ import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import eu.europa.ec.shared.platform.PlatformIntent
 
 /**
  * Resolved from `LocalContext` rather than provided by the host, which keeps the seam self-contained —
@@ -70,6 +71,14 @@ actual fun rememberPlatformScreenActions(): PlatformScreenActions {
                 } catch (_: Exception) {
                     // Same swallow as `:ui-logic`'s `Context.openUrl`: no handler for the scheme, or
                     // an unparseable url, and nothing the screen could do about either.
+                }
+            }
+
+            override fun shareViaChooser(intent: PlatformIntent, title: String?) {
+                try {
+                    context.startActivity(Intent.createChooser(intent, title))
+                } catch (_: Exception) {
+                    // As `:ui-logic`'s `Context.openIntentChooser` did: nothing to share to.
                 }
             }
         }

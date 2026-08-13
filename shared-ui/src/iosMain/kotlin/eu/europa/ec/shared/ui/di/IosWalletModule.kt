@@ -30,6 +30,9 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
+import eu.europa.ec.dashboardfeature.interactor.SettingsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
 import eu.europa.ec.shared.resources.StringResolver
@@ -130,6 +133,22 @@ fun provideIosTransactionsInteractor(
 @Factory
 fun provideIosDashboardInteractor(strings: StringCatalog): DashboardInteractor =
     DashboardInteractorImpl(strings = strings)
+
+/**
+ * iOS's settings screen. The bridge is where the platform's honest answers live — no biometrics, no
+ * logs, no changelog, but a real app version and a real batch-counter preference.
+ */
+@Single
+fun provideIosSettingsPlatformBridge(): SettingsPlatformBridge = IosSettingsPlatformBridge()
+
+@Factory
+fun provideIosSettingsInteractor(
+    strings: StringCatalog,
+    platform: SettingsPlatformBridge,
+): SettingsInteractor = SettingsInteractorImpl(
+    strings = strings,
+    platform = platform,
+)
 
 @Single
 fun provideIosHomeInteractor(

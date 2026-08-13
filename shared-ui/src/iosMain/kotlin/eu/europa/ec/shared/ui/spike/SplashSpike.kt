@@ -73,7 +73,11 @@ import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsScreen
 import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsViewModel
 import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsViewModel
 import eu.europa.ec.dashboardfeature.ui.home.HomeViewModel
+import eu.europa.ec.dashboardfeature.ui.settings.SettingsScreen
+import eu.europa.ec.dashboardfeature.ui.settings.SettingsViewModel
 import eu.europa.ec.dashboardfeature.ui.transactions.list.TransactionsViewModel
+import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
+import eu.europa.ec.shared.navigation.SettingsRoute
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
 import eu.europa.ec.resourceslogic.theme.ThemeManager
 import eu.europa.ec.shared.ui.di.SharedUiModule
@@ -168,6 +172,16 @@ fun SplashSpikeViewController(): UIViewController {
                             transactionsViewModel = remember {
                                 TransactionsViewModel(koin.get<TransactionsInteractor>())
                             },
+                        )
+                    }
+                    entry<SettingsRoute> {
+                        // Reached from the dashboard's side menu. The shared screen; iOS's own
+                        // `SettingsPlatformBridge` decides which rows it can honestly offer.
+                        val settingsInteractor =
+                            remember { KoinPlatform.getKoin().get<SettingsInteractor>() }
+                        SettingsScreen(
+                            navigator = navigator,
+                            viewModel = remember { SettingsViewModel(settingsInteractor) },
                         )
                     }
                 }

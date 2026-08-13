@@ -14,11 +14,13 @@
  * governing permissions and limitations under the Licence.
  */
 
-// SettingsViewModel. Everything that does not need a `PlatformContext` is here; the `ItemClicked`
-// branches carry one, so they live in SettingsViewModelAndroidTest.
+// SettingsViewModel. Everything that does not need an inhabited `PlatformContext` is here; the
+// `ItemClicked` branches that carry one live in SettingsViewModelAndroidTest — but the *null*-context
+// branches are here, since that is the iOS case.
 //
-// `FakeBiometricInteractor` below is shared with BiometricViewModelTest — `SettingsInteractor`
-// extends `BiometricInteractor`, so one fake covers both view-models.
+// `FakeBiometricInteractor` below is shared with BiometricViewModelTest. `SettingsInteractor` no longer
+// extends `BiometricInteractor` — it declares the three members the settings screen actually uses — and
+// this fake still satisfies both contracts from one place, since those three have the same signatures.
 package eu.europa.ec.dashboardfeature.ui.settings
 
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
@@ -241,6 +243,44 @@ class SettingsViewModelTest {
             // No effect here: the interactor owns the Android intent.
             assertEquals(1, fake.systemScreenLaunches)
         }
+
+    @Test
+    fun clicking_biometrics_without_a_host_context_does_nothing() = runTest(mainDispatcher) {
+        // iOS: `PlatformContext` is uninhabited, so the screen has none to send. The row is not shown
+        // there either — the interactor omits it — but the event is still expressible, and it must not
+        // raise a prompt or emit anything.
+        val fake = FakeSettingsInteractor()
+        val viewModel = SettingsViewModel(fake)
+        advanceUntilIdle()
+
+        val effect = async { viewModel.effect.first() }
+        viewModel.setEvent(
+            Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context = null)
+        )
+        advanceUntilIdle()
+
+        assertEquals(0, fake.authPrompts)
+        // Nothing was emitted, so a following event is what the collector must see.
+        viewModel.setEvent(Event.Pop)
+        advanceUntilIdle()
+        assertIs<Effect.Navigation.Pop>(effect.await())
+    }
+
+    @Test
+    fun the_other_rows_stay_clickable_without_a_host_context() = runTest(mainDispatcher) {
+        // The reason the context is nullable rather than the whole click being gated on it: the batch
+        // counter is exactly the row iOS *can* use.
+        val fake = FakeSettingsInteractor()
+        val viewModel = SettingsViewModel(fake)
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.ItemClicked(SettingsMenuItemType.SHOW_BATCH_ISSUANCE_COUNTER, context = null)
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, fake.batchCounterToggles)
+    }
 
     @Test
     fun every_menu_item_type_is_rendered() = runTest(mainDispatcher) {

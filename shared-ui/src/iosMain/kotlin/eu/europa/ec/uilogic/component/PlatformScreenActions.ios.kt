@@ -18,12 +18,13 @@ package eu.europa.ec.uilogic.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import eu.europa.ec.shared.platform.PlatformIntent
 import platform.Foundation.NSURL
 import platform.UIKit.UIApplication
 
 /**
- * Three of the four actions are inert on iOS, and each for its own reason rather than because the work
- * is outstanding:
+ * All but one of the actions are inert on iOS, and each for its own reason rather than because the
+ * work is outstanding:
  *
  * - **finishApp** — an iOS app does not exit itself. Apple's HIG treats programmatic termination as a
  *   crash from the user's point of view, and `exit()` is grounds for App Store rejection. The user
@@ -62,6 +63,14 @@ actual fun rememberPlatformScreenActions(): PlatformScreenActions = remember {
                 completionHandler = null,
             )
         }
+
+        /**
+         * Unreachable rather than unimplemented: [PlatformIntent] has no iOS constructor, so no value
+         * can ever be passed in. If iOS ever needs a share sheet it will be
+         * `UIActivityViewController` over a payload type of its own, not this.
+         */
+        override fun shareViaChooser(intent: PlatformIntent, title: String?) =
+            log("shareViaChooser")
 
         private fun log(action: String) =
             println("$TAG: $action requested, which iOS does not support — ignoring.")

@@ -6,6 +6,8 @@ import eu.europa.ec.shared.wallet.multipaz.createIosWalletEngine
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorPartialState
+import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
+import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionInteractorGetTransactionsPartialState
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
@@ -139,6 +141,29 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                     )
                 }
             onResult("dashboard tab titles: ${BottomNavigationItem.entries.joinToString { strings.get(it.titleRes) }}")
+
+            // The settings screen, two taps deep behind the side menu and so unreachable by
+            // screenshot. What is worth seeing is that the list is honest — one row, because iOS has
+            // no biometrics, no log files and no changelog URL — and that the row's preference is
+            // REAL: toggling it moves the value the *documents* list reads, which is the whole point
+            // of both bridges going through `IosPreferences`.
+            val settings = KoinPlatform.getKoin().get<SettingsInteractor>()
+            val documents = KoinPlatform.getKoin().get<DocumentsPlatformBridge>()
+            onResult(
+                "settings appVersion='${settings.getAppVersion()}' " +
+                        "changelogUrl=${settings.getChangelogUrl()} " +
+                        "rows=${settings.getSettingsItemsUi(settings.getChangelogUrl()).map { it.type }}"
+            )
+
+            val before = documents.showBatchIssuanceCounter()
+            settings.toggleShowBatchIssuanceCounter()
+            val afterToggle = documents.showBatchIssuanceCounter()
+            settings.toggleShowBatchIssuanceCounter()
+            onResult(
+                "batch counter preference as the documents list sees it: " +
+                        "$before -> toggled -> $afterToggle -> restored -> " +
+                        "${documents.showBatchIssuanceCounter()}"
+            )
 
             onResult("OK")
         } catch (t: Throwable) {

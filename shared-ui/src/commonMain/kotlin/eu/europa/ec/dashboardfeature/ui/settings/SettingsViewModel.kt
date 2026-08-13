@@ -54,9 +54,13 @@ sealed class Event : ViewEvent {
     data object Init : Event()
     data object Pop : Event()
     data object LaunchBiometricSystemScreen : Event()
+    /**
+     * @param context the host context, or null where there is none — iOS, whose [PlatformContext] is
+     * uninhabited. Only the biometrics row needs it, so the other rows stay clickable there.
+     */
     data class ItemClicked(
         val itemType: SettingsMenuItemType,
-        val context: PlatformContext
+        val context: PlatformContext?
     ) : Event()
 }
 
@@ -134,12 +138,16 @@ class SettingsViewModel(
 
     private fun handleSettingsMenuItemClicked(
         itemType: SettingsMenuItemType,
-        context: PlatformContext,
+        context: PlatformContext?,
     ) {
         when (itemType) {
-            SettingsMenuItemType.BIOMETRICS_AUTHENTICATION -> {
+            // Without a host context there is no prompt to raise, so the row does nothing. It is not
+            // shown in that case either — a platform with no biometrics reports
+            // `BiometricsAvailability.Failure` and the interactor omits the row — so this is the
+            // belt-and-braces half of that.
+            SettingsMenuItemType.BIOMETRICS_AUTHENTICATION -> context?.let { hostContext ->
                 when (val availability = settingsInteractor.getBiometricsAvailability()) {
-                    is BiometricsAvailability.CanAuthenticate -> authenticate(context)
+                    is BiometricsAvailability.CanAuthenticate -> authenticate(hostContext)
 
                     is BiometricsAvailability.NonEnrolled -> {
                         setEffect {

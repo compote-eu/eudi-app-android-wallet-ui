@@ -16,8 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.settings
 
-import androidx.core.net.toUri
-import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,13 +37,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.shared.resources.settings_intent_chooser_logs_share_title
@@ -55,16 +53,17 @@ import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
+import eu.europa.ec.uilogic.component.PlatformScreenActions
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ContentTitle
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
+import eu.europa.ec.uilogic.component.rememberPlatformContextOrNull
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
-import eu.europa.ec.uilogic.extension.openIntentChooser
-import eu.europa.ec.uilogic.extension.openUrl
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emptyFlow
@@ -78,7 +77,10 @@ fun SettingsScreen(
     viewModel: SettingsViewModel,
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    // Null on iOS, where there is no host context to raise a biometric prompt with. Only the
+    // biometrics row needs one, and that row is not shown there.
+    val platformContext = rememberPlatformContextOrNull()
+    val platformActions = rememberPlatformScreenActions()
     val snackbarHostState = remember { SnackbarHostState() }
 
     ContentScreen(
@@ -102,14 +104,15 @@ fun SettingsScreen(
                 handleNavigationEffect(
                     navigationEffect = navigationEffect,
                     navigator = navigator,
-                    context = context,
+                    platformActions = platformActions,
                     onLaunchBiometricSystemScreen = {
                         viewModel.setEvent(Event.LaunchBiometricSystemScreen)
                     }
                 )
             },
             snackbarHostState = snackbarHostState,
-            context = context,
+            platformContext = platformContext,
+            platformActions = platformActions,
             paddingValues = paddingValues,
         )
     }
@@ -119,7 +122,7 @@ fun SettingsScreen(
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
     navigator: AppNavigator,
-    context: Context,
+    platformActions: PlatformScreenActions,
     onLaunchBiometricSystemScreen: () -> Unit,
 ) {
     when (navigationEffect) {
@@ -127,7 +130,9 @@ private fun handleNavigationEffect(
 
         is Effect.Navigation.LaunchBiometricsSystemScreen -> onLaunchBiometricSystemScreen()
 
-        is Effect.Navigation.OpenUrlExternally -> context.openUrl(uri = navigationEffect.url.toUri())
+        is Effect.Navigation.OpenUrlExternally -> platformActions.openUrlExternally(
+            navigationEffect.url
+        )
     }
 }
 
@@ -138,7 +143,8 @@ private fun Content(
     onEventSend: (Event) -> Unit,
     onNavigationRequested: (Effect.Navigation) -> Unit,
     snackbarHostState: SnackbarHostState,
-    context: Context,
+    platformContext: PlatformContext?,
+    platformActions: PlatformScreenActions,
     paddingValues: PaddingValues,
 ) {
     Column(
@@ -158,7 +164,7 @@ private fun Content(
                     .verticalScroll(rememberScrollState()),
                 items = state.settingsItems,
                 onEventSent = onEventSend,
-                context = context,
+                platformContext = platformContext,
             )
         }
 
@@ -182,9 +188,9 @@ private fun Content(
             when (effect) {
                 is Effect.Navigation -> onNavigationRequested(effect)
                 is Effect.ShareLogFile -> {
-                    context.openIntentChooser(
-                        effect.intent,
-                        logShareChooserTitle
+                    platformActions.shareViaChooser(
+                        intent = effect.intent,
+                        title = logShareChooserTitle,
                     )
                 }
 
@@ -207,7 +213,7 @@ private fun SettingsItems(
     modifier: Modifier = Modifier,
     items: List<SettingsItemUi>,
     onEventSent: (Event) -> Unit,
-    context: Context,
+    platformContext: PlatformContext?,
 ) {
     Column(
         modifier = modifier
@@ -220,7 +226,7 @@ private fun SettingsItems(
                     onEventSent(
                         Event.ItemClicked(
                             itemType = settingsItemUi.type,
-                            context = context
+                            context = platformContext
                         )
                     )
                 },
@@ -245,8 +251,6 @@ private fun SettingsItems(
 @Composable
 private fun SettingsScreenPreview() {
     PreviewTheme {
-        val context = LocalContext.current
-
         val settingsItems = listOf(
             SettingsItemUi(
                 type = SettingsMenuItemType.RETRIEVE_LOGS,
@@ -275,7 +279,8 @@ private fun SettingsScreenPreview() {
             onEventSend = {},
             onNavigationRequested = {},
             snackbarHostState = remember { SnackbarHostState() },
-            context = context,
+            platformContext = rememberPlatformContextOrNull(),
+            platformActions = rememberPlatformScreenActions(),
             paddingValues = PaddingValues(SPACING_MEDIUM.dp)
         )
     }

@@ -25,13 +25,12 @@ import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.dashboardfeature.util.mockedChangeLogUrl
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
 import eu.europa.ec.shared.resources.settings_screen_option_changelog
 import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
 import eu.europa.ec.shared.resources.settings_screen_option_show_batch_issuance_counter
-import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockResourceProviderStrings
 import eu.europa.ec.testfeature.util.mockedUriPath1
 import eu.europa.ec.testfeature.util.mockedUriPath2
 import eu.europa.ec.testlogic.extension.runTest
@@ -67,14 +66,18 @@ class TestSettingsInteractor {
     private lateinit var logController: LogController
 
     @Mock
-    private lateinit var resourceProvider: ResourceProvider
+    private lateinit var strings: StringCatalog
 
     @Mock
     private lateinit var prefKeys: PrefKeys
 
-    // Typed as the implementation: `retrieveLogFileUris` is no longer on the shared contract, being an
-    // ArrayList<Uri>. Everything else here exercises the interface just the same.
-    private lateinit var interactor: SettingsInteractorImpl
+    private lateinit var interactor: SettingsInteractor
+
+    // The REAL bridge, not a stub: what these cases assert is end-to-end behaviour over ConfigLogic,
+    // LogController, PrefKeys and BiometricInteractor, and that is worth keeping intact now that the
+    // interactor itself is shared. Held as the concrete type because `retrieveLogFileUris` is not on
+    // the bridge contract, being an ArrayList<Uri>.
+    private lateinit var platform: AndroidSettingsPlatformBridge
 
     private lateinit var closeable: AutoCloseable
 
@@ -82,12 +85,16 @@ class TestSettingsInteractor {
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
 
-        interactor = SettingsInteractorImpl(
+        platform = AndroidSettingsPlatformBridge(
             biometricInteractor = biometricInteractor,
             configLogic = configLogic,
             logController = logController,
-            resourceProvider = resourceProvider,
             prefKeys = prefKeys,
+        )
+
+        interactor = SettingsInteractorImpl(
+            strings = strings,
+            platform = platform,
         )
     }
 
@@ -159,7 +166,7 @@ class TestSettingsInteractor {
         whenever(logController.retrieveLogFileUris()).thenReturn(mockedArrayList)
 
         // When
-        val expectedLogFileUris = interactor.retrieveLogFileUris()
+        val expectedLogFileUris = platform.retrieveLogFileUris()
 
         // Then
         assertEquals(mockedArrayList, expectedLogFileUris)
@@ -176,7 +183,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = true)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = true,
             )
 
@@ -217,7 +223,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = true)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = false,
             )
 
@@ -276,7 +281,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = true)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = true,
                 deviceSupportsBiometrics = true,
             )
@@ -332,7 +336,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = true)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = true,
                 deviceSupportsBiometrics = true,
             )
@@ -362,7 +365,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = true)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = false,
                 deviceSupportsBiometrics = true,
             )
@@ -389,7 +391,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = false)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = true,
             )
 
@@ -464,34 +465,22 @@ class TestSettingsInteractor {
     }
 
     private fun mockStringsNeededForGetSettingsItemsUi(
-        resourcesProvider: ResourceProvider,
         changeLogUrlIsNull: Boolean,
         deviceSupportsBiometrics: Boolean = false,
     ) {
-        mockResourceProviderStrings(
-            resourcesProvider,
-            listOf(
-                Res.string.settings_screen_option_retrieve_logs to retrieveLogsText,
-                Res.string.settings_screen_option_show_batch_issuance_counter to showBatchIssuanceCounterText,
-            )
-        )
+        whenever(strings[Res.string.settings_screen_option_retrieve_logs])
+            .thenReturn(retrieveLogsText)
+        whenever(strings[Res.string.settings_screen_option_show_batch_issuance_counter])
+            .thenReturn(showBatchIssuanceCounterText)
 
         if (deviceSupportsBiometrics) {
-            mockResourceProviderStrings(
-                resourcesProvider,
-                listOf(
-                    Res.string.settings_screen_option_biometrics_authentication to biometricsAuthenticationText,
-                )
-            )
+            whenever(strings[Res.string.settings_screen_option_biometrics_authentication])
+                .thenReturn(biometricsAuthenticationText)
         }
 
         if (!changeLogUrlIsNull) {
-            mockResourceProviderStrings(
-                resourcesProvider,
-                listOf(
-                    Res.string.settings_screen_option_changelog to changelogText,
-                )
-            )
+            whenever(strings[Res.string.settings_screen_option_changelog])
+                .thenReturn(changelogText)
         }
     }
     //endregion

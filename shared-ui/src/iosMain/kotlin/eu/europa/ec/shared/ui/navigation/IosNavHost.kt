@@ -34,10 +34,21 @@
 // plain `mutableStateListOf` is used until iOS actually needs restoration.
 package eu.europa.ec.shared.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.navigation3.runtime.NavEntry
+import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -96,7 +107,32 @@ fun IosNavHost(
                 rememberSaveableStateHolderNavEntryDecorator(),
                 rememberViewModelStoreNavEntryDecorator(viewModelStoreProvider),
             ),
-            entryProvider = entryProvider { entries(navigator) },
+            entryProvider = entryProvider(
+                // Without this, a route with no iOS entry *throws* — `entryProvider`'s default
+                // fallback does. That matters now that shared screens navigate: the dashboard's side
+                // menu offers Change PIN, whose screen is still Android-only, so a tap would have
+                // crashed the app rather than shown anything. A named placeholder is both survivable
+                // and more useful than a stack trace while the port is in progress.
+                fallback = { unknownRoute ->
+                    NavEntry(key = unknownRoute) { MissingIosScreen(route = unknownRoute) }
+                },
+            ) { entries(navigator) },
+        )
+    }
+}
+
+@Composable
+private fun MissingIosScreen(route: NavKey) {
+    println("IosNavHost: no iOS screen for $route yet.")
+    Box(
+        modifier = Modifier.fillMaxSize().padding(SPACING_LARGE.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "${route::class.simpleName} has no iOS screen yet.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
         )
     }
 }

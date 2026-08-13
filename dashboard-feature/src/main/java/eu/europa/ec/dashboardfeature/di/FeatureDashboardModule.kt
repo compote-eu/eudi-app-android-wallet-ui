@@ -41,8 +41,10 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.AndroidSettingsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
@@ -68,19 +70,30 @@ fun provideDashboardInteractor(
     strings = strings,
 )
 
+/**
+ * Android's half of the settings screen: the build's version and changelog URL, the log files, the
+ * batch-counter preference and the real biometric prompt.
+ */
 @Factory
-fun provideSettingsInteractor(
+fun provideSettingsPlatformBridge(
     biometricInteractor: BiometricInteractor,
     configLogic: ConfigLogic,
     logController: LogController,
-    resourceProvider: ResourceProvider,
     prefKeys: PrefKeys,
+): SettingsPlatformBridge = AndroidSettingsPlatformBridge(
+    biometricInteractor = biometricInteractor,
+    configLogic = configLogic,
+    logController = logController,
+    prefKeys = prefKeys,
+)
+
+@Factory
+fun provideSettingsInteractor(
+    strings: StringCatalog,
+    platform: SettingsPlatformBridge,
 ): SettingsInteractor = SettingsInteractorImpl(
-    biometricInteractor,
-    configLogic,
-    logController,
-    resourceProvider,
-    prefKeys,
+    strings = strings,
+    platform = platform,
 )
 
 @Factory

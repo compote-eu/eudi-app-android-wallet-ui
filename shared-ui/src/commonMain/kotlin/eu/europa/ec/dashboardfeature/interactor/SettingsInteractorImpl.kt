@@ -14,19 +14,20 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Moved to commonMain with `SettingsScreen`. The list building is the substance and it is identical on
+// both platforms — the same rows, icons and switches out of four strings, two booleans and a nullable
+// URL — so it is shared, and everything it cannot know for itself sits behind
+// [SettingsPlatformBridge]. `ResourceProvider` became `StringCatalog`, as with the other interactors.
 package eu.europa.ec.dashboardfeature.interactor
 
-import android.content.Intent
-import android.net.Uri
+import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
-import eu.europa.ec.businesslogic.config.ConfigLogic
-import eu.europa.ec.businesslogic.controller.log.LogController
-import eu.europa.ec.businesslogic.controller.storage.PrefKeys
-import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
 import eu.europa.ec.shared.resources.settings_screen_option_changelog
 import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
@@ -38,40 +39,27 @@ import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.SwitchDataUi
 
-// Phase 3b: the contract moved to :shared-ui/commonMain (same package).
 class SettingsInteractorImpl(
-    private val biometricInteractor: BiometricInteractor,
-    private val configLogic: ConfigLogic,
-    private val logController: LogController,
-    private val resourceProvider: ResourceProvider,
-    private val prefKeys: PrefKeys,
-) : SettingsInteractor,
-    BiometricInteractor by biometricInteractor {
+    private val strings: StringCatalog,
+    private val platform: SettingsPlatformBridge,
+) : SettingsInteractor {
 
-    override fun getAppVersion(): String = configLogic.appVersion
+    override fun getAppVersion(): String = platform.appVersion
 
-    override fun getChangelogUrl(): String? = configLogic.changelogUrl
+    override fun getChangelogUrl(): String? = platform.changelogUrl
 
-    /**
-     * Builds the log-sharing intent here rather than in the view-model, which can no longer construct
-     * one: an intent is an opaque `PlatformIntent` in shared code. Returns null when there is nothing
-     * to share, which is the emptiness check the view-model used to perform itself.
-     */
-    override fun getLogShareIntent(): Intent? {
-        val logs = retrieveLogFileUris()
-        if (logs.isEmpty()) return null
+    override fun getLogShareIntent(): PlatformIntent? = platform.logShareIntent()
 
-        return Intent().apply {
-            action = Intent.ACTION_SEND_MULTIPLE
-            putParcelableArrayListExtra(Intent.EXTRA_STREAM, logs)
-            type = "text/*"
-        }
-    }
+    override fun getBiometricsAvailability(): BiometricsAvailability =
+        platform.biometricsAvailability()
 
-    // Not on the shared contract: an ArrayList<Uri> is a platform detail only this implementation needs.
-    fun retrieveLogFileUris(): ArrayList<Uri> {
-        return ArrayList(logController.retrieveLogFileUris())
-    }
+    override fun authenticateWithBiometrics(
+        context: PlatformContext,
+        notifyOnAuthenticationFailure: Boolean,
+        listener: (BiometricsAuthenticate) -> Unit
+    ) = platform.authenticateWithBiometrics(context, notifyOnAuthenticationFailure, listener)
+
+    override fun launchBiometricSystemScreen() = platform.launchBiometricSystemScreen()
 
     override suspend fun getSettingsItemsUi(changelogUrl: String?): List<SettingsItemUi> {
         val deviceSupportsBiometrics = deviceSupportsBiometrics()
@@ -84,14 +72,14 @@ class SettingsInteractorImpl(
                         data = ListItemDataUi(
                             itemId = SettingsMenuItemType.BIOMETRICS_AUTHENTICATION.itemId,
                             mainContentData = ListItemMainContentDataUi.Text(
-                                text = resourceProvider.getString(Res.string.settings_screen_option_biometrics_authentication)
+                                text = strings[Res.string.settings_screen_option_biometrics_authentication]
                             ),
                             leadingContentData = ListItemLeadingContentDataUi.Icon(
                                 iconData = AppIcons.TouchId
                             ),
                             trailingContentData = ListItemTrailingContentDataUi.Switch(
                                 switchData = SwitchDataUi(
-                                    isChecked = getBiometricUsageDecision(),
+                                    isChecked = platform.isBiometricsEnabled(),
                                     enabled = true,
                                 )
                             )
@@ -106,14 +94,14 @@ class SettingsInteractorImpl(
                     data = ListItemDataUi(
                         itemId = SettingsMenuItemType.SHOW_BATCH_ISSUANCE_COUNTER.itemId,
                         mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(Res.string.settings_screen_option_show_batch_issuance_counter)
+                            text = strings[Res.string.settings_screen_option_show_batch_issuance_counter]
                         ),
                         leadingContentData = ListItemLeadingContentDataUi.Icon(
                             iconData = AppIcons.BatchIssuanceCounter
                         ),
                         trailingContentData = ListItemTrailingContentDataUi.Switch(
                             switchData = SwitchDataUi(
-                                isChecked = getShowBatchIssuanceCounter(),
+                                isChecked = platform.isBatchIssuanceCounterShown(),
                                 enabled = true,
                             )
                         )
@@ -121,23 +109,25 @@ class SettingsInteractorImpl(
                 )
             )
 
-            add(
-                SettingsItemUi(
-                    type = SettingsMenuItemType.RETRIEVE_LOGS,
-                    data = ListItemDataUi(
-                        itemId = SettingsMenuItemType.RETRIEVE_LOGS.itemId,
-                        mainContentData = ListItemMainContentDataUi.Text(
-                            text = resourceProvider.getString(Res.string.settings_screen_option_retrieve_logs)
-                        ),
-                        leadingContentData = ListItemLeadingContentDataUi.Icon(
-                            iconData = AppIcons.OpenNew
-                        ),
-                        trailingContentData = ListItemTrailingContentDataUi.Icon(
-                            iconData = AppIcons.KeyboardArrowRight
+            if (platform.canRetrieveLogs) {
+                add(
+                    SettingsItemUi(
+                        type = SettingsMenuItemType.RETRIEVE_LOGS,
+                        data = ListItemDataUi(
+                            itemId = SettingsMenuItemType.RETRIEVE_LOGS.itemId,
+                            mainContentData = ListItemMainContentDataUi.Text(
+                                text = strings[Res.string.settings_screen_option_retrieve_logs]
+                            ),
+                            leadingContentData = ListItemLeadingContentDataUi.Icon(
+                                iconData = AppIcons.OpenNew
+                            ),
+                            trailingContentData = ListItemTrailingContentDataUi.Icon(
+                                iconData = AppIcons.KeyboardArrowRight
+                            )
                         )
                     )
                 )
-            )
+            }
 
             if (changelogUrl != null) {
                 add(
@@ -146,7 +136,7 @@ class SettingsInteractorImpl(
                         data = ListItemDataUi(
                             itemId = SettingsMenuItemType.CHANGELOG.itemId,
                             mainContentData = ListItemMainContentDataUi.Text(
-                                text = resourceProvider.getString(Res.string.settings_screen_option_changelog)
+                                text = strings[Res.string.settings_screen_option_changelog]
                             ),
                             leadingContentData = ListItemLeadingContentDataUi.Icon(
                                 iconData = AppIcons.OpenInBrowser
@@ -162,27 +152,15 @@ class SettingsInteractorImpl(
     }
 
     override suspend fun toggleBiometricsAuthentication() {
-        biometricInteractor.storeBiometricsUsageDecision(
-            shouldUseBiometrics = !getBiometricUsageDecision()
-        )
+        platform.setBiometricsEnabled(enabled = !platform.isBiometricsEnabled())
     }
 
     override suspend fun toggleShowBatchIssuanceCounter() {
-        prefKeys.setShowBatchIssuanceCounter(
-            value = !getShowBatchIssuanceCounter()
-        )
-    }
-
-    private suspend fun getBiometricUsageDecision(): Boolean {
-        return biometricInteractor.getBiometricUserSelection()
-    }
-
-    private suspend fun getShowBatchIssuanceCounter(): Boolean {
-        return prefKeys.getShowBatchIssuanceCounter()
+        platform.setBatchIssuanceCounterShown(shown = !platform.isBatchIssuanceCounterShown())
     }
 
     private fun deviceSupportsBiometrics(): Boolean {
-        return when (biometricInteractor.getBiometricsAvailability()) {
+        return when (platform.biometricsAvailability()) {
             is BiometricsAvailability.CanAuthenticate,
             is BiometricsAvailability.NonEnrolled -> true
 

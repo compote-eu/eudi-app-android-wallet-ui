@@ -17,12 +17,13 @@
 package eu.europa.ec.uilogic.component
 
 import androidx.compose.runtime.Composable
+import eu.europa.ec.shared.platform.PlatformIntent
 
 /**
  * Things a shared screen sometimes asks the *host application* to do, which have no Compose
- * equivalent: leave the app, or send the user into system settings.
+ * equivalent: leave the app, send the user into system settings, or hand something to another app.
  *
- * These were `Context` extensions on Android. Collected behind one interface rather than four
+ * These were `Context` extensions on Android. Collected behind one interface rather than five
  * separate seams because they share a single reason for existing — they are all "hand this to the OS"
  * — and because a screen that needs one usually needs more than one.
  *
@@ -48,6 +49,16 @@ interface PlatformScreenActions {
      * and iOS's `NSURL` are both platform types, and every caller starts from a string anyway.
      */
     fun openUrlExternally(url: String)
+
+    /**
+     * Offers [intent] to the user's choice of app, under [title] — Android's share sheet.
+     *
+     * The intent is built by whichever platform code owns the payload (the settings screen's log
+     * files, for instance) and is opaque here, so this seam only *presents* it. On iOS a
+     * [PlatformIntent] cannot be constructed at all, which makes this statically unreachable there
+     * rather than unimplemented.
+     */
+    fun shareViaChooser(intent: PlatformIntent, title: String?)
 }
 
 /** The host's [PlatformScreenActions], resolved from the current platform. */
