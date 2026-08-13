@@ -23,7 +23,11 @@
 package eu.europa.ec.shared.wallet.multipaz.spike
 
 import io.ktor.client.HttpClient
+import eu.europa.ec.shared.wallet.multipaz.IosOpenID4VciBackend
 import eu.europa.ec.shared.wallet.multipaz.openID4VciHttpClient
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.securearea.KeyAttestation
 import kotlinx.coroutines.withContext
 import org.multipaz.crypto.Algorithm
 import org.multipaz.provisioning.KeyBindingType
@@ -74,6 +78,36 @@ suspend fun probeIssuerMetadata(issuerUrl: String, onResult: (String) -> Unit) {
         }
     } catch (t: Throwable) {
         onResult("$issuerUrl FAILED: ${t::class.simpleName}: ${t.message}")
+    } finally {
+        httpClient.close()
+    }
+}
+
+/**
+ * Asks the real wallet provider for a wallet instance attestation over a freshly generated key.
+ *
+ * The unit tests prove the request *shape* matches Android's; only the live service can say whether it
+ * accepts it. Nothing secret leaves the device — a public EC JWK for a throwaway key.
+ */
+suspend fun probeWalletProvider(
+    baseUrl: String = "https://dev.wallet-provider.eudiw.dev",
+    clientId: String = "eudiw-abca",
+    onResult: (String) -> Unit,
+) {
+    val httpClient = openID4VciHttpClient()
+    try {
+        val backend = IosOpenID4VciBackend(
+            walletProviderBaseUrl = baseUrl,
+            clientId = clientId,
+            httpClient = httpClient,
+        )
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val attestation = backend.createJwtWalletAttestation(
+            KeyAttestation(publicKey = key.publicKey, certChain = null)
+        )
+        onResult("wallet attestation from $baseUrl: ${attestation.take(48)}… (${attestation.length} chars)")
+    } catch (t: Throwable) {
+        onResult("wallet provider FAILED: ${t::class.simpleName}: ${t.message?.take(220)}")
     } finally {
         httpClient.close()
     }
