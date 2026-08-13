@@ -14,6 +14,19 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Moved to commonMain unchanged — it had no Android imports at all, only the usual `PreviewParameter`
+// swap. `WrapChip` came with it, the last component it needed from :ui-logic.
+//
+// **Its interactor stays in :dashboard-feature, deliberately.** Of `TransactionDetailsInteractorImpl`'s
+// 235 lines, the substance is an 82-line walk over wallet-core's `PresentedDocument.claims` —
+// `MsoMdocFormat`/`SdJwtVcFormat`, `createKeyValue`, `ClaimDomain` — building the shared-data tree; take
+// that away and ~30 lines of data-class assembly are left. A bridge would therefore have to return
+// essentially the whole `TransactionDetailsUi`, which is the fat-bridge shape `DocumentDetails` needed
+// *because* both platforms had claims to render. iOS has none: it writes no transaction log (nothing
+// issues, presents or signs there yet), so the transactions list has no row to tap and this screen is
+// unreachable — an iOS interactor would be dead code, and `IosNavHost`'s fallback covers the route.
+// When iOS gains a presentation stack it will bring its own log shape; that is the moment to design the
+// split, against a real input rather than an imagined one.
 package eu.europa.ec.dashboardfeature.ui.transactions.detail
 
 import androidx.compose.foundation.layout.Arrangement
@@ -38,7 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.PreviewParameter
+import org.jetbrains.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsCardUi
@@ -86,7 +99,7 @@ import eu.europa.ec.shared.resources.transaction_details_screen_card_date_label
 import eu.europa.ec.shared.resources.transaction_details_screen_title
 
 @Composable
-internal fun TransactionDetailsScreen(
+fun TransactionDetailsScreen(
     navigator: AppNavigator,
     viewModel: TransactionDetailsViewModel,
 ) {
