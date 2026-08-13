@@ -40,7 +40,9 @@ import org.multipaz.crypto.EcPublicKey
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.issuersigned.IssuerNamespaces
 import org.multipaz.mdoc.issuersigned.IssuerSignedItem
+import org.multipaz.mdoc.mso.MobileSecurityObject
 import org.multipaz.mdoc.mso.MobileSecurityObjectGenerator
+import org.multipaz.revocation.RevocationStatus
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureEnclaveCreateKeySettings
@@ -78,6 +80,12 @@ internal suspend fun MultipazWalletStore.seedMdocDocument(
     validUntil: Instant = Clock.System.now() + 30.days,
     markIssued: Boolean = true,
     random: Random = Random.Default,
+    /**
+     * Optional `status` element for the MSO — what a real issuer puts there to say where this
+     * credential's revocation status can be looked up. Needed to exercise the revocation path at all:
+     * without it a document simply has no status to check.
+     */
+    revocationStatus: RevocationStatus? = null,
 ): String {
     val metadata = EudiDocumentMetadata.create(
         documentManagerId = documentManagerId,
@@ -112,6 +120,7 @@ internal suspend fun MultipazWalletStore.seedMdocDocument(
                 deviceKey = secureArea.getKeyInfo(credential.alias).publicKey,
                 validFrom = validFrom,
                 validUntil = validUntil,
+                revocationStatus = revocationStatus,
             ),
         )
     }
@@ -196,6 +205,7 @@ private suspend fun issuerSignedDataFor(
     deviceKey: EcPublicKey,
     validFrom: Instant,
     validUntil: Instant,
+    revocationStatus: RevocationStatus? = null,
 ): ByteString {
     val mso = MobileSecurityObjectGenerator(
         digestAlgorithm = Algorithm.SHA256,
@@ -211,6 +221,18 @@ private suspend fun issuerSignedDataFor(
             expectedUpdate = null,
         )
         .generate()
+        .let { generated ->
+            // `MobileSecurityObjectGenerator` has no way to set the `status` element, so it is spliced
+            // in afterwards: parse what the generator produced, copy it with the status, re-encode.
+            // Going through multipaz's own parser and `toDataItem` — rather than hand-writing CBOR —
+            // means the value digests are never touched and the result is exactly what the read path
+            // will parse back out.
+            if (revocationStatus == null) generated else Cbor.encode(
+                MobileSecurityObject.fromDataItem(Cbor.decode(generated))
+                    .copy(revocationStatus = revocationStatus)
+                    .toDataItem()
+            )
+        }
 
     // Stands in for an issuer's document-signer key. Anonymous and ephemeral: the read path never
     // verifies this signature, and minting a fake IACA/DS chain would add nothing to verify.

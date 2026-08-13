@@ -23,7 +23,21 @@ import eu.europa.ec.shared.wallet.multipaz.spike.isEmpty
 import eu.europa.ec.shared.wallet.multipaz.spike.sampleIssuerMetadata
 import eu.europa.ec.shared.wallet.multipaz.spike.samplePidElements
 import eu.europa.ec.shared.wallet.multipaz.spike.seedMdocDocument
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.respondError
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
+import org.multipaz.asn1.ASN1Integer
+import org.multipaz.crypto.AsymmetricKey
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.X500Name
+import org.multipaz.crypto.X509Cert
+import org.multipaz.revocation.RevocationStatus
+import org.multipaz.revocation.StatusList
 import org.multipaz.cbor.Tstr
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
@@ -31,6 +45,7 @@ import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -68,6 +83,7 @@ class MultipazWalletEngineTest {
         policy: WalletCredentialPolicy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 3),
         markIssued: Boolean = true,
         validUntil: kotlin.time.Instant = Clock.System.now() + 30.days,
+        revocationStatus: RevocationStatus? = null,
     ): String = seedMdocDocument(
         docType = docType,
         displayName = displayName,
@@ -81,6 +97,7 @@ class MultipazWalletEngineTest {
         // the MSO truncates both to whole seconds.
         validFrom = validUntil - 30.days,
         validUntil = validUntil,
+        revocationStatus = revocationStatus,
     )
 
     //region the empty wallet
@@ -387,17 +404,154 @@ class MultipazWalletEngineTest {
 
     //endregion
 
-    //region revocation — deliberately not implemented
+    //region revocation
+
+    /** A status entry pointing at [uri], with [key]'s certificate pinned, as an issuer would write. */
+    private suspend fun statusEntry(key: EcPrivateKey, idx: Int): RevocationStatus.StatusList {
+        val name = X500Name.fromName("CN=Status List Signer")
+        return RevocationStatus.StatusList(
+            idx = idx,
+            uri = "https://issuer.test/statuslists/1",
+            certificate = X509Cert.Builder(
+                publicKey = key.publicKey,
+                signingKey = AsymmetricKey.AnonymousExplicit(privateKey = key),
+                serialNumber = ASN1Integer(1L),
+                subject = name,
+                issuer = name,
+                validFrom = Clock.System.now() - 1.days,
+                validUntil = Clock.System.now() + 30.days,
+            ).build(),
+        )
+    }
+
+    private suspend fun tokenSaying(key: EcPrivateKey, revoked: List<Int>): String =
+        StatusList.Builder(1)
+            .apply { revoked.forEach { addStatus(it, 1) } }
+            .build()
+            .compress()
+            .serializeAsJwt(
+                key = AsymmetricKey.AnonymousExplicit(privateKey = key),
+                subject = "https://issuer.test/statuslists/1",
+            )
+
+    private fun checkerServing(token: String) =
+        MultipazRevocationChecker(HttpClient(MockEngine { respond(token) }))
+
+    private fun failingChecker() =
+        MultipazRevocationChecker(HttpClient(MockEngine { respondError(HttpStatusCode.NotFound) }))
 
     @Test
-    fun revocation_reports_nothing_revoked_because_it_is_not_wired_up_on_ios() = runTest {
+    fun nothing_is_flagged_before_the_first_refresh_runs() = runTest {
         val store = store()
         store.seedPid()
         val engine = MultipazWalletEngine(store)
 
+        // Same as Android before its first WorkManager period elapses: the cache is simply empty.
         assertTrue(engine.getRevokedDocumentIds().isEmpty())
         assertFalse(engine.isDocumentRevoked("doc-1"))
         assertFalse(engine.getAllDocumentsWithDetails("en").single().isRevoked)
+    }
+
+    @Test
+    fun a_refresh_flags_a_document_its_status_list_says_is_revoked() = runTest {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val store = store()
+        val documentId = store.seedPid(revocationStatus = statusEntry(key, idx = 4))
+        val engine = MultipazWalletEngine(store)
+
+        val newlyRevoked = engine.refreshRevocationStatuses(
+            checker = checkerServing(tokenSaying(key, revoked = listOf(4)))
+        )
+
+        assertEquals(listOf(documentId), newlyRevoked.map { it.id })
+        assertTrue(engine.isDocumentRevoked(documentId))
+        assertEquals(listOf(documentId), engine.getRevokedDocumentIds())
+        // And the flag reaches the projection the document list renders.
+        assertTrue(engine.getAllDocumentsWithDetails("en").single().isRevoked)
+    }
+
+    @Test
+    fun a_document_whose_status_list_says_valid_is_not_flagged() = runTest {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val store = store()
+        store.seedPid(revocationStatus = statusEntry(key, idx = 4))
+        val engine = MultipazWalletEngine(store)
+
+        val newlyRevoked = engine.refreshRevocationStatuses(
+            checker = checkerServing(tokenSaying(key, revoked = listOf(9)))
+        )
+
+        assertTrue(newlyRevoked.isEmpty())
+        assertTrue(engine.getRevokedDocumentIds().isEmpty())
+    }
+
+    @Test
+    fun a_second_refresh_reports_nothing_new_for_an_already_flagged_document() = runTest {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val store = store()
+        val documentId = store.seedPid(revocationStatus = statusEntry(key, idx = 4))
+        val engine = MultipazWalletEngine(store)
+        val token = tokenSaying(key, revoked = listOf(4))
+
+        engine.refreshRevocationStatuses(checker = checkerServing(token))
+        val second = engine.refreshRevocationStatuses(checker = checkerServing(token))
+
+        // "Newly revoked" is what drives the user-facing notification, so re-reporting it every
+        // refresh would nag once per period — the same reason the Android worker diffs against Room.
+        assertTrue(second.isEmpty())
+        assertTrue(engine.isDocumentRevoked(documentId))
+    }
+
+    @Test
+    fun a_document_that_becomes_valid_again_is_unflagged() = runTest {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val store = store()
+        val documentId = store.seedPid(revocationStatus = statusEntry(key, idx = 4))
+        val engine = MultipazWalletEngine(store)
+
+        engine.refreshRevocationStatuses(checker = checkerServing(tokenSaying(key, listOf(4))))
+        assertTrue(engine.isDocumentRevoked(documentId))
+
+        // Revocation is not a one-way door — a suspended credential can be reinstated, and the
+        // Android worker removes the row in exactly this case.
+        engine.refreshRevocationStatuses(checker = checkerServing(tokenSaying(key, emptyList())))
+
+        assertFalse(engine.isDocumentRevoked(documentId))
+        assertTrue(engine.getRevokedDocumentIds().isEmpty())
+    }
+
+    @Test
+    fun an_unreachable_status_list_leaves_an_existing_flag_in_place() = runTest {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val store = store()
+        val documentId = store.seedPid(revocationStatus = statusEntry(key, idx = 4))
+        val engine = MultipazWalletEngine(store)
+
+        engine.refreshRevocationStatuses(checker = checkerServing(tokenSaying(key, listOf(4))))
+
+        // THE asymmetry that matters: going offline must not un-revoke a document. Only a positive
+        // "valid" answer clears the flag; `Unknown` leaves it alone.
+        engine.refreshRevocationStatuses(checker = failingChecker())
+
+        assertTrue(engine.isDocumentRevoked(documentId))
+    }
+
+    @Test
+    fun a_document_with_no_status_entry_is_reported_unknown_and_left_alone() = runTest {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val store = store()
+        val documentId = store.seedPid() // no status element, like every test issuer's credential
+        val engine = MultipazWalletEngine(store)
+        val outcomes = mutableMapOf<String, RevocationOutcome>()
+
+        val newlyRevoked = engine.refreshRevocationStatuses(
+            checker = checkerServing(tokenSaying(key, listOf(4))),
+            onOutcome = { id, outcome -> outcomes[id] = outcome },
+        )
+
+        assertTrue(newlyRevoked.isEmpty())
+        assertIs<RevocationOutcome.Unknown>(outcomes[documentId])
+        assertFalse(engine.isDocumentRevoked(documentId))
     }
 
     //endregion

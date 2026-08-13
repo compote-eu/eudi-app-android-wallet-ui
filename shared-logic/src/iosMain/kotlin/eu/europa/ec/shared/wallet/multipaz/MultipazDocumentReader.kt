@@ -21,6 +21,7 @@ import eu.europa.ec.shared.wallet.document.StoredDocument
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.document.Document
 import org.multipaz.mdoc.credential.MdocCredential
+import org.multipaz.revocation.RevocationStatus
 
 /**
  * This wallet's metadata on a multipaz document, or null when the document was not written by us —
@@ -78,6 +79,25 @@ private suspend fun SecureAreaBoundCredential.toStoredCredential() = StoredCrede
     // the moment multipaz implements it, with no change here.
     isInvalidated = isInvalidated(),
 )
+
+/**
+ * How this document's revocation status can be checked, straight from the credential the issuer
+ * signed: the mdoc MSO's `status` element, which multipaz parses into a [RevocationStatus].
+ *
+ * Read from the first certified mdoc credential. Every credential in a batch shares one issuer and
+ * one status entry, so which one is asked does not matter — and Android reaches the same data through
+ * wallet-core's `resolveStatus`, which reads the same MSO.
+ *
+ * Null when the document has no mdoc credential (an SD-JWT-only document — its status lives in the
+ * JWT payload, and parsing that needs the JVM-only SD-JWT library) or when the issuer put no status
+ * entry in the MSO, which is the common case for test issuers.
+ */
+internal suspend fun Document.revocationStatus(): RevocationStatus? =
+    getCertifiedCredentials()
+        .filterIsInstance<MdocCredential>()
+        .firstOrNull()
+        ?.mso
+        ?.revocationStatus
 
 /**
  * One stored mdoc data element: its namespace and its rendered value. Richer than the flat

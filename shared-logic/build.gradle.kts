@@ -74,6 +74,15 @@ kotlin {
         // type appears in this module's public API — the seam is WalletDocument/WalletEngine.
         iosMain.dependencies {
             implementation(libs.multipaz)
+            // Ktor's Darwin engine, for fetching status-list tokens. `ktor-client-core` already
+            // arrives transitively with multipaz (which uses it itself), so this adds the iOS engine
+            // and nothing else — checked with `:shared-logic:dependencies`.
+            implementation(libs.ktor.client.darwin)
+        }
+        iosTest.dependencies {
+            // The mock HTTP engine for `MultipazRevocationCheckerTest`; everything else it needs
+            // (multipaz's StatusList, crypto, ephemeral storage) is already on the iOS classpath.
+            implementation(libs.ktor.client.mock)
         }
         androidMain.dependencies {
             // `api`, not implementation: these types ARE the androidMain platform handles (actual

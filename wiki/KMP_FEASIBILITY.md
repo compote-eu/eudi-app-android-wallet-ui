@@ -128,7 +128,7 @@ Mapped to this app's actual EUDI-SDK import surface (import counts in parenthese
 | `sdjwt.vc` (5) | Multipaz SD-JWT VC | Reuse Multipaz |
 | `wallet.issue.openid4vci` + `openid4vci.*` (~30) | Multipaz has a VCI client; EUDI's `openid4vci-kt` is more battle-tested vs EU issuers | Keep EUDI (evaluate) |
 | `wallet.trust` (5) | Multipaz `TrustManager` is generic, not ARF-aware | Keep EUDI (ARF/LoA-high) |
-| `etsi1196x2`/`etsi119602` (20), `statium` (2) | already **KMP** (shared both platforms) | Keep EUDI — already multiplatform |
+| `etsi1196x2`/`etsi119602` (20), `statium` (2) | KMP *in name*: `eudi-lib-kmp-statium` publishes **only** `androidJvm`/`jvm` variants (checked in its Gradle module metadata on Maven Central, 0.4.1 and 0.5.1 — no Kotlin/Native at all) | Keep EUDI on Android; iOS uses multipaz's own `org.multipaz.revocation` |
 | `rqesui.*` + `rqes.*` (28) — remote signing | **Multipaz has none** | **Keep EUDI RQES** (biggest EU-only piece) |
 | `wallet.transactionLogging` (15) | app/EUDI-specific format | Keep EUDI |
 
@@ -341,9 +341,14 @@ add a second version request to the app's classpath for no gain (verified: `:and
 - **mdoc-only claims.** SD-JWT VC claim parsing needs `eudi-lib-jvm-sdjwt-kt`, which has no iOS
   artifact. Everything *else* about an SD-JWT document (name, format, credential counts, validity,
   issuer display) reads fine, so such a document still lists correctly — only its claims are absent.
-- **No revocation.** Android's revoked-id list comes from a WorkManager job caching status-list results
-  in Room; neither half exists on iOS yet. Note the status-list library is *not* the blocker —
-  `eudi-lib-kmp-statium` is already multiplatform.
+- **Revocation: done on iOS, over multipaz.** Android's revoked-id list comes from a WorkManager job
+  caching status-list results in Room. iOS now does the same work through
+  `org.multipaz.revocation` — which implements the same IETF Token Status List draft in commonMain —
+  caching into a multipaz storage table, with the *trigger* supplied by the host since there is no
+  WorkManager. **Correction to an earlier claim in this document: `eudi-lib-kmp-statium` is NOT
+  consumable from iOS.** It publishes only `androidJvm` and `jvm` variants; verified against its Gradle
+  module metadata on Maven Central rather than the local cache, which holds only the Android artifact
+  because that is all anything requested.
 - **No issuance.** OpenID4VCI stays JVM-only, which is exactly the boundary the hybrid draws: the
   Swift `eudi-lib-ios-wallet-kit` is the intended provider behind the same `WalletEngine` seam.
 
@@ -356,8 +361,10 @@ a list. The code still calls `isInvalidated()`, so iOS inherits the correct beha
 multipaz implements it.
 
 **Worth an upstream ask:** a library with zero Android imports, four JVM-stdlib couplings and all its
-JVM crypto in three issuance files is a strong candidate for EUDI to publish as KMP themselves — they
-already ship `eudi-lib-kmp-statium`. That would remove most of this work.
+JVM crypto in three issuance files is a strong candidate for EUDI to publish as KMP themselves. And a
+second, cheaper ask while there: **`eudi-lib-kmp-statium` already has a KMP source layout but publishes
+no Kotlin/Native targets** — adding the iOS ones looks like a build-configuration change, and it would
+let both platforms share one status-list implementation instead of two.
 
 ## 16. References
 

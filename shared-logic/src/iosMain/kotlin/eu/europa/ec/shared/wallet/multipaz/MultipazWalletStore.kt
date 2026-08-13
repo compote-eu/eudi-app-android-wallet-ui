@@ -46,6 +46,16 @@ internal class MultipazWalletStore(
     /** Bookmarks, keyed by document id, with an empty value — presence *is* the bookmark. */
     suspend fun bookmarksTable(): StorageTable = storage.getTable(BookmarksTableSpec)
 
+    /**
+     * Documents found revoked, keyed by document id, with an empty value — presence *is* the flag.
+     *
+     * This is the iOS counterpart of Android's Room `RevokedDocumentDao`, and it exists for the same
+     * reason: a status-list check needs the network, so the answer is cached and the UI reads the
+     * cache. Same consequence too — a document stays flagged until a later refresh clears it, which
+     * is what makes "revoked" survive going offline.
+     */
+    suspend fun revokedDocumentsTable(): StorageTable = storage.getTable(RevokedDocumentsTableSpec)
+
     companion object {
 
         /**
@@ -57,6 +67,17 @@ internal class MultipazWalletStore(
 
         private val BookmarksTableSpec = StorageTableSpec(
             name = "EudiDocumentBookmarks",
+            supportPartitions = false,
+            supportExpiration = false,
+        )
+
+        /**
+         * No expiration, deliberately: a revoked document must not quietly become un-flagged because
+         * a row aged out. Rows are removed only when a refresh sees the credential valid again,
+         * which is exactly how the Android DAO is maintained.
+         */
+        private val RevokedDocumentsTableSpec = StorageTableSpec(
+            name = "EudiRevokedDocuments",
             supportPartitions = false,
             supportExpiration = false,
         )

@@ -18,6 +18,8 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.darwin.Darwin
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -47,6 +49,32 @@ class IosWalletEngine : WalletEngine {
 
     /** Whether the wallet holds any document at all, which deletion needs in order to report which. */
     suspend fun hasAnyDocument(): Boolean = getAllDocuments().isNotEmpty()
+
+    /**
+     * Re-checks every document against its status list and updates the cached flags, returning the
+     * documents that *became* revoked.
+     *
+     * **The trigger is the host's, and that is the design, not an omission.** Android runs this every
+     * 15 minutes through WorkManager; iOS has no equivalent a Compose-only host can install —
+     * `BGTaskScheduler` needs app-delegate wiring and an Info.plist identifier on the Swift side. So
+     * the host decides: at launch, on foreground, or from a pull-to-refresh. Calling it more often than
+     * the status list's `ttl` only wastes a request; calling it never leaves documents unflagged,
+     * exactly as Android behaves before its first period elapses.
+     *
+     * The [HttpClient] is created per call and closed after: refreshes are minutes apart at best, so
+     * holding a client (and its connection pool) open between them buys nothing.
+     */
+    suspend fun refreshRevocationStatuses(
+        onOutcome: (documentId: String, outcome: RevocationOutcome) -> Unit = { _, _ -> },
+    ): List<WalletDocument> {
+        val engine = delegate() as MultipazWalletEngine
+        return HttpClient(Darwin).use { client ->
+            engine.refreshRevocationStatuses(
+                checker = MultipazRevocationChecker(client),
+                onOutcome = onOutcome,
+            )
+        }
+    }
 
     private suspend fun delegate(): WalletEngine =
         delegate ?: mutex.withLock {

@@ -186,6 +186,12 @@ coil-kt-svg = { group = "io.coil-kt.coil3", name = "coil-svg", version.ref = "co
 
 # Ktor (networking)
 ktor-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
+# The iOS HTTP engine, for the status-list fetch in :shared-logic/iosMain. `ktor-client-core`
+# is already on that classpath transitively via multipaz; only an engine was missing.
+ktor-client-darwin = { group = "io.ktor", name = "ktor-client-darwin", version.ref = "ktor" }
+# Ktor's in-memory engine, so the status-list checker can be tested against real signed tokens
+# without a server.
+ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref = "ktor" }
 ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }

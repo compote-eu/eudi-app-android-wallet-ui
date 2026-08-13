@@ -2,6 +2,7 @@ package eu.europa.ec.shared.ui.spike
 
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
+import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.createIosWalletEngine
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
@@ -13,6 +14,10 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_INDEX
+import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_URI
+import eu.europa.ec.shared.wallet.multipaz.spike.revocationFixtureToken
+import eu.europa.ec.shared.wallet.multipaz.spike.seedIosRevocableFixture
 import eu.europa.ec.shared.wallet.multipaz.spike.seedIosWalletFixture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +63,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             onResult(if (seeded != null) "seeded fixture document $seeded" else "wallet already seeded")
 
             val engine = createIosWalletEngine()
+            val engineForRevocation = KoinPlatform.getKoin().get<IosWalletEngine>()
 
             val cheap = engine.getAllDocuments()
             onResult("getAllDocuments -> ${cheap.size} document(s), ids=${cheap.map { it.id }}")
@@ -80,7 +86,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                 onResult("bookmark stored=$stored cleared=${!cleared}")
             }
 
-            onResult("revoked=${engine.getRevokedDocumentIds()} (revocation not wired up on iOS)")
+            onResult("revoked ids cached before this run: ${engine.getRevokedDocumentIds()}")
 
             // The details path end to end — bridge builds the claim tree, shared interactor turns it
             // into the screen's state. Verified here because `simctl` cannot synthesise the tap that
@@ -163,6 +169,26 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                 "batch counter preference as the documents list sees it: " +
                         "$before -> toggled -> $afterToggle -> restored -> " +
                         "${documents.showBatchIssuanceCounter()}"
+            )
+
+            // Revocation, end to end. iOS has no issuer that publishes a status list, so the fixture
+            // supplies both halves: a document whose MSO points at a list, and the tokens that answer
+            // it. The token is printed rather than served from here — there is no HTTP server on the
+            // device — so the run is: launch once, copy the token to
+            // `python3 -m http.server 8000` next to a `statuslist.jwt`, launch again.
+            seedIosRevocableFixture()?.let { onResult("seeded revocable fixture $it") }
+            onResult("--- revocation fixture token (REVOKED at index $REVOCATION_FIXTURE_INDEX) ---")
+            onResult(revocationFixtureToken(revoked = true))
+            onResult("--- revocation fixture token (VALID) ---")
+            onResult(revocationFixtureToken(revoked = false))
+            onResult("--- serve one of the above at $REVOCATION_FIXTURE_URI ---")
+
+            val newlyRevoked = engineForRevocation.refreshRevocationStatuses { documentId, outcome ->
+                onResult("  revocation check $documentId -> $outcome")
+            }
+            onResult(
+                "refreshRevocationStatuses -> ${newlyRevoked.size} newly revoked " +
+                        "${newlyRevoked.map { it.id }}; cached=${engineForRevocation.getRevokedDocumentIds()}"
             )
 
             onResult("OK")

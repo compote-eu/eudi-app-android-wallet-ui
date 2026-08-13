@@ -39,7 +39,9 @@ import org.multipaz.storage.KeyExistsStorageException
  *  - ⚠️ **claims are mdoc-only**, because SD-JWT VC parsing needs the JVM-only
  *    `eudi-lib-jvm-sdjwt-kt`. An SD-JWT document still lists correctly; only its claims are absent,
  *    which today means `getMainPidDocument` resolves claims for an mdoc PID but not an SD-JWT one.
- *  - ❌ **revocation is not wired up.** See [getRevokedDocumentIds].
+ *  - ✅ **revocation**, over multipaz's own Token Status List implementation — see
+ *    [MultipazRevocationChecker] for why not `eudi-lib-kmp-statium`. Cached in storage like Android's
+ *    Room table; the *trigger* is the host's, since iOS has no WorkManager.
  *
  * Not a Koin `@Factory`: iOS has no DI graph for the wallet layer yet, and the shared view-models
  * that consume `WalletEngine` are not reachable on iOS until their screens are shared. Construct it
@@ -113,23 +115,62 @@ internal class MultipazWalletEngine(
 
     //endregion
 
-    //region revocation — not implemented on iOS yet
+    //region revocation
 
     /**
-     * Always empty: revocation is not wired up on iOS.
+     * The documents a previous [refreshRevocationStatuses] found revoked, from the cache table.
      *
-     * On Android the revoked-id list is maintained by a WorkManager job that resolves each
-     * document's status list and caches the result in Room; neither half exists here yet. The status
-     * -list library itself is **not** a blocker — `eudi-lib-kmp-statium` is already multiplatform —
-     * so this is a scoping decision for the mdoc document-layer milestone, not a platform limit.
-     *
-     * Reporting "nothing is revoked" is the same answer Android gives before its first refresh runs,
-     * so no consumer sees a shape it cannot handle; a revoked document simply is not flagged.
+     * Read from storage rather than checked live for the same reason Android reads Room here: a
+     * status-list check needs the network, and every caller of this is rendering a list.
      */
-    override suspend fun getRevokedDocumentIds(): List<String> = emptyList()
+    override suspend fun getRevokedDocumentIds(): List<String> =
+        store.revokedDocumentsTable().enumerate()
 
-    /** Always false, for the reason given on [getRevokedDocumentIds]. */
-    override suspend fun isDocumentRevoked(documentId: String): Boolean = false
+    override suspend fun isDocumentRevoked(documentId: String): Boolean =
+        store.revokedDocumentsTable().get(documentId) != null
+
+    /**
+     * Re-checks every document's status list and updates the cache, returning the documents that
+     * *became* revoked in this pass.
+     *
+     * This is the body of Android's `RevocationWorkManager` — including its two-way behaviour, which
+     * is easy to miss: a credential that is valid again has its cached row **removed**, so revocation
+     * is not a one-way door. What it deliberately does not do is decide *when* to run. Android has
+     * WorkManager and a 15-minute period; iOS has no equivalent that a Compose-only host can install,
+     * so the trigger is the caller's (see `IosWalletEngine.refreshRevocationStatuses`).
+     *
+     * The return value is what a caller needs to raise the "documents revoked" notification the
+     * Android broadcast produces; ignoring it and reading [getRevokedDocumentIds] afterwards is also
+     * fine.
+     */
+    suspend fun refreshRevocationStatuses(
+        checker: MultipazRevocationChecker,
+        onOutcome: (documentId: String, outcome: RevocationOutcome) -> Unit = { _, _ -> },
+    ): List<WalletDocument> {
+        val table = store.revokedDocumentsTable()
+        val alreadyRevoked = table.enumerate().toSet()
+        val newlyRevoked = mutableListOf<WalletDocument>()
+
+        ownDocuments().forEach { document ->
+            val outcome = checker.check(document.revocationStatus())
+            onOutcome(document.identifier, outcome)
+
+            when {
+                outcome.isRevoked && document.identifier !in alreadyRevoked -> {
+                    table.insert(key = document.identifier, data = ByteString())
+                    newlyRevoked += WalletDocument(id = document.identifier)
+                }
+
+                // Valid again: drop the flag. `Unknown` deliberately does not — an unreachable
+                // status list must not silently clear a revocation.
+                outcome is RevocationOutcome.Valid && document.identifier in alreadyRevoked -> {
+                    table.delete(document.identifier)
+                }
+            }
+        }
+
+        return newlyRevoked
+    }
 
     //endregion
 
