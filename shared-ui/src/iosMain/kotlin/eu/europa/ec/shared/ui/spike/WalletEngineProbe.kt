@@ -14,6 +14,7 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.shared.wallet.multipaz.spike.probeIssuerMetadata
 import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_INDEX
 import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_URI
 import eu.europa.ec.shared.wallet.multipaz.spike.revocationFixtureToken
@@ -190,6 +191,11 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                 "refreshRevocationStatuses -> ${newlyRevoked.size} newly revoked " +
                         "${newlyRevoked.map { it.id }}; cached=${engineForRevocation.getRevokedDocumentIds()}"
             )
+
+            // SPIKE: OpenID4VCI issuer metadata through multipaz, from iOS.
+            onResult("--- issuance spike: reading issuer metadata ---")
+            probeIssuerMetadata("https://ec.dev.issuer.eudiw.dev", onResult)
+            probeIssuerMetadata("https://dev.issuer-backend.eudiw.dev", onResult)
 
             onResult("OK")
         } catch (t: Throwable) {
