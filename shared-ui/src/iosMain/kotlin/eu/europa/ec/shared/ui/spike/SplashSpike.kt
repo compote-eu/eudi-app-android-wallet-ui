@@ -16,11 +16,12 @@
 
 // The iOS app's Compose entry point.
 //
-// It now renders the *real* shared `SplashScreen` from commonMain — the same composable the Android
-// host renders through `featureStartupEntries` — inside [IosNavHost], which is the same upstream
+// It now renders the *real* shared screens from commonMain — the same composables the Android host
+// renders through its `router/Entries.kt` files — inside [IosNavHost], which is the same upstream
 // `NavDisplay`. So the interesting parts are no longer iOS-specific at all; what lives here is only
-// what a host must supply: the `UIViewController`, the Koin start, and a stand-in for the dashboard,
-// which is still Android-only.
+// what a host must supply: the `UIViewController`, the Koin start, and each route's view-model.
+// Nothing stands in for a shared screen any more: `DashboardScreen` brought the real bottom
+// navigation and retired the two-button `SharedScreenSwitcher`.
 //
 // Everything this file was originally written to prove is now proven on the simulator: Compose MP
 // renders on iOS, a commonMain `MviViewModel` works inside a real iOS app lifecycle, compose-resources
@@ -53,16 +54,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.ComposeUIViewController
-import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
@@ -70,15 +62,19 @@ import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.ic_logo_lockup_mark
 import eu.europa.ec.shared.resources.ic_logo_lockup_wordmark
+import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
+import eu.europa.ec.dashboardfeature.ui.dashboard.DashboardScreen
+import eu.europa.ec.dashboardfeature.ui.dashboard.DashboardViewModel
 import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsScreen
 import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsViewModel
-import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsScreen
 import eu.europa.ec.dashboardfeature.ui.documents.list.DocumentsViewModel
-import eu.europa.ec.dashboardfeature.ui.home.HomeScreen
 import eu.europa.ec.dashboardfeature.ui.home.HomeViewModel
+import eu.europa.ec.dashboardfeature.ui.transactions.list.TransactionsViewModel
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
 import eu.europa.ec.resourceslogic.theme.ThemeManager
 import eu.europa.ec.shared.ui.di.SharedUiModule
 import eu.europa.ec.shared.ui.di.module as sharedUiDefinitions
@@ -146,54 +142,35 @@ fun SplashSpikeViewController(): UIViewController {
                         )
                     }
                     entry<DashboardRoute> {
-                        // Stands in for DashboardScreen's bottom nav, which is still Android-only:
-                        // Home and Documents are *tabs* there rather than routes, so there is no
-                        // route to hang Documents off. Both shared screens stay reachable, and this
-                        // grows a tab per screen as more are shared.
-                        SharedScreenSwitcher(navigator = navigator)
+                        // The REAL shared dashboard: its own bottom navigation, its own side menu and
+                        // the Home / Documents / Transactions tabs, all from commonMain. This replaced
+                        // the `SharedScreenSwitcher` stand-in — a two-button row that existed only
+                        // because the tabs are a *selection* inside this screen rather than routes, so
+                        // there was nowhere else to hang them.
+                        //
+                        // All four host-injected lambdas keep their defaults: three are Android's
+                        // activity plumbing (the one-shot pending intent, the deep-link and DC-API
+                        // hand-offs), and the revocation reader cannot fire because
+                        // `SystemBroadcastReceiver` is a no-op here.
+                        val koin = remember { KoinPlatform.getKoin() }
+                        DashboardScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                DashboardViewModel(
+                                    dashboardInteractor = koin.get<DashboardInteractor>(),
+                                    deepLinkClassifier = koin.get<DeepLinkClassifier>(),
+                                )
+                            },
+                            documentsViewModel = remember {
+                                DocumentsViewModel(koin.get<DocumentsInteractor>())
+                            },
+                            homeViewModel = remember { HomeViewModel(koin.get<HomeInteractor>()) },
+                            transactionsViewModel = remember {
+                                TransactionsViewModel(koin.get<TransactionsInteractor>())
+                            },
+                        )
                     }
                 }
-            }
-        }
-    }
-}
-
-/**
- * The shared screens available on iOS so far, selected by a plain button row. Deliberately crude — it is
- * scaffolding until `DashboardScreen` itself is shared and brings the real bottom navigation.
- */
-@Composable
-private fun SharedScreenSwitcher(navigator: AppNavigator) {
-    // Defaults to Documents, the most recently shared screen — it is what a fresh run should show,
-    // and `simctl` cannot synthesise taps, so the default is the only thing a screenshot can verify.
-    var showDocuments by remember { mutableStateOf(true) }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            TextButton(onClick = { showDocuments = false }) { Text("Home") }
-            TextButton(onClick = { showDocuments = true }) { Text("Documents") }
-        }
-
-        Box(modifier = Modifier.weight(1f)) {
-            if (showDocuments) {
-                // The real shared Documents list over the multipaz WalletEngine: interactor, filter
-                // validator and string catalog all resolve from Koin.
-                val documentsInteractor =
-                    remember { KoinPlatform.getKoin().get<DocumentsInteractor>() }
-                DocumentsScreen(
-                    navigator = navigator,
-                    viewModel = remember { DocumentsViewModel(documentsInteractor) },
-                    onDashboardEventSent = {},
-                )
-            } else {
-                // The real shared HomeScreen — the name it greets you with comes out of a credential
-                // stored in multipaz's DocumentStore.
-                val homeInteractor = remember { KoinPlatform.getKoin().get<HomeInteractor>() }
-                HomeScreen(
-                    navigator = navigator,
-                    viewModel = remember { HomeViewModel(homeInteractor) },
-                    onDashboardEventSent = {},
-                )
             }
         }
     }

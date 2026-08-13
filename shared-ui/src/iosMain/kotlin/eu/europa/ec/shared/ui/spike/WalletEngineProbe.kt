@@ -3,8 +3,14 @@ package eu.europa.ec.shared.ui.spike
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.multipaz.createIosWalletEngine
+import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorPartialState
+import eu.europa.ec.dashboardfeature.interactor.TransactionInteractorGetTransactionsPartialState
+import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
+import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.shared.wallet.multipaz.spike.seedIosWalletFixture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -99,6 +105,40 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                         )
                     }
             }
+
+            // The two dashboard paths a screenshot cannot reach, since `simctl` cannot synthesise the
+            // tap that would open the side menu or select another tab. Both are new on iOS with the
+            // shared `DashboardScreen`, and neither had ever run here before it.
+            val strings = KoinPlatform.getKoin().get<StringCatalog>()
+            val sideMenu = KoinPlatform.getKoin().get<DashboardInteractor>().getSideMenuOptions()
+            onResult(
+                "getSideMenuOptions -> ${sideMenu.size} item(s): " +
+                        sideMenu.joinToString { option ->
+                            val title = option.data.mainContentData
+                            "${option.type}=" + when (title) {
+                                is ListItemMainContentDataUi.Text -> title.text
+                                else -> title::class.simpleName
+                            }
+                        }
+            )
+
+            // iOS writes no transaction log (nothing issues, presents or signs there yet), so an
+            // *empty* success is the honest answer rather than a stub — what matters is that the
+            // History tab's interactor runs at all.
+            KoinPlatform.getKoin().get<TransactionsInteractor>().getTransactions().first()
+                .let { state ->
+                    onResult(
+                        when (state) {
+                            is TransactionInteractorGetTransactionsPartialState.Success ->
+                                "getTransactions -> ${state.allTransactions.items.size} " +
+                                        "transaction(s), dates=${state.availableDates}"
+
+                            is TransactionInteractorGetTransactionsPartialState.Failure ->
+                                "getTransactions FAILED: ${state.error}"
+                        }
+                    )
+                }
+            onResult("dashboard tab titles: ${BottomNavigationItem.entries.joinToString { strings.get(it.titleRes) }}")
 
             onResult("OK")
         } catch (t: Throwable) {

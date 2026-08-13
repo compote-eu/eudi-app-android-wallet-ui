@@ -22,12 +22,12 @@ import androidx.compose.runtime.Composable
  * Things a shared screen sometimes asks the *host application* to do, which have no Compose
  * equivalent: leave the app, or send the user into system settings.
  *
- * These were `Context` extensions on Android. Collected behind one interface rather than three
+ * These were `Context` extensions on Android. Collected behind one interface rather than four
  * separate seams because they share a single reason for existing — they are all "hand this to the OS"
  * — and because a screen that needs one usually needs more than one.
  *
- * On iOS all three are deliberately inert; see the iOS actual for why none of them is a stub waiting
- * to be filled in.
+ * On iOS the first three are deliberately inert and only [openUrlExternally] does real work; see the
+ * iOS actual for why none of the inert ones is a stub waiting to be filled in.
  */
 interface PlatformScreenActions {
 
@@ -39,6 +39,15 @@ interface PlatformScreenActions {
 
     /** Opens the system's Bluetooth settings, so the user can switch the radio on. */
     fun openBluetoothSettings()
+
+    /**
+     * Hands [url] to whatever the platform uses to open links — the browser, or another app that
+     * claims it. Silent if nothing can.
+     *
+     * Takes a `String` rather than a parsed URL because there is no shared URL type: Android's `Uri`
+     * and iOS's `NSURL` are both platform types, and every caller starts from a string anyway.
+     */
+    fun openUrlExternally(url: String)
 }
 
 /** The host's [PlatformScreenActions], resolved from the current platform. */

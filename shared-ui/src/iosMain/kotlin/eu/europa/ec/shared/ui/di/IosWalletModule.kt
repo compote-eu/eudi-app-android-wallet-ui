@@ -18,6 +18,8 @@ package eu.europa.ec.shared.ui.di
 
 import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.businesslogic.validator.FilterValidatorImpl
+import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
+import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
@@ -118,6 +120,16 @@ fun provideIosTransactionsInteractor(
     filterValidator = filterValidator,
     platform = platform,
 )
+
+/**
+ * No bridge and no iOS-specific implementation: the dashboard interactor only builds the side menu's
+ * list items out of strings and icons, so `DashboardInteractorImpl` in commonMain serves both platforms
+ * unchanged. This definition exists purely because the Android graph declares its own in
+ * `FeatureDashboardModule`, which iOS does not load.
+ */
+@Factory
+fun provideIosDashboardInteractor(strings: StringCatalog): DashboardInteractor =
+    DashboardInteractorImpl(strings = strings)
 
 @Single
 fun provideIosHomeInteractor(

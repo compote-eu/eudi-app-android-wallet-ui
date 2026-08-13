@@ -53,12 +53,13 @@ import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
 import org.jetbrains.compose.resources.stringResource
 
-@Composable
 /**
- * Not `internal`: `DashboardScreen` still lives in `:dashboard-feature` and renders this. It can go back
- * to module-internal once that screen is shared too.
+ * Module-internal again: its only caller, [eu.europa.ec.dashboardfeature.ui.dashboard.DashboardScreen],
+ * is now shared and lives in this module too. It was public for exactly as long as that screen was on
+ * the Android side of the boundary.
  */
-fun SideMenuScreen(
+@Composable
+internal fun SideMenuScreen(
     state: State,
     onEventSent: (Event) -> Unit,
 ) {

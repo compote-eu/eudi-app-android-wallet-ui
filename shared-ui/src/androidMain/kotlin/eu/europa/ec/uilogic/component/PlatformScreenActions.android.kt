@@ -30,11 +30,14 @@ import androidx.compose.ui.platform.LocalContext
  * Resolved from `LocalContext` rather than provided by the host, which keeps the seam self-contained —
  * introducing it needed no Android host wiring at all.
  *
- * The three implementations are written out here rather than delegating to `:ui-logic`'s `Context`
+ * The implementations are written out here rather than delegating to `:ui-logic`'s `Context`
  * extensions, because :ui-logic depends on :shared-ui and importing back would be a cycle. They are
  * the same intents; the only difference is that [finishApp] walks up to the host `Activity` instead of
  * casting to `EudiComponentActivity`, which is strictly more general and does not name a :ui-logic
  * type.
+ *
+ * `Uri.parse` rather than androidx's `toUri`: this source set takes only `activity-compose`, and the
+ * extension lives in `core-ktx`, which is not a dependency here.
  */
 @Composable
 actual fun rememberPlatformScreenActions(): PlatformScreenActions {
@@ -59,6 +62,15 @@ actual fun rememberPlatformScreenActions(): PlatformScreenActions {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 context.startActivity(intent)
+            }
+
+            override fun openUrlExternally(url: String) {
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                } catch (_: Exception) {
+                    // Same swallow as `:ui-logic`'s `Context.openUrl`: no handler for the scheme, or
+                    // an unparseable url, and nothing the screen could do about either.
+                }
             }
         }
     }

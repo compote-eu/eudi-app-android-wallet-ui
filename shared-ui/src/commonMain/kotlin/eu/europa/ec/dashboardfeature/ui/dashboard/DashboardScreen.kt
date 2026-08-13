@@ -16,7 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.dashboard
 
-import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -39,14 +38,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import eu.europa.ec.shared.resources.UiText
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import eu.europa.ec.businesslogic.extension.getParcelableArrayListExtra
-import eu.europa.ec.corelogic.model.RevokedDocumentParcel
-import eu.europa.ec.corelogic.model.toDomain
+import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationBar
 import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
@@ -58,42 +53,83 @@ import eu.europa.ec.dashboardfeature.ui.home.HomeViewModel
 import eu.europa.ec.dashboardfeature.ui.transactions.list.TransactionsScreen
 import eu.europa.ec.dashboardfeature.ui.transactions.list.TransactionsViewModel
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.platform.PlatformIntent
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_revoked_document_dialog_subtitle
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_revoked_document_dialog_title
+import eu.europa.ec.uilogic.component.PlatformScreenActions
 import eu.europa.ec.uilogic.component.SystemBroadcastReceiver
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.uilogic.component.utils.LifecycleEffect
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
 import eu.europa.ec.uilogic.component.wrap.BottomSheetWithOptionsList
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
-import eu.europa.ec.uilogic.extension.finish
-import androidx.core.net.toUri
-import eu.europa.ec.uilogic.extension.getPendingIntent
-import eu.europa.ec.uilogic.extension.openAppSettings
-import eu.europa.ec.uilogic.extension.openBleSettings
-import eu.europa.ec.uilogic.extension.openIntentChooser
-import eu.europa.ec.uilogic.extension.openUrl
-import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
-import eu.europa.ec.uilogic.navigation.helper.handleIntentAction
-import eu.europa.ec.uilogic.navigation.helper.hasIntentAction
+import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import eu.europa.ec.shared.resources.Res
-import eu.europa.ec.shared.resources.dashboard_bottom_sheet_revoked_document_dialog_subtitle
-import eu.europa.ec.shared.resources.dashboard_bottom_sheet_revoked_document_dialog_title
 
 /** `NavHost`'s default `fadeIn`/`fadeOut` duration, carried over so tab switches look unchanged. */
 private const val TAB_CROSSFADE_DURATION_MS = 700
 
+/**
+ * One reading of the host's pending launch intent: the link it carries and, failing that, the app
+ * action it is.
+ *
+ * Both come from a *single* read because taking the intent consumes it — which is also why the screen
+ * receives the pair rather than two separate lambdas it could accidentally call twice.
+ */
+data class PendingLaunchIntent(
+    val deepLink: String? = null,
+    val intentAction: IntentAction? = null,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun DashboardScreen(
+fun DashboardScreen(
     navigator: AppNavigator,
     viewModel: DashboardViewModel,
     documentsViewModel: DocumentsViewModel,
     homeViewModel: HomeViewModel,
     transactionsViewModel: TransactionsViewModel,
+    /**
+     * The intent the app was (re)launched with, read once per resume. Injected rather than reached
+     * through a seam because Android's answer — `Context.getPendingIntent()` on the one-shot slot in
+     * `EudiComponentActivity` — lives in `:ui-logic`, which depends on this module.
+     */
+    pendingLaunchIntent: () -> PendingLaunchIntent = { PendingLaunchIntent() },
+    /**
+     * Hands an external deep link to whatever owns it, navigating to [AppRoute] when the link resolves
+     * to one.
+     *
+     * Injected for the same reason as [pendingLaunchIntent], and additionally because Android's
+     * `handleDeepLinkAction` reaches the Android-only RQES UI SDK. The iOS default does nothing: iOS
+     * deep links arrive through the app delegate and are not wired yet.
+     */
+    onExternalDeepLink: (link: String, route: AppRoute?) -> Unit = { _, _ -> },
+    /**
+     * Parks an [IntentAction] for [AppRoute] and goes there — the DC API hand-off. Injected because
+     * Android's `handleIntentAction` writes to the same activity-scoped slot in `:ui-logic`. Unreachable
+     * on iOS, where [IntentAction] cannot be constructed.
+     */
+    onIntentAction: (action: IntentAction, route: AppRoute?) -> Unit = { _, _ -> },
+    /**
+     * Reads the revoked documents out of a revocation broadcast, or null when the intent carries no
+     * such extra — the same distinction `Intent.getParcelableArrayListExtra` makes, kept because an
+     * *empty* list is a broadcast that fires the event with nothing in it.
+     *
+     * Injected rather than added to the `PlatformIntent` accessor vocabulary in :shared-logic: the
+     * extra is an `ArrayList<RevokedDocumentParcel>`, and that `Parcelable` transport lives in
+     * `:core-logic` — a module neither shared module can see. Which broadcast means which event stays
+     * here, as app logic; only the field access is the host's. Never called on iOS, where
+     * `SystemBroadcastReceiver` is a no-op.
+     */
+    revokedDocumentsFromBroadcast: (PlatformIntent) -> List<RevokedDocumentDataDomain>? = { null },
 ) {
-    val context = LocalContext.current
+    val platformActions = rememberPlatformScreenActions()
 
     var selectedTab by rememberSaveable(stateSaver = BottomNavigationItem.Saver) {
         mutableStateOf(BottomNavigationItem.Home)
@@ -202,13 +238,13 @@ internal fun DashboardScreen(
         lifecycleOwner = LocalLifecycleOwner.current,
         lifecycleEvent = Lifecycle.Event.ON_RESUME
     ) {
-        // `getPendingIntent()` is one-shot, so read it once and hand the view-model both readings of
-        // it: the link it carries and, failing that, the app action it is.
-        val pendingIntent = context.getPendingIntent()
+        // The pending intent is one-shot, so it is read once and both readings of it are handed to the
+        // view-model: the link it carries and, failing that, the app action it is.
+        val pending = pendingLaunchIntent()
         viewModel.setEvent(
             Event.Init(
-                deepLink = pendingIntent?.data?.toString(),
-                intentAction = hasIntentAction(pendingIntent),
+                deepLink = pending.deepLink,
+                intentAction = pending.intentAction,
             )
         )
     }
@@ -216,7 +252,13 @@ internal fun DashboardScreen(
     LaunchedEffect(Unit) {
         viewModel.effect.onEach { effect ->
             when (effect) {
-                is Effect.Navigation -> handleNavigationEffect(effect, navigator, context)
+                is Effect.Navigation -> handleNavigationEffect(
+                    navigationEffect = effect,
+                    navigator = navigator,
+                    platformActions = platformActions,
+                    onExternalDeepLink = onExternalDeepLink,
+                    onIntentAction = onIntentAction,
+                )
 
                 is Effect.CloseBottomSheet -> {
                     scope.launch {
@@ -241,11 +283,9 @@ internal fun DashboardScreen(
             CoreActions.REVOCATION_WORK_MESSAGE_ACTION
         )
     ) { intent ->
-        intent.getParcelableArrayListExtra<RevokedDocumentParcel>(
-            action = CoreActions.REVOCATION_IDS_EXTRA
-        )?.let { parcels ->
+        intent?.let { revokedDocumentsFromBroadcast(it) }?.let { revokedDocuments ->
             viewModel.setEvent(
-                Event.DocumentRevocationNotificationReceived(parcels.map { it.toDomain() })
+                Event.DocumentRevocationNotificationReceived(revokedDocuments)
             )
         }
     }
@@ -254,10 +294,12 @@ internal fun DashboardScreen(
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
     navigator: AppNavigator,
-    context: Context,
+    platformActions: PlatformScreenActions,
+    onExternalDeepLink: (link: String, route: AppRoute?) -> Unit,
+    onIntentAction: (action: IntentAction, route: AppRoute?) -> Unit,
 ) {
     when (navigationEffect) {
-        is Effect.Navigation.Pop -> context.finish()
+        is Effect.Navigation.Pop -> platformActions.finishApp()
         is Effect.Navigation.SwitchScreen -> {
             navigator.navigateToRoute(
                 route = navigationEffect.route,
@@ -266,27 +308,21 @@ private fun handleNavigationEffect(
             )
         }
 
-        is Effect.Navigation.OpenDeepLinkAction -> {
-            handleDeepLinkAction(
-                navigator = navigator,
-                context = context,
-                uri = navigationEffect.deepLinkUri.toUri(),
-                route = navigationEffect.route
-            )
-        }
+        is Effect.Navigation.OpenDeepLinkAction -> onExternalDeepLink(
+            navigationEffect.deepLinkUri,
+            navigationEffect.route,
+        )
 
-        is Effect.Navigation.OpenIntentAction -> {
-            handleIntentAction(
-                navigator = navigator,
-                context = context,
-                action = navigationEffect.intentAction,
-                route = navigationEffect.route,
-            )
-        }
+        is Effect.Navigation.OpenIntentAction -> onIntentAction(
+            navigationEffect.intentAction,
+            navigationEffect.route,
+        )
 
-        is Effect.Navigation.OnAppSettings -> context.openAppSettings()
-        is Effect.Navigation.OnSystemSettings -> context.openBleSettings()
-        is Effect.Navigation.OpenUrlExternally -> context.openUrl(uri = navigationEffect.url.toUri())
+        is Effect.Navigation.OnAppSettings -> platformActions.openAppSettings()
+        is Effect.Navigation.OnSystemSettings -> platformActions.openBluetoothSettings()
+        is Effect.Navigation.OpenUrlExternally -> platformActions.openUrlExternally(
+            navigationEffect.url
+        )
     }
 }
 
