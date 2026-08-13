@@ -46,7 +46,9 @@ import eu.europa.ec.dashboardfeature.interactor.SettingsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
+import eu.europa.ec.dashboardfeature.interactor.AndroidTransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.StringResolver
 import org.koin.core.annotation.ComponentScan
@@ -126,17 +128,27 @@ fun provideDocumentsInteractor(
         platform = platform,
     )
 
+/** Android's transaction-log reader; see `AndroidTransactionsPlatformBridge` for the mapping. */
+@Factory
+fun provideTransactionsPlatformBridge(
+    walletCoreDocumentsController: WalletCoreDocumentsController,
+    resourceProvider: ResourceProvider,
+): TransactionsPlatformBridge = AndroidTransactionsPlatformBridge(
+    walletCoreDocumentsController = walletCoreDocumentsController,
+    resourceProvider = resourceProvider,
+)
+
 @Factory
 fun provideTransactionInteractor(
-    resourceProvider: ResourceProvider,
+    strings: StringCatalog,
     stringResolver: StringResolver,
     filterValidator: FilterValidator,
-    walletCoreDocumentsController: WalletCoreDocumentsController,
+    platform: TransactionsPlatformBridge,
 ): TransactionsInteractor = TransactionsInteractorImpl(
-    resourceProvider,
-    stringResolver,
-    filterValidator,
-    walletCoreDocumentsController
+    strings = strings,
+    stringResolver = stringResolver,
+    filterValidator = filterValidator,
+    platform = platform,
 )
 
 @Factory

@@ -19,7 +19,7 @@ package eu.europa.ec.dashboardfeature.ui.transactions.list.model
 import eu.europa.ec.businesslogic.validator.model.FilterableAttributes
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionTypeUi
-import java.time.LocalDateTime
+import kotlinx.datetime.LocalDateTime
 
 data class TransactionsFilterableAttributes(
     override val searchTags: List<String>,

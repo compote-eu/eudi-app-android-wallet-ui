@@ -41,6 +41,9 @@ import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
 import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.testfeature.util.mockedDefaultLocale
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
@@ -77,7 +80,6 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlinx.datetime.LocalDateTime as KotlinLocalDateTime
-import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.transactions_filter_item_no_relying_party_transactions
 import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
 import eu.europa.ec.shared.resources.transactions_filter_item_status_failed
@@ -99,6 +101,9 @@ class TestTransactionsInteractor {
     val coroutineRule = CoroutineTestRule()
 
     @Mock
+    private lateinit var strings: StringCatalog
+
+    @Mock
     private lateinit var resourceProvider: ResourceProvider
 
     @Mock
@@ -118,14 +123,20 @@ class TestTransactionsInteractor {
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
 
+        // The REAL Android bridge inside the shared interactor — the pair that ships — so every case
+        // below keeps asserting end-to-end against the same wallet-core stubs.
         interactor = TransactionsInteractorImpl(
-            resourceProvider = resourceProvider,
+            strings = strings,
             stringResolver = stringResolver,
             filterValidator = filterValidator,
-            walletCoreDocumentsController = walletCoreDocumentsController,
+            platform = AndroidTransactionsPlatformBridge(
+                walletCoreDocumentsController = walletCoreDocumentsController,
+                resourceProvider = resourceProvider,
+            ),
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
+        whenever(strings[Res.string.generic_error_message]).thenReturn(mockedGenericErrorMessage)
     }
 
     @After
@@ -204,15 +215,15 @@ class TestTransactionsInteractor {
         // Given
         val groupId = "groupId"
         val filterId = "filterId"
-        val lower = LocalDateTime.of(2026, 1, 1, 0, 0)
-        val upper = LocalDateTime.of(2026, 12, 31, 23, 59)
+        val lower = KotlinLocalDateTime(2026, 1, 1, 0, 0)
+        val upper = KotlinLocalDateTime(2026, 12, 31, 23, 59)
 
         // When
         interactor.updateDateFilterById(
             filterGroupId = groupId,
             filterId = filterId,
-            lowerLimitDate = lower.toKotlinLocalDateTime(),
-            upperLimitDate = upper.toKotlinLocalDateTime(),
+            lowerLimitDate = lower,
+            upperLimitDate = upper,
         )
 
         // Then — both the contract and the filter framework are on kotlinx-datetime now, so the
@@ -221,8 +232,8 @@ class TestTransactionsInteractor {
             .updateDateFilter(
                 groupId,
                 filterId,
-                lower.toKotlinLocalDateTime(),
-                upper.toKotlinLocalDateTime(),
+                lower,
+                upper,
             )
     }
     //endregion
@@ -253,7 +264,7 @@ class TestTransactionsInteractor {
     @Test
     fun `When initializeFilters is called, Then filterValidator#initializeValidator is invoked with some Filters and the source list`() {
         // Given
-        whenever(resourceProvider.getString(Res.string.transactions_filter_item_no_relying_party_transactions))
+        whenever(strings.get(Res.string.transactions_filter_item_no_relying_party_transactions))
             .thenReturn(mockedNoRelyingPartyFilterName)
         mockGetFiltersStrings()
         val list = FilterableList(items = emptyList())
@@ -536,7 +547,7 @@ class TestTransactionsInteractor {
     @Test
     fun `Given Case 1, When addDynamicFilters is called, Then the relying-party group is populated with both the no-relying-party filter and one filter per distinct relying party`() {
         // Given
-        whenever(resourceProvider.getString(Res.string.transactions_filter_item_no_relying_party_transactions))
+        whenever(strings.get(Res.string.transactions_filter_item_no_relying_party_transactions))
             .thenReturn(mockedNoRelyingPartyFilterName)
         val initialFilters = Filters(
             filterGroups = listOf(
@@ -731,8 +742,8 @@ class TestTransactionsInteractor {
 
         @Suppress("UNCHECKED_CAST")
         val sortAction = sort.filters.first().filterableAction
-                as FilterAction.Sort<TransactionsFilterableAttributes, LocalDateTime>
-        val attrs = attributes(creationLocalDateTime = LocalDateTime.of(2026, 5, 1, 12, 0))
+                as FilterAction.Sort<TransactionsFilterableAttributes, KotlinLocalDateTime>
+        val attrs = attributes(creationLocalDateTime = KotlinLocalDateTime(2026, 5, 1, 12, 0))
 
         // When
         val key = sortAction.selector(attrs)
@@ -761,9 +772,9 @@ class TestTransactionsInteractor {
             startDateTime = KotlinLocalDateTime(2026, 1, 1, 0, 0),
             endDateTime = KotlinLocalDateTime(2026, 12, 31, 23, 59),
         )
-        val inRange = attributes(creationLocalDateTime = LocalDateTime.of(2026, 5, 1, 12, 0))
-        val outOfRange = attributes(creationLocalDateTime = LocalDateTime.of(2027, 5, 1, 12, 0))
-        val beforeStart = attributes(creationLocalDateTime = LocalDateTime.of(2025, 5, 1, 12, 0))
+        val inRange = attributes(creationLocalDateTime = KotlinLocalDateTime(2026, 5, 1, 12, 0))
+        val outOfRange = attributes(creationLocalDateTime = KotlinLocalDateTime(2027, 5, 1, 12, 0))
+        val beforeStart = attributes(creationLocalDateTime = KotlinLocalDateTime(2025, 5, 1, 12, 0))
         val nullDate = attributes(creationLocalDateTime = null)
         val nonDateFilter = FilterItem(
             id = "non_date",
@@ -1004,42 +1015,42 @@ class TestTransactionsInteractor {
 
     //region helper functions
     private fun mockGetFiltersStrings() {
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_sort_by))
+        whenever(strings.get(Res.string.transactions_screen_filters_sort_by))
             .thenReturn("Sort by")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_sort_transaction_date))
+        whenever(strings.get(Res.string.transactions_screen_filters_sort_transaction_date))
             .thenReturn("Transaction date")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filter_by_date_period))
+        whenever(strings.get(Res.string.transactions_screen_filter_by_date_period))
             .thenReturn("Date period")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filter_by_status))
+        whenever(strings.get(Res.string.transactions_screen_filter_by_status))
             .thenReturn("Status")
-        whenever(resourceProvider.getString(Res.string.transactions_filter_item_status_completed))
+        whenever(strings.get(Res.string.transactions_filter_item_status_completed))
             .thenReturn("Completed")
-        whenever(resourceProvider.getString(Res.string.transactions_filter_item_status_failed))
+        whenever(strings.get(Res.string.transactions_filter_item_status_failed))
             .thenReturn("Failed")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_relying_party))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_relying_party))
             .thenReturn("Relying party")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type))
             .thenReturn("Transaction type")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation))
             .thenReturn("Presentation")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance))
             .thenReturn("Issuance")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_signing))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_signing))
             .thenReturn("Signing")
     }
 
     private fun mockTransactionRowStrings() {
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation))
             .thenReturn("Presentation")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance))
             .thenReturn("Issuance")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_signing))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_signing))
             .thenReturn("Signing")
-        whenever(resourceProvider.getString(Res.string.transactions_filter_item_status_completed))
+        whenever(strings.get(Res.string.transactions_filter_item_status_completed))
             .thenReturn("Completed")
-        whenever(resourceProvider.getString(Res.string.transactions_filter_item_status_failed))
+        whenever(strings.get(Res.string.transactions_filter_item_status_failed))
             .thenReturn("Failed")
-        whenever(resourceProvider.getString(Res.string.transactions_screen_0_minutes_ago_message))
+        whenever(strings.get(Res.string.transactions_screen_0_minutes_ago_message))
             .thenReturn("Just now")
         wheneverBlocking {
             stringResolver.resolvePlural(
@@ -1055,7 +1066,7 @@ class TestTransactionsInteractor {
             searchTags = emptyList(),
             transactionStatus = TransactionStatusUi.Completed,
             transactionType = TransactionTypeUi.PRESENTATION,
-            creationLocalDateTime = LocalDateTime.now(),
+            creationLocalDateTime = LocalDateTime.now().toKotlinLocalDateTime(),
             relyingPartyName = name,
         )
         return FilterableItem(
@@ -1084,7 +1095,7 @@ class TestTransactionsInteractor {
                 searchTags = emptyList(),
                 transactionStatus = TransactionStatusUi.Completed,
                 transactionType = TransactionTypeUi.PRESENTATION,
-                creationLocalDateTime = LocalDateTime.now(),
+                creationLocalDateTime = LocalDateTime.now().toKotlinLocalDateTime(),
                 relyingPartyName = mockedRelyingPartyName,
             ),
         )
@@ -1151,7 +1162,7 @@ class TestTransactionsInteractor {
     private fun attributes(
         status: TransactionStatusUi = TransactionStatusUi.Completed,
         type: TransactionTypeUi = TransactionTypeUi.PRESENTATION,
-        creationLocalDateTime: LocalDateTime? = LocalDateTime.now(),
+        creationLocalDateTime: KotlinLocalDateTime? = LocalDateTime.now().toKotlinLocalDateTime(),
         relyingPartyName: String? = null,
     ): TransactionsFilterableAttributes = TransactionsFilterableAttributes(
         searchTags = emptyList(),

@@ -33,6 +33,12 @@ const val DEFAULT_DATE_PATTERN: String = "dd MMM yyyy"
  */
 const val DAY_MONTH_YEAR_FULL_PATTERN: String = "dd MMMM yyyy"
 
+/** Date and time, as the transactions list shows for anything older than today. */
+const val FULL_DATETIME_PATTERN: String = "dd MMM yyyy hh:mm a"
+
+/** Clock time alone, which is all the transactions list shows for today's entries. */
+const val HOURS_MINUTES_DATETIME_PATTERN: String = "hh:mm a"
+
 /** Previous LocaleUtils.PROJECT_DEFAULT_LOCALE. */
 const val DEFAULT_LANGUAGE_TAG: String = "en-GB"
 

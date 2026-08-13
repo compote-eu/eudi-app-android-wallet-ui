@@ -25,13 +25,14 @@ package eu.europa.ec.businesslogic.util
 
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.number
-import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
 /** Midnight of this date-time's day. Was `withHour(0).withMinute(0).withSecond(0)`. */
@@ -127,3 +128,41 @@ private fun LocalDate.plusMonths(months: Int): LocalDate {
     val zeroBased = (year * 12) + (month.number - 1) + months
     return LocalDate(zeroBased / 12, (zeroBased % 12) + 1, day)
 }
+
+/**
+ * Whether this is today in the device's zone.
+ *
+ * The kotlinx counterpart of `:business-logic`'s java.time `isToday`, added so the transactions
+ * interactor could move to commonMain — it was the last thing in that class still needing java.time.
+ */
+fun LocalDateTime.isToday(clock: Clock = Clock.System): Boolean =
+    date == clock.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+
+/**
+ * Whether this falls in the current Monday-to-Sunday week, inclusive of both ends.
+ *
+ * Uses [startOfWeek]/[endOfWeek], which is what makes this shorter than the java.time original: those
+ * already do the `TemporalAdjusters.previousOrSame(MONDAY)` arithmetic kotlinx-datetime lacks.
+ */
+fun LocalDateTime.isWithinThisWeek(clock: Clock = Clock.System): Boolean {
+    val now = clock.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    return date >= now.startOfWeek().date && date <= now.endOfWeek().date
+}
+
+/**
+ * Whole minutes from this instant-in-local-time until now; negative if it is in the future.
+ *
+ * The kotlinx counterpart of `ChronoUnit.MINUTES.between(this, now)`. Both sides are interpreted in the
+ * device zone, which is what the java.time original did implicitly by using `LocalDateTime.now()`.
+ */
+fun LocalDateTime.minutesToNow(clock: Clock = Clock.System): Long {
+    val zone = TimeZone.currentSystemDefault()
+    return (clock.now() - toInstant(zone)).inWholeMinutes
+}
+
+/** Less than a minute ago — the "just now" case in the transactions list. */
+fun LocalDateTime.isJustNow(clock: Clock = Clock.System): Boolean = minutesToNow(clock) == 0L
+
+/** Within the last hour, so the list can say "N minutes ago" instead of a clock time. */
+fun LocalDateTime.isWithinLastHour(clock: Clock = Clock.System): Boolean =
+    minutesToNow(clock) < 60

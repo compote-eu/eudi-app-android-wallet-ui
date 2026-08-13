@@ -23,6 +23,9 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.shared.resources.StringCatalog
@@ -96,6 +99,23 @@ fun provideIosDocumentDetailsInteractor(
 ): DocumentDetailsInteractor = DocumentDetailsInteractorImpl(
     strings = strings,
     walletEngine = walletEngine,
+    platform = platform,
+)
+
+@Single
+fun provideIosTransactionsPlatformBridge(): TransactionsPlatformBridge =
+    IosTransactionsPlatformBridge()
+
+@Factory
+fun provideIosTransactionsInteractor(
+    strings: StringCatalog,
+    stringResolver: StringResolver,
+    filterValidator: FilterValidator,
+    platform: TransactionsPlatformBridge,
+): TransactionsInteractor = TransactionsInteractorImpl(
+    strings = strings,
+    stringResolver = stringResolver,
+    filterValidator = filterValidator,
     platform = platform,
 )
 

@@ -16,7 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.transactions.list
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -53,7 +52,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -68,7 +66,7 @@ import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionCateg
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionFilterIds
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
-import eu.europa.ec.eudi.rqesui.domain.util.safeLet
+import eu.europa.ec.businesslogic.util.safeLet
 import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
@@ -79,7 +77,9 @@ import eu.europa.ec.uilogic.component.InlineSnackbar
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.SectionTitle
+import eu.europa.ec.uilogic.component.PlatformScreenActions
 import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.HSpacer
@@ -100,7 +100,6 @@ import eu.europa.ec.uilogic.component.wrap.WrapIconButton
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
 import eu.europa.ec.uilogic.component.wrap.WrapListItemDefaults
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
-import eu.europa.ec.uilogic.extension.finish
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import kotlinx.coroutines.CoroutineScope
@@ -130,7 +129,7 @@ fun TransactionsScreen(
     onDashboardEventSent: (DashboardEvent) -> Unit,
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val platformActions = rememberPlatformScreenActions()
 
     val datePickerDialogConfig = state.datePickerDialogConfig
 
@@ -143,7 +142,7 @@ fun TransactionsScreen(
         isLoading = state.isLoading,
         contentErrorConfig = null,
         navigatableAction = ScreenNavigateAction.NONE,
-        onBack = { context.finish() },
+        onBack = { platformActions.finishApp() },
         topBar = {
             TopBar(
                 onDashboardEventSent = onDashboardEventSent
@@ -163,7 +162,7 @@ fun TransactionsScreen(
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(navigationEffect, navigator, context)
+                handleNavigationEffect(navigationEffect, navigator, platformActions)
             },
             paddingValues = paddingValues,
             coroutineScope = scope,
@@ -326,10 +325,10 @@ private fun Content(
 private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
     navigator: AppNavigator,
-    context: Context,
+    platformActions: PlatformScreenActions,
 ) {
     when (navigationEffect) {
-        is Effect.Navigation.Pop -> context.finish()
+        is Effect.Navigation.Pop -> platformActions.finishApp()
         is Effect.Navigation.SwitchScreen -> {
             navigator.navigateToRoute(
                 route = navigationEffect.route,

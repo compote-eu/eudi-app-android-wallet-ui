@@ -17,8 +17,9 @@
 package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.businesslogic.extension.safeAsync
-import eu.europa.ec.businesslogic.util.fullDateTimeFormatter
-import eu.europa.ec.businesslogic.util.hoursMinutesFormatter
+import eu.europa.ec.businesslogic.util.FULL_DATETIME_PATTERN
+import eu.europa.ec.businesslogic.util.HOURS_MINUTES_DATETIME_PATTERN
+import eu.europa.ec.businesslogic.util.formatLocalDateTime
 import eu.europa.ec.businesslogic.util.isJustNow
 import eu.europa.ec.businesslogic.util.isToday
 import eu.europa.ec.businesslogic.util.isWithinLastHour
@@ -37,10 +38,6 @@ import eu.europa.ec.businesslogic.validator.model.FilterableItem
 import eu.europa.ec.businesslogic.validator.model.FilterableList
 import eu.europa.ec.businesslogic.validator.model.Filters
 import eu.europa.ec.businesslogic.validator.model.SortOrder
-import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
-import eu.europa.ec.corelogic.model.TransactionLogDataDomain
-import eu.europa.ec.corelogic.model.TransactionLogDataDomain.Companion.getTransactionDocumentNames
-import eu.europa.ec.corelogic.model.TransactionLogDataDomain.Companion.getTransactionTypeLabel
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionCategoryUi
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionFilterIds
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionUi
@@ -48,9 +45,6 @@ import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionsFilt
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.toUiText
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionTypeUi
-import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionStatusUi
-import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionTypeUi
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -62,12 +56,10 @@ import eu.europa.ec.uilogic.component.wrap.RadioButtonDataUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.toJavaLocalDateTime
-import kotlinx.datetime.toKotlinLocalDate
-import kotlinx.datetime.toKotlinLocalDateTime
-import kotlinx.datetime.LocalDateTime as KotlinLocalDateTime
-import java.time.LocalDateTime
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.generic_error_message
+import eu.europa.ec.shared.resources.StringCatalog
+import kotlinx.datetime.LocalDateTime
 import eu.europa.ec.shared.resources.transactions_filter_item_no_relying_party_transactions
 import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
 import eu.europa.ec.shared.resources.transactions_filter_item_status_failed
@@ -87,14 +79,14 @@ import eu.europa.ec.shared.resources.transactions_screen_some_minutes_ago_messag
 // Phase 2: the Android implementation of the (now KMP) `TransactionsInteractor` contract, which
 // moved to :shared-ui/commonMain with `TransactionsViewModel`.
 class TransactionsInteractorImpl(
-    private val resourceProvider: ResourceProvider,
+    private val strings: StringCatalog,
     private val stringResolver: StringResolver,
     private val filterValidator: FilterValidator,
-    private val walletCoreDocumentsController: WalletCoreDocumentsController
+    private val platform: TransactionsPlatformBridge,
 ) : TransactionsInteractor {
 
     private val genericErrorMsg
-        get() = resourceProvider.genericErrorMessage()
+        get() = strings[Res.string.generic_error_message]
 
     override fun revertFilters() = filterValidator.revertFilters()
     override fun updateLists(filterableList: FilterableList) =
@@ -190,19 +182,19 @@ class TransactionsInteractorImpl(
 
     override fun getTransactions(): Flow<TransactionInteractorGetTransactionsPartialState> =
         flow {
-            val transactions = walletCoreDocumentsController.getTransactionLogs()
+            val transactions = platform.getTransactionLogs()
             val filterableItems = transactions.map { transaction ->
 
                 val trailingContentData = ListItemTrailingContentDataUi.TextWithIcon(
-                    text = transaction.getTransactionTypeLabel(resourceProvider),
+                    // Resolved here rather than by the platform: the label is a string-catalog lookup
+                    // off the type enum, which is shared work.
+                    text = transaction.type.toUiText(strings),
                     iconData = AppIcons.KeyboardArrowRight
                 )
 
                 val transactionName = transaction.name
-                val transactionStatus = transaction.status.toTransactionStatusUi()
-                val transactionDocumentNames = transaction.getTransactionDocumentNames(
-                    userLocale = resourceProvider.getLocale()
-                )
+                val transactionStatus = transaction.status
+                val transactionDocumentNames = transaction.documentNames
 
                 FilterableItem(
                     payload = TransactionUi(
@@ -210,14 +202,14 @@ class TransactionsInteractorImpl(
                             header = ListItemDataUi(
                                 itemId = transaction.id,
                                 mainContentData = ListItemMainContentDataUi.Text(text = transactionName),
-                                overlineText = transactionStatus.toUiText(resourceProvider),
-                                supportingText = transaction.creationLocalDateTime.toFormattedDisplayableDate(),
+                                overlineText = transactionStatus.toUiText(strings),
+                                supportingText = transaction.createdAt.toFormattedDisplayableDate(),
                                 trailingContentData = trailingContentData
                             )
                         ),
-                        uiStatus = transaction.status.toTransactionStatusUi(),
+                        uiStatus = transaction.status,
                         transactionCategoryUi = getTransactionCategory(
-                            dateTime = transaction.creationLocalDateTime.toKotlinLocalDateTime()
+                            dateTime = transaction.createdAt
                         ),
                     ),
                     attributes = TransactionsFilterableAttributes(
@@ -228,25 +220,19 @@ class TransactionsInteractorImpl(
                             }
                         },
                         transactionStatus = transactionStatus,
-                        transactionType = transaction.toTransactionTypeUi(),
-                        creationLocalDateTime = transaction.creationLocalDateTime,
-                        relyingPartyName = when (transaction) {
-                            is TransactionLogDataDomain.IssuanceLog -> null // TODO Update this once Core supports Issuance transactions
-                            is TransactionLogDataDomain.PresentationLog -> transaction.relyingParty.name
-                            is TransactionLogDataDomain.SigningLog -> null
-                        }
+                        transactionType = transaction.type,
+                        creationLocalDateTime = transaction.createdAt,
+                        relyingPartyName = transaction.relyingPartyName,
                     )
                 )
             }
 
-            // The transaction logs are still java.time; the contract is kotlinx-datetime, so the
-            // conversion happens here, at the boundary.
+            // Already kotlinx: the platform bridge converts at its boundary, so nothing to translate.
             val creationDates = filterableItems
                 .mapNotNull {
                     (it.attributes as? TransactionsFilterableAttributes)
                         ?.creationLocalDateTime
-                        ?.toLocalDate()
-                        ?.toKotlinLocalDate()
+                        ?.date
                 }
 
             emit(
@@ -262,13 +248,12 @@ class TransactionsInteractorImpl(
             )
         }.safeAsync {
             TransactionInteractorGetTransactionsPartialState.Failure(
-                error = it.localizedMessage ?: genericErrorMsg
+                error = it.message ?: genericErrorMsg
             )
         }
 
-    override fun getTransactionCategory(dateTime: KotlinLocalDateTime): TransactionCategoryUi {
-        // `isToday`/`isWithinThisWeek` are the java.time helpers this feature still uses internally.
-        val javaDateTime = dateTime.toJavaLocalDateTime()
+    override fun getTransactionCategory(dateTime: LocalDateTime): TransactionCategoryUi {
+        val javaDateTime = dateTime
         val transactionCategoryUi = when {
             javaDateTime.isToday() -> TransactionCategoryUi.Today
             javaDateTime.isWithinThisWeek() -> TransactionCategoryUi.ThisWeek
@@ -307,11 +292,11 @@ class TransactionsInteractorImpl(
             // Filter by Transaction date
             FilterGroup.SingleSelectionFilterGroup(
                 id = TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_GROUP_ID,
-                name = resourceProvider.getString(Res.string.transactions_screen_filter_by_date_period),
+                name = strings.get(Res.string.transactions_screen_filter_by_date_period),
                 filters = listOf(
                     FilterElement.DateTimeRangeFilterItem(
                         id = TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_RANGE,
-                        name = resourceProvider.getString(Res.string.transactions_screen_filter_by_date_period),
+                        name = strings.get(Res.string.transactions_screen_filter_by_date_period),
                         selected = true,
                         isDefault = true,
                         startDateTime = FilterElement.DateTimeRangeFilterItem.OPEN_START,
@@ -329,17 +314,17 @@ class TransactionsInteractorImpl(
             // Filter by Status
             FilterGroup.MultipleSelectionFilterGroup(
                 id = TransactionFilterIds.FILTER_BY_STATUS_GROUP_ID,
-                name = resourceProvider.getString(Res.string.transactions_screen_filter_by_status),
+                name = strings.get(Res.string.transactions_screen_filter_by_status),
                 filters = listOf(
                     FilterItem(
                         id = TransactionFilterIds.FILTER_BY_STATUS_COMPLETE,
-                        name = resourceProvider.getString(Res.string.transactions_filter_item_status_completed),
+                        name = strings.get(Res.string.transactions_filter_item_status_completed),
                         selected = true,
                         isDefault = true,
                     ),
                     FilterItem(
                         id = TransactionFilterIds.FILTER_BY_STATUS_FAILED,
-                        name = resourceProvider.getString(Res.string.transactions_filter_item_status_failed),
+                        name = strings.get(Res.string.transactions_filter_item_status_failed),
                         selected = true,
                         isDefault = true,
                     )
@@ -360,7 +345,7 @@ class TransactionsInteractorImpl(
             // Filter by Relying Party
             FilterGroup.MultipleSelectionFilterGroup(
                 id = TransactionFilterIds.FILTER_BY_RELYING_PARTY_GROUP_ID,
-                name = resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_relying_party),
+                name = strings.get(Res.string.transactions_screen_filters_filter_by_relying_party),
                 filters = emptyList(),
                 filterableAction = FilterMultipleAction<TransactionsFilterableAttributes> { attributes, filter ->
                     // Check if it is the "no relying party" filter
@@ -382,23 +367,23 @@ class TransactionsInteractorImpl(
             // Filter by Transaction Type
             FilterGroup.MultipleSelectionFilterGroup(
                 id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_GROUP_ID,
-                name = resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type),
+                name = strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type),
                 filters = listOf(
                     FilterItem(
                         id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_PRESENTATION,
-                        name = resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation),
+                        name = strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation),
                         selected = true,
                         isDefault = true,
                     ),
                     FilterItem(
                         id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_ISSUANCE,
-                        name = resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance),
+                        name = strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance),
                         selected = true,
                         isDefault = true,
                     ),
                     FilterItem(
                         id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_SIGNING,
-                        name = resourceProvider.getString(Res.string.transactions_screen_filters_filter_by_transaction_type_signing),
+                        name = strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_signing),
                         selected = true,
                         isDefault = true,
                     ),
@@ -424,11 +409,11 @@ class TransactionsInteractorImpl(
         ),
         sort = FilterSort(
             id = TransactionFilterIds.FILTER_SORT_GROUP_ID,
-            name = resourceProvider.getString(Res.string.transactions_screen_filters_sort_by),
+            name = strings.get(Res.string.transactions_screen_filters_sort_by),
             filters = listOf(
                 FilterItem(
                     id = TransactionFilterIds.FILTER_SORT_TRANSACTION_DATE,
-                    name = resourceProvider.getString(Res.string.transactions_screen_filters_sort_transaction_date),
+                    name = strings.get(Res.string.transactions_screen_filters_sort_transaction_date),
                     selected = true,
                     isDefault = true,
                     filterableAction = FilterAction.Sort<TransactionsFilterableAttributes, LocalDateTime> { attributes ->
@@ -447,8 +432,8 @@ class TransactionsInteractorImpl(
     override fun updateDateFilterById(
         filterGroupId: String,
         filterId: String,
-        lowerLimitDate: KotlinLocalDateTime,
-        upperLimitDate: KotlinLocalDateTime
+        lowerLimitDate: LocalDateTime,
+        upperLimitDate: LocalDateTime
     ) {
         // Both the contract and the filter framework are on kotlinx-datetime now, so this is a
         // straight pass-through — the conversion that used to sit here is gone.
@@ -472,15 +457,11 @@ class TransactionsInteractorImpl(
             )
 
             isToday() -> TransactionInteractorDateTimeCategoryPartialState.Today(
-                time = format(
-                    hoursMinutesFormatter
-                )
+                time = formatLocalDateTime(HOURS_MINUTES_DATETIME_PATTERN)
             )
 
             else -> TransactionInteractorDateTimeCategoryPartialState.WithinMonth(
-                date = format(
-                    fullDateTimeFormatter
-                )
+                date = formatLocalDateTime(FULL_DATETIME_PATTERN)
             )
         }
     }
@@ -494,7 +475,7 @@ class TransactionsInteractorImpl(
     private suspend fun LocalDateTime.toFormattedDisplayableDate(): String {
         return runCatching {
             when (val dateTimeState = this.toDateTimeState()) {
-                is TransactionInteractorDateTimeCategoryPartialState.JustNow -> resourceProvider.getString(
+                is TransactionInteractorDateTimeCategoryPartialState.JustNow -> strings.get(
                     Res.string.transactions_screen_0_minutes_ago_message
                 )
 
@@ -533,7 +514,7 @@ class TransactionsInteractorImpl(
         return listOf(
             FilterItem(
                 id = TransactionFilterIds.FILTER_BY_RELYING_PARTY_WITHOUT_NAME,
-                name = resourceProvider.getString(Res.string.transactions_filter_item_no_relying_party_transactions),
+                name = strings.get(Res.string.transactions_filter_item_no_relying_party_transactions),
                 selected = true,
                 isDefault = true,
             )
@@ -544,11 +525,11 @@ class TransactionsInteractorImpl(
         filter: FilterElement,
         attributes: TransactionsFilterableAttributes,
     ): Boolean {
-        val creationDate = attributes.creationLocalDateTime?.toLocalDate()
+        // All kotlinx now: the filter's bounds and the attribute agree on the type, so the comparison
+        // no longer needs a conversion on either side.
+        val creationDate = attributes.creationLocalDateTime?.date
         return if (filter is FilterElement.DateTimeRangeFilterItem && creationDate != null) {
-            val startDate = filter.startDateTime.toJavaLocalDateTime().toLocalDate()
-            val endDate = filter.endDateTime.toJavaLocalDateTime().toLocalDate()
-            creationDate in startDate..endDate
+            creationDate in filter.startDateTime.date..filter.endDateTime.date
         } else {
             true
         }
