@@ -24,6 +24,8 @@ import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
+import eu.europa.ec.issuancefeature.interactor.AndroidAddDocumentPlatformBridge
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorImpl
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
@@ -43,16 +45,25 @@ import org.koin.core.annotation.Scoped
 class FeatureIssuanceModule
 
 @Factory
-fun provideAddDocumentInteractor(
+fun provideAddDocumentPlatformBridge(
     walletCoreDocumentsController: WalletCoreDocumentsController,
-    resourceProvider: ResourceProvider,
     deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
-): AddDocumentInteractor =
-    AddDocumentInteractorImpl(
-        walletCoreDocumentsController,
-        deviceAuthenticationInteractor,
-        resourceProvider,
-    )
+    resourceProvider: ResourceProvider,
+): AddDocumentPlatformBridge = AndroidAddDocumentPlatformBridge(
+    walletCoreDocumentsController,
+    deviceAuthenticationInteractor,
+    resourceProvider,
+)
+
+// Shared implementation; only the wallet-core call surface above is Android's.
+@Factory
+fun provideAddDocumentInteractor(
+    strings: StringCatalog,
+    platformBridge: AddDocumentPlatformBridge,
+): AddDocumentInteractor = AddDocumentInteractorImpl(
+    strings,
+    platformBridge,
+)
 
 // Shared implementation: the platform half is `DocumentDetailsPlatformBridge`, which the dashboard
 // feature already provides.

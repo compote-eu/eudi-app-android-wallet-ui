@@ -83,31 +83,6 @@ import java.util.Locale
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.issuance_generic_error
 
-sealed class IssueDocumentsPartialState {
-    data class Success(val documentIds: List<DocumentId>) : IssueDocumentsPartialState()
-    data class DeferredSuccess(val deferredDocuments: Map<DocumentId, FormatType>) :
-        IssueDocumentsPartialState()
-
-    data class PartialSuccess(
-        val documentIds: List<DocumentId>,
-        val nonIssuedDocuments: Map<String, String>,
-    ) : IssueDocumentsPartialState()
-
-    data class PartialSuccessWithUntrustedIssuer(
-        val issuedDocumentIds: List<DocumentId>,
-        val untrustedDocuments: Map<FormatType, String>,
-    ) : IssueDocumentsPartialState()
-
-    data class Failure(val errorMessage: String) : IssueDocumentsPartialState()
-
-    data object IssuerNotTrusted : IssueDocumentsPartialState()
-
-    data class UserAuthRequired(
-        val crypto: BiometricCrypto,
-        val resultHandler: DeviceAuthenticationResult,
-    ) : IssueDocumentsPartialState()
-}
-
 sealed class DeleteDocumentPartialState {
     data object Success : DeleteDocumentPartialState()
     data class Failure(val errorMessage: String) : DeleteDocumentPartialState()
@@ -123,13 +98,6 @@ sealed class ResolveDocumentOfferPartialState {
     data class Failure(val errorMessage: String) : ResolveDocumentOfferPartialState()
 
     data object IssuerNotTrusted : ResolveDocumentOfferPartialState()
-}
-
-sealed class FetchScopedDocumentsPartialState {
-    data class Success(val documents: List<ScopedDocumentDomain>) :
-        FetchScopedDocumentsPartialState()
-
-    data class Failure(val errorMessage: String) : FetchScopedDocumentsPartialState()
 }
 
 sealed class IssueDeferredDocumentPartialState {

@@ -14,6 +14,9 @@
  * governing permissions and limitations under the Licence.
  */
 
+// One offerable credential configuration, as an issuer advertises it. Moved here from :core-logic
+// unchanged so `AddDocumentInteractorImpl` can name it from commonMain: every field is a String, an Int
+// or a Boolean — it was co-located with wallet-core, never coupled to it. Package unchanged.
 package eu.europa.ec.corelogic.model
 
 data class ScopedDocumentDomain(

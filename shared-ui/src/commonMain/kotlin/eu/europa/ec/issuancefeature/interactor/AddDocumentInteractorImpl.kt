@@ -16,27 +16,24 @@
 
 package eu.europa.ec.issuancefeature.interactor
 
-import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
-import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
 import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
-import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.SuccessRoute
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.AppIcons
@@ -52,26 +49,25 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_description
 import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_primary_button_text
 import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_text
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.issuance_add_document_no_options
 import eu.europa.ec.shared.resources.issuance_add_document_pid_combined
 
 // Phase 2: the Android implementation of the (now KMP) `AddDocumentInteractor` contract, which moved
 // to :shared-ui/commonMain with `AddDocumentViewModel`.
 class AddDocumentInteractorImpl(
-    private val walletCoreDocumentsController: WalletCoreDocumentsController,
-    private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
-    private val resourceProvider: ResourceProvider,
+    private val strings: StringCatalog,
+    private val platform: AddDocumentPlatformBridge,
 ) : AddDocumentInteractor {
 
     private val genericErrorMsg
-        get() = resourceProvider.genericErrorMessage()
+        get() = strings[Res.string.generic_error_message]
 
     override fun getAddDocumentOption(
         flowType: IssuanceFlowType,
     ): Flow<AddDocumentInteractorScopedPartialState> =
         flow {
-            val state =
-                walletCoreDocumentsController.getScopedDocuments(resourceProvider.getLocale())
+            val state = platform.getScopedDocuments(platform.localeTag())
 
             when (state) {
                 is FetchScopedDocumentsPartialState.Failure -> emit(
@@ -108,9 +104,7 @@ class AddDocumentInteractorImpl(
                                                 itemData = ListItemDataUi(
                                                     itemId = "${issuer}_${pidIds.joinToString(",")}",
                                                     mainContentData = ListItemMainContentDataUi.Text(
-                                                        text = resourceProvider.getString(
-                                                            Res.string.issuance_add_document_pid_combined
-                                                        )
+                                                        text = strings[Res.string.issuance_add_document_pid_combined]
                                                     ),
                                                     trailingContentData = ListItemTrailingContentDataUi.Icon(
                                                         iconData = AppIcons.Add
@@ -151,7 +145,7 @@ class AddDocumentInteractorImpl(
                     if (options.isEmpty()) {
                         emit(
                             AddDocumentInteractorScopedPartialState.NoOptions(
-                                errorMsg = resourceProvider.getString(Res.string.issuance_add_document_no_options)
+                                errorMsg = strings[Res.string.issuance_add_document_no_options]
                             )
                         )
                     } else {
@@ -165,7 +159,7 @@ class AddDocumentInteractorImpl(
             }
         }.safeAsync {
             AddDocumentInteractorScopedPartialState.Failure(
-                error = it.localizedMessage ?: genericErrorMsg
+                error = it.message ?: genericErrorMsg
             )
         }
 
@@ -175,7 +169,7 @@ class AddDocumentInteractorImpl(
         issuerId: String
     ): Flow<AddDocumentInteractorIssueDocumentsPartialState> = flow {
 
-        walletCoreDocumentsController.issueDocuments(
+        platform.issueDocuments(
             issuanceMethod = issuanceMethod,
             configIds = configIds,
             issuerId = issuerId
@@ -238,7 +232,7 @@ class AddDocumentInteractorImpl(
         }
     }.safeAsync {
         AddDocumentInteractorIssueDocumentsPartialState.Failure(
-            errorMessage = it.localizedMessage ?: genericErrorMsg
+            errorMessage = it.message ?: genericErrorMsg
         )
     }
 
@@ -247,26 +241,12 @@ class AddDocumentInteractorImpl(
         crypto: BiometricCrypto,
         notifyOnAuthenticationFailure: Boolean,
         resultHandler: DeviceAuthenticationResult
-    ) {
-        when (deviceAuthenticationInteractor.getBiometricsAvailability()) {
-            is BiometricsAvailability.CanAuthenticate -> {
-                deviceAuthenticationInteractor.authenticateWithBiometrics(
-                    context = context,
-                    crypto = crypto,
-                    notifyOnAuthenticationFailure = notifyOnAuthenticationFailure,
-                    resultHandler = resultHandler
-                )
-            }
-
-            is BiometricsAvailability.NonEnrolled -> {
-                deviceAuthenticationInteractor.launchBiometricSystemScreen()
-            }
-
-            is BiometricsAvailability.Failure -> {
-                resultHandler.onAuthenticationFailure()
-            }
-        }
-    }
+    ) = platform.handleUserAuth(
+        context = context,
+        crypto = crypto,
+        notifyOnAuthenticationFailure = notifyOnAuthenticationFailure,
+        resultHandler = resultHandler,
+    )
 
     override fun buildGenericSuccessRouteForDeferred(flowType: IssuanceFlowType): AppRoute {
         val navigation = when (flowType) {
@@ -287,7 +267,7 @@ class AddDocumentInteractorImpl(
     }
 
     override fun resumeOpenId4VciWithAuthorization(uri: String) {
-        walletCoreDocumentsController.resumeOpenId4VciWithAuthorization(uri)
+        platform.resumeOpenId4VciWithAuthorization(uri)
     }
 
     private fun getSuccessConfigForDeferred(
