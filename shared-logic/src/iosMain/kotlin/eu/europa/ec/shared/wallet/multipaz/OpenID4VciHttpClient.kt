@@ -48,10 +48,33 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.util.Logger
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+
+/**
+ * What an issuer said when it deferred an issuance instead of performing it.
+ *
+ * Written by [OpenID4VciCompatibilityEngine] and read by the caller *after* the attempt has failed. It
+ * exists because only the engine sees the credential endpoint's raw answer: multipaz turns a deferred
+ * response into a plain "unexpected status" error, so without this the reason is a protocol string in a
+ * message rather than something the app can reason about.
+ *
+ * @property transactionId the handle the issuer would honour at its `deferred_credential_endpoint` —
+ *   recorded so it appears in diagnostics, not because anything can redeem it yet.
+ * @property retryAfterSeconds the issuer's own `interval`, in seconds.
+ */
+class DeferredIssuanceNotice {
+    var transactionId: String? = null
+        internal set
+    var retryAfterSeconds: Int? = null
+        internal set
+
+    /** True once the issuer has deferred this attempt. */
+    val wasDeferred: Boolean get() = transactionId != null
+}
 
 /**
  * The HTTP client multipaz's OpenID4VCI code should be given on iOS.
@@ -84,8 +107,10 @@ internal fun openID4VciHttpClient(
     // Swappable so the compatibility rules can be tested against a `MockEngine` rather than the
     // network; production always takes the default.
     engine: HttpClientEngine = Darwin.create(),
+    /** Filled in if the issuer defers an issuance during this client's lifetime. */
+    deferredNotice: DeferredIssuanceNotice? = null,
 ): HttpClient =
-    HttpClient(OpenID4VciCompatibilityEngine(engine)) {
+    HttpClient(OpenID4VciCompatibilityEngine(engine, deferredNotice)) {
         // multipaz's requirement, not ours: the OAuth redirect must come back to the caller so the
         // authorization code can be read off it.
         followRedirects = false
@@ -103,6 +128,7 @@ internal fun openID4VciHttpClient(
 @OptIn(InternalAPI::class)
 internal class OpenID4VciCompatibilityEngine(
     private val delegate: HttpClientEngine,
+    private val deferredNotice: DeferredIssuanceNotice? = null,
 ) : HttpClientEngineBase("openid4vci-compat") {
 
     override val config: HttpClientEngineConfig get() = delegate.config
@@ -140,8 +166,53 @@ internal class OpenID4VciCompatibilityEngine(
         return when {
             isWellKnown(data) -> rememberEndpoints(data, response)
             isPushedAuthorizationRequest(data) -> injectFreshAttestationChallenge(response)
+            isDeferredIssuance(response) -> noteDeferredIssuance(response)
             else -> response
         }
+    }
+
+    /**
+     * An issuer that will issue later answers the credential request with `202 Accepted` and a
+     * `transaction_id` instead of credentials (OpenID4VCI's deferred flow).
+     */
+    private fun isDeferredIssuance(response: HttpResponseData): Boolean =
+        deferredNotice != null && response.statusCode == HttpStatusCode.Accepted
+
+    /**
+     * Records the deferred handle and passes the response through **unchanged**.
+     *
+     * Deliberately an observation rather than a rewrite, unlike the other rules here: multipaz cannot
+     * complete a deferred issuance at all — it never parses `deferred_credential_endpoint` and treats any
+     * non-200 as an error — so there is nothing to paper over. What the note buys is a truthful message
+     * instead of `Error getting a credential issued: 202 Accepted {...}`.
+     */
+    private suspend fun noteDeferredIssuance(response: HttpResponseData): HttpResponseData {
+        val (bytes, replayable) = replayableBody(response)
+        val body = runCatching {
+            Json.parseToJsonElement(bytes.decodeToString()).jsonObject
+        }.getOrNull()
+
+        body?.get("transaction_id")?.jsonPrimitive?.contentOrNull?.let { transactionId ->
+            deferredNotice?.transactionId = transactionId
+            deferredNotice?.retryAfterSeconds =
+                body["interval"]?.jsonPrimitive?.content?.toIntOrNull()
+            Logger.i(TAG, "the issuer deferred this issuance (transaction $transactionId)")
+        }
+        return replayable
+    }
+
+    /** Reads a response body and hands back an equivalent response, since a channel is read once. */
+    private suspend fun replayableBody(response: HttpResponseData): Pair<ByteArray, HttpResponseData> {
+        val bytes = (response.body as? ByteReadChannel)?.readRemaining()?.readByteArray()
+            ?: ByteArray(0)
+        return bytes to HttpResponseData(
+            statusCode = response.statusCode,
+            requestTime = response.requestTime,
+            headers = response.headers,
+            version = response.version,
+            body = ByteReadChannel(bytes),
+            callContext = response.callContext,
+        )
     }
 
     override fun close() {

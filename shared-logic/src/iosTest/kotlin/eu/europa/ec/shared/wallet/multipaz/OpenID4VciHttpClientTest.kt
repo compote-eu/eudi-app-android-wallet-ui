@@ -23,6 +23,7 @@ import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.request.get
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.post
+import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -33,6 +34,7 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -257,6 +259,60 @@ class OpenID4VciHttpClientTest {
         )
 
         assertEquals(asMetadata, client.get(asMetadataUrl).readRawBytes().decodeToString())
+    }
+
+    // ---- noticing a deferred issuance -----------------------------------------------------------
+
+    @Test
+    fun a_deferred_credential_response_is_noted_and_passed_through_untouched() = runTest {
+        val notice = DeferredIssuanceNotice()
+        val body = """{"transaction_id":"edef16a9-2af5","interval":60}"""
+        val client = openID4VciHttpClient(
+            engine = MockEngine {
+                respond(
+                    body,
+                    HttpStatusCode.Accepted,
+                    headersOf("Content-Type", "application/json"),
+                )
+            },
+            deferredNotice = notice,
+        )
+
+        val response = client.post("https://issuer.test/credential")
+
+        // multipaz reads this body itself, so the engine must not consume it.
+        assertEquals(body, response.bodyAsText())
+        assertEquals(HttpStatusCode.Accepted, response.status)
+        // What the note buys: the app can say "this is issued later" instead of quoting a status line.
+        assertTrue(notice.wasDeferred)
+        assertEquals("edef16a9-2af5", notice.transactionId)
+        assertEquals(60, notice.retryAfterSeconds)
+    }
+
+    @Test
+    fun an_ordinary_credential_response_leaves_the_notice_empty() = runTest {
+        val notice = DeferredIssuanceNotice()
+        val client = openID4VciHttpClient(
+            engine = MockEngine { respond("""{"credentials":[]}""", HttpStatusCode.OK) },
+            deferredNotice = notice,
+        )
+
+        client.post("https://issuer.test/credential").bodyAsText()
+
+        assertFalse(notice.wasDeferred)
+    }
+
+    @Test
+    fun an_accepted_response_without_a_transaction_id_is_not_called_deferred() = runTest {
+        val notice = DeferredIssuanceNotice()
+        val client = openID4VciHttpClient(
+            engine = MockEngine { respond("""{"queued":true}""", HttpStatusCode.Accepted) },
+            deferredNotice = notice,
+        )
+
+        // 202 alone means nothing here; the transaction handle is what makes it a deferred issuance.
+        assertEquals("""{"queued":true}""", client.post("https://issuer.test/credential").bodyAsText())
+        assertFalse(notice.wasDeferred)
     }
 
     // ---- the scope-instead-of-authorization_details workaround ---------------------------------

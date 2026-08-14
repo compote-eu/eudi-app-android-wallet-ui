@@ -17,6 +17,7 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.darwin.Darwin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -173,8 +174,11 @@ class IosCredentialIssuer(
 
     /** Drives one OpenID4VCI flow to a document, or throws with what went wrong. */
     private suspend fun provision(issuer: IosVciIssuer, configurationId: String): String {
-        val httpClient =
-            if (httpEngine != null) openID4VciHttpClient(httpEngine) else openID4VciHttpClient()
+        val deferred = DeferredIssuanceNotice()
+        val httpClient = openID4VciHttpClient(
+            engine = httpEngine ?: Darwin.create(),
+            deferredNotice = deferred,
+        )
         val walletStore = walletEngine.store()
         // A redirect left over from an earlier attempt carries a spent authorization code.
         IosAuthorizationRedirects.clear()
@@ -212,6 +216,8 @@ class IosCredentialIssuer(
                 val authorizing = launch { answerAuthorizationChallenges(model) }
                 try {
                     document.await().identifier
+                } catch (t: Throwable) {
+                    throw deferred.asFailureOr(t)
                 } finally {
                     authorizing.cancel()
                 }
@@ -231,8 +237,11 @@ class IosCredentialIssuer(
      * `clientId`/`redirectUrl` are the wallet's identity rather than the issuer's.
      */
     private suspend fun provision(offerUri: String, txCode: String?): String {
-        val httpClient =
-            if (httpEngine != null) openID4VciHttpClient(httpEngine) else openID4VciHttpClient()
+        val deferred = DeferredIssuanceNotice()
+        val httpClient = openID4VciHttpClient(
+            engine = httpEngine ?: Darwin.create(),
+            deferredNotice = deferred,
+        )
         val walletStore = walletEngine.store()
         IosAuthorizationRedirects.clear()
 
@@ -264,6 +273,8 @@ class IosCredentialIssuer(
                 val authorizing = launch { answerAuthorizationChallenges(model, txCode) }
                 try {
                     document.await().identifier
+                } catch (t: Throwable) {
+                    throw deferred.asFailureOr(t)
                 } finally {
                     authorizing.cancel()
                 }
@@ -330,8 +341,30 @@ class IosCredentialIssuer(
         }
     }
 
+    /**
+     * Turns "multipaz could not read the credential response" into "the issuer is issuing this later",
+     * when that is what happened.
+     *
+     * **Deliberately still a failure, not a deferred success.** Android reports `DeferredSuccess` here and
+     * keeps a pending document that its wallet-core later collects from the issuer's
+     * `deferred_credential_endpoint`. iOS has nothing that can collect it — multipaz neither parses that
+     * endpoint nor exposes the token and DPoP key needed to call it — so a document parked as "pending"
+     * would stay pending forever. Saying so is the honest answer until multipaz supports the flow; see the
+     * upstream note in the KDoc of this class.
+     */
+    private fun DeferredIssuanceNotice.asFailureOr(cause: Throwable): Throwable =
+        if (wasDeferred) IllegalStateException(DEFERRED_NOT_SUPPORTED) else cause
+
     companion object {
         private const val TAG = "IosCredentialIssuer"
+
+        /**
+         * User-facing, so it says what to do rather than what broke. Not a resource string: :shared-logic
+         * holds no strings, and the layers that do (the interactor's `StringCatalog`) pass this through as
+         * the issuer's own error text — the same shape Android's wallet-core messages arrive in.
+         */
+        internal const val DEFERRED_NOT_SUPPORTED: String =
+            "This issuer provides this document later, which this app cannot collect yet."
         private const val FALLBACK_LOCALE = "en"
 
         /**
