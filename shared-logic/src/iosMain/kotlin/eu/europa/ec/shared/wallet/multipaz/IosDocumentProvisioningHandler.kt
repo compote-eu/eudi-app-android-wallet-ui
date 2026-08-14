@@ -40,11 +40,18 @@ import kotlin.math.min
  * how to create and clean up key-bound mdoc and SD-JWT credentials. Only the document-level parts are
  * overridden: which metadata to attach, and when the document counts as issued.
  *
- * The credential *domains* are prefixed with our `documentManagerId`, in the spirit of what the Android
- * document manager does with its own identifier — a document manager's credentials are scoped to it, so
- * a store shared with another component never offers ours for presentation. multipaz splits domains by
- * whether user authentication is required, so the prefix is applied to each rather than collapsing them
- * into one.
+ * The credential *domain* is exactly our `documentManagerId`, because that is the value the read path
+ * filters credentials on — `DocumentManagerImpl` creates its credentials in a domain named after the
+ * document manager and `IssuedDocument.getCredentials()` keeps only those, and the iOS reader is a port
+ * of that. A domain merely *derived* from the id (a prefix, say) is not enough: the credentials would be
+ * created and certified, and then counted as zero, so a freshly issued document would render as
+ * `0/3` — issued, with nothing to present.
+ *
+ * That single domain also means asking for **one** batch rather than multipaz's default two. multipaz
+ * splits credentials by whether user authentication is required, one domain each, and this wallet's own
+ * configuration sets `userAuthenticationRequired = false` on every flavour, so the user-auth half is
+ * declined rather than renamed: two batches in one domain would silently halve the batch size
+ * (`maxBatchSize / 2` each) and mint Secure Enclave keys nothing here would ever choose to present.
  *
  * Note the metadata hook multipaz offers (`AbstractDocumentMetadataHandler`) is deliberately *not* used:
  * it is handed only the display data, and [EudiDocumentMetadata] needs the credential **format**, which
@@ -64,11 +71,13 @@ internal class IosDocumentProvisioningHandler(
     metadataHandler = null,
     defaultDocumentProvisioningSettings = DocumentProvisioningSettings(
         keyBoundCredentialNumPerDomain = batchSize,
-        mdocUserAuthDomain = "${store.documentManagerId}_mdoc_user_auth",
-        mdocNoUserAuthDomain = "${store.documentManagerId}_mdoc_no_user_auth",
-        sdJwtUserAuthDomain = "${store.documentManagerId}_sdjwt_user_auth",
-        sdJwtNoUserAuthDomain = "${store.documentManagerId}_sdjwt_no_user_auth",
-        sdJwtKeylessDomain = "${store.documentManagerId}_sdjwt_keyless",
+        // See the class note: one domain, named exactly as the reader expects, and no user-auth batch.
+        requestUserAuth = false,
+        mdocNoUserAuthDomain = store.documentManagerId,
+        sdJwtNoUserAuthDomain = store.documentManagerId,
+        sdJwtKeylessDomain = store.documentManagerId,
+        // The user-auth domain names are left at multipaz's defaults: with requestUserAuth off nothing
+        // is ever created in them, and naming them ours would suggest otherwise.
     ),
 ) {
 

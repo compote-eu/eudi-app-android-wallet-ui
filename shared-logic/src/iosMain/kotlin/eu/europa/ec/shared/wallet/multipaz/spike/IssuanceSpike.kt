@@ -242,9 +242,15 @@ suspend fun probeProvisioning(
                             "new=${finished.isNewlyIssued} credentials=${finished.numCredentialsFetched}"
                 )
                 // The point of step 3: the document must be visible to the reader, not just stored.
-                MultipazWalletEngine(store).getAllDocumentsWithDetails(locale = "en").forEach {
+                val engine = MultipazWalletEngine(store)
+                engine.getAllDocumentsWithDetails(locale = "en").forEach {
                     onResult("  reader sees: ${it.name} / ${it.formatType} state=${it.issuanceState} credentials=${it.credentialsCount}/${it.initialCredentialsCount}")
                 }
+                // And its claims must parse: a real issuer's mdoc, through the same reader the details
+                // screen uses. The fixture proves our own CBOR round-trips; only this proves theirs does.
+                val claims = engine.getNamespacedClaims(finished.document.identifier)
+                onResult("  claims: ${claims.size} -> " +
+                        claims.entries.take(4).joinToString { "${it.key}=${it.value.value.take(24)}" })
             }
 
             else -> Unit

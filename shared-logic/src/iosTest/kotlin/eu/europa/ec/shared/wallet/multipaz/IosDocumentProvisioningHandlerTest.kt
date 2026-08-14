@@ -18,13 +18,17 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
+import eu.europa.ec.shared.wallet.multipaz.spike.certifyWithFixtureIssuer
 import kotlinx.coroutines.test.runTest
+import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm
+import org.multipaz.document.Document
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.CredentialMetadata
 import org.multipaz.provisioning.Display
 import org.multipaz.provisioning.KeyBindingType
 import org.multipaz.provisioning.ProvisioningMetadata
+import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
@@ -152,6 +156,68 @@ class IosDocumentProvisioningHandlerTest {
             .single { it.displayName == "single" }
             .eudiMetadata!!
         assertIs<WalletCredentialPolicy.OnceOnly>(metadata.credentialPolicy)
+    }
+
+    /**
+     * Runs the credential half of provisioning: multipaz creates the keys and pending credentials, the
+     * fixture issuer certifies them, and the handler stamps the document as issued — the same sequence
+     * `ProvisioningModel` drives against a real issuer.
+     */
+    private suspend fun IosDocumentProvisioningHandler.provisionCredentials(
+        document: Document,
+        credentialMetadata: CredentialMetadata,
+        issuerMetadata: ProvisioningMetadata,
+    ): List<SecureAreaBoundCredential> {
+        val pending = getPendingKeyBoundCredentials(
+            document = document,
+            credentialMetadata = credentialMetadata,
+            issuerMetadata = issuerMetadata,
+            createKeySettings = SoftwareCreateKeySettings.Builder().build(),
+        )
+        pending.forEach {
+            it.certifyWithFixtureIssuer(docType = "eu.europa.ec.eudi.pid.1")
+        }
+        updateDocument(document, display = null, documentAuthorizationData = null)
+        return pending
+    }
+
+    @Test
+    fun the_credentials_an_issuer_certifies_are_the_ones_the_reader_counts() = runTest {
+        val store = store()
+        val handler = IosDocumentProvisioningHandler(store, batchSize = 3)
+        val credentialMetadata = credentialMetadata(name = "PID (issued)")
+        val document = handler.createDocument(
+            credentialMetadata = credentialMetadata,
+            issuerMetadata = issuerMetadata(),
+            documentAuthorizationData = null,
+        )
+
+        handler.provisionCredentials(document, credentialMetadata, issuerMetadata())
+
+        // The whole point of provisioning: a document that can be presented. Counting zero is what a
+        // credential domain the reader does not recognize looks like — issued, and empty.
+        val read = MultipazWalletEngine(store).getAllDocumentsWithDetails(locale = "en").single()
+        assertEquals(3, read.credentialsCount)
+        assertEquals(3, read.initialCredentialsCount)
+    }
+
+    @Test
+    fun exactly_the_requested_batch_is_created_in_one_domain() = runTest {
+        val store = store()
+        val handler = IosDocumentProvisioningHandler(store, batchSize = 3)
+        val credentialMetadata = credentialMetadata(name = "PID", maxBatchSize = 20)
+        val document = handler.createDocument(
+            credentialMetadata = credentialMetadata,
+            issuerMetadata = issuerMetadata(),
+            documentAuthorizationData = null,
+        )
+
+        val pending = handler.provisionCredentials(document, credentialMetadata, issuerMetadata())
+
+        // multipaz asks for one batch per domain and defaults to two domains (user-auth and not), which
+        // would be six keys here — and a count the document's own policy contradicts.
+        assertEquals(3, pending.size)
+        assertEquals(setOf(store.documentManagerId), pending.map { it.domain }.toSet())
     }
 
     @Test

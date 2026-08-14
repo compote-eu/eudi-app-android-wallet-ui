@@ -32,6 +32,7 @@ import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.Uint
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cose.Cose
+import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
@@ -134,6 +135,31 @@ internal suspend fun MultipazWalletStore.seedMdocDocument(
 
     return document.identifier
 }
+
+/**
+ * Certifies a credential someone *else* created — the issuance path's credentials, which multipaz mints
+ * as pending and a real issuer would certify — with the same synthetic issuer data [seedMdocDocument]
+ * uses.
+ *
+ * Needed because certification is not optional for anything the reader can see: `getCertifiedCredentials`
+ * skips pending ones, and `MdocCredential.certify` insists on a parseable MSO to take its validity window
+ * from, so there is no shortcut with placeholder bytes.
+ */
+internal suspend fun SecureAreaBoundCredential.certifyWithFixtureIssuer(
+    docType: String,
+    namespace: String = docType,
+    elements: List<Pair<String, DataItem>> = samplePidElements(),
+    validFrom: Instant = Clock.System.now() - 1.days,
+    validUntil: Instant = Clock.System.now() + 30.days,
+) = certify(
+    issuerProvidedAuthenticationData = issuerSignedDataFor(
+        docType = docType,
+        issuerNamespaces = issuerNamespacesOf(namespace, elements, Random.Default),
+        deviceKey = secureArea.getKeyInfo(alias).publicKey,
+        validFrom = validFrom,
+        validUntil = validUntil,
+    ),
+)
 
 /**
  * A realistic PID claim set, chosen to exercise every branch of the CBOR-to-string conversion the
