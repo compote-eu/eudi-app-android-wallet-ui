@@ -28,7 +28,13 @@ import io.ktor.http.Headers
 import io.ktor.http.HeadersBuilder
 import io.ktor.http.HttpProtocolVersion
 import io.ktor.http.HttpMethod
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Parameters
+import io.ktor.http.content.OutgoingContent
+import io.ktor.http.content.TextContent
+import io.ktor.http.formUrlEncode
+import io.ktor.http.parseUrlEncodedParameters
 import io.ktor.http.Url
 import io.ktor.client.utils.EmptyContent
 import io.ktor.util.Attributes
@@ -40,6 +46,7 @@ import io.ktor.utils.io.readRemaining
 import kotlinx.io.readByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.util.Logger
@@ -64,6 +71,9 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  *    treats those challenges as single-use, so authorization-code issuance dies at the token endpoint
  *    with `401 invalid_client`. See [injectFreshAttestationChallenge] — this one is a multipaz bug and
  *    the fix here is a stop-gap, not the answer.
+ * 4. **multipaz asks for the credential with `authorization_details` where this server only understands
+ *    `scope`**, which fails the token request with `400 invalid_authorization_details`. See
+ *    [withScopeInsteadOfAuthorizationDetails] — also a multipaz bug, also a stop-gap.
  *
  * Both live here rather than in a fork of multipaz because multipaz takes the client from its caller for
  * every request, which makes this the one seam that needs no patched dependency. Both should disappear:
@@ -107,9 +117,16 @@ internal class OpenID4VciCompatibilityEngine(
     private var challengeEndpoint: String? = null
     private var pushedAuthorizationRequestEndpoint: String? = null
 
+    /** `credential_configuration_id` → OAuth `scope`, from the credential issuer's own metadata. */
+    private var scopesByConfigurationId: Map<String, String> = emptyMap()
+
     override suspend fun execute(data: HttpRequestData): HttpResponseData {
+        val request =
+            if (isPushedAuthorizationRequest(data)) withScopeInsteadOfAuthorizationDetails(data)
+            else data
+
         val response = try {
-            delegate.execute(data)
+            delegate.execute(request)
         } catch (t: Throwable) {
             if (isOptional(data)) {
                 // A logo, a card art, some display extra. multipaz checks the status, so hand it one.
@@ -179,6 +196,12 @@ internal class OpenID4VciCompatibilityEngine(
             json["pushed_authorization_request_endpoint"]?.jsonPrimitive?.content?.let {
                 pushedAuthorizationRequestEndpoint = it
             }
+            json["credential_configurations_supported"]?.jsonObject?.let { configurations ->
+                scopesByConfigurationId = configurations.mapNotNull { (id, configuration) ->
+                    configuration.jsonObject["scope"]?.jsonPrimitive?.content?.let { id to it }
+                }.toMap()
+                Logger.i(TAG, "learned ${scopesByConfigurationId.size} credential scopes")
+            }
         }
 
         return unwrapped.replacingBody(bytes, asJson = true)
@@ -230,6 +253,65 @@ internal class OpenID4VciCompatibilityEngine(
             // Untouched: this path never reads the body, so it can be passed straight through.
             body = response.body,
             callContext = response.callContext,
+        )
+    }
+
+    /**
+     * Replaces `authorization_details` in a PAR body with the equivalent `scope`.
+     *
+     * 🩹 **Working around a second multipaz bug.** `performPushedAuthorizationRequest` drops a
+     * configuration's `scope` whenever another configuration shares that scope *and* format, logging
+     * *"Scope does not uniquely identify credential for configuration id …"*, and falls back to
+     * `authorization_details` with `type=openid_credential`. On this issuer **every** configuration has a
+     * `_deferred` twin with the same scope and format, so the fallback is taken every time — and the
+     * authorization server does not implement that RAR type, answering
+     * `400 invalid_authorization_details: Unsupported type 'openid_credential'`. The Android wallet sends
+     * `scope=…` for the same credential and succeeds.
+     *
+     * Rewriting a *request* body is safe here specifically because the proofs are not over it: the DPoP
+     * and client-attestation PoP JWTs bind the method and URL (`htm`/`htu`), not the payload.
+     *
+     * Anything unexpected — no mapping for the requested configuration, a body that is not form data, a
+     * request that already carries a scope — is left exactly as multipaz built it.
+     */
+    private fun withScopeInsteadOfAuthorizationDetails(data: HttpRequestData): HttpRequestData {
+        val body = data.body as? OutgoingContent.ByteArrayContent ?: return data
+        val parameters = body.bytes().decodeToString().parseUrlEncodedParameters()
+        val details = parameters["authorization_details"] ?: return data
+        if (parameters["scope"] != null) return data
+
+        val configurationIds = runCatching {
+            Json.parseToJsonElement(details).jsonArray.mapNotNull {
+                it.jsonObject["credential_configuration_id"]?.jsonPrimitive?.content
+            }
+        }.getOrElse { emptyList() }
+
+        val scopes = configurationIds.mapNotNull { scopesByConfigurationId[it] }
+        if (scopes.isEmpty() || scopes.size != configurationIds.size) {
+            Logger.w(TAG, "no scope known for $configurationIds; leaving authorization_details alone")
+            return data
+        }
+
+        Logger.i(TAG, "sending scope '${scopes.joinToString(" ")}' instead of authorization_details")
+        val rewritten = Parameters.build {
+            parameters.forEach { name, values ->
+                if (name != "authorization_details") appendAll(name, values)
+            }
+            append("scope", scopes.joinToString(" "))
+        }.formUrlEncode()
+
+        return HttpRequestData(
+            url = data.url,
+            method = data.method,
+            // Content-Length would describe the old body; the new content supplies its own.
+            headers = HeadersBuilder().apply {
+                data.headers.forEach { name, values ->
+                    if (!name.equals(CONTENT_LENGTH, ignoreCase = true)) appendAll(name, values)
+                }
+            }.build(),
+            body = TextContent(rewritten, ContentType.Application.FormUrlEncoded),
+            executionContext = data.executionContext,
+            attributes = data.attributes,
         )
     }
 

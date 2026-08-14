@@ -19,11 +19,15 @@ package eu.europa.ec.shared.wallet.multipaz
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
+import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.request.get
+import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.post
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.ktor.http.parametersOf
+import io.ktor.http.parseUrlEncodedParameters
 import kotlinx.coroutines.test.runTest
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -253,6 +257,97 @@ class OpenID4VciHttpClientTest {
         )
 
         assertEquals(asMetadata, client.get(asMetadataUrl).readRawBytes().decodeToString())
+    }
+
+    // ---- the scope-instead-of-authorization_details workaround ---------------------------------
+
+    private val issuerMetadataUrl = "https://issuer.test/.well-known/openid-credential-issuer"
+
+    private val issuerMetadata = """
+        {"credential_issuer":"https://issuer.test",
+         "credential_configurations_supported":{
+           "pid_mdoc":{"scope":"pid_scope","format":"mso_mdoc"},
+           "pid_mdoc_deferred":{"scope":"pid_scope","format":"mso_mdoc"}}}
+    """.trimIndent()
+
+    private fun engineLearningBothMetadata(
+        onPar: (String) -> Unit,
+    ) = MockEngine { request ->
+        when (request.url.toString()) {
+            issuerMetadataUrl -> respond(
+                issuerMetadata,
+                headers = headersOf("Content-Type", "application/json"),
+            )
+
+            asMetadataUrl -> respond(asMetadata, headers = headersOf("Content-Type", "application/json"))
+            challengeEndpoint -> respond("""{"attestation_challenge":"c"}""")
+            parEndpoint -> {
+                onPar(request.body.toByteArray().decodeToString())
+                respond("", HttpStatusCode.Created)
+            }
+
+            else -> respond("", HttpStatusCode.OK)
+        }
+    }
+
+    @Test
+    fun authorization_details_are_replaced_by_the_configurations_scope() = runTest {
+        var parBody = ""
+        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it })
+        client.get(issuerMetadataUrl).readRawBytes()
+        client.get(asMetadataUrl).readRawBytes()
+
+        client.submitForm(
+            url = parEndpoint,
+            formParameters = parametersOf(
+                "authorization_details" to listOf(
+                    """[{"type":"openid_credential","credential_configuration_id":"pid_mdoc"}]"""
+                ),
+                "client_id" to listOf("eudiw-abca"),
+            ),
+        )
+
+        val sent = parBody.parseUrlEncodedParameters()
+        // The server understands this and not the RAR form multipaz prefers.
+        assertEquals("pid_scope", sent["scope"])
+        assertNull(sent["authorization_details"])
+        // Everything else must survive the rewrite untouched.
+        assertEquals("eudiw-abca", sent["client_id"])
+    }
+
+    @Test
+    fun a_request_that_already_has_a_scope_is_not_rewritten() = runTest {
+        var parBody = ""
+        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it })
+        client.get(issuerMetadataUrl).readRawBytes()
+        client.get(asMetadataUrl).readRawBytes()
+
+        client.submitForm(
+            url = parEndpoint,
+            formParameters = parametersOf("scope" to listOf("already_here")),
+        )
+
+        assertEquals("already_here", parBody.parseUrlEncodedParameters()["scope"])
+    }
+
+    @Test
+    fun an_unknown_configuration_id_leaves_the_request_as_multipaz_built_it() = runTest {
+        var parBody = ""
+        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it })
+        client.get(issuerMetadataUrl).readRawBytes()
+        client.get(asMetadataUrl).readRawBytes()
+
+        val details =
+            """[{"type":"openid_credential","credential_configuration_id":"something_else"}]"""
+        client.submitForm(
+            url = parEndpoint,
+            formParameters = parametersOf("authorization_details" to listOf(details)),
+        )
+
+        // Guessing a scope would be worse than letting the server reject a request we understand.
+        val sent = parBody.parseUrlEncodedParameters()
+        assertEquals(details, sent["authorization_details"])
+        assertNull(sent["scope"])
     }
 
     @Test
