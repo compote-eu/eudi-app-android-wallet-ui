@@ -29,6 +29,10 @@ import io.ktor.http.HeadersBuilder
 import io.ktor.http.HttpProtocolVersion
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
+import io.ktor.client.utils.EmptyContent
+import io.ktor.util.Attributes
+import kotlinx.coroutines.Job
 import io.ktor.utils.io.InternalAPI
 import io.ktor.util.date.GMTDate
 import io.ktor.utils.io.ByteReadChannel
@@ -56,6 +60,10 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  *    that does not resolve. multipaz fetches logos *while parsing metadata* and already tolerates a
  *    non-OK status — but a DNS failure throws out of the engine and takes the whole metadata read with
  *    it. So a failed optional GET becomes a 502 rather than an exception.
+ * 3. **multipaz reuses the client-attestation challenge across PAR and the token request**, and Keycloak
+ *    treats those challenges as single-use, so authorization-code issuance dies at the token endpoint
+ *    with `401 invalid_client`. See [injectFreshAttestationChallenge] — this one is a multipaz bug and
+ *    the fix here is a stop-gap, not the answer.
  *
  * Both live here rather than in a fork of multipaz because multipaz takes the client from its caller for
  * every request, which makes this the one seam that needs no patched dependency. Both should disappear:
@@ -91,6 +99,14 @@ internal class OpenID4VciCompatibilityEngine(
 
     override val supportedCapabilities get() = delegate.supportedCapabilities
 
+    /**
+     * Endpoints learned from the authorization server's own metadata, so nothing here has to guess at
+     * URL shapes. Plain vars: a provisioning session is sequential, and the only other traffic through
+     * this engine (display logos) never touches them.
+     */
+    private var challengeEndpoint: String? = null
+    private var pushedAuthorizationRequestEndpoint: String? = null
+
     override suspend fun execute(data: HttpRequestData): HttpResponseData {
         val response = try {
             delegate.execute(data)
@@ -104,8 +120,11 @@ internal class OpenID4VciCompatibilityEngine(
             throw t
         }
 
-        return if (looksLikeSignedMetadata(data, response)) unwrapSignedMetadata(data, response)
-        else response
+        return when {
+            isWellKnown(data) -> rememberEndpoints(data, response)
+            isPushedAuthorizationRequest(data) -> injectFreshAttestationChallenge(response)
+            else -> response
+        }
     }
 
     override fun close() {
@@ -124,12 +143,112 @@ internal class OpenID4VciCompatibilityEngine(
     private fun isOptional(data: HttpRequestData): Boolean =
         data.method == HttpMethod.Get && !data.url.encodedPath.contains(WELL_KNOWN)
 
-    private fun looksLikeSignedMetadata(
+    private fun isWellKnown(data: HttpRequestData): Boolean =
+        data.url.encodedPath.contains(WELL_KNOWN)
+
+    private fun isSignedMetadata(response: HttpResponseData): Boolean =
+        response.statusCode == HttpStatusCode.OK &&
+                response.headers[CONTENT_TYPE]?.contains("jwt", ignoreCase = true) == true
+
+    private fun isPushedAuthorizationRequest(data: HttpRequestData): Boolean =
+        data.method == HttpMethod.Post &&
+                pushedAuthorizationRequestEndpoint?.let { data.url.toString() == it } == true
+
+    /**
+     * Unwraps signed metadata if needed, and remembers the two endpoints [injectFreshAttestationChallenge]
+     * depends on.
+     *
+     * Reading the body here means it has to be handed back re-wrapped, which is why every metadata
+     * response goes through [HttpResponseData.replacingBody] even when nothing was rewritten.
+     */
+    private suspend fun rememberEndpoints(
         data: HttpRequestData,
         response: HttpResponseData,
-    ): Boolean = response.statusCode == HttpStatusCode.OK &&
-            data.url.encodedPath.contains(WELL_KNOWN) &&
-            response.headers[CONTENT_TYPE]?.contains("jwt", ignoreCase = true) == true
+    ): HttpResponseData {
+        if (response.statusCode != HttpStatusCode.OK) return response
+        val unwrapped =
+            if (isSignedMetadata(response)) unwrapSignedMetadata(data, response) else response
+        val bytes = (unwrapped.body as ByteReadChannel).readRemaining().readByteArray()
+
+        runCatching {
+            val json = Json.parseToJsonElement(bytes.decodeToString()).jsonObject
+            json["challenge_endpoint"]?.jsonPrimitive?.content?.let {
+                challengeEndpoint = it
+                Logger.i(TAG, "learned challenge endpoint")
+            }
+            json["pushed_authorization_request_endpoint"]?.jsonPrimitive?.content?.let {
+                pushedAuthorizationRequestEndpoint = it
+            }
+        }
+
+        return unwrapped.replacingBody(bytes, asJson = true)
+    }
+
+    /**
+     * Adds an `OAuth-Client-Attestation-Challenge` header carrying a **fresh** challenge to the PAR
+     * response.
+     *
+     * 🩹 **Working around a multipaz bug, and it should be removed when that is fixed.**
+     * `OpenID4VCIProvisioningClient.obtainToken` refreshes the client-attestation challenge only when a
+     * *pre-authorized* code is used:
+     * ```
+     * if (preauthorizedCode != null) { maybeObtainClientAttestationChallenge() }
+     * ```
+     * On the authorization-code path it therefore reuses the challenge minted before PAR. Keycloak
+     * treats attestation challenges as single-use, so the token request's PoP is a replay and the
+     * answer is `401 invalid_client`. Verified by diffing against the Android app, whose call order is
+     * `/challenge → PAR → /challenge → /token` while multipaz's is `/challenge → PAR → /token`.
+     *
+     * The lever is that multipaz *does* pick up a challenge offered in this response header (it reads it
+     * after both PAR and the token request). Keycloak does not send one, so it is fetched and injected
+     * here — leaving multipaz's own logic untouched.
+     */
+    private suspend fun injectFreshAttestationChallenge(
+        response: HttpResponseData,
+    ): HttpResponseData {
+        val endpoint = challengeEndpoint ?: return response
+        if (response.headers[ATTESTATION_CHALLENGE_HEADER] != null) {
+            // The server offered one itself; nothing to do, and it knows better than we do.
+            return response
+        }
+
+        val challenge = runCatching { fetchAttestationChallenge(endpoint) }.getOrNull()
+        if (challenge == null) {
+            Logger.w(TAG, "could not pre-fetch an attestation challenge; the token request may fail")
+            return response
+        }
+
+        Logger.i(TAG, "injected a fresh attestation challenge into the PAR response")
+        return HttpResponseData(
+            statusCode = response.statusCode,
+            requestTime = response.requestTime,
+            headers = HeadersBuilder().apply {
+                appendAll(response.headers)
+                append(ATTESTATION_CHALLENGE_HEADER, challenge)
+            }.build(),
+            version = response.version,
+            // Untouched: this path never reads the body, so it can be passed straight through.
+            body = response.body,
+            callContext = response.callContext,
+        )
+    }
+
+    /** POSTs the challenge endpoint through the delegate, so tests can serve it like any other call. */
+    private suspend fun fetchAttestationChallenge(endpoint: String): String? {
+        val response = delegate.execute(
+            HttpRequestData(
+                url = Url(endpoint),
+                method = HttpMethod.Post,
+                headers = Headers.Empty,
+                body = EmptyContent,
+                executionContext = Job(),
+                attributes = Attributes(),
+            )
+        )
+        if (response.statusCode != HttpStatusCode.OK) return null
+        val text = (response.body as ByteReadChannel).readRemaining().readByteArray().decodeToString()
+        return Json.parseToJsonElement(text).jsonObject["attestation_challenge"]?.jsonPrimitive?.content
+    }
 
     /**
      * Replaces a `statuslist`-style signed metadata response with the JWT's payload.
@@ -235,5 +354,6 @@ internal class OpenID4VciCompatibilityEngine(
         const val WELL_KNOWN = ".well-known"
         const val CONTENT_TYPE = "Content-Type"
         const val CONTENT_LENGTH = "Content-Length"
+        const val ATTESTATION_CHALLENGE_HEADER = "OAuth-Client-Attestation-Challenge"
     }
 }

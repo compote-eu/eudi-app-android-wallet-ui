@@ -20,6 +20,7 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.request.get
+import io.ktor.client.request.post
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -29,13 +30,14 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The two compatibility rules the iOS OpenID4VCI client applies, against a `MockEngine` standing in for
- * the network.
+ * The three compatibility rules the iOS OpenID4VCI client applies, against a `MockEngine` standing in
+ * for the network.
  *
- * Both rules exist because of something observed against the real EU dev issuers, and both are the kind
+ * Each rule exists because of something observed against the real EU dev issuers, and they are the kind
  * of thing that is easy to get subtly wrong — the first version of the 502 path deadlocked every
  * subsequent request, because a synthetic response was built with the *request's* job as its call
  * context. Reading the body here (`readRawBytes`, which is what multipaz uses) is what catches that:
@@ -141,6 +143,116 @@ class OpenID4VciHttpClientTest {
         )
 
         assertFailsWith<IllegalStateException> { client.get(metadataUrl) }
+    }
+
+    // ---- the attestation-challenge workaround ------------------------------------------------
+
+    private val asMetadataUrl = "https://as.test/.well-known/oauth-authorization-server"
+    private val parEndpoint = "https://as.test/realms/r/protocol/openid-connect/ext/par/request"
+    private val challengeEndpoint = "https://as.test/realms/r/challenge"
+
+    private val asMetadata = """
+        {"issuer":"https://as.test/realms/r",
+         "challenge_endpoint":"$challengeEndpoint",
+         "pushed_authorization_request_endpoint":"$parEndpoint"}
+    """.trimIndent()
+
+    @Test
+    fun a_par_response_is_given_a_freshly_fetched_attestation_challenge() = runTest {
+        var challengeRequests = 0
+        val client = openID4VciHttpClient(
+            MockEngine { request ->
+                when (request.url.toString()) {
+                    asMetadataUrl -> respond(
+                        asMetadata,
+                        headers = headersOf("Content-Type", "application/json"),
+                    )
+
+                    challengeEndpoint -> {
+                        challengeRequests++
+                        respond(
+                            """{"attestation_challenge":"fresh-$challengeRequests"}""",
+                            headers = headersOf("Content-Type", "application/json"),
+                        )
+                    }
+
+                    else -> respond("", HttpStatusCode.Created)
+                }
+            }
+        )
+
+        // The endpoints are learned from the metadata rather than guessed from URL shapes, so the
+        // metadata has to be read first — exactly the order multipaz uses.
+        client.get(asMetadataUrl).readRawBytes()
+        val par = client.post(parEndpoint)
+
+        assertEquals(
+            "fresh-1",
+            par.headers["OAuth-Client-Attestation-Challenge"],
+            "multipaz reads the fresh challenge off this header; without it the token request replays",
+        )
+        assertEquals(1, challengeRequests)
+    }
+
+    @Test
+    fun a_challenge_the_server_offers_itself_is_left_alone() = runTest {
+        var challengeRequests = 0
+        val client = openID4VciHttpClient(
+            MockEngine { request ->
+                when (request.url.toString()) {
+                    asMetadataUrl -> respond(
+                        asMetadata,
+                        headers = headersOf("Content-Type", "application/json"),
+                    )
+
+                    challengeEndpoint -> {
+                        challengeRequests++
+                        respond("""{"attestation_challenge":"ours"}""")
+                    }
+
+                    else -> respond(
+                        "",
+                        HttpStatusCode.Created,
+                        headersOf("OAuth-Client-Attestation-Challenge", "the-servers-own"),
+                    )
+                }
+            }
+        )
+
+        client.get(asMetadataUrl).readRawBytes()
+        val par = client.post(parEndpoint)
+
+        // The server knows better; nothing is fetched or overwritten.
+        assertEquals("the-servers-own", par.headers["OAuth-Client-Attestation-Challenge"])
+        assertEquals(0, challengeRequests)
+    }
+
+    @Test
+    fun a_post_that_is_not_the_par_endpoint_is_untouched() = runTest {
+        val client = openID4VciHttpClient(
+            MockEngine { request ->
+                if (request.url.toString() == asMetadataUrl) {
+                    respond(asMetadata, headers = headersOf("Content-Type", "application/json"))
+                } else {
+                    respond("", HttpStatusCode.OK)
+                }
+            }
+        )
+        client.get(asMetadataUrl).readRawBytes()
+
+        val token = client.post("https://as.test/realms/r/protocol/openid-connect/token")
+
+        assertNull(token.headers["OAuth-Client-Attestation-Challenge"])
+    }
+
+    @Test
+    fun authorization_server_metadata_still_reads_normally_while_being_inspected() = runTest {
+        // The endpoints are learned by reading the body, so the body must survive being read.
+        val client = openID4VciHttpClient(
+            MockEngine { respond(asMetadata, headers = headersOf("Content-Type", "application/json")) }
+        )
+
+        assertEquals(asMetadata, client.get(asMetadataUrl).readRawBytes().decodeToString())
     }
 
     @Test
