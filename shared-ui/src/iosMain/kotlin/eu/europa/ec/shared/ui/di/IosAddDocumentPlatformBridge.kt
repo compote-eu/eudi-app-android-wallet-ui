@@ -26,10 +26,12 @@ import eu.europa.ec.corelogic.model.ScopedDocumentDomain
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
+import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
 import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
 import eu.europa.ec.shared.wallet.multipaz.OfferableCredentialsResult
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import platform.Foundation.NSLocale
 import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
@@ -42,14 +44,14 @@ import platform.Foundation.languageCode
  * layer above it is shared, so an issuer's configurations are grouped, PID-folded and sorted by exactly
  * the code Android runs.
  *
- * [issueDocuments] is what remains. The protocol works — the issuance spike drives multipaz's
- * `ProvisioningModel` through PAR, authorization and credential issuance against
- * `dev.issuer-backend.eudiw.dev`, and the documents it produces are visible to our reader — but driving it
- * from a screen needs the authorization browser, the Secure Enclave key policy and the deferred cases
- * wired in, so this still refuses rather than half-starting an issuance.
+ * [issueDocuments] runs for real too, through [IosCredentialIssuer]: OpenID4VCI over multipaz, Safari for
+ * the authorization step, and the credentials land in the same store the Documents list reads. The
+ * mapping below is where its outcome becomes the three answers the shared interactor understands — and
+ * "some issued, some not" is a real answer, since iOS issues one configuration per flow.
  */
 internal class IosAddDocumentPlatformBridge(
     private val offerableCredentials: IosOfferableCredentialsReader,
+    private val credentialIssuer: IosCredentialIssuer,
 ) : AddDocumentPlatformBridge {
 
     override fun localeTag(): String = NSLocale.currentLocale.languageCode
@@ -80,9 +82,25 @@ internal class IosAddDocumentPlatformBridge(
         issuanceMethod: IssuanceMethod,
         configIds: List<String>,
         issuerId: String,
-    ): Flow<IssueDocumentsPartialState> = flow {
-        emit(IssueDocumentsPartialState.Failure(errorMessage = NOT_AVAILABLE_ON_IOS))
-    }
+    ): Flow<IssueDocumentsPartialState> =
+        credentialIssuer.issue(issuerId = issuerId, configurationIds = configIds).map { progress ->
+            when (progress) {
+                is IosIssuanceProgress.Failure ->
+                    IssueDocumentsPartialState.Failure(errorMessage = progress.message)
+
+                is IosIssuanceProgress.Issued -> if (progress.failures.isEmpty()) {
+                    IssueDocumentsPartialState.Success(documentIds = progress.documentIds)
+                } else {
+                    // Android reaches this state when an issuer refuses some of a batch; here it is
+                    // reached when the second of two configurations fails, which is the same thing from
+                    // the screen's point of view: these were added, those were not.
+                    IssueDocumentsPartialState.PartialSuccess(
+                        documentIds = progress.documentIds,
+                        nonIssuedDocuments = progress.failures,
+                    )
+                }
+            }
+        }
 
     /**
      * Nothing to raise: multipaz's `SecureEnclaveSecureArea` presents the LocalAuthentication dialog
@@ -102,7 +120,4 @@ internal class IosAddDocumentPlatformBridge(
      */
     override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
 
-    private companion object {
-        const val NOT_AVAILABLE_ON_IOS = "Issuing a document is not available on iOS yet."
-    }
 }

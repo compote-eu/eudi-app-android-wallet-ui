@@ -38,6 +38,7 @@ class IosWalletEngine : WalletEngine {
 
     private val mutex = Mutex()
     private var delegate: WalletEngine? = null
+    private var store: MultipazWalletStore? = null
 
     /** Deletes a document. Not on [WalletEngine]: Android deletes through its wallet-core controller. */
     suspend fun deleteDocument(documentId: String): Result<Unit> =
@@ -76,10 +77,24 @@ class IosWalletEngine : WalletEngine {
         }
     }
 
+    /**
+     * The open store, for the paths that need more than [WalletEngine] offers — issuance writes documents
+     * and must write into *this* store: a second `MultipazWalletStore.open()` over the same storage is a
+     * second `DocumentStore` with its own cache, so a document created there would not show up in a list
+     * read from here until something reloaded.
+     */
+    internal suspend fun store(): MultipazWalletStore {
+        delegate()
+        return checkNotNull(store) { "the store is open once delegate() has returned" }
+    }
+
     private suspend fun delegate(): WalletEngine =
         delegate ?: mutex.withLock {
             // Re-check inside the lock: another caller may have opened it while we waited.
-            delegate ?: MultipazWalletEngine(MultipazWalletStore.open()).also { delegate = it }
+            delegate ?: MultipazWalletStore.open().let { opened ->
+                store = opened
+                MultipazWalletEngine(opened).also { delegate = it }
+            }
         }
 
     override suspend fun getAllDocuments(): List<WalletDocument> =

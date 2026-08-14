@@ -30,6 +30,7 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
@@ -191,14 +192,24 @@ fun provideIosOfferableCredentialsReader(): IosOfferableCredentialsReader =
     IosOfferableCredentialsReader()
 
 /**
+ * iOS issuance. Takes the engine rather than a store so credentials land in the same `DocumentStore` the
+ * Documents list reads from.
+ */
+@Single
+fun provideIosCredentialIssuer(engine: IosWalletEngine): IosCredentialIssuer =
+    IosCredentialIssuer(walletEngine = engine)
+
+/**
  * The add-document screen. Its list-building and routing are shared; the bridge reads the real catalogue
- * and still refuses the issuance step — see [IosAddDocumentPlatformBridge].
+ * and issues for real — see [IosAddDocumentPlatformBridge].
  */
 @Single
 fun provideIosAddDocumentPlatformBridge(
     offerableCredentials: IosOfferableCredentialsReader,
+    credentialIssuer: IosCredentialIssuer,
 ): AddDocumentPlatformBridge = IosAddDocumentPlatformBridge(
     offerableCredentials = offerableCredentials,
+    credentialIssuer = credentialIssuer,
 )
 
 @Factory

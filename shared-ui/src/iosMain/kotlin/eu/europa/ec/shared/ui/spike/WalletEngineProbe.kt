@@ -21,9 +21,10 @@ import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
 import eu.europa.ec.issuancefeature.interactor.ResolveDocumentOfferInteractorPartialState
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
-import eu.europa.ec.shared.wallet.multipaz.spike.probeIssuerMetadata
-import eu.europa.ec.shared.wallet.multipaz.spike.probeProvisioning
-import eu.europa.ec.shared.wallet.multipaz.spike.probeWalletProvider
+import eu.europa.ec.shared.wallet.multipaz.IosAuthorizationRedirects
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
+import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
+import eu.europa.ec.shared.wallet.multipaz.IosIssuerCatalog
 import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_INDEX
 import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_URI
 import eu.europa.ec.shared.wallet.multipaz.spike.revocationFixtureToken
@@ -31,7 +32,15 @@ import eu.europa.ec.shared.wallet.multipaz.spike.seedIosRevocableFixture
 import eu.europa.ec.shared.wallet.multipaz.spike.seedIosWalletFixture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSHomeDirectory
+import platform.Foundation.NSString
+import platform.Foundation.NSUTF8StringEncoding
+import platform.Foundation.stringWithContentsOfFile
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.launch
 import org.koin.mp.KoinPlatform
 
@@ -271,10 +280,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
 
             // SPIKE: OpenID4VCI issuer metadata through multipaz, from iOS.
             onResult("--- issuance spike: reading issuer metadata ---")
-            probeIssuerMetadata("https://ec.dev.issuer.eudiw.dev", onResult)
-            probeIssuerMetadata("https://dev.issuer-backend.eudiw.dev", onResult)
-            probeWalletProvider(onResult = onResult)
-            probeProvisioning(onResult = onResult)
+            probeIssuance(onResult)
 
             onResult("OK")
         } catch (t: Throwable) {
@@ -288,3 +294,77 @@ private fun WalletDocument.describe(locale: String): String =
             "credentials=$credentialsCount/$initialCredentialsCount low=$isLowOnCredentials " +
             "issued=$issuedAt expires=$expiresAt expired=$isExpired revoked=$isRevoked " +
             "issuer=$issuerName logo=$issuerLogoUri"
+
+/**
+ * Drives a real issuance through the **production** [IosCredentialIssuer], substituting only the browser.
+ *
+ * That substitution is the whole reason this exists: nothing on the simulator can log into Keycloak, and
+ * `simctl openurl` cannot deliver a custom-scheme redirect back (LaunchServices refuses it). So the
+ * harness prints the authorization URL for a script to complete, and feeds the resulting redirect into
+ * `IosAuthorizationRedirects` — the same channel the app delegate uses on a device. Everything else is the
+ * shipping path: the same store, the same provisioning handler, the same compatibility HTTP client.
+ *
+ * On a device none of this is needed; the bridge's default opens Safari and the delegate answers.
+ */
+private suspend fun probeIssuance(onResult: (String) -> Unit) {
+    val issuer = IosIssuerCatalog.issuers.last()
+    val configurationId = "eu.europa.ec.eudi.pid_mso_mdoc"
+    val engine = KoinPlatform.getKoin().get<IosWalletEngine>()
+
+    val issuing = IosCredentialIssuer(
+        walletEngine = engine,
+        openAuthorizationUrl = { url ->
+            // On its own line and in full, so a script can pick it up.
+            onResult("AUTHORIZE-HERE $url")
+        },
+    )
+
+    onResult("--- issuance: ${issuer.issuerUrl} / $configurationId ---")
+    coroutineScope {
+        // Feeds whatever a host script drops in Documents into the redirect channel the issuer awaits.
+        val redirects = launch { deliverRedirectFromFile(onResult) }
+        val progress = issuing.issue(
+            issuerId = issuer.issuerUrl,
+            configurationIds = listOf(configurationId),
+        ).first()
+        redirects.cancel()
+
+        onResult(
+            when (progress) {
+                is IosIssuanceProgress.Issued ->
+                    "ISSUED ${progress.documentIds} failures=${progress.failures}"
+
+                is IosIssuanceProgress.Failure -> "ISSUANCE FAILED: ${progress.message}"
+            }
+        )
+    }
+
+    // The point of the whole exercise: the document is in the wallet the UI reads, with its claims.
+    engine.getAllDocumentsWithDetails(locale = "en").forEach {
+        onResult(
+            "  reader sees: ${it.name} / ${it.formatType} state=${it.issuanceState} " +
+                    "credentials=${it.credentialsCount}/${it.initialCredentialsCount}"
+        )
+    }
+}
+
+/** The harness half: a host script writes the redirect here, and this hands it to the issuer. */
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+private suspend fun deliverRedirectFromFile(onResult: (String) -> Unit) {
+    val path = NSHomeDirectory() + "/Documents/authorization-redirect.txt"
+    val manager = NSFileManager.defaultManager
+    // A file left from a previous run holds a spent authorization code.
+    if (manager.fileExistsAtPath(path)) manager.removeItemAtPath(path, null)
+
+    while (true) {
+        delay(1.seconds)
+        if (!manager.fileExistsAtPath(path)) continue
+        val contents = NSString.stringWithContentsOfFile(path, NSUTF8StringEncoding, null)?.trim()
+        manager.removeItemAtPath(path, null)
+        if (!contents.isNullOrEmpty()) {
+            onResult("delivering the redirect from authorization-redirect.txt")
+            IosAuthorizationRedirects.deliver(contents)
+            return
+        }
+    }
+}

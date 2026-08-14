@@ -15,6 +15,8 @@
  */
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
 
 // KMP business/presentation LOGIC shared by both platforms — deliberately Compose-UI-free
 // (no compose-ui/foundation/material on the classpath) so a future partial native-SwiftUI iOS
@@ -52,6 +54,17 @@ kotlin {
     // (Intel-Mac simulator) is intentionally omitted (Apple ships only Apple Silicon).
     iosArm64()
     iosSimulatorArm64()
+
+    // The *test* binaries link SQLite themselves. The app never needed this — Xcode links libsqlite3
+    // when it builds the framework into the app — but a test that so much as mentions `IosWalletEngine`
+    // pulls in androidx.sqlite's cinterop (the real, non-backed-up storage behind `MultipazWalletStore`)
+    // and fails to link with a wall of undefined `_sqlite3_*` symbols. Tests over `EphemeralStorage`
+    // never touched it, which is why this only appeared with the first test to name the real store.
+    targets.withType(KotlinNativeTarget::class.java).configureEach {
+        binaries.withType(TestExecutable::class.java).configureEach {
+            linkerOpts("-lsqlite3")
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {
