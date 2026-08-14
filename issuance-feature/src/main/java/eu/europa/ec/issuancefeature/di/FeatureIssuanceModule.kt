@@ -17,9 +17,10 @@
 package eu.europa.ec.issuancefeature.di
 
 import eu.europa.ec.businesslogic.config.ConfigLogic
-import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
@@ -53,15 +54,15 @@ fun provideAddDocumentInteractor(
         resourceProvider,
     )
 
+// Shared implementation: the platform half is `DocumentDetailsPlatformBridge`, which the dashboard
+// feature already provides.
 @Factory
 fun provideDocumentIssuanceSuccessInteractor(
-    walletCoreDocumentsController: WalletCoreDocumentsController,
-    resourceProvider: ResourceProvider,
-    uuIdProvider: UuidProvider
+    strings: StringCatalog,
+    platformBridge: DocumentDetailsPlatformBridge,
 ): DocumentIssuanceSuccessInteractor = DocumentIssuanceSuccessInteractorImpl(
-    walletCoreDocumentsController,
-    resourceProvider,
-    uuIdProvider,
+    strings,
+    platformBridge,
 )
 
 @Scope(CredentialOfferIssuanceScope::class)
