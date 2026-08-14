@@ -1,0 +1,160 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+package eu.europa.ec.shared.wallet.multipaz
+
+import eu.europa.ec.shared.wallet.document.IssuerMetadata
+import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.document.Document
+import org.multipaz.provisioning.CredentialFormat
+import org.multipaz.provisioning.CredentialMetadata
+import org.multipaz.provisioning.Display
+import org.multipaz.provisioning.DocumentProvisioningHandler
+import org.multipaz.provisioning.DocumentProvisioningSettings
+import org.multipaz.provisioning.ProvisioningMetadata
+import kotlin.math.min
+
+/**
+ * Creates provisioned documents the way **this wallet's** reader expects to find them.
+ *
+ * Without this, issuance would appear to work and produce nothing: `MultipazDocumentReader` skips any
+ * document whose metadata is not an [EudiDocumentMetadata] — that is how it avoids reading documents
+ * belonging to another app sharing the store — so a document created with multipaz's own metadata would
+ * be written, certified, and then invisible in the Documents list.
+ *
+ * Everything about *credentials* is inherited from multipaz's [DocumentProvisioningHandler], which knows
+ * how to create and clean up key-bound mdoc and SD-JWT credentials. Only the document-level parts are
+ * overridden: which metadata to attach, and when the document counts as issued.
+ *
+ * The credential *domains* are prefixed with our `documentManagerId`, in the spirit of what the Android
+ * document manager does with its own identifier — a document manager's credentials are scoped to it, so
+ * a store shared with another component never offers ours for presentation. multipaz splits domains by
+ * whether user authentication is required, so the prefix is applied to each rather than collapsing them
+ * into one.
+ *
+ * Note the metadata hook multipaz offers (`AbstractDocumentMetadataHandler`) is deliberately *not* used:
+ * it is handed only the display data, and [EudiDocumentMetadata] needs the credential **format**, which
+ * is available here on [CredentialMetadata] and nowhere in that callback.
+ */
+internal class IosDocumentProvisioningHandler(
+    private val store: MultipazWalletStore,
+    /**
+     * How many credentials to ask for per domain. The issuer's own `maxBatchSize` caps it — both EU dev
+     * issuers advertise far more (20 and 100) than a wallet needs per document.
+     */
+    private val batchSize: Int = DEFAULT_BATCH_SIZE,
+) : DocumentProvisioningHandler(
+    secureArea = store.keySecureArea,
+    documentStore = store.documentStore,
+    // Not used: see the class note. Our metadata is attached in createDocument instead.
+    metadataHandler = null,
+    defaultDocumentProvisioningSettings = DocumentProvisioningSettings(
+        keyBoundCredentialNumPerDomain = batchSize,
+        mdocUserAuthDomain = "${store.documentManagerId}_mdoc_user_auth",
+        mdocNoUserAuthDomain = "${store.documentManagerId}_mdoc_no_user_auth",
+        sdJwtUserAuthDomain = "${store.documentManagerId}_sdjwt_user_auth",
+        sdJwtNoUserAuthDomain = "${store.documentManagerId}_sdjwt_no_user_auth",
+        sdJwtKeylessDomain = "${store.documentManagerId}_sdjwt_keyless",
+    ),
+) {
+
+    override suspend fun createDocument(
+        credentialMetadata: CredentialMetadata,
+        issuerMetadata: ProvisioningMetadata,
+        documentAuthorizationData: ByteString?,
+    ): Document {
+        val credentialCount = min(credentialMetadata.maxBatchSize, batchSize)
+
+        return documentStore.createDocument(
+            displayName = credentialMetadata.display.text,
+            typeDisplayName = credentialMetadata.display.text,
+            cardArt = credentialMetadata.display.logo,
+            issuerLogo = issuerMetadata.display.logo,
+            authorizationData = documentAuthorizationData,
+            metadata = EudiDocumentMetadata.create(
+                documentManagerId = store.documentManagerId,
+                format = credentialMetadata.format.toStoredFormat(),
+                // A batch of one is a one-shot credential; more than one is a rotating batch. Android
+                // takes this from per-issuer configuration, which iOS has none of yet, so it is derived
+                // from what was actually requested rather than invented.
+                credentialPolicy = if (credentialCount > 1) {
+                    WalletCredentialPolicy.RotatingBatch(numberOfCredentials = credentialCount)
+                } else {
+                    WalletCredentialPolicy.OnceOnly(numberOfCredentials = 1)
+                },
+                issuerMetadata = issuerMetadataFrom(credentialMetadata, issuerMetadata),
+            ),
+        )
+    }
+
+    /**
+     * Delegates the document update, then stamps `issuedAt` once credentials exist.
+     *
+     * `issuedAt` is what tells the rest of the wallet a document is issued rather than pending — the
+     * same distinction `ApplicationMetadata.issue()` draws on Android — and multipaz calls this after
+     * certifying credentials, which is exactly when it becomes true.
+     */
+    override suspend fun updateDocument(
+        document: Document,
+        display: Display?,
+        documentAuthorizationData: ByteString?,
+    ) {
+        super.updateDocument(document, display, documentAuthorizationData)
+
+        val metadata = document.eudiMetadata ?: return
+        if (metadata.issuedAt == null && document.getCertifiedCredentials().isNotEmpty()) {
+            metadata.issue()
+            // `edit` is what persists the mutated metadata, as in the fixture.
+            document.edit { this.metadata = metadata }
+        }
+    }
+
+    /**
+     * The issuer/document display data, in the shape our reader already renders.
+     *
+     * Only what multipaz surfaces can be filled in: a name and a logo URI per side. The issuer's richer
+     * per-claim display — which the details screen would use for claim titles — is not exposed by
+     * `ProvisioningMetadata`, so claims keep showing raw data-element identifiers on iOS, the same
+     * limitation the fixture-backed path already has.
+     */
+    private fun issuerMetadataFrom(
+        credentialMetadata: CredentialMetadata,
+        issuerMetadata: ProvisioningMetadata,
+    ): IssuerMetadata = IssuerMetadata(
+        documentConfigurationIdentifier = credentialMetadata.format.formatId,
+        credentialIssuerIdentifier = issuerMetadata.display.text,
+        display = listOf(
+            IssuerMetadata.Display(name = credentialMetadata.display.text)
+        ),
+        issuerDisplay = listOf(
+            IssuerMetadata.IssuerDisplay(name = issuerMetadata.display.text)
+        ),
+    )
+
+    private fun CredentialFormat.toStoredFormat(): StoredDocumentFormat = when (this) {
+        is CredentialFormat.Mdoc -> StoredDocumentFormat.MsoMdoc(docType)
+        is CredentialFormat.SdJwt -> StoredDocumentFormat.SdJwtVc(vct)
+    }
+
+    private companion object {
+        /**
+         * Three, matching the fixture and the shape the Documents screen's "3/3" counter was verified
+         * against. Not the issuer's maximum: every credential is a Secure Enclave key.
+         */
+        const val DEFAULT_BATCH_SIZE = 3
+    }
+}
