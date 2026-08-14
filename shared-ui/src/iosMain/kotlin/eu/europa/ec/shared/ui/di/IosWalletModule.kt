@@ -30,6 +30,7 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
 import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
@@ -182,12 +183,23 @@ fun provideIosDocumentIssuanceSuccessInteractor(
 )
 
 /**
- * The add-document screen. Its list-building and routing are shared; the bridge is where iOS says what it
- * cannot do yet — see [IosAddDocumentPlatformBridge].
+ * Which issuers iOS offers documents from, and what each one can issue. A `@Single` because the read is a
+ * network round trip per issuer and multipaz caches the parsed metadata per client-preferences instance.
  */
 @Single
-fun provideIosAddDocumentPlatformBridge(): AddDocumentPlatformBridge =
-    IosAddDocumentPlatformBridge()
+fun provideIosOfferableCredentialsReader(): IosOfferableCredentialsReader =
+    IosOfferableCredentialsReader()
+
+/**
+ * The add-document screen. Its list-building and routing are shared; the bridge reads the real catalogue
+ * and still refuses the issuance step — see [IosAddDocumentPlatformBridge].
+ */
+@Single
+fun provideIosAddDocumentPlatformBridge(
+    offerableCredentials: IosOfferableCredentialsReader,
+): AddDocumentPlatformBridge = IosAddDocumentPlatformBridge(
+    offerableCredentials = offerableCredentials,
+)
 
 @Factory
 fun provideIosAddDocumentInteractor(

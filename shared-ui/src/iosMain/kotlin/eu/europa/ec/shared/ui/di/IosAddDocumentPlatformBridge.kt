@@ -21,8 +21,13 @@ import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
 import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
+import eu.europa.ec.corelogic.model.DocumentIdentifier
+import eu.europa.ec.corelogic.model.ScopedDocumentDomain
+import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
+import eu.europa.ec.shared.wallet.multipaz.OfferableCredentialsResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import platform.Foundation.NSLocale
@@ -30,25 +35,46 @@ import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
 
 /**
- * iOS's [AddDocumentPlatformBridge] — and, for now, an honest refusal.
+ * iOS's [AddDocumentPlatformBridge]: a real catalogue, and an issuance step that is still missing.
  *
- * **Why not implemented, when iOS demonstrably can issue.** The issuance spike drives multipaz's
- * `ProvisioningModel` end to end against `dev.issuer-backend.eudiw.dev`: real PAR, real authorization
- * redirect, real credentials, visible to our reader. What is missing is not the protocol but the
- * *catalogue*: [getScopedDocuments] answers "which issuers, and what does each offer", and on Android
- * that comes from `WalletCoreConfig`'s list of VCI configurations, of which iOS has no equivalent — the
- * spike hardcoded its two issuer URLs. Inventing one here would put configuration in a DI file.
+ * [getScopedDocuments] now answers for real — [IosOfferableCredentialsReader] asks each configured issuer
+ * what it can issue, the same `.well-known` metadata Android reads through wallet-core. Only the *decision*
+ * layer above it is shared, so an issuer's configurations are grouped, PID-folded and sorted by exactly
+ * the code Android runs.
  *
- * So this reports a failure the screen already knows how to render, rather than offering documents it
- * cannot then issue. Replacing it is the next step for iOS issuance, and the shared interactor above it
- * needs no change when that happens.
+ * [issueDocuments] is what remains. The protocol works — the issuance spike drives multipaz's
+ * `ProvisioningModel` through PAR, authorization and credential issuance against
+ * `dev.issuer-backend.eudiw.dev`, and the documents it produces are visible to our reader — but driving it
+ * from a screen needs the authorization browser, the Secure Enclave key policy and the deferred cases
+ * wired in, so this still refuses rather than half-starting an issuance.
  */
-internal class IosAddDocumentPlatformBridge : AddDocumentPlatformBridge {
+internal class IosAddDocumentPlatformBridge(
+    private val offerableCredentials: IosOfferableCredentialsReader,
+) : AddDocumentPlatformBridge {
 
     override fun localeTag(): String = NSLocale.currentLocale.languageCode
 
     override suspend fun getScopedDocuments(locale: String): FetchScopedDocumentsPartialState =
-        FetchScopedDocumentsPartialState.Failure(errorMessage = NOT_AVAILABLE_ON_IOS)
+        when (val result = offerableCredentials.read(locale)) {
+            is OfferableCredentialsResult.Failure ->
+                FetchScopedDocumentsPartialState.Failure(errorMessage = result.message)
+
+            is OfferableCredentialsResult.Success -> FetchScopedDocumentsPartialState.Success(
+                documents = result.credentials.map { credential ->
+                    ScopedDocumentDomain(
+                        name = credential.name,
+                        configurationId = credential.configurationId,
+                        credentialIssuerId = credential.issuerUrl,
+                        credentialIssuerOrder = credential.issuerOrder,
+                        formatType = credential.formatType,
+                        // Which format types are PIDs is app knowledge, not the issuer's: the reader
+                        // reports the type, and this decides — as Android's controller does.
+                        isPid = credential.formatType?.toDocumentIdentifier()
+                            .let { it == DocumentIdentifier.MdocPid || it == DocumentIdentifier.SdJwtPid },
+                    )
+                }
+            )
+        }
 
     override fun issueDocuments(
         issuanceMethod: IssuanceMethod,
@@ -77,6 +103,6 @@ internal class IosAddDocumentPlatformBridge : AddDocumentPlatformBridge {
     override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
 
     private companion object {
-        const val NOT_AVAILABLE_ON_IOS = "Adding a document is not available on iOS yet."
+        const val NOT_AVAILABLE_ON_IOS = "Issuing a document is not available on iOS yet."
     }
 }

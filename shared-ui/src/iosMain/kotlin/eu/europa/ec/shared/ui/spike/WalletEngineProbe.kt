@@ -184,18 +184,33 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             // The three issuance interactors, now shared. Probed rather than screenshotted because
             // `simctl` cannot synthesise the taps that reach these screens — and because two of the
             // three are expected to *refuse*, which is only meaningful if the refusal is visible.
+            // Both flows the screen has: the first-document case, which offers PIDs only, and the
+            // add-another case, which offers everything the configured issuers advertise. This is a live
+            // network read of both EU dev issuers' metadata.
             val addDocument = KoinPlatform.getKoin().get<AddDocumentInteractor>()
-            onResult(
-                "getAddDocumentOption -> " + when (
-                    val state = addDocument.getAddDocumentOption(IssuanceFlowType.NoDocument).first()
-                ) {
-                    is AddDocumentInteractorScopedPartialState.Success ->
-                        "Success(${state.options.size} issuer(s))"
+            listOf(
+                "PID only" to IssuanceFlowType.NoDocument,
+                "any document" to IssuanceFlowType.ExtraDocument(formatType = null),
+            ).forEach { (label, flowType) ->
+                onResult(
+                    "getAddDocumentOption($label) -> " + when (
+                        val state = addDocument.getAddDocumentOption(flowType).first()
+                    ) {
+                        is AddDocumentInteractorScopedPartialState.Success ->
+                            state.options.joinToString(prefix = "Success(", postfix = ")") { (issuer, items) ->
+                                "$issuer: " + items.joinToString {
+                                    (it.itemData.mainContentData as? ListItemMainContentDataUi.Text)?.text
+                                        .orEmpty()
+                                }
+                            }
 
-                    is AddDocumentInteractorScopedPartialState.NoOptions -> "NoOptions(${state.errorMsg})"
-                    is AddDocumentInteractorScopedPartialState.Failure -> "Failure(${state.error})"
-                }
-            )
+                        is AddDocumentInteractorScopedPartialState.NoOptions ->
+                            "NoOptions(${state.errorMsg})"
+
+                        is AddDocumentInteractorScopedPartialState.Failure -> "Failure(${state.error})"
+                    }
+                )
+            }
 
             val offer = KoinPlatform.getKoin().get<DocumentOfferInteractor>()
             onResult(
