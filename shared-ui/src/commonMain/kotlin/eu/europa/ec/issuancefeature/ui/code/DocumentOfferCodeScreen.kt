@@ -16,7 +16,6 @@
 
 package eu.europa.ec.issuancefeature.ui.code
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.authenticationlogic.secure.SecurePin
@@ -44,11 +42,13 @@ import eu.europa.ec.commonfeature.config.OfferCodeUiConfig
 import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.commonfeature.ui.issuance.IssuerPartiallyTrustedSheetContent
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.rememberPlatformContextOrNull
 import eu.europa.ec.uilogic.component.content.ImePaddingConfig
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -79,7 +79,9 @@ fun DocumentOfferCodeScreen(
     viewModel: DocumentOfferCodeViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    // Null on iOS, where issuance does not run through wallet-core: a completed code is dropped there
+    // rather than sent, which is honest — there is nothing yet to redeem it against.
+    val platformContext = rememberPlatformContextOrNull()
     val pinInputState = rememberSecurePinTextFieldState(
         expectedPinLength = state.offerCodeUiConfig.txCodeLength
     )
@@ -98,7 +100,7 @@ fun DocumentOfferCodeScreen(
         onBack = { viewModel.setEvent(Event.Pop) },
     ) { paddingValues ->
         Content(
-            context = context,
+            platformContext = platformContext,
             title = state.screenTitle.resolve(),
             subTitle = state.screenSubtitle.resolve(),
             pinInputState = pinInputState,
@@ -145,7 +147,7 @@ fun DocumentOfferCodeScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
-    context: Context,
+    platformContext: PlatformContext?,
     title: String,
     subTitle: String,
     pinInputState: SecurePinTextFieldState,
@@ -198,12 +200,17 @@ private fun Content(
             pinInputState = pinInputState,
             state = state,
             onPinComplete = { securePin ->
-                onEventSend(
-                    Event.OnPinEntered(
-                        code = securePin,
-                        context = context
+                platformContext?.let {
+                    onEventSend(
+                        Event.OnPinEntered(
+                            code = securePin,
+                            context = it
+                        )
                     )
-                )
+                }
+                // Nobody will consume it, so zero it here rather than waiting for the collector: the
+                // whole point of `SecurePin` is that the characters do not linger.
+                    ?: securePin.close()
             }
         )
     }
@@ -282,7 +289,7 @@ private fun DocumentOfferCodeScreenEmptyPreview() {
             onEventSend = {},
             onNavigationRequested = {},
             paddingValues = PaddingValues(SPACING_MEDIUM.dp),
-            context = LocalContext.current,
+            platformContext = rememberPlatformContextOrNull(),
             state = State(
                 isLoading = false,
                 error = null,

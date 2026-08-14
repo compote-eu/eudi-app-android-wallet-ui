@@ -16,8 +16,6 @@
 
 package eu.europa.ec.commonfeature.ui.document_success
 
-import android.app.Activity
-import androidx.core.net.toUri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,12 +31,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
@@ -51,8 +50,6 @@ import eu.europa.ec.uilogic.component.wrap.StickyBottomType
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableListItem
 import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
 import eu.europa.ec.uilogic.extension.applyTestTag
-import eu.europa.ec.uilogic.extension.cacheUri
-import eu.europa.ec.uilogic.extension.findActivity
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.flow.Flow
@@ -65,8 +62,21 @@ import eu.europa.ec.shared.resources.document_success_sticky_button_text
 fun DocumentSuccessScreen(
     navigator: AppNavigator,
     viewModel: DocumentSuccessViewModel,
+    /**
+     * Parks an external deep link for [AppRoute] and goes back to it, or pops when there is no route.
+     *
+     * Injected rather than reached through a seam because Android's answer — caching the `Uri` in the
+     * one-shot activity slot via `Context.cacheUri` — lives in `:ui-logic`, which depends on this module.
+     * The iOS default just pops: nothing there produces these links yet.
+     */
+    onExternalDeepLink: (link: String, routeToPop: AppRoute?) -> Unit = { _, _ -> navigator.pop() },
+    /**
+     * Finishes the host with a result — the DC API hand-off, where the caller app is waiting on
+     * `setResult`. Unreachable on iOS, where [PlatformIntent] has no constructor, so the default does
+     * nothing rather than pretending there is an equivalent.
+     */
+    onFinishWithResult: (PlatformIntent) -> Unit = {},
 ) {
-    val context = LocalContext.current
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
 
     ContentScreen(
@@ -112,28 +122,15 @@ fun DocumentSuccessScreen(
                         )
                     }
 
-                    is Effect.Navigation.DeepLink -> {
-                        context.cacheUri(navigationEffect.link.toUri())
-                        navigationEffect.routeToPop?.let {
-                            navigator.popBackStackTo(
-                                route = it,
-                                inclusive = false
-                            )
-                        } ?: navigator.pop()
-                    }
+                    is Effect.Navigation.DeepLink -> onExternalDeepLink(
+                        navigationEffect.link,
+                        navigationEffect.routeToPop,
+                    )
 
                     is Effect.Navigation.Pop -> navigator.pop()
 
-                    is Effect.Navigation.FinishWithResult -> {
-                        context.findActivity().let { activity ->
-                            navigationEffect.intent.let { intent ->
-                                // The result code is a platform constant, so it lives here rather
-                                // than in the shared view-model.
-                                activity.setResult(Activity.RESULT_OK, intent)
-                                activity.finish()
-                            }
-                        }
-                    }
+                    is Effect.Navigation.FinishWithResult ->
+                        onFinishWithResult(navigationEffect.intent)
                 }
             },
             paddingValues = paddingValues

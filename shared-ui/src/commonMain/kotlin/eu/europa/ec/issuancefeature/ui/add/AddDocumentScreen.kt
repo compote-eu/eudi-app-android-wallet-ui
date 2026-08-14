@@ -16,7 +16,6 @@
 
 package eu.europa.ec.issuancefeature.ui.add
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -39,7 +38,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.resolve
 import org.jetbrains.compose.resources.stringResource
@@ -52,9 +50,13 @@ import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.util.CoreActions
+import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.platformAction
+import eu.europa.ec.shared.platform.platformStringExtra
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.issuancefeature.util.TestTag
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ErrorInfo
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -68,6 +70,8 @@ import eu.europa.ec.uilogic.component.content.ToolbarActionUi
 import eu.europa.ec.uilogic.component.content.ToolbarConfig
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
+import eu.europa.ec.uilogic.component.rememberPlatformContextOrNull
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.uilogic.component.utils.LifecycleEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
@@ -79,11 +83,7 @@ import eu.europa.ec.uilogic.component.wrap.WrapListItem
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapText
 import eu.europa.ec.uilogic.extension.applyTestTag
-import eu.europa.ec.uilogic.extension.finish
-import androidx.core.net.toUri
-import eu.europa.ec.uilogic.extension.getPendingUri
 import eu.europa.ec.uilogic.extension.paddingFrom
-import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -101,10 +101,25 @@ import eu.europa.ec.shared.resources.issuance_add_document_title
 @Composable
 fun AddDocumentScreen(
     navigator: AppNavigator,
-    viewModel: AddDocumentViewModel
+    viewModel: AddDocumentViewModel,
+    /**
+     * The external deep link waiting to be handled, if any — read once per resume, since reading it
+     * *consumes* it on Android (it clears the cached intent). Injected because Android's answer,
+     * `Context.getPendingUri()`, lives in `:ui-logic`, which depends on this module.
+     */
+    pendingDeepLink: () -> String? = { null },
+    /**
+     * Hands an external deep link to whatever flow owns it, going to [AppRoute] when the link resolves
+     * to one. Injected for the same reason, and additionally because Android's `handleDeepLinkAction`
+     * reaches the Android-only RQES UI SDK. The iOS default does nothing; iOS deep links arrive through
+     * the app delegate and are not wired yet.
+     */
+    onExternalDeepLink: (link: String, route: AppRoute?) -> Unit = { _, _ -> },
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val platformActions = rememberPlatformScreenActions()
+    // Null on iOS, where issuance does not run through wallet-core: tapping an option is inert there.
+    val platformContext = rememberPlatformContextOrNull()
 
     val isBottomSheetOpen = state.isBottomSheetOpen
     val scope = rememberCoroutineScope()
@@ -137,12 +152,12 @@ fun AddDocumentScreen(
                 CoreActions.VCI_DYNAMIC_PRESENTATION
             ),
             callback = {
-                when (it?.action) {
-                    CoreActions.VCI_RESUME_ACTION -> it.extras?.getString("uri")?.let { link ->
+                when (it?.platformAction()) {
+                    CoreActions.VCI_RESUME_ACTION -> it.platformStringExtra("uri")?.let { link ->
                         viewModel.setEvent(Event.OnResumeIssuance(link))
                     }
 
-                    CoreActions.VCI_DYNAMIC_PRESENTATION -> it.extras?.getString("uri")
+                    CoreActions.VCI_DYNAMIC_PRESENTATION -> it.platformStringExtra("uri")
                         ?.let { link ->
                             viewModel.setEvent(Event.OnDynamicPresentation(link))
                         }
@@ -164,17 +179,15 @@ fun AddDocumentScreen(
                         )
                     }
 
-                    is Effect.Navigation.Finish -> context.finish()
-                    is Effect.Navigation.OpenDeepLinkAction -> handleDeepLinkAction(
-                        navigator = navigator,
-                        context = context,
-                        uri = navigationEffect.deepLinkUri.toUri(),
-                        route = navigationEffect.route
+                    is Effect.Navigation.Finish -> platformActions.finishApp()
+                    is Effect.Navigation.OpenDeepLinkAction -> onExternalDeepLink(
+                        navigationEffect.deepLinkUri,
+                        navigationEffect.route,
                     )
                 }
             },
             paddingValues = paddingValues,
-            context = context,
+            platformContext = platformContext,
             coroutineScope = scope,
             modalBottomSheetState = bottomSheetState,
         )
@@ -208,7 +221,7 @@ fun AddDocumentScreen(
         lifecycleOwner = LocalLifecycleOwner.current,
         lifecycleEvent = Lifecycle.Event.ON_RESUME
     ) {
-        viewModel.setEvent(Event.Init(context.getPendingUri()?.toString()))
+        viewModel.setEvent(Event.Init(pendingDeepLink()))
     }
 }
 
@@ -220,7 +233,7 @@ private fun Content(
     onEventSend: (Event) -> Unit,
     onNavigationRequested: (Effect.Navigation) -> Unit,
     paddingValues: PaddingValues,
-    context: Context,
+    platformContext: PlatformContext?,
     coroutineScope: CoroutineScope,
     modalBottomSheetState: SheetState,
 ) {
@@ -230,7 +243,7 @@ private fun Content(
             .paddingFrom(paddingValues, bottom = false),
         state = state,
         onEventSend = onEventSend,
-        context = context,
+        platformContext = platformContext,
     )
 
     LaunchedEffect(Unit) {
@@ -261,7 +274,7 @@ private fun MainContent(
     modifier: Modifier = Modifier,
     state: State,
     onEventSend: (Event) -> Unit,
-    context: Context,
+    platformContext: PlatformContext?,
 ) {
     Column(
         modifier = modifier
@@ -286,14 +299,16 @@ private fun MainContent(
                 options = state.options,
                 modifier = Modifier.fillMaxSize(),
                 onOptionClicked = { itemIds, issuerId ->
-                    onEventSend(
-                        Event.IssueDocument(
-                            issuanceMethod = IssuanceMethod.OPENID4VCI,
-                            issuerId = issuerId,
-                            configIds = itemIds,
-                            context = context
+                    platformContext?.let {
+                        onEventSend(
+                            Event.IssueDocument(
+                                issuanceMethod = IssuanceMethod.OPENID4VCI,
+                                issuerId = issuerId,
+                                configIds = itemIds,
+                                context = it
+                            )
                         )
-                    )
+                    }
                 }
             )
         }
@@ -419,7 +434,7 @@ private fun IssuanceAddDocumentScreenPreview() {
             onEventSend = {},
             onNavigationRequested = {},
             paddingValues = PaddingValues(all = SPACING_LARGE.dp),
-            context = LocalContext.current,
+            platformContext = rememberPlatformContextOrNull(),
             coroutineScope = rememberCoroutineScope(),
             modalBottomSheetState = rememberModalBottomSheetState(),
         )
@@ -480,7 +495,7 @@ private fun DashboardAddDocumentScreenPreview() {
             onEventSend = {},
             onNavigationRequested = {},
             paddingValues = PaddingValues(all = SPACING_LARGE.dp),
-            context = LocalContext.current,
+            platformContext = rememberPlatformContextOrNull(),
             coroutineScope = rememberCoroutineScope(),
             modalBottomSheetState = rememberModalBottomSheetState(),
         )

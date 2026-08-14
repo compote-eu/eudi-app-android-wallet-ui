@@ -17,7 +17,7 @@
 package eu.europa.ec.presentationfeature.ui.success
 
 import androidx.compose.runtime.Composable
-import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreen
+import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreenHost
 import eu.europa.ec.shared.navigation.AppNavigator
 
 @Composable
@@ -25,7 +25,7 @@ fun PresentationSuccessScreen(
     navigator: AppNavigator,
     viewModel: PresentationSuccessViewModel,
 ) {
-    DocumentSuccessScreen(
+    DocumentSuccessScreenHost(
         navigator = navigator,
         viewModel = viewModel,
     )

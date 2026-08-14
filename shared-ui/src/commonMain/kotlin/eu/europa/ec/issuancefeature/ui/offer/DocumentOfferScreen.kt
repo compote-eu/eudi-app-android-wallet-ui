@@ -16,7 +16,6 @@
 
 package eu.europa.ec.issuancefeature.ui.offer
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,7 +32,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import eu.europa.ec.shared.resources.UiText
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
@@ -46,8 +44,11 @@ import eu.europa.ec.commonfeature.config.OfferUiConfig
 import eu.europa.ec.commonfeature.ui.issuance.IssuerNotTrustedSheetContent
 import eu.europa.ec.commonfeature.ui.issuance.IssuerPartiallyTrustedSheetContent
 import eu.europa.ec.corelogic.util.CoreActions
+import eu.europa.ec.shared.platform.platformAction
+import eu.europa.ec.shared.platform.platformStringExtra
 import eu.europa.ec.issuancefeature.util.TestTag
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.uilogic.component.ErrorInfo
@@ -61,6 +62,7 @@ import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
+import eu.europa.ec.uilogic.component.rememberPlatformContextOrNull
 import eu.europa.ec.uilogic.component.utils.LifecycleEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
@@ -75,10 +77,6 @@ import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.applyTestTag
-import eu.europa.ec.uilogic.extension.cacheUri
-import androidx.core.net.toUri
-import eu.europa.ec.uilogic.extension.getPendingUri
-import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.CoroutineScope
@@ -100,10 +98,24 @@ import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_descr
 @Composable
 fun DocumentOfferScreen(
     navigator: AppNavigator,
-    viewModel: DocumentOfferViewModel
+    viewModel: DocumentOfferViewModel,
+    /**
+     * The external deep link waiting to be handled, if any — read once per resume, since reading it
+     * *consumes* it on Android (it clears the cached intent). Injected because Android's answer,
+     * `Context.getPendingUri()`, lives in `:ui-logic`, which depends on this module.
+     */
+    pendingDeepLink: () -> String? = { null },
+    /**
+     * Hands an external deep link to whatever flow owns it, parking it for [AppRoute] first when one is
+     * given. Injected for the same reason, and additionally because Android's `handleDeepLinkAction`
+     * reaches the Android-only RQES UI SDK. The iOS default does nothing; iOS deep links arrive through
+     * the app delegate and are not wired yet.
+     */
+    onExternalDeepLink: (link: String, routeToPop: AppRoute?) -> Unit = { _, _ -> },
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    // Null on iOS, where issuance does not run through wallet-core: the button is simply inert there.
+    val platformContext = rememberPlatformContextOrNull()
 
     val isBottomSheetOpen = state.isBottomSheetOpen
     val scope = rememberCoroutineScope()
@@ -127,7 +139,11 @@ fun DocumentOfferScreen(
                         config = ButtonConfig(
                             type = ButtonType.PRIMARY,
                             enabled = !state.isLoading && !state.noDocument,
-                            onClick = { viewModel.setEvent(Event.StickyButtonPressed(context)) }
+                            onClick = {
+                                platformContext?.let {
+                                    viewModel.setEvent(Event.StickyButtonPressed(it))
+                                }
+                            }
                         )
                     )
                 )
@@ -141,12 +157,12 @@ fun DocumentOfferScreen(
                 CoreActions.VCI_DYNAMIC_PRESENTATION
             ),
             callback = {
-                when (it?.action) {
-                    CoreActions.VCI_RESUME_ACTION -> it.extras?.getString("uri")?.let { link ->
+                when (it?.platformAction()) {
+                    CoreActions.VCI_RESUME_ACTION -> it.platformStringExtra("uri")?.let { link ->
                         viewModel.setEvent(Event.OnResumeIssuance(link))
                     }
 
-                    CoreActions.VCI_DYNAMIC_PRESENTATION -> it.extras?.getString("uri")
+                    CoreActions.VCI_DYNAMIC_PRESENTATION -> it.platformStringExtra("uri")
                         ?.let { link ->
                             viewModel.setEvent(Event.OnDynamicPresentation(link))
                         }
@@ -159,7 +175,7 @@ fun DocumentOfferScreen(
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(context, navigationEffect, navigator)
+                handleNavigationEffect(navigationEffect, navigator, onExternalDeepLink)
             },
             paddingValues = paddingValues,
             coroutineScope = scope,
@@ -205,7 +221,7 @@ fun DocumentOfferScreen(
         lifecycleOwner = LocalLifecycleOwner.current,
         lifecycleEvent = Lifecycle.Event.ON_RESUME
     ) {
-        viewModel.setEvent(Event.Init(context.getPendingUri()?.toString()))
+        viewModel.setEvent(Event.Init(pendingDeepLink()))
     }
 }
 
@@ -291,9 +307,9 @@ private fun MainContent(
 }
 
 private fun handleNavigationEffect(
-    context: Context,
     navigationEffect: Effect.Navigation,
-    navigator: AppNavigator
+    navigator: AppNavigator,
+    onExternalDeepLink: (link: String, routeToPop: AppRoute?) -> Unit,
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
@@ -310,20 +326,10 @@ private fun handleNavigationEffect(
             )
         }
 
-        is Effect.Navigation.DeepLink -> {
-            val link = navigationEffect.link.toUri()
-            navigationEffect.routeToPop?.let {
-                context.cacheUri(link)
-                navigator.popBackStackTo(
-                    route = it,
-                    inclusive = false
-                )
-            } ?: handleDeepLinkAction(
-                navigator = navigator,
-                context = context,
-                uri = link
-            )
-        }
+        is Effect.Navigation.DeepLink -> onExternalDeepLink(
+            navigationEffect.link,
+            navigationEffect.routeToPop,
+        )
 
         is Effect.Navigation.Pop -> navigator.pop()
     }

@@ -19,14 +19,24 @@ package eu.europa.ec.issuancefeature.ui.success
 import androidx.compose.runtime.Composable
 import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreen
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.platform.PlatformIntent
 
+/**
+ * The screen the issuance flow ends on. Nothing but naming: the behaviour is
+ * [DocumentSuccessScreen]'s, and so are the two host lambdas it forwards — see their documentation there.
+ */
 @Composable
 fun DocumentIssuanceSuccessScreen(
     navigator: AppNavigator,
     viewModel: DocumentIssuanceSuccessViewModel,
+    onExternalDeepLink: (link: String, routeToPop: AppRoute?) -> Unit = { _, _ -> navigator.pop() },
+    onFinishWithResult: (PlatformIntent) -> Unit = {},
 ) {
     DocumentSuccessScreen(
         navigator = navigator,
         viewModel = viewModel,
+        onExternalDeepLink = onExternalDeepLink,
+        onFinishWithResult = onFinishWithResult,
     )
 }

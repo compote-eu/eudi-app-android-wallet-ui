@@ -17,7 +17,7 @@
 package eu.europa.ec.proximityfeature.ui.success
 
 import androidx.compose.runtime.Composable
-import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreen
+import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreenHost
 import eu.europa.ec.shared.navigation.AppNavigator
 
 @Composable
@@ -25,7 +25,7 @@ fun ProximitySuccessScreen(
     navigator: AppNavigator,
     viewModel: ProximitySuccessViewModel,
 ) {
-    DocumentSuccessScreen(
+    DocumentSuccessScreenHost(
         navigator = navigator,
         viewModel = viewModel,
     )
