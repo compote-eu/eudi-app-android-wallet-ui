@@ -15,6 +15,7 @@ import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.shared.wallet.multipaz.spike.probeIssuerMetadata
+import eu.europa.ec.shared.wallet.multipaz.spike.probeProvisioning
 import eu.europa.ec.shared.wallet.multipaz.spike.probeWalletProvider
 import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_INDEX
 import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_URI
@@ -198,6 +199,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             probeIssuerMetadata("https://ec.dev.issuer.eudiw.dev", onResult)
             probeIssuerMetadata("https://dev.issuer-backend.eudiw.dev", onResult)
             probeWalletProvider(onResult = onResult)
+            probeProvisioning(onResult = onResult)
 
             onResult("OK")
         } catch (t: Throwable) {

@@ -23,14 +23,24 @@
 package eu.europa.ec.shared.wallet.multipaz.spike
 
 import io.ktor.client.HttpClient
+import eu.europa.ec.shared.wallet.multipaz.IosDocumentProvisioningHandler
 import eu.europa.ec.shared.wallet.multipaz.IosOpenID4VciBackend
+import eu.europa.ec.shared.wallet.multipaz.MultipazWalletStore
 import eu.europa.ec.shared.wallet.multipaz.openID4VciHttpClient
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.securearea.KeyAttestation
 import kotlinx.coroutines.withContext
 import org.multipaz.crypto.Algorithm
+import org.multipaz.prompt.PromptModel
+import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.KeyBindingType
+import org.multipaz.provisioning.ProvisioningModel
+import org.multipaz.util.Platform
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.seconds
 import org.multipaz.provisioning.openid4vci.OpenID4VCI
 import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
 import org.multipaz.rpc.backend.BackendEnvironment
@@ -111,4 +121,82 @@ suspend fun probeWalletProvider(
     } finally {
         httpClient.close()
     }
+}
+
+/**
+ * Drives a real provisioning session as far as it can go without a browser.
+ *
+ * Everything up to authorization is server-side protocol: issuer metadata, authorization-server
+ * metadata, the wallet attestation from the wallet provider, client attestation, DPoP, and the pushed
+ * authorization request. Reaching [ProvisioningModel.Authorizing] with a live URL means all of
+ * that was accepted by the real issuer. The browser round-trip that follows needs deep-link wiring the
+ * iOS host does not have yet, so this stops there and cancels.
+ */
+suspend fun probeProvisioning(
+    issuerUrl: String = "https://dev.issuer-backend.eudiw.dev",
+    credentialId: String = "eu.europa.ec.eudi.pid_mso_mdoc",
+    onResult: (String) -> Unit,
+) {
+    val httpClient = openID4VciHttpClient()
+    val store = MultipazWalletStore.open()
+    val model = ProvisioningModel(
+        documentProvisioningHandler = IosDocumentProvisioningHandler(store),
+        httpClient = httpClient,
+        promptModel = Platform.promptModel,
+        authorizationSecureArea = store.keySecureArea,
+    )
+
+    try {
+        model.launchOpenID4VCIProvisioning(
+            issuerUrl = issuerUrl,
+            credentialId = credentialId,
+            clientPreferences = OpenID4VCIClientPreferences(
+                clientId = "eudiw-abca",
+                // MUST be the URI registered for this client_id — the authorization server rejects
+                // anything else with `Invalid parameter: redirect_uri`. Same value as Android's
+                // `BuildConfig.ISSUE_AUTHORIZATION_DEEPLINK`.
+                redirectUrl = "eu.europa.ec.euidi://authorization",
+                locales = listOf("en"),
+                signingAlgorithms = listOf(Algorithm.ESP256),
+            ),
+            backend = IosOpenID4VciBackend(
+                walletProviderBaseUrl = "https://dev.wallet-provider.eudiw.dev",
+                clientId = "eudiw-abca",
+                httpClient = httpClient,
+            ),
+        )
+
+        // Report every state change until authorization is offered or something fails.
+        val outcome = withTimeoutOrNull(60.seconds) {
+            model.state
+                .onEach { state -> onResult("  provisioning state: ${state.describe()}") }
+                .first { it is ProvisioningModel.Authorizing || it is ProvisioningModel.Error }
+        }
+        when (outcome) {
+            null -> onResult("provisioning timed out before offering authorization")
+            is ProvisioningModel.Authorizing -> onResult(
+                "reached authorization with ${outcome.authorizationChallenges.size} challenge(s): " +
+                        outcome.authorizationChallenges.joinToString { it.describe() }
+            )
+            is ProvisioningModel.Error -> onResult("provisioning FAILED: ${outcome.err}")
+            else -> Unit
+        }
+    } catch (t: Throwable) {
+        onResult("provisioning threw: ${t::class.simpleName}: ${t.message?.take(200)}")
+    } finally {
+        model.cancel()
+        httpClient.close()
+    }
+}
+
+private fun ProvisioningModel.State.describe(): String = when (this) {
+    is ProvisioningModel.Authorizing -> "Authorizing(${authorizationChallenges.size} challenges)"
+    is ProvisioningModel.Error -> "Error(${err::class.simpleName}: ${err.message?.take(120)})"
+    is ProvisioningModel.CredentialsIssued -> "CredentialsIssued"
+    else -> this::class.simpleName ?: "?"
+}
+
+private fun AuthorizationChallenge.describe(): String = when (this) {
+    is AuthorizationChallenge.OAuth -> "OAuth(url=${url.take(120)}…)"
+    is AuthorizationChallenge.SecretText -> "SecretText(retry=$retry)"
 }
