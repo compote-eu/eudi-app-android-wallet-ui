@@ -16,32 +16,19 @@
 
 package eu.europa.ec.issuancefeature.interactor
 
-import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.authenticationlogic.secure.SecurePin
-import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.extension.ifEmptyOrNull
 import eu.europa.ec.businesslogic.extension.safeAsync
-import eu.europa.ec.businesslogic.util.safeLet
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
-import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
-import eu.europa.ec.corelogic.controller.ResolveDocumentOfferPartialState
-import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_default_name
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.wallet.WalletEngine
-import eu.europa.ec.corelogic.extension.documentIdentifier
-import eu.europa.ec.corelogic.extension.getIssuerLogo
-import eu.europa.ec.corelogic.extension.getIssuerName
-import eu.europa.ec.corelogic.extension.getName
-import eu.europa.ec.corelogic.model.DocumentIdentifier
-import eu.europa.ec.eudi.openid4vci.TxCodeInputMode
-import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.issuancefeature.ui.offer.model.DocumentOfferUi
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.SuccessRoute
@@ -56,119 +43,97 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_description
 import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_primary_button_text
 import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_text
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.issuance_document_offer_error_invalid_txcode_format
 import eu.europa.ec.shared.resources.issuance_document_offer_error_missing_pid_text
 
-// Phase 2: the Android implementation of the (now KMP) `DocumentOfferInteractor` contract, which
-// moved to :shared-ui/commonMain with `DocumentOfferViewModel`.
+/**
+ * What this wallet makes of a credential offer.
+ *
+ * Everything that *decides* is here: which transaction-code shapes are acceptable, whether an offer may
+ * be accepted by a wallet holding no PID, how an issuance outcome maps to what the screen shows, and what
+ * a deferred issuance navigates to. What is not here is the offer itself — see
+ * [DocumentOfferPlatformBridge], which keeps the resolved offer because its type cannot cross into shared
+ * code.
+ */
 class DocumentOfferInteractorImpl(
-    private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val strings: StringCatalog,
     private val walletEngine: WalletEngine,
-    private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
-    private val resourceProvider: ResourceProvider,
-    private val configLogic: ConfigLogic
+    private val platform: DocumentOfferPlatformBridge,
 ) : DocumentOfferInteractor {
 
     private val genericErrorMsg
-        get() = resourceProvider.genericErrorMessage()
-
-    /** Resolve-then-issue cache: `issueDocuments` needs the `Offer` that `resolveDocumentOffer`
-     * fetched. Implementation detail, deliberately not on the KMP contract. */
-    val credentialOffers: MutableMap<String, Offer> = mutableMapOf()
+        get() = strings[Res.string.generic_error_message]
 
     override fun resolveDocumentOffer(offerUri: String): Flow<ResolveDocumentOfferInteractorPartialState> =
         flow {
-            val userLocale = resourceProvider.getLocale()
             // An offer need not name its issuer, but every consumer of the name formats it into
             // user-facing copy ("... issued by %1$s", "%1$s requires verification"). Defaulting it
             // here, in the layer that already holds resolved strings, is what lets
             // DocumentOfferViewModel carry the name as UiText and drop its resolver.
             val defaultIssuerName =
-                resourceProvider.getString(Res.string.issuance_document_offer_relying_party_default_name)
-            walletCoreDocumentsController.resolveDocumentOffer(
-                offerUri = offerUri
-            ).map { response ->
-                when (response) {
-                    is ResolveDocumentOfferPartialState.Failure -> {
-                        ResolveDocumentOfferInteractorPartialState.Failure(errorMessage = response.errorMessage)
-                    }
+                strings[Res.string.issuance_document_offer_relying_party_default_name]
 
-                    is ResolveDocumentOfferPartialState.IssuerNotTrusted -> {
+            emit(
+                when (val resolution = platform.resolveOffer(offerUri, platform.localeTag())) {
+                    is PlatformOfferResolution.Failure ->
+                        ResolveDocumentOfferInteractorPartialState.Failure(resolution.errorMessage)
+
+                    is PlatformOfferResolution.IssuerNotTrusted ->
                         ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted
-                    }
 
-                    is ResolveDocumentOfferPartialState.Success -> {
+                    is PlatformOfferResolution.NoDocuments ->
+                        ResolveDocumentOfferInteractorPartialState.NoDocument(
+                            issuerName = resolution.issuerName.ifEmptyOrNull(defaultIssuerName),
+                            issuerLogo = resolution.issuerLogoUri,
+                        )
 
-                        credentialOffers[offerUri] = response.offer
-
-                        val offerHasNoDocuments = response.offer.offeredDocuments.isEmpty()
-                        if (offerHasNoDocuments) {
-                            ResolveDocumentOfferInteractorPartialState.NoDocument(
-                                issuerName = response.offer.getIssuerName(userLocale)
-                                    .ifEmptyOrNull(default = defaultIssuerName),
-                                issuerLogo = response.offer.getIssuerLogo(userLocale)?.toString(),
-                            )
-                        } else {
-
-                            val codeMinLength = 4
-                            val codeMaxLength = 6
-
-                            safeLet(
-                                response.offer.txCodeSpec?.inputMode,
-                                response.offer.txCodeSpec?.length
-                            ) { inputMode, length ->
-
-                                if ((length !in codeMinLength..codeMaxLength) || inputMode == TxCodeInputMode.TEXT) {
-                                    return@map ResolveDocumentOfferInteractorPartialState.Failure(
-                                        errorMessage = resourceProvider.getString(
-                                            Res.string.issuance_document_offer_error_invalid_txcode_format,
-                                            codeMinLength,
-                                            codeMaxLength
-                                        )
-                                    )
-                                }
-                            }
-
-                            val hasMainPid =
-                                walletEngine.getMainPidDocument() != null
-
-                            val hasPidInOffer =
-                                response.offer.offeredDocuments.any { offeredDocument ->
-                                    val id = offeredDocument.documentIdentifier
-                                    id == DocumentIdentifier.MdocPid || id == DocumentIdentifier.SdJwtPid
-                                }
-
-                            if (hasMainPid || hasPidInOffer || !configLogic.forcePidActivation) {
-
-                                ResolveDocumentOfferInteractorPartialState.Success(
-                                    documents = response.offer.offeredDocuments.map { offeredDocument ->
-                                        DocumentOfferUi(
-                                            title = offeredDocument.getName(userLocale).orEmpty(),
-                                        )
-                                    },
-                                    issuerName = response.offer.getIssuerName(userLocale)
-                                        .ifEmptyOrNull(default = defaultIssuerName),
-                                    issuerLogo = response.offer.getIssuerLogo(userLocale)?.toString(),
-                                    txCodeLength = response.offer.txCodeSpec?.length
-                                )
-                            } else {
-                                ResolveDocumentOfferInteractorPartialState.Failure(
-                                    errorMessage = resourceProvider.getString(
-                                        Res.string.issuance_document_offer_error_missing_pid_text
-                                    )
-                                )
-                            }
-                        }
-                    }
+                    is PlatformOfferResolution.Success -> resolution.toState(defaultIssuerName)
                 }
-            }.collect {
-                emit(it)
-            }
+            )
         }.safeAsync {
             ResolveDocumentOfferInteractorPartialState.Failure(
-                errorMessage = it.localizedMessage ?: genericErrorMsg
+                errorMessage = it.message ?: genericErrorMsg
             )
         }
+
+    /**
+     * The two reasons this wallet turns down an offer it could technically accept: a transaction code it
+     * cannot ask for, and an offer with no PID in a build that requires one first.
+     */
+    private suspend fun PlatformOfferResolution.Success.toState(
+        defaultIssuerName: String,
+    ): ResolveDocumentOfferInteractorPartialState {
+        val codeMinLength = 4
+        val codeMaxLength = 6
+
+        txCodeLength?.let { length ->
+            if (length !in codeMinLength..codeMaxLength || !txCodeIsNumeric) {
+                return ResolveDocumentOfferInteractorPartialState.Failure(
+                    errorMessage = strings.get(
+                        Res.string.issuance_document_offer_error_invalid_txcode_format,
+                        codeMinLength,
+                        codeMaxLength,
+                    )
+                )
+            }
+        }
+
+        // A build that requires a PID first refuses an offer that neither is one nor follows one.
+        val walletHasPid = walletEngine.getMainPidDocument() != null
+        if (platform.forcePidActivation && !walletHasPid && !containsPid) {
+            return ResolveDocumentOfferInteractorPartialState.Failure(
+                errorMessage = strings[Res.string.issuance_document_offer_error_missing_pid_text]
+            )
+        }
+
+        return ResolveDocumentOfferInteractorPartialState.Success(
+            documents = documentNames.map { DocumentOfferUi(title = it) },
+            issuerName = issuerName.ifEmptyOrNull(defaultIssuerName),
+            issuerLogo = issuerLogoUri,
+            txCodeLength = txCodeLength,
+        )
+    }
 
     override fun issueDocuments(
         offerUri: String,
@@ -177,11 +142,10 @@ class DocumentOfferInteractorImpl(
         txCode: SecurePin?
     ): Flow<IssueDocumentsInteractorPartialState> =
         flow {
-            credentialOffers[offerUri]?.let { offer ->
-                walletCoreDocumentsController.issueDocumentsByOffer(
-                    offer = offer,
-                    txCode = txCode?.getAndClearAsString()
-                ).map { response ->
+            platform.issueResolvedOffer(
+                offerUri = offerUri,
+                txCode = txCode?.getAndClearAsString(),
+            ).map { response ->
                     when (response) {
                         is IssueDocumentsPartialState.Failure -> {
                             IssueDocumentsInteractorPartialState.Failure(errorMessage = response.errorMessage)
@@ -228,17 +192,12 @@ class DocumentOfferInteractorImpl(
                             )
                         }
                     }
-                }.collect {
-                    emit(it)
-                }
-            } ?: emit(
-                IssueDocumentsInteractorPartialState.Failure(
-                    errorMessage = genericErrorMsg
-                )
-            )
+            }.collect {
+                emit(it)
+            }
         }.safeAsync {
             IssueDocumentsInteractorPartialState.Failure(
-                errorMessage = it.localizedMessage ?: genericErrorMsg
+                errorMessage = it.message ?: genericErrorMsg
             )
         }
 
@@ -247,30 +206,15 @@ class DocumentOfferInteractorImpl(
         crypto: BiometricCrypto,
         notifyOnAuthenticationFailure: Boolean,
         resultHandler: DeviceAuthenticationResult
-    ) {
-        when (deviceAuthenticationInteractor.getBiometricsAvailability()) {
-            is BiometricsAvailability.CanAuthenticate -> {
-                deviceAuthenticationInteractor.authenticateWithBiometrics(
-                    context = context,
-                    crypto = crypto,
-                    notifyOnAuthenticationFailure = notifyOnAuthenticationFailure,
-                    resultHandler = resultHandler
-                )
-            }
+    ) = platform.handleUserAuth(
+        context = context,
+        crypto = crypto,
+        notifyOnAuthenticationFailure = notifyOnAuthenticationFailure,
+        resultHandler = resultHandler,
+    )
 
-            is BiometricsAvailability.NonEnrolled -> {
-                deviceAuthenticationInteractor.launchBiometricSystemScreen()
-            }
-
-            is BiometricsAvailability.Failure -> {
-                resultHandler.onAuthenticationFailure()
-            }
-        }
-    }
-
-    override fun resumeOpenId4VciWithAuthorization(uri: String) {
-        walletCoreDocumentsController.resumeOpenId4VciWithAuthorization(uri)
-    }
+    override fun resumeOpenId4VciWithAuthorization(uri: String) =
+        platform.resumeOpenId4VciWithAuthorization(uri)
 
     private fun buildGenericSuccessRouteForDeferred(
         description: UiText,

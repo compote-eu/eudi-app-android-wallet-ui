@@ -29,7 +29,9 @@ import eu.europa.ec.issuancefeature.interactor.AndroidAddDocumentPlatformBridge
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorImpl
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
+import eu.europa.ec.issuancefeature.interactor.AndroidDocumentOfferPlatformBridge
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferPlatformBridge
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
@@ -76,19 +78,29 @@ fun provideDocumentIssuanceSuccessInteractor(
     platformBridge,
 )
 
+// Scoped, not a factory: this holds the resolved offer that issuance then needs.
+@Scope(CredentialOfferIssuanceScope::class)
+@Scoped
+fun provideDocumentOfferPlatformBridge(
+    walletCoreDocumentsController: WalletCoreDocumentsController,
+    deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
+    resourceProvider: ResourceProvider,
+    configLogic: ConfigLogic,
+): DocumentOfferPlatformBridge = AndroidDocumentOfferPlatformBridge(
+    walletCoreDocumentsController,
+    deviceAuthenticationInteractor,
+    resourceProvider,
+    configLogic,
+)
+
 @Scope(CredentialOfferIssuanceScope::class)
 @Scoped
 fun provideDocumentOfferInteractor(
-    walletCoreDocumentsController: WalletCoreDocumentsController,
+    strings: StringCatalog,
     walletEngine: WalletEngine,
-    resourceProvider: ResourceProvider,
-    deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
-    configLogic: ConfigLogic
-): DocumentOfferInteractor =
-    DocumentOfferInteractorImpl(
-        walletCoreDocumentsController,
-        walletEngine,
-        deviceAuthenticationInteractor,
-        resourceProvider,
-        configLogic
-    )
+    platformBridge: DocumentOfferPlatformBridge,
+): DocumentOfferInteractor = DocumentOfferInteractorImpl(
+    strings,
+    walletEngine,
+    platformBridge,
+)

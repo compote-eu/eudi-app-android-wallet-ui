@@ -94,6 +94,8 @@ import org.mockito.kotlin.whenever
 import java.net.URL
 import java.util.Locale
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_description
 import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_primary_button_text
 import eu.europa.ec.shared.resources.issuance_document_offer_deferred_success_text
@@ -127,9 +129,16 @@ class TestDocumentOfferInteractor {
     @Mock
     private lateinit var context: Context
 
-    // Declared as the implementation, not the contract: these tests reach into `credentialOffers`,
-    // the resolve-then-issue cache, which is deliberately not on the (now KMP) interface.
-    private lateinit var interactor: DocumentOfferInteractorImpl
+    @Mock
+    private lateinit var strings: StringCatalog
+
+    // The interactor is shared now, and these cases run it over the REAL Android bridge: what they
+    // assert — what this wallet makes of a wallet-core `Offer` — spans both halves, and the resolved-offer
+    // cache they used to reach into lives in the bridge, reached the way the flow reaches it (resolve,
+    // then issue).
+    private lateinit var bridge: AndroidDocumentOfferPlatformBridge
+
+    private lateinit var interactor: DocumentOfferInteractor
 
     private lateinit var closeable: AutoCloseable
 
@@ -139,20 +148,25 @@ class TestDocumentOfferInteractor {
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
 
-        interactor = DocumentOfferInteractorImpl(
+        bridge = AndroidDocumentOfferPlatformBridge(
             walletCoreDocumentsController = walletCoreDocumentsController,
-            walletEngine = walletEngine,
             deviceAuthenticationInteractor = deviceAuthenticationInteractor,
             resourceProvider = resourceProvider,
-            configLogic = configLogic
+            configLogic = configLogic,
+        )
+        interactor = DocumentOfferInteractorImpl(
+            strings = strings,
+            walletEngine = walletEngine,
+            platform = bridge,
         )
         biometricCrypto = BiometricCrypto(cryptoObject = null)
 
+        whenever(strings[Res.string.generic_error_message]).thenReturn(mockedGenericErrorMessage)
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
         whenever(resourceProvider.getLocale()).thenReturn(mockedDefaultLocale)
         // resolveDocumentOffer now substitutes this when the offer names no issuer, so that every
         // consumer of the name receives something printable.
-        whenever(resourceProvider.getString(Res.string.issuance_document_offer_relying_party_default_name))
+        whenever(strings[Res.string.issuance_document_offer_relying_party_default_name])
             .thenReturn(mockedDefaultIssuerName)
         whenever(configLogic.forcePidActivation).thenReturn(true)
     }
@@ -225,7 +239,7 @@ class TestDocumentOfferInteractor {
             val codeMinLength = 4
             val codeMaxLength = 6
             whenever(
-                resourceProvider.getString(
+                strings.get(
                     Res.string.issuance_document_offer_error_invalid_txcode_format,
                     codeMinLength,
                     codeMaxLength
@@ -272,7 +286,7 @@ class TestDocumentOfferInteractor {
             val codeMinLength = 4
             val codeMaxLength = 6
             whenever(
-                resourceProvider.getString(
+                strings.get(
                     Res.string.issuance_document_offer_error_invalid_txcode_format,
                     codeMinLength,
                     codeMaxLength
@@ -432,7 +446,7 @@ class TestDocumentOfferInteractor {
                 mainPid = null
             )
 
-            whenever(resourceProvider.getString(Res.string.issuance_document_offer_error_missing_pid_text))
+            whenever(strings[Res.string.issuance_document_offer_error_missing_pid_text])
                 .thenReturn(mockedWalletActivationErrorMessage)
             mockWalletDocumentsControllerResolveOfferEventEmission(
                 event = ResolveDocumentOfferPartialState.Success(mockedOffer)
@@ -568,7 +582,7 @@ class TestDocumentOfferInteractor {
             )
             mockGetMainPidDocumentCall(mainPid = getMockedMainPid())
             whenever(
-                resourceProvider.getString(
+                strings.get(
                     Res.string.issuance_document_offer_error_invalid_txcode_format,
                     4,
                     6,
@@ -607,7 +621,7 @@ class TestDocumentOfferInteractor {
             )
             mockGetMainPidDocumentCall(mainPid = getMockedMainPid())
             whenever(
-                resourceProvider.getString(
+                strings.get(
                     Res.string.issuance_document_offer_error_invalid_txcode_format,
                     4,
                     6,
@@ -738,7 +752,7 @@ class TestDocumentOfferInteractor {
     fun `Given Case 3, When issueDocuments is called, Then Case 3 Expected Result is returned`() =
         coroutineRule.runTest {
             // Given
-            whenever(resourceProvider.getString(Res.string.issuance_generic_error))
+            whenever(strings[Res.string.issuance_generic_error])
                 .thenReturn(mockedIssuanceErrorMessage)
 
             mockWalletDocumentsControllerIssueByUriEventEmission(
@@ -974,9 +988,7 @@ class TestDocumentOfferInteractor {
     fun `Given Case 8, When issueDocuments is called, Then Case 8 Expected Result is returned`() =
         coroutineRule.runTest {
             // Given
-            val mockedOffer = mockOffer(
-                issuerName = mockedIssuerName
-            )
+            val mockedOffer = mockResolvedOffer(mockedUriPath1)
             whenever(
                 walletCoreDocumentsController.issueDocumentsByOffer(
                     offer = mockedOffer,
@@ -985,7 +997,6 @@ class TestDocumentOfferInteractor {
             ).thenThrow(mockedExceptionWithMessage)
 
             // When
-            interactor.credentialOffers[mockedUriPath1] = mockedOffer
             interactor.issueDocuments(
                 offerUri = mockedUriPath1,
                 issuerName = mockedIssuerName,
@@ -1244,21 +1255,41 @@ class TestDocumentOfferInteractor {
             .thenReturn(event.toFlow())
     }
 
-    private fun mockWalletDocumentsControllerIssueByUriEventEmission(
+    /**
+     * Resolves an offer through the bridge — which is what remembers it — and then stubs its issuance.
+     * Resolving for real is what the flow does, and it is now the only way the offer reaches issuance.
+     */
+    private suspend fun mockWalletDocumentsControllerIssueByUriEventEmission(
         offerUri: String,
         event: IssueDocumentsPartialState,
         txCode: String? = mockedTxCode
-    ) {
+    ): Offer {
         val mockedOffer = mockOffer(
-            issuerName = mockedIssuerName
+            issuerName = mockedIssuerName,
+            offeredDocuments = mockedOfferedDocumentsList,
         )
-        interactor.credentialOffers[offerUri] = mockedOffer
+        whenever(walletCoreDocumentsController.resolveDocumentOffer(offerUri))
+            .thenReturn(ResolveDocumentOfferPartialState.Success(mockedOffer).toFlow())
+        bridge.resolveOffer(offerUri = offerUri, locale = mockedDefaultLocale.toLanguageTag())
         whenever(
             walletCoreDocumentsController.issueDocumentsByOffer(
                 offer = mockedOffer,
                 txCode = txCode
             )
         ).thenReturn(event.toFlow())
+        return mockedOffer
+    }
+
+    /** Resolves an offer through the bridge, so issuance can find it, and hands it back for stubbing. */
+    private suspend fun mockResolvedOffer(offerUri: String): Offer {
+        val mockedOffer = mockOffer(
+            issuerName = mockedIssuerName,
+            offeredDocuments = mockedOfferedDocumentsList,
+        )
+        whenever(walletCoreDocumentsController.resolveDocumentOffer(offerUri))
+            .thenReturn(ResolveDocumentOfferPartialState.Success(mockedOffer).toFlow())
+        bridge.resolveOffer(offerUri = offerUri, locale = mockedDefaultLocale.toLanguageTag())
+        return mockedOffer
     }
 
     private fun mockBiometricsAvailabilityResponse(response: BiometricsAvailability) {
