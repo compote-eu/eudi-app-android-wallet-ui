@@ -88,6 +88,9 @@ import eu.europa.ec.issuancefeature.ui.offer.DocumentOfferScreen
 import eu.europa.ec.issuancefeature.ui.offer.DocumentOfferViewModel
 import eu.europa.ec.issuancefeature.ui.success.DocumentIssuanceSuccessScreen
 import eu.europa.ec.issuancefeature.ui.success.DocumentIssuanceSuccessViewModel
+import eu.europa.ec.dashboardfeature.ui.dashboard.PendingLaunchIntent
+import eu.europa.ec.shared.wallet.multipaz.IosDeepLinks
+import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
@@ -167,10 +170,12 @@ fun SplashSpikeViewController(): UIViewController {
                         // because the tabs are a *selection* inside this screen rather than routes, so
                         // there was nowhere else to hang them.
                         //
-                        // All four host-injected lambdas keep their defaults: three are Android's
-                        // activity plumbing (the one-shot pending intent, the deep-link and DC-API
-                        // hand-offs), and the revocation reader cannot fire because
-                        // `SystemBroadcastReceiver` is a no-op here.
+                        // Two of the four host lambdas are wired now: the pending launch intent reports a
+                        // credential offer the app was opened with, and the deep-link hand-off navigates to
+                        // wherever the *shared* view-model decided that link leads — it builds the
+                        // `DocumentOfferRoute` and its config itself, exactly as on Android. The other two
+                        // keep their defaults: DC-API intents cannot exist here, and the revocation reader
+                        // cannot fire because `SystemBroadcastReceiver` is a no-op.
                         val koin = remember { KoinPlatform.getKoin() }
                         DashboardScreen(
                             navigator = navigator,
@@ -186,6 +191,12 @@ fun SplashSpikeViewController(): UIViewController {
                             homeViewModel = remember { HomeViewModel(koin.get<HomeInteractor>()) },
                             transactionsViewModel = remember {
                                 TransactionsViewModel(koin.get<TransactionsInteractor>())
+                            },
+                            pendingLaunchIntent = {
+                                PendingLaunchIntent(deepLink = IosDeepLinks.takePending())
+                            },
+                            onExternalDeepLink = { _, route ->
+                                route?.let { navigator.navigateToRoute(it) }
                             },
                         )
                     }
@@ -203,6 +214,10 @@ fun SplashSpikeViewController(): UIViewController {
                                     deepLinkClassifier = koin.get<DeepLinkClassifier>(),
                                     issuanceConfig = route.config,
                                 )
+                            },
+                            pendingDeepLink = { IosDeepLinks.takePending() },
+                            onExternalDeepLink = { _, routeToOpen ->
+                                routeToOpen?.let { navigator.navigateToRoute(it) }
                             },
                         )
                     }

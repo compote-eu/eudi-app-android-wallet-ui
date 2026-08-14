@@ -145,6 +145,32 @@ class IosCredentialIssuer(
         )
     }
 
+    /**
+     * Issues the documents a credential offer names.
+     *
+     * One flow for the whole offer, unlike [issue]: an offer *is* one credential offer as far as
+     * OpenID4VCI is concerned, so multipaz drives it in one go — and the wallet gets one document out of
+     * it, since the offer's configurations belong to a single provisioning session.
+     *
+     * @param txCode the transaction code the issuer asked for, already collected by the offer-code screen.
+     *   Null when the offer wanted none; a pre-authorized offer that wants one and does not get it fails.
+     */
+    fun issueOffer(offerUri: String, txCode: String?): Flow<IosIssuanceProgress> = flow {
+        val outcome = runCatching { provision(offerUri = offerUri, txCode = txCode) }
+        emit(
+            outcome.fold(
+                onSuccess = { IosIssuanceProgress.Issued(documentIds = listOf(it)) },
+                onFailure = { error ->
+                    if (error is CancellationException) throw error
+                    Logger.w(TAG, "issuing the offer failed: ${error.message}")
+                    IosIssuanceProgress.Failure(
+                        error.message ?: error::class.simpleName ?: "Issuance failed."
+                    )
+                },
+            )
+        )
+    }
+
     /** Drives one OpenID4VCI flow to a document, or throws with what went wrong. */
     private suspend fun provision(issuer: IosVciIssuer, configurationId: String): String {
         val httpClient =
@@ -197,37 +223,110 @@ class IosCredentialIssuer(
     }
 
     /**
-     * Watches for authorization challenges and answers each one exactly once: opens the issuer's URL,
-     * waits for the redirect the app delegate delivers, and hands it back to multipaz.
+     * The offer counterpart of [provision]: multipaz is handed the offer link and works out from it which
+     * issuer, which configuration and which grant applies.
+     *
+     * The client identity still comes from the catalogue when the offering issuer is one this build knows,
+     * and from the wallet's own otherwise — an offer may legitimately come from an unknown issuer, and
+     * `clientId`/`redirectUrl` are the wallet's identity rather than the issuer's.
      */
-    private suspend fun answerAuthorizationChallenges(model: ProvisioningModel) {
+    private suspend fun provision(offerUri: String, txCode: String?): String {
+        val httpClient =
+            if (httpEngine != null) openID4VciHttpClient(httpEngine) else openID4VciHttpClient()
+        val walletStore = walletEngine.store()
+        IosAuthorizationRedirects.clear()
+
+        val model = ProvisioningModel(
+            documentProvisioningHandler = IosDocumentProvisioningHandler(walletStore),
+            httpClient = httpClient,
+            promptModel = Platform.promptModel,
+            authorizationSecureArea = walletStore.keySecureArea,
+        )
+
+        try {
+            val wallet = issuers.first()
+            val document = model.launchOpenID4VCIProvisioning(
+                offerUri = offerUri,
+                clientPreferences = OpenID4VCIClientPreferences(
+                    clientId = wallet.clientId,
+                    redirectUrl = wallet.redirectUri,
+                    locales = listOf(FALLBACK_LOCALE),
+                    signingAlgorithms = listOf(Algorithm.ESP256),
+                ),
+                backend = IosOpenID4VciBackend(
+                    walletProviderBaseUrl = walletProviderBaseUrl,
+                    clientId = wallet.clientId,
+                    httpClient = httpClient,
+                ),
+            )
+
+            return coroutineScope {
+                val authorizing = launch { answerAuthorizationChallenges(model, txCode) }
+                try {
+                    document.await().identifier
+                } finally {
+                    authorizing.cancel()
+                }
+            }
+        } finally {
+            model.cancel()
+            httpClient.close()
+        }
+    }
+
+    /**
+     * Watches for authorization challenges and answers each one exactly once.
+     *
+     * Two kinds arrive. An OAuth challenge is answered by opening the issuer's URL and waiting for the
+     * redirect the app delegate delivers. A secret-text challenge is the offer's transaction code, which
+     * the offer-code screen has already collected — there is nothing to prompt for here, and no way to
+     * ask, since this runs below the UI.
+     */
+    private suspend fun answerAuthorizationChallenges(
+        model: ProvisioningModel,
+        txCode: String? = null,
+    ) {
         val answered = mutableSetOf<String>()
 
         model.state.collect { state ->
             if (state !is ProvisioningModel.Authorizing) return@collect
 
-            val challenge = state.authorizationChallenges
-                .filterIsInstance<AuthorizationChallenge.OAuth>()
-                .firstOrNull { it.id !in answered }
+            val challenge = state.authorizationChallenges.firstOrNull { it.id !in answered }
                 ?: return@collect
-
             answered += challenge.id
-            Logger.i(TAG, "opening the authorization URL for challenge ${challenge.id}")
-            openAuthorizationUrl(challenge.url)
 
-            val redirect = IosAuthorizationRedirects.await(timeout = authorizationTimeout)
-            if (redirect == null) {
-                // Leaving the flow hanging would leave the screen spinning; failing the model surfaces
-                // it as an issuance failure, which is what a user who never finished logging in did.
-                throw IllegalStateException("Authorization was not completed.")
+            when (challenge) {
+                is AuthorizationChallenge.OAuth -> {
+                    Logger.i(TAG, "opening the authorization URL for challenge ${challenge.id}")
+                    openAuthorizationUrl(challenge.url)
+
+                    val redirect = IosAuthorizationRedirects.await(timeout = authorizationTimeout)
+                    if (redirect == null) {
+                        // Leaving the flow hanging would leave the screen spinning; failing surfaces it
+                        // as an issuance failure, which is what a user who never logged in did.
+                        throw IllegalStateException("Authorization was not completed.")
+                    }
+
+                    model.provideAuthorizationResponse(
+                        AuthorizationResponse.OAuth(
+                            id = challenge.id,
+                            parameterizedRedirectUrl = redirect,
+                        )
+                    )
+                }
+
+                is AuthorizationChallenge.SecretText -> {
+                    if (txCode == null) {
+                        throw IllegalStateException(
+                            "This offer needs a transaction code" +
+                                    (challenge.request.description?.let { ": $it" } ?: ".")
+                        )
+                    }
+                    model.provideAuthorizationResponse(
+                        AuthorizationResponse.SecretText(id = challenge.id, secret = txCode)
+                    )
+                }
             }
-
-            model.provideAuthorizationResponse(
-                AuthorizationResponse.OAuth(
-                    id = challenge.id,
-                    parameterizedRedirectUrl = redirect,
-                )
-            )
         }
     }
 

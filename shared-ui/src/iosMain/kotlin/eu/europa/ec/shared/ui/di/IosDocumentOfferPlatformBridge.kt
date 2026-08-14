@@ -22,45 +22,94 @@ import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferPlatformBridge
 import eu.europa.ec.issuancefeature.interactor.PlatformOfferResolution
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOffer
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
+import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
+import eu.europa.ec.shared.wallet.multipaz.IosOfferResolution
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import platform.Foundation.NSLocale
 import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
 
 /**
- * iOS's [DocumentOfferPlatformBridge] — not yet implemented, and specific about why.
+ * iOS's [DocumentOfferPlatformBridge]: offers are read and issued through multipaz.
  *
- * Credential offers reach a wallet as `openid-credential-offer://` links, which iOS would receive through
- * the app delegate exactly as it already receives authorization redirects. multipaz can then act on one:
- * `ProvisioningModel` accepts an offer URI, and the issuance spike proves the rest of that path works.
- * Two pieces are missing before this can be honest — the deep link is not routed to this screen, and
- * multipaz's resolve step does not surface the transaction-code spec that [PlatformOfferResolution]
- * reports — so it refuses rather than resolving an offer it could not then issue.
- *
- * Note what is *not* missing: every rule about an offer — acceptable code lengths, the PID requirement,
- * how outcomes map to the screen — is in the shared interactor and will apply unchanged.
+ * **It holds the resolved offers**, as the contract requires, though for a different reason than Android:
+ * there the cached object is wallet-core's `Offer`, which cannot cross into shared code, while here the
+ * offer link alone would be enough to issue from. Keeping the map anyway is what makes
+ * [issueResolvedOffer]'s promise true — an offer nobody resolved is refused rather than quietly fetched a
+ * second time, which would risk issuing something other than what the user was shown.
  */
-internal class IosDocumentOfferPlatformBridge : DocumentOfferPlatformBridge {
+internal class IosDocumentOfferPlatformBridge(
+    private val offers: IosCredentialOfferReader,
+    private val credentialIssuer: IosCredentialIssuer,
+) : DocumentOfferPlatformBridge {
+
+    private val resolvedOffers: MutableMap<String, IosCredentialOffer> = mutableMapOf()
 
     override fun localeTag(): String = NSLocale.currentLocale.languageCode
 
-    /** iOS has no `ConfigLogic` yet; false is the permissive answer, and nothing here can issue anyway. */
+    /**
+     * False, because iOS has no `ConfigLogic` to read it from. The consequence is narrow and worth being
+     * clear about: an offer that contains no PID is accepted here even when the wallet holds none, where
+     * the Android `dev` flavour would refuse it. The rule itself lives in the shared interactor and starts
+     * applying the moment iOS grows a configuration layer.
+     */
     override val forcePidActivation: Boolean = false
 
     override suspend fun resolveOffer(offerUri: String, locale: String): PlatformOfferResolution =
-        PlatformOfferResolution.Failure(errorMessage = NOT_AVAILABLE_ON_IOS)
+        when (val resolution = offers.resolve(offerUri = offerUri, locale = locale)) {
+            is IosOfferResolution.Failure ->
+                PlatformOfferResolution.Failure(errorMessage = resolution.message)
+
+            is IosOfferResolution.Resolved -> {
+                resolvedOffers[offerUri] = resolution.offer
+
+                if (resolution.documentNames.isEmpty()) {
+                    PlatformOfferResolution.NoDocuments(
+                        issuerName = resolution.issuerName,
+                        issuerLogoUri = resolution.issuerLogoUri,
+                    )
+                } else {
+                    PlatformOfferResolution.Success(
+                        documentNames = resolution.documentNames,
+                        issuerName = resolution.issuerName,
+                        issuerLogoUri = resolution.issuerLogoUri,
+                        containsPid = resolution.containsPid,
+                        txCodeLength = resolution.offer.txCodeLength,
+                        txCodeIsNumeric = resolution.offer.txCodeIsNumeric,
+                    )
+                }
+            }
+        }
 
     override fun issueResolvedOffer(
         offerUri: String,
         txCode: String?,
-    ): Flow<IssueDocumentsPartialState> = flow {
-        emit(IssueDocumentsPartialState.Failure(errorMessage = NOT_AVAILABLE_ON_IOS))
+    ): Flow<IssueDocumentsPartialState> {
+        val offer = resolvedOffers[offerUri]
+            ?: return flow {
+                emit(IssueDocumentsPartialState.Failure(errorMessage = OFFER_NOT_RESOLVED))
+            }
+
+        return credentialIssuer.issueOffer(offerUri = offer.offerUri, txCode = txCode).map { progress ->
+            when (progress) {
+                is IosIssuanceProgress.Failure ->
+                    IssueDocumentsPartialState.Failure(errorMessage = progress.message)
+
+                is IosIssuanceProgress.Issued ->
+                    IssueDocumentsPartialState.Success(documentIds = progress.documentIds)
+            }
+        }
     }
 
     /**
      * Nothing to raise: multipaz's `SecureEnclaveSecureArea` presents the LocalAuthentication dialog
-     * itself when a key is used.
+     * itself when a key is used, so there is no separate prompt — and an offer's own secret is the
+     * transaction code, which the offer-code screen collects rather than this.
      */
     override fun handleUserAuth(
         context: PlatformContext,
@@ -69,10 +118,14 @@ internal class IosDocumentOfferPlatformBridge : DocumentOfferPlatformBridge {
         resultHandler: DeviceAuthenticationResult,
     ) = resultHandler.onAuthenticationFailure()
 
-    /** Inert: iOS redirects are consumed by the provisioning flow that asked for them. */
+    /**
+     * Inert, because the issuer consumes its own redirect: `IosCredentialIssuer` awaits
+     * `IosAuthorizationRedirects` for the flow it started, rather than being pushed a URL from outside as
+     * wallet-core's resume does.
+     */
     override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
 
     private companion object {
-        const val NOT_AVAILABLE_ON_IOS = "Credential offers are not available on iOS yet."
+        const val OFFER_NOT_RESOLVED = "This offer was not read; open it again."
     }
 }

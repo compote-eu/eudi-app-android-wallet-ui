@@ -35,6 +35,12 @@ targets:
           - CFBundleURLName: eu.europa.ec.eudi.kmp.iosApp.authorization
             CFBundleURLSchemes:
               - eu.europa.ec.euidi
+          # Credential offers, the same two schemes Android registers (CREDENTIAL_OFFER_SCHEME and
+          # CREDENTIAL_OFFER_HAIP_SCHEME). Without these iOS never hands the link to the app at all.
+          - CFBundleURLName: eu.europa.ec.eudi.kmp.iosApp.credentialOffer
+            CFBundleURLSchemes:
+              - openid-credential-offer
+              - haip-vci
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: eu.europa.ec.eudi.kmp.iosApp

@@ -31,6 +31,7 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
 import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
@@ -226,8 +227,17 @@ fun provideIosAddDocumentInteractor(
  * says what it cannot do yet — see [IosDocumentOfferPlatformBridge].
  */
 @Single
-fun provideIosDocumentOfferPlatformBridge(): DocumentOfferPlatformBridge =
-    IosDocumentOfferPlatformBridge()
+fun provideIosCredentialOfferReader(): IosCredentialOfferReader = IosCredentialOfferReader()
+
+// `@Single`, not a factory: it remembers the offers it resolved, which issuance then requires.
+@Single
+fun provideIosDocumentOfferPlatformBridge(
+    offers: IosCredentialOfferReader,
+    credentialIssuer: IosCredentialIssuer,
+): DocumentOfferPlatformBridge = IosDocumentOfferPlatformBridge(
+    offers = offers,
+    credentialIssuer = credentialIssuer,
+)
 
 @Factory
 fun provideIosDocumentOfferInteractor(

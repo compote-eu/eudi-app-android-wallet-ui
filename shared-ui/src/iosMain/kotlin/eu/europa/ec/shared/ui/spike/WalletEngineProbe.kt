@@ -24,6 +24,10 @@ import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.shared.wallet.multipaz.IosAuthorizationRedirects
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
+import eu.europa.ec.issuancefeature.interactor.PlatformOfferResolution
+import eu.europa.ec.shared.ui.di.IosDocumentOfferPlatformBridge
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
+import eu.europa.ec.shared.wallet.multipaz.IosDeepLinks
 import eu.europa.ec.shared.wallet.multipaz.IosIssuerCatalog
 import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_INDEX
 import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_URI
@@ -281,6 +285,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             // SPIKE: OpenID4VCI issuer metadata through multipaz, from iOS.
             onResult("--- issuance spike: reading issuer metadata ---")
             probeIssuance(onResult)
+            probeCredentialOffer(onResult)
 
             onResult("OK")
         } catch (t: Throwable) {
@@ -366,5 +371,64 @@ private suspend fun deliverRedirectFromFile(onResult: (String) -> Unit) {
             IosAuthorizationRedirects.deliver(contents)
             return
         }
+    }
+}
+
+/**
+ * Reads and accepts a credential offer through the **production** bridge, with the same browser
+ * substitution [probeIssuance] uses.
+ *
+ * The offer is built here rather than scanned: the deep-link path that would normally deliver one
+ * (`openid-credential-offer://` → app delegate → `IosDeepLinks` → the dashboard's shared view-model) cannot
+ * be driven on a simulator, since LaunchServices refuses to hand a custom scheme to `simctl openurl`. What
+ * that path delivers *is* a link like this one, so everything downstream of it is what runs here.
+ */
+private suspend fun probeCredentialOffer(onResult: (String) -> Unit) {
+    val issuer = IosIssuerCatalog.issuers.last()
+    val offerJson = """{"credential_issuer":"${issuer.issuerUrl}",""" +
+            """"credential_configuration_ids":["eu.europa.ec.eudi.pid_mso_mdoc"]}"""
+    val offerUri = "openid-credential-offer://?credential_offer=" + offerJson.percentEncoded()
+
+    // The deep-link slot the app delegate writes to, checked here because the delegate itself cannot be
+    // exercised on a simulator.
+    IosDeepLinks.deliver(offerUri)
+    onResult("--- credential offer: pending=${IosDeepLinks.takePending() != null} ---")
+
+    val bridge = IosDocumentOfferPlatformBridge(
+        offers = KoinPlatform.getKoin().get<IosCredentialOfferReader>(),
+        credentialIssuer = IosCredentialIssuer(
+            walletEngine = KoinPlatform.getKoin().get<IosWalletEngine>(),
+            openAuthorizationUrl = { url -> onResult("AUTHORIZE-HERE $url") },
+        ),
+    )
+
+    when (val resolution = bridge.resolveOffer(offerUri, bridge.localeTag())) {
+        is PlatformOfferResolution.Success -> onResult(
+            "offer resolved: ${resolution.documentNames} from '${resolution.issuerName}' " +
+                    "pid=${resolution.containsPid} txCode=${resolution.txCodeLength}"
+        )
+
+        is PlatformOfferResolution.NoDocuments -> onResult("offer resolved with no documents")
+        is PlatformOfferResolution.IssuerNotTrusted -> onResult("offer issuer not trusted")
+        is PlatformOfferResolution.Failure -> {
+            onResult("offer FAILED to resolve: ${resolution.errorMessage}")
+            return
+        }
+    }
+
+    coroutineScope {
+        val redirects = launch { deliverRedirectFromFile(onResult) }
+        val state = bridge.issueResolvedOffer(offerUri = offerUri, txCode = null).first()
+        redirects.cancel()
+        onResult("offer issuance -> $state")
+    }
+}
+
+/** Percent-encodes a query-parameter value; the offer travels inside one. */
+private fun String.percentEncoded(): String = buildString {
+    this@percentEncoded.encodeToByteArray().forEach { byte ->
+        val char = byte.toInt().toChar()
+        if (char.isLetterOrDigit() || char in "-_.~") append(char)
+        else append('%').append(byte.toInt().and(0xFF).toString(16).uppercase().padStart(2, '0'))
     }
 }
