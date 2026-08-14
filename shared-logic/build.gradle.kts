@@ -73,6 +73,11 @@ kotlin {
         // couple half the Android app to multipaz for no gain. `implementation`, since no multipaz
         // type appears in this module's public API — the seam is WalletDocument/WalletEngine.
         iosMain.dependencies {
+            // The lock behind `NativeSecurePin`. Kotlin/Native has no `@Synchronized`, and a PIN's
+            // mutual exclusion is not something to leave out; atomicfu's `ReentrantLock` is the
+            // standard multiplatform answer and already arrives transitively with coroutines and
+            // multipaz — declared here so the dependency is a decision rather than an accident.
+            implementation(libs.kotlinx.atomicfu)
             implementation(libs.multipaz)
             // Ktor's Darwin engine, for fetching status-list tokens. `ktor-client-core` already
             // arrives transitively with multipaz (which uses it itself), so this adds the iOS engine

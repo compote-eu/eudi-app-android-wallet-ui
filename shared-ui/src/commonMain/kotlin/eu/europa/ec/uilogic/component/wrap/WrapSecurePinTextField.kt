@@ -67,7 +67,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.authenticationlogic.secure.SecurePin
-import eu.europa.ec.authenticationlogic.secure.SecurePinImpl
+import eu.europa.ec.authenticationlogic.secure.securePinOf
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.EmptyTextToolbar
@@ -92,7 +92,7 @@ class SecurePinTextFieldState internal constructor(
         check(isComplete) {
             "Expected $expectedPinLength PIN characters, but found $currentLength."
         }
-        val pin = SecurePinImpl(textFieldState.text)
+        val pin = securePinOf(textFieldState.text)
         clear()
         return pin
     }

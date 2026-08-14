@@ -14,10 +14,11 @@
  * governing permissions and limitations under the Licence.
  */
 
-// Phase 3b: the `SecurePin` / `SecurePinData` *interfaces* now live in :shared-logic/commonMain so the
-// PIN view-models can move there. These implementations stay Android-side: their mutual exclusion is
-// `@Synchronized`, which is JVM-only, and picking a Kotlin/Native equivalent for a security primitive
-// is a decision worth making when iOS actually needs one. Package unchanged.
+// Android's `SecurePin`, unchanged from when it lived in :authentication-logic: mutual exclusion by
+// `@Synchronized`, which is a JVM intrinsic and so cannot be shared. It moved here — same package, no
+// call site touched — only so `securePinOf` has something to return on this platform now that the PIN
+// field itself is shared UI. iOS has its own, [NativeSecurePin]; the shared `SecurePinTest` holds both
+// to the same behaviour.
 package eu.europa.ec.authenticationlogic.secure
 
 class SecurePinImpl(text: CharSequence) : SecurePin {
