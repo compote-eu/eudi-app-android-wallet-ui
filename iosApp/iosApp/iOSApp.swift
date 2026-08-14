@@ -16,9 +16,30 @@
 
 import SwiftUI
 import class SharedKit.WalletEngineProbeKt
+import class SharedKit.IosAuthorizationRedirects
+
+/// Receives URLs opened on the app — the OpenID4VCI authorization redirect, today.
+///
+/// A `UIApplicationDelegate` rather than SwiftUI's `.onOpenURL`: the latter did not fire for a custom
+/// scheme delivered to an already-running app on the simulator, and `application(_:open:options:)` is
+/// the path deep links have always arrived on. Both are wired, so whichever the system chooses works.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ app: UIApplication,
+        open url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        let handled = IosAuthorizationRedirects.shared.deliver(url: url.absoluteString)
+        print("AUTHORIZATION-REDIRECT: \(handled ? "delivered" : "ignored") \(url.absoluteString.prefix(60))")
+        return handled
+    }
+}
 
 @main
 struct iOSApp: App {
+
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
         // SPIKE: hand a Swift-implemented WalletEngine to Kotlin coroutine code and see whether the
         // suspend calls actually round-trip. Result goes to the console.
@@ -46,6 +67,13 @@ struct iOSApp: App {
 
                 ContentView()
                     .tabItem { Label("SwiftUI", systemImage: "swift") }
+            }
+            // The whole of the app shell's part in OpenID4VCI authorization: hand the redirect to
+            // Kotlin, which has a coroutine waiting for it. Deciding whether it is *valid* belongs to
+            // multipaz's provisioning client, which minted the `state` it carries.
+            .onOpenURL { url in
+                let handled = IosAuthorizationRedirects.shared.deliver(url: url.absoluteString)
+                print("AUTHORIZATION-REDIRECT: \(handled ? "delivered" : "ignored") \(url.scheme ?? "?")")
             }
         }
     }

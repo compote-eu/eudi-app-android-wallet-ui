@@ -23,7 +23,9 @@
 package eu.europa.ec.shared.wallet.multipaz.spike
 
 import io.ktor.client.HttpClient
+import eu.europa.ec.shared.wallet.multipaz.IosAuthorizationRedirects
 import eu.europa.ec.shared.wallet.multipaz.IosDocumentProvisioningHandler
+import eu.europa.ec.shared.wallet.multipaz.MultipazWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosOpenID4VciBackend
 import eu.europa.ec.shared.wallet.multipaz.MultipazWalletStore
 import eu.europa.ec.shared.wallet.multipaz.openID4VciHttpClient
@@ -34,12 +36,22 @@ import kotlinx.coroutines.withContext
 import org.multipaz.crypto.Algorithm
 import org.multipaz.prompt.PromptModel
 import org.multipaz.provisioning.AuthorizationChallenge
+import org.multipaz.provisioning.AuthorizationResponse
 import org.multipaz.provisioning.KeyBindingType
 import org.multipaz.provisioning.ProvisioningModel
 import org.multipaz.util.Platform
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSHomeDirectory
+import platform.Foundation.NSString
+import platform.Foundation.NSUTF8StringEncoding
+import platform.Foundation.stringWithContentsOfFile
 import kotlin.time.Duration.Companion.seconds
 import org.multipaz.provisioning.openid4vci.OpenID4VCI
 import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
@@ -139,6 +151,8 @@ suspend fun probeProvisioning(
 ) {
     val httpClient = openID4VciHttpClient()
     val store = MultipazWalletStore.open()
+    // A redirect left over from an earlier attempt carries a spent code.
+    IosAuthorizationRedirects.clear()
     val model = ProvisioningModel(
         documentProvisioningHandler = IosDocumentProvisioningHandler(store),
         httpClient = httpClient,
@@ -167,18 +181,72 @@ suspend fun probeProvisioning(
         )
 
         // Report every state change until authorization is offered or something fails.
-        val outcome = withTimeoutOrNull(60.seconds) {
+        val offered = withTimeoutOrNull(60.seconds) {
             model.state
                 .onEach { state -> onResult("  provisioning state: ${state.describe()}") }
                 .first { it is ProvisioningModel.Authorizing || it is ProvisioningModel.Error }
         }
-        when (outcome) {
-            null -> onResult("provisioning timed out before offering authorization")
-            is ProvisioningModel.Authorizing -> onResult(
-                "reached authorization with ${outcome.authorizationChallenges.size} challenge(s): " +
-                        outcome.authorizationChallenges.joinToString { it.describe() }
-            )
-            is ProvisioningModel.Error -> onResult("provisioning FAILED: ${outcome.err}")
+        when (offered) {
+            null -> {
+                onResult("provisioning timed out before offering authorization")
+                return
+            }
+
+            is ProvisioningModel.Error -> {
+                onResult("provisioning FAILED: ${offered.err}")
+                return
+            }
+
+            is ProvisioningModel.Authorizing -> {
+                val challenge = offered.authorizationChallenges.first()
+                onResult("authorization challenge: ${challenge.describe()}")
+                if (challenge is AuthorizationChallenge.OAuth) {
+                    // Printed in full and on its own line so it can be driven from outside: there is no
+                    // way to log into Keycloak from a test harness on the simulator.
+                    onResult("AUTHORIZE-HERE ${challenge.url}")
+                }
+
+                // The app shell delivers the redirect (see IosAuthorizationRedirects); until iOS opens
+                // the browser itself, that is `xcrun simctl openurl` with the URL the login ends on.
+                onResult("waiting for the authorization redirect… (or $REDIRECT_FILE_NAME in Documents)")
+                val redirect = awaitRedirectFromAppOrFile(onResult)
+                if (redirect == null) {
+                    onResult("no authorization redirect arrived; stopping here")
+                    return
+                }
+                onResult("got redirect: ${redirect.take(80)}…")
+                model.provideAuthorizationResponse(
+                    AuthorizationResponse.OAuth(
+                        id = challenge.id,
+                        parameterizedRedirectUrl = redirect,
+                    )
+                )
+            }
+
+            else -> Unit
+        }
+
+        // From here multipaz exchanges the code, creates Secure Enclave keys, proves possession of them
+        // and asks for credentials.
+        val finished = withTimeoutOrNull(120.seconds) {
+            model.state
+                .onEach { state -> onResult("  provisioning state: ${state.describe()}") }
+                .first { it is ProvisioningModel.CredentialsIssued || it is ProvisioningModel.Error }
+        }
+        when (finished) {
+            null -> onResult("provisioning stalled after authorization")
+            is ProvisioningModel.Error -> onResult("provisioning FAILED after authorization: ${finished.err}")
+            is ProvisioningModel.CredentialsIssued -> {
+                onResult(
+                    "CREDENTIALS ISSUED: document=${finished.document.identifier} " +
+                            "new=${finished.isNewlyIssued} credentials=${finished.numCredentialsFetched}"
+                )
+                // The point of step 3: the document must be visible to the reader, not just stored.
+                MultipazWalletEngine(store).getAllDocumentsWithDetails(locale = "en").forEach {
+                    onResult("  reader sees: ${it.name} / ${it.formatType} state=${it.issuanceState} credentials=${it.credentialsCount}/${it.initialCredentialsCount}")
+                }
+            }
+
             else -> Unit
         }
     } catch (t: Throwable) {
@@ -199,4 +267,49 @@ private fun ProvisioningModel.State.describe(): String = when (this) {
 private fun AuthorizationChallenge.describe(): String = when (this) {
     is AuthorizationChallenge.OAuth -> "OAuth(url=${url.take(120)}…)"
     is AuthorizationChallenge.SecretText -> "SecretText(retry=$retry)"
+}
+
+/**
+ * The redirect file this harness watches, inside the app's Documents directory.
+ *
+ * Why it exists: the production path is the app delegate calling [IosAuthorizationRedirects.deliver]
+ * (see `iOSApp.swift`), and on a device that is exactly what happens. On the *simulator* it cannot be
+ * exercised from a script — `xcrun simctl openurl` reports success, LaunchServices logs
+ * "Found application … to handle url scheme", and then the app is never activated and the delegate never
+ * runs (`Error fetching bundle record for scheme approval`, `-10814`, survives a clean reinstall). Since
+ * completing the login needs a browser anyway, the harness takes the redirect through the filesystem
+ * instead, which a test script can write from the host.
+ */
+private const val REDIRECT_FILE_NAME = "authorization-redirect.txt"
+
+/** Races the real app-delegate hand-off against the harness file, whichever arrives first. */
+private suspend fun awaitRedirectFromAppOrFile(onResult: (String) -> Unit): String? = coroutineScope {
+    val fromApp = async { IosAuthorizationRedirects.await() }
+    val fromFile = async { pollRedirectFile() }
+    val winner = select {
+        fromApp.onAwait { it?.also { onResult("redirect arrived from the app delegate") } }
+        fromFile.onAwait { it?.also { onResult("redirect arrived from $REDIRECT_FILE_NAME") } }
+    }
+    fromApp.cancel()
+    fromFile.cancel()
+    winner
+}
+
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+private suspend fun pollRedirectFile(): String? {
+    val path = NSHomeDirectory() + "/Documents/" + REDIRECT_FILE_NAME
+    val manager = NSFileManager.defaultManager
+    // Start clean: a file left from a previous run holds a spent authorization code.
+    if (manager.fileExistsAtPath(path)) manager.removeItemAtPath(path, null)
+
+    repeat(180) {
+        delay(1.seconds)
+        if (manager.fileExistsAtPath(path)) {
+            val contents = NSString.stringWithContentsOfFile(path, NSUTF8StringEncoding, null)
+                ?.trim()
+            manager.removeItemAtPath(path, null)
+            if (!contents.isNullOrEmpty()) return contents
+        }
+    }
+    return null
 }

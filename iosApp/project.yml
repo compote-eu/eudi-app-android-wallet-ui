@@ -27,6 +27,14 @@ targets:
         # Empty dict = the default system launch screen, replacing
         # INFOPLIST_KEY_UILaunchScreen_Generation now that the plist is explicit.
         UILaunchScreen: {}
+        # The OpenID4VCI authorization redirect. The authorization server will only redirect to the
+        # URI registered for our client_id — `eu.europa.ec.euidi://authorization`, the same value
+        # Android builds as ISSUE_AUTHORIZATION_DEEPLINK — so iOS has to claim that scheme or the
+        # browser has nowhere to send the result. See `IosAuthorizationRedirects`.
+        CFBundleURLTypes:
+          - CFBundleURLName: eu.europa.ec.eudi.kmp.iosApp.authorization
+            CFBundleURLSchemes:
+              - eu.europa.ec.euidi
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: eu.europa.ec.eudi.kmp.iosApp
