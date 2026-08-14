@@ -30,6 +30,14 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferPlatformBridge
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
@@ -157,4 +165,54 @@ fun provideIosHomeInteractor(
 ): HomeInteractor = IosHomeInteractor(
     walletEngine = walletEngine,
     stringResolver = stringResolver,
+)
+
+/**
+ * The screen the issuance flow ends on. Its implementation is shared, and the platform half it needs —
+ * reading a document's claims and issuer display — is the document-details bridge, which iOS answers
+ * from multipaz. So this needs nothing iOS-specific beyond being declared.
+ */
+@Factory
+fun provideIosDocumentIssuanceSuccessInteractor(
+    strings: StringCatalog,
+    platform: DocumentDetailsPlatformBridge,
+): DocumentIssuanceSuccessInteractor = DocumentIssuanceSuccessInteractorImpl(
+    strings = strings,
+    platform = platform,
+)
+
+/**
+ * The add-document screen. Its list-building and routing are shared; the bridge is where iOS says what it
+ * cannot do yet — see [IosAddDocumentPlatformBridge].
+ */
+@Single
+fun provideIosAddDocumentPlatformBridge(): AddDocumentPlatformBridge =
+    IosAddDocumentPlatformBridge()
+
+@Factory
+fun provideIosAddDocumentInteractor(
+    strings: StringCatalog,
+    platform: AddDocumentPlatformBridge,
+): AddDocumentInteractor = AddDocumentInteractorImpl(
+    strings = strings,
+    platform = platform,
+)
+
+/**
+ * The credential-offer screens. As with add-document, the rules are shared and the bridge is where iOS
+ * says what it cannot do yet — see [IosDocumentOfferPlatformBridge].
+ */
+@Single
+fun provideIosDocumentOfferPlatformBridge(): DocumentOfferPlatformBridge =
+    IosDocumentOfferPlatformBridge()
+
+@Factory
+fun provideIosDocumentOfferInteractor(
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
+    platform: DocumentOfferPlatformBridge,
+): DocumentOfferInteractor = DocumentOfferInteractorImpl(
+    strings = strings,
+    walletEngine = walletEngine,
+    platform = platform,
 )

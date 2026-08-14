@@ -12,6 +12,13 @@ import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionInteractorGetTransactionsPartialState
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
+import eu.europa.ec.commonfeature.config.IssuanceFlowType
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorScopedPartialState
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorGetUiItemsPartialState
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
+import eu.europa.ec.issuancefeature.interactor.ResolveDocumentOfferInteractorPartialState
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.shared.wallet.multipaz.spike.probeIssuerMetadata
@@ -172,6 +179,59 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                 "batch counter preference as the documents list sees it: " +
                         "$before -> toggled -> $afterToggle -> restored -> " +
                         "${documents.showBatchIssuanceCounter()}"
+            )
+
+            // The three issuance interactors, now shared. Probed rather than screenshotted because
+            // `simctl` cannot synthesise the taps that reach these screens — and because two of the
+            // three are expected to *refuse*, which is only meaningful if the refusal is visible.
+            val addDocument = KoinPlatform.getKoin().get<AddDocumentInteractor>()
+            onResult(
+                "getAddDocumentOption -> " + when (
+                    val state = addDocument.getAddDocumentOption(IssuanceFlowType.NoDocument).first()
+                ) {
+                    is AddDocumentInteractorScopedPartialState.Success ->
+                        "Success(${state.options.size} issuer(s))"
+
+                    is AddDocumentInteractorScopedPartialState.NoOptions -> "NoOptions(${state.errorMsg})"
+                    is AddDocumentInteractorScopedPartialState.Failure -> "Failure(${state.error})"
+                }
+            )
+
+            val offer = KoinPlatform.getKoin().get<DocumentOfferInteractor>()
+            onResult(
+                "resolveDocumentOffer -> " + when (
+                    val state = offer.resolveDocumentOffer("openid-credential-offer://probe").first()
+                ) {
+                    is ResolveDocumentOfferInteractorPartialState.Success ->
+                        "Success(${state.documents.size} document(s), issuer=${state.issuerName})"
+
+                    is ResolveDocumentOfferInteractorPartialState.NoDocument ->
+                        "NoDocument(${state.issuerName})"
+
+                    is ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted -> "IssuerNotTrusted"
+                    is ResolveDocumentOfferInteractorPartialState.Failure -> "Failure(${state.errorMessage})"
+                }
+            )
+
+            // This one is expected to *work*: its platform half is the document-details bridge, which
+            // iOS answers from multipaz. The ids are the fixture documents, standing in for a just-issued
+            // batch.
+            val success = KoinPlatform.getKoin().get<DocumentIssuanceSuccessInteractor>()
+            onResult(
+                "issuance success items -> " + when (
+                    val state = success.getUiItems(cheap.map { it.id }).first()
+                ) {
+                    is DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success ->
+                        "Success(${state.documentsUi.size} document(s): " +
+                                state.documentsUi.joinToString {
+                                    val name = (it.header.mainContentData as? ListItemMainContentDataUi.Text)?.text
+                                    "$name/${it.nestedItems.size} claims"
+                                } +
+                                ", issuer=${state.headerConfig.relyingPartyData?.name})"
+
+                    is DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Failed ->
+                        "Failed(${state.errorMessage})"
+                }
             )
 
             // Revocation, end to end. iOS has no issuer that publishes a status list, so the fixture

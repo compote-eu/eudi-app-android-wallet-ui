@@ -77,6 +77,21 @@ import eu.europa.ec.dashboardfeature.ui.settings.SettingsScreen
 import eu.europa.ec.dashboardfeature.ui.settings.SettingsViewModel
 import eu.europa.ec.dashboardfeature.ui.transactions.list.TransactionsViewModel
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
+import eu.europa.ec.issuancefeature.ui.add.AddDocumentScreen
+import eu.europa.ec.issuancefeature.ui.add.AddDocumentViewModel
+import eu.europa.ec.issuancefeature.ui.code.DocumentOfferCodeScreen
+import eu.europa.ec.issuancefeature.ui.code.DocumentOfferCodeViewModel
+import eu.europa.ec.issuancefeature.ui.offer.DocumentOfferScreen
+import eu.europa.ec.issuancefeature.ui.offer.DocumentOfferViewModel
+import eu.europa.ec.issuancefeature.ui.success.DocumentIssuanceSuccessScreen
+import eu.europa.ec.issuancefeature.ui.success.DocumentIssuanceSuccessViewModel
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
+import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
+import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.SettingsRoute
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
 import eu.europa.ec.resourceslogic.theme.ThemeManager
@@ -171,6 +186,62 @@ fun SplashSpikeViewController(): UIViewController {
                             homeViewModel = remember { HomeViewModel(koin.get<HomeInteractor>()) },
                             transactionsViewModel = remember {
                                 TransactionsViewModel(koin.get<TransactionsInteractor>())
+                            },
+                        )
+                    }
+                    entry<AddDocumentRoute> { route ->
+                        // The shared add-document screen, over the shared interactor. What iOS cannot
+                        // answer yet is narrower than the screen: `IosAddDocumentPlatformBridge` reports
+                        // that it has no issuer catalogue, and the screen renders that as its error state
+                        // — the list, its grouping and its routing are the same code Android runs.
+                        val koin = remember { KoinPlatform.getKoin() }
+                        AddDocumentScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                AddDocumentViewModel(
+                                    addDocumentInteractor = koin.get<AddDocumentInteractor>(),
+                                    deepLinkClassifier = koin.get<DeepLinkClassifier>(),
+                                    issuanceConfig = route.config,
+                                )
+                            },
+                        )
+                    }
+                    entry<DocumentOfferRoute> { route ->
+                        val koin = remember { KoinPlatform.getKoin() }
+                        DocumentOfferScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                DocumentOfferViewModel(
+                                    deepLinkClassifier = koin.get<DeepLinkClassifier>(),
+                                    offerUiConfig = route.config,
+                                    documentOfferInteractor = koin.get<DocumentOfferInteractor>(),
+                                )
+                            },
+                        )
+                    }
+                    entry<DocumentOfferCodeRoute> { route ->
+                        val koin = remember { KoinPlatform.getKoin() }
+                        DocumentOfferCodeScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                DocumentOfferCodeViewModel(
+                                    offerCodeUiConfig = route.config,
+                                    documentOfferInteractor = koin.get<DocumentOfferInteractor>(),
+                                )
+                            },
+                        )
+                    }
+                    entry<DocumentIssuanceSuccessRoute> { route ->
+                        // Fully working on iOS: its interactor is shared and the documents it lists come
+                        // from multipaz through the document-details bridge.
+                        val koin = remember { KoinPlatform.getKoin() }
+                        DocumentIssuanceSuccessScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                DocumentIssuanceSuccessViewModel(
+                                    interactor = koin.get<DocumentIssuanceSuccessInteractor>(),
+                                    issuanceSuccessUiConfig = route.config,
+                                )
                             },
                         )
                     }
