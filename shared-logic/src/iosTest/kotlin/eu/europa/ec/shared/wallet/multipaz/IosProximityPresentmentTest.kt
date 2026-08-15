@@ -25,6 +25,8 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.multipaz.spike.samplePidElements
 import eu.europa.ec.shared.wallet.multipaz.spike.seedMdocDocument
+import eu.europa.ec.corelogic.model.ClaimPathDomain
+import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import kotlinx.coroutines.test.runTest
 import org.multipaz.cbor.Cbor
@@ -53,6 +55,9 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
+
+/** The claim's own name, i.e. the last segment of its path. */
+private fun ClaimPathDomain.leafName(): String = segments.last().toString()
 
 /** A stand-in for the user's answer: what the wallet may release, given what the reader matched. */
 private typealias Consent = (CredentialPresentmentData) -> CredentialPresentmentSelection?
@@ -138,7 +143,7 @@ class IosProximityPresentmentTest {
 
     /** What the screens see, built by the same translation the presenter uses. */
     private fun CredentialPresentmentData.asConsentView() =
-        toProximityRequest(requesterName = null, requesterIsTrusted = false)
+        toPresentmentRequest(requesterName = null, requesterIsTrusted = false)
 
     @Test
     fun only_the_claims_the_reader_asked_for_are_released() = runTest {
@@ -226,7 +231,7 @@ class IosProximityPresentmentTest {
     @Test
     fun the_consent_view_names_the_credential_and_shows_what_would_leave_the_wallet() = runTest {
         val store = walletWithPid()
-        lateinit var view: IosProximityRequest
+        lateinit var view: IosPresentmentRequest
 
         present(
             store = store,
@@ -240,14 +245,15 @@ class IosProximityPresentmentTest {
         assertTrue(document.documentId.isNotEmpty())
         assertTrue(document.credentialId.isNotEmpty())
         assertEquals(PID_DOC_TYPE, document.docType)
+        assertEquals(IosPresentmentFormat.MsoMdoc, document.format)
 
-        val givenName = document.claims.single { it.claim.identifier == "given_name" }
+        val givenName = document.claims.single { it.claim.leafName() == "given_name" }
         // The stored value, so consent shows what is actually about to be shared rather than a label.
         assertEquals("Tester", givenName.value)
-        assertEquals(PID_DOC_TYPE, givenName.claim.namespace)
+        assertEquals(ClaimType.MsoMdoc(PID_DOC_TYPE), givenName.claim.type)
         assertTrue(!givenName.intentToRetain)
         // The reader asked to keep the portrait; that is shown, and is never a reason to force-share it.
-        assertTrue(document.claims.single { it.claim.identifier == "portrait" }.intentToRetain)
+        assertTrue(document.claims.single { it.claim.leafName() == "portrait" }.intentToRetain)
     }
 
     @Test
@@ -263,11 +269,11 @@ class IosProximityPresentmentTest {
                 val document = data.asConsentView().combinations.single().documents.single()
                 data.toSelection(
                     listOf(
-                        IosProximityDisclosure(
+                        IosPresentmentDisclosure(
                             documentId = document.documentId,
                             credentialId = document.credentialId,
                             claims = document.claims
-                                .filter { it.claim.identifier == "given_name" }
+                                .filter { it.claim.leafName() == "given_name" }
                                 .map { it.claim }
                                 .toSet(),
                         )
@@ -292,7 +298,7 @@ class IosProximityPresentmentTest {
                     val document = data.asConsentView().combinations.single().documents.single()
                     selection = data.toSelection(
                         listOf(
-                            IosProximityDisclosure(
+                            IosPresentmentDisclosure(
                                 documentId = document.documentId,
                                 credentialId = document.credentialId,
                                 claims = emptySet(),
@@ -321,7 +327,7 @@ class IosProximityPresentmentTest {
             elements = samplePidElements(givenName = "Other", familyName = "Person"),
             policy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 1),
         )
-        lateinit var view: IosProximityRequest
+        lateinit var view: IosPresentmentRequest
 
         present(
             store = store,
