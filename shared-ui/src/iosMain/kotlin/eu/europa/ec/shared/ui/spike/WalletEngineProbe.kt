@@ -50,6 +50,15 @@ import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.stringWithContentsOfFile
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import eu.europa.ec.commonfeature.config.PresentationMode
+import eu.europa.ec.commonfeature.config.RequestUriConfig
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.proximityfeature.interactor.ProximityLoadingInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximityQRInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximityQRPartialState
+import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximitySuccessInteractor
 import org.koin.mp.KoinPlatform
 
 /**
@@ -289,6 +298,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             // SPIKE: OpenID4VCI issuer metadata through multipaz, from iOS.
             onResult("--- issuance spike: reading issuer metadata ---")
             probeAuthentication(onResult)
+            probeProximity(onResult)
             probeIssuance(onResult)
             probeCredentialOffer(onResult)
 
@@ -304,6 +314,49 @@ private fun WalletDocument.describe(locale: String): String =
             "credentials=$credentialsCount/$initialCredentialsCount low=$isLowOnCredentials " +
             "issued=$issuedAt expires=$expiresAt expired=$isExpired revoked=$isRevoked " +
             "issuer=$issuerName logo=$issuerLogoUri"
+
+/**
+ * How far proximity gets on a machine with no Bluetooth radio.
+ *
+ * Two things are worth seeing here and nowhere else. First, that the four interactors resolve — Koin
+ * fails at the first `get()`, and the screens are three taps deep behind a card `simctl` cannot press,
+ * so a missing definition would otherwise surface as a crash on a device. Second, what the QR screen
+ * shows when advertising cannot start: the simulator has no radio, so this *should* report an error
+ * rather than hang on a QR that never appears. On a device the same call publishes an `mdoc:` payload.
+ */
+private suspend fun probeProximity(onResult: (String) -> Unit) {
+    onResult("--- proximity: interactors and engagement ---")
+    val koin = KoinPlatform.getKoin()
+
+    val qr = koin.get<ProximityQRInteractor>()
+    koin.get<ProximityRequestInteractor>()
+    koin.get<ProximityLoadingInteractor>()
+    koin.get<ProximitySuccessInteractor>()
+    onResult("proximity interactors resolved: QR, request, loading, success")
+
+    qr.setConfig(RequestUriConfig(PresentationMode.Ble(DashboardRoute)))
+    onResult("scopeId=${qr.presentationScopeId}")
+
+    // Bounded: on a device the first state arrives as soon as the transport is advertising; here the
+    // point is that *something* arrives rather than the screen waiting forever.
+    val first = withTimeoutOrNull(PROXIMITY_PROBE_TIMEOUT) { qr.startQrEngagement().first() }
+    onResult(
+        when (first) {
+            is ProximityQRPartialState.QrReady ->
+                "startQrEngagement -> QR ready (${first.qrCode.take(24)}…)"
+
+            is ProximityQRPartialState.Error -> "startQrEngagement -> error: ${first.error}"
+            is ProximityQRPartialState.Connected -> "startQrEngagement -> connected"
+            is ProximityQRPartialState.Disconnected -> "startQrEngagement -> disconnected"
+            null -> "startQrEngagement -> nothing within $PROXIMITY_PROBE_TIMEOUT"
+        }
+    )
+    qr.cancelTransfer()
+}
+
+// Longer than the presenter's own advertise timeout, so what shows up here is the presenter's
+// answer rather than this probe giving up first.
+private val PROXIMITY_PROBE_TIMEOUT = 30.seconds
 
 /**
  * Drives a real issuance through the **production** [IosCredentialIssuer], substituting only the browser.

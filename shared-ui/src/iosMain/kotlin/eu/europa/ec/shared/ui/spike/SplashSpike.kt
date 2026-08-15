@@ -104,6 +104,22 @@ import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.SettingsRoute
+import eu.europa.ec.shared.navigation.ProximityQrRoute
+import eu.europa.ec.shared.navigation.ProximityRequestRoute
+import eu.europa.ec.shared.navigation.ProximityLoadingRoute
+import eu.europa.ec.shared.navigation.ProximitySuccessRoute
+import eu.europa.ec.proximityfeature.interactor.ProximityQRInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximityLoadingInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximitySuccessInteractor
+import eu.europa.ec.proximityfeature.ui.qr.ProximityQRScreen
+import eu.europa.ec.proximityfeature.ui.qr.ProximityQRViewModel
+import eu.europa.ec.proximityfeature.ui.request.ProximityRequestScreen
+import eu.europa.ec.proximityfeature.ui.request.ProximityRequestViewModel
+import eu.europa.ec.proximityfeature.ui.loading.ProximityLoadingScreen
+import eu.europa.ec.proximityfeature.ui.loading.ProximityLoadingViewModel
+import eu.europa.ec.proximityfeature.ui.success.ProximitySuccessViewModel
+import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreen
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
 import eu.europa.ec.resourceslogic.theme.ThemeManager
 import eu.europa.ec.shared.ui.di.SharedUiModule
@@ -292,6 +308,63 @@ fun SplashSpikeViewController(): UIViewController {
                                 DocumentIssuanceSuccessViewModel(
                                     interactor = koin.get<DocumentIssuanceSuccessInteractor>(),
                                     issuanceSuccessUiConfig = route.config,
+                                )
+                            },
+                        )
+                    }
+                    // --- ISO 18013-5 proximity ---
+                    //
+                    // The four shared screens over `IosProximityCoordinator`, which drives multipaz's
+                    // presentment. Reachable from Home's "Authenticate" card. The exchange itself needs a
+                    // Bluetooth radio: on the Simulator advertising fails and the QR screen shows that
+                    // failure, which is as far as this can be taken without a device and a reader.
+                    entry<ProximityQrRoute> { route ->
+                        val koin = remember { KoinPlatform.getKoin() }
+                        ProximityQRScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                ProximityQRViewModel(
+                                    interactor = koin.get<ProximityQRInteractor>(),
+                                    requestUriConfig = route.config,
+                                )
+                            },
+                        )
+                    }
+                    entry<ProximityRequestRoute> { route ->
+                        val koin = remember { KoinPlatform.getKoin() }
+                        ProximityRequestScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                ProximityRequestViewModel(
+                                    interactor = koin.get<ProximityRequestInteractor>(),
+                                    presentationScopeId = route.scopeId,
+                                )
+                            },
+                        )
+                    }
+                    entry<ProximityLoadingRoute> { route ->
+                        val koin = remember { KoinPlatform.getKoin() }
+                        ProximityLoadingScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                ProximityLoadingViewModel(
+                                    interactor = koin.get<ProximityLoadingInteractor>(),
+                                    presentationScopeId = route.scopeId,
+                                )
+                            },
+                        )
+                    }
+                    entry<ProximitySuccessRoute> { route ->
+                        // Android wraps this in `DocumentSuccessScreenHost` to supply the two host
+                        // lambdas; iOS takes the shared screen's own defaults, which pop rather than
+                        // caching a deep link or finishing an activity with a result.
+                        val koin = remember { KoinPlatform.getKoin() }
+                        DocumentSuccessScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                ProximitySuccessViewModel(
+                                    interactor = koin.get<ProximitySuccessInteractor>(),
+                                    presentationScopeId = route.scopeId,
                                 )
                             },
                         )

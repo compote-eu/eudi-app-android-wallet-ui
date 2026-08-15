@@ -19,17 +19,18 @@ package eu.europa.ec.uilogic.component
 import androidx.compose.runtime.Composable
 
 /**
- * Reports [ProximityPermissionsOutcome.Pending] and does nothing else.
+ * Reports [ProximityPermissionsOutcome.Granted] without asking anything.
  *
- * iOS has no up-front permission request to make here: the system asks for Bluetooth the first time
- * CoreBluetooth is used, and it needs only the `NSBluetoothAlwaysUsageDescription` Info.plist string
- * rather than a runtime grant. Reporting Pending rather than Granted is the conservative choice — the
- * proximity flow is not shared to iOS yet, so a Granted here would start something that cannot finish.
+ * There is nothing to ask. iOS has no runtime Bluetooth grant an app can request up front: the system
+ * raises its own prompt the first time CoreBluetooth is used, needing only the
+ * `NSBluetoothAlwaysUsageDescription` string in the Info.plist. So the honest answer here is "go ahead" —
+ * and if the user then refuses at the system prompt, advertising fails and the QR screen says so, which
+ * is the same place a refusal surfaces on Android.
  */
 @Composable
 actual fun EnsureProximityPermissions(
     isBleCentralClientModeEnabled: Boolean,
     onOutcome: (ProximityPermissionsOutcome) -> Unit,
 ) {
-    onOutcome(ProximityPermissionsOutcome.Pending)
+    onOutcome(ProximityPermissionsOutcome.Granted)
 }

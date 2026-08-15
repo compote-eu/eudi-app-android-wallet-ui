@@ -41,6 +41,11 @@ targets:
             CFBundleURLSchemes:
               - openid-credential-offer
               - haip-vci
+        # ISO 18013-5 proximity sharing. iOS has no runtime Bluetooth permission to request; this
+        # string *is* the permission — CoreBluetooth raises the system prompt with it the first time
+        # the wallet advertises, and without the key the app is terminated instead of prompted.
+        NSBluetoothAlwaysUsageDescription: >-
+          Share documents from your wallet with a nearby reader over Bluetooth.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: eu.europa.ec.eudi.kmp.iosApp

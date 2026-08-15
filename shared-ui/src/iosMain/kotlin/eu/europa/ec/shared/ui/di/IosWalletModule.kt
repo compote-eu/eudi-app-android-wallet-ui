@@ -44,6 +44,11 @@ import eu.europa.ec.startupfeature.interactor.SplashInteractorImpl
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
 import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
+import eu.europa.ec.shared.wallet.multipaz.IosProximityPresenter
+import eu.europa.ec.proximityfeature.interactor.ProximityLoadingInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximityQRInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximitySuccessInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
 import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
@@ -306,3 +311,43 @@ fun provideIosSplashInteractor(
     walletEngine = walletEngine,
     forcePidActivation = { false },
 )
+
+/**
+ * ISO 18013-5 proximity sharing.
+ *
+ * `@Single` for both the presenter and the coordinator: one Bluetooth radio means one exchange, and the
+ * four screens have to be looking at the same one. The interactors are `@Factory` like Android's, since
+ * each is a per-view-model view onto that shared state and holds nothing but its scope id.
+ */
+@Single
+fun provideIosProximityPresenter(engine: IosWalletEngine): IosProximityPresenter =
+    IosProximityPresenter(walletEngine = engine)
+
+@Single
+internal fun provideIosProximityCoordinator(
+    presenter: IosProximityPresenter,
+    strings: StringCatalog,
+): IosProximityCoordinator = IosProximityCoordinator(
+    presenter = presenter,
+    strings = strings,
+)
+
+@Factory
+internal fun provideIosProximityQRInteractor(
+    coordinator: IosProximityCoordinator,
+): ProximityQRInteractor = IosProximityQRInteractor(coordinator = coordinator)
+
+@Factory
+internal fun provideIosProximityRequestInteractor(
+    coordinator: IosProximityCoordinator,
+): ProximityRequestInteractor = IosProximityRequestInteractor(coordinator = coordinator)
+
+@Factory
+internal fun provideIosProximityLoadingInteractor(
+    coordinator: IosProximityCoordinator,
+): ProximityLoadingInteractor = IosProximityLoadingInteractor(coordinator = coordinator)
+
+@Factory
+internal fun provideIosProximitySuccessInteractor(
+    coordinator: IosProximityCoordinator,
+): ProximitySuccessInteractor = IosProximitySuccessInteractor(coordinator = coordinator)
