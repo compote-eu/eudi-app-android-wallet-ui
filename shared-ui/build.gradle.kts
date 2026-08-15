@@ -146,6 +146,10 @@ kotlin {
             // The pre-API-31 blur fallback behind `sensitiveContentBlur`. Android-only library; iOS
             // blurs through Skia with no fallback needed.
             implementation(libs.compose.cloudy)
+            // The QR *encoder* behind `rememberQrPainter`, which the proximity screen shows for device
+            // engagement. Android-only on purpose: iOS encodes with CoreImage instead, so neither
+            // platform carries the other's library.
+            implementation(libs.zxing)
         }
         // iOS-only: the navigation host's pieces. The Compose UI artifacts moved to commonMain with
         // the first shared screen.

@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.proximityfeature.ui.qr.component
+package eu.europa.ec.uilogic.component.wrap
 
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -40,15 +41,16 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/** zxing, which the app already carries for QR *scanning*. */
 @Composable
-fun rememberQrBitmapPainter(
+actual fun rememberQrPainter(
     content: String,
-    @ColorInt primaryPixelsColor: Int = Color.BLACK,
-    @ColorInt secondaryPixelsColor: Int = Color.WHITE,
-    size: Dp = 150.dp,
-    padding: Dp = 0.dp,
-    dispatcher: CoroutineDispatcher = Dispatchers.IO
-): BitmapPainter {
+    size: Dp,
+    padding: Dp,
+): Painter {
+    @ColorInt val primaryPixelsColor: Int = Color.BLACK
+    @ColorInt val secondaryPixelsColor: Int = Color.WHITE
+    val dispatcher: CoroutineDispatcher = Dispatchers.IO
 
     val density = LocalDensity.current
 

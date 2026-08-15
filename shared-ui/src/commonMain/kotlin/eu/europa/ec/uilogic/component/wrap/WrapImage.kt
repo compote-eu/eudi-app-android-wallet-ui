@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import org.jetbrains.compose.resources.stringResource
 import eu.europa.ec.uilogic.component.IconDataUi
@@ -60,10 +61,11 @@ fun WrapImage(
     }
 }
 
+/** Widened from `BitmapPainter` to [Painter] so a platform-drawn image — the QR code — fits too. */
 @Composable
 fun WrapImage(
     modifier: Modifier = Modifier,
-    painter: BitmapPainter,
+    painter: Painter,
     contentDescription: String,
     colorFilter: ColorFilter? = null,
     contentScale: ContentScale? = null,

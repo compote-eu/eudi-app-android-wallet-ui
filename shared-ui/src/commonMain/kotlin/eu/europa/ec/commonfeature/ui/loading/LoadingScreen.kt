@@ -26,11 +26,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.rememberPlatformContextOrNull
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
@@ -44,7 +44,8 @@ fun LoadingScreen(
     viewModel: LoadingViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    // Null on iOS: the work this screen kicks off is wallet-core's, which needs an Android context.
+    val platformContext = rememberPlatformContextOrNull()
 
     ContentScreen(
         isLoading = state.error != null,
@@ -85,7 +86,7 @@ fun LoadingScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.startInitialWork(context)
+        platformContext?.let { viewModel.startInitialWork(it) }
     }
 }
 

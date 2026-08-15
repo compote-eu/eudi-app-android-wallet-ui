@@ -16,7 +16,6 @@
 
 package eu.europa.ec.proximityfeature.ui.qr
 
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,17 +32,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import eu.europa.ec.proximityfeature.ui.qr.component.rememberQrBitmapPainter
+import eu.europa.ec.uilogic.component.wrap.rememberQrPainter
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.rememberPlatformActivityOrNull
 import eu.europa.ec.uilogic.component.content.ContentTitle
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -73,7 +72,9 @@ fun ProximityQRScreen(
     viewModel: ProximityQRViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    // Null on iOS, where an app cannot be an NFC card emulator at all: the QR engagement below is the
+    // whole story there, and the NFC half is simply not offered.
+    val platformActivity = rememberPlatformActivityOrNull()
 
     ContentScreen(
         isLoading = state.isLoading,
@@ -104,24 +105,18 @@ fun ProximityQRScreen(
         lifecycleOwner = LocalLifecycleOwner.current,
         lifecycleEvent = Lifecycle.Event.ON_RESUME
     ) {
-        viewModel.setEvent(
-            Event.NfcEngagement(
-                componentActivity = context as ComponentActivity,
-                enable = true
-            )
-        )
+        platformActivity?.let {
+            viewModel.setEvent(Event.NfcEngagement(componentActivity = it, enable = true))
+        }
     }
 
     LifecycleEffect(
         lifecycleOwner = LocalLifecycleOwner.current,
         lifecycleEvent = Lifecycle.Event.ON_PAUSE
     ) {
-        viewModel.setEvent(
-            Event.NfcEngagement(
-                componentActivity = context as ComponentActivity,
-                enable = false
-            )
-        )
+        platformActivity?.let {
+            viewModel.setEvent(Event.NfcEngagement(componentActivity = it, enable = false))
+        }
     }
 }
 
@@ -212,7 +207,7 @@ private fun QRCode(
     if (qrCode.isNotEmpty()) {
         WrapImage(
             modifier = modifier,
-            painter = rememberQrBitmapPainter(
+            painter = rememberQrPainter(
                 content = qrCode,
                 size = qrSize
             ),
