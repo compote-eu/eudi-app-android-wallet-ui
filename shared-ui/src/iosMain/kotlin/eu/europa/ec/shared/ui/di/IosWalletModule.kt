@@ -257,8 +257,8 @@ fun provideIosAddDocumentInteractor(
 )
 
 /**
- * The credential-offer screens. As with add-document, the rules are shared and the bridge is where iOS
- * says what it cannot do yet — see [IosDocumentOfferPlatformBridge].
+ * The credential-offer screens. As with add-document, the rules are shared and the bridge is the iOS
+ * half — resolving an offer and issuing from it, both real; see [IosDocumentOfferPlatformBridge].
  */
 @Single
 fun provideIosCredentialOfferReader(): IosCredentialOfferReader = IosCredentialOfferReader()

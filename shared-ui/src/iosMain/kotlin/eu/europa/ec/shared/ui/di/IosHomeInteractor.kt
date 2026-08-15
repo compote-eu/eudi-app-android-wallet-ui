@@ -35,19 +35,33 @@ import kotlinx.coroutines.flow.flowOn
  * `WalletEngine.getMainPidDocument()` seam, which on iOS is the Kotlin-over-multipaz engine, so the
  * name rendered on Home comes from a real stored mdoc credential.
  *
- * The BLE answers are honest stubs rather than real queries. multipaz does have iOS BLE, but the
- * proximity flow itself is not shared to iOS yet, so reporting Bluetooth as unavailable keeps Home from
- * offering a journey that dead-ends. Revisit together with the proximity feature, not before.
+ * **The BLE answers are the ones iOS can honestly give, which is not the same shape as Android's.**
+ * There, `isBleAvailable` reads the adapter's power state; iOS has no equivalent an app may read
+ * without side effects — constructing a `CBCentralManager` is itself what raises the system prompt, so
+ * a Home screen that "checked" would be prompting for Bluetooth just to render a card.
+ *
+ * So the answer is "nothing here should stop you trying", and the refusal surfaces where it can be
+ * explained: the presenter bounds its advertise call and the QR screen says Bluetooth is unavailable.
+ * That is the same argument `EnsureProximityPermissions` already makes on iOS, and it has to be the
+ * same answer — Home gates the proximity journey on this method, so anything else makes the flow
+ * unreachable.
  */
 internal class IosHomeInteractor(
     private val walletEngine: WalletEngine,
     private val stringResolver: StringResolver,
 ) : HomeInteractor {
 
-    /** False until the proximity flow is shared to iOS; see the class KDoc. */
-    override fun isBleAvailable(): Boolean = false
+    /** See the class KDoc: iOS cannot answer this without prompting, so it does not pretend to. */
+    override fun isBleAvailable(): Boolean = true
 
-    /** False for the same reason as [isBleAvailable]; central-client mode is a wallet-core setting. */
+    /**
+     * False, and correctly so rather than pending.
+     *
+     * This wallet advertises in **peripheral-server mode** on iOS — see
+     * `IosProximityPresenter.bleConnectionMethod`, where `supportsCentralClientMode = false`, because
+     * being the peripheral is the side an iOS app can be. Android reads the corresponding wallet-core
+     * setting; here the answer is a property of what the presenter actually does.
+     */
     override fun isBleCentralClientModeEnabled(): Boolean = false
 
     override fun getUserNameViaMainPidDocument(): Flow<HomeInteractorGetUserNameViaMainPidDocumentPartialState> =

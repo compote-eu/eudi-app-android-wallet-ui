@@ -6,6 +6,7 @@ import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosTransactionKind
 import eu.europa.ec.shared.wallet.multipaz.createIosWalletEngine
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
+import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorPartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
@@ -347,6 +348,16 @@ private fun WalletDocument.describe(locale: String): String =
 private suspend fun probeProximity(onResult: (String) -> Unit) {
     onResult("--- proximity: interactors and engagement ---")
     val koin = KoinPlatform.getKoin()
+
+    // The gate Home puts in front of the whole flow. It answered `false` for longer than it should
+    // have — a leftover from before proximity was shared — which made every route below unreachable
+    // from the UI while the probe, which resolves interactors directly, saw nothing wrong.
+    val home = koin.get<HomeInteractor>()
+    onResult(
+        "Home would ${if (home.isBleAvailable()) "start" else "REFUSE"} the proximity flow " +
+                "(isBleAvailable=${home.isBleAvailable()}, " +
+                "centralClientMode=${home.isBleCentralClientModeEnabled()})"
+    )
 
     val qr = koin.get<ProximityQRInteractor>()
     koin.get<ProximityRequestInteractor>()

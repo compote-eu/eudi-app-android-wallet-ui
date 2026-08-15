@@ -128,9 +128,11 @@ internal class IosDocumentDetailsPlatformBridge(
     }
 
     /**
-     * Reports failure rather than raising a prompt. multipaz's `SecureEnclaveSecureArea` presents the
-     * LocalAuthentication dialog *itself* when a key is used, so there is no separate prompt to raise —
-     * and the flows that call this (re-issuance, presentation) do not exist on iOS yet.
+     * Reports failure rather than raising a prompt, and that is the right answer rather than a pending
+     * one: multipaz's `SecureEnclaveSecureArea` presents the LocalAuthentication dialog *itself* when a
+     * key is used, so there is no separate prompt for the app to schedule. Presentation reaches the same
+     * conclusion in `IosPresentationInteractors`; re-issuance never gets this far, since
+     * [reIssueDocument] refuses first.
      */
     override fun handleUserAuth(
         context: PlatformContext,

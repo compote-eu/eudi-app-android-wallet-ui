@@ -58,8 +58,10 @@ internal class IosDocumentsPlatformBridge(
         )
 
     /**
-     * False, unlike the Android flavours' `true`: forcing PID activation would send the user into an
-     * issuance flow that does not exist on iOS yet.
+     * False, unlike the Android flavours' `true`.
+     *
+     * Not a gap: iOS *can* issue a PID now. This is the per-flavour policy of whether a wallet without
+     * one is pushed into getting one before it can do anything else, and this build does not push.
      */
     override val forcePidActivation: Boolean get() = false
 
