@@ -38,7 +38,9 @@ import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.mdoc.request.DeviceRequestGenerator
+import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.MdocResponse
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.presentment.SimplePresentmentSource
@@ -51,6 +53,9 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
+
+/** A stand-in for the user's answer: what the wallet may release, given what the reader matched. */
+private typealias Consent = (CredentialPresentmentData) -> CredentialPresentmentSelection?
 
 class IosProximityPresentmentTest {
 
@@ -94,30 +99,29 @@ class IosProximityPresentmentTest {
         }
     }
 
-    private fun source(store: MultipazWalletStore, consent: ConsentAnswer) = SimplePresentmentSource(
+    /** Everything the request matched, which is what a user who unchecks nothing agrees to. */
+    private val acceptEverything: Consent = { data ->
+        CredentialPresentmentSelection(
+            matches = data.credentialSets
+                .flatMap { it.options }
+                .flatMap { it.members }
+                .mapNotNull { it.matches.firstOrNull() },
+        )
+    }
+
+    private val declineEverything: Consent = { null }
+
+    private fun source(store: MultipazWalletStore, consent: Consent) = SimplePresentmentSource(
         documentStore = store.documentStore,
         documentTypeRepository = DocumentTypeRepository(),
         domainsMdocSignature = listOf(store.documentManagerId),
-        showConsentPromptFn = { _, _, data, _, _ ->
-            when (consent) {
-                ConsentAnswer.ACCEPT -> CredentialPresentmentSelection(
-                    matches = data.credentialSets
-                        .flatMap { it.options }
-                        .flatMap { it.members }
-                        .mapNotNull { it.matches.firstOrNull() },
-                )
-
-                ConsentAnswer.DECLINE -> null
-            }
-        },
+        showConsentPromptFn = { _, _, data, _, _ -> consent(data) },
     )
-
-    private enum class ConsentAnswer { ACCEPT, DECLINE }
 
     private suspend fun present(
         store: MultipazWalletStore,
         request: DeviceRequest,
-        consent: ConsentAnswer = ConsentAnswer.ACCEPT,
+        consent: Consent = acceptEverything,
     ) = mdocPresentment(
         deviceRequest = request,
         eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
@@ -128,6 +132,13 @@ class IosProximityPresentmentTest {
         requesterOrigin = null,
         onDocumentsInFocus = {},
     )
+
+    private fun MdocResponse.releasedClaims(): Set<String> =
+        eventData.requestedDocuments.single().claims.values.map { it.displayName }.toSet()
+
+    /** What the screens see, built by the same translation the presenter uses. */
+    private fun CredentialPresentmentData.asConsentView() =
+        toProximityRequest(requesterName = null, requesterIsTrusted = false)
 
     @Test
     fun only_the_claims_the_reader_asked_for_are_released() = runTest {
@@ -144,9 +155,8 @@ class IosProximityPresentmentTest {
         // `deviceResponse.documents` is guarded behind a verify() the *reader* performs, so what is
         // readable here is what multipaz reports having released.
         assertEquals(1, response.eventData.requestedDocuments.size)
-        val released = response.eventData.requestedDocuments.single().claims.values.map { it.displayName }.toSet()
         // The fixture holds six elements; selective disclosure means the other four stay home.
-        assertEquals(setOf("given_name", "family_name"), released)
+        assertEquals(setOf("given_name", "family_name"), response.releasedClaims())
     }
 
     @Test
@@ -159,7 +169,7 @@ class IosProximityPresentmentTest {
             present(
                 store = store,
                 request = readerRequest(mapOf("given_name" to false)),
-                consent = ConsentAnswer.DECLINE,
+                consent = declineEverything,
             )
         }
     }
@@ -211,6 +221,121 @@ class IosProximityPresentmentTest {
                 onDocumentsInFocus = {},
             )
         }
+    }
+
+    @Test
+    fun the_consent_view_names_the_credential_and_shows_what_would_leave_the_wallet() = runTest {
+        val store = walletWithPid()
+        lateinit var view: IosProximityRequest
+
+        present(
+            store = store,
+            request = readerRequest(mapOf("given_name" to false, "portrait" to true)),
+            consent = { data -> view = data.asConsentView(); acceptEverything(data) },
+        )
+
+        val document = view.combinations.single().documents.single()
+        // documentId + credentialId are how the screens name their answer back, so an empty one here
+        // would mean nothing the user chose could ever be matched up again.
+        assertTrue(document.documentId.isNotEmpty())
+        assertTrue(document.credentialId.isNotEmpty())
+        assertEquals(PID_DOC_TYPE, document.docType)
+
+        val givenName = document.claims.single { it.claim.identifier == "given_name" }
+        // The stored value, so consent shows what is actually about to be shared rather than a label.
+        assertEquals("Tester", givenName.value)
+        assertEquals(PID_DOC_TYPE, givenName.claim.namespace)
+        assertTrue(!givenName.intentToRetain)
+        // The reader asked to keep the portrait; that is shown, and is never a reason to force-share it.
+        assertTrue(document.claims.single { it.claim.identifier == "portrait" }.intentToRetain)
+    }
+
+    @Test
+    fun a_claim_the_user_unchecks_does_not_go_out() = runTest {
+        val store = walletWithPid()
+
+        // The real translation in both directions: multipaz's request becomes the consent view, the
+        // user's answer becomes multipaz's selection. Here they keep the name and drop the birth date.
+        val response = present(
+            store = store,
+            request = readerRequest(mapOf("given_name" to false, "birth_date" to false)),
+            consent = { data ->
+                val document = data.asConsentView().combinations.single().documents.single()
+                data.toSelection(
+                    listOf(
+                        IosProximityDisclosure(
+                            documentId = document.documentId,
+                            credentialId = document.credentialId,
+                            claims = document.claims
+                                .filter { it.claim.identifier == "given_name" }
+                                .map { it.claim }
+                                .toSet(),
+                        )
+                    )
+                )
+            },
+        )
+
+        assertEquals(setOf("given_name"), response.releasedClaims())
+    }
+
+    @Test
+    fun keeping_nothing_selects_nothing_to_send() = runTest {
+        val store = walletWithPid()
+        lateinit var selection: CredentialPresentmentSelection
+
+        assertFailsWith<PresentmentCanceledException> {
+            present(
+                store = store,
+                request = readerRequest(mapOf("given_name" to false)),
+                consent = { data ->
+                    val document = data.asConsentView().combinations.single().documents.single()
+                    selection = data.toSelection(
+                        listOf(
+                            IosProximityDisclosure(
+                                documentId = document.documentId,
+                                credentialId = document.credentialId,
+                                claims = emptySet(),
+                            )
+                        )
+                    )
+                    // Which is why the presenter turns an empty selection into a refusal rather than
+                    // handing it on: an empty response would tell the reader the wallet had nothing.
+                    null
+                },
+            )
+        }
+
+        assertTrue(selection.matches.isEmpty())
+    }
+
+    @Test
+    fun a_second_document_the_reader_would_accept_is_offered_as_a_second_choice() = runTest {
+        val store = walletWithPid()
+        // A wallet holding two PIDs: the reader asks for one, and which one to share is the user's
+        // call. Picking silently would share a document the user never chose.
+        store.seedMdocDocument(
+            docType = PID_DOC_TYPE,
+            displayName = "Second PID",
+            namespace = PID_DOC_TYPE,
+            elements = samplePidElements(givenName = "Other", familyName = "Person"),
+            policy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 1),
+        )
+        lateinit var view: IosProximityRequest
+
+        present(
+            store = store,
+            request = readerRequest(mapOf("given_name" to false)),
+            consent = { data -> view = data.asConsentView(); acceptEverything(data) },
+        )
+
+        assertEquals(2, view.combinations.size)
+        assertEquals(
+            listOf("Tester", "Other"),
+            view.combinations.map { it.documents.single().claims.single().value },
+        )
+        // Each choice is one document, not both at once.
+        assertTrue(view.combinations.all { it.documents.size == 1 })
     }
 
     @Test
