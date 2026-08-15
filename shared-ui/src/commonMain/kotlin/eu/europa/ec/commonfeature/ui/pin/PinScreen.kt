@@ -16,7 +16,6 @@
 
 package eu.europa.ec.commonfeature.ui.pin
 
-import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -36,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.resolve
 import androidx.compose.ui.unit.dp
@@ -47,7 +45,9 @@ import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
+import eu.europa.ec.uilogic.component.PlatformScreenActions
 import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.uilogic.component.content.ImePaddingConfig
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
@@ -60,7 +60,6 @@ import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapSecurePinTextField
 import eu.europa.ec.uilogic.component.wrap.rememberSecurePinTextFieldState
 import eu.europa.ec.uilogic.extension.applyTestTag
-import eu.europa.ec.uilogic.extension.finish
 import kotlinx.coroutines.CoroutineScope
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import kotlinx.coroutines.flow.Flow
@@ -81,7 +80,7 @@ fun PinScreen(
     viewModel: PinViewModel,
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val platformActions = rememberPlatformScreenActions()
 
     val isBottomSheetOpen = state.isBottomSheetOpen
     val scope = rememberCoroutineScope()
@@ -104,9 +103,9 @@ fun PinScreen(
             onEventSend = { event -> viewModel.setEvent(event) },
             onNavigationRequested = { navigationEffect ->
                 handleNavigationEffect(
-                    context,
                     navigationEffect,
-                    navigator
+                    navigator,
+                    platformActions,
                 )
             },
             paddingValues = paddingValues,
@@ -138,9 +137,9 @@ fun PinScreen(
 }
 
 private fun handleNavigationEffect(
-    context: Context,
     navigationEffect: Effect.Navigation,
-    navigator: AppNavigator
+    navigator: AppNavigator,
+    platformActions: PlatformScreenActions,
 ) {
     when (navigationEffect) {
         is Effect.Navigation.SwitchScreen -> {
@@ -148,7 +147,7 @@ private fun handleNavigationEffect(
         }
 
         is Effect.Navigation.Pop -> navigator.pop()
-        is Effect.Navigation.Finish -> context.finish()
+        is Effect.Navigation.Finish -> platformActions.finishApp()
     }
 }
 

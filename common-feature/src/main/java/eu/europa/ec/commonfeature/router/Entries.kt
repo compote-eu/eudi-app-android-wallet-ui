@@ -23,6 +23,8 @@
 // go through.
 package eu.europa.ec.commonfeature.router
 
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import eu.europa.ec.commonfeature.ui.biometric.BiometricScreen
@@ -34,14 +36,37 @@ import eu.europa.ec.shared.navigation.BiometricRoute
 import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.navigation.SuccessRoute
+import eu.europa.ec.uilogic.extension.cacheUri
+import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
+import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
+import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 fun EntryProviderScope<NavKey>.featureCommonEntries(navigator: AppNavigator) {
     entry<BiometricRoute> { route ->
+        // BiometricScreen is shared, so the Android-only deep-link plumbing is supplied here rather than
+        // reached from commonMain: `cacheUri` and `handleDeepLinkAction` live in `:ui-logic`, which
+        // depends on `:shared-ui`.
+        val context = LocalContext.current
         BiometricScreen(
-            navigator,
-            koinViewModel(parameters = { parametersOf(route.config) })
+            navigator = navigator,
+            viewModel = koinViewModel(parameters = { parametersOf(route.config) }),
+            onExternalDeepLink = { link, routeToPop, isPreAuthorization ->
+                val uri = link.toUri()
+                routeToPop?.let { routeToReturnTo ->
+                    context.cacheUri(uri)
+                    if (isPreAuthorization) {
+                        navigator.navigateReplacingCurrent(routeToReturnTo)
+                    } else {
+                        navigator.popBackStackTo(route = routeToReturnTo, inclusive = false)
+                    }
+                } ?: handleDeepLinkAction(
+                    navigator = navigator,
+                    context = context,
+                    uri = uri,
+                )
+            },
         )
     }
 

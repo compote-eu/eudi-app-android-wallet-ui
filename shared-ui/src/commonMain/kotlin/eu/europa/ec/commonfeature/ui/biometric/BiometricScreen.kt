@@ -16,7 +16,6 @@
 
 package eu.europa.ec.commonfeature.ui.biometric
 
-import eu.europa.ec.businesslogic.extension.toUri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,7 +33,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.authenticationlogic.secure.SecurePin
@@ -43,6 +41,8 @@ import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
@@ -56,6 +56,8 @@ import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.rememberPlatformContextOrNull
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.uilogic.component.content.ImePaddingConfig
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -70,10 +72,7 @@ import eu.europa.ec.uilogic.component.wrap.rememberSecurePinTextFieldState
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.applyTestTag
-import eu.europa.ec.uilogic.extension.cacheUri
-import eu.europa.ec.uilogic.extension.finish
 import eu.europa.ec.uilogic.extension.paddingFrom
-import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.channels.Channel
@@ -85,10 +84,22 @@ import kotlinx.coroutines.flow.receiveAsFlow
 @Composable
 fun BiometricScreen(
     navigator: AppNavigator,
-    viewModel: BiometricViewModel
+    viewModel: BiometricViewModel,
+    /**
+     * Hands an external deep link to whatever flow owns it, parking it for [AppRoute] first when one is
+     * given — the pre-authorization case navigates there instead of popping back to it.
+     *
+     * Injected as on the other shared screens: Android's answers (`cacheUri`, `handleDeepLinkAction`) live
+     * in `:ui-logic`, which depends on this module. The iOS default does nothing; iOS deep links reach the
+     * screens that own them through `IosDeepLinks`.
+     */
+    onExternalDeepLink: (link: String, routeToPop: AppRoute?, isPreAuthorization: Boolean) -> Unit =
+        { _, _, _ -> },
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val platformActions = rememberPlatformScreenActions()
+    // Null on iOS: the biometric prompt needs an Android context, and iOS has no login prompt yet.
+    val platformContext = rememberPlatformContextOrNull()
     val pinInputState = rememberSecurePinTextFieldState(
         expectedPinLength = state.quickPinSize
     )
@@ -127,34 +138,19 @@ fun BiometricScreen(
                         )
                     }
 
-                    is Effect.Navigation.Deeplink -> {
-                        // The effect carries the link as a `String` so the view-model stays in
-                        // commonMain; it becomes an Android `Uri` here, at the edge, where the
-                        // Android APIs that need one live.
-                        val linkUri = navigationEffect.link.toUri()
-                        navigationEffect.routeToPop?.let { route ->
-                            context.cacheUri(linkUri)
-                            if (navigationEffect.isPreAuthorization) {
-                                navigator.navigateReplacingCurrent(route)
-                            } else {
-                                navigator.popBackStackTo(
-                                    route = route,
-                                    inclusive = false
-                                )
-                            }
-                        } ?: handleDeepLinkAction(
-                            navigator = navigator,
-                            context = context,
-                            uri = linkUri
-                        )
-                    }
+                    is Effect.Navigation.Deeplink -> onExternalDeepLink(
+                        navigationEffect.link,
+                        navigationEffect.routeToPop,
+                        navigationEffect.isPreAuthorization,
+                    )
 
                     is Effect.Navigation.Pop -> navigator.pop()
-                    is Effect.Navigation.Finish -> context.finish()
+                    is Effect.Navigation.Finish -> platformActions.finishApp()
                 }
             },
             padding = it,
-            pinInputState = pinInputState
+            pinInputState = pinInputState,
+            platformContext = platformContext,
         )
     }
 
@@ -167,11 +163,11 @@ private fun Body(
     onEventSent: ((event: Event) -> Unit),
     onNavigationRequested: ((navigationEffect: Effect.Navigation) -> Unit),
     padding: PaddingValues,
-    pinInputState: SecurePinTextFieldState
+    pinInputState: SecurePinTextFieldState,
+    // Null on iOS, where there is no biometric prompt to raise: the button and the on-create attempt are
+    // simply skipped, and the screen is the PIN entry it already contains.
+    platformContext: PlatformContext?,
 ) {
-
-    // Get application context.
-    val context = LocalContext.current
 
     Column(
         Modifier
@@ -202,12 +198,14 @@ private fun Body(
                 WrapIconButton(
                     iconData = AppIcons.TouchId,
                     onClick = {
-                        onEventSent(
-                            Event.OnBiometricsClicked(
-                                context = context,
-                                shouldThrowErrorIfNotAvailable = true
+                        platformContext?.let {
+                            onEventSent(
+                                Event.OnBiometricsClicked(
+                                    context = it,
+                                    shouldThrowErrorIfNotAvailable = true
+                                )
                             )
-                        )
+                        }
                     }
                 )
             }
@@ -222,12 +220,14 @@ private fun Body(
                 }
 
                 is Effect.InitializeBiometricAuthOnCreate -> {
-                    onEventSent(
-                        Event.OnBiometricsClicked(
-                            context = context,
-                            shouldThrowErrorIfNotAvailable = false,
+                    platformContext?.let {
+                        onEventSent(
+                            Event.OnBiometricsClicked(
+                                context = it,
+                                shouldThrowErrorIfNotAvailable = false,
+                            )
                         )
-                    )
+                    }
                 }
             }
         }.collect()
@@ -386,6 +386,7 @@ private fun PreviewBiometricScreen() {
             effectFlow = Channel<Effect>().receiveAsFlow(),
             onEventSent = {},
             onNavigationRequested = {},
+            platformContext = rememberPlatformContextOrNull(),
             padding = PaddingValues(SIZE_MEDIUM.dp),
             pinInputState = rememberSecurePinTextFieldState(expectedPinLength = 6)
         )
