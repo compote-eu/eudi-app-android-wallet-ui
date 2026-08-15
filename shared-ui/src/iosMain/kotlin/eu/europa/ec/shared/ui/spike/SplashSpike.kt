@@ -119,6 +119,17 @@ import eu.europa.ec.proximityfeature.ui.request.ProximityRequestViewModel
 import eu.europa.ec.proximityfeature.ui.loading.ProximityLoadingScreen
 import eu.europa.ec.proximityfeature.ui.loading.ProximityLoadingViewModel
 import eu.europa.ec.proximityfeature.ui.success.ProximitySuccessViewModel
+import eu.europa.ec.shared.navigation.PresentationRequestRoute
+import eu.europa.ec.shared.navigation.PresentationLoadingRoute
+import eu.europa.ec.shared.navigation.PresentationSuccessRoute
+import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractor
+import eu.europa.ec.presentationfeature.ui.request.PresentationRequestScreen
+import eu.europa.ec.presentationfeature.ui.request.PresentationRequestViewModel
+import eu.europa.ec.presentationfeature.ui.loading.PresentationLoadingScreen
+import eu.europa.ec.presentationfeature.ui.loading.PresentationLoadingViewModel
+import eu.europa.ec.presentationfeature.ui.success.PresentationSuccessViewModel
 import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreen
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
 import eu.europa.ec.resourceslogic.theme.ThemeManager
@@ -364,6 +375,54 @@ fun SplashSpikeViewController(): UIViewController {
                             viewModel = remember {
                                 ProximitySuccessViewModel(
                                     interactor = koin.get<ProximitySuccessInteractor>(),
+                                    presentationScopeId = route.scopeId,
+                                )
+                            },
+                        )
+                    }
+                    // --- Remote presentation (OpenID4VP) ---
+                    //
+                    // The same three shared screens Android uses, over
+                    // `IosRemotePresentationCoordinator`. Reached from a verifier's deep link, which
+                    // the four commonMain view-models already turn into `PresentationRequestRoute` —
+                    // so nothing about *entering* this flow is iOS-specific.
+                    entry<PresentationRequestRoute> { route ->
+                        val koin = remember { KoinPlatform.getKoin() }
+                        PresentationRequestScreen(
+                            // The Digital Credentials API hand-off, which exists only on Android:
+                            // there is no iOS caller to receive a result, so there is nothing to
+                            // consume here.
+                            intentAction = null,
+                            navigator = navigator,
+                            viewModel = remember {
+                                PresentationRequestViewModel(
+                                    interactor = koin.get<PresentationRequestInteractor>(),
+                                    requestUriConfig = route.config,
+                                )
+                            },
+                        )
+                    }
+                    entry<PresentationLoadingRoute> { route ->
+                        val koin = remember { KoinPlatform.getKoin() }
+                        PresentationLoadingScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                PresentationLoadingViewModel(
+                                    interactor = koin.get<PresentationLoadingInteractor>(),
+                                    presentationScopeId = route.scopeId,
+                                )
+                            },
+                        )
+                    }
+                    entry<PresentationSuccessRoute> { route ->
+                        // As with proximity: Android wraps this in `DocumentSuccessScreenHost` to
+                        // supply the two host lambdas, and iOS takes the shared screen's defaults.
+                        val koin = remember { KoinPlatform.getKoin() }
+                        DocumentSuccessScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                PresentationSuccessViewModel(
+                                    interactor = koin.get<PresentationSuccessInteractor>(),
                                     presentationScopeId = route.scopeId,
                                 )
                             },

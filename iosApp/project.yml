@@ -41,6 +41,16 @@ targets:
             CFBundleURLSchemes:
               - openid-credential-offer
               - haip-vci
+          # Remote presentation (OpenID4VP), the same four schemes Android registers. All four,
+          # because the wallet does not choose: the *verifier* builds the link, and the EUDI dev
+          # verifier emits `haip-vp://` by default while its OpenID4VP profile emits `openid4vp://`.
+          # See `IosDeepLinks.PRESENTATION_SCHEMES`, which must list exactly these.
+          - CFBundleURLName: eu.europa.ec.eudi.kmp.iosApp.presentation
+            CFBundleURLSchemes:
+              - openid4vp
+              - eudi-openid4vp
+              - mdoc-openid4vp
+              - haip-vp
         # ISO 18013-5 proximity sharing. iOS has no runtime Bluetooth permission to request; this
         # string *is* the permission — CoreBluetooth raises the system prompt with it the first time
         # the wallet advertises, and without the key the app is terminated instead of prompted.

@@ -41,18 +41,22 @@ object IosDeepLinks {
     /**
      * Called by the app shell when a URL is opened on the app.
      *
-     * @return true when the URL is a credential offer and was kept. Presentation links
-     *   (`openid4vp://`, `mdoc-openid4vp://`) are declined for now: iOS has no presentation flow to give
-     *   them to, and silently keeping one would leave it to be picked up by the wrong screen later.
+     * @return true when the URL is one iOS has a flow for — a credential offer or a verifier's
+     *   presentation request — and was kept. Anything else is declined rather than silently kept, since
+     *   a link nothing will consume would be picked up by the wrong screen later.
      */
     fun deliver(url: String): Boolean {
-        val isOffer = OFFER_SCHEMES.any { url.startsWith("$it:") }
-        if (!isOffer) {
-            Logger.i(TAG, "ignoring an opened URL that is not a credential offer")
-            return false
+        val scheme = url.substringBefore(':', missingDelimiterValue = "").lowercase()
+        val kind = when (scheme) {
+            in OFFER_SCHEMES -> "a credential offer"
+            in PRESENTATION_SCHEMES -> "a presentation request"
+            else -> {
+                Logger.i(TAG, "ignoring an opened URL this app has no flow for")
+                return false
+            }
         }
         pending = url
-        Logger.i(TAG, "a credential offer is waiting to be opened")
+        Logger.i(TAG, "$kind is waiting to be opened")
         return true
     }
 
@@ -72,4 +76,15 @@ object IosDeepLinks {
      * hands the link over in the first place.
      */
     val OFFER_SCHEMES: List<String> = listOf("openid-credential-offer", "haip-vci")
+
+    /**
+     * The schemes a verifier's request arrives under, matching Android's four `*_OPENID4VP_SCHEME`
+     * build-config values. All four are registered because the wallet does not choose: the *verifier*
+     * builds the link, and the EUDI dev verifier emits `haip-vp://` by default while its OpenID4VP
+     * profile emits `openid4vp://`. Registering only one would make the other simply not open the app.
+     *
+     * These must also appear in the app's `CFBundleURLTypes`, or iOS never hands the link over.
+     */
+    val PRESENTATION_SCHEMES: List<String> =
+        listOf("openid4vp", "eudi-openid4vp", "mdoc-openid4vp", "haip-vp")
 }

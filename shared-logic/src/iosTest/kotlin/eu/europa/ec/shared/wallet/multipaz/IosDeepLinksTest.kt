@@ -14,9 +14,10 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The slot a credential offer waits in between the app delegate and the first screen to resume. Small, but
-// its two rules both matter: reading it consumes it (or the offer would reopen on every resume), and a URL
-// that is not an offer must be declined rather than kept for the wrong screen to find.
+// The slot a deep link waits in between the app delegate and the first screen to resume — a credential
+// offer or a verifier's presentation request. Small, but its two rules both matter: reading it consumes it
+// (or the link would reopen on every resume), and a URL the app has no flow for must be declined rather
+// than kept for the wrong screen to find.
 package eu.europa.ec.shared.wallet.multipaz
 
 import kotlin.test.AfterTest
@@ -64,13 +65,34 @@ class IosDeepLinksTest {
     }
 
     @Test
-    fun a_url_that_is_not_an_offer_is_declined() {
+    fun a_url_the_app_has_no_flow_for_is_declined() {
+        // The authorization redirect belongs to `IosAuthorizationRedirects`: a flow is already waiting
+        // for it, so keeping a copy here would leave it to be reopened as a fresh link later.
         assertFalse(IosDeepLinks.deliver("eu.europa.ec.euidi://authorization?code=abc"))
-        assertFalse(IosDeepLinks.deliver("openid4vp://request?x=1"))
         assertFalse(IosDeepLinks.deliver("https://example.test/offer"))
+        assertFalse(IosDeepLinks.deliver("no-scheme-at-all"))
 
         // Nothing was kept, so no screen can pick up someone else's link.
         assertNull(IosDeepLinks.takePending())
+    }
+
+    @Test
+    fun every_presentation_scheme_the_verifier_may_use_is_accepted() {
+        // The wallet does not choose the scheme — the verifier builds the link. The EUDI dev verifier
+        // emits `haip-vp://` by default and `openid4vp://` under its OpenID4VP profile, so a wallet
+        // registering only one of them simply would not open for the other.
+        IosDeepLinks.PRESENTATION_SCHEMES.forEach { scheme ->
+            val link = "$scheme://?client_id=x509_hash%3Aabc&request_uri=https%3A%2F%2Fv.test%2Fr"
+            assertTrue(IosDeepLinks.deliver(link), "declined $scheme")
+            assertEquals(link, IosDeepLinks.takePending())
+        }
+    }
+
+    @Test
+    fun a_scheme_is_matched_case_insensitively() {
+        // RFC 3986 says schemes are case-insensitive, and iOS hands the URL over as the sender wrote it.
+        assertTrue(IosDeepLinks.deliver("OpenID4VP://?request_uri=https%3A%2F%2Fv.test%2Fr"))
+        assertTrue(IosDeepLinks.deliver("OPENID-CREDENTIAL-OFFER://?credential_offer=%7B%7D"))
     }
 
     @Test
@@ -86,5 +108,10 @@ class IosDeepLinksTest {
     fun the_registered_schemes_are_the_ones_the_app_declares() {
         // These must match `CFBundleURLTypes` in iosApp/project.yml, or iOS never delivers the link at all.
         assertEquals(listOf("openid-credential-offer", "haip-vci"), IosDeepLinks.OFFER_SCHEMES)
+        // The same four Android registers, as `OPENID4VP_SCHEME` and its three siblings.
+        assertEquals(
+            listOf("openid4vp", "eudi-openid4vp", "mdoc-openid4vp", "haip-vp"),
+            IosDeepLinks.PRESENTATION_SCHEMES,
+        )
     }
 }

@@ -44,7 +44,11 @@ import eu.europa.ec.startupfeature.interactor.SplashInteractorImpl
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
 import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
+import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractor
 import eu.europa.ec.shared.wallet.multipaz.IosProximityPresenter
+import eu.europa.ec.shared.wallet.multipaz.IosRemotePresenter
 import eu.europa.ec.proximityfeature.interactor.ProximityLoadingInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityQRInteractor
 import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractor
@@ -351,3 +355,39 @@ internal fun provideIosProximityLoadingInteractor(
 internal fun provideIosProximitySuccessInteractor(
     coordinator: IosProximityCoordinator,
 ): ProximitySuccessInteractor = IosProximitySuccessInteractor(coordinator = coordinator)
+
+/**
+ * Remote presentation over OpenID4VP.
+ *
+ * Scoped exactly as proximity is, and for the same reason rather than by analogy: the three screens are
+ * three views onto one exchange, so the presenter and coordinator are `@Single` and the interactors are
+ * `@Factory`. What bounds the exchange here is not a radio but the link that started it — a second link
+ * arriving mid-flow is a new exchange, which [IosRemotePresenter.start] handles by cancelling the first.
+ */
+@Single
+fun provideIosRemotePresenter(engine: IosWalletEngine): IosRemotePresenter =
+    IosRemotePresenter(walletEngine = engine)
+
+@Single
+internal fun provideIosRemotePresentationCoordinator(
+    presenter: IosRemotePresenter,
+    strings: StringCatalog,
+): IosRemotePresentationCoordinator = IosRemotePresentationCoordinator(
+    presenter = presenter,
+    strings = strings,
+)
+
+@Factory
+internal fun provideIosPresentationRequestInteractor(
+    coordinator: IosRemotePresentationCoordinator,
+): PresentationRequestInteractor = IosPresentationRequestInteractor(coordinator = coordinator)
+
+@Factory
+internal fun provideIosPresentationLoadingInteractor(
+    coordinator: IosRemotePresentationCoordinator,
+): PresentationLoadingInteractor = IosPresentationLoadingInteractor(coordinator = coordinator)
+
+@Factory
+internal fun provideIosPresentationSuccessInteractor(
+    coordinator: IosRemotePresentationCoordinator,
+): PresentationSuccessInteractor = IosPresentationSuccessInteractor(coordinator = coordinator)

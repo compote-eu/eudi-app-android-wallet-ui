@@ -37,12 +37,21 @@ import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_INDEX
 import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_URI
 import eu.europa.ec.shared.wallet.multipaz.spike.revocationFixtureToken
 import eu.europa.ec.shared.wallet.multipaz.spike.seedIosRevocableFixture
+import eu.europa.ec.shared.wallet.multipaz.spike.createVerifierTransaction
+import eu.europa.ec.shared.wallet.multipaz.spike.verifierEvents
+import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationLoadingObserveResponsePartialState
+import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractorPartialState
+import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractorGetUiItemsPartialState
 import eu.europa.ec.shared.wallet.multipaz.spike.seedIosWalletFixture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSString
@@ -299,6 +308,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             onResult("--- issuance spike: reading issuer metadata ---")
             probeAuthentication(onResult)
             probeProximity(onResult)
+            probeRemotePresentation(onResult)
             probeIssuance(onResult)
             probeCredentialOffer(onResult)
 
@@ -357,6 +367,148 @@ private suspend fun probeProximity(onResult: (String) -> Unit) {
 // Longer than the presenter's own advertise timeout, so what shows up here is the presenter's
 // answer rather than this probe giving up first.
 private val PROXIMITY_PROBE_TIMEOUT = 30.seconds
+
+/**
+ * One real OpenID4VP exchange against the EUDI dev verifier, through the **production** interactors.
+ *
+ * This is the whole remote-presentation flow minus the taps: the request interactor is handed the link
+ * a deep link would deliver, the combination it offers is accepted as a user pressing Share unchanged
+ * would accept it, and the loading interactor sends. `simctl` cannot synthesise those taps, and unlike
+ * proximity there is no radio in the way — so this is the one place the feature can actually be seen
+ * working end to end on this machine.
+ *
+ * The verdict at the end is the *verifier's*, not ours. A wallet cannot tell whether the response it
+ * built was acceptable, and this was the open question for the whole feature: multipaz implements
+ * OpenID4VP 1.0 and the EUDI verifier is an independent implementation. Its event log settles it.
+ */
+private suspend fun probeRemotePresentation(onResult: (String) -> Unit) {
+    onResult("--- remote presentation (OpenID4VP) ---")
+    val koin = KoinPlatform.getKoin()
+
+    val request = koin.get<PresentationRequestInteractor>()
+    val loading = koin.get<PresentationLoadingInteractor>()
+    val success = koin.get<PresentationSuccessInteractor>()
+    onResult("presentation interactors resolved: request, loading, success")
+
+    val transaction = createVerifierTransaction(onResult) ?: return
+    onResult("verifier transaction ${transaction.transactionId}")
+    onResult("client_id ${transaction.clientId}")
+
+    // Exactly what the shared `DashboardViewModel` builds from a classified deep link.
+    request.setConfig(
+        config = RequestUriConfig(
+            PresentationMode.OpenId4Vp(uri = transaction.authorizationUri, initiatorRoute = DashboardRoute)
+        ),
+        intentAction = null,
+    )
+
+    // Bounded, because the verifier is a live service: what should arrive is the consent state, and a
+    // silence is worth reporting as one rather than hanging the probe.
+    val asked = withTimeoutOrNull(PRESENTATION_PROBE_TIMEOUT) { request.getRequestDocuments().first() }
+    val combination = when (asked) {
+        is PresentationRequestInteractorPartialState.Success -> {
+            onResult(
+                "verifier '${asked.verifierName}' (trusted=${asked.verifierIsTrusted}) asked for " +
+                        "${asked.combinationsUi.size} alternative(s), selectable=${asked.claimsAreSelectable}"
+            )
+            asked.combinationsUi.firstOrNull()?.also { first ->
+                first.documents.forEach { document ->
+                    onResult(
+                        "  would share ${document.domainPayload.docName}: " +
+                                document.domainPayload.docClaimsDomain.joinToString { it.key }
+                    )
+                }
+            }
+        }
+
+        is PresentationRequestInteractorPartialState.NoData -> {
+            onResult("verifier '${asked.verifierName}' asked for nothing this wallet holds")
+            null
+        }
+
+        is PresentationRequestInteractorPartialState.Failure -> {
+            onResult("getRequestDocuments FAILED: ${asked.error}")
+            null
+        }
+
+        is PresentationRequestInteractorPartialState.VerifierNotTrusted -> {
+            onResult("verifier not trusted")
+            null
+        }
+
+        is PresentationRequestInteractorPartialState.Disconnect -> {
+            onResult("the exchange ended before anything was asked")
+            null
+        }
+
+        null -> {
+            onResult("nothing arrived within $PRESENTATION_PROBE_TIMEOUT")
+            null
+        }
+    }
+
+    if (combination == null) {
+        request.stopPresentation()
+        return
+    }
+
+    // Pressing Share with every row left ticked, which is how the request screen starts.
+    request.updateRequestedDocuments(combination)
+
+    // The loading screen's two halves in the order its view-model runs them: observe first, then send
+    // when `RequestReadyToBeSent` says the user has already consented.
+    //
+    // `first { }` rather than `collect { }`: the interactor publishes a StateFlow-backed stream that
+    // never completes — which is right, since the screen keeps rendering — so a `collect` here would sit
+    // until the timeout even after the answer arrived. It did, on the first run of this probe.
+    val sent = withTimeoutOrNull(PRESENTATION_PROBE_TIMEOUT) {
+        loading.observeResponse()
+            .onEach { state ->
+                if (state is PresentationLoadingObserveResponsePartialState.RequestReadyToBeSent) {
+                    onResult("sendRequestedDocuments -> ${loading.sendRequestedDocuments()}")
+                }
+            }
+            .first { it !is PresentationLoadingObserveResponsePartialState.RequestReadyToBeSent }
+    }
+    onResult(
+        "observeResponse -> " + when (sent) {
+            is PresentationLoadingObserveResponsePartialState.Success -> "Success"
+            is PresentationLoadingObserveResponsePartialState.Redirect -> "Redirect(${sent.uri})"
+            is PresentationLoadingObserveResponsePartialState.Failure -> "Failure(${sent.error})"
+            is PresentationLoadingObserveResponsePartialState.UserAuthenticationRequired ->
+                "UserAuthenticationRequired"
+
+            is PresentationLoadingObserveResponsePartialState.IntentToSend -> "IntentToSend"
+            is PresentationLoadingObserveResponsePartialState.RequestReadyToBeSent,
+            null,
+                -> "nothing within $PRESENTATION_PROBE_TIMEOUT"
+        }
+    )
+
+    onResult(
+        "success screen -> " + when (val items = success.getUiItems().first()) {
+            is PresentationSuccessInteractorGetUiItemsPartialState.Success ->
+                "${items.documentsUi.size} document(s): " +
+                        items.documentsUi.joinToString {
+                            val name = (it.header.mainContentData as? ListItemMainContentDataUi.Text)?.text
+                            "$name/${it.nestedItems.size} claims"
+                        } + ", verifier=${items.headerConfig.relyingPartyData?.name}" +
+                        ", redirect=${success.redirectUri}"
+
+            is PresentationSuccessInteractorGetUiItemsPartialState.Failed -> "Failed(${items.errorMessage})"
+        }
+    )
+
+    // The verifier's own account, which is the only judgement that counts.
+    onResult("--- the verifier's account of it ---")
+    verifierEvents(transaction.transactionId).forEach { onResult("  $it") }
+
+    success.stopPresentation()
+}
+
+// The verifier is a live service reached over the network; long enough for a request object fetch and a
+// response POST, short enough that a probe run does not look hung.
+private val PRESENTATION_PROBE_TIMEOUT = 60.seconds
 
 /**
  * Drives a real issuance through the **production** [IosCredentialIssuer], substituting only the browser.

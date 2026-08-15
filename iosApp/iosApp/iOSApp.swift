@@ -19,7 +19,8 @@ import class SharedKit.WalletEngineProbeKt
 import class SharedKit.IosAuthorizationRedirects
 import class SharedKit.IosDeepLinks
 
-/// Receives URLs opened on the app — the OpenID4VCI authorization redirect, today.
+/// Receives URLs opened on the app: the OpenID4VCI authorization redirect, credential offers, and a
+/// verifier's OpenID4VP presentation request.
 ///
 /// A `UIApplicationDelegate` rather than SwiftUI's `.onOpenURL`: the latter did not fire for a custom
 /// scheme delivered to an already-running app on the simulator, and `application(_:open:options:)` is
@@ -31,14 +32,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
         // Two kinds of URL reach the wallet, and each has its own destination in Kotlin: an
-        // authorization redirect belongs to a flow already waiting for it, while a credential offer
-        // starts one. Authorization is tried first because it is the narrower match.
+        // authorization redirect belongs to a flow already waiting for it, while a credential offer or
+        // a presentation request starts one. Authorization is tried first because it is the narrower
+        // match — `IosDeepLinks` decides between the other two by scheme.
         if IosAuthorizationRedirects.shared.deliver(url: url.absoluteString) {
             print("AUTHORIZATION-REDIRECT: delivered \(url.absoluteString.prefix(60))")
             return true
         }
         if IosDeepLinks.shared.deliver(url: url.absoluteString) {
-            print("CREDENTIAL-OFFER: delivered \(url.absoluteString.prefix(60))")
+            print("DEEP-LINK: delivered \(url.absoluteString.prefix(60))")
             return true
         }
         print("OPEN-URL: ignored \(url.absoluteString.prefix(60))")
@@ -83,12 +85,12 @@ struct iOSApp: App {
             // Kotlin, which has a coroutine waiting for it. Deciding whether it is *valid* belongs to
             // multipaz's provisioning client, which minted the `state` it carries.
             .onOpenURL { url in
-                // Same two destinations as the app delegate above; whichever path the system picks, the
+                // Same destinations as the app delegate above; whichever path the system picks, the
                 // URL ends up in the same place.
                 if IosAuthorizationRedirects.shared.deliver(url: url.absoluteString) {
                     print("AUTHORIZATION-REDIRECT: delivered \(url.scheme ?? "?")")
                 } else if IosDeepLinks.shared.deliver(url: url.absoluteString) {
-                    print("CREDENTIAL-OFFER: delivered \(url.scheme ?? "?")")
+                    print("DEEP-LINK: delivered \(url.scheme ?? "?")")
                 } else {
                     print("OPEN-URL: ignored \(url.scheme ?? "?")")
                 }
