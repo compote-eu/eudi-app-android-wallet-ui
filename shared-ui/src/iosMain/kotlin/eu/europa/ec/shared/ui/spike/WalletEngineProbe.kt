@@ -19,6 +19,10 @@ import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorGetUiItemsPartialState
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
 import eu.europa.ec.issuancefeature.interactor.ResolveDocumentOfferInteractorPartialState
+import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
+import eu.europa.ec.authenticationlogic.secure.securePinOf
+import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
+import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.shared.wallet.multipaz.IosAuthorizationRedirects
@@ -284,6 +288,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
 
             // SPIKE: OpenID4VCI issuer metadata through multipaz, from iOS.
             onResult("--- issuance spike: reading issuer metadata ---")
+            probeAuthentication(onResult)
             probeIssuance(onResult)
             probeCredentialOffer(onResult)
 
@@ -432,3 +437,33 @@ private fun String.percentEncoded(): String = buildString {
         else append('%').append(byte.toInt().and(0xFF).toString(16).uppercase().padStart(2, '0'))
     }
 }
+
+/**
+ * Exercises the **real** Keychain-backed PIN store, which unit tests cannot: a test binary has no
+ * keychain-access entitlement and `SecItemAdd` answers -34018 there. In the app it has one, so this is the
+ * only place `IosPinStorage`'s storage half can be shown to work.
+ *
+ * It also sets a PIN when the wallet has none, so a simulator run reaches the unlock screen on the next
+ * launch — `simctl` cannot type into the PIN field, and this stands in for that.
+ */
+private suspend fun probeAuthentication(onResult: (String) -> Unit) {
+    val koin = KoinPlatform.getKoin()
+    val storage = koin.get<PinStorageController>()
+    val quickPin = koin.get<QuickPinInteractor>()
+
+    if (!storage.hasPin()) {
+        storage.setPin(securePinOf(PROBE_PIN))
+        onResult("no PIN was set; stored one so the next launch reaches the unlock screen")
+    }
+
+    onResult(
+        "PIN store: hasPin=${storage.hasPin()} " +
+                "correctPinAccepted=${storage.isPinValid(securePinOf(PROBE_PIN))} " +
+                "wrongPinRejected=${!storage.isPinValid(securePinOf("000000"))}"
+    )
+    onResult("PIN lockout state: ${quickPin.getPinLockoutState()}")
+    onResult("after-splash route: ${koin.get<SplashInteractor>().getAfterSplashRoute()::class.simpleName}")
+}
+
+/** The PIN a simulator run ends up with, since nothing can type one in. */
+private const val PROBE_PIN = "123456"

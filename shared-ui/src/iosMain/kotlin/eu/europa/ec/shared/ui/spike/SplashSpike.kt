@@ -91,6 +91,14 @@ import eu.europa.ec.issuancefeature.ui.success.DocumentIssuanceSuccessViewModel
 import eu.europa.ec.dashboardfeature.ui.dashboard.PendingLaunchIntent
 import eu.europa.ec.shared.wallet.multipaz.IosDeepLinks
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
+import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
+import eu.europa.ec.commonfeature.ui.biometric.BiometricScreen
+import eu.europa.ec.commonfeature.ui.biometric.BiometricViewModel
+import eu.europa.ec.commonfeature.ui.pin.PinScreen
+import eu.europa.ec.commonfeature.ui.pin.PinViewModel
+import eu.europa.ec.shared.navigation.BiometricRoute
+import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
@@ -200,6 +208,34 @@ fun SplashSpikeViewController(): UIViewController {
                             },
                         )
                     }
+                    entry<QuickPinRoute> { route ->
+                        // The real PIN screen, over the real store: what it accepts here is what unlocks
+                        // the wallet on the next launch.
+                        val koin = remember { KoinPlatform.getKoin() }
+                        PinScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                PinViewModel(
+                                    interactor = koin.get<QuickPinInteractor>(),
+                                    pinFlow = route.pinFlow,
+                                )
+                            },
+                        )
+                    }
+                    entry<BiometricRoute> { route ->
+                        // The login gate. iOS reports no biometrics (see `IosBiometricInteractor`), so this
+                        // is the PIN entry the same screen falls back to on an Android device without them.
+                        val koin = remember { KoinPlatform.getKoin() }
+                        BiometricScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                BiometricViewModel(
+                                    biometricInteractor = koin.get<BiometricInteractor>(),
+                                    config = route.config,
+                                )
+                            },
+                        )
+                    }
                     entry<AddDocumentRoute> { route ->
                         // The shared add-document screen, over the shared interactor. What iOS cannot
                         // answer yet is narrower than the screen: `IosAddDocumentPlatformBridge` reports
@@ -276,12 +312,9 @@ fun SplashSpikeViewController(): UIViewController {
     }
 }
 
-private val spikeModule = module {
-    // Stands in for the Android `SplashInteractorImpl`, which needs ResourceProvider/ConfigLogic/
-    // QuickPinInteractor. Resolving it through Koin rather than calling the constructor is the point:
-    // it exercises the DI graph on Kotlin/Native.
-    single<SplashInteractor> { IosStubSplashInteractor() }
-}
+// The splash interactor is the real shared one now (see `IosWalletModule`), so this module is empty —
+// kept as the place where a spike-only definition would go.
+private val spikeModule = module { }
 
 private fun startKoinIfNeeded() {
     if (KoinPlatform.getKoinOrNull() != null) return
@@ -380,6 +413,3 @@ private fun SpikeColumn(content: @Composable () -> Unit) {
     }
 }
 
-private class IosStubSplashInteractor : SplashInteractor {
-    override suspend fun getAfterSplashRoute(): AppRoute = DashboardRoute
-}

@@ -50,7 +50,12 @@ targets:
         # (verified: the key never reached the built Info.plist). So the plist is generated from the
         # `info:` block below instead, which is also more XcodeGen-idiomatic.
         SWIFT_VERSION: "6.0"
-        CODE_SIGNING_ALLOWED: NO
+        # Ad-hoc signing rather than none: an unsigned app has no entitlements at all, and the Keychain
+        # then refuses every `SecItem` call with -34018 (errSecMissingEntitlement) — which is where the
+        # wallet's PIN lives. "-" needs no development team, so this still builds on any machine.
+        CODE_SIGNING_ALLOWED: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
         # The Kotlin framework is built by the pre-build script below into this folder.
         FRAMEWORK_SEARCH_PATHS:
           - $(inherited)

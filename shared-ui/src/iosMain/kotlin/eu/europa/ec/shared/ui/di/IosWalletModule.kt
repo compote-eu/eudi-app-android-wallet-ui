@@ -30,6 +30,17 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
+import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
+import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
+import eu.europa.ec.authenticationlogic.storage.IosAuthenticationConfig
+import eu.europa.ec.authenticationlogic.storage.IosPinStorage
+import eu.europa.ec.authenticationlogic.storage.IosPinThrottle
+import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
+import eu.europa.ec.commonfeature.interactor.QuickPinInteractorImpl
+import eu.europa.ec.startupfeature.interactor.SplashInteractor
+import eu.europa.ec.startupfeature.interactor.SplashInteractorImpl
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
 import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
@@ -248,4 +259,50 @@ fun provideIosDocumentOfferInteractor(
     strings = strings,
     walletEngine = walletEngine,
     platform = platform,
+)
+
+/**
+ * The login gate. The PIN policy is shared; what iOS brings is where the verifier lives (the Keychain) and
+ * how long a wrong PIN costs (`NSUserDefaults`, since a lockout is not a secret).
+ */
+@Single
+fun provideIosAuthenticationConfig(): AuthenticationConfig = IosAuthenticationConfig()
+
+@Single
+fun provideIosPinStorage(): PinStorageController = IosPinStorage()
+
+@Single
+fun provideIosPinThrottle(config: AuthenticationConfig): PinThrottleController =
+    IosPinThrottle(authenticationConfig = config)
+
+@Factory
+fun provideIosQuickPinInteractor(
+    strings: StringCatalog,
+    pinStorage: PinStorageController,
+    pinThrottle: PinThrottleController,
+    config: AuthenticationConfig,
+): QuickPinInteractor = QuickPinInteractorImpl(
+    pinStorageController = pinStorage,
+    strings = strings,
+    pinThrottleController = pinThrottle,
+    authenticationConfig = config,
+)
+
+@Factory
+fun provideIosBiometricInteractor(quickPinInteractor: QuickPinInteractor): BiometricInteractor =
+    IosBiometricInteractor(quickPinInteractor = quickPinInteractor)
+
+/**
+ * The real splash routing, replacing the stand-in that always went to the dashboard: no PIN yet sends the
+ * user to create one, an existing PIN sends them to unlock. `forcePidActivation` is false here — iOS has no
+ * configuration layer, so it does not insist on a PID before anything else.
+ */
+@Factory
+fun provideIosSplashInteractor(
+    quickPinInteractor: QuickPinInteractor,
+    walletEngine: WalletEngine,
+): SplashInteractor = SplashInteractorImpl(
+    quickPinInteractor = quickPinInteractor,
+    walletEngine = walletEngine,
+    forcePidActivation = { false },
 )
