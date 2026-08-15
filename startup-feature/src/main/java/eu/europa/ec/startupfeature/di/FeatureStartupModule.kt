@@ -32,15 +32,14 @@ import org.koin.core.annotation.Module
 @ComponentScan("eu.europa.ec.startupfeature")
 class FeatureStartupModule
 
+// Shared implementation; only "does this build require a PID first" is Android configuration.
 @Factory
 fun provideSplashInteractor(
     quickPinInteractor: QuickPinInteractor,
-    resourceProvider: ResourceProvider,
     walletEngine: WalletEngine,
     configLogic: ConfigLogic
 ): SplashInteractor = SplashInteractorImpl(
-    quickPinInteractor,
-    resourceProvider,
-    walletEngine,
-    configLogic
+    quickPinInteractor = quickPinInteractor,
+    walletEngine = walletEngine,
+    forcePidActivation = { configLogic.forcePidActivation },
 )

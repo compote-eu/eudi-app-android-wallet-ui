@@ -14,22 +14,15 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.authenticationlogic.controller.throttle
+// The *contract* only, so `QuickPinInteractorImpl` can live in commonMain. Every signature was already
+// platform-neutral — `SecurePin` came to :shared-logic when the PIN field became shared UI.
+// `PinStorageControllerImpl` stays in :authentication-logic with its `StorageConfig`. Package unchanged.
+package eu.europa.ec.authenticationlogic.controller.storage
 
-import eu.europa.ec.authenticationlogic.config.StorageConfig
-import eu.europa.ec.authenticationlogic.provider.PinLockoutState
+import eu.europa.ec.authenticationlogic.secure.SecurePin
 
-class PinThrottleControllerImpl(
-    private val storageConfig: StorageConfig
-) : PinThrottleController {
-
-    override suspend fun getState(): PinLockoutState =
-        storageConfig.pinThrottleProvider.getState()
-
-    override suspend fun recordFailure(): PinLockoutState =
-        storageConfig.pinThrottleProvider.recordFailure()
-
-    override suspend fun recordSuccess() {
-        storageConfig.pinThrottleProvider.recordSuccess()
-    }
+interface PinStorageController {
+    suspend fun hasPin(): Boolean
+    suspend fun setPin(pin: SecurePin)
+    suspend fun isPinValid(pin: SecurePin): Boolean
 }

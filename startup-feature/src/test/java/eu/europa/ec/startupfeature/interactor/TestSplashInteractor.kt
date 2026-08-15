@@ -75,11 +75,12 @@ class TestSplashInteractor {
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
 
+        // The interactor is shared now; `forcePidActivation` is the one thing its host supplies, and
+        // these cases still drive it through the same `ConfigLogic` they always did.
         interactor = SplashInteractorImpl(
             quickPinInteractor = quickPinInteractor,
-            resourceProvider = resourceProvider,
             walletEngine = walletEngine,
-            configLogic = configLogic
+            forcePidActivation = { configLogic.forcePidActivation }
         )
     }
 

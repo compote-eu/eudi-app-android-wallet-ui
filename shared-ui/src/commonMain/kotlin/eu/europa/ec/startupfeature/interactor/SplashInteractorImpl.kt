@@ -19,7 +19,6 @@
 // through ResourceProvider and reads ConfigLogic/QuickPinInteractor.
 package eu.europa.ec.startupfeature.interactor
 
-import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
@@ -34,7 +33,6 @@ import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.wallet.WalletEngine
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.shared.resources.Res
@@ -42,18 +40,28 @@ import eu.europa.ec.shared.resources.biometric_login_biometrics_enabled_subtitle
 import eu.europa.ec.shared.resources.biometric_login_biometrics_not_enabled_subtitle
 import eu.europa.ec.shared.resources.biometric_login_title
 
+/**
+ * Where the app goes after the splash: to create a PIN, or to unlock with the one it has.
+ *
+ * Shared because the decision is the wallet's, not a platform's — it reads whether a PIN exists and
+ * whether the wallet holds documents, both of which each platform answers through its own storage.
+ */
 class SplashInteractorImpl(
     private val quickPinInteractor: QuickPinInteractor,
-    private val resourceProvider: ResourceProvider,
     private val walletEngine: WalletEngine,
-    private val configLogic: ConfigLogic
+    /**
+     * Whether this build refuses to go anywhere before a PID is issued. Android reads it from
+     * `ConfigLogic`, which is Android-only; iOS has no configuration layer yet and answers false. A lambda
+     * rather than a value because the Android config resolves it lazily.
+     */
+    private val forcePidActivation: () -> Boolean,
 ) : SplashInteractor {
 
     private suspend fun hasDocuments(): Boolean =
         walletEngine.getAllDocuments().isNotEmpty()
 
     private suspend fun shouldActivateWithPid(): Boolean =
-        configLogic.forcePidActivation && !hasDocuments()
+        forcePidActivation() && !hasDocuments()
 
     override suspend fun getAfterSplashRoute(): AppRoute = when (quickPinInteractor.hasPin()) {
         true -> {

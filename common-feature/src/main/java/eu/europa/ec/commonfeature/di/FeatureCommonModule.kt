@@ -32,6 +32,7 @@ import eu.europa.ec.commonfeature.interactor.QrScanInteractorImpl
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorImpl
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.StringCatalog
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -42,16 +43,17 @@ import org.koin.core.annotation.Module
 @ComponentScan("eu.europa.ec.commonfeature")
 class FeatureCommonModule
 
+// Shared implementation: the PIN policy is the same on both platforms, only the storage differs.
 @Factory
 fun provideQuickPinInteractor(
     pinStorageController: PinStorageController,
-    resourceProvider: ResourceProvider,
+    strings: StringCatalog,
     pinThrottleController: PinThrottleController,
     authenticationConfig: AuthenticationConfig
 ): QuickPinInteractor {
     return QuickPinInteractorImpl(
         pinStorageController,
-        resourceProvider,
+        strings,
         pinThrottleController,
         authenticationConfig
     )

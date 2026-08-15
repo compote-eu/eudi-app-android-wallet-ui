@@ -22,16 +22,24 @@ import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleControlle
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.businesslogic.extension.safeAsync
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.quick_pin_invalid_error
 import eu.europa.ec.shared.resources.quick_pin_non_match
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
+/**
+ * The PIN rules, shared: what makes a PIN acceptable, what a wrong one costs, and when the wallet locks.
+ *
+ * Nothing here was ever Android's — the three collaborators are contracts in :shared-logic and a `SecurePin`
+ * is multiplatform — so both platforms run the same policy over their own storage: encrypted DataStore on
+ * Android, the Keychain on iOS.
+ */
 class QuickPinInteractorImpl(
     private val pinStorageController: PinStorageController,
-    private val resourceProvider: ResourceProvider,
+    private val strings: StringCatalog,
     private val pinThrottleController: PinThrottleController,
     private val authenticationConfig: AuthenticationConfig,
 ) : QuickPinInteractor {
@@ -50,7 +58,7 @@ class QuickPinInteractorImpl(
     }
 
     private val genericErrorMsg
-        get() = resourceProvider.genericErrorMessage()
+        get() = strings[Res.string.generic_error_message]
 
     override suspend fun hasPin(): Boolean = pinStorageController.hasPin()
 
@@ -65,7 +73,7 @@ class QuickPinInteractorImpl(
                 if (!initialPin.contentEquals(newPin)) {
                     emit(
                         QuickPinInteractorSetPinPartialState.Failed(
-                            resourceProvider.getString(Res.string.quick_pin_non_match)
+                            strings[Res.string.quick_pin_non_match]
                         )
                     )
                     return@flow
@@ -85,7 +93,7 @@ class QuickPinInteractorImpl(
         }.safeAsync {
             newPin.close()
             QuickPinInteractorSetPinPartialState.Failed(
-                it.localizedMessage ?: genericErrorMsg
+                it.message ?: genericErrorMsg
             )
         }
 
@@ -98,7 +106,7 @@ class QuickPinInteractorImpl(
         }.safeAsync {
             newPin.close()
             QuickPinInteractorSetPinPartialState.Failed(
-                it.localizedMessage ?: genericErrorMsg
+                it.message ?: genericErrorMsg
             )
         }
 
@@ -110,9 +118,7 @@ class QuickPinInteractorImpl(
                 } else {
                     emit(
                         QuickPinInteractorPinValidPartialState.Failed(
-                            resourceProvider.getString(
-                                Res.string.quick_pin_invalid_error
-                            )
+                            strings[Res.string.quick_pin_invalid_error]
                         )
                     )
                 }
@@ -120,7 +126,7 @@ class QuickPinInteractorImpl(
         }.safeAsync {
             pin.close()
             QuickPinInteractorPinValidPartialState.Failed(
-                it.localizedMessage ?: genericErrorMsg
+                it.message ?: genericErrorMsg
             )
         }
 }

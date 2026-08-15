@@ -20,21 +20,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-interface AuthenticationConfig {
-
-    /**
-     * Number of consecutive wrong PIN attempts allowed before the user is locked out.
-     */
-    val maxFailedPinAttempts: Int
-
-    /**
-     * Lockout durations applied each time the user reaches [maxFailedPinAttempts].
-     * The list indexes by lockout level (0 = first lockout). Once the user exceeds the
-     * size of the list, the last entry is reused for every subsequent lockout.
-     */
-    val pinLockoutDurations: List<Duration>
-}
-
 class AuthenticationConfigImpl : AuthenticationConfig {
     override val maxFailedPinAttempts: Int = 3
     override val pinLockoutDurations: List<Duration> = listOf(

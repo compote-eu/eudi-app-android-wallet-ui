@@ -22,6 +22,8 @@ import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleControlle
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.quick_pin_invalid_error
 import eu.europa.ec.shared.resources.quick_pin_non_match
@@ -58,6 +60,9 @@ class TestQuickPinInteractor {
     private lateinit var resourceProvider: ResourceProvider
 
     @Mock
+    private lateinit var strings: StringCatalog
+
+    @Mock
     private lateinit var pinThrottleController: PinThrottleController
 
     @Mock
@@ -73,12 +78,12 @@ class TestQuickPinInteractor {
 
         interactor = QuickPinInteractorImpl(
             pinStorageController = pinStorageController,
-            resourceProvider = resourceProvider,
+            strings = strings,
             pinThrottleController = pinThrottleController,
             authenticationConfig = authenticationConfig
         )
 
-        whenever(resourceProvider.genericErrorMessage())
+        whenever(strings[Res.string.generic_error_message])
             .thenReturn(mockedGenericErrorMessage)
     }
 
@@ -167,7 +172,7 @@ class TestQuickPinInteractor {
     fun `Given Case 2, When setPin is called, Then it returns Failed with the appropriate error message`() {
         coroutineRule.runTest {
             // Given
-            whenever(resourceProvider.getString(Res.string.quick_pin_non_match))
+            whenever(strings[Res.string.quick_pin_non_match])
                 .thenReturn(mockedPinsDontMatchMessage)
 
             val newPin = securePin(mockedNewPin)
@@ -186,8 +191,7 @@ class TestQuickPinInteractor {
                     awaitItem()
                 )
 
-                verify(resourceProvider, times(1))
-                    .getString(Res.string.quick_pin_non_match)
+                verify(strings, times(1))[Res.string.quick_pin_non_match]
             }
         }
     }
@@ -251,7 +255,7 @@ class TestQuickPinInteractor {
     fun `Given Case 6, When setPin is called with mismatched pins, Then finally closes newPin and skips initialPin`() {
         coroutineRule.runTest {
             // Given
-            whenever(resourceProvider.getString(Res.string.quick_pin_non_match))
+            whenever(strings[Res.string.quick_pin_non_match])
                 .thenReturn(mockedPinsDontMatchMessage)
             val newPin = mock<SecurePin>()
             val initialPin = mock<SecurePin>()
@@ -405,7 +409,7 @@ class TestQuickPinInteractor {
             whenever(pinStorageController.isPinValid(any<SecurePin>()))
                 .thenReturn(false)
 
-            whenever(resourceProvider.getString(Res.string.quick_pin_invalid_error))
+            whenever(strings[Res.string.quick_pin_invalid_error])
                 .thenReturn(mockedInvalidPinMessage)
 
             // When
@@ -420,8 +424,7 @@ class TestQuickPinInteractor {
                     awaitItem()
                 )
 
-                verify(resourceProvider, times(1))
-                    .getString(Res.string.quick_pin_invalid_error)
+                verify(strings, times(1))[Res.string.quick_pin_invalid_error]
             }
         }
     }

@@ -14,22 +14,14 @@
  * governing permissions and limitations under the Licence.
  */
 
+// The *contract* only — see the note on `PinStorageController`. `PinLockoutState` already lives here.
+// `PinThrottleControllerImpl` stays in :authentication-logic. Package unchanged.
 package eu.europa.ec.authenticationlogic.controller.throttle
 
-import eu.europa.ec.authenticationlogic.config.StorageConfig
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 
-class PinThrottleControllerImpl(
-    private val storageConfig: StorageConfig
-) : PinThrottleController {
-
-    override suspend fun getState(): PinLockoutState =
-        storageConfig.pinThrottleProvider.getState()
-
-    override suspend fun recordFailure(): PinLockoutState =
-        storageConfig.pinThrottleProvider.recordFailure()
-
-    override suspend fun recordSuccess() {
-        storageConfig.pinThrottleProvider.recordSuccess()
-    }
+interface PinThrottleController {
+    suspend fun getState(): PinLockoutState
+    suspend fun recordFailure(): PinLockoutState
+    suspend fun recordSuccess()
 }
