@@ -39,6 +39,7 @@ import eu.europa.ec.authenticationlogic.storage.IosBiometricGate
 import eu.europa.ec.authenticationlogic.storage.IosPinStorage
 import eu.europa.ec.authenticationlogic.storage.IosPinThrottle
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.commonfeature.interactor.QrScanInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorImpl
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
@@ -326,6 +327,9 @@ internal fun provideIosBiometricInteractor(
  * Its own service, separate from the PIN's: the two items have different access policies, and keeping
  * them apart means deleting one can never take the other with it.
  */
+@Factory
+internal fun provideIosQrScanInteractor(): QrScanInteractor = IosQrScanInteractor()
+
 @Single
 fun provideIosBiometricGate(): IosBiometricGate =
     IosBiometricGate(service = "eu.europa.ec.eudi.wallet.biometrics")

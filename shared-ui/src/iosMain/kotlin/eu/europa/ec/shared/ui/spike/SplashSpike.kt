@@ -104,6 +104,10 @@ import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.SettingsRoute
+import eu.europa.ec.shared.navigation.QrScanRoute
+import eu.europa.ec.commonfeature.interactor.QrScanInteractor
+import eu.europa.ec.commonfeature.ui.qr_scan.QrScanScreen
+import eu.europa.ec.commonfeature.ui.qr_scan.QrScanViewModel
 import eu.europa.ec.shared.navigation.TransactionDetailsRoute
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.TransactionDetailsScreen
@@ -428,6 +432,21 @@ fun SplashSpikeViewController(): UIViewController {
                                 PresentationSuccessViewModel(
                                     interactor = koin.get<PresentationSuccessInteractor>(),
                                     presentationScopeId = route.scopeId,
+                                )
+                            },
+                        )
+                    }
+                    entry<QrScanRoute> { route ->
+                        // Reachable from Home and from the add-document screen. The camera half is
+                        // AVFoundation; the simulator has none, so what shows here is the framing
+                        // brackets over black — see `QrCameraSurface.ios.kt`.
+                        val koin = remember { KoinPlatform.getKoin() }
+                        QrScanScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                QrScanViewModel(
+                                    interactor = koin.get<QrScanInteractor>(),
+                                    qrScannedConfig = route.config,
                                 )
                             },
                         )

@@ -147,9 +147,16 @@ kotlin {
             // blurs through Skia with no fallback needed.
             implementation(libs.compose.cloudy)
             // The QR *encoder* behind `rememberQrPainter`, which the proximity screen shows for device
-            // engagement. Android-only on purpose: iOS encodes with CoreImage instead, so neither
-            // platform carries the other's library.
+            // engagement, and the *decoder* behind `QrCodeAnalyzer`, which reads one off the camera.
+            // Android-only on purpose: iOS does both with system frameworks — CoreImage to draw,
+            // AVFoundation to read — so neither platform carries the other's library.
             implementation(libs.zxing)
+            // CameraX, behind the Android half of `QrCameraSurface`. iOS's half is AVFoundation, which
+            // needs no dependency at all.
+            implementation(libs.androidx.camera.core)
+            implementation(libs.androidx.camera.lifecycle)
+            implementation(libs.androidx.camera.view)
+            implementation(libs.androidx.camera.camera2)
         }
         // iOS-only: the navigation host's pieces. The Compose UI artifacts moved to commonMain with
         // the first shared screen.

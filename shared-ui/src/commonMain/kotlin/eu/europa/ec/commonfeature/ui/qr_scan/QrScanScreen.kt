@@ -16,12 +16,6 @@
 
 package eu.europa.ec.commonfeature.ui.qr_scan
 
-import android.content.Context
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -37,7 +31,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -45,20 +38,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
-import com.google.accompanist.permissions.shouldShowRationale
-import eu.europa.ec.commonfeature.ui.qr_scan.component.QrCodeAnalyzer
 import eu.europa.ec.commonfeature.ui.qr_scan.component.qrBorderCanvas
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.uilogic.component.PlatformScreenActions
+import eu.europa.ec.uilogic.component.rememberPlatformContextOrNull
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.qr_scan_informative_text_presentation_flow
 import eu.europa.ec.shared.resources.qr_scan_permission_not_granted
@@ -78,11 +66,9 @@ import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.utils.screenWidthInDp
 import eu.europa.ec.uilogic.component.wrap.WrapCard
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
-import eu.europa.ec.uilogic.extension.openAppSettings
 import eu.europa.ec.uilogic.extension.paddingFrom
 import eu.europa.ec.uilogic.extension.throttledClickable
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
-import java.util.concurrent.Executors
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
@@ -94,7 +80,10 @@ fun QrScanScreen(
     viewModel: QrScanViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    // Null on iOS, where the type is uninhabited. Only the RQES hand-off needs it, and only Android
+    // offers that flow — so a null here can never reach a caller that would have used it.
+    val context = rememberPlatformContextOrNull()
+    val screenActions = rememberPlatformScreenActions()
 
     ContentScreen(
         isLoading = false,
@@ -107,7 +96,7 @@ fun QrScanScreen(
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(context, navigationEffect, navigator)
+                handleNavigationEffect(screenActions, navigationEffect, navigator)
             },
             paddingValues = paddingValues,
         )
@@ -115,7 +104,7 @@ fun QrScanScreen(
 }
 
 private fun handleNavigationEffect(
-    context: Context,
+    screenActions: PlatformScreenActions,
     navigationEffect: Effect.Navigation,
     navigator: AppNavigator
 ) {
@@ -128,13 +117,13 @@ private fun handleNavigationEffect(
             navigator.pop()
         }
 
-        is Effect.Navigation.GoToAppSettings -> context.openAppSettings()
+        is Effect.Navigation.GoToAppSettings -> screenActions.openAppSettings()
     }
 }
 
 @Composable
 private fun Content(
-    context: Context,
+    context: PlatformContext?,
     state: State,
     effectFlow: Flow<Effect>,
     onEventSend: (Event) -> Unit,
@@ -164,7 +153,10 @@ private fun Content(
                 shouldShowPermissionRational = state.shouldShowPermissionRational,
                 onEventSend = onEventSend,
                 onQrScanned = { qrCode ->
-                    onEventSend(Event.OnQrScanned(context = context, resultQr = qrCode))
+                    // The context is only read on the signature flow, which needs the RQES SDK and so
+                    // exists on Android alone; dropping the scan when there is none is better than a
+                    // scanner that appears to work and then does nothing.
+                    context?.let { onEventSend(Event.OnQrScanned(context = it, resultQr = qrCode)) }
                 }
             )
 
@@ -194,7 +186,6 @@ private fun AnimatedInformativeText(state: State, paddingValues: PaddingValues) 
     }
 }
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 private fun OpenCamera(
     hasCameraPermission: Boolean,
@@ -202,91 +193,33 @@ private fun OpenCamera(
     onEventSend: (Event) -> Unit,
     onQrScanned: (String) -> Unit,
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    val cameraProviderFuture = remember {
-        ProcessCameraProvider.getInstance(context)
-    }
-    val analysisExecutor = remember {
-        Executors.newSingleThreadExecutor()
-    }
-    val mainExecutor = remember(context) {
-        ContextCompat.getMainExecutor(context)
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            analysisExecutor.shutdown()
-        }
-    }
-
     val scannerAreaSize = screenWidthInDp(true) - SIZE_100.dp
 
-    val permissionState = rememberPermissionState(permission = android.Manifest.permission.CAMERA)
-    when {
-        permissionState.status.isGranted -> onEventSend(Event.CameraAccessGranted)
-        permissionState.status.shouldShowRationale -> onEventSend(Event.ShowPermissionRational)
-
-        else -> {
-            LaunchedEffect(Unit) {
-                permissionState.launchPermissionRequest()
-            }
-        }
-    }
-
-    // The space the Camera is going to occupy.
+    // The space the camera is going to occupy. Black underneath, so the framing brackets read the same
+    // before the preview arrives as after.
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                color = Color.Black,
-            ),
+            .background(color = Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        if (hasCameraPermission) {
-
-            // The Camera.
-            AndroidView(
-                modifier = Modifier
-                    .fillMaxSize(),
-                factory = { context ->
-
-                    val previewView = PreviewView(context)
-                    val preview = Preview.Builder().build()
-
-                    val selector = CameraSelector.Builder()
-                        .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                        .build()
-
-                    preview.surfaceProvider = previewView.surfaceProvider
-
-                    val imageAnalysis = ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-
-                    imageAnalysis.setAnalyzer(
-                        analysisExecutor,
-                        QrCodeAnalyzer { result ->
-                            mainExecutor.execute {
-                                onQrScanned(result)
-                            }
-                        }
-                    )
-                    try {
-                        cameraProviderFuture.get().bindToLifecycle(
-                            lifecycleOwner,
-                            selector,
-                            preview,
-                            imageAnalysis
-                        )
-                    } catch (e: Exception) {
-                        e.printStackTrace()
+        QrCameraSurface(
+            modifier = Modifier.fillMaxSize(),
+            onAccess = { access ->
+                onEventSend(
+                    when (access) {
+                        QrCameraAccess.Granted -> Event.CameraAccessGranted
+                        QrCameraAccess.NeedsExplanation -> Event.ShowPermissionRational
+                        // Nothing useful to say and nothing to offer: the brackets stay, the
+                        // informative text does not appear, and the user can go back.
+                        QrCameraAccess.Denied -> Event.ShowPermissionRational
                     }
-                    previewView
-                }
-            )
-        } else if (shouldShowPermissionRational) {
+                )
+            },
+            onQrScanned = onQrScanned,
+        )
+
+        if (!hasCameraPermission && shouldShowPermissionRational) {
             ErrorInfo(
                 modifier = Modifier.throttledClickable { onEventSend(Event.GoToAppSettings) },
                 informativeText = stringResource(Res.string.qr_scan_permission_not_granted),

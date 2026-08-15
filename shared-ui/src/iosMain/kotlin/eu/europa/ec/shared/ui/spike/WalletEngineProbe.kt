@@ -26,6 +26,7 @@ import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.secure.securePinOf
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.commonfeature.interactor.QrScanInteractor
 import eu.europa.ec.authenticationlogic.storage.IosBiometricGate
 import eu.europa.ec.authenticationlogic.storage.IosBiometricOutcome
 import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
@@ -315,6 +316,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             // SPIKE: OpenID4VCI issuer metadata through multipaz, from iOS.
             onResult("--- issuance spike: reading issuer metadata ---")
             probeAuthentication(onResult)
+            probeQrScan(onResult)
             probeProximity(onResult)
             probeRemotePresentation(onResult)
             probeIssuance(onResult)
@@ -775,6 +777,33 @@ private suspend fun probeAuthentication(onResult: (String) -> Unit) {
 
 /** Long enough for a host script to notice the prompt and answer it; short enough not to hang a run. */
 private val BIOMETRIC_PROBE_TIMEOUT = 20.seconds
+
+/**
+ * As far as the QR scanner can be taken on a machine with no camera.
+ *
+ * Which is not far, and that is the point of running it: the screen is three taps deep, and what can be
+ * seen from here is that the interactor resolves, that its validity rule accepts the links this wallet
+ * is actually opened with, and that it refuses what it should. The camera itself is unreachable —
+ * `AVCaptureDevice.defaultDeviceWithMediaType` returns null on the simulator — so the surface reports
+ * no access and the screen shows its framing brackets over black.
+ */
+private suspend fun probeQrScan(onResult: (String) -> Unit) {
+    onResult("--- QR scan ---")
+    val interactor = KoinPlatform.getKoin().get<QrScanInteractor>()
+
+    // The three kinds of link a wallet QR actually carries, plus two that should be refused.
+    listOf(
+        "openid4vp://?client_id=x509_hash%3Aabc&request_uri=https%3A%2F%2Fv.test%2Fr" to true,
+        "haip-vp://?request_uri=https%3A%2F%2Fv.test%2Fr" to true,
+        "openid-credential-offer://?credential_offer=%7B%7D" to true,
+        // No query: nothing for the wallet to act on, whatever the scheme says.
+        "openid4vp://verifier.test" to false,
+        "just some text on a poster" to false,
+    ).forEach { (link, expected) ->
+        val actual = interactor.isScannedQrValid(link)
+        onResult("  ${if (actual == expected) "ok " else "WRONG"} valid=$actual for ${link.take(46)}")
+    }
+}
 
 /** The PIN a simulator run ends up with, since nothing can type one in. */
 private const val PROBE_PIN = "123456"

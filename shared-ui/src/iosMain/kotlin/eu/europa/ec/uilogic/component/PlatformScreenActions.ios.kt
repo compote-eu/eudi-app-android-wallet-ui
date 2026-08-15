@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import eu.europa.ec.shared.platform.PlatformIntent
 import platform.Foundation.NSURL
 import platform.UIKit.UIApplication
+import platform.UIKit.UIApplicationOpenSettingsURLString
 
 /**
  * All but one of the actions are inert on iOS, and each for its own reason rather than because the
@@ -29,24 +30,36 @@ import platform.UIKit.UIApplication
  * - **finishApp** — an iOS app does not exit itself. Apple's HIG treats programmatic termination as a
  *   crash from the user's point of view, and `exit()` is grounds for App Store rejection. The user
  *   leaves via the home gesture.
- * - **openAppSettings** — reachable in principle via `UIApplicationOpenSettingsURLString`, but only
- *   meaningfully once iOS actually asks for a permission; the wallet has no permission prompts there
- *   yet.
  * - **openBluetoothSettings** — iOS has no public URL for the Bluetooth settings pane. The system
  *   offers to enable Bluetooth itself when CoreBluetooth is first used, which is the platform's answer
  *   to this.
  *
  * Each of those logs, so an unexpected call during development is visible rather than silent.
  *
- * **openUrlExternally is real**, and the only one of the four that is: opening a link is something iOS
- * does support, through `UIApplication.openURL`. So a shared screen's "open this in the browser" branch
- * behaves the same on both platforms.
+ * **openUrlExternally and openAppSettings are real.** Opening a link is something iOS supports through
+ * `UIApplication.openURL`, so a shared screen's "open this in the browser" branch behaves the same on
+ * both platforms. `openAppSettings` was inert until recently for a stated reason — it is only
+ * meaningful once iOS actually asks for a permission — and the QR scanner's camera is the first thing
+ * that does, so the reason expired.
  */
 @Composable
 actual fun rememberPlatformScreenActions(): PlatformScreenActions = remember {
     object : PlatformScreenActions {
         override fun finishApp() = log("finishApp")
-        override fun openAppSettings() = log("openAppSettings")
+        override fun openAppSettings() {
+            // Deep-linking further than the app's own pane is not possible, and this is the pane that
+            // holds the camera switch a denied scanner needs the user to flip.
+            val settings = NSURL.URLWithString(UIApplicationOpenSettingsURLString)
+            if (settings == null) {
+                log("openAppSettings")
+                return
+            }
+            UIApplication.sharedApplication.openURL(
+                url = settings,
+                options = emptyMap<Any?, Any>(),
+                completionHandler = null,
+            )
+        }
         override fun openBluetoothSettings() = log("openBluetoothSettings")
 
         override fun openUrlExternally(url: String) {

@@ -51,6 +51,11 @@ targets:
               - eudi-openid4vp
               - mdoc-openid4vp
               - haip-vp
+        # The QR scanner's camera. Like the Bluetooth string below, this *is* the permission: iOS
+        # shows it in the prompt the first time AVFoundation is asked for the camera, and an app
+        # without the key is terminated instead of prompted.
+        NSCameraUsageDescription: >-
+          Scan a QR code to share a document or to add one to your wallet.
         # ISO 18013-5 proximity sharing. iOS has no runtime Bluetooth permission to request; this
         # string *is* the permission — CoreBluetooth raises the system prompt with it the first time
         # the wallet advertises, and without the key the app is terminated instead of prompted.

@@ -14,12 +14,15 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Phase 3b: the QR scanner's view-model, moved to commonMain. Its only Android-touching parts were an
+// `android.content.Context` threaded through for the RQES hand-off — now the opaque `PlatformContext` —
+// and the `Form`/`Rule` construction that asked the validator whether a scan was a URL. The validator is
+// 433 lines of `android.net.Uri` and libphonenumber, so what crosses the seam is its answer:
+// `QrScanInteractor.isScannedQrValid`. Everything else here was already shared. Package unchanged.
 package eu.europa.ec.commonfeature.ui.qr_scan
 
-import android.content.Context
 import androidx.lifecycle.viewModelScope
-import eu.europa.ec.businesslogic.validator.Form
-import eu.europa.ec.businesslogic.validator.Rule
+import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.OfferUiConfig
@@ -28,7 +31,6 @@ import eu.europa.ec.commonfeature.config.QrScanFlow
 import eu.europa.ec.commonfeature.config.QrScanUiConfig
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.interactor.QrScanInteractor
-import eu.europa.ec.eudi.rqesui.domain.extension.toUriOrEmpty
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
@@ -72,7 +74,7 @@ data class State(
 
 sealed class Event : ViewEvent {
     data object GoBack : Event()
-    data class OnQrScanned(val context: Context, val resultQr: String) : Event()
+    data class OnQrScanned(val context: PlatformContext, val resultQr: String) : Event()
     data object CameraAccessGranted : Event()
     data object ShowPermissionRational : Event()
     data object GoToAppSettings : Event()
@@ -132,26 +134,12 @@ class QrScanViewModel(
         }
     }
 
-    private fun handleScannedQr(context: Context, scannedQr: String) {
+    private fun handleScannedQr(context: PlatformContext, scannedQr: String) {
         viewModelScope.launch {
             val currentState = viewState.value
 
             // Validate the scanned QR code
-            val urlIsValid = validateForm(
-                form = Form(
-                    inputs = mapOf(
-                        listOf(
-                            Rule.ValidateUrl(
-                                errorMessage = "",
-                                shouldValidateSchema = true,
-                                shouldValidateHost = false,
-                                shouldValidatePath = false,
-                                shouldValidateQuery = true,
-                            )
-                        ) to scannedQr
-                    )
-                )
-            )
+            val urlIsValid = interactor.isScannedQrValid(scannedQr)
 
             // Handle valid QR code
             if (urlIsValid) {
@@ -176,15 +164,8 @@ class QrScanViewModel(
         }
     }
 
-    private suspend fun validateForm(form: Form): Boolean {
-        val validationResult = interactor.validateForm(
-            form = form,
-        )
-        return validationResult.isValid
-    }
-
     private fun calculateNextStep(
-        context: Context,
+        context: PlatformContext,
         qrScanFlow: QrScanFlow,
         scanResult: String,
     ) {
@@ -273,11 +254,8 @@ class QrScanViewModel(
         }
     }
 
-    private fun navigateToRqesSdk(context: Context, scanResult: String) {
-        interactor.launchRqesSdk(
-            context = context,
-            uri = scanResult.toUriOrEmpty()
-        )
+    private fun navigateToRqesSdk(context: PlatformContext, scanResult: String) {
+        interactor.launchRqesSdk(context = context, uri = scanResult)
         setEffect {
             Effect.Navigation.Pop
         }
