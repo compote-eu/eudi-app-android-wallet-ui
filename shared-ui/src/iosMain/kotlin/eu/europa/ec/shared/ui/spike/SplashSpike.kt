@@ -104,6 +104,10 @@ import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.SettingsRoute
+import eu.europa.ec.shared.navigation.TransactionDetailsRoute
+import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.TransactionDetailsScreen
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.TransactionDetailsViewModel
 import eu.europa.ec.shared.navigation.ProximityQrRoute
 import eu.europa.ec.shared.navigation.ProximityRequestRoute
 import eu.europa.ec.shared.navigation.ProximityLoadingRoute
@@ -424,6 +428,21 @@ fun SplashSpikeViewController(): UIViewController {
                                 PresentationSuccessViewModel(
                                     interactor = koin.get<PresentationSuccessInteractor>(),
                                     presentationScopeId = route.scopeId,
+                                )
+                            },
+                        )
+                    }
+                    entry<TransactionDetailsRoute> { route ->
+                        // Reached by tapping a History row, which only became possible once the log
+                        // stopped being empty — the route was absent until then because nothing could
+                        // navigate to it.
+                        val koin = remember { KoinPlatform.getKoin() }
+                        TransactionDetailsScreen(
+                            navigator = navigator,
+                            viewModel = remember {
+                                TransactionDetailsViewModel(
+                                    interactor = koin.get<TransactionDetailsInteractor>(),
+                                    transactionId = route.transactionId,
                                 )
                             },
                         )

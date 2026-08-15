@@ -268,6 +268,9 @@ class IosProximityPresenter(
     private suspend fun presentmentSource() = SimplePresentmentSource(
         documentStore = walletEngine.store().documentStore,
         documentTypeRepository = documentTypeRepository,
+        // As on the remote path: multipaz logs the event once the response is out, so handing it the
+        // logger is what puts a completed proximity exchange in the History tab.
+        eventLogger = walletEngine.store().eventLogger(),
         domainsMdocSignature = listOf(credentialDomain),
         showConsentPromptFn = { requester, trustMetadata, data, _, _ ->
             awaitConsent(

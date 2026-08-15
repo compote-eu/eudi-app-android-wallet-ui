@@ -3,6 +3,7 @@ package eu.europa.ec.shared.ui.spike
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
+import eu.europa.ec.shared.wallet.multipaz.IosTransactionKind
 import eu.europa.ec.shared.wallet.multipaz.createIosWalletEngine
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
@@ -11,6 +12,8 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionInteractorGetTransactionsPartialState
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorPartialState
 import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
@@ -175,9 +178,9 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                         }
             )
 
-            // iOS writes no transaction log (nothing issues, presents or signs there yet), so an
-            // *empty* success is the honest answer rather than a stub — what matters is that the
-            // History tab's interactor runs at all.
+            // The History tab, now over multipaz's event log rather than an empty stub. What the
+            // list shows is written by presenting and issuing, so this run reports whatever earlier
+            // runs left behind — and the details path below is only reachable because of it.
             KoinPlatform.getKoin().get<TransactionsInteractor>().getTransactions().first()
                 .let { state ->
                     onResult(
@@ -191,6 +194,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                         }
                     )
                 }
+            probeTransactionDetails(onResult)
             onResult("dashboard tab titles: ${BottomNavigationItem.entries.joinToString { strings.get(it.titleRes) }}")
 
             // The settings screen, two taps deep behind the side menu and so unreachable by
@@ -668,6 +672,54 @@ private suspend fun probeAuthentication(onResult: (String) -> Unit) {
     )
     onResult("PIN lockout state: ${quickPin.getPinLockoutState()}")
     onResult("after-splash route: ${koin.get<SplashInteractor>().getAfterSplashRoute()::class.simpleName}")
+}
+
+/**
+ * The transaction the History tab's newest row leads to.
+ *
+ * Probed rather than screenshotted because reaching it needs two taps `simctl` cannot make — the
+ * History tab, then a row. Worth seeing rather than assuming: the claims it lists come back out of a
+ * *stored* event, so this is the only check that what multipaz wrote at consent time survives being
+ * read back later.
+ */
+private suspend fun probeTransactionDetails(onResult: (String) -> Unit) {
+    val koin = KoinPlatform.getKoin()
+    val transactions = koin.get<IosWalletEngine>().getTransactions()
+    transactions.forEach { transaction ->
+        onResult(
+            "  logged: ${transaction.kind} at ${transaction.createdAt} " +
+                    "party=${transaction.relyingPartyName} documents=${transaction.documentNames}"
+        )
+    }
+
+    // The newest *presentation*, not simply the newest: an issuance shares nothing, so opening one
+    // would exercise the details screen without ever exercising the claims it exists to show.
+    val newest = transactions.firstOrNull { it.kind == IosTransactionKind.Presentation }
+        ?: transactions.firstOrNull()
+    if (newest == null) {
+        onResult("transaction details -> nothing logged yet")
+        return
+    }
+
+    when (val state = koin.get<TransactionDetailsInteractor>()
+        .getTransactionDetails(newest.id).first()) {
+        is TransactionDetailsInteractorPartialState.Success -> {
+            val details = state.transactionDetailsUi
+            onResult(
+                "getTransactionDetails -> ${details.transactionDetailsCardUi.transactionTypeLabel}" +
+                        " / ${details.transactionDetailsCardUi.transactionStatusLabel}" +
+                        " on ${details.transactionDetailsCardUi.transactionDate}" +
+                        " with ${details.transactionDetailsCardUi.relyingPartyName}"
+            )
+            details.transactionDetailsDataShared.dataSharedItems.forEach { document ->
+                val name = (document.header.mainContentData as? ListItemMainContentDataUi.Text)?.text
+                onResult("  shared $name: ${document.nestedItems.size} claim(s)")
+            }
+        }
+
+        is TransactionDetailsInteractorPartialState.Failure ->
+            onResult("getTransactionDetails FAILED: ${state.error}")
+    }
 }
 
 /** The PIN a simulator run ends up with, since nothing can type one in. */

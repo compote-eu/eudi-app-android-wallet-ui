@@ -174,9 +174,16 @@ private fun toClaimInfo(
 ) = IosPresentmentRequest.RequestedClaimInfo(
     claim = claimPath(requested, claim),
     displayName = claim.displayName,
-    value = (claim as? MdocClaim)?.value?.toClaimString() ?: claim.render(),
+    value = claim.readableValue(),
     intentToRetain = (requested as? MdocRequestedClaim)?.intentToRetain == true,
 )
+
+/**
+ * A claim's value as a person should read it — the same rendering the consent screen shows, so a
+ * transaction shown later says what the user agreed to at the time.
+ */
+internal fun Claim.readableValue(): String =
+    (this as? MdocClaim)?.value?.toClaimString() ?: render()
 
 /**
  * Every way this request could be answered.
@@ -228,8 +235,12 @@ private fun CredentialPresentmentSetOption.memberCombinations(): List<List<Membe
  * named by namespace *and* data element, because the same identifier under two namespaces is two
  * different claims; an SD-JWT claim is named by its whole claims path pointer, because `address.locality`
  * and `address.country` share their first segment and only the full path tells them apart.
+ *
+ * `internal` rather than private because the transaction log reads the *same* `RequestedClaim`-to-`Claim`
+ * map back out of a stored event: naming a shared claim one way at consent time and another when it is
+ * shown again later would be a difference the user could see.
  */
-private fun claimPath(requested: RequestedClaim, claim: Claim): ClaimPathDomain = when (requested) {
+internal fun claimPath(requested: RequestedClaim, claim: Claim): ClaimPathDomain = when (requested) {
     is MdocRequestedClaim -> ClaimPathDomain(
         segments = listOf(ClaimPathSegment.Key(requested.dataElementName)),
         type = ClaimType.MsoMdoc(namespace = requested.namespaceName),

@@ -16,8 +16,11 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.multipaz.document.DocumentStore
 import org.multipaz.document.buildDocumentStore
+import org.multipaz.eventlogger.SimpleEventLogger
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.SecureEnclaveSecureArea
@@ -26,6 +29,7 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Platform
+import kotlin.time.Duration.Companion.days
 
 /**
  * The iOS wallet's multipaz storage layer: the [DocumentStore] its documents live in, plus the small
@@ -42,6 +46,31 @@ internal class MultipazWalletStore(
     val keySecureArea: SecureArea,
     private val storage: Storage,
 ) {
+
+    private val eventLoggerLock = Mutex()
+    private var cachedEventLogger: SimpleEventLogger? = null
+
+    /**
+     * The wallet's transaction log.
+     *
+     * multipaz writes to it *itself*: `Iso18013Presentment` and `uriSchemePresentment` both call
+     * `source.eventLogger?.addEventAsync(...)` once a response has gone out, and `ProvisioningModel`
+     * logs a provisioning event when a document is issued. So the whole write side is this object
+     * being handed to them rather than the null they were getting — which is also why only
+     * *successful* exchanges appear, exactly as on Android.
+     *
+     * One instance per store, since a second would keep its own initialization state over the same
+     * table for no benefit.
+     */
+    suspend fun eventLogger(): SimpleEventLogger = eventLoggerLock.withLock {
+        cachedEventLogger ?: SimpleEventLogger(
+            storage = storage,
+            partitionId = documentManagerId,
+            // multipaz's own default, made explicit because it is a data-retention decision rather
+            // than a tuning knob: entries older than this are dropped from the History tab.
+            expireAfter = EVENT_RETENTION,
+        ).also { cachedEventLogger = it }
+    }
 
     /** Bookmarks, keyed by document id, with an empty value — presence *is* the bookmark. */
     suspend fun bookmarksTable(): StorageTable = storage.getTable(BookmarksTableSpec)
@@ -64,6 +93,9 @@ internal class MultipazWalletStore(
          * so it is a stored-data contract, not a label.
          */
         const val DEFAULT_DOCUMENT_MANAGER_ID = "eudi-wallet-ios"
+
+        /** How long a transaction stays in the log. multipaz's default, kept deliberately. */
+        val EVENT_RETENTION = 60.days
 
         private val BookmarksTableSpec = StorageTableSpec(
             name = "EudiDocumentBookmarks",

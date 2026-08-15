@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.multipaz.asn1.OID
+import org.multipaz.crypto.X509CertChain
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
@@ -208,6 +209,9 @@ class IosRemotePresenter(
     private suspend fun presentmentSource() = SimplePresentmentSource(
         documentStore = walletEngine.store().documentStore,
         documentTypeRepository = documentTypeRepository,
+        // What makes a successful exchange show up in the History tab: multipaz logs the event
+        // itself once the response is out, so supplying the logger *is* the whole write side.
+        eventLogger = walletEngine.store().eventLogger(),
         domainsMdocSignature = listOf(credentialDomain),
         domainsKeyBoundSdJwt = listOf(credentialDomain),
         showConsentPromptFn = { requester, trustMetadata, data, _, _ ->
@@ -303,6 +307,9 @@ class IosRemotePresenter(
  * for every certificate ever issued, which is exactly what it did here until a live run showed the
  * consent screen naming the verifier "null".
  */
-internal fun Requester.certificateCommonName(): String? =
-    certChain?.certificates?.firstOrNull()?.subject?.components
+internal fun Requester.certificateCommonName(): String? = certChain.commonName()
+
+/** The same, for the certificate chain a stored event kept when the `Requester` itself is long gone. */
+internal fun X509CertChain?.commonName(): String? =
+    this?.certificates?.firstOrNull()?.subject?.components
         ?.get(OID.COMMON_NAME.oid)?.value?.takeIf { it.isNotBlank() }

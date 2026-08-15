@@ -97,6 +97,16 @@ class IosWalletEngine : WalletEngine {
             }
         }
 
+    /**
+     * What the wallet has done: presentations and issuances, newest first.
+     *
+     * Not on the [WalletEngine] contract, because Android answers the same question from wallet-core's
+     * own transaction log rather than from this engine — the shared side meets them at
+     * `TransactionsPlatformBridge` instead. Public here only so that bridge, which is in :shared-ui and
+     * must not name a multipaz type, can reach it.
+     */
+    suspend fun getTransactions(): List<IosTransaction> = store().transactions()
+
     override suspend fun getAllDocuments(): List<WalletDocument> =
         delegate().getAllDocuments()
 

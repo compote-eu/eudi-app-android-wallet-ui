@@ -18,24 +18,56 @@ package eu.europa.ec.shared.ui.di
 
 import eu.europa.ec.dashboardfeature.interactor.PlatformTransactionLog
 import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
+import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
+import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionTypeUi
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.document_success_relying_party_default_name
+import eu.europa.ec.shared.wallet.multipaz.IosTransaction
+import eu.europa.ec.shared.wallet.multipaz.IosTransactionKind
+import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import platform.Foundation.NSLocale
 import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
 
 /**
- * iOS's [TransactionsPlatformBridge], reporting an empty log.
+ * iOS's [TransactionsPlatformBridge], reading multipaz's event log.
  *
- * Not a placeholder for missing plumbing so much as a statement of fact: a transaction is written when
- * the wallet issues, presents or signs, and iOS can do none of those yet. An empty list is exactly what
- * a wallet that has never transacted should return, so the shared interactor renders its real
- * empty state rather than a special case.
+ * The counterpart of `AndroidTransactionsPlatformBridge` and the same shape: one read, then a mapping
+ * into the neutral [PlatformTransactionLog]. What differs is where the log comes from — wallet-core
+ * keeps its own on Android, while here multipaz writes one as a side effect of presenting and issuing,
+ * so `MultipazWalletStore` supplies the logger and this reads it back.
  *
- * When iOS gains presentation, this is where a multipaz-backed log reader goes; the shared side needs no
- * change, since [PlatformTransactionLog] is already the contract.
+ * **Every entry is `Completed`.** multipaz records an event only once the work has succeeded — after a
+ * response has gone out, after credentials are certified — so a failed or cancelled exchange leaves no
+ * trace. That is not a gap in this mapping: it matches Android, where a cancelled presentation also logs
+ * nothing.
  */
-internal class IosTransactionsPlatformBridge : TransactionsPlatformBridge {
+internal class IosTransactionsPlatformBridge(
+    private val engine: IosWalletEngine,
+    private val strings: StringCatalog,
+) : TransactionsPlatformBridge {
 
     override fun localeTag(): String = NSLocale.currentLocale.languageCode
 
-    override suspend fun getTransactionLogs(): List<PlatformTransactionLog> = emptyList()
+    override suspend fun getTransactionLogs(): List<PlatformTransactionLog> =
+        engine.getTransactions().map { it.toPlatformLog() }
+
+    private fun IosTransaction.toPlatformLog() = PlatformTransactionLog(
+        id = id,
+        // The row's title, and the same rule Android follows: a presentation is named after the party
+        // that asked. An issuance has nobody to name, so it takes the document's name instead — which
+        // Android has no case for, since wallet-core logs presentations only.
+        name = relyingPartyName
+            ?: documentNames.firstOrNull()
+            ?: strings[Res.string.document_success_relying_party_default_name],
+        status = TransactionStatusUi.Completed,
+        type = when (kind) {
+            IosTransactionKind.Presentation -> TransactionTypeUi.PRESENTATION
+            IosTransactionKind.Issuance -> TransactionTypeUi.ISSUANCE
+        },
+        createdAt = createdAt,
+        relyingPartyName = relyingPartyName,
+        documentNames = documentNames,
+    )
 }

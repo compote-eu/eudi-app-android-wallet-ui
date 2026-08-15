@@ -188,6 +188,10 @@ class IosCredentialIssuer(
             httpClient = httpClient,
             promptModel = Platform.promptModel,
             authorizationSecureArea = walletStore.keySecureArea,
+            // Puts a successful issuance in the History tab; multipaz writes the event itself once
+            // the credentials are certified. Note it logs *per document*, so a configuration that
+            // yields several produces several entries — which is what the user did, several times.
+            eventLogger = walletStore.eventLogger(),
         )
 
         try {
@@ -250,6 +254,10 @@ class IosCredentialIssuer(
             httpClient = httpClient,
             promptModel = Platform.promptModel,
             authorizationSecureArea = walletStore.keySecureArea,
+            // Puts a successful issuance in the History tab; multipaz writes the event itself once
+            // the credentials are certified. Note it logs *per document*, so a configuration that
+            // yields several produces several entries — which is what the user did, several times.
+            eventLogger = walletStore.eventLogger(),
         )
 
         try {
