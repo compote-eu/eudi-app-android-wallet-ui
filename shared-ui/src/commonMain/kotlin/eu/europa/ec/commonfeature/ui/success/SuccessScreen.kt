@@ -32,16 +32,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
 import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.resourceslogic.theme.values.success
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
@@ -69,7 +68,6 @@ import eu.europa.ec.uilogic.component.wrap.toColor
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.applyTestTag
-import eu.europa.ec.uilogic.extension.cacheUri
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.channels.Channel
@@ -81,9 +79,20 @@ import kotlinx.coroutines.flow.receiveAsFlow
 @Composable
 fun SuccessScreen(
     navigator: AppNavigator,
-    viewModel: SuccessViewModel
+    viewModel: SuccessViewModel,
+    /**
+     * Parks an external deep link for [AppRoute] and goes back to it, or pops when there is no route.
+     *
+     * Injected rather than reached through a seam because Android's answer — caching the `Uri` in the
+     * one-shot activity slot via `Context.cacheUri` — lives in `:ui-logic`, which depends on this
+     * module. The same lambda [DocumentSuccessScreen][eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreen]
+     * takes, and for the same reason. The iOS default just pops: the only route to this screen there is
+     * the PIN flow, which carries no deep link.
+     */
+    onExternalDeepLink: (link: String, routeToPop: AppRoute?) -> Unit = { _, routeToPop ->
+        routeToPop?.let { navigator.popBackStackTo(route = it, inclusive = false) } ?: navigator.pop()
+    },
 ) {
-    val context = LocalContext.current
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
 
     ContentScreen(
@@ -111,15 +120,10 @@ fun SuccessScreen(
                         )
                     }
 
-                    is Effect.Navigation.DeepLink -> {
-                        context.cacheUri(navigationEffect.link.toUri())
-                        navigationEffect.routeToPop?.let {
-                            navigator.popBackStackTo(
-                                route = it,
-                                inclusive = false
-                            )
-                        } ?: navigator.pop()
-                    }
+                    is Effect.Navigation.DeepLink -> onExternalDeepLink(
+                        navigationEffect.link,
+                        navigationEffect.routeToPop,
+                    )
 
                     is Effect.Navigation.Pop -> navigator.pop()
                 }

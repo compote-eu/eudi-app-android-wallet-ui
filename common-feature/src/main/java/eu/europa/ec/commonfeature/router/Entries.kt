@@ -71,9 +71,18 @@ fun EntryProviderScope<NavKey>.featureCommonEntries(navigator: AppNavigator) {
     }
 
     entry<SuccessRoute> { route ->
+        val context = LocalContext.current
         SuccessScreen(
-            navigator,
-            koinViewModel(parameters = { parametersOf(route.config) })
+            navigator = navigator,
+            viewModel = koinViewModel(parameters = { parametersOf(route.config) }),
+            // What the screen used to do inline, before it moved to commonMain: park the link in the
+            // activity's one-shot slot so the destination can consume it. `cacheUri` is `:ui-logic`,
+            // which depends on :shared-ui, so a shared screen cannot reach it.
+            onExternalDeepLink = { link, routeToPop ->
+                context.cacheUri(link.toUri())
+                routeToPop?.let { navigator.popBackStackTo(route = it, inclusive = false) }
+                    ?: navigator.pop()
+            },
         )
     }
 

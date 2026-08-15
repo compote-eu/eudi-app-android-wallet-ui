@@ -105,6 +105,9 @@ import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.SettingsRoute
 import eu.europa.ec.shared.navigation.QrScanRoute
+import eu.europa.ec.shared.navigation.SuccessRoute
+import eu.europa.ec.commonfeature.ui.success.SuccessScreen
+import eu.europa.ec.commonfeature.ui.success.SuccessViewModel
 import eu.europa.ec.commonfeature.interactor.QrScanInteractor
 import eu.europa.ec.commonfeature.ui.qr_scan.QrScanScreen
 import eu.europa.ec.commonfeature.ui.qr_scan.QrScanViewModel
@@ -434,6 +437,15 @@ fun SplashSpikeViewController(): UIViewController {
                                     presentationScopeId = route.scopeId,
                                 )
                             },
+                        )
+                    }
+                    entry<SuccessRoute> { route ->
+                        // The generic success screen — reached after creating or changing the PIN,
+                        // which the side menu offers. Its deep-link branch takes the shared default:
+                        // the only route here on iOS is the PIN flow, which carries no link.
+                        SuccessScreen(
+                            navigator = navigator,
+                            viewModel = remember { SuccessViewModel(route.config) },
                         )
                     }
                     entry<QrScanRoute> { route ->
