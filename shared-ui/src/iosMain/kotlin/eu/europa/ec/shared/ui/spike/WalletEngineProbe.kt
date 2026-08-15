@@ -25,6 +25,10 @@ import eu.europa.ec.issuancefeature.interactor.ResolveDocumentOfferInteractorPar
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.secure.securePinOf
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
+import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.authenticationlogic.storage.IosBiometricGate
+import eu.europa.ec.authenticationlogic.storage.IosBiometricOutcome
+import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -515,6 +519,54 @@ private suspend fun probeRemotePresentation(onResult: (String) -> Unit) {
 private val PRESENTATION_PROBE_TIMEOUT = 60.seconds
 
 /**
+ * The transaction the History tab's newest row leads to.
+ *
+ * Probed rather than screenshotted because reaching it needs two taps `simctl` cannot make — the
+ * History tab, then a row. Worth seeing rather than assuming: the claims it lists come back out of a
+ * *stored* event, so this is the only check that what multipaz wrote at consent time survives being
+ * read back later.
+ */
+private suspend fun probeTransactionDetails(onResult: (String) -> Unit) {
+    val koin = KoinPlatform.getKoin()
+    val transactions = koin.get<IosWalletEngine>().getTransactions()
+    transactions.forEach { transaction ->
+        onResult(
+            "  logged: ${transaction.kind} at ${transaction.createdAt} " +
+                    "party=${transaction.relyingPartyName} documents=${transaction.documentNames}"
+        )
+    }
+
+    // The newest *presentation*, not simply the newest: an issuance shares nothing, so opening one
+    // would exercise the details screen without ever exercising the claims it exists to show.
+    val newest = transactions.firstOrNull { it.kind == IosTransactionKind.Presentation }
+        ?: transactions.firstOrNull()
+    if (newest == null) {
+        onResult("transaction details -> nothing logged yet")
+        return
+    }
+
+    when (val state = koin.get<TransactionDetailsInteractor>()
+        .getTransactionDetails(newest.id).first()) {
+        is TransactionDetailsInteractorPartialState.Success -> {
+            val details = state.transactionDetailsUi
+            onResult(
+                "getTransactionDetails -> ${details.transactionDetailsCardUi.transactionTypeLabel}" +
+                        " / ${details.transactionDetailsCardUi.transactionStatusLabel}" +
+                        " on ${details.transactionDetailsCardUi.transactionDate}" +
+                        " with ${details.transactionDetailsCardUi.relyingPartyName}"
+            )
+            details.transactionDetailsDataShared.dataSharedItems.forEach { document ->
+                val name = (document.header.mainContentData as? ListItemMainContentDataUi.Text)?.text
+                onResult("  shared $name: ${document.nestedItems.size} claim(s)")
+            }
+        }
+
+        is TransactionDetailsInteractorPartialState.Failure ->
+            onResult("getTransactionDetails FAILED: ${state.error}")
+    }
+}
+
+/**
  * Drives a real issuance through the **production** [IosCredentialIssuer], substituting only the browser.
  *
  * That substitution is the whole reason this exists: nothing on the simulator can log into Keycloak, and
@@ -672,55 +724,57 @@ private suspend fun probeAuthentication(onResult: (String) -> Unit) {
     )
     onResult("PIN lockout state: ${quickPin.getPinLockoutState()}")
     onResult("after-splash route: ${koin.get<SplashInteractor>().getAfterSplashRoute()::class.simpleName}")
-}
 
-/**
- * The transaction the History tab's newest row leads to.
- *
- * Probed rather than screenshotted because reaching it needs two taps `simctl` cannot make — the
- * History tab, then a row. Worth seeing rather than assuming: the claims it lists come back out of a
- * *stored* event, so this is the only check that what multipaz wrote at consent time survives being
- * read back later.
- */
-private suspend fun probeTransactionDetails(onResult: (String) -> Unit) {
-    val koin = KoinPlatform.getKoin()
-    val transactions = koin.get<IosWalletEngine>().getTransactions()
-    transactions.forEach { transaction ->
+    // Biometric login. The prompt itself cannot be answered from here — `simctl` has no way to press
+    // "Use Face ID" — but everything around it can be seen: whether the device offers biometrics,
+    // whether the Keychain will accept the access-control policy at all, and whether the switch's
+    // state follows the item rather than a preference.
+    val biometrics = koin.get<BiometricInteractor>()
+    val settings = koin.get<SettingsPlatformBridge>()
+    onResult("biometrics availability: ${biometrics.getBiometricsAvailability()}")
+    onResult("biometric login enabled: ${biometrics.getBiometricUserSelection()}")
+
+    val wasEnabled = biometrics.getBiometricUserSelection()
+    biometrics.storeBiometricsUsageDecision(shouldUseBiometrics = true)
+    val enabled = biometrics.getBiometricUserSelection()
+    onResult(
+        "enabling it -> $enabled" +
+                if (enabled) " (the Keychain accepted a biometry-gated item)"
+                else " (the Keychain refused the policy: no passcode or no enrolment)"
+    )
+    // The settings switch must agree with the login screen, since both read the same item.
+    onResult("settings row agrees: ${settings.isBiometricsEnabled() == enabled}")
+
+    // The prompt itself. `simctl` cannot press a button, but it *can* tell the simulator's biometric
+    // sensor that a face matched — so this is answerable here, unlike every other system prompt.
+    if (enabled) {
+        // The gate rather than the interactor, for one reason only: `authenticateWithBiometrics`
+        // takes a `PlatformContext`, which is uninhabited on iOS and so cannot be constructed here.
+        // The interactor's own body is one `when` over exactly this call's result.
+        onResult("BIOMETRIC-PROMPT-NOW")
+        val outcome = withTimeoutOrNull(BIOMETRIC_PROBE_TIMEOUT) {
+            koin.get<IosBiometricGate>().authenticate(reason = "Probe run")
+        }
         onResult(
-            "  logged: ${transaction.kind} at ${transaction.createdAt} " +
-                    "party=${transaction.relyingPartyName} documents=${transaction.documentNames}"
+            "authenticate -> " + when (outcome) {
+                is IosBiometricOutcome.Success ->
+                    "Success (the Keychain released the gated item, so the system authenticated)"
+
+                is IosBiometricOutcome.Cancelled -> "Cancelled"
+                is IosBiometricOutcome.Failed -> "Failed(${outcome.message})"
+                null -> "nothing within $BIOMETRIC_PROBE_TIMEOUT"
+            }
         )
     }
 
-    // The newest *presentation*, not simply the newest: an issuance shares nothing, so opening one
-    // would exercise the details screen without ever exercising the claims it exists to show.
-    val newest = transactions.firstOrNull { it.kind == IosTransactionKind.Presentation }
-        ?: transactions.firstOrNull()
-    if (newest == null) {
-        onResult("transaction details -> nothing logged yet")
-        return
-    }
-
-    when (val state = koin.get<TransactionDetailsInteractor>()
-        .getTransactionDetails(newest.id).first()) {
-        is TransactionDetailsInteractorPartialState.Success -> {
-            val details = state.transactionDetailsUi
-            onResult(
-                "getTransactionDetails -> ${details.transactionDetailsCardUi.transactionTypeLabel}" +
-                        " / ${details.transactionDetailsCardUi.transactionStatusLabel}" +
-                        " on ${details.transactionDetailsCardUi.transactionDate}" +
-                        " with ${details.transactionDetailsCardUi.relyingPartyName}"
-            )
-            details.transactionDetailsDataShared.dataSharedItems.forEach { document ->
-                val name = (document.header.mainContentData as? ListItemMainContentDataUi.Text)?.text
-                onResult("  shared $name: ${document.nestedItems.size} claim(s)")
-            }
-        }
-
-        is TransactionDetailsInteractorPartialState.Failure ->
-            onResult("getTransactionDetails FAILED: ${state.error}")
-    }
+    biometrics.storeBiometricsUsageDecision(shouldUseBiometrics = false)
+    onResult("disabling it -> ${biometrics.getBiometricUserSelection()}")
+    // Left as it was found, so a run does not change what the next launch's login screen offers.
+    if (wasEnabled) biometrics.storeBiometricsUsageDecision(shouldUseBiometrics = true)
 }
+
+/** Long enough for a host script to notice the prompt and answer it; short enough not to hang a run. */
+private val BIOMETRIC_PROBE_TIMEOUT = 20.seconds
 
 /** The PIN a simulator run ends up with, since nothing can type one in. */
 private const val PROBE_PIN = "123456"

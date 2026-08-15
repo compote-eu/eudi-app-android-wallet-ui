@@ -18,6 +18,16 @@ package eu.europa.ec.shared.ui.di
 
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
+import eu.europa.ec.authenticationlogic.storage.IosBiometricAvailability
+import eu.europa.ec.authenticationlogic.storage.IosBiometricGate
+import eu.europa.ec.authenticationlogic.storage.IosBiometricOutcome
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.biometric_no_hardware
+import eu.europa.ec.shared.resources.biometric_prompt_subtitle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.platform.PlatformIntent
@@ -27,16 +37,20 @@ import platform.Foundation.NSBundle
  * iOS's [SettingsPlatformBridge]. The screen it feeds is real but short: the app version and the
  * batch-issuance-counter switch, which is the one setting iOS genuinely has.
  *
- * The three omissions are facts about this build, not placeholders:
- * - **No biometrics row.** iOS has Face ID, but the wallet has no authentication layer there at all —
- *   no PIN, no login gate, nothing for a biometrics-for-login switch to protect. Reporting
- *   [BiometricsAvailability.Failure] is how a platform says "not here", and the shared interactor then
- *   omits the row. When iOS gains a login gate, this is where `LocalAuthentication` goes.
+ * **The biometrics row is real now.** It answers from the same [IosBiometricGate] the login screen
+ * uses, which matters more than it looks: the switch's state *is* the existence of the gated Keychain
+ * item, so a switch showing "on" cannot mean anything other than that the item is there. Turning it on
+ * creates the item, which is the moment iOS decides whether the policy can be honoured at all.
+ *
+ * The two remaining omissions are facts about this build, not placeholders:
  * - **No logs row.** Log collection is `:business-logic`'s `LogController`, an Android file-and-Uri
  *   affair; iOS writes no log files, so there would be nothing to share.
  * - **No changelog row.** The URL is per-flavour Android build config; this build has none.
  */
-internal class IosSettingsPlatformBridge : SettingsPlatformBridge {
+internal class IosSettingsPlatformBridge(
+    private val gate: IosBiometricGate,
+    private val strings: StringCatalog,
+) : SettingsPlatformBridge {
 
     /**
      * `CFBundleShortVersionString`, the counterpart of Android's `BuildConfig.APP_VERSION`. Empty
@@ -52,19 +66,22 @@ internal class IosSettingsPlatformBridge : SettingsPlatformBridge {
     override val canRetrieveLogs: Boolean get() = false
 
     override fun biometricsAvailability(): BiometricsAvailability =
-        BiometricsAvailability.Failure(
-            errorMessage = "Biometric login is not available on iOS yet."
-        )
+        when (gate.availability()) {
+            IosBiometricAvailability.Available -> BiometricsAvailability.CanAuthenticate
+            IosBiometricAvailability.NotEnrolled -> BiometricsAvailability.NonEnrolled
+            IosBiometricAvailability.Unavailable ->
+                BiometricsAvailability.Failure(errorMessage = strings[Res.string.biometric_no_hardware])
+        }
+
+    override suspend fun isBiometricsEnabled(): Boolean = gate.isEnabled()
 
     /**
-     * Both unreachable while [biometricsAvailability] fails: the row that would call them is not
-     * built. They answer honestly rather than throwing, so a future caller gets "no" instead of a
-     * crash.
+     * Turning the switch on is what creates the gated item, and iOS can refuse — no passcode set, no
+     * biometrics enrolled. A refusal leaves the item absent, so the next [isBiometricsEnabled] reports
+     * the switch back off rather than leaving it on over nothing.
      */
-    override suspend fun isBiometricsEnabled(): Boolean = false
-
     override suspend fun setBiometricsEnabled(enabled: Boolean) {
-        println("$TAG: ignoring a biometrics decision; iOS has no login gate to apply it to.")
+        if (enabled) gate.enable() else gate.disable()
     }
 
     override fun authenticateWithBiometrics(
@@ -72,13 +89,22 @@ internal class IosSettingsPlatformBridge : SettingsPlatformBridge {
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit
     ) {
-        // Doubly unreachable: it also takes a `PlatformContext`, which has no iOS constructor.
-        listener(BiometricsAuthenticate.Failed(errorMessage = "No biometric prompt on iOS yet."))
+        // The settings switch confirms with a prompt before it changes anything, exactly as Android's
+        // does. `PlatformContext` is uninhabited here and unused: the prompt is the system's.
+        CoroutineScope(Dispatchers.Main).launch {
+            listener(
+                when (val outcome = gate.authenticate(strings[Res.string.biometric_prompt_subtitle])) {
+                    is IosBiometricOutcome.Success -> BiometricsAuthenticate.Success
+                    is IosBiometricOutcome.Cancelled -> BiometricsAuthenticate.Cancelled
+                    is IosBiometricOutcome.Failed ->
+                        BiometricsAuthenticate.Failed(errorMessage = outcome.message)
+                }
+            )
+        }
     }
 
-    override fun launchBiometricSystemScreen() {
-        println("$TAG: no biometric enrolment screen to open on iOS.")
-    }
+    /** iOS has no biometric-enrolment screen a third-party app may open. */
+    override fun launchBiometricSystemScreen() = Unit
 
     /** Real, and shared with the documents list — see [IosPreferences]. */
     override suspend fun isBatchIssuanceCounterShown(): Boolean =

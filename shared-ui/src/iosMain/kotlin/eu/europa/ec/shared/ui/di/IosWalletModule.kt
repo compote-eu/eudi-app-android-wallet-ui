@@ -35,6 +35,7 @@ import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
 import eu.europa.ec.authenticationlogic.storage.IosAuthenticationConfig
+import eu.europa.ec.authenticationlogic.storage.IosBiometricGate
 import eu.europa.ec.authenticationlogic.storage.IosPinStorage
 import eu.europa.ec.authenticationlogic.storage.IosPinThrottle
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
@@ -179,7 +180,10 @@ fun provideIosDashboardInteractor(strings: StringCatalog): DashboardInteractor =
  * logs, no changelog, but a real app version and a real batch-counter preference.
  */
 @Single
-fun provideIosSettingsPlatformBridge(): SettingsPlatformBridge = IosSettingsPlatformBridge()
+internal fun provideIosSettingsPlatformBridge(
+    gate: IosBiometricGate,
+    strings: StringCatalog,
+): SettingsPlatformBridge = IosSettingsPlatformBridge(gate = gate, strings = strings)
 
 @Factory
 fun provideIosSettingsInteractor(
@@ -307,8 +311,24 @@ fun provideIosQuickPinInteractor(
 )
 
 @Factory
-fun provideIosBiometricInteractor(quickPinInteractor: QuickPinInteractor): BiometricInteractor =
-    IosBiometricInteractor(quickPinInteractor = quickPinInteractor)
+internal fun provideIosBiometricInteractor(
+    quickPinInteractor: QuickPinInteractor,
+    gate: IosBiometricGate,
+    strings: StringCatalog,
+): BiometricInteractor = IosBiometricInteractor(
+    quickPinInteractor = quickPinInteractor,
+    gate = gate,
+    strings = strings,
+)
+
+/**
+ * `@Single` because the gate is a name for one Keychain item; two instances would be two names for it.
+ * Its own service, separate from the PIN's: the two items have different access policies, and keeping
+ * them apart means deleting one can never take the other with it.
+ */
+@Single
+fun provideIosBiometricGate(): IosBiometricGate =
+    IosBiometricGate(service = "eu.europa.ec.eudi.wallet.biometrics")
 
 /**
  * The real splash routing, replacing the stand-in that always went to the dashboard: no PIN yet sends the

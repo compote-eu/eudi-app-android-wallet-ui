@@ -20,52 +20,93 @@ import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuth
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePin
+import eu.europa.ec.authenticationlogic.storage.IosBiometricAvailability
+import eu.europa.ec.authenticationlogic.storage.IosBiometricGate
+import eu.europa.ec.authenticationlogic.storage.IosBiometricOutcome
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorPinValidPartialState
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.biometric_no_hardware
+import eu.europa.ec.shared.resources.biometric_prompt_subtitle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 /**
- * iOS's login gate: the PIN half is real, the biometric half is not there yet.
+ * iOS's login gate: the PIN through the shared [QuickPinInteractor], Face ID / Touch ID through
+ * [IosBiometricGate].
  *
- * Everything about the PIN — validity, failure counting, lockout — is the shared [QuickPinInteractor] over
- * the Keychain-backed store, so the unlock screen behaves exactly as it does on Android. What this reports
- * honestly is that there is no biometric prompt: [getBiometricsAvailability] fails, so the shared screen
- * shows its PIN field and never offers Face ID.
- *
- * **Why not `LocalAuthentication` already:** `LAContext.evaluatePolicy` would raise a Face ID prompt easily
- * enough, but a biometric *login* has to be worth something — on Android, enabling it stores the decision
- * and the PIN check is then guarded by a Keystore key that biometry unlocks. Wiring the prompt without that
- * would mean a Face ID that any failed scan lets you skip past with the PIN, which is theatre. The prompt
- * belongs with the key policy, and that is its own piece of work.
+ * Everything about the PIN — validity, failure counting, lockout — is the shared interactor over the
+ * Keychain-backed store, so the unlock screen behaves as it does on Android. The biometric half is now
+ * real, and real in the way that matters: the gate binds the prompt to a Keychain item the *system*
+ * releases only after biometry, which is the iOS answer to Android's Keystore-backed `CryptoObject`.
+ * The earlier version of this class declined to raise a prompt at all rather than raise one the app
+ * itself decided the outcome of; that objection is what the gate's design answers.
  */
 internal class IosBiometricInteractor(
     private val quickPinInteractor: QuickPinInteractor,
+    private val gate: IosBiometricGate,
+    private val strings: StringCatalog,
 ) : BiometricInteractor {
 
     override val maxFailedPinAttempts: Int
         get() = quickPinInteractor.maxFailedPinAttempts
 
     override fun getBiometricsAvailability(): BiometricsAvailability =
-        BiometricsAvailability.Failure(errorMessage = NOT_AVAILABLE)
-
-    /** Nothing ever stored it, so the answer is the honest one rather than a remembered preference. */
-    override suspend fun getBiometricUserSelection(): Boolean = false
-
-    override suspend fun storeBiometricsUsageDecision(shouldUseBiometrics: Boolean) = Unit
+        when (gate.availability()) {
+            IosBiometricAvailability.Available -> BiometricsAvailability.CanAuthenticate
+            IosBiometricAvailability.NotEnrolled -> BiometricsAvailability.NonEnrolled
+            IosBiometricAvailability.Unavailable ->
+                BiometricsAvailability.Failure(errorMessage = strings[Res.string.biometric_no_hardware])
+        }
 
     /**
-     * Unreachable while [getBiometricsAvailability] fails — the shared screen only calls this once
-     * availability says yes — but it answers rather than throwing, so a future caller gets "no".
+     * Whether biometric login is on, which on iOS is the same question as whether the gated Keychain
+     * item exists — there is no separate preference that could disagree with it.
+     */
+    override suspend fun getBiometricUserSelection(): Boolean = gate.isEnabled()
+
+    override suspend fun storeBiometricsUsageDecision(shouldUseBiometrics: Boolean) {
+        if (shouldUseBiometrics) gate.enable() else gate.disable()
+    }
+
+    /**
+     * Raises the prompt, on the callback shape the shared screen expects.
+     *
+     * [context] is unused and uninhabited on iOS: the prompt belongs to the system rather than to a
+     * host activity, which is exactly why Android needs the parameter and this does not.
      */
     override fun authenticateWithBiometrics(
         context: PlatformContext,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit,
-    ) = listener(BiometricsAuthenticate.Failed(errorMessage = NOT_AVAILABLE))
+    ) {
+        // The contract is a callback rather than a suspend function, so the wait is launched here.
+        // Main, because the listener drives view state.
+        CoroutineScope(Dispatchers.Main).launch {
+            // The system prompt's own subtitle, and the same words Android's `BiometricPrompt`
+            // shows — the prompt is the platform's, but what it says should not depend on which.
+            val outcome = gate.authenticate(reason = strings[Res.string.biometric_prompt_subtitle])
+            listener(
+                when (outcome) {
+                    is IosBiometricOutcome.Success -> BiometricsAuthenticate.Success
+                    is IosBiometricOutcome.Cancelled -> BiometricsAuthenticate.Cancelled
+                    is IosBiometricOutcome.Failed ->
+                        BiometricsAuthenticate.Failed(errorMessage = outcome.message)
+                }
+            )
+        }
+    }
 
-    /** iOS has no "enrol a biometric" screen a third-party app may open. */
+    /**
+     * Nothing to launch. iOS has no biometric-enrolment screen a third-party app may open — Settings
+     * is not addressable that deeply — so the honest answer is to do nothing rather than open Settings'
+     * front page and leave the user to find it.
+     */
     override fun launchBiometricSystemScreen() = Unit
 
     override fun isPinValid(pin: SecurePin): Flow<QuickPinInteractorPinValidPartialState> =
@@ -77,8 +118,4 @@ internal class IosBiometricInteractor(
     override suspend fun recordPinFailure(): PinLockoutState = quickPinInteractor.recordPinFailure()
 
     override suspend fun resetPinThrottle() = quickPinInteractor.resetPinThrottle()
-
-    private companion object {
-        const val NOT_AVAILABLE = "Biometric login is not available on iOS yet."
-    }
 }
