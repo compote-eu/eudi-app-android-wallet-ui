@@ -107,6 +107,40 @@ class IosWalletEngine : WalletEngine {
      */
     suspend fun getTransactions(): List<IosTransaction> = store().transactions()
 
+    /**
+     * Who issued a document and under which configuration, or null when the document is unknown or was
+     * not provisioned by this wallet.
+     *
+     * Not on [WalletEngine] for the same reason as [getTransactions]: Android answers this from
+     * wallet-core rather than from an engine, so the two platforms meet at the details bridge instead.
+     * Both values come from the issuer metadata stored at issuance — which is also why a seeded fixture
+     * reports its invalid issuer honestly rather than nothing.
+     */
+    suspend fun getIssuerReference(documentId: String): IosIssuerReference? {
+        val metadata = store().documentStore.lookupDocument(documentId)?.eudiMetadata ?: return null
+        val issuerMetadata = metadata.issuerMetadata ?: return null
+        return IosIssuerReference(
+            issuerId = issuerMetadata.credentialIssuerIdentifier,
+            documentConfigId = issuerMetadata.documentConfigurationIdentifier,
+        )
+    }
+
+    /**
+     * How many credentials a refresh would replace, without creating or fetching anything.
+     *
+     * Public so a probe can show the number [refreshCredentials] guards on; the guard exists because
+     * opening a provisioning session costs the document's rotating refresh token.
+     */
+    suspend fun credentialsNeeded(documentId: String): Int {
+        val store = store()
+        val document = store.documentStore.lookupDocument(documentId) ?: return 0
+        return store.credentialsNeededFor(document)
+    }
+
+    /** Refreshes a document's credentials in place; see [IosCredentialIssuer.refreshCredentials]. */
+    suspend fun refreshCredentials(documentId: String): IosIssuanceProgress =
+        IosCredentialIssuer(walletEngine = this).refreshCredentials(documentId)
+
     override suspend fun getAllDocuments(): List<WalletDocument> =
         delegate().getAllDocuments()
 

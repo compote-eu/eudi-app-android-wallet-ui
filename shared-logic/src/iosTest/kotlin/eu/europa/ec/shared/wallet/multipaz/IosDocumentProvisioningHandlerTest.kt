@@ -34,6 +34,7 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -73,6 +74,26 @@ class IosDocumentProvisioningHandlerTest {
         display = Display(text = name, logo = null),
         credentials = emptyMap(),
     )
+
+    @Test
+    fun the_issuer_is_recorded_by_url_rather_than_by_name() = runTest {
+        val store = store()
+        val handler = IosDocumentProvisioningHandler(store)
+
+        val document = handler.createDocument(
+            credentialMetadata = credentialMetadata(),
+            issuerMetadata = issuerMetadata(name = "Digital Credentials Issuer"),
+            documentAuthorizationData = null,
+        )
+
+        // The distinction that matters: re-issuance finds a document's issuer by matching this against
+        // the configured catalog, and a display name matches nothing. Both values are kept — the name
+        // is what the details screen shows — so getting them the wrong way round was invisible until
+        // something tried to *use* the identifier.
+        val metadata = assertNotNull(document.eudiMetadata?.issuerMetadata)
+        assertEquals("https://issuer.test", metadata.credentialIssuerIdentifier)
+        assertEquals("Digital Credentials Issuer", metadata.issuerDisplay?.single()?.name)
+    }
 
     @Test
     fun a_provisioned_document_is_visible_to_the_reader() = runTest {

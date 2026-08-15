@@ -69,16 +69,7 @@ internal class IosDocumentProvisioningHandler(
     documentStore = store.documentStore,
     // Not used: see the class note. Our metadata is attached in createDocument instead.
     metadataHandler = null,
-    defaultDocumentProvisioningSettings = DocumentProvisioningSettings(
-        keyBoundCredentialNumPerDomain = batchSize,
-        // See the class note: one domain, named exactly as the reader expects, and no user-auth batch.
-        requestUserAuth = false,
-        mdocNoUserAuthDomain = store.documentManagerId,
-        sdJwtNoUserAuthDomain = store.documentManagerId,
-        sdJwtKeylessDomain = store.documentManagerId,
-        // The user-auth domain names are left at multipaz's defaults: with requestUserAuth off nothing
-        // is ever created in them, and naming them ours would suggest otherwise.
-    ),
+    defaultDocumentProvisioningSettings = settingsFor(store, batchSize),
 ) {
 
     override suspend fun createDocument(
@@ -144,8 +135,15 @@ internal class IosDocumentProvisioningHandler(
         credentialMetadata: CredentialMetadata,
         issuerMetadata: ProvisioningMetadata,
     ): IssuerMetadata = IssuerMetadata(
+        // multipaz surfaces no credential *configuration* id on `CredentialMetadata`, so the format's
+        // own identifier stands in. It is shown, never matched on.
         documentConfigurationIdentifier = credentialMetadata.format.formatId,
-        credentialIssuerIdentifier = issuerMetadata.display.text,
+        // The issuer's URL, which is what an identifier is. This used to be `display.text` — the
+        // issuer's *name* — which nothing read until re-issuance needed to find the issuer a document
+        // came from, and then matched nothing: every provisioned document claimed to come from
+        // "Digital Credentials Issuer". Documents issued before this fix keep the old value and cannot
+        // be refreshed; they report an unknown issuer, which is true of them.
+        credentialIssuerIdentifier = issuerMetadata.url,
         display = listOf(
             IssuerMetadata.Display(name = credentialMetadata.display.text)
         ),
@@ -159,11 +157,33 @@ internal class IosDocumentProvisioningHandler(
         is CredentialFormat.SdJwt -> StoredDocumentFormat.SdJwtVc(vct)
     }
 
-    private companion object {
+    companion object {
         /**
          * Three, matching the fixture and the shape the Documents screen's "3/3" counter was verified
          * against. Not the issuer's maximum: every credential is a Secure Enclave key.
          */
-        const val DEFAULT_BATCH_SIZE = 3
+        internal const val DEFAULT_BATCH_SIZE = 3
+
+        /**
+         * How this wallet provisions credentials — one place, because two callers must agree on it.
+         *
+         * The handler passes these to multipaz when it provisions, and `IosCredentialIssuer` reads the
+         * same values to ask, without provisioning anything, whether a refresh would have work to do.
+         * Two copies that drifted would make that question answer for a wallet that does not exist.
+         */
+        internal fun settingsFor(
+            store: MultipazWalletStore,
+            batchSize: Int = DEFAULT_BATCH_SIZE,
+        ) = DocumentProvisioningSettings(
+            keyBoundCredentialNumPerDomain = batchSize,
+            // See the class note: one domain, named exactly as the reader expects, and no user-auth
+            // batch.
+            requestUserAuth = false,
+            mdocNoUserAuthDomain = store.documentManagerId,
+            sdJwtNoUserAuthDomain = store.documentManagerId,
+            sdJwtKeylessDomain = store.documentManagerId,
+            // The user-auth domain names are left at multipaz's defaults: with requestUserAuth off
+            // nothing is ever created in them, and naming them ours would suggest otherwise.
+        )
     }
 }

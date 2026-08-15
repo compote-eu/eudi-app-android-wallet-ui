@@ -18,7 +18,9 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
+import org.multipaz.document.DocumentUtil
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.eventlogger.SimpleEventLogger
 import org.multipaz.securearea.SecureArea
@@ -29,6 +31,7 @@ import org.multipaz.storage.Storage
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.util.Platform
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 /**
@@ -170,4 +173,30 @@ internal class MultipazWalletStore(
             )
         }
     }
+}
+
+/**
+ * How many credentials a refresh would replace for [document], without creating or fetching anything.
+ *
+ * multipaz's own count, from the same [org.multipaz.provisioning.DocumentProvisioningSettings] the
+ * provisioning handler uses: a credential is replaced when it has been used up or is close to expiring.
+ * Asking first is what keeps a pointless refresh from burning the document's rotating refresh token —
+ * see the note at the call site in `IosCredentialIssuer.refreshCredentials`.
+ */
+internal suspend fun MultipazWalletStore.credentialsNeededFor(document: Document): Int {
+    val settings = IosDocumentProvisioningHandler.settingsFor(store = this)
+    val domain = when (document.eudiMetadata?.format) {
+        is StoredDocumentFormat.SdJwtVc -> settings.sdJwtNoUserAuthDomain
+        else -> settings.mdocNoUserAuthDomain
+    }
+    return DocumentUtil.managedCredentialHelper(
+        document = document,
+        domain = domain,
+        createCredential = null,
+        now = Clock.System.now(),
+        numCredentials = settings.keyBoundCredentialNumPerDomain,
+        maxUsesPerCredential = settings.keyBoundCredentialMaxUses,
+        minValidTime = settings.minValidTime,
+        dryRun = true,
+    )
 }

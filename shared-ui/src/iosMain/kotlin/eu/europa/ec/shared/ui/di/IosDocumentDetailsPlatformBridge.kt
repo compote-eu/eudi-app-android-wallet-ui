@@ -33,6 +33,7 @@ import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsDo
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.wallet.WalletDocument
+import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.StoredMdocClaim
 import kotlinx.coroutines.flow.Flow
@@ -68,15 +69,17 @@ internal class IosDocumentDetailsPlatformBridge(
             ?: return null
 
         val claims = engine.getNamespacedClaims(documentId)
+        // Both come from the issuer metadata stored at issuance, and both are what re-issuance needs.
+        // Empty for a document this wallet did not provision — a seeded fixture — which is also the
+        // case `reIssueDocument` refuses.
+        val issuer = engine.getIssuerReference(documentId)
 
         return PlatformDocumentDetails(
             documentDetailsDomain = DocumentDetailsDomain(
                 docName = document.name,
                 docId = document.id,
-                // The engine does not surface these two yet; they matter only to re-issuance, which
-                // iOS cannot do, so an empty value is honest rather than a placeholder that lies.
-                issuerId = "",
-                documentConfigId = "",
+                issuerId = issuer?.issuerId.orEmpty(),
+                documentConfigId = issuer?.documentConfigId.orEmpty(),
                 documentIdentifier = document.formatType.toDocumentIdentifier(),
                 documentClaims = claims.toClaimDomains(document.formatType),
                 documentIssuanceDate = document.issuedAt
@@ -116,14 +119,35 @@ internal class IosDocumentDetailsPlatformBridge(
     }
 
     /** iOS has no OpenID4VCI implementation, so this fails rather than appearing to start something. */
+    /**
+     * Tops the document's credentials back up.
+     *
+     * [issuerId] is accepted and not used: the document records who issued it, and
+     * [IosCredentialIssuer.refreshCredentials] reads that rather than trusting the caller — refreshing
+     * against an issuer that never knew this document would fail in a more confusing way.
+     *
+     * **No browser, and no fallback to one.** multipaz keeps the original authorization on the document
+     * and refreshes against it silently, which is the case this button exists for. When that is not
+     * possible — nothing stored, or the issuer refuses — it says so, because re-authorizing *into an
+     * existing document* is not reachable from outside multipaz: `ProvisioningModel.launch` takes the
+     * target document but its coroutine context can only be built by a private method whose
+     * `ProvisioningEnvironment` is `internal`. Android's `allowAuthorizationFallback = true` has no
+     * counterpart here until that changes; see the ledger's upstream list.
+     */
     override fun reIssueDocument(
         documentId: String,
         issuerId: String,
     ): Flow<DocumentDetailsInteractorIssuancePartialState> = flow {
         emit(
-            DocumentDetailsInteractorIssuancePartialState.Failure(
-                errorMessage = NOT_AVAILABLE_ON_IOS
-            )
+            when (val progress = engine.refreshCredentials(documentId)) {
+                // `Success` carries nothing: the screen reloads the document, and the refresh wrote
+                // into the one it already has.
+                is IosIssuanceProgress.Issued -> DocumentDetailsInteractorIssuancePartialState.Success
+
+                is IosIssuanceProgress.Failure -> DocumentDetailsInteractorIssuancePartialState.Failure(
+                    errorMessage = progress.message,
+                )
+            }
         )
     }
 
@@ -182,7 +206,4 @@ internal class IosDocumentDetailsPlatformBridge(
         )
     }
 
-    private companion object {
-        const val NOT_AVAILABLE_ON_IOS = "Re-issuance is not available on iOS yet."
-    }
 }

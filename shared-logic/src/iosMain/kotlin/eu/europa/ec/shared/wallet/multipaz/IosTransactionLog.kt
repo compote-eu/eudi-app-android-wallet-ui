@@ -65,6 +65,17 @@ data class IosSharedDocument(
     val claims: List<ClaimDomain.Primitive>,
 )
 
+/**
+ * Who issued a document, and under which of that issuer's configurations.
+ *
+ * The two values re-issuance needs. They live beside the transaction model rather than in it because
+ * both are the same kind of thing: something the app stored at issuance time and reads back later.
+ */
+data class IosIssuerReference(
+    val issuerId: String,
+    val documentConfigId: String,
+)
+
 /** Which of the wallet's activities an entry records. Signing is absent because iOS cannot sign. */
 enum class IosTransactionKind { Presentation, Issuance }
 

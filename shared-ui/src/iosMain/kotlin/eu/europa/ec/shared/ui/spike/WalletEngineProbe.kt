@@ -320,6 +320,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             probeQrScan(onResult)
             probeProximity(onResult)
             probeRemotePresentation(onResult)
+            probeReIssuance(onResult)
             probeIssuance(onResult)
             probeCredentialOffer(onResult)
 
@@ -439,6 +440,10 @@ private suspend fun probeRemotePresentation(onResult: (String) -> Unit) {
                                 document.domainPayload.docClaimsDomain.joinToString { it.key }
                     )
                 }
+                // Remembered for the re-issuance probe: every presentation permanently spends one
+                // credential, so this is the document a refresh should have work to do on.
+                lastPresentedDocumentId = first.documents.firstOrNull()?.domainPayload?.docId
+                onResult("  (shared document id: $lastPresentedDocumentId)")
             }
         }
 
@@ -530,6 +535,9 @@ private suspend fun probeRemotePresentation(onResult: (String) -> Unit) {
 // The verifier is a live service reached over the network; long enough for a request object fetch and a
 // response POST, short enough that a probe run does not look hung.
 private val PRESENTATION_PROBE_TIMEOUT = 60.seconds
+
+/** What the presentation probe shared, so the re-issuance probe can refresh that same document. */
+private var lastPresentedDocumentId: String? = null
 
 /**
  * The transaction the History tab's newest row leads to.
@@ -815,6 +823,78 @@ private suspend fun probeQrScan(onResult: (String) -> Unit) {
         onResult("  ${if (actual == expected) "ok " else "WRONG"} valid=$actual for ${link.take(46)}")
     }
 }
+
+/**
+ * Re-issuance against the real issuer, for a document this wallet actually provisioned.
+ *
+ * The interesting case cannot be faked: a refresh needs the authorization multipaz stored at issuance,
+ * so only a genuinely issued document has one — a seeded fixture does not, and the unit tests cover
+ * that refusal. This runs the real thing, which means the credential counter should go up.
+ */
+private suspend fun probeReIssuance(onResult: (String) -> Unit) {
+    onResult("--- re-issuance ---")
+    val engine = KoinPlatform.getKoin().get<IosWalletEngine>()
+
+    // The document the presentation just shared, which is the case this feature exists for: every
+    // presentation permanently spends one credential (multipaz's `keyBoundCredentialMaxUses` is 1), so
+    // a refresh should have exactly one replacement to fetch.
+    //
+    // The visible counter will not move, and that is not a bug: it counts *certified* credentials, and
+    // a spent one stays until a replacement certifies. What proves the refresh did work is the number
+    // multipaz reports fetching, which the log line below carries.
+    val refreshable = engine.getAllDocumentsWithDetails(locale = "en")
+        .filter { engine.getIssuerReference(it.id)?.issuerId?.startsWith("https://dev.") == true }
+    val target = refreshable.firstOrNull { it.id == lastPresentedDocumentId }
+        ?: refreshable.firstOrNull()
+    if (target == null) {
+        onResult("no issuer-provisioned document to refresh (only fixtures?)")
+        return
+    }
+
+    val issuer = engine.getIssuerReference(target.id)
+    onResult(
+        "refreshing ${target.name} (${target.id}, presented=${target.id == lastPresentedDocumentId}): " +
+                "${target.credentialsCount}/${target.initialCredentialsCount} credentials, " +
+                "${engine.credentialsNeeded(target.id)} needing replacement, " +
+                "issuer=${issuer?.issuerId} config=${issuer?.documentConfigId}"
+    )
+
+    when (val progress = withTimeoutOrNull(RE_ISSUANCE_PROBE_TIMEOUT) {
+        engine.refreshCredentials(target.id)
+    }) {
+        is IosIssuanceProgress.Issued -> {
+            val after = engine.getAllDocumentsWithDetails(locale = "en").first { it.id == target.id }
+            onResult(
+                "refreshCredentials -> Issued; fetched ${progress.credentialsFetched} credential(s), " +
+                        "counter ${target.credentialsCount} -> ${after.credentialsCount} " +
+                        "(no browser, no consent). Fetching zero is the right answer for a batch that " +
+                        "is still fresh: multipaz replaces only credentials that are used up or near " +
+                        "expiry."
+            )
+        }
+
+        is IosIssuanceProgress.Failure -> onResult("refreshCredentials -> Failure(${progress.message})")
+        null -> onResult("refreshCredentials -> nothing within $RE_ISSUANCE_PROBE_TIMEOUT")
+    }
+
+    // And the other half: a document with nothing spent must not open a session at all. That guard is
+    // the whole reason a refresh can be offered more than once — opening one costs the document's
+    // rotating refresh token, and multipaz only writes the rotated token back when it fetched
+    // something.
+    val untouched = refreshable.firstOrNull { engine.credentialsNeeded(it.id) == 0 }
+    if (untouched == null) {
+        onResult("no fresh-batch document to check the no-op guard against")
+        return
+    }
+    onResult(
+        "guard: ${untouched.name} (${untouched.id}) needs " +
+                "${engine.credentialsNeeded(untouched.id)} -> " +
+                "${engine.refreshCredentials(untouched.id)}"
+    )
+}
+
+/** A token request and a batch of credentials, over the network; no user step to wait for. */
+private val RE_ISSUANCE_PROBE_TIMEOUT = 60.seconds
 
 /** The PIN a simulator run ends up with, since nothing can type one in. */
 private const val PROBE_PIN = "123456"

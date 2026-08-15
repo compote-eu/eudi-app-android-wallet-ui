@@ -48,6 +48,15 @@ sealed interface IosIssuanceProgress {
     data class Issued(
         val documentIds: List<String>,
         val failures: Map<String, String> = emptyMap(),
+        /**
+         * How many credentials a *refresh* fetched; zero for a batch that needed none, and always
+         * zero for a first issuance, where the count is implied by the document existing at all.
+         *
+         * Carried because it is the only observable difference between a refresh that had work to do
+         * and one that did not: the credential counter shows *certified* credentials, and a spent one
+         * stays until its replacement certifies, so it does not move.
+         */
+        val credentialsFetched: Int = 0,
     ) : IosIssuanceProgress
 
     data class Failure(val message: String) : IosIssuanceProgress
@@ -97,7 +106,131 @@ class IosCredentialIssuer(
      * credentials, which says nothing about the code here.
      */
     private val issueConfiguration: (suspend (IosVciIssuer, String) -> Result<String>)? = null,
+    /**
+     * Where documents live. Defaults to the engine's own store, which is what production wants — a
+     * second `MultipazWalletStore.open()` would be a second cache over the same storage. Injectable
+     * because [refreshCredentials] decides three of its four outcomes from the store's *contents*, and
+     * those are the outcomes a user actually meets.
+     */
 ) {
+
+    /**
+     * Where documents live. Defaults to the engine's own store, which is what production wants — a
+     * second `MultipazWalletStore.open()` would be a second cache over the same storage.
+     *
+     * A `var` set by the internal constructor rather than a public parameter, because
+     * [MultipazWalletStore] is internal to this module and this class is what :shared-ui talks to.
+     * [refreshCredentials] decides three of its four outcomes from the store's *contents*, and those
+     * are the outcomes a user actually meets, so they are worth being able to test.
+     */
+    private var walletStore: suspend () -> MultipazWalletStore = { walletEngine.store() }
+
+    internal constructor(
+        walletEngine: IosWalletEngine,
+        walletStore: suspend () -> MultipazWalletStore,
+        issuers: List<IosVciIssuer> = IosIssuerCatalog.issuers,
+    ) : this(walletEngine = walletEngine, issuers = issuers) {
+        this.walletStore = walletStore
+    }
+
+    /**
+     * Tops a document's credentials back up, without asking the user for anything.
+     *
+     * This is what "re-issue" means for a wallet that spends credentials as it presents them: the
+     * document, its keys and its issuer are all unchanged, and what has run out is the supply of
+     * one-time credentials. multipaz keeps the authorization from the original issuance on the document
+     * for exactly this, so a refresh needs no browser and no consent — the user already gave it.
+     *
+     * @return [IosIssuanceProgress.Issued] naming the same document it started with, or a failure that
+     *   says which of the two things went wrong: nothing stored to authorize with, or the issuer
+     *   refusing.
+     */
+    suspend fun refreshCredentials(documentId: String): IosIssuanceProgress {
+        val store = walletStore()
+        val document = store.documentStore.lookupDocument(documentId)
+            ?: return IosIssuanceProgress.Failure(message = NO_SUCH_DOCUMENT)
+
+        // The document remembers who issued it, so the issuer is looked up rather than passed in: a
+        // caller that supplied the wrong one would refresh against an issuer that never knew this
+        // document. A document that recorded no issuer at all is refused too — never having said
+        // where it came from is not evidence that it came from the one issuer configured here.
+        //
+        // Checked *before* the authorization data, though that is the more common absence, because of
+        // what the two messages tell the user to do. "Add it again" is the advice for a document with
+        // no stored authorization, and it is only advice at all if this wallet can still reach that
+        // issuer. When neither holds, the dead end is the honest thing to say.
+        val issuerUrl = document.eudiMetadata?.issuerMetadata?.credentialIssuerIdentifier
+        val issuer = issuers.firstOrNull { it.issuerUrl == issuerUrl }
+            ?: return IosIssuanceProgress.Failure(message = UNKNOWN_ISSUER)
+
+        // Stored when the document was first issued. Absent for anything this wallet did not provision
+        // — a seeded fixture, or a document from a build before authorization was kept — and there is
+        // no silent path for those.
+        val authorization = document.authorizationData
+            ?: return IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION)
+
+        // ⚠️ Ask *before* opening a session, because opening one is not free.
+        //
+        // multipaz refreshes the OAuth token when it builds a provisioning client from stored
+        // authorization data, and the issuer rotates it. It then writes the new one back only inside
+        // the branch that actually fetched credentials — so a refresh that turns out to need none
+        // discards the rotated token, and the *next* refresh, the one that matters, is rejected with
+        // "Refresh token (seed credential) rejected by the issuer". Observed exactly that way here:
+        // three no-op refreshes, then a real one refused.
+        //
+        // `managedCredentialHelper`'s dry run answers the same question multipaz would ask itself,
+        // from the same settings, without creating anything or touching the network. When the answer
+        // is none, the honest and cheap thing is to do nothing at all.
+        if (store.credentialsNeededFor(document) == 0) {
+            Logger.i(TAG, "no credentials need replacing for $documentId; not opening a session")
+            return IosIssuanceProgress.Issued(documentIds = listOf(documentId), credentialsFetched = 0)
+        }
+
+        val deferred = DeferredIssuanceNotice()
+        val httpClient = openID4VciHttpClient(
+            engine = httpEngine ?: Darwin.create(),
+            deferredNotice = deferred,
+        )
+
+        val model = ProvisioningModel(
+            documentProvisioningHandler = IosDocumentProvisioningHandler(store),
+            httpClient = httpClient,
+            promptModel = Platform.promptModel,
+            authorizationSecureArea = store.keySecureArea,
+            eventLogger = store.eventLogger(),
+        )
+
+        return try {
+            // Synchronous on purpose: there is no authorization step to answer, so none of `issue`'s
+            // browser choreography applies. multipaz drives it to completion or throws.
+            val fetched = model.openID4VCIRefreshCredentials(
+                document = document,
+                authorizationData = authorization,
+                clientPreferences = issuer.clientPreferences(),
+                backend = IosOpenID4VciBackend(
+                    walletProviderBaseUrl = walletProviderBaseUrl,
+                    clientId = issuer.clientId,
+                    httpClient = httpClient,
+                ),
+            )
+            // Zero is a success, and the common one. multipaz replaces only the credentials that are
+            // used up or close to expiring, so a document whose batch is still fresh needs none — and
+            // reporting that as a failure would put an error on the screen for a wallet that is
+            // already in exactly the state the user asked for.
+            Logger.i(TAG, "refreshed $documentId with $fetched new credential(s)")
+            IosIssuanceProgress.Issued(
+                documentIds = listOf(documentId),
+                credentialsFetched = fetched,
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            IosIssuanceProgress.Failure(message = (deferred.asFailureOr(t)).message ?: REFRESH_FAILED)
+        } finally {
+            model.cancel()
+            httpClient.close()
+        }
+    }
 
     /**
      * Issues [configurationIds] at [issuerId], as one progress value per attempt sequence.
@@ -198,14 +331,7 @@ class IosCredentialIssuer(
             val document = model.launchOpenID4VCIProvisioning(
                 issuerUrl = issuer.issuerUrl,
                 credentialId = configurationId,
-                clientPreferences = OpenID4VCIClientPreferences(
-                    clientId = issuer.clientId,
-                    // Must be the URI registered for this client id; anything else is rejected with
-                    // `Invalid parameter: redirect_uri`.
-                    redirectUrl = issuer.redirectUri,
-                    locales = listOf(FALLBACK_LOCALE),
-                    signingAlgorithms = listOf(Algorithm.ESP256),
-                ),
+                clientPreferences = issuer.clientPreferences(),
                 backend = IosOpenID4VciBackend(
                     walletProviderBaseUrl = walletProviderBaseUrl,
                     clientId = issuer.clientId,
@@ -264,12 +390,7 @@ class IosCredentialIssuer(
             val wallet = issuers.first()
             val document = model.launchOpenID4VCIProvisioning(
                 offerUri = offerUri,
-                clientPreferences = OpenID4VCIClientPreferences(
-                    clientId = wallet.clientId,
-                    redirectUrl = wallet.redirectUri,
-                    locales = listOf(FALLBACK_LOCALE),
-                    signingAlgorithms = listOf(Algorithm.ESP256),
-                ),
+                clientPreferences = wallet.clientPreferences(),
                 backend = IosOpenID4VciBackend(
                     walletProviderBaseUrl = walletProviderBaseUrl,
                     clientId = wallet.clientId,
@@ -363,6 +484,18 @@ class IosCredentialIssuer(
     private fun DeferredIssuanceNotice.asFailureOr(cause: Throwable): Throwable =
         if (wasDeferred) IllegalStateException(DEFERRED_NOT_SUPPORTED) else cause
 
+    /**
+     * How this wallet identifies itself to an issuer. Identical for every call, so it is built once —
+     * the redirect in particular must be the URI registered for [IosVciIssuer.clientId], and an issuer
+     * that saw two different ones would reject the second with `Invalid parameter: redirect_uri`.
+     */
+    private fun IosVciIssuer.clientPreferences() = OpenID4VCIClientPreferences(
+        clientId = clientId,
+        redirectUrl = redirectUri,
+        locales = listOf(FALLBACK_LOCALE),
+        signingAlgorithms = listOf(Algorithm.ESP256),
+    )
+
     companion object {
         private const val TAG = "IosCredentialIssuer"
 
@@ -374,6 +507,18 @@ class IosCredentialIssuer(
         internal const val DEFERRED_NOT_SUPPORTED: String =
             "This issuer provides this document later, which this app cannot collect yet."
         private const val FALLBACK_LOCALE = "en"
+
+        // The four ways a credential refresh can end badly. Each says what a user could do about it,
+        // since these reach the details screen's error card verbatim.
+        internal const val NO_SUCH_DOCUMENT = "That document is no longer in this wallet."
+
+        internal const val NO_STORED_AUTHORIZATION =
+            "This document cannot be refreshed automatically. Add it again to get new credentials."
+
+        internal const val UNKNOWN_ISSUER =
+            "This wallet no longer has a connection to the issuer that provided this document."
+
+        internal const val REFRESH_FAILED = "Could not get new credentials for this document."
 
         /**
          * The wallet provider that attests this wallet instance, matching Android's `dev` flavour. Not on
