@@ -25,10 +25,10 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
-import eu.europa.ec.shared.wallet.multipaz.spike.MDOC_PID_DOC_TYPE
-import eu.europa.ec.shared.wallet.multipaz.spike.samplePidElements
-import eu.europa.ec.shared.wallet.multipaz.spike.sampleIssuerMetadata
-import eu.europa.ec.shared.wallet.multipaz.spike.seedMdocDocument
+import eu.europa.ec.shared.wallet.multipaz.harness.MDOC_PID_DOC_TYPE
+import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
+import eu.europa.ec.shared.wallet.multipaz.harness.sampleIssuerMetadata
+import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import kotlinx.coroutines.test.runTest
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage

@@ -19,6 +19,16 @@ import class SharedKit.WalletEngineProbeKt
 import class SharedKit.IosAuthorizationRedirects
 import class SharedKit.IosDeepLinks
 
+/// Launch argument that turns the wallet probe on.
+///
+/// The probe is how iOS behaviour is verified — `simctl` cannot tap, so a console run is the only way
+/// to see a screen's interactor work — but it is emphatically not something a launch should do by
+/// itself: it seeds fixture documents, sets a PIN, issues, presents and re-issues, all against the
+/// real store. Off unless asked for:
+///
+///     xcrun simctl launch --console-pty <device> <bundle-id> --wallet-probe
+private let walletProbeArgument = "--wallet-probe"
+
 /// Receives URLs opened on the app: the OpenID4VCI authorization redirect, credential offers, and a
 /// verifier's OpenID4VP presentation request.
 ///
@@ -54,15 +64,8 @@ struct iOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
-        // SPIKE: hand a Swift-implemented WalletEngine to Kotlin coroutine code and see whether the
-        // suspend calls actually round-trip. Result goes to the console.
-        WalletEngineProbeKt.probeWalletEngine(engine: SwiftWalletEngine()) { result in
-            print("WALLET-ENGINE-SPIKE: \(result)")
-        }
+        guard ProcessInfo.processInfo.arguments.contains(walletProbeArgument) else { return }
 
-        // The real thing: the Kotlin-over-multipaz iOS document layer, reading a fixture document it
-        // seeds into multipaz's DocumentStore. iOS has no issuance yet and the Documents screen is
-        // not shared, so the console is the only place this is visible.
         WalletEngineProbeKt.probeMultipazWalletEngine { line in
             print("MULTIPAZ-ENGINE: \(line)")
         }
@@ -70,17 +73,11 @@ struct iOSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            // The Compose Multiplatform spike is the root while we establish that shared view-models
-            // can drive real iOS UI. ContentView (the SwiftUI-calling-Kotlin spike from Phase 0) is
-            // still in the target and reachable from the tab below, so both paths stay exercised.
-            TabView {
-                ComposeSpikeView()
-                    .ignoresSafeArea()
-                    .tabItem { Label("Compose MP", systemImage: "square.stack.3d.up") }
-
-                ContentView()
-                    .tabItem { Label("SwiftUI", systemImage: "swift") }
-            }
+            // The shared Compose UI *is* the app. It used to be one tab of two, beside a SwiftUI
+            // screen that proved Swift could call Kotlin; that question was answered a long time ago
+            // and the tab bar outlived it.
+            WalletView()
+                .ignoresSafeArea()
             // The whole of the app shell's part in OpenID4VCI authorization: hand the redirect to
             // Kotlin, which has a coroutine waiting for it. Deciding whether it is *valid* belongs to
             // multipaz's provisioning client, which minted the `state` it carries.

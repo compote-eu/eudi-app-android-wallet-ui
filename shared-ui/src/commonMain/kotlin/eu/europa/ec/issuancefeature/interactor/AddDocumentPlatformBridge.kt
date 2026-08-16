@@ -34,7 +34,7 @@ import kotlinx.coroutines.flow.Flow
  * decision-making that both platforms want identically, so it lives in commonMain.
  *
  * Android implements this over wallet-core's `WalletCoreDocumentsController`. iOS cannot yet: OpenID4VCI
- * there means multipaz's `ProvisioningModel`, which works (it issues real PIDs in the issuance spike) but
+ * there means multipaz's `ProvisioningModel`, which works (it issues real PIDs) but
  * has no configuration source for *which* issuers to offer, so its implementation reports failure rather
  * than appearing to offer something.
  */

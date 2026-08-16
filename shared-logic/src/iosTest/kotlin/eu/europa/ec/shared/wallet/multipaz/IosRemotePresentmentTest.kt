@@ -29,8 +29,8 @@ import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimPathSegment
 import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
-import eu.europa.ec.shared.wallet.multipaz.spike.samplePidElements
-import eu.europa.ec.shared.wallet.multipaz.spike.seedMdocDocument
+import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
+import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject

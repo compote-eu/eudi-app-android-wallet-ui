@@ -27,7 +27,7 @@
 // correctness cannot be judged from inside: multipaz implements OpenID4VP 1.0, and whether that is what
 // the EUDI verifier wants is exactly the question. `/ui/presentations/{id}/events` answers it in the
 // verifier's own words.
-package eu.europa.ec.shared.wallet.multipaz.spike
+package eu.europa.ec.shared.wallet.multipaz.harness
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin

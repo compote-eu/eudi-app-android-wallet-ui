@@ -18,7 +18,7 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
-import eu.europa.ec.shared.wallet.multipaz.spike.certifyWithFixtureIssuer
+import eu.europa.ec.shared.wallet.multipaz.harness.certifyWithFixtureIssuer
 import kotlinx.coroutines.test.runTest
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm

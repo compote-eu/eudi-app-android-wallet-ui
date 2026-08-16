@@ -16,20 +16,19 @@
 
 import SwiftUI
 
-// Scoped import, as in ContentView: a whole-module `import SharedKit` would pull every public Kotlin
-// declaration into this file's namespace, where the view-models' top-level `State` collides with
-// SwiftUI.State.
-import class SharedKit.SplashSpikeKt
+// Scoped import: a whole-module `import SharedKit` would pull every public Kotlin declaration into
+// this file's namespace, where the view-models' top-level `State` collides with SwiftUI.State.
+import class SharedKit.IosAppRootKt
 
-/// Hosts the shared Compose Multiplatform UI.
+/// The wallet: the shared Compose Multiplatform UI, hosted in SwiftUI.
 ///
-/// Note how small the Swift surface is: one call returning a `UIViewController`. Under this
-/// architecture Swift never names a view-model, a state or an effect, which is what keeps the
-/// Obj-C flat-namespace export problem (`State`, `State_`, `State__`, …) harmless.
-struct ComposeSpikeView: UIViewControllerRepresentable {
+/// Note how small the Swift surface is — one call returning a `UIViewController`. Swift never names a
+/// view-model, a state or an effect, which is what keeps the Obj-C flat-namespace export problem
+/// (`State`, `State_`, `State__`, …) harmless.
+struct WalletView: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> UIViewController {
-        SplashSpikeKt.SplashSpikeViewController()
+        IosAppRootKt.WalletViewController()
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {

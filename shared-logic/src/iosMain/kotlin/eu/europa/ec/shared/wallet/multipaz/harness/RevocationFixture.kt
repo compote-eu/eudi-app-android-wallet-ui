@@ -24,7 +24,7 @@
 // prepared in separate app launches: the document embeds the certificate on one run, and a token
 // signed by the same key — printed by the probe, served from the developer's machine — satisfies it on
 // the next. Delete all of this once a real issuer's credentials carry status lists.
-package eu.europa.ec.shared.wallet.multipaz.spike
+package eu.europa.ec.shared.wallet.multipaz.harness
 
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import eu.europa.ec.shared.wallet.multipaz.MultipazWalletStore

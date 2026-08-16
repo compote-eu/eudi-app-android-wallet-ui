@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.shared.wallet.multipaz.spike
+package eu.europa.ec.shared.wallet.multipaz.harness
 
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
@@ -67,7 +67,8 @@ import kotlin.time.Instant
  * issuer's document-signer certificate — which is exactly the part the read path does not check.
  *
  * Kept beside the engine rather than in a test source set so the running app can seed itself, in the
- * same spirit as the `spike` package in `:shared-ui`. Delete it once iOS can issue for real.
+ * same spirit as the probe in `:shared-ui`. iOS can issue for real now, so what still needs these is
+ * narrower than it was: revocation, which no dev issuer publishes a status list for, and the tests.
  */
 internal suspend fun MultipazWalletStore.seedMdocDocument(
     docType: String,

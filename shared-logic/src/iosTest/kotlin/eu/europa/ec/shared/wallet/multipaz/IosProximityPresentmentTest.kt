@@ -23,8 +23,8 @@
 // and that the wallet's own credential domain is what bounds the offer.
 package eu.europa.ec.shared.wallet.multipaz
 
-import eu.europa.ec.shared.wallet.multipaz.spike.samplePidElements
-import eu.europa.ec.shared.wallet.multipaz.spike.seedMdocDocument
+import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
+import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy

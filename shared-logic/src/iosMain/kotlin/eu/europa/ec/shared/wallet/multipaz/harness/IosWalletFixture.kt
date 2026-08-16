@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.shared.wallet.multipaz.spike
+package eu.europa.ec.shared.wallet.multipaz.harness
 
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import eu.europa.ec.shared.wallet.multipaz.MultipazWalletStore

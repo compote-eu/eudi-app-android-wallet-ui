@@ -18,11 +18,11 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
-import eu.europa.ec.shared.wallet.multipaz.spike.MDOC_PID_DOC_TYPE
-import eu.europa.ec.shared.wallet.multipaz.spike.isEmpty
-import eu.europa.ec.shared.wallet.multipaz.spike.sampleIssuerMetadata
-import eu.europa.ec.shared.wallet.multipaz.spike.samplePidElements
-import eu.europa.ec.shared.wallet.multipaz.spike.seedMdocDocument
+import eu.europa.ec.shared.wallet.multipaz.harness.MDOC_PID_DOC_TYPE
+import eu.europa.ec.shared.wallet.multipaz.harness.isEmpty
+import eu.europa.ec.shared.wallet.multipaz.harness.sampleIssuerMetadata
+import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
+import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond

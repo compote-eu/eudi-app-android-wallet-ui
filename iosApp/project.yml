@@ -1,4 +1,4 @@
-# XcodeGen spec for the KMP-spike iOS app. Regenerate the .xcodeproj with:
+# XcodeGen spec for the iOS wallet app. Regenerate the .xcodeproj with:
 #   cd iosApp && xcodegen generate
 # The project is generated (not committed); project.yml is the source of truth.
 name: iosApp

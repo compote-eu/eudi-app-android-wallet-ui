@@ -1,4 +1,14 @@
-package eu.europa.ec.shared.ui.spike
+// How iOS behaviour gets verified.
+//
+// `simctl` cannot tap, so nothing on a screen can be reached by driving the UI; this walks the same
+// interactors the screens use and prints what they answer. That makes it the iOS counterpart of the
+// emulator runs on Android, not a test — it talks to the live EUDI dev issuer and verifier, and it
+// *writes*: it seeds fixture documents, sets a PIN, issues, presents and re-issues against the real
+// store.
+//
+// Which is why it does not run unless asked. `iOSApp.init()` starts it only for a launch carrying
+// `--wallet-probe`; an ordinary launch touches none of this.
+package eu.europa.ec.shared.ui.harness
 
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
@@ -42,19 +52,19 @@ import eu.europa.ec.shared.ui.di.IosDocumentOfferPlatformBridge
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
 import eu.europa.ec.shared.wallet.multipaz.IosDeepLinks
 import eu.europa.ec.shared.wallet.multipaz.IosIssuerCatalog
-import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_INDEX
-import eu.europa.ec.shared.wallet.multipaz.spike.REVOCATION_FIXTURE_URI
-import eu.europa.ec.shared.wallet.multipaz.spike.revocationFixtureToken
-import eu.europa.ec.shared.wallet.multipaz.spike.seedIosRevocableFixture
-import eu.europa.ec.shared.wallet.multipaz.spike.createVerifierTransaction
-import eu.europa.ec.shared.wallet.multipaz.spike.verifierEvents
+import eu.europa.ec.shared.wallet.multipaz.harness.REVOCATION_FIXTURE_INDEX
+import eu.europa.ec.shared.wallet.multipaz.harness.REVOCATION_FIXTURE_URI
+import eu.europa.ec.shared.wallet.multipaz.harness.revocationFixtureToken
+import eu.europa.ec.shared.wallet.multipaz.harness.seedIosRevocableFixture
+import eu.europa.ec.shared.wallet.multipaz.harness.createVerifierTransaction
+import eu.europa.ec.shared.wallet.multipaz.harness.verifierEvents
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingObserveResponsePartialState
 import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractorPartialState
 import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractorGetUiItemsPartialState
-import eu.europa.ec.shared.wallet.multipaz.spike.seedIosWalletFixture
+import eu.europa.ec.shared.wallet.multipaz.harness.seedIosWalletFixture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -80,35 +90,12 @@ import eu.europa.ec.proximityfeature.interactor.ProximitySuccessInteractor
 import org.koin.mp.KoinPlatform
 
 /**
- * SPIKE: calls a [WalletEngine] from Kotlin coroutine code, so a Swift implementation can be driven
- * through the same suspend surface the shared view-models use.
- */
-fun probeWalletEngine(engine: WalletEngine, onResult: (String) -> Unit) {
-    CoroutineScope(Dispatchers.Main).launch {
-        try {
-            val cheap = engine.getAllDocuments()
-            val detailed = engine.getAllDocumentsWithDetails(locale = "en")
-            val revoked = engine.isDocumentRevoked(documentId = "swift-1")
-            onResult(
-                "cheap=${cheap.size} detailed=${detailed.size} " +
-                        "name=${detailed.firstOrNull()?.name} " +
-                        "credentials=${detailed.firstOrNull()?.credentialsCount} revoked=$revoked"
-            )
-        } catch (t: Throwable) {
-            onResult("FAILED: ${t::class.simpleName}: ${t.message}")
-        }
-    }
-}
-
-/**
- * Console probe for the **real** iOS `WalletEngine` — the Kotlin-over-multipaz document layer.
+ * Walks the wallet's iOS half end to end, reporting each step to [onResult].
  *
- * There is no other way to see it work yet: iOS cannot issue a document (the OpenID4VCI library is
- * JVM-only) and the Documents screen is not shared, so this seeds a fixture document straight into
- * multipaz's store and then reads it back through the engine, reporting each line to [onResult].
- *
- * Retire it once iOS can issue and the Documents screen renders there — at that point the screen is
- * the better probe.
+ * Seeded fixtures come first because two things still need them: revocation, which no dev issuer
+ * publishes a status list for, and the empty-wallet paths. Everything after that is the real thing —
+ * real issuance from `dev.issuer-backend.eudiw.dev`, a real presentation to
+ * `dev.verifier-backend.eudiw.dev`, a real credential refresh.
  */
 fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
     CoroutineScope(Dispatchers.Main).launch {
@@ -314,8 +301,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                         "${newlyRevoked.map { it.id }}; cached=${engineForRevocation.getRevokedDocumentIds()}"
             )
 
-            // SPIKE: OpenID4VCI issuer metadata through multipaz, from iOS.
-            onResult("--- issuance spike: reading issuer metadata ---")
+            onResult("--- issuance ---")
             probeAuthentication(onResult)
             probeQrScan(onResult)
             probeProximity(onResult)
@@ -433,7 +419,13 @@ private suspend fun probeRemotePresentation(onResult: (String) -> Unit) {
                 "verifier '${asked.verifierName}' (trusted=${asked.verifierIsTrusted}) asked for " +
                         "${asked.combinationsUi.size} alternative(s), selectable=${asked.claimsAreSelectable}"
             )
-            asked.combinationsUi.firstOrNull()?.also { first ->
+            // A user picks the document they actually hold, not the first card. On a wallet that still
+            // has seeded fixtures the first card *is* one, and a fixture's MSO is self-signed with no
+            // x5chain — so presenting it proves only that the verifier validates, which is already
+            // known. Preferring a real credential keeps the run meaningful on a fresh wallet.
+            asked.combinationsUi.firstOrNull { combination ->
+                combination.documents.none { it.domainPayload.docName.contains("fixture") }
+            }?.also { first ->
                 first.documents.forEach { document ->
                     onResult(
                         "  would share ${document.domainPayload.docName}: " +

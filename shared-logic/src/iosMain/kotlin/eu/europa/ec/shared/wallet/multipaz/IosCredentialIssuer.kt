@@ -65,9 +65,9 @@ sealed interface IosIssuanceProgress {
 /**
  * Issues documents on iOS: OpenID4VCI through multipaz, into the same document store the wallet reads.
  *
- * This is the productized form of the issuance spike, which proved the path end to end against
+ * This is the productized form of the first issuance run, which proved the path end to end against
  * `dev.issuer-backend.eudiw.dev` — real PAR, real authorization, real credentials in the Secure Enclave.
- * What it adds over the spike is everything a screen needs: the browser hop, per-configuration
+ * What it adds over that is everything a screen needs: the browser hop, per-configuration
  * sequencing, and outcomes instead of printed lines.
  *
  * **One authorization per configuration, and that is multipaz's shape rather than a choice.**
@@ -169,18 +169,18 @@ class IosCredentialIssuer(
         val authorization = document.authorizationData
             ?: return IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION)
 
-        // ⚠️ Ask *before* opening a session, because opening one is not free.
+        // Ask *before* opening a session.
         //
-        // multipaz refreshes the OAuth token when it builds a provisioning client from stored
-        // authorization data, and the issuer rotates it. It then writes the new one back only inside
-        // the branch that actually fetched credentials — so a refresh that turns out to need none
-        // discards the rotated token, and the *next* refresh, the one that matters, is rejected with
-        // "Refresh token (seed credential) rejected by the issuer". Observed exactly that way here:
-        // three no-op refreshes, then a real one refused.
+        // Mostly because a session is a token request and a round trip to the issuer, and a document
+        // that needs no credentials should cost neither. There is a second reason from reading
+        // multipaz: it writes the (rotated) authorization data back only inside the branch that
+        // actually fetched credentials, so a session that fetches nothing discards whatever the token
+        // endpoint returned. That is a hazard rather than something seen happening here — a refresh
+        // failure observed on this stack turned out to be `401 invalid_client`, the issuer rejecting
+        // the client attestation, not the token.
         //
         // `managedCredentialHelper`'s dry run answers the same question multipaz would ask itself,
-        // from the same settings, without creating anything or touching the network. When the answer
-        // is none, the honest and cheap thing is to do nothing at all.
+        // from the same settings, without creating anything or touching the network.
         if (store.credentialsNeededFor(document) == 0) {
             Logger.i(TAG, "no credentials need replacing for $documentId; not opening a session")
             return IosIssuanceProgress.Issued(documentIds = listOf(documentId), credentialsFetched = 0)
@@ -537,7 +537,7 @@ class IosCredentialIssuer(
 
 /**
  * Hands the authorization URL to Safari. The answer comes back as a URL open on the app, which the app
- * delegate routes to [IosAuthorizationRedirects] — the same path the authorization spike used.
+ * delegate routes to [IosAuthorizationRedirects].
  *
  * On the main queue because UIKit requires it, and fire-and-forget because the interesting event is the
  * redirect, not the opening.
