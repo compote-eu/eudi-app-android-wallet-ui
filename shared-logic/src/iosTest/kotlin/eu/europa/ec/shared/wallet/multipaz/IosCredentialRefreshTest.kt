@@ -30,6 +30,10 @@ import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
 import eu.europa.ec.shared.wallet.multipaz.harness.sampleIssuerMetadata
 import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.CborMap
+import org.multipaz.cbor.Tstr
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
@@ -121,5 +125,120 @@ class IosCredentialRefreshTest {
         // evidence that it came from here.
         val failure = assertIs<IosIssuanceProgress.Failure>(progress)
         assertEquals(IosCredentialIssuer.UNKNOWN_ISSUER, failure.message)
+    }
+
+    // ---- dropping the expired wallet attestation multipaz would otherwise replay -----------------
+    //
+    // The one thing that had to be true for a refresh to ever succeed, and the reason none had. This
+    // wallet provider's attestations live 300 seconds; multipaz keeps the one from issuance and reuses
+    // it forever, so every refresh more than five minutes later authenticated with a dead credential.
+    // These cover the transform itself, since a live refresh belongs to a probe run.
+
+    /** The CBOR map multipaz writes for `OpenID4VCIAuthorizationData`, as far as this cares. */
+    private fun storedAuthorization(
+        walletAttestation: String? = "an.attestation.jwt",
+        walletAttestationKeyAlias: String? = "attestation-key",
+        dpopKeyAlias: String? = "dpop-key",
+        refreshToken: String? = "a-refresh-token",
+    ): ByteString {
+        val builder = CborMap.builder()
+        builder.put("issuerUri", Tstr("https://fixture.issuer.invalid"))
+        builder.put("configurationId", Tstr("pid_mdoc"))
+        builder.put("secureAreaId", Tstr("software"))
+        refreshToken?.let { builder.put("refreshToken", Tstr(it)) }
+        dpopKeyAlias?.let { builder.put("dpopKeyAlias", Tstr(it)) }
+        walletAttestationKeyAlias?.let { builder.put("walletAttestationKeyAlias", Tstr(it)) }
+        walletAttestation?.let { builder.put("walletAttestation", Tstr(it)) }
+        return ByteString(*Cbor.encode(builder.end().build()))
+    }
+
+    private fun keysOf(authorization: ByteString): Set<String> =
+        (Cbor.decode(authorization.toByteArray()) as CborMap)
+            .items.keys.map { (it as Tstr).value }.toSet()
+
+    @Test
+    fun the_stored_wallet_attestation_and_its_key_are_dropped() = runTest {
+        val stripped = withoutStoredWalletAttestation(storedAuthorization())
+
+        // Absent means null in this map, which is what makes multipaz mint a fresh attestation.
+        val keys = keysOf(stripped)
+        assertEquals(false, keys.contains("walletAttestation"))
+        assertEquals(false, keys.contains("walletAttestationKeyAlias"))
+    }
+
+    @Test
+    fun the_refresh_token_and_the_dpop_key_are_kept() = runTest {
+        val stripped = withoutStoredWalletAttestation(storedAuthorization())
+
+        // The DPoP key is what the refresh token is bound to: dropping it would turn this failure into
+        // `invalid_grant`, which is a worse place to be than where we started.
+        val keys = keysOf(stripped)
+        assertEquals(true, keys.contains("dpopKeyAlias"))
+        assertEquals(true, keys.contains("refreshToken"))
+        assertEquals(setOf("issuerUri", "configurationId", "secureAreaId"), keys - setOf("dpopKeyAlias", "refreshToken"))
+    }
+
+    @Test
+    fun authorization_that_stored_no_attestation_is_unchanged() = runTest {
+        val original = storedAuthorization(walletAttestation = null, walletAttestationKeyAlias = null)
+
+        assertEquals(keysOf(original), keysOf(withoutStoredWalletAttestation(original)))
+    }
+
+    // ---- which failure the user is told about ----------------------------------------------------
+
+    @Test
+    fun an_expired_refresh_token_says_to_add_the_document_again() = runTest {
+        val (store, _) = walletWith()
+        val refusal = TokenRefusalNotice().also { it.error = "invalid_grant" }
+
+        val message = refresherOver(store).refreshFailureMessage(
+            refusal = refusal,
+            deferred = DeferredIssuanceNotice(),
+            cause = IllegalStateException("Refresh token (seed credential) rejected by the issuer"),
+        )
+
+        // The failure a working wallet meets most often: this stack's refresh tokens live 30 minutes,
+        // so a document left alone for longer has nothing left to authorize with. multipaz's own
+        // sentence is true and unusable; this one says what to do.
+        assertEquals(IosCredentialIssuer.AUTHORIZATION_EXPIRED, message)
+        assertEquals(true, message.contains("Add it again"))
+    }
+
+    @Test
+    fun any_other_refusal_keeps_the_issuers_own_words() = runTest {
+        val (store, _) = walletWith()
+        val refusal = TokenRefusalNotice().also { it.error = "invalid_client" }
+
+        val message = refresherOver(store).refreshFailureMessage(
+            refusal = refusal,
+            deferred = DeferredIssuanceNotice(),
+            cause = IllegalStateException("something the issuer said"),
+        )
+
+        // Only `invalid_grant` gets a translation; everything else is passed on rather than guessed at.
+        assertEquals("something the issuer said", message)
+    }
+
+    @Test
+    fun a_refusal_with_nothing_to_go_on_falls_back_to_the_generic_message() = runTest {
+        val (store, _) = walletWith()
+
+        val message = refresherOver(store).refreshFailureMessage(
+            refusal = TokenRefusalNotice(),
+            deferred = DeferredIssuanceNotice(),
+            cause = IllegalStateException(),
+        )
+
+        assertEquals(IosCredentialIssuer.REFRESH_FAILED, message)
+    }
+
+    @Test
+    fun something_that_is_not_the_map_multipaz_writes_is_passed_through() = runTest {
+        // A schema change upstream, or a document from a build that stored something else. Guessing at
+        // it would be worse than handing multipaz back exactly what it stored.
+        val opaque = ByteString(1, 2, 3)
+
+        assertEquals(opaque, withoutStoredWalletAttestation(opaque))
     }
 }

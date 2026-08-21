@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
@@ -36,6 +37,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -156,10 +158,12 @@ class OpenID4VciHttpClientTest {
     private val asMetadataUrl = "https://as.test/.well-known/oauth-authorization-server"
     private val parEndpoint = "https://as.test/realms/r/protocol/openid-connect/ext/par/request"
     private val challengeEndpoint = "https://as.test/realms/r/challenge"
+    private val tokenEndpoint = "https://as.test/realms/r/protocol/openid-connect/token"
 
     private val asMetadata = """
         {"issuer":"https://as.test/realms/r",
          "challenge_endpoint":"$challengeEndpoint",
+         "token_endpoint":"$tokenEndpoint",
          "pushed_authorization_request_endpoint":"$parEndpoint"}
     """.trimIndent()
 
@@ -246,7 +250,7 @@ class OpenID4VciHttpClientTest {
         )
         client.get(asMetadataUrl).readRawBytes()
 
-        val token = client.post("https://as.test/realms/r/protocol/openid-connect/token")
+        val token = client.post(tokenEndpoint)
 
         assertNull(token.headers["OAuth-Client-Attestation-Challenge"])
     }
@@ -259,6 +263,199 @@ class OpenID4VciHttpClientTest {
         )
 
         assertEquals(asMetadata, client.get(asMetadataUrl).readRawBytes().decodeToString())
+    }
+
+    // ---- arming multipaz's retry for a refused refresh -------------------------------------------
+
+    /** A `MockEngine` that serves the AS metadata and the challenge endpoint, and lets the caller
+     * decide what the token endpoint answers. */
+    private fun engineAnsweringTokenWith(
+        challengeCount: () -> Unit = {},
+        tokenResponses: MutableList<HttpStatusCode>,
+    ) = MockEngine { request ->
+        when (request.url.toString()) {
+            asMetadataUrl -> respond(asMetadata, headers = headersOf("Content-Type", "application/json"))
+            challengeEndpoint -> {
+                challengeCount()
+                respond(
+                    """{"attestation_challenge":"fresh"}""",
+                    headers = headersOf("Content-Type", "application/json"),
+                )
+            }
+
+            tokenEndpoint -> respond(
+                """{"error":"invalid_client"}""",
+                tokenResponses.removeFirstOrNull() ?: HttpStatusCode.OK,
+            )
+
+            else -> respond("", HttpStatusCode.OK)
+        }
+    }
+
+    private suspend fun HttpClient.refreshTokenRequest() = submitForm(
+        url = tokenEndpoint,
+        formParameters = parametersOf("grant_type", "refresh_token"),
+    )
+
+    @Test
+    fun a_refused_refresh_is_given_the_challenge_and_the_nonce_multipaz_needs_to_retry() = runTest {
+        var challengeRequests = 0
+        val client = openID4VciHttpClient(
+            engineAnsweringTokenWith(
+                challengeCount = { challengeRequests++ },
+                tokenResponses = mutableListOf(HttpStatusCode.Unauthorized),
+            )
+        )
+        client.get(asMetadataUrl).readRawBytes()
+
+        val refused = client.refreshTokenRequest()
+
+        // Without this, `createWalletAttestationPoP` mints a PoP with no `challenge` claim at all and
+        // the issuer answers 401 invalid_client — measured against dev.issuer-backend.eudiw.dev.
+        assertEquals("fresh", refused.headers["OAuth-Client-Attestation-Challenge"])
+        assertEquals(1, challengeRequests)
+        // And the challenge alone is not enough: multipaz's retry is gated on knowing a DPoP nonce,
+        // which this authorization server never sends, so one has to be answered too.
+        assertNotNull(refused.headers["DPoP-Nonce"])
+    }
+
+    @Test
+    fun a_refused_refresh_still_reports_the_refusal_body_multipaz_logs() = runTest {
+        val client = openID4VciHttpClient(
+            engineAnsweringTokenWith(tokenResponses = mutableListOf(HttpStatusCode.Unauthorized))
+        )
+        client.get(asMetadataUrl).readRawBytes()
+
+        val refused = client.refreshTokenRequest()
+
+        // multipaz reads this body before it decides to retry, so arming the retry must not eat it.
+        assertEquals(HttpStatusCode.Unauthorized, refused.status)
+        assertEquals("""{"error":"invalid_client"}""", refused.bodyAsText())
+    }
+
+    @Test
+    fun a_refresh_the_issuer_accepts_is_left_alone() = runTest {
+        var challengeRequests = 0
+        val client = openID4VciHttpClient(
+            engineAnsweringTokenWith(
+                challengeCount = { challengeRequests++ },
+                tokenResponses = mutableListOf(HttpStatusCode.OK),
+            )
+        )
+        client.get(asMetadataUrl).readRawBytes()
+
+        val accepted = client.refreshTokenRequest()
+
+        // Nothing to work around when it worked: no challenge fetched, no headers invented.
+        assertEquals(0, challengeRequests)
+        assertNull(accepted.headers["DPoP-Nonce"])
+        assertNull(accepted.headers["OAuth-Client-Attestation-Challenge"])
+    }
+
+    @Test
+    fun only_the_first_refusal_is_armed_so_a_hopeless_refresh_still_ends() = runTest {
+        var challengeRequests = 0
+        val client = openID4VciHttpClient(
+            engineAnsweringTokenWith(
+                challengeCount = { challengeRequests++ },
+                tokenResponses = mutableListOf(
+                    HttpStatusCode.Unauthorized,
+                    HttpStatusCode.Unauthorized,
+                ),
+            )
+        )
+        client.get(asMetadataUrl).readRawBytes()
+
+        client.refreshTokenRequest()
+        val second = client.refreshTokenRequest()
+
+        // multipaz only retries once, so arming again would fetch a challenge nothing can use.
+        assertEquals(1, challengeRequests)
+        assertNull(second.headers["OAuth-Client-Attestation-Challenge"])
+    }
+
+    @Test
+    fun the_reason_the_issuer_gave_for_refusing_a_refresh_is_recorded() = runTest {
+        val refusal = TokenRefusalNotice()
+        val client = openID4VciHttpClient(
+            engine = MockEngine { request ->
+                when (request.url.toString()) {
+                    asMetadataUrl ->
+                        respond(asMetadata, headers = headersOf("Content-Type", "application/json"))
+
+                    else -> respond(
+                        """{"error":"invalid_grant","error_description":"Token is not active"}""",
+                        HttpStatusCode.BadRequest,
+                    )
+                }
+            },
+            refusalNotice = refusal,
+        )
+        client.get(asMetadataUrl).readRawBytes()
+
+        val refused = client.refreshTokenRequest()
+
+        // multipaz turns every one of these into the same sentence, so this is the only place the
+        // difference between "add it again" and "try later" survives.
+        assertEquals("invalid_grant", refusal.error)
+        // And the body still reaches multipaz, which logs it.
+        assertEquals(true, refused.bodyAsText().contains("Token is not active"))
+    }
+
+    @Test
+    fun an_expired_refresh_token_is_not_retried() = runTest {
+        var challengeRequests = 0
+        val client = openID4VciHttpClient(
+            engineAnsweringTokenWith(
+                challengeCount = { challengeRequests++ },
+                tokenResponses = mutableListOf(HttpStatusCode.BadRequest),
+            )
+        )
+        client.get(asMetadataUrl).readRawBytes()
+
+        client.refreshTokenRequest()
+
+        // A better client credential cannot revive a spent refresh token, so retrying only delays the
+        // message the user needs.
+        assertEquals(0, challengeRequests)
+    }
+
+    @Test
+    fun a_refused_authorization_code_exchange_is_not_armed() = runTest {
+        var challengeRequests = 0
+        val client = openID4VciHttpClient(
+            engineAnsweringTokenWith(
+                challengeCount = { challengeRequests++ },
+                tokenResponses = mutableListOf(HttpStatusCode.Unauthorized),
+            )
+        )
+        client.get(asMetadataUrl).readRawBytes()
+
+        val refused = client.submitForm(
+            url = tokenEndpoint,
+            formParameters = parametersOf("grant_type", "authorization_code"),
+        )
+
+        // That path gets its fresh challenge from the PAR response, and a 401 there is a real refusal
+        // to report rather than something to retry.
+        assertEquals(0, challengeRequests)
+        assertNull(refused.headers["OAuth-Client-Attestation-Challenge"])
+    }
+
+    @Test
+    fun a_refusal_with_no_challenge_endpoint_known_is_passed_straight_through() = runTest {
+        // No metadata read first, so the engine never learned where challenges come from.
+        val client = openID4VciHttpClient(
+            MockEngine { respond("""{"error":"invalid_client"}""", HttpStatusCode.Unauthorized) }
+        )
+
+        val refused = client.submitForm(
+            url = tokenEndpoint,
+            formParameters = parametersOf("grant_type", "refresh_token"),
+        )
+
+        assertNull(refused.headers["OAuth-Client-Attestation-Challenge"])
+        assertEquals(HttpStatusCode.Unauthorized, refused.status)
     }
 
     // ---- noticing a deferred issuance -----------------------------------------------------------

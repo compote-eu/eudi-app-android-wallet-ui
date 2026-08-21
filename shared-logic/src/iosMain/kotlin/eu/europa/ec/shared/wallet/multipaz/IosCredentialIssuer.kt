@@ -25,6 +25,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.CborMap
+import org.multipaz.cbor.Tstr
 import org.multipaz.crypto.Algorithm
 import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
@@ -142,8 +146,8 @@ class IosCredentialIssuer(
      * for exactly this, so a refresh needs no browser and no consent — the user already gave it.
      *
      * @return [IosIssuanceProgress.Issued] naming the same document it started with, or a failure that
-     *   says which of the two things went wrong: nothing stored to authorize with, or the issuer
-     *   refusing.
+     *   says which thing went wrong: nothing stored to authorize with, an authorization that has since
+     *   expired, or the issuer refusing for a reason only it knows.
      */
     suspend fun refreshCredentials(documentId: String): IosIssuanceProgress {
         val store = walletStore()
@@ -175,9 +179,11 @@ class IosCredentialIssuer(
         // that needs no credentials should cost neither. There is a second reason from reading
         // multipaz: it writes the (rotated) authorization data back only inside the branch that
         // actually fetched credentials, so a session that fetches nothing discards whatever the token
-        // endpoint returned. That is a hazard rather than something seen happening here — a refresh
-        // failure observed on this stack turned out to be `401 invalid_client`, the issuer rejecting
-        // the client attestation, not the token.
+        // endpoint returned. That one is still a code reading rather than something observed — the
+        // failure that actually stopped every refresh on this stack was `401 invalid_client`, and it
+        // had two causes, both worked around now: no attestation challenge on the refresh path
+        // (`armRefreshRetry`) and a replayed five-minute-old attestation
+        // ([withoutStoredWalletAttestation]).
         //
         // `managedCredentialHelper`'s dry run answers the same question multipaz would ask itself,
         // from the same settings, without creating anything or touching the network.
@@ -187,9 +193,11 @@ class IosCredentialIssuer(
         }
 
         val deferred = DeferredIssuanceNotice()
+        val refusal = TokenRefusalNotice()
         val httpClient = openID4VciHttpClient(
             engine = httpEngine ?: Darwin.create(),
             deferredNotice = deferred,
+            refusalNotice = refusal,
         )
 
         val model = ProvisioningModel(
@@ -205,7 +213,7 @@ class IosCredentialIssuer(
             // browser choreography applies. multipaz drives it to completion or throws.
             val fetched = model.openID4VCIRefreshCredentials(
                 document = document,
-                authorizationData = authorization,
+                authorizationData = withoutStoredWalletAttestation(authorization),
                 clientPreferences = issuer.clientPreferences(),
                 backend = IosOpenID4VciBackend(
                     walletProviderBaseUrl = walletProviderBaseUrl,
@@ -225,7 +233,7 @@ class IosCredentialIssuer(
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
-            IosIssuanceProgress.Failure(message = (deferred.asFailureOr(t)).message ?: REFRESH_FAILED)
+            IosIssuanceProgress.Failure(message = refreshFailureMessage(refusal, deferred, t))
         } finally {
             model.cancel()
             httpClient.close()
@@ -485,6 +493,25 @@ class IosCredentialIssuer(
         if (wasDeferred) IllegalStateException(DEFERRED_NOT_SUPPORTED) else cause
 
     /**
+     * What to tell the user when a refresh failed, preferring the issuer's own reason to multipaz's.
+     *
+     * `invalid_grant` is worth its own message because it is the failure a working wallet meets most:
+     * this stack's refresh tokens live **1800 seconds** (measured on a rotated one, `iat` 07:14:53 →
+     * `exp` 07:44:53), so a document left alone for longer than that has nothing left to authorize
+     * with. multipaz reports it as *"Refresh token (seed credential) rejected by the issuer"*, which is
+     * true and useless — the user can act on "add it again", not on that. Every other refusal keeps
+     * the generic message rather than guessing.
+     */
+    internal fun refreshFailureMessage(
+        refusal: TokenRefusalNotice,
+        deferred: DeferredIssuanceNotice,
+        cause: Throwable,
+    ): String = when (refusal.error) {
+        INVALID_GRANT -> AUTHORIZATION_EXPIRED
+        else -> deferred.asFailureOr(cause).message ?: REFRESH_FAILED
+    }
+
+    /**
      * How this wallet identifies itself to an issuer. Identical for every call, so it is built once —
      * the redirect in particular must be the URI registered for [IosVciIssuer.clientId], and an issuer
      * that saw two different ones would reject the second with `Invalid parameter: redirect_uri`.
@@ -520,6 +547,12 @@ class IosCredentialIssuer(
 
         internal const val REFRESH_FAILED = "Could not get new credentials for this document."
 
+        internal const val AUTHORIZATION_EXPIRED =
+            "This document's authorization has expired. Add it again to get new credentials."
+
+        /** OAuth's name for a refresh token that is spent, revoked or past its expiry. */
+        private const val INVALID_GRANT = "invalid_grant"
+
         /**
          * The wallet provider that attests this wallet instance, matching Android's `dev` flavour. Not on
          * [IosVciIssuer] because it is a property of the *wallet*, not of an issuer.
@@ -552,3 +585,49 @@ private fun openInSafari(url: String) {
         UIApplication.sharedApplication.openURL(nsUrl, emptyMap<Any?, Any>(), null)
     }
 }
+
+/**
+ * [authorization] with the stored wallet attestation dropped, so multipaz mints a fresh one instead of
+ * replaying an expired one.
+ *
+ * 🩹 **Working around a multipaz bug, and it is the reason a refresh had never once succeeded.**
+ * `obtainToken` reuses `authorizationData.walletAttestation` whenever it is non-null and mints a new one
+ * only when it is null. But this wallet provider issues attestations that live **300 seconds** —
+ * measured off one stored at issuance: `iat` 05:49:15, `exp` 05:54:15 — so the attestation kept with the
+ * document is dead five minutes later, and every refresh after that authenticates with an expired client
+ * credential. The issuer answers `401 invalid_client`, which multipaz reports as *"Refresh token (seed
+ * credential) rejected by the issuer"* — blaming the token for a rejection of the client.
+ *
+ * multipaz's own comment on `obtainWalletAttestation` says it obtains "a fresh wallet attestation for
+ * every session"; the refresh path is the one that does not. Dropping these two keys is what that intent
+ * looks like from out here — they are optional in the CBOR map, so an absent key *is* null — and
+ * `obtainWalletAttestation` then creates a new key and asks [IosOpenID4VciBackend] for an attestation
+ * over it.
+ *
+ * **The DPoP key is deliberately left alone.** That is what the refresh token is bound to, so replacing
+ * it would trade this failure for `invalid_grant`. Anything that is not the CBOR map multipaz writes is
+ * passed through untouched rather than guessed at.
+ */
+internal fun withoutStoredWalletAttestation(authorization: ByteString): ByteString {
+    val decoded = runCatching { Cbor.decode(authorization.toByteArray()) }.getOrNull()
+    val map = decoded as? CborMap ?: run {
+        Logger.w(REFRESH_TAG, "stored authorization is not a CBOR map; leaving it alone")
+        return authorization
+    }
+    val had = map.items.remove(Tstr(WALLET_ATTESTATION_KEY)) != null
+    map.items.remove(Tstr(WALLET_ATTESTATION_KEY_ALIAS_KEY))
+    if (had) {
+        Logger.i(REFRESH_TAG, "dropped the stored wallet attestation so a fresh one is minted")
+    }
+    return ByteString(*Cbor.encode(map))
+}
+
+/** Matches [IosCredentialIssuer]'s, since this is part of that flow. */
+private const val REFRESH_TAG = "IosCredentialIssuer"
+
+/**
+ * Keys in the CBOR map multipaz serialises `OpenID4VCIAuthorizationData` to. Optional there, so removing
+ * one is how a null is expressed.
+ */
+private const val WALLET_ATTESTATION_KEY = "walletAttestation"
+private const val WALLET_ATTESTATION_KEY_ALIAS_KEY = "walletAttestationKeyAlias"

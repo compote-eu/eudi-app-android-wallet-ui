@@ -77,6 +77,22 @@ class DeferredIssuanceNotice {
 }
 
 /**
+ * Why the authorization server refused a token exchange, in its own words.
+ *
+ * Written by [OpenID4VciCompatibilityEngine] and read after the attempt has failed, for the same reason
+ * [DeferredIssuanceNotice] exists: multipaz collapses every non-OK token response into one message —
+ * *"Refresh token (seed credential) rejected by the issuer"* — so the OAuth error code that says which
+ * thing was actually rejected is visible only here. It is the difference between "add this document
+ * again" and "try again later".
+ *
+ * @property error the `error` member of the refusal body, e.g. `invalid_grant` or `invalid_client`.
+ */
+class TokenRefusalNotice {
+    var error: String? = null
+        internal set
+}
+
+/**
  * The HTTP client multipaz's OpenID4VCI code should be given on iOS.
  *
  * Two things sit between it and the network, both because the EU dev issuers and multipaz disagree —
@@ -97,6 +113,10 @@ class DeferredIssuanceNotice {
  * 4. **multipaz asks for the credential with `authorization_details` where this server only understands
  *    `scope`**, which fails the token request with `400 invalid_authorization_details`. See
  *    [withScopeInsteadOfAuthorizationDetails] — also a multipaz bug, also a stop-gap.
+ * 5. **multipaz never fetches a client-attestation challenge for a credential *refresh* at all**, so
+ *    `grant_type=refresh_token` sends a PoP with no `challenge` claim and is refused `401
+ *    invalid_client`. Same underlying bug as (3), but a refresh makes no PAR request, so (3)'s hook
+ *    never fires. See [armRefreshRetry].
  *
  * Both live here rather than in a fork of multipaz because multipaz takes the client from its caller for
  * every request, which makes this the one seam that needs no patched dependency. Both should disappear:
@@ -109,8 +129,10 @@ internal fun openID4VciHttpClient(
     engine: HttpClientEngine = Darwin.create(),
     /** Filled in if the issuer defers an issuance during this client's lifetime. */
     deferredNotice: DeferredIssuanceNotice? = null,
+    /** Filled in if the authorization server refuses a token exchange. */
+    refusalNotice: TokenRefusalNotice? = null,
 ): HttpClient =
-    HttpClient(OpenID4VciCompatibilityEngine(engine, deferredNotice)) {
+    HttpClient(OpenID4VciCompatibilityEngine(engine, deferredNotice, refusalNotice)) {
         // multipaz's requirement, not ours: the OAuth redirect must come back to the caller so the
         // authorization code can be read off it.
         followRedirects = false
@@ -129,6 +151,7 @@ internal fun openID4VciHttpClient(
 internal class OpenID4VciCompatibilityEngine(
     private val delegate: HttpClientEngine,
     private val deferredNotice: DeferredIssuanceNotice? = null,
+    private val refusalNotice: TokenRefusalNotice? = null,
 ) : HttpClientEngineBase("openid4vci-compat") {
 
     override val config: HttpClientEngineConfig get() = delegate.config
@@ -142,6 +165,10 @@ internal class OpenID4VciCompatibilityEngine(
      */
     private var challengeEndpoint: String? = null
     private var pushedAuthorizationRequestEndpoint: String? = null
+    private var tokenEndpoint: String? = null
+
+    /** So the retry is armed once per session, not on every 401 the server sends. */
+    private var armedRefreshRetry = false
 
     /** `credential_configuration_id` → OAuth `scope`, from the credential issuer's own metadata. */
     private var scopesByConfigurationId: Map<String, String> = emptyMap()
@@ -150,6 +177,10 @@ internal class OpenID4VciCompatibilityEngine(
         val request =
             if (isPushedAuthorizationRequest(data)) withScopeInsteadOfAuthorizationDetails(data)
             else data
+
+        val isTokenExchange = isTokenRequest(data)
+        val isRefreshExchange = isTokenExchange && isRefreshGrant(data)
+        if (isTokenExchange) traceTokenRequest(data)
 
         val response = try {
             delegate.execute(request)
@@ -163,9 +194,14 @@ internal class OpenID4VciCompatibilityEngine(
             throw t
         }
 
+        if (isTokenExchange) traceTokenResponse(response)
+
         return when {
             isWellKnown(data) -> rememberEndpoints(data, response)
             isPushedAuthorizationRequest(data) -> injectFreshAttestationChallenge(response)
+            isRefreshExchange && response.statusCode != HttpStatusCode.OK ->
+                noteAndMaybeArm(response)
+
             isDeferredIssuance(response) -> noteDeferredIssuance(response)
             else -> response
         }
@@ -242,6 +278,17 @@ internal class OpenID4VciCompatibilityEngine(
         data.method == HttpMethod.Post &&
                 pushedAuthorizationRequestEndpoint?.let { data.url.toString() == it } == true
 
+    private fun isTokenRequest(data: HttpRequestData): Boolean =
+        data.method == HttpMethod.Post &&
+                tokenEndpoint?.let { data.url.toString() == it } == true
+
+    private fun isRefreshGrant(data: HttpRequestData): Boolean =
+        formParametersOf(data)?.get("grant_type") == "refresh_token"
+
+    private fun formParametersOf(data: HttpRequestData): Parameters? =
+        (data.body as? OutgoingContent.ByteArrayContent)
+            ?.bytes()?.decodeToString()?.parseUrlEncodedParameters()
+
     /**
      * Unwraps signed metadata if needed, and remembers the two endpoints [injectFreshAttestationChallenge]
      * depends on.
@@ -267,6 +314,7 @@ internal class OpenID4VciCompatibilityEngine(
             json["pushed_authorization_request_endpoint"]?.jsonPrimitive?.content?.let {
                 pushedAuthorizationRequestEndpoint = it
             }
+            json["token_endpoint"]?.jsonPrimitive?.content?.let { tokenEndpoint = it }
             json["credential_configurations_supported"]?.jsonObject?.let { configurations ->
                 scopesByConfigurationId = configurations.mapNotNull { (id, configuration) ->
                     configuration.jsonObject["scope"]?.jsonPrimitive?.content?.let { id to it }
@@ -313,19 +361,91 @@ internal class OpenID4VciCompatibilityEngine(
         }
 
         Logger.i(TAG, "injected a fresh attestation challenge into the PAR response")
-        return HttpResponseData(
-            statusCode = response.statusCode,
-            requestTime = response.requestTime,
-            headers = HeadersBuilder().apply {
-                appendAll(response.headers)
-                append(ATTESTATION_CHALLENGE_HEADER, challenge)
-            }.build(),
-            version = response.version,
-            // Untouched: this path never reads the body, so it can be passed straight through.
-            body = response.body,
-            callContext = response.callContext,
-        )
+        return response.withExtraHeaders { append(ATTESTATION_CHALLENGE_HEADER, challenge) }
     }
+
+    /**
+     * Records why a refresh was refused, and arms the retry if the refusal is one a retry can fix.
+     *
+     * Both halves need the body, and a response body can be read once, so they share one read. Only a
+     * `401` is worth retrying: that is the client being rejected, which [armRefreshRetry] can answer.
+     * A `400 invalid_grant` means the refresh token itself is spent or expired, and retrying it with
+     * better client credentials would fail the same way — the honest thing is to let it through and let
+     * the caller say so.
+     */
+    private suspend fun noteAndMaybeArm(response: HttpResponseData): HttpResponseData {
+        val (bytes, replayable) = replayableBody(response)
+        refusalNotice?.error = runCatching {
+            Json.parseToJsonElement(bytes.decodeToString())
+                .jsonObject["error"]?.jsonPrimitive?.contentOrNull
+        }.getOrNull()
+        refusalNotice?.error?.let { Logger.i(TAG, "the refresh was refused: $it") }
+
+        return if (response.statusCode == HttpStatusCode.Unauthorized) armRefreshRetry(replayable)
+        else replayable
+    }
+
+    /**
+     * Makes multipaz retry a refused **refresh** token request with a challenge it never fetched.
+     *
+     * 🩹 **The same multipaz bug as [injectFreshAttestationChallenge], on the path that shim cannot
+     * reach.** `obtainToken` refreshes the client-attestation challenge only when a pre-authorized code
+     * is in play, so on `grant_type=refresh_token` — a brand-new provisioning client, and no PAR
+     * anywhere in the flow — `clientAttestationChallenge` is still null when the PoP is minted, and
+     * `createWalletAttestationPoP` just leaves the claim out.
+     *
+     * Measured against `dev.issuer-backend.eudiw.dev`, not inferred: the refused refresh sends
+     * `OAuth-Client-Attestation-PoP` with `claims=[aud, iat, iss, jti]` and **no `challenge`**, while
+     * the issuance request accepted seconds later by the same endpoint carries one. So `401
+     * invalid_client` is the literal truth — the *client* was rejected, not the refresh token that
+     * multipaz's message blames. Note what this rules out: a PoP with no challenge claim at all fails
+     * the same way one second after issuance as it does a week later, so the wallet attestation's short
+     * life is not what is biting here.
+     *
+     * The only lever left is multipaz's own retry, which fires once per token exchange:
+     * ```
+     * response.headers["DPoP-Nonce"]?.let { authorizationDPoPNonce = it }
+     * response.headers["OAuth-Client-Attestation-Challenge"]?.let { clientAttestationChallenge = it }
+     * if (...) { if (!retried && authorizationDPoPNonce != null) { retried = true; continue } }
+     * ```
+     * It picks a fresh challenge off *this* response before deciding, so the challenge header alone
+     * would make the second attempt correct — but the retry is gated on a DPoP nonce this server never
+     * sends, so the header has to be answered too. See [RETRY_ARMING_DPOP_NONCE] for why that is
+     * tolerable.
+     */
+    private suspend fun armRefreshRetry(response: HttpResponseData): HttpResponseData {
+        if (armedRefreshRetry) return response
+        val endpoint = challengeEndpoint ?: return response
+
+        val challenge = runCatching { fetchAttestationChallenge(endpoint) }.getOrNull()
+        if (challenge == null) {
+            Logger.w(TAG, "no challenge to retry the refused refresh with; reporting the refusal")
+            return response
+        }
+
+        armedRefreshRetry = true
+        Logger.i(TAG, "arming multipaz's retry with a fresh attestation challenge for the refresh")
+        return response.withExtraHeaders {
+            if (response.headers[ATTESTATION_CHALLENGE_HEADER] == null) {
+                append(ATTESTATION_CHALLENGE_HEADER, challenge)
+            }
+            if (response.headers[DPOP_NONCE_HEADER] == null) {
+                append(DPOP_NONCE_HEADER, RETRY_ARMING_DPOP_NONCE)
+            }
+        }
+    }
+
+    /** The same response with more headers, and the body passed straight through unread. */
+    private fun HttpResponseData.withExtraHeaders(
+        extra: HeadersBuilder.() -> Unit,
+    ): HttpResponseData = HttpResponseData(
+        statusCode = statusCode,
+        requestTime = requestTime,
+        headers = HeadersBuilder().apply { appendAll(headers); extra() }.build(),
+        version = version,
+        body = body,
+        callContext = callContext,
+    )
 
     /**
      * Replaces `authorization_details` in a PAR body with the equivalent `scope`.
@@ -502,11 +622,73 @@ internal class OpenID4VciCompatibilityEngine(
         callContext = callContext(),
     )
 
+    /**
+     * Logs the *shape* of a token request, and what the server made of it.
+     *
+     * Values are deliberately absent: the form carries a refresh token and the headers carry a wallet
+     * attestation. What is logged is which parameters and headers are present, and which claims each
+     * proof JWT asserts — because that is what every token-endpoint failure on this stack has turned
+     * on. The first `401 invalid_client` was found by diffing Android's claim set against multipaz's,
+     * and so was the refresh one, which is why `challenge` is called out by name.
+     */
+    private fun traceTokenRequest(data: HttpRequestData) {
+        val parameters = formParametersOf(data)
+        Logger.i(
+            TAG,
+            "token request: grant_type=${parameters?.get("grant_type")} " +
+                    "params=${parameters?.names()?.sorted()} " +
+                    "headers=${data.headers.names().sorted()}"
+        )
+        listOf(DPOP_HEADER, ATTESTATION_POP_HEADER).forEach { header ->
+            data.headers[header]?.let { Logger.i(TAG, "  $header -> ${claimsOf(it)}") }
+        }
+    }
+
+    private fun traceTokenResponse(response: HttpResponseData) {
+        Logger.i(
+            TAG,
+            "token response: ${response.statusCode}" +
+                    ", $DPOP_NONCE_HEADER=${presence(response.headers[DPOP_NONCE_HEADER])}" +
+                    ", $ATTESTATION_CHALLENGE_HEADER=" +
+                    presence(response.headers[ATTESTATION_CHALLENGE_HEADER])
+        )
+    }
+
+    /** The claims a proof JWT asserts, with `challenge` called out since that is the one that bites. */
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun claimsOf(jwt: String): String = runCatching {
+        val payload = Json.parseToJsonElement(
+            Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL)
+                .decode(jwt.split('.')[1])
+                .decodeToString()
+        ).jsonObject
+        "claims=${payload.keys.sorted()}, " +
+                "challenge=${if (payload.containsKey("challenge")) "present" else "ABSENT"}"
+    }.getOrElse { "unparseable" }
+
+    private fun presence(value: String?): String = if (value != null) "present" else "absent"
+
     private companion object {
         const val TAG = "OpenID4VciHttpClient"
         const val WELL_KNOWN = ".well-known"
         const val CONTENT_TYPE = "Content-Type"
         const val CONTENT_LENGTH = "Content-Length"
         const val ATTESTATION_CHALLENGE_HEADER = "OAuth-Client-Attestation-Challenge"
+        const val ATTESTATION_POP_HEADER = "OAuth-Client-Attestation-PoP"
+        const val DPOP_HEADER = "DPoP"
+        const val DPOP_NONCE_HEADER = "DPoP-Nonce"
+
+        /**
+         * Handed to multipaz as a `DPoP-Nonce` purely so its retry fires; the value is never checked
+         * by anything that matters.
+         *
+         * This authorization server does not use DPoP nonces — it sends none on any response, and
+         * RFC 9449 has a server ignore a `nonce` claim it did not ask for — so the retried proof
+         * carrying one costs nothing. It is confined to the token endpoint too: multipaz keeps the
+         * issuer's nonce in a separate field, so the credential requests that follow are untouched.
+         * If the server ever does start demanding nonces, it will send a real one and this is never
+         * reached.
+         */
+        const val RETRY_ARMING_DPOP_NONCE = "retry"
     }
 }
