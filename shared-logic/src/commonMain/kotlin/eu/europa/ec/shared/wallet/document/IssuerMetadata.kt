@@ -88,6 +88,24 @@ internal data class IssuerMetadata(
             @SerialName("name") val name: String? = null,
             @SerialName("locale") val locale: String? = null,
         )
+
+        /**
+         * This claim's name in [locale], or the closest thing to it.
+         *
+         * Falls back in the order a reader would want: the exact locale, then its language (`en` for
+         * `en-GB`), then an entry with no locale at all, then the first one published. Null only when
+         * the issuer named the claim in no language, which leaves the caller free to show the
+         * identifier.
+         */
+        fun displayNameFor(locale: String): String? {
+            val language = locale.substringBefore('-').substringBefore('_')
+            return display.firstOrNull { it.locale == locale }?.name
+                ?: display.firstOrNull {
+                    it.locale?.substringBefore('-')?.substringBefore('_') == language
+                }?.name
+                ?: display.firstOrNull { it.locale == null }?.name
+                ?: display.firstOrNull { it.name != null }?.name
+        }
     }
 
     companion object {

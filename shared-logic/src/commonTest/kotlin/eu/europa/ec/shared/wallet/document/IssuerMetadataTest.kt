@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.document
 
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -23,6 +24,8 @@ import kotlin.test.assertTrue
 
 /** Runs on both Android (JVM) and iOS (Kotlin/Native) from the same source. */
 class IssuerMetadataTest {
+
+    private val JsonFormatForTest = Json { ignoreUnknownKeys = true }
 
     // The wire form the Android document manager writes: locales as BCP-47 tags, logo URIs as
     // strings. Parsing this unchanged is the whole point of the port.
@@ -175,4 +178,72 @@ class IssuerMetadataTest {
     }
 
     //endregion
+
+    // ---- resolving a claim's name for a locale --------------------------------------------------
+    //
+    // The stored shape keeps every language the issuer published, keyed by claim path, and picks one
+    // when the screen is drawn. These pin the fallback order, which is the whole of that decision.
+
+    private fun claim(vararg display: Pair<String?, String>) = IssuerMetadata.Claim(
+        path = listOf("eu.europa.ec.eudi.pid.1", "family_name"),
+        display = display.map { (locale, name) ->
+            IssuerMetadata.Claim.Display(name = name, locale = locale)
+        },
+    )
+
+    @Test
+    fun an_exact_locale_match_wins() {
+        val subject = claim("en" to "Family Name(s)", "de" to "Familienname")
+
+        assertEquals("Familienname", subject.displayNameFor("de"))
+    }
+
+    @Test
+    fun a_region_falls_back_to_its_language() {
+        // The screen asks with whatever `NSLocale` gives, which is often regional; issuers publish the
+        // bare language. Without this, `en-GB` would miss an `en` entry entirely.
+        val subject = claim("en" to "Family Name(s)")
+
+        assertEquals("Family Name(s)", subject.displayNameFor("en-GB"))
+        assertEquals("Family Name(s)", subject.displayNameFor("en_US"))
+    }
+
+    @Test
+    fun an_unlocalized_entry_is_used_when_no_language_matches() {
+        val subject = claim(null to "Family Name(s)")
+
+        assertEquals("Family Name(s)", subject.displayNameFor("sk"))
+    }
+
+    @Test
+    fun an_unmatched_locale_still_returns_something_rather_than_nothing() {
+        // The EU dev issuer publishes `en` only, so this is the Slovak case in practice: a name in the
+        // wrong language beats a raw data-element identifier on screen.
+        val subject = claim("en" to "Family Name(s)")
+
+        assertEquals("Family Name(s)", subject.displayNameFor("sk"))
+    }
+
+    @Test
+    fun a_claim_the_issuer_never_named_resolves_to_null() {
+        // Which is what lets the reader fall back to the identifier instead of showing an empty title.
+        val subject = IssuerMetadata.Claim(path = listOf("ns", "family_name"))
+
+        assertEquals(null, subject.displayNameFor("en"))
+    }
+
+    @Test
+    fun the_wire_shape_the_issuer_actually_sends_round_trips() {
+        // Copied from dev.issuer-backend.eudiw.dev's `credential_metadata.claims[0]`, so a change in
+        // that shape fails here rather than silently producing unnamed claims.
+        val wire = """
+            {"path":["eu.europa.ec.eudi.pid.1","family_name"],"mandatory":true,
+             "display":[{"name":"Family Name(s)","locale":"en"}]}
+        """.trimIndent()
+        val parsed = JsonFormatForTest.decodeFromString(IssuerMetadata.Claim.serializer(), wire)
+
+        assertEquals(listOf("eu.europa.ec.eudi.pid.1", "family_name"), parsed.path)
+        assertEquals(true, parsed.mandatory)
+        assertEquals("Family Name(s)", parsed.displayNameFor("en"))
+    }
 }

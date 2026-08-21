@@ -458,6 +458,82 @@ class OpenID4VciHttpClientTest {
         assertEquals(HttpStatusCode.Unauthorized, refused.status)
     }
 
+    // ---- keeping the issuer's per-claim display names --------------------------------------------
+
+    @Test
+    fun claim_display_names_are_kept_from_the_metadata_multipaz_discards() = runTest {
+        val notice = IssuerClaimDisplayNotice()
+        // The shape dev.issuer-backend.eudiw.dev actually publishes: names live under
+        // `credential_metadata.claims`, and the join key is the configuration's doctype, not its id.
+        val metadata = """
+            {"credential_issuer":"https://issuer.test",
+             "credential_configurations_supported":{
+               "pid_mdoc":{"format":"mso_mdoc","doctype":"eu.europa.ec.eudi.pid.1","scope":"pid",
+                 "credential_metadata":{"claims":[
+                   {"path":["eu.europa.ec.eudi.pid.1","family_name"],"mandatory":true,
+                    "display":[{"name":"Family Name(s)","locale":"en"}]},
+                   {"path":["eu.europa.ec.eudi.pid.1","given_name"],
+                    "display":[{"name":"Given Name(s)","locale":"en"}]}]}}}}
+        """.trimIndent()
+        val client = openID4VciHttpClient(
+            engine = MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) },
+            claimDisplayNotice = notice,
+        )
+
+        client.get(metadataUrl).readRawBytes()
+
+        val claims = notice.claimsByDocumentType.getValue("eu.europa.ec.eudi.pid.1")
+        assertEquals(2, claims.size)
+        assertEquals("Family Name(s)", claims.first().displayNameFor("en"))
+        // Keyed by doctype, because `CredentialMetadata.format.formatId` is only "mso_mdoc" and would
+        // not tell two documents apart.
+        assertEquals(setOf("eu.europa.ec.eudi.pid.1"), notice.claimsByDocumentType.keys)
+    }
+
+    @Test
+    fun metadata_with_no_claims_leaves_the_notice_empty_rather_than_failing() = runTest {
+        val notice = IssuerClaimDisplayNotice()
+        // Exactly the older-issuer case; naming claims is cosmetic and must never fail an issuance.
+        val client = openID4VciHttpClient(
+            engine = MockEngine {
+                respond(
+                    """{"credential_issuer":"https://issuer.test",
+                        "credential_configurations_supported":{
+                          "pid_mdoc":{"format":"mso_mdoc","doctype":"d","scope":"s"}}}""",
+                    headers = headersOf("Content-Type", "application/json"),
+                )
+            },
+            claimDisplayNotice = notice,
+        )
+
+        client.get(metadataUrl).readRawBytes()
+
+        assertTrue(notice.claimsByDocumentType.isEmpty())
+    }
+
+    @Test
+    fun an_unexpected_member_inside_a_claim_does_not_lose_the_whole_set() = runTest {
+        val notice = IssuerClaimDisplayNotice()
+        // Issuers publish more per claim than this reads; a new member must not cost the names.
+        val client = openID4VciHttpClient(
+            engine = MockEngine {
+                respond(
+                    """{"credential_issuer":"https://issuer.test",
+                        "credential_configurations_supported":{
+                          "pid":{"doctype":"d","credential_metadata":{"claims":[
+                            {"path":["ns","family_name"],"something_new":42,
+                             "display":[{"name":"Family Name(s)","locale":"en"}]}]}}}}""",
+                    headers = headersOf("Content-Type", "application/json"),
+                )
+            },
+            claimDisplayNotice = notice,
+        )
+
+        client.get(metadataUrl).readRawBytes()
+
+        assertEquals("Family Name(s)", notice.claimsByDocumentType.getValue("d").single().displayNameFor("en"))
+    }
+
     // ---- noticing a deferred issuance -----------------------------------------------------------
 
     @Test

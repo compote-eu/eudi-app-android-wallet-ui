@@ -66,6 +66,11 @@ internal class IosDocumentProvisioningHandler(
      * issuers advertise far more (20 and 100) than a wallet needs per document.
      */
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
+    /**
+     * The issuer's per-claim display names, filled in by [OpenID4VciCompatibilityEngine] while it reads
+     * the metadata. Null leaves claims unnamed, which is what every document issued before this did.
+     */
+    private val claimDisplay: IssuerClaimDisplayNotice? = null,
 ) : DocumentProvisioningHandler(
     secureArea = store.keySecureArea,
     documentStore = store.documentStore,
@@ -152,6 +157,13 @@ internal class IosDocumentProvisioningHandler(
         issuerDisplay = listOf(
             IssuerMetadata.IssuerDisplay(name = issuerMetadata.display.text)
         ),
+        // The issuer's own per-claim names, so the details screen can say "Family Name(s)" rather than
+        // `family_name`. Joined on doctype/vct because that is the only key both sides have — see
+        // [IssuerClaimDisplayNotice]. Null when the issuer published none, which is a display gap and
+        // never a wrong value: the reader falls back to the identifier.
+        claims = claimDisplay
+            ?.claimsByDocumentType
+            ?.get(credentialMetadata.format.toStoredFormat().identifier),
     )
 
     private fun CredentialFormat.toStoredFormat(): StoredDocumentFormat = when (this) {

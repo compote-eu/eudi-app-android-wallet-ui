@@ -44,12 +44,14 @@ import io.ktor.util.date.GMTDate
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.readRemaining
 import kotlinx.io.readByteArray
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import org.multipaz.util.Logger
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -74,6 +76,25 @@ class DeferredIssuanceNotice {
 
     /** True once the issuer has deferred this attempt. */
     val wasDeferred: Boolean get() = transactionId != null
+}
+
+/**
+ * The issuer's per-claim display names, which only the raw metadata carries.
+ *
+ * Written by [OpenID4VciCompatibilityEngine] while it is already reading the metadata JSON, and read by
+ * the provisioning handler when it builds the document's [IssuerMetadata]. It exists for the same reason
+ * [DeferredIssuanceNotice] does: **multipaz parses the credential configuration and throws this part
+ * away** — its `CredentialMetadata` keeps a credential-level `display` and no per-claim display at all —
+ * so the engine is the only place that still sees it.
+ *
+ * Keyed by **doctype or vct**, not by configuration id: the handler joins on
+ * `StoredDocumentFormat.identifier`, and `CredentialMetadata.format.formatId` is only the *format*
+ * (`mso_mdoc`), which would not distinguish two documents. Configurations that share a doctype — this
+ * issuer's `_deferred` twins do — carry the same claims, so last-one-wins is harmless.
+ */
+internal class IssuerClaimDisplayNotice {
+    var claimsByDocumentType: Map<String, List<IssuerMetadata.Claim>> = emptyMap()
+        internal set
 }
 
 /**
@@ -131,8 +152,12 @@ internal fun openID4VciHttpClient(
     deferredNotice: DeferredIssuanceNotice? = null,
     /** Filled in if the authorization server refuses a token exchange. */
     refusalNotice: TokenRefusalNotice? = null,
+    /** Filled in with the issuer's per-claim display names, which multipaz discards. */
+    claimDisplayNotice: IssuerClaimDisplayNotice? = null,
 ): HttpClient =
-    HttpClient(OpenID4VciCompatibilityEngine(engine, deferredNotice, refusalNotice)) {
+    HttpClient(
+        OpenID4VciCompatibilityEngine(engine, deferredNotice, refusalNotice, claimDisplayNotice)
+    ) {
         // multipaz's requirement, not ours: the OAuth redirect must come back to the caller so the
         // authorization code can be read off it.
         followRedirects = false
@@ -152,6 +177,7 @@ internal class OpenID4VciCompatibilityEngine(
     private val delegate: HttpClientEngine,
     private val deferredNotice: DeferredIssuanceNotice? = null,
     private val refusalNotice: TokenRefusalNotice? = null,
+    private val claimDisplayNotice: IssuerClaimDisplayNotice? = null,
 ) : HttpClientEngineBase("openid4vci-compat") {
 
     override val config: HttpClientEngineConfig get() = delegate.config
@@ -320,10 +346,44 @@ internal class OpenID4VciCompatibilityEngine(
                     configuration.jsonObject["scope"]?.jsonPrimitive?.content?.let { id to it }
                 }.toMap()
                 Logger.i(TAG, "learned ${scopesByConfigurationId.size} credential scopes")
+                rememberClaimDisplayNames(configurations)
             }
         }
 
         return unwrapped.replacingBody(bytes, asJson = true)
+    }
+
+    /**
+     * Keeps the per-claim display names out of `credential_metadata.claims`, so a document can show
+     * "Family Name(s)" instead of `family_name`.
+     *
+     * Deserialised straight into [IssuerMetadata.Claim], whose `@SerialName`s already match the wire
+     * shape — the alternative was a hand-rolled parse of the same JSON. Unknown members are ignored
+     * because the issuer publishes more per claim than this needs, and a new one must not fail an
+     * issuance over a cosmetic feature.
+     */
+    private fun rememberClaimDisplayNames(configurations: JsonObject) {
+        val notice = claimDisplayNotice ?: return
+        val byDocumentType = configurations.values.mapNotNull { configuration ->
+            val configured = configuration.jsonObject
+            // `doctype` for mdoc, `vct` for SD-JWT VC — whichever this configuration is.
+            val documentType = (configured["doctype"] ?: configured["vct"])
+                ?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val claims = configured["credential_metadata"]?.jsonObject?.get("claims")
+                ?: return@mapNotNull null
+            runCatching {
+                documentType to LenientJson.decodeFromJsonElement(ListSerializer(IssuerMetadata.Claim.serializer()), claims)
+            }.getOrNull()
+        }.toMap()
+
+        if (byDocumentType.isNotEmpty()) {
+            notice.claimsByDocumentType = byDocumentType
+            Logger.i(
+                TAG,
+                "learned claim display names for ${byDocumentType.size} document type(s): " +
+                        byDocumentType.entries.joinToString { "${it.key}=${it.value.size}" }
+            )
+        }
     }
 
     /**
@@ -670,6 +730,9 @@ internal class OpenID4VciCompatibilityEngine(
 
     private companion object {
         const val TAG = "OpenID4VciHttpClient"
+
+        /** The issuer publishes more per claim than this reads; ignoring the rest is deliberate. */
+        val LenientJson = Json { ignoreUnknownKeys = true }
         const val WELL_KNOWN = ".well-known"
         const val CONTENT_TYPE = "Content-Type"
         const val CONTENT_LENGTH = "Content-Length"

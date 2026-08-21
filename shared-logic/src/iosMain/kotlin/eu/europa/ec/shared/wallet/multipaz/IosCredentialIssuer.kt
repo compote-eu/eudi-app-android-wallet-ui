@@ -317,16 +317,18 @@ class IosCredentialIssuer(
     /** Drives one OpenID4VCI flow to a document, or throws with what went wrong. */
     private suspend fun provision(issuer: IosVciIssuer, configurationId: String): String {
         val deferred = DeferredIssuanceNotice()
+        val claimDisplay = IssuerClaimDisplayNotice()
         val httpClient = openID4VciHttpClient(
             engine = httpEngine ?: Darwin.create(),
             deferredNotice = deferred,
+            claimDisplayNotice = claimDisplay,
         )
         val walletStore = walletEngine.store()
         // A redirect left over from an earlier attempt carries a spent authorization code.
         IosAuthorizationRedirects.clear()
 
         val model = ProvisioningModel(
-            documentProvisioningHandler = IosDocumentProvisioningHandler(walletStore),
+            documentProvisioningHandler = IosDocumentProvisioningHandler(walletStore, claimDisplay = claimDisplay),
             httpClient = httpClient,
             promptModel = Platform.promptModel,
             authorizationSecureArea = walletStore.keySecureArea,
@@ -377,15 +379,17 @@ class IosCredentialIssuer(
      */
     private suspend fun provision(offerUri: String, txCode: String?): String {
         val deferred = DeferredIssuanceNotice()
+        val claimDisplay = IssuerClaimDisplayNotice()
         val httpClient = openID4VciHttpClient(
             engine = httpEngine ?: Darwin.create(),
             deferredNotice = deferred,
+            claimDisplayNotice = claimDisplay,
         )
         val walletStore = walletEngine.store()
         IosAuthorizationRedirects.clear()
 
         val model = ProvisioningModel(
-            documentProvisioningHandler = IosDocumentProvisioningHandler(walletStore),
+            documentProvisioningHandler = IosDocumentProvisioningHandler(walletStore, claimDisplay = claimDisplay),
             httpClient = httpClient,
             promptModel = Platform.promptModel,
             authorizationSecureArea = walletStore.keySecureArea,

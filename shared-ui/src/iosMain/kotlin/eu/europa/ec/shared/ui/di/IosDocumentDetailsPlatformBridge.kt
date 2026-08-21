@@ -50,9 +50,10 @@ import platform.Foundation.languageCode
  * within a namespace. Nesting only arises for SD-JWT VC, whose parsing needs the JVM-only
  * `eudi-lib-jvm-sdjwt-kt`; when that arrives this is where the grouping goes.
  *
- * Claim display titles are the raw data-element identifiers rather than localized names: the localized
- * names live in the issuer metadata's per-claim display, which the engine does not surface yet. Android
- * resolves them through `getLocalizedClaimName`, so this is a known cosmetic gap, not a wrong value.
+ * Claim display titles are the issuer's own localized names, resolved for the requested locale from the
+ * per-claim display stored with the document — the same source Android's `getLocalizedClaimName` reads.
+ * They fall back to the raw data-element identifier for documents provisioned before those names were
+ * stored, and for claims the issuer never named.
  */
 internal class IosDocumentDetailsPlatformBridge(
     private val engine: IosWalletEngine,
@@ -73,6 +74,9 @@ internal class IosDocumentDetailsPlatformBridge(
         // Empty for a document this wallet did not provision — a seeded fixture — which is also the
         // case `reIssueDocument` refuses.
         val issuer = engine.getIssuerReference(documentId)
+        // Resolved for the locale the screen asked for, not the one at issuance: the stored metadata
+        // keeps every language the issuer published.
+        val claimNames = engine.getClaimDisplayNames(documentId, locale)
 
         return PlatformDocumentDetails(
             documentDetailsDomain = DocumentDetailsDomain(
@@ -81,7 +85,7 @@ internal class IosDocumentDetailsPlatformBridge(
                 issuerId = issuer?.issuerId.orEmpty(),
                 documentConfigId = issuer?.documentConfigId.orEmpty(),
                 documentIdentifier = document.formatType.toDocumentIdentifier(),
-                documentClaims = claims.toClaimDomains(document.formatType),
+                documentClaims = claims.toClaimDomains(document.formatType, claimNames),
                 documentIssuanceDate = document.issuedAt
                     ?.formatInstant(DAY_MONTH_YEAR_FULL_PATTERN)
                     .orEmpty(),
@@ -193,10 +197,13 @@ internal class IosDocumentDetailsPlatformBridge(
      */
     private fun Map<String, StoredMdocClaim>.toClaimDomains(
         formatType: String,
+        displayNames: Map<String, String>,
     ): List<ClaimDomain> = map { (identifier, claim) ->
         ClaimDomain.Primitive(
             key = identifier,
-            displayTitle = identifier,
+            // The issuer's own name for this claim, falling back to the identifier — which is what every
+            // document provisioned before claim names were stored still shows.
+            displayTitle = displayNames[identifier] ?: identifier,
             path = ClaimPathDomain(
                 segments = listOf(ClaimPathSegment.Key(identifier)),
                 type = ClaimType.MsoMdoc(namespace = claim.nameSpace ?: formatType),

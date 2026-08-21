@@ -155,6 +155,36 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                     }
             }
 
+            // The same path again, but for a document this wallet actually *provisioned* — the only
+            // kind that carries the issuer's per-claim display names. The fixture above deliberately
+            // does not, so it shows raw identifiers; printing both is what makes the difference
+            // visible, and a regression in either direction obvious.
+            engine.getAllDocumentsWithDetails(locale = "en")
+                // A *real* issuer, not just any issuer metadata: the seeded fixtures carry
+                // `sampleIssuerMetadata`, so "has an issuer reference" picks one of those and shows
+                // identifiers — which is exactly how the first version of this check fooled itself.
+                .firstOrNull {
+                    engineForRevocation.getIssuerReference(it.id)
+                        ?.issuerId?.startsWith("https://dev.") == true
+                }
+                ?.let { provisioned ->
+                    listOf("en", "sk").forEach { locale ->
+                        val details = KoinPlatform.getKoin().get<DocumentDetailsInteractor>()
+                            .getDocumentDetails(provisioned.id, wasIssuerDetailsExpanded = false)
+                            .first()
+                        onResult(
+                            "[$locale] provisioned claim titles -> " + when (details) {
+                                is DocumentDetailsInteractorPartialState.Success ->
+                                    details.documentDetailsDomain.documentClaims
+                                        .take(3)
+                                        .joinToString { it.displayTitle }
+
+                                is DocumentDetailsInteractorPartialState.Failure -> "FAILED: ${details.error}"
+                            }
+                        )
+                    }
+                }
+
             // The two dashboard paths a screenshot cannot reach, since `simctl` cannot synthesise the
             // tap that would open the side menu or select another tab. Both are new on iOS with the
             // shared `DashboardScreen`, and neither had ever run here before it.
