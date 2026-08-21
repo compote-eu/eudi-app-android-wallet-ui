@@ -60,6 +60,20 @@ internal class EudiDocumentMetadata private constructor(
     val issuedAt: Instant? get() = data.issuedAt
 
     /**
+     * Records the issuer's per-claim display names on a document that was provisioned before they were
+     * captured. Same contract as [issue]: the caller persists via `Document.edit`.
+     *
+     * **An empty list is meaningful and is stored deliberately.** `claims == null` means "never looked",
+     * an empty list means "looked, and this issuer publishes none" — so one successful fetch settles a
+     * document forever, instead of re-fetching on every view. A *failed* fetch must therefore not call
+     * this, or the document would be marked settled on the strength of a dropped connection.
+     */
+    fun rememberClaimNames(claims: List<IssuerMetadata.Claim>) {
+        val issuer = data.issuerMetadata ?: return
+        data = data.copy(issuerMetadata = issuer.copy(claims = claims))
+    }
+
+    /**
      * Marks the document issued, stamping [issuedAt]. Mirrors `ApplicationMetadata.issue`, including
      * its contract: the caller is responsible for persisting the change via `Document.edit`.
      */

@@ -48,6 +48,10 @@ class IosWalletEngine : WalletEngine {
     suspend fun getNamespacedClaims(documentId: String): Map<String, StoredMdocClaim> =
         (delegate() as MultipazWalletEngine).getNamespacedClaims(documentId)
 
+    /** The issuer's own localized name for each claim; see [MultipazWalletEngine.getClaimDisplayNames]. */
+    suspend fun getClaimDisplayNames(documentId: String, locale: String): Map<String, String> =
+        (delegate() as MultipazWalletEngine).getClaimDisplayNames(documentId, locale)
+
     /** Whether the wallet holds any document at all, which deletion needs in order to report which. */
     suspend fun hasAnyDocument(): Boolean = getAllDocuments().isNotEmpty()
 
@@ -123,32 +127,6 @@ class IosWalletEngine : WalletEngine {
             issuerId = issuerMetadata.credentialIssuerIdentifier,
             documentConfigId = issuerMetadata.documentConfigurationIdentifier,
         )
-    }
-
-    /**
-     * The issuer's own display name for each claim, for [locale] — `family_name` → "Family Name(s)".
-     *
-     * Empty when this document was provisioned before claim names were stored, or when the issuer
-     * published none. Callers fall back to the identifier, so an empty map is a display gap and never a
-     * wrong value.
-     *
-     * **Resolution happens here, not at issuance.** What is stored is the issuer's whole
-     * `display: List<Display>` per claim — every locale it published, keyed by claim path — so the
-     * choice of language is made when the screen is drawn and the stored data never has to be rewritten.
-     * The cost is that the *set* of locales is fixed at issuance: if the issuer adds one later, existing
-     * documents will not have it.
-     */
-    suspend fun getClaimDisplayNames(documentId: String, locale: String): Map<String, String> {
-        val claims = store().documentStore.lookupDocument(documentId)
-            ?.eudiMetadata?.issuerMetadata?.claims
-            ?: return emptyMap()
-
-        return claims.mapNotNull { claim ->
-            // The last path segment is the data-element identifier the claim map is keyed by; the
-            // earlier segments are the namespace, which the caller already knows.
-            val identifier = claim.path.lastOrNull() ?: return@mapNotNull null
-            claim.displayNameFor(locale)?.let { identifier to it }
-        }.toMap()
     }
 
     /**

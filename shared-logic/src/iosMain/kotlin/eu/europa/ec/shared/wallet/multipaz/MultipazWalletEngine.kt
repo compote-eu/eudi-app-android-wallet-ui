@@ -16,6 +16,14 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.document.IssuerMetadata
+import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.darwin.Darwin
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.isSuccess
+import org.multipaz.util.Logger
+import kotlin.coroutines.cancellation.CancellationException
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.document.toWalletDocument
@@ -49,7 +57,117 @@ import org.multipaz.storage.KeyExistsStorageException
  */
 internal class MultipazWalletEngine(
     private val store: MultipazWalletStore,
+    /**
+     * Swappable so a test can back the claim-name backfill with a `MockEngine` rather than the network;
+     * production takes the default.
+     */
+    private val claimNameHttpEngine: HttpClientEngine? = null,
 ) : WalletEngine {
+
+    /** Documents whose claim names have been fetched for this run; see `backfillClaimNames`. */
+    private val claimNameFetchAttempted = mutableSetOf<String>()
+    /**
+     * The issuer's own display name for each claim, for [locale] — `family_name` → "Family Name(s)".
+     *
+     * Empty when this document was provisioned before claim names were stored, or when the issuer
+     * published none. Callers fall back to the identifier, so an empty map is a display gap and never a
+     * wrong value.
+     *
+     * **Resolution happens here, not at issuance.** What is stored is the issuer's whole
+     * `display: List<Display>` per claim — every locale it published, keyed by claim path — so the
+     * choice of language is made when the screen is drawn and the stored data never has to be rewritten.
+     * The cost is that the *set* of locales is fixed at issuance: if the issuer adds one later, existing
+     * documents will not have it.
+     */
+    suspend fun getClaimDisplayNames(documentId: String, locale: String): Map<String, String> {
+        val document = store.documentStore.lookupDocument(documentId) ?: return emptyMap()
+        val metadata = document.eudiMetadata ?: return emptyMap()
+        // `null` means this document predates claim names being captured at issuance; an empty list
+        // means the issuer publishes none. Only the first is worth a fetch.
+        val claims = metadata.issuerMetadata?.claims
+            ?: backfillClaimNames(document, metadata)
+            ?: return emptyMap()
+
+        return claims.mapNotNull { claim ->
+            // The last path segment is the data-element identifier the claim map is keyed by; the
+            // earlier segments are the namespace, which the caller already knows.
+            val identifier = claim.path.lastOrNull() ?: return@mapNotNull null
+            claim.displayNameFor(locale)?.let { identifier to it }
+        }.toMap()
+    }
+
+    /**
+     * Fetches the issuer's claim names for a document provisioned before they were stored, and keeps
+     * them.
+     *
+     * Reuses [openID4VciHttpClient] rather than a plain client, so the *same* code path reads the names
+     * as at issuance: that client unwraps this issuer's signed (JWT) metadata and extracts
+     * `credential_metadata.claims` into the notice. One implementation of "how claim names are read", not
+     * two that can drift.
+     *
+     * Returns null when nothing could be learned, and **only persists on success** — including a
+     * successful fetch that yields nothing, which settles the document so it is never re-fetched. A
+     * failure leaves `claims` null so a later view can try again.
+     */
+    private suspend fun backfillClaimNames(
+        document: Document,
+        metadata: EudiDocumentMetadata,
+    ): List<IssuerMetadata.Claim>? {
+        // Documents issued before `1f3fdefa` recorded the issuer's *name* here rather than its URL, so
+        // they cannot be resolved at all — see the ledger. Guarding on the scheme is what tells the two
+        // apart without a second field.
+        val issuerUrl = metadata.issuerMetadata?.credentialIssuerIdentifier
+            ?.takeIf { it.startsWith("https://") }
+            ?: return null
+
+        // One attempt per document per run, whatever the outcome. Measured, not theoretical: a details
+        // view of a seeded fixture — whose issuer is the deliberately unresolvable
+        // `fixture.issuer.invalid` — produced three DNS lookups in a single probe run, and a real
+        // document whose issuer has gone away would do the same forever. Deliberately *not* persisted:
+        // a later launch should try again, because the usual reason this fails is that the network was
+        // down, and that is not a property of the document.
+        if (!claimNameFetchAttempted.add(document.identifier)) return null
+
+        val notice = IssuerClaimDisplayNotice()
+        val client = openID4VciHttpClient(
+            engine = claimNameHttpEngine ?: Darwin.create(),
+            claimDisplayNotice = notice,
+        )
+        val fetched = try {
+            val response = client.get("$issuerUrl/.well-known/openid-credential-issuer")
+            // ktor does not throw on a non-2xx by default, and a `503` must not be mistaken for "this
+            // issuer publishes no names" — that would settle the document on the strength of a bad
+            // minute. A test pins this; it failed on the first attempt at exactly this line.
+            if (!response.status.isSuccess()) {
+                Logger.w(
+                    TAG,
+                    "claim names for ${document.identifier}: $issuerUrl answered ${response.status}",
+                )
+                return null
+            }
+            response.bodyAsText()
+            notice.claimsByDocumentType
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Logger.w(TAG, "could not fetch claim names for ${document.identifier}: ${t.message}")
+            return null
+        } finally {
+            client.close()
+        }
+
+        // Empty is a real answer and is stored; see `rememberClaimNames`.
+        val claims = fetched[metadata.format.identifier].orEmpty()
+        metadata.rememberClaimNames(claims)
+        document.edit { this.metadata = metadata }
+        Logger.i(
+            TAG,
+            "backfilled ${claims.size} claim name(s) for ${document.identifier} from $issuerUrl",
+        )
+        return claims
+    }
+
+
 
     override suspend fun getAllDocuments(): List<WalletDocument> =
         ownDocuments().map { WalletDocument(id = it.identifier) }
@@ -192,6 +310,8 @@ internal class MultipazWalletEngine(
          * dependency runs shared-ui -> shared-logic, not the other way. Keep the two in step.
          */
         private val PidFormatTypes = setOf("eu.europa.ec.eudi.pid.1", "urn:eudi:pid:1")
+
+        private const val TAG = "MultipazWalletEngine"
     }
 }
 
