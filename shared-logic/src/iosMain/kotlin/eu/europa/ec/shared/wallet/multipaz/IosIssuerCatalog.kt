@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.config.iosWalletConfig
+
 /**
  * One issuer this wallet is willing to talk OpenID4VCI to.
  *
@@ -40,12 +42,13 @@ data class IosVciIssuer(
  * Which issuers iOS offers documents from — the piece that was missing before iOS could show an
  * add-document list at all.
  *
- * **A constant, and that is the current honest state.** Android reads this from
- * `WalletCoreConfig.issuersConfig`, which is per build flavour (`dev`, `demo`, …) and generated partly
- * from `BuildConfig`. iOS has no flavour system yet — one target, one `project.yml` — so rather than
- * invent half a configuration layer, this states the same two issuers the `dev` flavour uses, with the
- * same client id and the same redirect. When iOS grows flavours (or reads a plist), this object is the
- * single place that changes; nothing above it names an issuer.
+ * **Per build flavour, as on Android.** The URLs come from [iosWalletConfig], which is the iOS half of
+ * Android's `src/dev` / `src/demo` source sets — so `dev` reaches `ec.dev.issuer.eudiw.dev` and
+ * `demo` reaches `issuer.eudiw.dev`, exactly as `WalletCoreConfig.issuersConfig` does there.
+ *
+ * The client id and redirect stay *here* rather than in the flavour files, because Android's two
+ * flavours agree on both and the authorization server matches on them: a flavour file able to
+ * disagree about the redirect would be a way to break OAuth that Android does not have.
  *
  * Kept beside the multipaz code rather than in a DI file because it *is* wallet configuration, and DI
  * files should wire things, not decide them.
@@ -64,18 +67,13 @@ object IosIssuerCatalog {
      */
     val REDIRECT_URI: String = IosAuthorizationRedirects.REDIRECT_PREFIX
 
-    val issuers: List<IosVciIssuer> = listOf(
+    /** Order follows the configured list, so the add-document screen ranks them as Android does. */
+    val issuers: List<IosVciIssuer> = iosWalletConfig.issuerUrls.mapIndexed { index, url ->
         IosVciIssuer(
-            issuerUrl = "https://ec.dev.issuer.eudiw.dev",
+            issuerUrl = url,
             clientId = CLIENT_ID,
             redirectUri = REDIRECT_URI,
-            order = 0,
-        ),
-        IosVciIssuer(
-            issuerUrl = "https://dev.issuer-backend.eudiw.dev",
-            clientId = CLIENT_ID,
-            redirectUri = REDIRECT_URI,
-            order = 1,
-        ),
-    )
+            order = index,
+        )
+    }
 }

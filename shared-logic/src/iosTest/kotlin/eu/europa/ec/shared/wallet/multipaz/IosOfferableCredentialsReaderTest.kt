@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
@@ -192,13 +193,18 @@ class IosOfferableCredentialsReaderTest {
     }
 
     @Test
-    fun the_real_catalogue_names_the_two_EU_dev_issuers_with_the_registered_client() {
-        // A change here changes which issuers the app talks to, so it should be a deliberate edit.
+    fun the_real_catalogue_names_the_configured_issuers_with_the_registered_client() {
+        // The URLs are per build flavour now, so this asserts the catalogue *mirrors* the flavour
+        // rather than pinning dev's two — the values themselves are pinned in `IosWalletConfigTest`,
+        // which the verify set runs under both flavours.
         assertEquals(
-            listOf("https://ec.dev.issuer.eudiw.dev", "https://dev.issuer-backend.eudiw.dev"),
+            iosWalletConfig.issuerUrls,
             IosIssuerCatalog.issuers.map { it.issuerUrl },
         )
-        assertEquals(listOf(0, 1), IosIssuerCatalog.issuers.map { it.order })
+        assertEquals(
+            List(iosWalletConfig.issuerUrls.size) { it },
+            IosIssuerCatalog.issuers.map { it.order },
+        )
         assertTrue(IosIssuerCatalog.issuers.all { it.clientId == "eudiw-abca" })
         // The redirect the issuers registered *and* the app delegate filters on — one constant, so the
         // two cannot drift.

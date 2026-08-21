@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.shared.wallet.config.iosWalletConfig
+
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.storage.IosBiometricAvailability
@@ -61,7 +63,8 @@ internal class IosSettingsPlatformBridge(
         get() = NSBundle.mainBundle.objectForInfoDictionaryKey(CFBundleShortVersionString) as? String
             ?: ""
 
-    override val changelogUrl: String? get() = null
+    /** Per build flavour, as on Android: `dev` publishes none, `demo` points at the GitHub releases. */
+    override val changelogUrl: String? get() = iosWalletConfig.changelogUrl
 
     override val canRetrieveLogs: Boolean get() = false
 

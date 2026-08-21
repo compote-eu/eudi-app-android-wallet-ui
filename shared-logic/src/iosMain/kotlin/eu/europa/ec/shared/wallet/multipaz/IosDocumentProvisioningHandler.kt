@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.config.iosWalletConfig
+
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import kotlinx.io.bytestring.ByteString
@@ -159,10 +161,13 @@ internal class IosDocumentProvisioningHandler(
 
     companion object {
         /**
-         * Three, matching the fixture and the shape the Documents screen's "3/3" counter was verified
-         * against. Not the issuer's maximum: every credential is a Secure Enclave key.
+         * Per build flavour, mirroring Android's `numberOfCredentials` — 60 for `dev`, 10 for `demo`.
+         *
+         * ⚠️ Still capped by the issuer's own `maxBatchSize` (see [provisioningSettings]), and **each
+         * credential is a Secure Enclave key**, which Android's numbers were not chosen for. This was
+         * 3 while iOS had no flavours; if issuance becomes slow, this is the first thing to look at.
          */
-        internal const val DEFAULT_BATCH_SIZE = 3
+        internal val DEFAULT_BATCH_SIZE: Int get() = iosWalletConfig.credentialBatchSize
 
         /**
          * How this wallet provisions credentials — one place, because two callers must agree on it.

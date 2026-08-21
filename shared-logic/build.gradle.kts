@@ -34,6 +34,32 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+/**
+ * Which of Android's two product flavours this iOS build mirrors, from `-PappFlavor=dev|demo`.
+ *
+ * Defaults to `dev`, matching `assembleDevDebug` — the Android variant the verify set builds and the
+ * one every documented probe run has used. An unknown value fails the build rather than silently
+ * falling back: a typo that quietly produced a dev build would be the worst outcome here, since the
+ * two flavours differ in which issuers and wallet provider the app talks to.
+ */
+private val appFlavor: IosAppFlavor = IosAppFlavor.from(providers.gradleProperty("appFlavor").orNull)
+
+private enum class IosAppFlavor(val directorySuffix: String) {
+    Dev("Dev"),
+    Demo("Demo");
+
+    companion object {
+        fun from(value: String?): IosAppFlavor {
+            if (value == null) return Dev
+            return entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
+                ?: error(
+                    "Unknown -PappFlavor='$value'. Expected one of " +
+                            entries.joinToString { it.name.lowercase() } + "."
+                )
+        }
+    }
+}
+
 kotlin {
     // AGP 9's KMP-aware Android target. NB: `android {}`, NOT `androidLibrary {}` — the latter is
     // deprecated as of AGP 9.3.x ("Please use 'android' instead").
@@ -67,6 +93,26 @@ kotlin {
     }
 
     sourceSets {
+        // The iOS half of Android's product flavours. Android varies a build by *source set* —
+        // `core-logic/src/dev` and `core-logic/src/demo` each hold a `WalletCoreConfigImpl.kt` with
+        // the same fully-qualified name, and AGP puts exactly one on the compile path. Kotlin/Native
+        // has no product flavours, so the same effect is had by adding exactly one flavour directory
+        // here, chosen by `-PappFlavor`. `IosWalletConfigImpl` therefore has one FQN and two bodies,
+        // which is the property that makes this a mirror of Android rather than a lookalike.
+        //
+        // Only :shared-logic needs this. :shared-ui reads the same object through its dependency on
+        // this module, so the flavour is decided in one place.
+        iosMain {
+            kotlin.srcDir("src/ios${appFlavor.directorySuffix}Main/kotlin")
+        }
+        // Tests get a flavour directory too, and for a reason that is not symmetry for its own sake:
+        // a test that branched on `iosWalletConfig.appFlavor` to decide what to expect would pass
+        // whichever flavour it was handed, so it could not catch the build defaulting to the wrong
+        // one. Here each flavour's expected values live in a file that only exists on that flavour's
+        // compile path, so `assertEquals(DEV, ...)` is a real assertion rather than a tautology.
+        iosTest {
+            kotlin.srcDir("src/ios${appFlavor.directorySuffix}Test/kotlin")
+        }
         commonMain.dependencies {
             // `api` where the type appears in public signatures (safeAsync exposes Flow/Dispatcher;
             // MviViewModel extends androidx.lifecycle.ViewModel; AppRoute uses NavKey).

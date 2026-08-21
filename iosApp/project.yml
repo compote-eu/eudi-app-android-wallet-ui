@@ -3,7 +3,7 @@
 # The project is generated (not committed); project.yml is the source of truth.
 name: iosApp
 options:
-  bundleIdPrefix: eu.europa.ec.eudi.kmp
+  bundleIdPrefix: eu.europa.ec.euidi
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -32,12 +32,12 @@ targets:
         # Android builds as ISSUE_AUTHORIZATION_DEEPLINK — so iOS has to claim that scheme or the
         # browser has nowhere to send the result. See `IosAuthorizationRedirects`.
         CFBundleURLTypes:
-          - CFBundleURLName: eu.europa.ec.eudi.kmp.iosApp.authorization
+          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER).authorization
             CFBundleURLSchemes:
               - eu.europa.ec.euidi
           # Credential offers, the same two schemes Android registers (CREDENTIAL_OFFER_SCHEME and
           # CREDENTIAL_OFFER_HAIP_SCHEME). Without these iOS never hands the link to the app at all.
-          - CFBundleURLName: eu.europa.ec.eudi.kmp.iosApp.credentialOffer
+          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER).credentialOffer
             CFBundleURLSchemes:
               - openid-credential-offer
               - haip-vci
@@ -45,7 +45,7 @@ targets:
           # because the wallet does not choose: the *verifier* builds the link, and the EUDI dev
           # verifier emits `haip-vp://` by default while its OpenID4VP profile emits `openid4vp://`.
           # See `IosDeepLinks.PRESENTATION_SCHEMES`, which must list exactly these.
-          - CFBundleURLName: eu.europa.ec.eudi.kmp.iosApp.presentation
+          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER).presentation
             CFBundleURLSchemes:
               - openid4vp
               - eudi-openid4vp
@@ -63,7 +63,31 @@ targets:
           Share documents from your wallet with a nearby reader over Bluetooth.
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: eu.europa.ec.eudi.kmp.iosApp
+        # The same identity the EUDI reference iOS wallet uses
+        # (`eu-digital-identity-wallet/eudi-app-ios-wallet-ui`): `eu.europa.ec.euidi` for demo and
+        # `eu.europa.ec.euidi.dev` for dev, matching Android's `applicationIdSuffix = ".dev"`.
+        #
+        # ⚠️ It is therefore the *same bundle id as the reference wallet*, so the two cannot be
+        # installed side by side — whichever is installed second replaces the first, along with its
+        # wallet data. Deliberate: this app is the KMP build of that wallet, not a companion to it.
+        #
+        # Nested expansion rather than two settings to keep in step: overriding BUILD_VARIANT alone
+        # moves the suffix with it, so a demo build cannot end up carrying a `.dev` id.
+        PRODUCT_BUNDLE_IDENTIFIER: "eu.europa.ec.euidi$(BUNDLE_ID_SUFFIX_$(BUILD_VARIANT))"
+        BUNDLE_ID_SUFFIX_dev: ".dev"
+        BUNDLE_ID_SUFFIX_demo: ""
+        # Which of Android's two product flavours this build mirrors, named as the reference iOS
+        # wallet names it (`BUILD_VARIANT` in its `Wallet*.xcconfig`). Passed straight through to
+        # Gradle as `-PappFlavor` by the pre-build script below, which is what selects
+        # `shared-logic/src/iosDevMain` or `src/iosDemoMain`.
+        #
+        # `dev` by default, matching `assembleDevDebug` and every documented probe run. Build the
+        # other flavour with:
+        #   xcodebuild ... BUILD_VARIANT=demo
+        # Xcode caches the framework per configuration, not per setting, so switch flavours with a
+        # clean build (or `./gradlew clean`) — a stale SharedKit is the one way to get a dev framework
+        # inside a demo app.
+        BUILD_VARIANT: dev
         # NB: no GENERATE_INFOPLIST_FILE here. Compose Multiplatform requires
         # `CADisableMinimumFrameDurationOnPhone`, and Xcode's generated-plist mechanism only honours a
         # documented allowlist of INFOPLIST_KEY_* settings — an arbitrary one is silently dropped
@@ -105,4 +129,7 @@ targets:
             exit 0
           fi
           cd "$SRCROOT/.."
-          ./gradlew :shared-ui:embedAndSignAppleFrameworkForXcode
+          # `-PappFlavor` is what makes this a dev or a demo app; see BUILD_VARIANT above. The
+          # fallback keeps a hand-rolled xcodebuild invocation that predates the setting working.
+          ./gradlew :shared-ui:embedAndSignAppleFrameworkForXcode \
+            -PappFlavor="${BUILD_VARIANT:-dev}"

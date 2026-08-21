@@ -29,6 +29,7 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Tstr
+import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import org.multipaz.crypto.Algorithm
 import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
@@ -554,10 +555,10 @@ class IosCredentialIssuer(
         private const val INVALID_GRANT = "invalid_grant"
 
         /**
-         * The wallet provider that attests this wallet instance, matching Android's `dev` flavour. Not on
-         * [IosVciIssuer] because it is a property of the *wallet*, not of an issuer.
+         * The wallet provider that attests this wallet instance, per build flavour as on Android. Not
+         * on [IosVciIssuer] because it is a property of the *wallet*, not of an issuer.
          */
-        const val DEFAULT_WALLET_PROVIDER_URL: String = "https://dev.wallet-provider.eudiw.dev"
+        val DEFAULT_WALLET_PROVIDER_URL: String get() = iosWalletConfig.walletProviderUrl
 
         /**
          * Long enough for a human to log in, and shorter than nothing: the PAR `request_uri` these
