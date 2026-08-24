@@ -16,6 +16,12 @@
 
 package eu.europa.ec.shared.ui.di
 
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.JsonPrimitive
+import eu.europa.ec.shared.wallet.multipaz.StoredJsonClaim
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.util.DAY_MONTH_YEAR_FULL_PATTERN
@@ -70,6 +76,10 @@ internal class IosDocumentDetailsPlatformBridge(
             ?: return null
 
         val claims = engine.getNamespacedClaims(documentId)
+        // An SD-JWT VC document has no mdoc credential, so the mdoc read comes back empty and this is
+        // where its claims come from instead. Asking for both and preferring whichever answers keeps
+        // the format check in one place rather than duplicating multipaz's credential-type logic.
+        val jsonClaims = if (claims.isEmpty()) engine.getJsonClaims(documentId) else emptyList()
         // Both come from the issuer metadata stored at issuance, and both are what re-issuance needs.
         // Empty for a document this wallet did not provision — a seeded fixture — which is also the
         // case `reIssueDocument` refuses.
@@ -85,7 +95,11 @@ internal class IosDocumentDetailsPlatformBridge(
                 issuerId = issuer?.issuerId.orEmpty(),
                 documentConfigId = issuer?.documentConfigId.orEmpty(),
                 documentIdentifier = document.formatType.toDocumentIdentifier(),
-                documentClaims = claims.toClaimDomains(document.formatType, claimNames),
+                documentClaims = if (claims.isNotEmpty()) {
+                    claims.toClaimDomains(document.formatType, claimNames)
+                } else {
+                    jsonClaims.toSdJwtClaimDomains(claimNames)
+                },
                 documentIssuanceDate = document.issuedAt
                     ?.formatInstant(DAY_MONTH_YEAR_FULL_PATTERN)
                     .orEmpty(),
@@ -213,4 +227,88 @@ internal class IosDocumentDetailsPlatformBridge(
         )
     }
 
+}
+
+/**
+ * SD-JWT VC claims as a tree: a [ClaimDomain.Group] wherever the issuer nested an object or an
+ * array, a [ClaimDomain.Primitive] at each leaf.
+ *
+ * multipaz hands back only the *top-level* claims, with the nesting still inside each value, so the
+ * tree is built here. `ClaimPathDomain` carries the full path to each node, which is what the shared
+ * screen uses to group them — and `ClaimType.SdJwtVc` rather than `MsoMdoc`, so `nameSpace` reads
+ * null as it should for this format.
+ */
+internal fun List<StoredJsonClaim>.toSdJwtClaimDomains(
+    displayNames: Map<String, String>,
+): List<ClaimDomain> = map { claim ->
+    claimDomainOf(
+        path = listOf(claim.name),
+        value = claim.value,
+        displayNames = displayNames,
+    )
+}
+
+/**
+ * One node of an SD-JWT claim tree.
+ *
+ * Only the *top* level is looked up in [displayNames]: the issuer's `credential_metadata.claims`
+ * names claims by path, and nested keys are not named there, so a nested node shows its key. That
+ * is the same fallback the flat case uses, and it is why the key is passed rather than resolved.
+ */
+private fun claimDomainOf(
+    path: List<String>,
+    value: JsonElement,
+    displayNames: Map<String, String>,
+): ClaimDomain {
+    val key = path.last()
+    // Nested claims are named too, not just top-level ones: this issuer's `credential_metadata.claims`
+    // declares `["place_of_birth","locality"]` and its siblings explicitly. Keyed by the *last* segment
+    // because that is how `getClaimDisplayNames` keys them, which mdoc needs as well.
+    //
+    // The limit that buys: two objects with same-named children would share one name. Checked against
+    // this issuer rather than assumed — across both PID configurations, no last segment maps to two
+    // different display names.
+    val title = displayNames[key] ?: key
+    val claimPath = ClaimPathDomain.ofPlainKeys(path, ClaimType.SdJwtVc)
+
+    return when (value) {
+        is JsonObject -> ClaimDomain.Group(
+            key = key,
+            displayTitle = title,
+            path = claimPath,
+            items = value.entries.map { (childKey, childValue) ->
+                claimDomainOf(path + childKey, childValue, displayNames)
+            },
+        )
+
+        // An array of scalars — `nationalities`, say — reads better as one line than as a group of
+        // numbered children, so only arrays *of objects* become groups.
+        is JsonArray if value.any { it is JsonObject || it is JsonArray } -> ClaimDomain.Group(
+            key = key,
+            displayTitle = title,
+            path = claimPath,
+            items = value.mapIndexed { index, childValue ->
+                claimDomainOf(path + index.toString(), childValue, displayNames)
+            },
+        )
+
+        else -> ClaimDomain.Primitive(
+            key = key,
+            displayTitle = title,
+            path = claimPath,
+            value = value.asDisplayString(),
+            isRequired = false,
+        )
+    }
+}
+
+/**
+ * A JSON leaf as one line of text: a scalar bare, anything else as its JSON.
+ *
+ * Local rather than shared with the reader's equivalent: that one is `internal` to :shared-logic,
+ * and widening a module's API for two lines is the worse trade.
+ */
+private fun JsonElement.asDisplayString(): String = when (this) {
+    is JsonPrimitive -> contentOrNull.orEmpty()
+    else -> toString()
 }

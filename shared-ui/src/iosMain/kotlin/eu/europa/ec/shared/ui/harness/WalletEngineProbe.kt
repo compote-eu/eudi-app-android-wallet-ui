@@ -163,11 +163,15 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                 // A *real* issuer, not just any issuer metadata: the seeded fixtures carry
                 // `sampleIssuerMetadata`, so "has an issuer reference" picks one of those and shows
                 // identifiers — which is exactly how the first version of this check fooled itself.
-                .firstOrNull {
+                .filter {
                     engineForRevocation.getIssuerReference(it.id)
                         ?.issuerId?.startsWith("https://dev.") == true
                 }
-                ?.let { provisioned ->
+                // One per format: mdoc and SD-JWT VC read through different multipaz credentials, so a
+                // single sample would leave one of the two unproven.
+                .distinctBy { it.formatType }
+                .forEach { provisioned ->
+                    onResult("  format ${provisioned.formatType}:")
                     listOf("en", "sk").forEach { locale ->
                         val details = KoinPlatform.getKoin().get<DocumentDetailsInteractor>()
                             .getDocumentDetails(provisioned.id, wasIssuerDetailsExpanded = false)
@@ -622,6 +626,10 @@ private suspend fun probeTransactionDetails(onResult: (String) -> Unit) {
  */
 private suspend fun probeIssuance(onResult: (String) -> Unit) {
     val issuer = IosIssuerCatalog.issuers.last()
+    // mdoc, because everything else in this probe (proximity, revocation, the credential counter) is
+    // written against it. Swap in `eu.europa.ec.eudi.pid_vc_sd_jwt` to issue an SD-JWT VC PID instead —
+    // worth doing after touching claim reading, since the two formats come from different multipaz
+    // credentials, and the per-format report above then covers both.
     val configurationId = "eu.europa.ec.eudi.pid_mso_mdoc"
     val engine = KoinPlatform.getKoin().get<IosWalletEngine>()
 

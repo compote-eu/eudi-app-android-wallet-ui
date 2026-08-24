@@ -16,6 +16,14 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.claim.JsonClaim
+import org.multipaz.sdjwt.credential.SdJwtVcCredential
+import org.multipaz.util.Logger
+import kotlin.coroutines.cancellation.CancellationException
 import eu.europa.ec.shared.wallet.document.StoredCredential
 import eu.europa.ec.shared.wallet.document.StoredDocument
 import org.multipaz.credential.SecureAreaBoundCredential
@@ -88,9 +96,11 @@ private suspend fun SecureAreaBoundCredential.toStoredCredential() = StoredCrede
  * one status entry, so which one is asked does not matter — and Android reaches the same data through
  * wallet-core's `resolveStatus`, which reads the same MSO.
  *
- * Null when the document has no mdoc credential (an SD-JWT-only document — its status lives in the
- * JWT payload, and parsing that needs the JVM-only SD-JWT library) or when the issuer put no status
- * entry in the MSO, which is the common case for test issuers.
+ * Null when the document has no mdoc credential or when the issuer put no status entry in the MSO,
+ * which is the common case for test issuers. An SD-JWT VC document keeps its status in the JWT payload
+ * instead, under the `status` claim — reachable now that multipaz's `SdJwtVcCredential` is used for
+ * claims, so revocation for that format is a small follow-on rather than the blocked thing this comment
+ * used to claim.
  */
 internal suspend fun Document.revocationStatus(): RevocationStatus? =
     getCertifiedCredentials()
@@ -110,10 +120,22 @@ data class StoredMdocClaim(
 )
 
 /**
+ * One stored SD-JWT VC claim: its name and its value, **still as JSON**.
+ *
+ * The value is deliberately not flattened to a string here, unlike [StoredMdocClaim]: an SD-JWT claim
+ * can be an object or an array, and the details screen renders those as nested `ClaimDomain.Group`s.
+ * Flattening at this level would throw the structure away before anything could use it.
+ */
+data class StoredJsonClaim(
+    val name: String,
+    val value: JsonElement,
+)
+
+/**
  * The document's mdoc claims keyed by data-element identifier, each with its namespace.
  *
- * mdoc only, like [readClaims], and for the same reason: SD-JWT VC parsing needs the JVM-only
- * `eudi-lib-jvm-sdjwt-kt`.
+ * mdoc only — SD-JWT VC documents are read by [readJsonClaims] instead, because the two formats have
+ * genuinely different shapes: mdoc data elements are flat within a namespace, SD-JWT claims nest.
  */
 internal suspend fun Document.readNamespacedClaims(): Map<String, StoredMdocClaim> {
     val mdoc = getCertifiedCredentials()
@@ -131,21 +153,94 @@ internal suspend fun Document.readNamespacedClaims(): Map<String, StoredMdocClai
 }
 
 /**
- * The document's top-level claims, flattened to `identifier -> value` across namespaces, matching
+ * The document's SD-JWT VC claims, top-level, with nested values left as JSON.
+ *
+ * multipaz returns only the top-level claims by its own design, with any nesting inside each
+ * [StoredJsonClaim.value] — so building the tree is this wallet's job, not multipaz's.
+ */
+internal suspend fun Document.readJsonClaims(): List<StoredJsonClaim> {
+    val sdJwt = getCertifiedCredentials()
+        .filterIsInstance<SdJwtVcCredential>()
+        .firstOrNull()
+        ?: return emptyList()
+
+    return sdJwt.jsonClaimsOrEmpty().map { StoredJsonClaim(name = it.claimName, value = it.value) }
+}
+
+/**
+ * The document's top-level claims, flattened to `identifier -> value`, matching
  * `WalletDocument.claims` on Android (which keys mdoc claims by `dataElementName`).
  *
- * **mdoc only for this milestone.** An SD-JWT VC credential yields no claims here, because parsing
- * one needs `eudi-lib-jvm-sdjwt-kt`, which has no iOS artifact. Everything *else* about an SD-JWT
- * document — name, format, credential counts, validity, issuer display — reads fine, so such a
- * document still appears correctly in the list; only its claims are absent.
+ * Handles **both** formats. It used to be mdoc-only, on the stated grounds that SD-JWT VC parsing
+ * needed the JVM-only `eudi-lib-jvm-sdjwt-kt` — which was wrong: multipaz has carried
+ * `org.multipaz.sdjwt` and `SdJwtVcCredential.getClaims` all along, so an SD-JWT document was showing
+ * no claims for no reason.
  */
 private suspend fun readClaims(
     credentials: List<SecureAreaBoundCredential>,
 ): Map<String, String> {
-    val mdoc = credentials.filterIsInstance<MdocCredential>().firstOrNull() ?: return emptyMap()
-
-    // `getClaims(null)` skips document-type lookups: the display names it would resolve are not
-    // needed here, only the identifiers and values.
-    return mdoc.getClaims(documentTypeRepository = null)
-        .associate { it.dataElementName to it.value.toClaimString() }
+    // `getClaims(null)` skips document-type lookups in both branches: the display names it would
+    // resolve are not needed here — those come from the issuer's own metadata — only values are.
+    credentials.filterIsInstance<MdocCredential>().firstOrNull()?.let { mdoc ->
+        return mdoc.getClaims(documentTypeRepository = null)
+            .associate { it.dataElementName to it.value.toClaimString() }
+    }
+    credentials.filterIsInstance<SdJwtVcCredential>().firstOrNull()?.let { sdJwt ->
+        return sdJwt.jsonClaimsOrEmpty().associate { it.claimName to it.value.toClaimString() }
+    }
+    return emptyMap()
 }
+
+/**
+ * This credential's claims, or none if it cannot be read.
+ *
+ * **Guarded on purpose.** `getClaims` verifies the SD-JWT against the certificate chain in its own
+ * header and *throws* when there is no `x5c` at all ("Only X509-certified keys are supported"). These
+ * readers run while the **document list** is being built, so an unreadable credential must cost that
+ * document its claims and nothing more — letting it throw would empty the whole list.
+ */
+private suspend fun SdJwtVcCredential.jsonClaimsOrEmpty(): List<JsonClaim> =
+    jsonClaimsUnfiltered().filterNot { it.claimName.isEnvelopeClaim() }
+
+/**
+ * Whether this is JWT/SD-JWT VC *envelope* metadata rather than something the issuer attested about the
+ * holder.
+ *
+ * multipaz walks the whole verified payload, so `vct`, `iss` and `cnf` arrive alongside `family_name` —
+ * and a details screen listing "cnf" as an attribute is both noise and mildly leaky, since that is the
+ * holder key confirmation. Checked against this issuer rather than assumed: its
+ * `credential_metadata.claims` declares **31** claims for the SD-JWT PID and **none** of them is an
+ * envelope field, so nothing below is a real attribute here.
+ */
+private fun String.isEnvelopeClaim(): Boolean =
+    this in EnvelopeClaims || startsWith("_") || endsWith("#integrity")
+
+/** RFC 7519 registered claims plus SD-JWT VC's own metadata. */
+private val EnvelopeClaims = setOf(
+    "iss", "sub", "aud", "exp", "nbf", "iat", "jti",
+    "vct", "cnf", "status",
+)
+
+private suspend fun SdJwtVcCredential.jsonClaimsUnfiltered(): List<JsonClaim> =
+    try {
+        // `getClaimsImpl`, not `getClaims`: the latter is declared on the concrete
+        // `KeyBound`/`Keyless` classes, while the interface this is written against exposes the impl.
+        getClaimsImpl(documentTypeRepository = null)
+    } catch (e: CancellationException) {
+        throw e
+    } catch (t: Throwable) {
+        Logger.w(READER_TAG, "could not read SD-JWT claims for $vct: ${t.message}")
+        emptyList()
+    }
+
+/** The claim's name, which multipaz puts in a single-segment `claimPath`. */
+private val JsonClaim.claimName: String
+    get() = claimPath.firstOrNull()?.jsonPrimitive?.contentOrNull.orEmpty()
+
+/** A JSON value as the flat claims map wants it: scalars bare, structures as their JSON text. */
+internal fun JsonElement.toClaimString(): String = when (this) {
+    is JsonPrimitive -> contentOrNull.orEmpty()
+    else -> toString()
+}
+
+private const val READER_TAG = "MultipazDocumentReader"

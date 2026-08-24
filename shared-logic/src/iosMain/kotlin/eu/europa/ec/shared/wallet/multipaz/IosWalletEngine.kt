@@ -48,6 +48,10 @@ class IosWalletEngine : WalletEngine {
     suspend fun getNamespacedClaims(documentId: String): Map<String, StoredMdocClaim> =
         (delegate() as MultipazWalletEngine).getNamespacedClaims(documentId)
 
+    /** The document's SD-JWT VC claims, values still as JSON; see [MultipazWalletEngine.getJsonClaims]. */
+    suspend fun getJsonClaims(documentId: String): List<StoredJsonClaim> =
+        (delegate() as MultipazWalletEngine).getJsonClaims(documentId)
+
     /** The issuer's own localized name for each claim; see [MultipazWalletEngine.getClaimDisplayNames]. */
     suspend fun getClaimDisplayNames(documentId: String, locale: String): Map<String, String> =
         (delegate() as MultipazWalletEngine).getClaimDisplayNames(documentId, locale)

@@ -212,6 +212,12 @@ internal class MultipazWalletEngine(
             ?.readNamespacedClaims()
             ?: emptyMap()
 
+    /** The document's SD-JWT VC claims, values still as JSON; see [readJsonClaims]. */
+    suspend fun getJsonClaims(documentId: String): List<StoredJsonClaim> =
+        ownDocuments().firstOrNull { it.identifier == documentId }
+            ?.readJsonClaims()
+            ?: emptyList()
+
     //region bookmarks
 
     override suspend fun isDocumentBookmarked(documentId: String): Boolean =
