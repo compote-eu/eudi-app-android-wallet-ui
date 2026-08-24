@@ -116,6 +116,19 @@ internal class MultipazRevocationChecker(
                 publicKey = status.certificate?.ecPublicKey,
             )
         } catch (t: Throwable) {
+            // Distinguish the one failure that is not the issuer's fault and not a bug here. multipaz's
+            // `validateJwt` ends with `require(publicKey != null || caValidated)`, so a status list
+            // signed only with an `x5c` — which is what both EU dev issuers publish, neither putting a
+            // `certificate` in the credential's status claim — is refused with a bare "Failed
+            // requirement.". Correctly: an unverifiable status list must not be believed. But the
+            // message says nothing, and the fix is not here.
+            if (status.certificate == null) {
+                return RevocationOutcome.Unknown(
+                    "status list at ${status.uri} is signed with a certificate chain this wallet " +
+                            "cannot validate: the credential names no signer key, and iOS has no trust " +
+                            "anchors wired up yet. Blocked on the same gap as issuer trust."
+                )
+            }
             return RevocationOutcome.Unknown(
                 "status list at ${status.uri} was rejected: ${t.message ?: t::class.simpleName}"
             )

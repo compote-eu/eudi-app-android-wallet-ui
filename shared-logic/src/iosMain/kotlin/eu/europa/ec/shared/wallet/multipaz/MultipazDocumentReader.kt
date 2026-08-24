@@ -16,11 +16,13 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.claim.JsonClaim
+import org.multipaz.sdjwt.SdJwt
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.util.Logger
 import kotlin.coroutines.cancellation.CancellationException
@@ -96,18 +98,45 @@ private suspend fun SecureAreaBoundCredential.toStoredCredential() = StoredCrede
  * one status entry, so which one is asked does not matter — and Android reaches the same data through
  * wallet-core's `resolveStatus`, which reads the same MSO.
  *
- * Null when the document has no mdoc credential or when the issuer put no status entry in the MSO,
- * which is the common case for test issuers. An SD-JWT VC document keeps its status in the JWT payload
- * instead, under the `status` claim — reachable now that multipaz's `SdJwtVcCredential` is used for
- * claims, so revocation for that format is a small follow-on rather than the blocked thing this comment
- * used to claim.
+ * **Both formats.** mdoc keeps its status in the MSO; an SD-JWT VC keeps it in the JWT payload under
+ * `status`, and multipaz parses both into the same [RevocationStatus], so nothing above here needs to
+ * know which it was.
+ *
+ * Null when the issuer published no status entry at all, which is the common case for *mdoc* test
+ * issuers — but notably **not** for SD-JWT here: `dev.issuer-backend.eudiw.dev` does publish a
+ * `status_list` for its SD-JWT PID, so that is the first revocation check on iOS that runs against a
+ * real issuer rather than a fixture.
  */
-internal suspend fun Document.revocationStatus(): RevocationStatus? =
-    getCertifiedCredentials()
-        .filterIsInstance<MdocCredential>()
-        .firstOrNull()
-        ?.mso
-        ?.revocationStatus
+internal suspend fun Document.revocationStatus(): RevocationStatus? {
+    val credentials = getCertifiedCredentials()
+
+    credentials.filterIsInstance<MdocCredential>().firstOrNull()?.let { mdoc ->
+        return mdoc.mso.revocationStatus
+    }
+    // An SD-JWT VC keeps its status in the JWT payload rather than an MSO, and multipaz reads it into
+    // the same `RevocationStatus` — so the checker above this needs no idea which format it came from.
+    return credentials.filterIsInstance<SdJwtVcCredential>().firstOrNull()?.sdJwtRevocationStatus()
+}
+
+/**
+ * The `status` claim of this SD-JWT VC, or null if there is none or it cannot be read.
+ *
+ * Reads the body without verifying the signature, which is deliberate and not a shortcut: the value is
+ * a *pointer* — an index and a URL — and what makes the answer trustworthy is the signature on the
+ * **status list token** that the pointer leads to, which multipaz's checker verifies. Trusting the
+ * pointer buys nothing an attacker could not achieve by serving a different list.
+ *
+ * Guarded for the same reason as claim reading: this runs while the document list is built.
+ */
+private suspend fun SdJwtVcCredential.sdJwtRevocationStatus(): RevocationStatus? =
+    try {
+        SdJwt.fromCompactSerialization(issuerProvidedData.decodeToString()).revocationStatus
+    } catch (e: CancellationException) {
+        throw e
+    } catch (t: Throwable) {
+        Logger.w(READER_TAG, "could not read the SD-JWT status claim for $vct: ${t.message}")
+        null
+    }
 
 /**
  * One stored mdoc data element: its namespace and its rendered value. Richer than the flat

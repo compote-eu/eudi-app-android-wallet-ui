@@ -231,4 +231,23 @@ class MultipazRevocationCheckerTest {
 
         assertIs<RevocationOutcome.Unknown>(checker.check(statusEntry(key, idx = 7)))
     }
+
+    @Test
+    fun a_status_list_with_no_signer_key_says_why_rather_than_failed_requirement() = runTest {
+        // What both EU dev issuers actually publish: an `x5c`-signed status list, and a credential whose
+        // status claim names no `certificate`. multipaz refuses it — correctly, an unverifiable list must
+        // not be believed — but with a bare "Failed requirement." that says nothing. The reason a reader
+        // needs is that trust anchors are missing, and that the fix is not in this class.
+        val checker = MultipazRevocationChecker(
+            httpClient = HttpClient(MockEngine { respond("not.a.validjwt") }),
+        )
+
+        val outcome = checker.check(
+            RevocationStatus.StatusList(idx = 1791, uri = "https://issuer.test/sl", certificate = null)
+        )
+
+        val unknown = assertIs<RevocationOutcome.Unknown>(outcome)
+        assertTrue(unknown.reason.contains("cannot validate"), unknown.reason)
+        assertTrue(unknown.reason.contains("trust anchors"), unknown.reason)
+    }
 }
