@@ -44,9 +44,9 @@ import org.multipaz.storage.KeyExistsStorageException
  *    mapping the Android engine performs — the projection they share lives in commonMain and is
  *    tested there against the same cases.
  *  - ✅ bookmarks, persisted beside the documents in multipaz's storage.
- *  - ⚠️ **claims are mdoc-only**, because SD-JWT VC parsing needs the JVM-only
- *    `eudi-lib-jvm-sdjwt-kt`. An SD-JWT document still lists correctly; only its claims are absent,
- *    which today means `getMainPidDocument` resolves claims for an mdoc PID but not an SD-JWT one.
+ *  - ✅ **claims for both formats** — mdoc through `MdocCredential`, SD-JWT VC through multipaz's
+ *    `SdJwtVcCredential`. This used to say mdoc-only, blaming the JVM-only `eudi-lib-jvm-sdjwt-kt`;
+ *    multipaz had `org.multipaz.sdjwt` on the classpath the whole time.
  *  - ✅ **revocation**, over multipaz's own Token Status List implementation — see
  *    [MultipazRevocationChecker] for why not `eudi-lib-kmp-statium`. Cached in storage like Android's
  *    Room table; the *trigger* is the host's, since iOS has no WorkManager.

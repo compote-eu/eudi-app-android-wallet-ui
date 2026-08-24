@@ -76,7 +76,13 @@ data class IosIssuerReference(
     val documentConfigId: String,
 )
 
-/** Which of the wallet's activities an entry records. Signing is absent because iOS cannot sign. */
+/**
+ * Which of the wallet's activities an entry records.
+ *
+ * Signing is absent because this wallet does not sign *yet* — not because iOS cannot, which is what
+ * this used to say. The EUDI org ships the iOS signing stack in Swift (`eudi-lib-ios-rqes-ui` and
+ * friends); it is a bridge waiting on SwiftCopyableMacro#15, so add a `Signing` entry when that lands.
+ */
 enum class IosTransactionKind { Presentation, Issuance }
 
 /**

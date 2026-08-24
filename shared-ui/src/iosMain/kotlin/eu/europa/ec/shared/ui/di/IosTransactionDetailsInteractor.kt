@@ -123,7 +123,8 @@ internal class IosTransactionDetailsInteractor(
         transactionDetailsDataShared = TransactionDetailsDataSharedHolderUi(
             dataSharedItems = sharedDocuments.map { it.toNestedListItem() },
         ),
-        // iOS cannot sign, so there is nothing signed to show.
+        // Null because this wallet does not sign yet, not because iOS cannot — see `IosTransactionKind`.
+        // Populate this when the RQES bridge lands.
         transactionDetailsDataSigned = null,
     )
 
