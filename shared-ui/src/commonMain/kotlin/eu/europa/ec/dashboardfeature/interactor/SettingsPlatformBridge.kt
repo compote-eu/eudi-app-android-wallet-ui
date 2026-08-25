@@ -53,6 +53,18 @@ interface SettingsPlatformBridge {
      */
     fun biometricsAvailability(): BiometricsAvailability
 
+    /**
+     * Whether this platform evaluates issuer and relying-party registration certificates at all.
+     * False omits the row: the check lives in Wallet Core, which is Android-only, so on iOS a
+     * switch here would promise enforcement that nothing performs.
+     */
+    val canCheckRegistrations: Boolean
+
+    /** The stored registration-check decision — the switch position for that row. */
+    suspend fun isRegistrationCheckEnabled(): Boolean
+
+    suspend fun setRegistrationCheckEnabled(enabled: Boolean)
+
     /** The user's stored biometrics-for-login decision — the biometrics row's switch position. */
     suspend fun isBiometricsEnabled(): Boolean
 

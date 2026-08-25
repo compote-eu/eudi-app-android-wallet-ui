@@ -57,6 +57,15 @@ interface SettingsInteractor {
     suspend fun getSettingsItemsUi(changelogUrl: String?): List<SettingsItemUi>
     suspend fun toggleBiometricsAuthentication()
     suspend fun toggleShowBatchIssuanceCounter()
+    suspend fun toggleRegistrationCheck()
+
+    /**
+     * Told to the user after [toggleRegistrationCheck], because Wallet Core reads both registration
+     * policies when it builds its managers, so the flip only takes effect on the next app start.
+     * It lives here rather than in the view-model for the same reason the other strings do: shared
+     * view-models have no resource access of their own.
+     */
+    val registrationCheckRestartMessage: String
 
     // Previously inherited from BiometricInteractor; see the note above.
     fun getBiometricsAvailability(): BiometricsAvailability

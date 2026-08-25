@@ -116,6 +116,18 @@ internal class IosSettingsPlatformBridge(
     override suspend fun setBatchIssuanceCounterShown(shown: Boolean) =
         IosPreferences.setShowBatchIssuanceCounter(shown)
 
+    /**
+     * False, and the row is omitted. The issuer and relying-party registration policies live in
+     * `eudi-lib-android-wallet-core`, which has no iOS counterpart, and multipaz has no equivalent —
+     * so nothing here would evaluate a registration certificate. A switch would promise enforcement
+     * that does not happen, which is worse than no switch.
+     */
+    override val canCheckRegistrations: Boolean get() = false
+
+    override suspend fun isRegistrationCheckEnabled(): Boolean = false
+
+    override suspend fun setRegistrationCheckEnabled(enabled: Boolean) = Unit
+
     /** Null, and it could not be anything else: `PlatformIntent` is uninhabited on iOS. */
     override fun logShareIntent(): PlatformIntent? = null
 }

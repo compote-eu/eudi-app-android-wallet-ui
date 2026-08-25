@@ -19,6 +19,7 @@ package eu.europa.ec.dashboardfeature.di
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
+import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
@@ -80,11 +81,13 @@ fun provideSettingsPlatformBridge(
     configLogic: ConfigLogic,
     logController: LogController,
     prefKeys: PrefKeys,
+    registrationCheckProvider: RegistrationCheckProvider,
 ): SettingsPlatformBridge = AndroidSettingsPlatformBridge(
     biometricInteractor = biometricInteractor,
     configLogic = configLogic,
     logController = logController,
     prefKeys = prefKeys,
+    registrationCheckProvider = registrationCheckProvider,
 )
 
 @Factory

@@ -179,6 +179,30 @@ class SettingsViewModel(
                 }
             }
 
+            SettingsMenuItemType.REGISTRATION_CHECK -> {
+                viewModelScope.launch {
+                    settingsInteractor.toggleRegistrationCheck()
+
+                    val settingsItems = settingsInteractor.getSettingsItemsUi(
+                        changelogUrl = viewState.value.changelogUrl
+                    )
+
+                    setState {
+                        copy(
+                            settingsItems = settingsItems,
+                        )
+                    }
+
+                    // Wallet Core reads both registration policies when it builds its managers, so
+                    // the flip does not reach it until the next app start.
+                    setEffect {
+                        Effect.ShowSnackbar(
+                            message = settingsInteractor.registrationCheckRestartMessage
+                        )
+                    }
+                }
+            }
+
             SettingsMenuItemType.RETRIEVE_LOGS -> {
                 // The interactor builds the intent: shared code cannot construct a PlatformIntent, and
                 // it returns null when there are no logs — the emptiness check that used to live here.

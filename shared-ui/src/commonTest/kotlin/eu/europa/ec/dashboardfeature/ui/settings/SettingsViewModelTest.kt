@@ -155,6 +155,15 @@ internal class FakeSettingsInteractor(
     override suspend fun toggleShowBatchIssuanceCounter() {
         batchCounterToggles++
     }
+
+    var registrationCheckToggles: Int = 0
+        private set
+
+    override suspend fun toggleRegistrationCheck() {
+        registrationCheckToggles++
+    }
+
+    override val registrationCheckRestartMessage: String = "Restart the app to apply this change"
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

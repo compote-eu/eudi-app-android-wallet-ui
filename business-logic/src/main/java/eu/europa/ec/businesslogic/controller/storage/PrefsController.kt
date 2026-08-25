@@ -181,6 +181,9 @@ class PrefsControllerImpl(
 interface PrefKeys {
     suspend fun getShowBatchIssuanceCounter(): Boolean
     suspend fun setShowBatchIssuanceCounter(value: Boolean)
+
+    suspend fun getRegistrationCheckEnabled(): Boolean
+    suspend fun setRegistrationCheckEnabled(value: Boolean)
     suspend fun getCryptoAlias(): String
     suspend fun setCryptoAlias(value: String)
     suspend fun setSessionId(value: String)
@@ -199,6 +202,14 @@ class PrefKeysImpl(
 
     override suspend fun setShowBatchIssuanceCounter(value: Boolean) {
         prefsController.setBool("ShowBatchIssuanceCounter", value)
+    }
+
+    override suspend fun getRegistrationCheckEnabled(): Boolean {
+        return prefsController.getBool("RegistrationCheckEnabled", false)
+    }
+
+    override suspend fun setRegistrationCheckEnabled(value: Boolean) {
+        prefsController.setBool("RegistrationCheckEnabled", value)
     }
 
     override suspend fun getCryptoAlias(): String {

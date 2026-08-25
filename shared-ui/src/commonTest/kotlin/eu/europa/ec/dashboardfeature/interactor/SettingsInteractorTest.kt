@@ -33,6 +33,7 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
 import eu.europa.ec.shared.resources.settings_screen_option_changelog
+import eu.europa.ec.shared.resources.settings_screen_option_registration_check
 import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
 import eu.europa.ec.shared.resources.settings_screen_option_show_batch_issuance_counter
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -49,9 +50,11 @@ private class FakeSettingsPlatformBridge(
     override val appVersion: String = "1.2.3",
     override val changelogUrl: String? = null,
     override val canRetrieveLogs: Boolean = true,
+    override val canCheckRegistrations: Boolean = true,
     private val availability: BiometricsAvailability = BiometricsAvailability.CanAuthenticate,
     private val biometricsEnabled: Boolean = false,
     private var batchCounterShown: Boolean = true,
+    private var registrationCheckEnabled: Boolean = false,
 ) : SettingsPlatformBridge {
 
     var batchCounterWrites: Int = 0
@@ -79,6 +82,16 @@ private class FakeSettingsPlatformBridge(
         batchCounterShown = shown
     }
 
+    var lastRegistrationCheckWrite: Boolean? = null
+        private set
+
+    override suspend fun isRegistrationCheckEnabled(): Boolean = registrationCheckEnabled
+
+    override suspend fun setRegistrationCheckEnabled(enabled: Boolean) {
+        lastRegistrationCheckWrite = enabled
+        registrationCheckEnabled = enabled
+    }
+
     override fun logShareIntent(): PlatformIntent? = null
 }
 
@@ -94,6 +107,7 @@ private val strings = FakeStringCatalog(
         Res.string.settings_screen_option_show_batch_issuance_counter to "Batch counter",
         Res.string.settings_screen_option_retrieve_logs to "Retrieve logs",
         Res.string.settings_screen_option_changelog to "Changelog",
+        Res.string.settings_screen_option_registration_check to "Registration check",
     )
 )
 
@@ -128,12 +142,14 @@ class SettingsInteractorTest {
 
     @Test
     fun the_ios_shaped_bridge_leaves_exactly_the_batch_counter_row() = runTest {
-        // No biometrics, no logs, no changelog — what `IosSettingsPlatformBridge` reports today.
+        // No biometrics, no logs, no changelog, no registration checking — what
+        // `IosSettingsPlatformBridge` reports today.
         val interactor = SettingsInteractorImpl(
             strings = strings,
             platform = FakeSettingsPlatformBridge(
                 availability = BiometricsAvailability.Failure("not here"),
                 canRetrieveLogs = false,
+                canCheckRegistrations = false,
                 changelogUrl = null,
                 batchCounterShown = false,
             ),
@@ -148,6 +164,36 @@ class SettingsInteractorTest {
         // The switch reflects the platform's stored preference, not a default.
         val switch = assertIs<ListItemTrailingContentDataUi.Switch>(items[0].data.trailingContentData)
         assertFalse(switch.switchData.isChecked)
+    }
+
+    @Test
+    fun a_platform_that_cannot_check_registrations_omits_that_row() = runTest {
+        val interactor = SettingsInteractorImpl(
+            strings = strings,
+            platform = FakeSettingsPlatformBridge(canCheckRegistrations = false),
+        )
+
+        val types = interactor.getSettingsItemsUi(changelogUrl = null).map { it.type }
+
+        // Same reasoning as the logs row: the check lives in Wallet Core, so on a platform without
+        // it a switch would promise enforcement that nothing performs.
+        assertFalse(SettingsMenuItemType.REGISTRATION_CHECK in types)
+    }
+
+    @Test
+    fun the_registration_row_reflects_the_stored_decision_and_toggles_it() = runTest {
+        val platform = FakeSettingsPlatformBridge(registrationCheckEnabled = true)
+        val interactor = SettingsInteractorImpl(strings = strings, platform = platform)
+
+        val row = interactor.getSettingsItemsUi(changelogUrl = null).first {
+            it.type == SettingsMenuItemType.REGISTRATION_CHECK
+        }
+        val switch = assertIs<ListItemTrailingContentDataUi.Switch>(row.data.trailingContentData)
+        assertTrue(switch.switchData.isChecked)
+
+        interactor.toggleRegistrationCheck()
+
+        assertEquals(false, platform.lastRegistrationCheckWrite)
     }
 
     @Test

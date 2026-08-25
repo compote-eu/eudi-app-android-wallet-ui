@@ -21,6 +21,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvai
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
+import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
@@ -30,6 +31,7 @@ import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
 import eu.europa.ec.shared.resources.settings_screen_option_changelog
 import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
+import eu.europa.ec.shared.resources.settings_screen_option_registration_check
 import eu.europa.ec.shared.resources.settings_screen_option_show_batch_issuance_counter
 import eu.europa.ec.testfeature.util.mockedUriPath1
 import eu.europa.ec.testfeature.util.mockedUriPath2
@@ -71,6 +73,9 @@ class TestSettingsInteractor {
     @Mock
     private lateinit var prefKeys: PrefKeys
 
+    @Mock
+    private lateinit var registrationCheckProvider: RegistrationCheckProvider
+
     private lateinit var interactor: SettingsInteractor
 
     // The REAL bridge, not a stub: what these cases assert is end-to-end behaviour over ConfigLogic,
@@ -90,12 +95,17 @@ class TestSettingsInteractor {
             configLogic = configLogic,
             logController = logController,
             prefKeys = prefKeys,
+            registrationCheckProvider = registrationCheckProvider,
         )
 
         interactor = SettingsInteractorImpl(
             strings = strings,
             platform = platform,
         )
+
+        // Every getSettingsItemsUi call reads it for the switch position; the tests that care about
+        // the value override this.
+        mockRegistrationCheckPreference(response = false)
     }
 
     @After
@@ -190,15 +200,18 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
             // Then
-            // 1. Size = 2 (SHOW_BATCH_ISSUANCE_COUNTER + RETRIEVE_LOGS)
-            assertEquals(2, settingsItems.size)
+            // 1. Size = 3 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS)
+            assertEquals(3, settingsItems.size)
 
             // 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
             val firstItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(firstItem, isChecked = true)
 
             // 3. Second item: RETRIEVE_LOGS
-            val secondItem = settingsItems[1]
+            // By type, not position: inserting a row above used to break these.
+            val secondItem = settingsItems.first {
+                it.type == SettingsMenuItemType.RETRIEVE_LOGS
+            }
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, secondItem.type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS.itemId, secondItem.data.itemId)
             val mainContent2 =
@@ -232,15 +245,19 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = sampleChangelogUrl)
 
             // Then
-            // 1. Size = 3 (SHOW_BATCH_ISSUANCE_COUNTER + RETRIEVE_LOGS + CHANGELOG)
-            assertEquals(3, settingsItems.size)
+            // 1. Size = 4 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS
+            //    + CHANGELOG)
+            assertEquals(4, settingsItems.size)
 
             // 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
             val firstItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(firstItem, isChecked = true)
 
             // 3. Second item: RETRIEVE_LOGS
-            val secondItem = settingsItems[1]
+            // By type, not position: inserting a row above used to break these.
+            val secondItem = settingsItems.first {
+                it.type == SettingsMenuItemType.RETRIEVE_LOGS
+            }
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, secondItem.type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS.itemId, secondItem.data.itemId)
             val mainContent2 =
@@ -254,7 +271,9 @@ class TestSettingsInteractor {
             assertEquals(AppIcons.KeyboardArrowRight, trailingIcon2.iconData)
 
             // 4. Third item: CHANGELOG
-            val thirdItem = settingsItems[2]
+            val thirdItem = settingsItems.first {
+                it.type == SettingsMenuItemType.CHANGELOG
+            }
             assertEquals(SettingsMenuItemType.CHANGELOG, thirdItem.type)
             assertEquals(SettingsMenuItemType.CHANGELOG.itemId, thirdItem.data.itemId)
             val mainContent3 =
@@ -289,7 +308,7 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
             // Then
-            assertEquals(3, settingsItems.size)
+            assertEquals(4, settingsItems.size)
 
             val firstItem = settingsItems[0]
             assertEquals(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, firstItem.type)
@@ -311,7 +330,9 @@ class TestSettingsInteractor {
             val secondItem = settingsItems[1]
             assertShowBatchIssuanceCounterItem(secondItem, isChecked = true)
 
-            val thirdItem = settingsItems[2]
+            val thirdItem = settingsItems.first {
+                it.type == SettingsMenuItemType.RETRIEVE_LOGS
+            }
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, thirdItem.type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS.itemId, thirdItem.data.itemId)
             val mainContent3 =
@@ -344,7 +365,7 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
             // Then
-            assertEquals(3, settingsItems.size)
+            assertEquals(4, settingsItems.size)
 
             val biometricsItem = settingsItems[0]
             assertEquals(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, biometricsItem.type)
@@ -375,11 +396,12 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = sampleChangelogUrl)
 
             // Then
-            assertEquals(4, settingsItems.size)
+            assertEquals(5, settingsItems.size)
             assertEquals(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, settingsItems[0].type)
             assertEquals(SettingsMenuItemType.SHOW_BATCH_ISSUANCE_COUNTER, settingsItems[1].type)
-            assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, settingsItems[2].type)
-            assertEquals(SettingsMenuItemType.CHANGELOG, settingsItems[3].type)
+            assertEquals(SettingsMenuItemType.REGISTRATION_CHECK, settingsItems[2].type)
+            assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, settingsItems[3].type)
+            assertEquals(SettingsMenuItemType.CHANGELOG, settingsItems[4].type)
         }
 
     @Test
@@ -400,6 +422,35 @@ class TestSettingsInteractor {
             // Then
             val showBatchItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(showBatchItem, isChecked = false)
+        }
+    @Test
+    fun `Given registration check is enabled, When getSettingsItemsUi is called, Then its switch is checked`() =
+        coroutineRule.runTest {
+            whenever(biometricInteractor.getBiometricsAvailability())
+                .thenReturn(BiometricsAvailability.Failure(biometricsFailureText))
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockRegistrationCheckPreference(response = true)
+            mockStringsNeededForGetSettingsItemsUi(changeLogUrlIsNull = true)
+
+            val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
+
+            val registrationItem = settingsItems.first {
+                it.type == SettingsMenuItemType.REGISTRATION_CHECK
+            }
+            val trailingSwitch =
+                registrationItem.data.trailingContentData as ListItemTrailingContentDataUi.Switch
+            assertEquals(true, trailingSwitch.switchData.isChecked)
+        }
+
+    @Test
+    fun `Given registration check is enabled, When toggleRegistrationCheck is called, Then it is disabled`() =
+        coroutineRule.runTest {
+            mockRegistrationCheckPreference(response = true)
+
+            interactor.toggleRegistrationCheck()
+
+            verify(registrationCheckProvider, times(1))
+                .setEnabled(enabled = false)
         }
     //endregion
 
@@ -464,6 +515,10 @@ class TestSettingsInteractor {
         whenever(suspend { prefKeys.getShowBatchIssuanceCounter() }).thenReturn(response)
     }
 
+    private fun mockRegistrationCheckPreference(response: Boolean) {
+        whenever(suspend { registrationCheckProvider.isEnabled() }).thenReturn(response)
+    }
+
     private fun mockStringsNeededForGetSettingsItemsUi(
         changeLogUrlIsNull: Boolean,
         deviceSupportsBiometrics: Boolean = false,
@@ -472,6 +527,8 @@ class TestSettingsInteractor {
             .thenReturn(retrieveLogsText)
         whenever(strings[Res.string.settings_screen_option_show_batch_issuance_counter])
             .thenReturn(showBatchIssuanceCounterText)
+        whenever(strings[Res.string.settings_screen_option_registration_check])
+            .thenReturn(registrationCheckText)
 
         if (deviceSupportsBiometrics) {
             whenever(strings[Res.string.settings_screen_option_biometrics_authentication])
@@ -504,6 +561,7 @@ class TestSettingsInteractor {
     //region Mocked objects needed for tests.
     private val biometricsAuthenticationText = "Authenticate with biometrics"
     private val retrieveLogsText = "Retrieve logs"
+    private val registrationCheckText = "Check Registration Certificates"
     private val showBatchIssuanceCounterText = "Batch issuance counter"
     private val changelogText = "Changelog"
     private val biometricsFailureText = "Biometrics unavailable"

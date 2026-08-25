@@ -31,6 +31,8 @@ import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
 import eu.europa.ec.shared.resources.settings_screen_option_changelog
 import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
+import eu.europa.ec.shared.resources.settings_screen_option_registration_check
+import eu.europa.ec.shared.resources.settings_screen_option_registration_check_restart
 import eu.europa.ec.shared.resources.settings_screen_option_show_batch_issuance_counter
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -109,6 +111,29 @@ class SettingsInteractorImpl(
                 )
             )
 
+            if (platform.canCheckRegistrations) {
+                add(
+                    SettingsItemUi(
+                        type = SettingsMenuItemType.REGISTRATION_CHECK,
+                        data = ListItemDataUi(
+                            itemId = SettingsMenuItemType.REGISTRATION_CHECK.itemId,
+                            mainContentData = ListItemMainContentDataUi.Text(
+                                text = strings[Res.string.settings_screen_option_registration_check]
+                            ),
+                            leadingContentData = ListItemLeadingContentDataUi.Icon(
+                                iconData = AppIcons.Verified
+                            ),
+                            trailingContentData = ListItemTrailingContentDataUi.Switch(
+                                switchData = SwitchDataUi(
+                                    isChecked = platform.isRegistrationCheckEnabled(),
+                                    enabled = true,
+                                )
+                            )
+                        )
+                    )
+                )
+            }
+
             if (platform.canRetrieveLogs) {
                 add(
                     SettingsItemUi(
@@ -158,6 +183,13 @@ class SettingsInteractorImpl(
     override suspend fun toggleShowBatchIssuanceCounter() {
         platform.setBatchIssuanceCounterShown(shown = !platform.isBatchIssuanceCounterShown())
     }
+
+    override suspend fun toggleRegistrationCheck() {
+        platform.setRegistrationCheckEnabled(enabled = !platform.isRegistrationCheckEnabled())
+    }
+
+    override val registrationCheckRestartMessage: String
+        get() = strings[Res.string.settings_screen_option_registration_check_restart]
 
     private fun deviceSupportsBiometrics(): Boolean {
         return when (platform.biometricsAvailability()) {

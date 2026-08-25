@@ -23,6 +23,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvai
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
+import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.shared.platform.PlatformContext
 
@@ -40,6 +41,7 @@ class AndroidSettingsPlatformBridge(
     private val configLogic: ConfigLogic,
     private val logController: LogController,
     private val prefKeys: PrefKeys,
+    private val registrationCheckProvider: RegistrationCheckProvider,
 ) : SettingsPlatformBridge {
 
     override val appVersion: String get() = configLogic.appVersion
@@ -75,6 +77,15 @@ class AndroidSettingsPlatformBridge(
 
     override suspend fun setBatchIssuanceCounterShown(shown: Boolean) =
         prefKeys.setShowBatchIssuanceCounter(value = shown)
+
+    /** Wallet Core performs the check, so the row is offered. */
+    override val canCheckRegistrations: Boolean get() = true
+
+    override suspend fun isRegistrationCheckEnabled(): Boolean =
+        registrationCheckProvider.isEnabled()
+
+    override suspend fun setRegistrationCheckEnabled(enabled: Boolean) =
+        registrationCheckProvider.setEnabled(enabled = enabled)
 
     /**
      * Builds the log-sharing intent, which shared code cannot: an intent is an opaque
