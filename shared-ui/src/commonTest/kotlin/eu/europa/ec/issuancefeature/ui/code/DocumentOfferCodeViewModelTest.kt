@@ -188,6 +188,38 @@ class DocumentOfferCodeViewModelTest {
     }
 
     @Test
+    fun pop_is_ignored_while_the_sheet_is_closing() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+
+        val (effects, job) = collectEffects(viewModel)
+        viewModel.setEvent(Event.BottomSheet.Close)
+        advanceUntilIdle()
+        viewModel.setEvent(Event.Pop)
+        advanceUntilIdle()
+        job.cancel()
+
+        // The closing sheet owns the navigation; back must not race it.
+        assertTrue(effects.none { it is Effect.Navigation })
+    }
+
+    @Test
+    fun the_closing_sheet_still_pops_through_its_own_path() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+
+        val (effects, job) = collectEffects(viewModel)
+        viewModel.setEvent(Event.BottomSheet.Close)
+        advanceUntilIdle()
+        viewModel.setEvent(Event.BottomSheet.FinishedClosing)
+        advanceUntilIdle()
+        job.cancel()
+
+        // The guard the previous test asserts must not swallow the sheet's own navigation, which is
+        // why FinishedClosing calls pop() directly instead of dispatching Event.Pop through it.
+        assertTrue(viewModel.viewState.value.bottomSheetClosingInProgress)
+        assertEquals(1, effects.count { it is Effect.Navigation.Pop })
+    }
+
+    @Test
     fun dismissing_the_untrusted_issuer_sheet_leaves_the_screen() = runTest(mainDispatcher) {
         // IssuerNotTrusted is also the initial sheet content, so this is reachable without submitting a
         // code. There is nothing to issue from an untrusted issuer, so the flow ends.

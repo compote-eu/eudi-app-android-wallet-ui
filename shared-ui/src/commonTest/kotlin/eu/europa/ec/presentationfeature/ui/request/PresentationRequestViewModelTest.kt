@@ -56,6 +56,7 @@ import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -305,6 +306,26 @@ class PresentationRequestViewModelTest {
         advanceUntilIdle()
 
         assertIs<Effect.Navigation.Pop>(effect.await())
+    }
+
+    @Test
+    fun back_is_ignored_while_the_untrusted_verifier_sheet_is_closing() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(success(document("d1", "c1", checked = true)))
+        viewModel.setEvent(Event.Init(intentAction = null))
+        advanceUntilIdle()
+
+        val effects = mutableListOf<Effect>()
+        val job = launch { viewModel.effect.collect { effects.add(it) } }
+        viewModel.setEvent(Event.BottomSheet.VerifierNotTrusted.Close)
+        advanceUntilIdle()
+        viewModel.setEvent(Event.OnBack)
+        advanceUntilIdle()
+        job.cancel()
+
+        // FinishedClosing drives the navigation once the hide animation settles; a back press landing
+        // in that window would pop a second time and blank the screen.
+        assertTrue(viewModel.viewState.value.bottomSheetClosingInProgress)
+        assertTrue(effects.none { it is Effect.Navigation })
     }
 
     @Test

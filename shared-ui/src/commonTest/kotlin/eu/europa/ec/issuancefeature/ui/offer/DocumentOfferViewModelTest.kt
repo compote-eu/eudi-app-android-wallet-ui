@@ -374,6 +374,25 @@ class DocumentOfferViewModelTest {
     }
 
     @Test
+    fun the_back_button_is_ignored_while_the_sheet_is_closing() = runTest(mainDispatcher) {
+        val viewModel = viewModel(
+            config = offerConfig(onCancel = NavigationType.PopTo(route = DashboardRoute))
+        )
+
+        val (effects, job) = collectEffects(viewModel)
+        // The sheet leaves composition before its hide animation settles, so the toolbar back button
+        // and the system back gesture go live again for a moment. Two pops empty the back stack.
+        viewModel.setEvent(Event.BottomSheet.Close)
+        advanceUntilIdle()
+        viewModel.setEvent(Event.BackButtonPressed)
+        advanceUntilIdle()
+        job.cancel()
+
+        assertTrue(viewModel.viewState.value.bottomSheetClosingInProgress)
+        assertTrue(effects.none { it is Effect.Navigation })
+    }
+
+    @Test
     fun a_deeplink_cancel_navigation_emits_a_deep_link_effect() = runTest(mainDispatcher) {
         val viewModel = viewModel(
             config = offerConfig(
