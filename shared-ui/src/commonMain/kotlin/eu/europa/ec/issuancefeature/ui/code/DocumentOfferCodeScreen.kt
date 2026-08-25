@@ -122,24 +122,35 @@ fun DocumentOfferCodeScreen(
                 },
                 sheetState = bottomSheetState
             ) {
-                when (state.sheetContent) {
-                    is DocumentOfferCodeBottomSheetContent.IssuerNotTrusted -> {
-                        IssuerNotTrustedSheetContent(
-                            onClose = {
-                                viewModel.setEvent(Event.BottomSheet.Close)
-                            },
-                        )
-                    }
-
-                    is DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer -> {
-                        IssuerPartiallyTrustedSheetContent(
-                            onClose = {
-                                viewModel.setEvent(Event.BottomSheet.Close)
-                            },
-                        )
-                    }
-                }
+                SheetContent(
+                    sheetContent = state.sheetContent,
+                    onEventSent = { viewModel.setEvent(it) }
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun SheetContent(
+    sheetContent: DocumentOfferCodeBottomSheetContent,
+    onEventSent: (event: Event) -> Unit,
+) {
+    when (sheetContent) {
+        is DocumentOfferCodeBottomSheetContent.IssuerNotTrusted -> {
+            IssuerNotTrustedSheetContent(
+                onClose = {
+                    onEventSent(Event.BottomSheet.Close)
+                },
+            )
+        }
+
+        is DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer -> {
+            IssuerPartiallyTrustedSheetContent(
+                onClose = {
+                    onEventSent(Event.BottomSheet.Close)
+                },
+            )
         }
     }
 }

@@ -93,6 +93,8 @@ data class State(
     val resetPin: Boolean = false,
     val pinState: PinValidationState,
     val isBottomSheetOpen: Boolean = false,
+    val bottomSheetClosingInProgress: Boolean = false,
+    val sheetContent: PinBottomSheetContent = PinBottomSheetContent.CancelConfirmation,
     val quickPinSize: Int = 6,
     val isLockedOut: Boolean = false,
     val lockoutMessage: UiText? = null
@@ -122,6 +124,7 @@ sealed class Event : ViewEvent {
     data object Finish : Event()
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object FinishedClosing : BottomSheet()
 
         sealed class Cancel : BottomSheet() {
             data object PrimaryButtonPressed : Cancel()
@@ -140,6 +143,10 @@ sealed class Effect : ViewSideEffect {
 
     data object ShowBottomSheet : Effect()
     data object CloseBottomSheet : Effect()
+}
+
+sealed class PinBottomSheetContent {
+    data object CancelConfirmation : PinBottomSheetContent()
 }
 
 @KoinViewModel
@@ -234,12 +241,25 @@ class PinViewModel(
             }
 
             is Event.CancelPressed -> {
-                showBottomSheet()
+                // While the sheet is closing this would reopen it and abandon the pending exit.
+                if (viewState.value.bottomSheetClosingInProgress) return
+                showBottomSheet(sheetContent = PinBottomSheetContent.CancelConfirmation)
             }
 
             is Event.BottomSheet.UpdateBottomSheetState -> {
                 setState {
-                    copy(isBottomSheetOpen = event.isOpen)
+                    copy(
+                        isBottomSheetOpen = event.isOpen,
+                        bottomSheetClosingInProgress = if (event.isOpen) false
+                        else bottomSheetClosingInProgress,
+                    )
+                }
+            }
+
+            is Event.BottomSheet.FinishedClosing -> {
+                if (viewState.value.bottomSheetClosingInProgress) {
+                    setState { copy(bottomSheetClosingInProgress = false) }
+                    setEffect { Effect.Navigation.Pop }
                 }
             }
 
@@ -248,11 +268,12 @@ class PinViewModel(
             }
 
             is Event.BottomSheet.Cancel.SecondaryButtonPressed -> {
-                viewModelScope.launch {
+                // The pop now waits for FinishedClosing rather than a fixed 200ms guess, which
+                // raced the hide animation on slow devices.
+                if (!viewState.value.bottomSheetClosingInProgress) {
                     clearPendingPin()
+                    setState { copy(bottomSheetClosingInProgress = true) }
                     hideBottomSheet()
-                    artificialDelay(time = 200L)
-                    setEffect { Effect.Navigation.Pop }
                 }
             }
 
@@ -552,7 +573,10 @@ class PinViewModel(
         )
     }
 
-    private fun showBottomSheet() {
+    private fun showBottomSheet(sheetContent: PinBottomSheetContent) {
+        setState {
+            copy(sheetContent = sheetContent)
+        }
         setEffect {
             Effect.ShowBottomSheet
         }

@@ -203,24 +203,24 @@ class DocumentOfferCodeViewModel(
                         setState {
                             copy(
                                 isLoading = false,
-                                error = null,
-                                sheetContent = DocumentOfferCodeBottomSheetContent.IssuerNotTrusted
+                                error = null
                             )
                         }
-                        setEffect { Effect.ShowBottomSheet }
+                        showBottomSheet(sheetContent = DocumentOfferCodeBottomSheetContent.IssuerNotTrusted)
                     }
 
                     is IssueDocumentsInteractorPartialState.PartialSuccessWithUntrustedIssuer -> {
                         setState {
                             copy(
                                 isLoading = false,
-                                error = null,
-                                sheetContent = DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer(
-                                    issuedDocumentIds = response.issuedDocumentIds
-                                )
+                                error = null
                             )
                         }
-                        setEffect { Effect.ShowBottomSheet }
+                        showBottomSheet(
+                            sheetContent = DocumentOfferCodeBottomSheetContent.PartialSuccessWithUntrustedIssuer(
+                                issuedDocumentIds = response.issuedDocumentIds
+                            )
+                        )
                     }
 
                     is IssueDocumentsInteractorPartialState.Success -> {
@@ -297,6 +297,15 @@ class DocumentOfferCodeViewModel(
 
     private fun calculateScreenCaption(txCodeLength: Int): UiText =
         UiText.Resource(Res.string.issuance_code_caption, txCodeLength)
+
+    private fun showBottomSheet(sheetContent: DocumentOfferCodeBottomSheetContent) {
+        setState {
+            copy(sheetContent = sheetContent)
+        }
+        setEffect {
+            Effect.ShowBottomSheet
+        }
+    }
 
     private fun hideBottomSheet() {
         setEffect {

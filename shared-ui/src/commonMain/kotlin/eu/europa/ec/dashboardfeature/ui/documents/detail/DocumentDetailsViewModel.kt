@@ -26,9 +26,6 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorDeleteD
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorIssuancePartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorPartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorStoreBookmarkPartialState
-import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsBottomSheetContent.BookmarkRemovedInfo
-import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsBottomSheetContent.BookmarkStoredInfo
-import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsBottomSheetContent.TrustedRelyingPartyInfo
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.detail.transformer.transformToDocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
@@ -65,6 +62,7 @@ data class State(
     val isLoading: Boolean = true,
     val error: ContentErrorConfig? = null,
     val isBottomSheetOpen: Boolean = false,
+    val bottomSheetClosingInProgress: Boolean = false,
 
     val documentDetailsUi: DocumentDetailsUi? = null,
     val title: String? = null,
@@ -89,6 +87,7 @@ sealed class Event : ViewEvent {
 
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
+        data object FinishedClosing : BottomSheet()
 
         sealed class Delete : BottomSheet() {
             data object PrimaryButtonPressed : Delete()
@@ -191,7 +190,23 @@ class DocumentDetailsViewModel(
 
             is Event.BottomSheet.UpdateBottomSheetState -> {
                 setState {
-                    copy(isBottomSheetOpen = event.isOpen)
+                    copy(
+                        isBottomSheetOpen = event.isOpen,
+                        bottomSheetClosingInProgress = if (event.isOpen) false
+                        else bottomSheetClosingInProgress,
+                    )
+                }
+            }
+
+            is Event.BottomSheet.FinishedClosing -> {
+                // Exhaustive on purpose: none of these sheets navigates on close today, so adding
+                // one that does will fail to compile here rather than silently doing nothing.
+                when (viewState.value.sheetContent) {
+                    is DocumentDetailsBottomSheetContent.DeleteDocumentConfirmation,
+                    is DocumentDetailsBottomSheetContent.BookmarkStoredInfo,
+                    is DocumentDetailsBottomSheetContent.BookmarkRemovedInfo,
+                    is DocumentDetailsBottomSheetContent.TrustedRelyingPartyInfo,
+                    is DocumentDetailsBottomSheetContent.IssuerNotTrusted -> Unit
                 }
             }
 
@@ -226,7 +241,7 @@ class DocumentDetailsViewModel(
 
             is Event.OnBookmarkStored -> {
                 showBottomSheet(
-                    sheetContent = BookmarkStoredInfo(
+                    sheetContent = DocumentDetailsBottomSheetContent.BookmarkStoredInfo(
                         bottomSheetTextData = getBookmarkStoredBottomSheetTextData()
                     )
                 )
@@ -234,7 +249,7 @@ class DocumentDetailsViewModel(
 
             is Event.OnBookmarkRemoved -> {
                 showBottomSheet(
-                    sheetContent = BookmarkRemovedInfo(
+                    sheetContent = DocumentDetailsBottomSheetContent.BookmarkRemovedInfo(
                         bottomSheetTextData = getBookmarkRemovedBottomSheetTextData()
                     )
                 )
@@ -242,7 +257,7 @@ class DocumentDetailsViewModel(
 
             is Event.IssuerCardPressed -> {
                 showBottomSheet(
-                    sheetContent = TrustedRelyingPartyInfo(
+                    sheetContent = DocumentDetailsBottomSheetContent.TrustedRelyingPartyInfo(
                         bottomSheetTextData = getTrustedRelyingPartyBottomSheetTextData()
                     )
                 )

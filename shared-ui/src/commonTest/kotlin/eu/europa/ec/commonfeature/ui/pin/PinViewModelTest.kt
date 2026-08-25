@@ -38,6 +38,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -162,6 +163,63 @@ class PinViewModelTest {
             assertEquals(Event.Finish, state.onBackEvent)
             assertFalse(state.isLockedOut)
         }
+
+    @Test
+    fun cancelling_pops_only_once_the_sheet_has_finished_closing() = runTest(mainDispatcher) {
+        val viewModel = PinViewModel(FakeQuickPinInteractor(), PinFlow.UPDATE)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<Effect>()
+        val job = launch { viewModel.effect.collect { effects.add(it) } }
+
+        viewModel.setEvent(Event.BottomSheet.Cancel.SecondaryButtonPressed)
+        advanceUntilIdle()
+
+        // The pop used to fire after a fixed artificialDelay(200), which raced the hide animation.
+        assertTrue(viewModel.viewState.value.bottomSheetClosingInProgress)
+        assertTrue(effects.none { it is Effect.Navigation })
+        assertTrue(effects.any { it is Effect.CloseBottomSheet })
+
+        viewModel.setEvent(Event.BottomSheet.FinishedClosing)
+        advanceUntilIdle()
+        job.cancel()
+
+        assertFalse(viewModel.viewState.value.bottomSheetClosingInProgress)
+        assertIs<Effect.Navigation.Pop>(effects.last { it is Effect.Navigation })
+    }
+
+    @Test
+    fun cancel_is_ignored_while_the_sheet_is_closing() = runTest(mainDispatcher) {
+        val viewModel = PinViewModel(FakeQuickPinInteractor(), PinFlow.UPDATE)
+        advanceUntilIdle()
+
+        viewModel.setEvent(Event.BottomSheet.Cancel.SecondaryButtonPressed)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<Effect>()
+        val job = launch { viewModel.effect.collect { effects.add(it) } }
+        // Would otherwise reopen the confirmation sheet and abandon the pending exit.
+        viewModel.setEvent(Event.CancelPressed)
+        advanceUntilIdle()
+        job.cancel()
+
+        assertTrue(effects.none { it is Effect.ShowBottomSheet })
+    }
+
+    @Test
+    fun reopening_the_sheet_clears_the_closing_guard() = runTest(mainDispatcher) {
+        val viewModel = PinViewModel(FakeQuickPinInteractor(), PinFlow.UPDATE)
+        advanceUntilIdle()
+
+        viewModel.setEvent(Event.BottomSheet.Cancel.SecondaryButtonPressed)
+        advanceUntilIdle()
+        assertTrue(viewModel.viewState.value.bottomSheetClosingInProgress)
+
+        viewModel.setEvent(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.viewState.value.bottomSheetClosingInProgress)
+    }
 
     @Test
     fun changing_a_pin_starts_by_validating_the_current_one_and_is_cancelable() =
