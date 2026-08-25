@@ -28,12 +28,35 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.SIZE_SMALL
 import eu.europa.ec.uilogic.extension.throttledClickable
+
+/**
+ * Material 3 "Elevation Light/1" as the design files export it: a wider ambient layer with a spread
+ * the platform's single elevation shadow cannot express, plus a tight key layer.
+ */
+val shadowsAtElevation1: List<Shadow> = listOf(
+    Shadow(
+        radius = 3.dp,
+        color = Color.Black.copy(alpha = 0.15f),
+        spread = 1.dp,
+        offset = DpOffset(x = 0.dp, y = 1.dp),
+    ),
+    Shadow(
+        radius = 2.dp,
+        color = Color.Black.copy(alpha = 0.30f),
+        spread = 0.dp,
+        offset = DpOffset(x = 0.dp, y = 1.dp),
+    ),
+)
 
 @Composable
 fun WrapCard(
@@ -44,6 +67,7 @@ fun WrapCard(
     shape: Shape? = null,
     colors: CardColors? = null,
     border: BorderStroke? = null,
+    shadows: List<Shadow> = emptyList(),
     content: @Composable ColumnScope.() -> Unit
 ) {
     val cardShape = shape ?: RoundedCornerShape(SIZE_SMALL.dp)
@@ -51,9 +75,25 @@ fun WrapCard(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurface,
     )
-    val cardModifier = Modifier
-        .clip(cardShape)
-        .then(modifier)
+    val shadowModifier = shadows.fold<Shadow, Modifier>(Modifier) { chained, shadow ->
+        chained.dropShadow(cardShape, shadow)
+    }
+
+    // The shadow modifier sits after the caller's `modifier` so it measures at the card's real
+    // bounds — in front of it, a caller's padding leaves the shadow oversized and its margin
+    // showing — and before the `clip`, which would erase everything drawn outside the shape. The
+    // flat path keeps the original clip-first order, so every existing caller renders identically.
+    val shapedModifier = when {
+        shadows.isEmpty() -> Modifier
+            .clip(cardShape)
+            .then(modifier)
+
+        else -> modifier
+            .then(shadowModifier)
+            .clip(cardShape)
+    }
+
+    val cardModifier = shapedModifier
         .then(
             if (enabled && onClick != null) {
                 when (throttleClicks) {
@@ -84,6 +124,16 @@ private fun WrapCardPreview() {
     PreviewTheme {
         WrapCard {
             Text(text = "This is a wrap card preview.")
+        }
+    }
+}
+
+@ThemeModePreviews
+@Composable
+private fun WrapCardElevation1Preview() {
+    PreviewTheme {
+        WrapCard(shadows = shadowsAtElevation1) {
+            Text(text = "This is an elevated wrap card preview.")
         }
     }
 }
