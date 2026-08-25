@@ -14,10 +14,13 @@
  * governing permissions and limitations under the Licence.
  */
 
+import BackgroundTasks
 import SwiftUI
 import class SharedKit.WalletEngineProbeKt
 import class SharedKit.IosAuthorizationRedirects
 import class SharedKit.IosDeepLinks
+import class SharedKit.IosBackgroundReIssuanceKt
+import class SharedKit.BackgroundReIssuanceSummary
 
 /// Launch argument that turns the wallet probe on.
 ///
@@ -29,6 +32,20 @@ import class SharedKit.IosDeepLinks
 ///     xcrun simctl launch --console-pty <device> <bundle-id> --wallet-probe
 private let walletProbeArgument = "--wallet-probe"
 
+/// The background credential top-up, matching `BGTaskSchedulerPermittedIdentifiers` in `project.yml`.
+///
+/// Editing one without the other is a launch-time crash, not a silent no-op: `BGTaskScheduler.register`
+/// raises `NSInternalInconsistencyException` for an identifier the plist does not permit.
+private let reIssuanceTaskIdentifier = "eu.europa.ec.euidi.reissuance"
+
+/// The interval Android's `ReIssuanceWorkManager` runs at, used here as an *earliest* start.
+///
+/// It is a floor and nothing more. WorkManager will roughly honour a period; `BGTaskScheduler` decides
+/// for itself, weighing charge, network and how much the user opens the app, and may leave a task
+/// unrun for days. That is why the wallet must not depend on this having happened — every path that
+/// needs credentials still tops them up in the foreground.
+private let reIssuanceEarliestInterval: TimeInterval = 15 * 60
+
 /// Receives URLs opened on the app: the OpenID4VCI authorization redirect, credential offers, and a
 /// verifier's OpenID4VP presentation request.
 ///
@@ -36,6 +53,29 @@ private let walletProbeArgument = "--wallet-probe"
 /// scheme delivered to an already-running app on the simulator, and `application(_:open:options:)` is
 /// the path deep links have always arrived on. Both are wired, so whichever the system chooses works.
 final class AppDelegate: NSObject, UIApplicationDelegate {
+
+    /// Registers the background top-up, then asks for the first run.
+    ///
+    /// Registration has to happen here and nowhere later: iOS requires every task identifier to be
+    /// registered before `application(_:didFinishLaunchingWithOptions:)` returns, and rejects a
+    /// registration made afterwards.
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: reIssuanceTaskIdentifier,
+            using: .main // the work hops straight onto a Kotlin coroutine, so the queue only dispatches
+        ) { task in
+            // `BGTask` is not `Sendable` and Swift 6 cannot see that `using: .main` already puts this
+            // closure on the main actor, so state the isolation rather than copying the task across it.
+            MainActor.assumeIsolated { handleBackgroundReIssuance(task) }
+        }
+        print("BACKGROUND-REISSUANCE: registered \(reIssuanceTaskIdentifier)")
+        scheduleBackgroundReIssuance()
+        return true
+    }
+
     func application(
         _ app: UIApplication,
         open url: URL,
@@ -56,6 +96,61 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         print("OPEN-URL: ignored \(url.absoluteString.prefix(60))")
         return false
     }
+}
+
+/// Queues the next top-up.
+///
+/// Submitted on every launch and again at the start of each run, because a `BGTaskScheduler` request is
+/// consumed when it fires: an app that only submits at launch gets exactly one background run per
+/// launch, which for a wallet that is rarely opened is close to none.
+///
+/// A `BGProcessingTaskRequest` rather than `BGAppRefreshTask`: this does network I/O and key
+/// generation in the Secure Enclave, which is processing work, and the refresh window an app-refresh
+/// task gets is measured in seconds.
+private func scheduleBackgroundReIssuance() {
+    let request = BGProcessingTaskRequest(identifier: reIssuanceTaskIdentifier)
+    request.requiresNetworkConnectivity = true
+    // Not external power: topping up credentials is cheap, and requiring a charger on a phone that is
+    // never plugged in overnight would mean never running at all.
+    request.requiresExternalPower = false
+    request.earliestBeginDate = Date(timeIntervalSinceNow: reIssuanceEarliestInterval)
+
+    do {
+        try BGTaskScheduler.shared.submit(request)
+    } catch {
+        // Expected and harmless in the simulator, which has no scheduler: `BGTaskSchedulerErrorDomain`
+        // code 1 (unavailable). Worth printing rather than ignoring, since the same error on a device
+        // means the app is in the background-refresh-disabled state and will never be topped up.
+        print("BACKGROUND-REISSUANCE: could not schedule — \(error)")
+    }
+}
+
+/// Runs one sweep and reports honestly whether it finished.
+///
+/// `setTaskCompleted(success:)` is the signal iOS uses to decide how generously to schedule this app in
+/// future, so a failed sweep says so rather than claiming success. The next request is queued *first*,
+/// so a crash or an expiration in the work below cannot end the chain.
+@MainActor
+private func handleBackgroundReIssuance(_ task: BGTask) {
+    scheduleBackgroundReIssuance()
+
+    let work = Task { @MainActor in
+        do {
+            let summary = try await IosBackgroundReIssuanceKt.runBackgroundReIssuance()
+            print("BACKGROUND-REISSUANCE: \(summary)")
+            task.setTaskCompleted(success: true)
+        } catch is CancellationError {
+            print("BACKGROUND-REISSUANCE: cancelled by the system")
+            task.setTaskCompleted(success: false)
+        } catch {
+            print("BACKGROUND-REISSUANCE: failed — \(error)")
+            task.setTaskCompleted(success: false)
+        }
+    }
+
+    // iOS gives a few seconds' warning before it kills the task. Cancelling the Kotlin coroutine lets
+    // the sweep stop between documents rather than mid-issuance.
+    task.expirationHandler = { work.cancel() }
 }
 
 @main

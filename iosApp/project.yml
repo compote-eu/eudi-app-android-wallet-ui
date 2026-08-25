@@ -61,6 +61,18 @@ targets:
         # the wallet advertises, and without the key the app is terminated instead of prompted.
         NSBluetoothAlwaysUsageDescription: >-
           Share documents from your wallet with a nearby reader over Bluetooth.
+        # Background credential top-up — iOS's counterpart of Android's `ReIssuanceWorkManager`, which
+        # `Application` enqueues through WorkManager every 15 minutes.
+        #
+        # Both keys are required and neither is optional: `BGTaskScheduler.register` raises
+        # `NSInternalInconsistencyException` at launch for an identifier missing from the permitted
+        # list, and without the `processing` background mode the task is never run at all. The
+        # identifier is a fixed string rather than `$(PRODUCT_BUNDLE_IDENTIFIER)`-derived, so the dev
+        # and demo builds ask for the same task by the same name — it identifies the work, not the app.
+        BGTaskSchedulerPermittedIdentifiers:
+          - eu.europa.ec.euidi.reissuance
+        UIBackgroundModes:
+          - processing
     settings:
       base:
         # The same identity the EUDI reference iOS wallet uses

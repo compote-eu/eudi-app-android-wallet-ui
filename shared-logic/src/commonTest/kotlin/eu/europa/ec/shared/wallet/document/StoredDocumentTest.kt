@@ -22,6 +22,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 
 /**
@@ -194,4 +195,78 @@ class StoredDocumentTest {
     }
 
     //endregion
+
+    // --- background re-issuance: the same question Android's ReIssuanceWorkManager asks ---
+
+    @Test
+    fun a_once_only_batch_is_due_when_valid_unused_credentials_reach_the_threshold() {
+        val policy = WalletCredentialPolicy.OnceOnly(numberOfCredentials = 7, reissueTriggerUnused = 6)
+
+        // Seven unused: above the threshold, nothing to do.
+        val full = document(policy = policy, credentials = (1..7).map { credential("c$it") })
+        assertFalse(full.isDueForReIssuance(now))
+
+        // One presented, six unused: exactly the issuer's threshold, so it is due.
+        val spent = document(
+            policy = policy,
+            credentials = listOf(credential("used", usageCount = 1)) + (1..6).map { credential("c$it") },
+        )
+        assertTrue(spent.isDueForReIssuance(now))
+    }
+
+    @Test
+    fun expired_credentials_do_not_hold_a_once_only_batch_above_its_threshold() {
+        // The trap Android's worker calls out: counting expired credentials would keep the count above
+        // the threshold forever and the document would never re-issue.
+        val document = document(
+            policy = WalletCredentialPolicy.OnceOnly(numberOfCredentials = 7, reissueTriggerUnused = 6),
+            credentials = (1..7).map { credential("c$it", validUntil = now - 1.days) },
+        )
+        assertTrue(document.isDueForReIssuance(now))
+    }
+
+    @Test
+    fun a_rotating_batch_is_due_on_remaining_lifetime_not_on_use() {
+        val policy = WalletCredentialPolicy.RotatingBatch(
+            numberOfCredentials = 3,
+            reissueTriggerLifetimeLeft = 24.hours,
+        )
+
+        // Presented many times but still long-lived: a rotating credential survives presentation.
+        val used = document(
+            policy = policy,
+            credentials = listOf(credential("a", usageCount = 12, validUntil = now + 30.days)),
+        )
+        assertFalse(used.isDueForReIssuance(now))
+
+        val expiring = document(
+            policy = policy,
+            credentials = listOf(credential("a", validUntil = now + 12.hours)),
+        )
+        assertTrue(expiring.isDueForReIssuance(now))
+    }
+
+    @Test
+    fun a_document_with_nothing_usable_left_is_due() {
+        val empty = document(
+            policy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 3),
+            credentials = emptyList(),
+        )
+        assertTrue(empty.isDueForReIssuance(now))
+    }
+
+    @Test
+    fun a_null_threshold_waits_until_the_document_has_actually_expired() {
+        // Not expected — every stored policy carries one — but the defensive direction must be the
+        // conservative one: delay a network round-trip rather than provoke it.
+        val policy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 1)
+        assertFalse(
+            document(policy = policy, credentials = listOf(credential("a", validUntil = now + 1.days)))
+                .isDueForReIssuance(now)
+        )
+        assertTrue(
+            document(policy = policy, credentials = listOf(credential("a", validUntil = now - 1.hours)))
+                .isDueForReIssuance(now)
+        )
+    }
 }

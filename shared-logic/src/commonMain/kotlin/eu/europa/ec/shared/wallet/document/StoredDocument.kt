@@ -121,6 +121,53 @@ internal fun StoredDocument.usableCredentials(): List<StoredCredential> =
 internal fun List<StoredCredential>.walletExpiresAt(): Instant? = maxOfOrNull { it.validUntil }
 
 /**
+ * Whether this document is due for background re-issuance, mirroring Android's `ReIssuanceWorkManager`.
+ *
+ * The threshold travels with the document's stored policy — set by the issuer's advertised
+ * `credential_reuse_policy` where there is one — so this asks the policy, not a global setting:
+ *
+ * - **once-only** is driven by the *count* of currently-valid unused credentials, never by lifetime.
+ *   Expired credentials are excluded deliberately: counting them would hold an exhausted batch above
+ *   the threshold forever, and it would never re-issue.
+ * - **rotating batch** and **limited time** are driven by remaining lifetime, since presenting one of
+ *   those credentials does not consume it.
+ *
+ * A null threshold is not expected — every policy this wallet stores carries one — but it is treated
+ * defensively as "only once there is nothing usable left", which is the conservative direction: it
+ * delays a network round-trip rather than provoking one.
+ */
+internal fun StoredDocument.isDueForReIssuance(now: Instant): Boolean {
+    val usable = usableCredentials()
+    return when (policy) {
+        is WalletCredentialPolicy.OnceOnly -> {
+            val validUnused = usable.count { now >= it.validFrom && now <= it.validUntil }
+            validUnused <= (policy.reissueTriggerUnused ?: 0)
+        }
+
+        is WalletCredentialPolicy.RotatingBatch -> usable.isDueByLifetime(
+            now = now,
+            trigger = policy.reissueTriggerLifetimeLeft,
+        )
+
+        is WalletCredentialPolicy.LimitedTime -> usable.isDueByLifetime(
+            now = now,
+            trigger = policy.reissueTriggerLifetimeLeft,
+        )
+    }
+}
+
+/**
+ * Nothing valid left, or the last valid credential expires within [trigger].
+ *
+ * A null expiry means no usable credential remains at all, which is itself a reason to re-issue —
+ * the same reading Android gives a failed `getValidUntil()`.
+ */
+private fun List<StoredCredential>.isDueByLifetime(now: Instant, trigger: Duration?): Boolean {
+    val validUntil = walletExpiresAt() ?: return true
+    return validUntil <= now + (trigger ?: Duration.ZERO)
+}
+
+/**
  * Whether the document is running out of credentials and should be re-issued. Mirrors
  * `WalletCoreDocumentsControllerImpl.isDocumentLowOnCredentials`: only a once-only batch can run
  * out, since a rotating credential survives being presented.

@@ -15,6 +15,7 @@ import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosTransactionKind
 import eu.europa.ec.shared.wallet.multipaz.createIosWalletEngine
+import eu.europa.ec.shared.wallet.multipaz.runBackgroundReIssuance
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
@@ -341,6 +342,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             probeProximity(onResult)
             probeRemotePresentation(onResult)
             probeReIssuance(onResult)
+            probeBackgroundReIssuance(onResult)
             probeIssuance(onResult)
             probeCredentialOffer(onResult)
 
@@ -861,6 +863,27 @@ private suspend fun probeQrScan(onResult: (String) -> Unit) {
  * so only a genuinely issued document has one — a seeded fixture does not, and the unit tests cover
  * that refusal. This runs the real thing, which means the credential counter should go up.
  */
+private suspend fun probeBackgroundReIssuance(onResult: (String) -> Unit) {
+    onResult("--- background re-issuance ---")
+
+    // The sweep `BGTaskScheduler` runs, driven directly. The scheduler itself cannot be exercised here
+    // — the simulator has no scheduler at all (`BGTaskSchedulerErrorDomain` code 1 on every submit), and
+    // firing a task needs the Xcode debugger or a device — so this proves the half that is testable:
+    // that the sweep reads the store, applies each document's own policy, and reports honestly.
+    //
+    // "due=0" is a pass, not a gap: it means every document's issuer-advertised threshold says there is
+    // nothing to top up, which is the expected state right after `probeReIssuance` has just refreshed.
+    val summary = withTimeoutOrNull(RE_ISSUANCE_PROBE_TIMEOUT) { runBackgroundReIssuance() }
+    if (summary == null) {
+        onResult("runBackgroundReIssuance timed out")
+        return
+    }
+    onResult(
+        "runBackgroundReIssuance -> $summary. iOS decides when the real task runs, so nothing may " +
+                "depend on it having happened; every foreground path still tops up on its own."
+    )
+}
+
 private suspend fun probeReIssuance(onResult: (String) -> Unit) {
     onResult("--- re-issuance ---")
     val engine = KoinPlatform.getKoin().get<IosWalletEngine>()
