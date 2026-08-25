@@ -30,6 +30,7 @@ import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.transformer.RequestTransformer
 import eu.europa.ec.corelogic.controller.TransferEventPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.corelogic.model.overaskedClaimsOrEmpty
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -93,6 +94,8 @@ class PresentationRequestInteractorImpl(
                             uuidProvider = uuidProvider,
                             combinationsDomain = combinationsDomain,
                             claimsAreSelectable = claimsAreSelectable,
+                            overaskedClaims = response.relyingParty.registration
+                                .overaskedClaimsOrEmpty(),
                         ).getOrThrow()
                             .filter { it.documents.isNotEmpty() }
 

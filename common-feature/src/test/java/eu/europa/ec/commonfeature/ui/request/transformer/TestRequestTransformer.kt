@@ -20,6 +20,11 @@ import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.commonfeature.ui.request.model.DocumentFormatDomain
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
+import eu.europa.ec.corelogic.model.OveraskedClaimDomain
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
+import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.uilogic.component.wrap.ColorKey
+import eu.europa.ec.shared.resources.request_claim_not_registered_supporting_text
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.corelogic.model.ClaimPathDomain
@@ -129,6 +134,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -147,6 +153,87 @@ class TestRequestTransformer {
             val leafKeys = payload.docClaimsDomain.leafKeys()
             assertFalse("portrait" in leafKeys)
             assertFalse("issuing_country" in leafKeys)
+        }
+    }
+
+    // Case 1b:
+    // The same single combination, but the relying party's registration does not cover
+    // `family_name`.
+    //
+    // Case 1b Expected Result:
+    // Only that leaf row carries the "not registered" supporting line and the pending checkbox
+    // tint; every other row is untouched.
+    @Test
+    fun `Given an overasked claim, When transformToCombinationsUi, Then only its row is marked`() {
+        coroutineRule.runTest {
+            // Given
+            mockTransformToUiItemsStrings(resourceProvider)
+            whenever(resourceProvider.getString(Res.string.request_claim_not_registered_supporting_text))
+                .thenReturn(notRegisteredText)
+
+            val storageDocuments = listOf(getMockedPidWithBasicFields())
+            val combinationsDomain = listOf(
+                PresentationCombinationDomain(
+                    matches = listOf(mockedValidPidWithBasicFieldsRequestMatch)
+                )
+            )
+
+            // When
+            val combinationsUi = RequestTransformer.transformToCombinationsUi(
+                storageDocuments = storageDocuments,
+                resourceProvider = resourceProvider,
+                uuidProvider = uuidProvider,
+                combinationsDomain = combinationsDomain,
+                claimsAreSelectable = true,
+                overaskedClaims = listOf(
+                    OveraskedClaimDomain(
+                        path = ClaimPathDomain.ofPlainKeys(
+                            names = listOf("family_name"),
+                            type = ClaimType.MsoMdoc(namespace = mockedMdocPidNameSpace),
+                        ),
+                        // empty = any attestation of this format
+                        attestationTypes = emptySet(),
+                    )
+                ),
+            ).getOrThrow()
+
+            // Then
+            val leaves = combinationsUi.single().documents.single()
+                .headerUi.nestedItems
+                .flatMap { group ->
+                    when (group) {
+                        is ExpandableListItemUi.SingleListItem -> listOf(group.header)
+                        is ExpandableListItemUi.NestedListItem -> group.nestedItems.map {
+                            (it as ExpandableListItemUi.SingleListItem).header
+                        }
+                    }
+                }
+
+            val marked = leaves.filter {
+                (it.supportingContentData as? ListItemSupportingContentDataUi.Text)?.text ==
+                        notRegisteredText
+            }
+            assertEquals(1, marked.size)
+
+            val markedRow = marked.single()
+            val markedLabel = markedRow.overlineText ?: markedRow.mainContentData.let {
+                (it as ListItemMainContentDataUi.Text).text
+            }
+            assertTrue(markedLabel.contains("family", ignoreCase = true))
+
+            // the mark colours the checkbox too, so a selectable row reads as risky
+            val checkbox = markedRow.trailingContentData as ListItemTrailingContentDataUi.Checkbox
+            assertEquals(ColorKey.Pending, checkbox.tint)
+
+            // and nothing else was touched
+            assertTrue(leaves.size > 1)
+            assertEquals(
+                leaves.size - 1,
+                leaves.count { row ->
+                    (row.supportingContentData as? ListItemSupportingContentDataUi.Text)?.text !=
+                            notRegisteredText
+                }
+            )
         }
     }
 
@@ -184,6 +271,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -223,6 +311,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -256,6 +345,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -282,6 +372,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = emptyList(),
                 claimsAreSelectable = mockedSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -315,6 +406,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -344,6 +436,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedNonSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -373,6 +466,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedNonSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -409,6 +503,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedNonSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -440,6 +535,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedNonSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -483,6 +579,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -515,6 +612,7 @@ class TestRequestTransformer {
                 uuidProvider = uuidProvider,
                 combinationsDomain = combinationsDomain,
                 claimsAreSelectable = mockedSelectableClaims,
+                overaskedClaims = emptyList(),
             ).getOrThrow()
 
             // Then
@@ -1302,6 +1400,7 @@ class TestRequestTransformer {
     }
 
     /** Second-document id for the one-query-two-credentials case. */
+    private val notRegisteredText = "Not registered data"
     private val mockedSecondMdlId = "second-mdl-id"
 
     /** The document id of the claims-mocked two-nationalities SD-JWT PID. */
@@ -1318,6 +1417,7 @@ class TestRequestTransformer {
         uuidProvider = uuidProvider,
         combinationsDomain = combinationsDomain,
         claimsAreSelectable = claimsAreSelectable,
+        overaskedClaims = emptyList(),
     ).getOrThrow()
 
     /** A PID mso_mdoc match requesting the given data elements (queryId = null). */
