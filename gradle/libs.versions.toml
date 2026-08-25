@@ -48,14 +48,14 @@ cameraCore = "1.6.1"
 coil = "3.5.0"
 
 # Ktor (networking)
-ktor = "3.5.1"
+ktor = "3.5.2"
 
 # Koin (dependency injection)
 koin = "4.2.2"
 koinPlugin = "1.1.0"
 
 # EUDI wallet SDKs
-eudiWalletCore = "0.29.0"
+eudiWalletCore = "0.30.1"
 rqesUiSDK = "0.3.9"
 eudiLibKmpEtsi1196x2 = "0.4.0-alpha.1"
 # Multipaz — the KMP identity-credential engine underneath eudi-lib-android-wallet-core. Already on
@@ -71,7 +71,7 @@ treessence = "1.1.2"
 
 # Other libraries
 androidDesugarJdkLibs = "2.1.5"
-googlePhoneNumber = "9.0.35"
+googlePhoneNumber = "9.0.36"
 gson = "2.14.0"
 lint = "32.3.1"
 material = "1.14.0"
@@ -100,10 +100,10 @@ baselineprofile = "1.5.0-beta01"
 dependencyGraphPlugin = "0.13.0"
 gmsPlugin = "4.5.0"
 kover = "0.9.9"
-owaspDependencyCheck = "12.2.2"
+owaspDependencyCheck = "13.0.0"
 protobufPlugin = "0.10.0"
 secrets = "2.0.1"
-sonar = "7.3.1.8318"
+sonar = "7.4.0.8496"
 
 [libraries]
 # Kotlin
