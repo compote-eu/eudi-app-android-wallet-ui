@@ -17,8 +17,6 @@
 package eu.europa.ec.shared.ui.di
 
 import eu.europa.ec.corelogic.model.DocumentCategories
-import eu.europa.ec.corelogic.model.DocumentCategory
-import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.dashboardfeature.interactor.DocumentInteractorDeleteDocumentPartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentInteractorRetryIssuingDeferredDocumentsPartialState
@@ -43,19 +41,16 @@ internal class IosDocumentsPlatformBridge(
 ) : DocumentsPlatformBridge {
 
     /**
-     * The same category-to-format mapping the Android flavours configure, expressed here because
-     * `WalletCoreConfig` is Android-only. Kept to the two PID formats plus a catch-all: iOS can hold
-     * nothing else yet, since it cannot issue.
+     * The wallet's categorisation, from the one list both platforms read.
+     *
+     * This used to be a hand-written two-entry map — PID only — justified by a comment saying iOS
+     * "cannot issue" anything else. That stopped being true, and the map did not: an mDL or a tax
+     * credential accepted through a credential offer was filed under `Other` here and under
+     * `Government` on Android. [DocumentCategories.Default] is now the single definition of this,
+     * shared with `WalletCoreConfig`.
      */
     override val documentCategories: DocumentCategories
-        get() = DocumentCategories(
-            value = mapOf(
-                DocumentCategory.Government to listOf(
-                    DocumentIdentifier.MdocPid,
-                    DocumentIdentifier.SdJwtPid,
-                ),
-            )
-        )
+        get() = DocumentCategories.Default
 
     /**
      * False, unlike the Android flavours' `true`.

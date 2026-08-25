@@ -49,7 +49,113 @@ import kotlin.jvm.JvmInline
 @JvmInline
 value class DocumentCategories(
     val value: Map<DocumentCategory, List<DocumentIdentifier>>,
-)
+) {
+    companion object {
+        /**
+         * The wallet's categorisation of every document type it knows about.
+         *
+         * **One definition for both platforms, deliberately.** This used to live inline in Android's
+         * `WalletCoreConfig` while iOS carried its own two-entry map, and the two drifted: iOS
+         * categorised PID only, so an mDL or a tax credential — both obtainable there through a
+         * credential offer — fell through to [DocumentCategory.Other] where Android filed them under
+         * [DocumentCategory.Government]. A categorisation is a property of the document type, not of
+         * the platform, so there is now one list and neither side can drift from it again.
+         *
+         * An identifier that appears here nowhere still resolves to [DocumentCategory.Other], which is
+         * what `toDocumentCategory` falls back to.
+         */
+        val Default: DocumentCategories = DocumentCategories(
+            value = mapOf(
+                DocumentCategory.Government to listOf(
+                    DocumentIdentifier.MdocPid,
+                    DocumentIdentifier.SdJwtPid,
+                    DocumentIdentifier.OTHER(
+                        formatType = "org.iso.18013.5.1.mDL"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.tax.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "urn:eu.europa.ec.eudi:tax:1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.pseudonym.age_over_18.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "urn:eu.europa.ec.eudi:pseudonym_age_over_18:1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.pseudonym.age_over_18.deferred_endpoint"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.cor.1"
+                    ),
+                ),
+                DocumentCategory.Travel to listOf(
+                    DocumentIdentifier.OTHER(
+                        formatType = "org.iso.23220.2.photoid.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "org.iso.23220.photoID.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "org.iso.18013.5.1.reservation"
+                    ),
+                ),
+                DocumentCategory.Finance to listOf(
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.iban.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "urn:eu.europa.ec.eudi:iban:1"
+                    ),
+                ),
+                DocumentCategory.Education to emptyList(),
+                DocumentCategory.Health to listOf(
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.hiid.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "urn:eu.europa.ec.eudi:hiid:1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.ehic.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "urn:eu.europa.ec.eudi:ehic:1"
+                    ),
+                ),
+                DocumentCategory.SocialSecurity to listOf(
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.pda1.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "urn:eu.europa.ec.eudi:pda1:1"
+                    ),
+                ),
+                DocumentCategory.Retail to listOf(
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.loyalty.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.msisdn.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "urn:eu.europa.ec.eudi:msisdn:1"
+                    ),
+                ),
+                DocumentCategory.Other to listOf(
+                    DocumentIdentifier.OTHER(
+                        formatType = "eu.europa.ec.eudi.por.1"
+                    ),
+                    DocumentIdentifier.OTHER(
+                        formatType = "urn:eu.europa.ec.eudi:por:1"
+                    ),
+                ),
+            )
+        )
+    }
+}
 
 /**
  * Represents the category of a document.
