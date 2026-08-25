@@ -54,11 +54,13 @@ import kotlin.test.assertTrue
  * the ones that stop a route from being cross-wired on either platform — each assertion names the
  * typed [eu.europa.ec.shared.navigation.AppRoute] and the exact config payload it must carry.
  *
- * The welcome-message cases also guard the `init` block: it exists precisely because the `Event.Init`
- * that used to drive it came from an `OneTimeLaunchedEffect` whose "already ran" flag is
+ * The welcome-message cases guard the name lookup, which [Event.OnResume] drives. Two regressions are
+ * pinned here, neither visible in a screenshot of a healthy launch. The first: the lookup was once
+ * driven by an `Event.Init` from an `OneTimeLaunchedEffect` whose "already ran" flag is
  * `rememberSaveable`, so after process death the event was never re-sent and Home came back reading a
- * bare "Welcome". Nothing about that regression is visible in a screenshot of a healthy launch, so it
- * is pinned here instead.
+ * bare "Welcome". The second: moving it to the ViewModel's `init` fixed that but ran it only once per
+ * instance, so a PID added while Home was alive left the greeting stale — hence ON_RESUME, and hence
+ * the loader guard, which must not flash a spinner over a greeting that is already on screen.
  *
  * `Dispatchers.setMain` is required because `viewModelScope` dispatches on Main, and the dispatcher is
  * shared with `runTest` so both run on one virtual clock. Effects are collected *before* the event is
@@ -85,6 +87,24 @@ class HomeViewModelTest {
         }
     }
 
+    /** Emits [first], then never emits again, so a second lookup is left in flight on purpose. */
+    private class FakeStallingHomeInteractor(
+        private val first: HomeInteractorGetUserNameViaMainPidDocumentPartialState? = null,
+    ) : HomeInteractor {
+        private var calls = 0
+
+        override fun isBleAvailable(): Boolean = true
+
+        override fun isBleCentralClientModeEnabled(): Boolean = false
+
+        override fun getUserNameViaMainPidDocument():
+                Flow<HomeInteractorGetUserNameViaMainPidDocumentPartialState> = flow {
+            val emitThis = if (calls == 0) first else null
+            calls++
+            emitThis?.let { emit(it) }
+        }
+    }
+
     private val mainDispatcher = UnconfinedTestDispatcher()
 
     @BeforeTest
@@ -98,6 +118,49 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun the_first_lookup_shows_the_loader() = runTest(mainDispatcher) {
+        // Nothing but the default greeting is on screen, so a spinner is the honest thing to show.
+        val viewModel = HomeViewModel(FakeStallingHomeInteractor())
+
+        viewModel.setEvent(Event.OnResume)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.viewState.value.isLoading)
+        assertEquals(
+            UiText.Resource(Res.string.home_screen_welcome),
+            viewModel.viewState.value.welcomeUserMessage
+        )
+    }
+
+    @Test
+    fun a_resume_refresh_does_not_flash_the_loader_over_a_greeting() = runTest(mainDispatcher) {
+        val viewModel = HomeViewModel(
+            FakeStallingHomeInteractor(
+                first = HomeInteractorGetUserNameViaMainPidDocumentPartialState.Success(
+                    userFirstName = "Alex"
+                )
+            )
+        )
+
+        viewModel.setEvent(Event.OnResume)
+        advanceUntilIdle()
+        assertEquals(
+            UiText.Resource(Res.string.home_screen_welcome_user_message, "Alex"),
+            viewModel.viewState.value.welcomeUserMessage
+        )
+
+        // Second resume: the lookup stalls, so anything but a silent refresh would be visible.
+        viewModel.setEvent(Event.OnResume)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.viewState.value.isLoading)
+        assertEquals(
+            UiText.Resource(Res.string.home_screen_welcome_user_message, "Alex"),
+            viewModel.viewState.value.welcomeUserMessage
+        )
+    }
+
+    @Test
     fun the_welcome_message_greets_the_name_on_the_main_pid() = runTest(mainDispatcher) {
         val viewModel = HomeViewModel(
             FakeHomeInteractor(
@@ -106,6 +169,7 @@ class HomeViewModelTest {
                 )
             )
         )
+        viewModel.setEvent(Event.OnResume)
         advanceUntilIdle()
 
         assertEquals(
@@ -124,6 +188,7 @@ class HomeViewModelTest {
                 )
             )
         )
+        viewModel.setEvent(Event.OnResume)
         advanceUntilIdle()
 
         assertEquals(
@@ -141,6 +206,7 @@ class HomeViewModelTest {
                 )
             )
         )
+        viewModel.setEvent(Event.OnResume)
         advanceUntilIdle()
 
         assertEquals(

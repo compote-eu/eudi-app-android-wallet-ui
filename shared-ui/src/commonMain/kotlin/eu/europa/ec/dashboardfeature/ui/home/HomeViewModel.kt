@@ -75,16 +75,17 @@ data class State(
 ) : ViewState
 
 sealed class Event : ViewEvent {
+    data object OnResume : Event()
     data object StartProximityFlow : Event()
 
     sealed class AuthenticateCard : Event() {
-        data object AuthenticatePressed : Event()
-        data object LearnMorePressed : Event()
+        data object AuthenticatePressed : AuthenticateCard()
+        data object LearnMorePressed : AuthenticateCard()
     }
 
     sealed class SignDocumentCard : Event() {
-        data object SignDocumentPressed : Event()
-        data object LearnMorePressed : Event()
+        data object SignDocumentPressed : SignDocumentCard()
+        data object LearnMorePressed : SignDocumentCard()
     }
 
     sealed class BottomSheet : Event() {
@@ -97,8 +98,8 @@ sealed class Event : ViewEvent {
         }
 
         sealed class SignDocument : BottomSheet() {
-            data object OpenFromDevice : Authenticate()
-            data object OpenScanQR : Authenticate()
+            data object OpenFromDevice : SignDocument()
+            data object OpenScanQR : SignDocument()
         }
 
         sealed class Bluetooth : BottomSheet() {
@@ -141,19 +142,19 @@ class HomeViewModel(
     private val homeInteractor: HomeInteractor,
 ) : MviViewModel<Event, State, Effect>() {
 
-    init {
-        // Belongs to the ViewModel's lifetime, not the composition's. It used to be started by an
-        // `Event.Init` sent from `OneTimeLaunchedEffect`, whose "already ran" flag is
-        // `rememberSaveable` — so after process death the flag was restored as `true` and the event
-        // was never re-sent to this brand-new ViewModel, which is why Home came back reading
-        // "Welcome" instead of "Welcome, <name>". `init` runs exactly once per instance, surviving
-        // configuration change and re-running after process death.
-        getUserNameViaMainPidDocument()
-    }
+    private val defaultWelcomeMessage: UiText = UiText.Resource(Res.string.home_screen_welcome)
 
+    // The name is resolved from `Event.OnResume`, not from this ViewModel's `init`. `init` runs once
+    // per instance, which was enough to fix the restore-path bug that `OneTimeLaunchedEffect` caused
+    // (its "already ran" flag was `rememberSaveable`, so after process death it suppressed the event
+    // for a brand-new ViewModel and Home came back reading "Welcome" instead of "Welcome, <name>").
+    // But once-per-instance is too rare: this ViewModel outlives a trip to issuance, so a PID added
+    // while Home is alive left the greeting stale. ON_RESUME covers both — a new observer is brought
+    // up to the current state when it registers, so it also fires on first composition and after
+    // process death. This matches the sibling Documents tab, which loads its list the same way.
     override fun setInitialState(): State {
         return State(
-            welcomeUserMessage = UiText.Resource(Res.string.home_screen_welcome),
+            welcomeUserMessage = defaultWelcomeMessage,
             authenticateCardConfig = ActionCardConfig(
                 title = UiText.Resource(Res.string.home_screen_authentication_card_title),
                 icon = AppIcons.IdCards,
@@ -172,6 +173,10 @@ class HomeViewModel(
 
     override fun handleEvents(event: Event) {
         when (event) {
+            is Event.OnResume -> {
+                getUserNameViaMainPidDocument()
+            }
+
             is Event.AuthenticateCard.AuthenticatePressed -> showBottomSheet(
                 sheetContent = HomeScreenBottomSheetContent.Authenticate
             )
@@ -339,7 +344,8 @@ class HomeViewModel(
     private fun getUserNameViaMainPidDocument() {
         setState {
             copy(
-                isLoading = true
+                // A re-resolve on resume must not flash the loader over a greeting already showing.
+                isLoading = welcomeUserMessage == defaultWelcomeMessage
             )
         }
         viewModelScope.launch {
@@ -362,7 +368,7 @@ class HomeViewModel(
                                         Res.string.home_screen_welcome_user_message,
                                         response.userFirstName
                                     )
-                                } else UiText.Resource(Res.string.home_screen_welcome)
+                                } else defaultWelcomeMessage
                             )
                         }
                     }

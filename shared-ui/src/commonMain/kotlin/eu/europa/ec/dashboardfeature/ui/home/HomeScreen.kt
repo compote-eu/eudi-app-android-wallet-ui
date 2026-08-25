@@ -42,6 +42,8 @@ import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.resolve
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIconAndText
@@ -57,6 +59,7 @@ import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.HSpacer
+import eu.europa.ec.uilogic.component.utils.LifecycleEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.ActionCardConfig
@@ -161,6 +164,12 @@ fun HomeScreen(
         }
     }
 
+    LifecycleEffect(
+        lifecycleOwner = LocalLifecycleOwner.current,
+        lifecycleEvent = Lifecycle.Event.ON_RESUME
+    ) {
+        viewModel.setEvent(Event.OnResume)
+    }
 }
 
 @Composable
