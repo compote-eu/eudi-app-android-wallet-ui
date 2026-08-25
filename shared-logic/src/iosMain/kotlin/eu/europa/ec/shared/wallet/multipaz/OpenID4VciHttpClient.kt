@@ -98,6 +98,22 @@ internal class IssuerClaimDisplayNotice {
 }
 
 /**
+ * The issuer's advertised credential reuse policy, per document type.
+ *
+ * Same reason [IssuerClaimDisplayNotice] exists: multipaz's `CredentialMetadata` keeps
+ * `credential_metadata.display` and drops everything beside it, so `credential_reuse_policy` — the
+ * batch size and re-issuance threshold the issuer actually published — is visible only to the engine
+ * that read the raw metadata.
+ *
+ * Keyed by doctype or vct for the same reason as the claim names: the handler joins on
+ * `StoredDocumentFormat.identifier`.
+ */
+internal class IssuerReusePolicyNotice {
+    var policiesByDocumentType: Map<String, SelectedReusePolicy> = emptyMap()
+        internal set
+}
+
+/**
  * Why the authorization server refused a token exchange, in its own words.
  *
  * Written by [OpenID4VciCompatibilityEngine] and read after the attempt has failed, for the same reason
@@ -154,9 +170,10 @@ internal fun openID4VciHttpClient(
     refusalNotice: TokenRefusalNotice? = null,
     /** Filled in with the issuer's per-claim display names, which multipaz discards. */
     claimDisplayNotice: IssuerClaimDisplayNotice? = null,
+    reusePolicyNotice: IssuerReusePolicyNotice? = null,
 ): HttpClient =
     HttpClient(
-        OpenID4VciCompatibilityEngine(engine, deferredNotice, refusalNotice, claimDisplayNotice)
+        OpenID4VciCompatibilityEngine(engine, deferredNotice, refusalNotice, claimDisplayNotice, reusePolicyNotice)
     ) {
         // multipaz's requirement, not ours: the OAuth redirect must come back to the caller so the
         // authorization code can be read off it.
@@ -178,6 +195,7 @@ internal class OpenID4VciCompatibilityEngine(
     private val deferredNotice: DeferredIssuanceNotice? = null,
     private val refusalNotice: TokenRefusalNotice? = null,
     private val claimDisplayNotice: IssuerClaimDisplayNotice? = null,
+    private val reusePolicyNotice: IssuerReusePolicyNotice? = null,
 ) : HttpClientEngineBase("openid4vci-compat") {
 
     override val config: HttpClientEngineConfig get() = delegate.config
@@ -347,6 +365,7 @@ internal class OpenID4VciCompatibilityEngine(
                 }.toMap()
                 Logger.i(TAG, "learned ${scopesByConfigurationId.size} credential scopes")
                 rememberClaimDisplayNames(configurations)
+                rememberReusePolicies(configurations)
             }
         }
 
@@ -382,6 +401,41 @@ internal class OpenID4VciCompatibilityEngine(
                 TAG,
                 "learned claim display names for ${byDocumentType.size} document type(s): " +
                         byDocumentType.entries.joinToString { "${it.key}=${it.value.size}" }
+            )
+        }
+    }
+
+    /**
+     * Keeps the issuer's `credential_metadata.credential_reuse_policy`, which multipaz discards along
+     * with everything else beside `display`.
+     *
+     * The selection — first supported option, in the issuer's order — happens here rather than at
+     * issuance, so what the handler receives is already the option this wallet committed to, and there
+     * is one place that knows the ETSI detail strings.
+     */
+    private fun rememberReusePolicies(configurations: JsonObject) {
+        val notice = reusePolicyNotice ?: return
+        val byDocumentType = configurations.values.mapNotNull { configuration ->
+            val configured = configuration.jsonObject
+            val documentType = (configured["doctype"] ?: configured["vct"])
+                ?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val published = configured["credential_metadata"]?.jsonObject?.get("credential_reuse_policy")
+                ?: return@mapNotNull null
+            runCatching {
+                LenientJson.decodeFromJsonElement(IssuerReusePolicy.serializer(), published)
+            }.getOrNull()
+                ?.firstSupportedOption()
+                ?.let { documentType to it }
+        }.toMap()
+
+        if (byDocumentType.isNotEmpty()) {
+            notice.policiesByDocumentType = byDocumentType
+            Logger.i(
+                TAG,
+                "learned reuse policies for ${byDocumentType.size} document type(s): " +
+                        byDocumentType.entries.joinToString {
+                            "${it.key}=${it.value.detail}/${it.value.option.batchSize}"
+                        }
             )
         }
     }

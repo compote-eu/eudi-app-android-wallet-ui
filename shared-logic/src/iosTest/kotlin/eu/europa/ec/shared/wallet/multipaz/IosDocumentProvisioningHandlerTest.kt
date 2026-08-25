@@ -166,6 +166,35 @@ class IosDocumentProvisioningHandlerTest {
     }
 
     @Test
+    fun the_issuers_published_reuse_policy_decides_the_batch_and_the_threshold() = runTest {
+        val store = store()
+        val notice = IssuerReusePolicyNotice().apply {
+            policiesByDocumentType = mapOf(
+                "eu.europa.ec.eudi.pid.1" to SelectedReusePolicy(
+                    option = IssuerReusePolicyOption(
+                        details = listOf("once_only"),
+                        batchSize = 7,
+                        reissueTriggerUnused = 6,
+                    ),
+                    detail = "once_only",
+                )
+            )
+        }
+
+        // The wallet would like 60; the issuer's policy says seven, and the issuer wins.
+        IosDocumentProvisioningHandler(store, batchSize = 60, reusePolicy = notice).createDocument(
+            credentialMetadata = credentialMetadata(name = "PID"),
+            issuerMetadata = issuerMetadata(),
+            documentAuthorizationData = null,
+        )
+
+        val metadata = store.documentStore.listDocuments().single().eudiMetadata!!
+        val policy = assertIs<WalletCredentialPolicy.OnceOnly>(metadata.credentialPolicy)
+        assertEquals(7, policy.numberOfCredentials)
+        assertEquals(6, policy.reissueTriggerUnused)
+    }
+
+    @Test
     fun a_non_pid_document_is_a_rotating_batch() = runTest {
         val store = store()
 

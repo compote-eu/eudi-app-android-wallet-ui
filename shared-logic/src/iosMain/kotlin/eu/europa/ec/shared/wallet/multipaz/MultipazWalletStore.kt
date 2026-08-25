@@ -184,7 +184,12 @@ internal class MultipazWalletStore(
  * see the note at the call site in `IosCredentialIssuer.refreshCredentials`.
  */
 internal suspend fun MultipazWalletStore.credentialsNeededFor(document: Document): Int {
-    val settings = IosDocumentProvisioningHandler.settingsFor(store = this)
+    // The document's own policy, so this answers the question multipaz will ask when it actually
+    // provisions — the issuer's batch size and threshold, not the wallet's defaults. Two copies that
+    // drifted would answer for a wallet that does not exist.
+    val settings = document.eudiMetadata?.credentialPolicy
+        ?.let { IosDocumentProvisioningHandler.settingsForPolicy(store = this, policy = it) }
+        ?: IosDocumentProvisioningHandler.settingsFor(store = this)
     val domain = when (document.eudiMetadata?.format) {
         is StoredDocumentFormat.SdJwtVc -> settings.sdJwtNoUserAuthDomain
         else -> settings.mdocNoUserAuthDomain

@@ -19,6 +19,7 @@ package eu.europa.ec.shared.wallet.multipaz
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
 
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
+import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.document.Document
 import org.multipaz.provisioning.CredentialFormat
@@ -70,6 +71,12 @@ internal class IosDocumentProvisioningHandler(
      * the metadata. Null leaves claims unnamed, which is what every document issued before this did.
      */
     private val claimDisplay: IssuerClaimDisplayNotice? = null,
+    /**
+     * The issuer's advertised reuse policy, filled in by [OpenID4VciCompatibilityEngine] while it reads
+     * the metadata. When the issuer published one it decides the batch size and the stored policy;
+     * null falls back to [credentialPolicyFor], which is all any document issued before this had.
+     */
+    private val reusePolicy: IssuerReusePolicyNotice? = null,
 ) : DocumentProvisioningHandler(
     secureArea = store.keySecureArea,
     documentStore = store.documentStore,
@@ -83,8 +90,12 @@ internal class IosDocumentProvisioningHandler(
         issuerMetadata: ProvisioningMetadata,
         documentAuthorizationData: ByteString?,
     ): Document {
-        val credentialCount = min(credentialMetadata.maxBatchSize, batchSize)
         val format = credentialMetadata.format.toStoredFormat()
+        // The issuer's advertised batch size wins over the wallet's preference: asking for 20 when the
+        // issuer's policy says 7 is what produced a "7/20" counter — 20 requested, 7 ever certified.
+        val credentialCount = issuerPolicyFor(format.identifier, credentialMetadata.maxBatchSize)
+            ?.numberOfCredentials
+            ?: min(credentialMetadata.maxBatchSize, batchSize)
 
         return documentStore.createDocument(
             displayName = credentialMetadata.display.text,
@@ -95,12 +106,14 @@ internal class IosDocumentProvisioningHandler(
             metadata = EudiDocumentMetadata.create(
                 documentManagerId = store.documentManagerId,
                 format = format,
-                // Per document type, as Android's `documentSpecificPolicies`/`defaultPolicy` do — not
-                // per batch size, which is what this used to derive it from and got PID wrong.
-                credentialPolicy = credentialPolicyFor(
-                    formatType = format.identifier,
-                    numberOfCredentials = credentialCount,
-                ),
+                // The issuer's own policy when it published one — batch size, kind and threshold all
+                // come from `credential_reuse_policy`, as they do on Android. Only an issuer that
+                // publishes nothing falls back to deciding by format.
+                credentialPolicy = issuerPolicyFor(format.identifier, credentialMetadata.maxBatchSize)
+                    ?: credentialPolicyFor(
+                        formatType = format.identifier,
+                        numberOfCredentials = credentialCount,
+                    ),
                 issuerMetadata = issuerMetadataFrom(credentialMetadata, issuerMetadata),
             ),
         )
@@ -169,6 +182,31 @@ internal class IosDocumentProvisioningHandler(
         is CredentialFormat.SdJwt -> StoredDocumentFormat.SdJwtVc(vct)
     }
 
+    /**
+     * The issuer's policy for this document type, already reduced to the option this wallet supports.
+     *
+     * Null means the issuer published no `credential_reuse_policy`, or published one whose only options
+     * this wallet cannot honour — both of which leave the caller to decide for itself.
+     */
+    private fun issuerPolicyFor(formatType: String, maxBatchSize: Int) =
+        reusePolicy?.policiesByDocumentType?.get(formatType)?.toCredentialPolicy(maxBatchSize)
+
+    /**
+     * Settings for one document, taken from the policy stored on it.
+     *
+     * multipaz asks this per document, which is what lets the issuer's batch size and re-issuance
+     * threshold reach the credential-creation path at all — [defaultDocumentProvisioningSettings] is
+     * fixed at construction, before any metadata has been read.
+     */
+    override suspend fun getDocumentProvisioningSettings(
+        document: Document,
+        credentialMetadata: CredentialMetadata,
+        issuerMetadata: ProvisioningMetadata,
+    ): DocumentProvisioningSettings =
+        document.eudiMetadata?.credentialPolicy
+            ?.let { settingsForPolicy(store, it) }
+            ?: defaultDocumentProvisioningSettings
+
     companion object {
         /**
          * Per build flavour, mirroring Android's `numberOfCredentials` — 60 for `dev`, 10 for `demo`.
@@ -186,6 +224,35 @@ internal class IosDocumentProvisioningHandler(
          * same values to ask, without provisioning anything, whether a refresh would have work to do.
          * Two copies that drifted would make that question answer for a wallet that does not exist.
          */
+        /**
+         * [settingsFor], with the numbers a stored policy dictates.
+         *
+         * The mapping is the policy's meaning, not a translation table: a once-only credential is spent
+         * by one presentation (`maxUses = 1`), a rotating one survives being presented and is replaced
+         * when its remaining lifetime falls below the issuer's threshold, and a limited-time credential
+         * is a single rotating one. Anything the policy leaves unsaid keeps multipaz's default.
+         */
+        internal fun settingsForPolicy(
+            store: MultipazWalletStore,
+            policy: WalletCredentialPolicy,
+        ): DocumentProvisioningSettings {
+            val base = settingsFor(store, policy.numberOfCredentials)
+            return when (policy) {
+                is WalletCredentialPolicy.OnceOnly -> base.copy(keyBoundCredentialMaxUses = 1)
+
+                is WalletCredentialPolicy.RotatingBatch -> base.copy(
+                    keyBoundCredentialMaxUses = Int.MAX_VALUE,
+                    minValidTime = policy.reissueTriggerLifetimeLeft ?: base.minValidTime,
+                )
+
+                is WalletCredentialPolicy.LimitedTime -> base.copy(
+                    keyBoundCredentialNumPerDomain = 1,
+                    keyBoundCredentialMaxUses = Int.MAX_VALUE,
+                    minValidTime = policy.reissueTriggerLifetimeLeft ?: base.minValidTime,
+                )
+            }
+        }
+
         internal fun settingsFor(
             store: MultipazWalletStore,
             batchSize: Int = DEFAULT_BATCH_SIZE,
