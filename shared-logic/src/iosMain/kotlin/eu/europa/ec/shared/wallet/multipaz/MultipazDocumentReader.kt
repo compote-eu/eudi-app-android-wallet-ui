@@ -63,7 +63,9 @@ internal suspend fun Document.toStoredDocument(readClaims: Boolean = false): Sto
         name = displayName ?: metadata.format.identifier,
         formatType = metadata.format.identifier,
         documentManagerId = metadata.documentManagerId,
-        policy = metadata.credentialPolicy,
+        // Documents stamped before the policy was decided per format carry the wrong *kind* for PID;
+        // see `correctedForFormat`. The stored count is kept — only the kind is app policy.
+        policy = metadata.credentialPolicy.correctedForFormat(metadata.format.identifier),
         issuedAt = metadata.issuedAt,
         claims = if (readClaims) readClaims(credentials) else emptyMap(),
         certifiedCredentials = credentials.map { it.toStoredCredential() },

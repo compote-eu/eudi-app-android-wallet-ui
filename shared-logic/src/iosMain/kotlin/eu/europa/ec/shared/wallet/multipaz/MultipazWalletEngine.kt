@@ -309,14 +309,6 @@ internal class MultipazWalletEngine(
             .filter { it.eudiMetadata?.documentManagerId == store.documentManagerId }
 
     companion object {
-
-        /**
-         * The PID format identifiers, duplicated from `DocumentIdentifier.MdocPid` / `SdJwtPid` in
-         * `:shared-ui`'s `eu.europa.ec.corelogic.model`, which this module cannot import — the
-         * dependency runs shared-ui -> shared-logic, not the other way. Keep the two in step.
-         */
-        private val PidFormatTypes = setOf("eu.europa.ec.eudi.pid.1", "urn:eudi:pid:1")
-
         private const val TAG = "MultipazWalletEngine"
     }
 }

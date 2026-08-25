@@ -146,9 +146,11 @@ class IosDocumentProvisioningHandlerTest {
     }
 
     @Test
-    fun the_credential_policy_follows_the_batch_actually_requested() = runTest {
+    fun a_pid_is_once_only_however_large_the_batch() = runTest {
         val store = store()
 
+        // Android's `documentSpecificPolicies` map both PID formats to OnceOnly; a batch of three does
+        // not make it a rotating one. This is the case the old batch-size rule got backwards.
         IosDocumentProvisioningHandler(store, batchSize = 3).createDocument(
             credentialMetadata = credentialMetadata(name = "batched"),
             issuerMetadata = issuerMetadata(),
@@ -158,15 +160,37 @@ class IosDocumentProvisioningHandlerTest {
         val metadata = store.documentStore.listDocuments()
             .single { it.displayName == "batched" }
             .eudiMetadata!!
+        val policy = assertIs<WalletCredentialPolicy.OnceOnly>(metadata.credentialPolicy)
+        assertEquals(3, policy.numberOfCredentials)
+        assertEquals(2, policy.reissueTriggerUnused)
+    }
+
+    @Test
+    fun a_non_pid_document_is_a_rotating_batch() = runTest {
+        val store = store()
+
+        IosDocumentProvisioningHandler(store, batchSize = 3).createDocument(
+            credentialMetadata = credentialMetadata(
+                format = CredentialFormat.Mdoc("org.iso.18013.5.1.mDL"),
+                name = "mDL",
+            ),
+            issuerMetadata = issuerMetadata(),
+            documentAuthorizationData = null,
+        )
+
+        val metadata = store.documentStore.listDocuments()
+            .single { it.displayName == "mDL" }
+            .eudiMetadata!!
         val policy = assertIs<WalletCredentialPolicy.RotatingBatch>(metadata.credentialPolicy)
         assertEquals(3, policy.numberOfCredentials)
     }
 
     @Test
-    fun an_issuer_that_allows_only_one_credential_yields_a_one_shot_policy() = runTest {
+    fun the_credential_count_follows_the_batch_actually_requested() = runTest {
         val store = store()
 
-        // The issuer's limit wins over what the wallet would like.
+        // The issuer's limit wins over what the wallet would like. The *kind* of policy does not
+        // depend on it — only the count does.
         IosDocumentProvisioningHandler(store, batchSize = 3).createDocument(
             credentialMetadata = credentialMetadata(name = "single", maxBatchSize = 1),
             issuerMetadata = issuerMetadata(),
@@ -176,7 +200,7 @@ class IosDocumentProvisioningHandlerTest {
         val metadata = store.documentStore.listDocuments()
             .single { it.displayName == "single" }
             .eudiMetadata!!
-        assertIs<WalletCredentialPolicy.OnceOnly>(metadata.credentialPolicy)
+        assertEquals(1, metadata.credentialPolicy.numberOfCredentials)
     }
 
     /**

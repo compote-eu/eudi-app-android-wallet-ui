@@ -19,7 +19,6 @@ package eu.europa.ec.shared.wallet.multipaz
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
 
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
-import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.document.Document
 import org.multipaz.provisioning.CredentialFormat
@@ -85,6 +84,7 @@ internal class IosDocumentProvisioningHandler(
         documentAuthorizationData: ByteString?,
     ): Document {
         val credentialCount = min(credentialMetadata.maxBatchSize, batchSize)
+        val format = credentialMetadata.format.toStoredFormat()
 
         return documentStore.createDocument(
             displayName = credentialMetadata.display.text,
@@ -94,15 +94,13 @@ internal class IosDocumentProvisioningHandler(
             authorizationData = documentAuthorizationData,
             metadata = EudiDocumentMetadata.create(
                 documentManagerId = store.documentManagerId,
-                format = credentialMetadata.format.toStoredFormat(),
-                // A batch of one is a one-shot credential; more than one is a rotating batch. Android
-                // takes this from per-issuer configuration, which iOS has none of yet, so it is derived
-                // from what was actually requested rather than invented.
-                credentialPolicy = if (credentialCount > 1) {
-                    WalletCredentialPolicy.RotatingBatch(numberOfCredentials = credentialCount)
-                } else {
-                    WalletCredentialPolicy.OnceOnly(numberOfCredentials = 1)
-                },
+                format = format,
+                // Per document type, as Android's `documentSpecificPolicies`/`defaultPolicy` do — not
+                // per batch size, which is what this used to derive it from and got PID wrong.
+                credentialPolicy = credentialPolicyFor(
+                    formatType = format.identifier,
+                    numberOfCredentials = credentialCount,
+                ),
                 issuerMetadata = issuerMetadataFrom(credentialMetadata, issuerMetadata),
             ),
         )

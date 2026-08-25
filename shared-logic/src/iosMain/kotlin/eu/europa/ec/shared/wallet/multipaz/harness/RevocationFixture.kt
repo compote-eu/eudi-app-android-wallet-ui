@@ -26,8 +26,8 @@
 // the next. Delete all of this once a real issuer's credentials carry status lists.
 package eu.europa.ec.shared.wallet.multipaz.harness
 
-import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import eu.europa.ec.shared.wallet.multipaz.MultipazWalletStore
+import eu.europa.ec.shared.wallet.multipaz.credentialPolicyFor
 import kotlin.time.Clock
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.crypto.AsymmetricKey
@@ -112,7 +112,7 @@ suspend fun seedIosRevocableFixture(): String? {
         displayName = REVOCATION_FIXTURE_NAME,
         namespace = MDOC_PID_DOC_TYPE,
         elements = samplePidElements(givenName = "Revocable"),
-        policy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 1),
+        policy = credentialPolicyFor(MDOC_PID_DOC_TYPE, numberOfCredentials = 1),
         issuerMetadata = sampleIssuerMetadata(MDOC_PID_DOC_TYPE),
         revocationStatus = RevocationStatus.StatusList(
             idx = REVOCATION_FIXTURE_INDEX,

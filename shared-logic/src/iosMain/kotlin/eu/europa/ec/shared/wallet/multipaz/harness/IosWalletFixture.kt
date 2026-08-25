@@ -16,8 +16,8 @@
 
 package eu.europa.ec.shared.wallet.multipaz.harness
 
-import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import eu.europa.ec.shared.wallet.multipaz.MultipazWalletStore
+import eu.europa.ec.shared.wallet.multipaz.credentialPolicyFor
 
 /**
  * Seeds the running app's wallet with one fixture PID, so the iOS document layer has something to
@@ -40,9 +40,10 @@ suspend fun seedIosWalletFixture(): String? {
         displayName = "PID MSO MDoc (fixture)",
         namespace = docType,
         elements = samplePidElements(),
-        // A rotating batch of 3, so the credential counters have something to count and the
-        // "3/3" shape of the Documents screen's counter is exercised.
-        policy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 3),
+        // Three credentials, so the counters have something to count and the "3/3" shape of the
+        // Documents screen's counter is exercised. The *kind* comes from the same rule real issuance
+        // uses, so a fixture document is a shape the app can actually produce.
+        policy = credentialPolicyFor(docType, numberOfCredentials = 3),
         issuerMetadata = sampleIssuerMetadata(docType),
     )
 }

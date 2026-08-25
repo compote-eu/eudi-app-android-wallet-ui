@@ -116,8 +116,8 @@ class IosCredentialOfferReader(
                 issuerLogoUri = null, // multipaz hands back logo *bytes*; the screen wants a URI.
                 containsPid = offered.any { (_, credential) ->
                     when (val format = credential!!.format) {
-                        is CredentialFormat.Mdoc -> format.docType in PID_FORMAT_TYPES
-                        is CredentialFormat.SdJwt -> format.vct in PID_FORMAT_TYPES
+                        is CredentialFormat.Mdoc -> format.docType in PidFormatTypes
+                        is CredentialFormat.SdJwt -> format.vct in PidFormatTypes
                     }
                 },
             )
@@ -214,8 +214,5 @@ class IosCredentialOfferReader(
     private companion object {
         const val FALLBACK_LOCALE = "en"
         const val PRE_AUTHORIZED_CODE_GRANT = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
-
-        /** Kept as strings because `DocumentIdentifier` lives in :shared-ui, above this module. */
-        val PID_FORMAT_TYPES = setOf("eu.europa.ec.eudi.pid.1", "urn:eudi:pid:1")
     }
 }
