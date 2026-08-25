@@ -69,8 +69,7 @@ class PresentationRequestInteractorImpl(
                         .all { it.requestedClaims.isEmpty() }
                     if (requestedClaimsAreEmpty) {
                         PresentationRequestInteractorPartialState.NoData(
-                            verifierName = response.verifierName,
-                            verifierIsTrusted = response.verifierIsTrusted,
+                            relyingParty = response.relyingParty,
                         )
                     } else {
                         val storageDocuments = walletCoreDocumentsController.getAllIssuedDocuments()
@@ -99,15 +98,13 @@ class PresentationRequestInteractorImpl(
 
                         if (combinationsUi.isNotEmpty()) {
                             PresentationRequestInteractorPartialState.Success(
-                                verifierName = response.verifierName,
-                                verifierIsTrusted = response.verifierIsTrusted,
+                                relyingParty = response.relyingParty,
                                 combinationsUi = combinationsUi,
                                 claimsAreSelectable = claimsAreSelectable,
                             )
                         } else {
                             PresentationRequestInteractorPartialState.NoData(
-                                verifierName = response.verifierName,
-                                verifierIsTrusted = response.verifierIsTrusted,
+                                relyingParty = response.relyingParty,
                             )
                         }
                     }

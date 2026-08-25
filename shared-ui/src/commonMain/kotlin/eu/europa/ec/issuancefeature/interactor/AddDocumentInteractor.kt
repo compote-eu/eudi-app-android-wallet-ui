@@ -24,6 +24,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenti
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.corelogic.controller.IssuanceMethod
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.platform.PlatformContext
@@ -37,7 +38,9 @@ sealed class AddDocumentInteractorIssueDocumentsPartialState {
 
     data class Failure(val errorMessage: String) : AddDocumentInteractorIssueDocumentsPartialState()
 
-    data object IssuerNotTrusted : AddDocumentInteractorIssueDocumentsPartialState()
+    data class IssuerNotTrusted(
+        val reason: UntrustedIssuerReasonDomain,
+    ) : AddDocumentInteractorIssueDocumentsPartialState()
 
     data class UserAuthRequired(
         val crypto: BiometricCrypto,
@@ -51,6 +54,8 @@ sealed class AddDocumentInteractorScopedPartialState {
 
     data class NoOptions(val errorMsg: String) : AddDocumentInteractorScopedPartialState()
     data class Failure(val error: String) : AddDocumentInteractorScopedPartialState()
+
+    data object NoTrustedIssuers : AddDocumentInteractorScopedPartialState()
 }
 
 interface AddDocumentInteractor {

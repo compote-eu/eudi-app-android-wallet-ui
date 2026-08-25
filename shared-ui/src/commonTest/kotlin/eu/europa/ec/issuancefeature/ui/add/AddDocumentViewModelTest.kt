@@ -450,7 +450,7 @@ class AddDocumentViewModelTest {
         assertTrue(viewModel.viewState.value.isBottomSheetOpen)
 
         val (effects, job) = collectEffects(viewModel)
-        viewModel.setEvent(Event.BottomSheet.Close)
+        viewModel.setEvent(Event.BottomSheet.IssuerNotTrusted.CloseButtonPressed)
         advanceUntilIdle()
         job.cancel()
 

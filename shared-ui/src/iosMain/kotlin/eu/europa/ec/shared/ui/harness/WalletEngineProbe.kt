@@ -274,6 +274,12 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                         is AddDocumentInteractorScopedPartialState.NoOptions ->
                             "NoOptions(${state.errorMsg})"
 
+                        // Reachable only with the registration check on, which is Android-only, so
+                        // the probe should never print this. Named rather than swallowed by an
+                        // `else` so it is obvious if it ever does.
+                        is AddDocumentInteractorScopedPartialState.NoTrustedIssuers ->
+                            "NoTrustedIssuers"
+
                         is AddDocumentInteractorScopedPartialState.Failure -> "Failure(${state.error})"
                     }
                 )
@@ -452,7 +458,8 @@ private suspend fun probeRemotePresentation(onResult: (String) -> Unit) {
     val combination = when (asked) {
         is PresentationRequestInteractorPartialState.Success -> {
             onResult(
-                "verifier '${asked.verifierName}' (trusted=${asked.verifierIsTrusted}) asked for " +
+                "verifier '${asked.relyingParty.name}' " +
+                        "(verified=${asked.relyingParty.isFullyVerified}) asked for " +
                         "${asked.combinationsUi.size} alternative(s), selectable=${asked.claimsAreSelectable}"
             )
             // A user picks the document they actually hold, not the first card. On a wallet that still
@@ -476,7 +483,9 @@ private suspend fun probeRemotePresentation(onResult: (String) -> Unit) {
         }
 
         is PresentationRequestInteractorPartialState.NoData -> {
-            onResult("verifier '${asked.verifierName}' asked for nothing this wallet holds")
+            onResult(
+                "verifier '${asked.relyingParty.name}' asked for nothing this wallet holds"
+            )
             null
         }
 

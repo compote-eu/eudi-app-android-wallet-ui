@@ -21,19 +21,18 @@ package eu.europa.ec.proximityfeature.interactor
 
 import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractor
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
+import eu.europa.ec.corelogic.model.RelyingPartyDomain
 import kotlinx.coroutines.flow.Flow
 
 sealed class ProximityRequestInteractorPartialState {
     data class Success(
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
+        val relyingParty: RelyingPartyDomain,
         val combinationsUi: List<RequestCombinationUi>,
         val claimsAreSelectable: Boolean,
     ) : ProximityRequestInteractorPartialState()
 
     data class NoData(
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
+        val relyingParty: RelyingPartyDomain,
     ) : ProximityRequestInteractorPartialState()
 
     data class Failure(val error: String) : ProximityRequestInteractorPartialState()

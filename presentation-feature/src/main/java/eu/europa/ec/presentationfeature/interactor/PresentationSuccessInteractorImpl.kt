@@ -76,7 +76,7 @@ class PresentationSuccessInteractorImpl(
 
             val verifierName = walletCorePresentationController.verifierName
 
-            val isVerified = walletCorePresentationController.verifierIsTrusted == true
+            val isVerified = walletCorePresentationController.verifierIsFullyVerified == true
 
             walletCorePresentationController.disclosedDocuments?.forEach { selection ->
                 try {

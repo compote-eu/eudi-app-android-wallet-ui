@@ -16,6 +16,8 @@
 
 package eu.europa.ec.testfeature.util
 
+import eu.europa.ec.corelogic.model.RegistrationStatusDomain
+import eu.europa.ec.corelogic.model.RelyingPartyDomain
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.authenticationlogic.secure.SecurePinImpl
 import eu.europa.ec.corelogic.extension.toClaimPath
@@ -85,6 +87,28 @@ const val mockedNoExpirationDateFound = ""
 const val mockedFormattedExpirationDate = "13 May 2030"
 const val mockedDocumentHasExpired = false
 const val mockedVerifierName = "EUDIW Verifier"
+
+/**
+ * The requester as a stock build sees it: a trusted access certificate and no registration
+ * evaluation, because the registration check is off by default. `isFullyVerified` therefore equals
+ * `mockedVerifierIsTrusted`, so the assertions this replaced keep their meaning.
+ */
+val mockedRelyingParty = RelyingPartyDomain(
+    name = mockedVerifierName,
+    uniqueId = null,
+    hasTrustedAccessCertificate = mockedVerifierIsTrusted,
+    logoUri = null,
+    registration = RegistrationStatusDomain.NotEvaluated,
+)
+
+/** A requester whose access certificate did not validate — an mdoc reader that skipped reader auth. */
+val mockedUntrustedRelyingParty = RelyingPartyDomain(
+    name = null,
+    uniqueId = null,
+    hasTrustedAccessCertificate = false,
+    logoUri = null,
+    registration = RegistrationStatusDomain.NotEvaluated,
+)
 const val mockedIssuerName = "EUDIW Issuer"
 const val mockedDocumentSuccessCollapsedSupportingText = "View details"
 const val mockedRequestCollapsedSupportingText = "View details"

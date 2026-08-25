@@ -57,8 +57,7 @@ class ProximityRequestInteractorImpl(
                         .all { it.requestedClaims.isEmpty() }
                     if (requestedClaimsAreEmpty) {
                         ProximityRequestInteractorPartialState.NoData(
-                            verifierName = response.verifierName,
-                            verifierIsTrusted = response.verifierIsTrusted,
+                            relyingParty = response.relyingParty,
                         )
                     } else {
                         val storageDocuments = walletCoreDocumentsController.getAllIssuedDocuments()
@@ -87,15 +86,13 @@ class ProximityRequestInteractorImpl(
 
                         if (combinationsUi.isNotEmpty()) {
                             ProximityRequestInteractorPartialState.Success(
-                                verifierName = response.verifierName,
-                                verifierIsTrusted = response.verifierIsTrusted,
+                                relyingParty = response.relyingParty,
                                 combinationsUi = combinationsUi,
                                 claimsAreSelectable = claimsAreSelectable,
                             )
                         } else {
                             ProximityRequestInteractorPartialState.NoData(
-                                verifierName = response.verifierName,
-                                verifierIsTrusted = response.verifierIsTrusted,
+                                relyingParty = response.relyingParty,
                             )
                         }
                     }

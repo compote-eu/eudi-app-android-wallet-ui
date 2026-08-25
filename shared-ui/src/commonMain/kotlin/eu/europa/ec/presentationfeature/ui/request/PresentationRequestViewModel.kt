@@ -141,8 +141,10 @@ class PresentationRequestViewModel(
 
                         val updatedHeaderConfig = viewState.value.headerConfig.copy(
                             relyingPartyData = getRelyingPartyData(
-                                name = response.verifierName,
-                                isVerified = response.verifierIsTrusted,
+                                name = response.relyingParty.name,
+                                // Both trust layers, not just the access certificate.
+                                isVerified = response.relyingParty.isFullyVerified,
+                                uniqueId = response.relyingParty.uniqueId,
                             )
                         )
 
@@ -177,8 +179,10 @@ class PresentationRequestViewModel(
                     is PresentationRequestInteractorPartialState.NoData -> {
                         val updatedHeaderConfig = viewState.value.headerConfig.copy(
                             relyingPartyData = getRelyingPartyData(
-                                name = response.verifierName,
-                                isVerified = response.verifierIsTrusted,
+                                name = response.relyingParty.name,
+                                // Both trust layers, not just the access certificate.
+                                isVerified = response.relyingParty.isFullyVerified,
+                                uniqueId = response.relyingParty.uniqueId,
                             )
                         )
 
@@ -212,9 +216,11 @@ class PresentationRequestViewModel(
     private fun getRelyingPartyData(
         name: String?,
         isVerified: Boolean,
+        uniqueId: String? = null,
     ): RelyingPartyDataUi {
         return RelyingPartyDataUi(
             isVerified = isVerified,
+            uniqueId = uniqueId,
             name = name.asUiTextOr(
                 fallback = UiText.Resource(Res.string.request_relying_party_default_name)
             ),

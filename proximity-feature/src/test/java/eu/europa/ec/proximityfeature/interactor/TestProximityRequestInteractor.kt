@@ -26,6 +26,8 @@ import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.PresentationCombinationDomain
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.testfeature.util.mockedUntrustedRelyingParty
+import eu.europa.ec.testfeature.util.mockedRelyingParty
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.getMockedMdlWithBasicFields
 import eu.europa.ec.testfeature.util.getMockedPidWithBasicFields
@@ -204,8 +206,7 @@ class TestProximityRequestInteractor {
             mockWalletCorePresentationControllerEventEmission(
                 event = TransferEventPartialState.RequestReceived(
                     combinationsDomain = emptyList(),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -215,8 +216,7 @@ class TestProximityRequestInteractor {
                     // Then
                     assertEquals(
                         ProximityRequestInteractorPartialState.NoData(
-                            verifierName = mockedVerifierName,
-                            verifierIsTrusted = mockedVerifierIsTrusted
+                            relyingParty = mockedRelyingParty,
                         ),
                         awaitItem()
                     )
@@ -242,8 +242,7 @@ class TestProximityRequestInteractor {
             mockWalletCorePresentationControllerEventEmission(
                 event = TransferEventPartialState.RequestReceived(
                     combinationsDomain = emptyList(),
-                    verifierName = null,
-                    verifierIsTrusted = false
+                    relyingParty = mockedUntrustedRelyingParty,
                 )
             )
 
@@ -253,8 +252,7 @@ class TestProximityRequestInteractor {
                     // Then
                     assertEquals(
                         ProximityRequestInteractorPartialState.NoData(
-                            verifierName = null,
-                            verifierIsTrusted = false
+                            relyingParty = mockedUntrustedRelyingParty,
                         ),
                         awaitItem()
                     )
@@ -289,8 +287,7 @@ class TestProximityRequestInteractor {
                             )
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -300,8 +297,7 @@ class TestProximityRequestInteractor {
                     // Then
                     assertEquals(
                         ProximityRequestInteractorPartialState.NoData(
-                            verifierName = mockedVerifierName,
-                            verifierIsTrusted = mockedVerifierIsTrusted
+                            relyingParty = mockedRelyingParty,
                         ),
                         awaitItem()
                     )
@@ -341,8 +337,7 @@ class TestProximityRequestInteractor {
                             matches = listOf(mockedValidPidWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -359,8 +354,7 @@ class TestProximityRequestInteractor {
                     // Then
                     assertEquals(
                         ProximityRequestInteractorPartialState.Success(
-                            verifierName = mockedVerifierName,
-                            verifierIsTrusted = mockedVerifierIsTrusted,
+                            relyingParty = mockedRelyingParty,
                             combinationsUi = listOf(
                                 RequestCombinationUi(
                                     documents = RequestTransformer.transformToUiItems(
@@ -410,8 +404,7 @@ class TestProximityRequestInteractor {
                             matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -428,8 +421,7 @@ class TestProximityRequestInteractor {
                     // Then
                     assertEquals(
                         ProximityRequestInteractorPartialState.Success(
-                            verifierName = mockedVerifierName,
-                            verifierIsTrusted = mockedVerifierIsTrusted,
+                            relyingParty = mockedRelyingParty,
                             combinationsUi = listOf(
                                 RequestCombinationUi(
                                     documents = RequestTransformer.transformToUiItems(
@@ -486,8 +478,7 @@ class TestProximityRequestInteractor {
                             )
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -510,8 +501,7 @@ class TestProximityRequestInteractor {
                     // Then
                     assertEquals(
                         ProximityRequestInteractorPartialState.Success(
-                            verifierName = mockedVerifierName,
-                            verifierIsTrusted = mockedVerifierIsTrusted,
+                            relyingParty = mockedRelyingParty,
                             combinationsUi = listOf(
                                 RequestCombinationUi(
                                     documents = RequestTransformer.transformToUiItems(
@@ -571,8 +561,7 @@ class TestProximityRequestInteractor {
                             )
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -595,8 +584,7 @@ class TestProximityRequestInteractor {
                     // Then
                     assertEquals(
                         ProximityRequestInteractorPartialState.Success(
-                            verifierName = mockedVerifierName,
-                            verifierIsTrusted = mockedVerifierIsTrusted,
+                            relyingParty = mockedRelyingParty,
                             combinationsUi = listOf(
                                 RequestCombinationUi(
                                     documents = RequestTransformer.transformToUiItems(
@@ -640,8 +628,7 @@ class TestProximityRequestInteractor {
                             matches = listOf(mockedValidPidWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
             whenever(walletCoreDocumentsController.getAllIssuedDocuments())
@@ -683,8 +670,7 @@ class TestProximityRequestInteractor {
                             matches = listOf(mockedValidPidWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
             whenever(walletCoreDocumentsController.getAllIssuedDocuments())
@@ -722,8 +708,7 @@ class TestProximityRequestInteractor {
                             matches = listOf(mockedValidPidWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -732,8 +717,7 @@ class TestProximityRequestInteractor {
                 // Then
                 assertEquals(
                     ProximityRequestInteractorPartialState.NoData(
-                        verifierName = mockedVerifierName,
-                        verifierIsTrusted = mockedVerifierIsTrusted,
+                        relyingParty = mockedRelyingParty,
                     ),
                     awaitItem()
                 )
@@ -814,8 +798,7 @@ class TestProximityRequestInteractor {
                             )
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -835,8 +818,7 @@ class TestProximityRequestInteractor {
                     // Then
                     assertEquals(
                         ProximityRequestInteractorPartialState.Success(
-                            verifierName = mockedVerifierName,
-                            verifierIsTrusted = mockedVerifierIsTrusted,
+                            relyingParty = mockedRelyingParty,
                             combinationsUi = listOf(
                                 RequestCombinationUi(
                                     documents = RequestTransformer.transformToUiItems(

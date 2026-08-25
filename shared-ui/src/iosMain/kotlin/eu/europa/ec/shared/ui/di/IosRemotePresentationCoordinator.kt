@@ -17,6 +17,8 @@
 package eu.europa.ec.shared.ui.di
 
 import eu.europa.ec.commonfeature.config.PresentationMode
+import eu.europa.ec.corelogic.model.RelyingPartyDomain
+import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
@@ -281,13 +283,11 @@ internal class IosRemotePresentationCoordinator(
 
         return if (combinationsUi.isEmpty()) {
             PresentationRequestInteractorPartialState.NoData(
-                verifierName = requesterName,
-                verifierIsTrusted = requesterIsTrusted,
+                relyingParty = relyingPartyDomain(),
             )
         } else {
             PresentationRequestInteractorPartialState.Success(
-                verifierName = requesterName,
-                verifierIsTrusted = requesterIsTrusted,
+                relyingParty = relyingPartyDomain(),
                 combinationsUi = combinationsUi,
                 // multipaz builds the response from the claims the selection carries, so unticking a
                 // row really does keep it out of the response — see `CredentialPresentmentData.toSelection`.
@@ -298,3 +298,18 @@ internal class IosRemotePresentationCoordinator(
 
     //endregion
 }
+
+/**
+ * The requester as iOS knows it. [RegistrationStatusDomain.NotEvaluated] is the honest value, not a
+ * placeholder: the issuer and relying-party registration policies live in
+ * `eudi-lib-android-wallet-core`, which has no iOS counterpart and no multipaz equivalent, so no
+ * registration certificate is ever evaluated here. `hasTrustedAccessCertificate` follows what
+ * multipaz reports, which is false today because `resolveTrustFn` is never supplied.
+ */
+private fun IosPresentmentRequest.relyingPartyDomain(): RelyingPartyDomain = RelyingPartyDomain(
+    name = requesterName,
+    uniqueId = null,
+    hasTrustedAccessCertificate = requesterIsTrusted,
+    logoUri = null,
+    registration = RegistrationStatusDomain.NotEvaluated,
+)

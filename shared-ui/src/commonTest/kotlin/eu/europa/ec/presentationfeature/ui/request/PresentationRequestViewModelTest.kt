@@ -29,6 +29,8 @@
 // PresentationRequestViewModelAndroidTest, next to the platform type it needs.
 package eu.europa.ec.presentationfeature.ui.request
 
+import eu.europa.ec.corelogic.model.RelyingPartyDomain
+import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.ui.request.Effect
@@ -166,8 +168,13 @@ class PresentationRequestViewModelTest {
 
         fun success(vararg documents: RequestDocumentItemUi) =
             PresentationRequestInteractorPartialState.Success(
-                verifierName = "Acme",
-                verifierIsTrusted = true,
+                relyingParty = RelyingPartyDomain(
+                    name = "Acme",
+                    uniqueId = null,
+                    hasTrustedAccessCertificate = true,
+                    logoUri = null,
+                    registration = RegistrationStatusDomain.NotEvaluated,
+                ),
                 combinationsUi = listOf(
                     RequestCombinationUi(documents = documents.toList(), matches = emptyList())
                 ),
@@ -265,8 +272,13 @@ class PresentationRequestViewModelTest {
     fun no_disclosable_data_leaves_share_disabled() = runTest(mainDispatcher) {
         val (_, viewModel) = viewModel(
             PresentationRequestInteractorPartialState.NoData(
-                verifierName = "Acme",
-                verifierIsTrusted = true,
+                relyingParty = RelyingPartyDomain(
+                    name = "Acme",
+                    uniqueId = null,
+                    hasTrustedAccessCertificate = true,
+                    logoUri = null,
+                    registration = RegistrationStatusDomain.NotEvaluated,
+                ),
             )
         )
 

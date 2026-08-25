@@ -197,7 +197,7 @@ class TestPresentationSuccessInteractor {
     // Case 1:
     // 1. walletCorePresentationController.disclosedDocuments returns null.
     // 2. walletCorePresentationController.verifierName returns null.
-    // 3. walletCorePresentationController.verifierIsTrusted returns null
+    // 3. walletCorePresentationController.verifierIsFullyVerified returns null
     //    (the `== true` check will evaluate to false, so isVerified is false).
 
     // Case 1 Expected Result:
@@ -211,7 +211,7 @@ class TestPresentationSuccessInteractor {
             // Given
             whenever(walletCorePresentationController.disclosedDocuments).thenReturn(null)
             whenever(walletCorePresentationController.verifierName).thenReturn(null)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(null)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(null)
             mockSuccessHeaderStrings()
 
             // When
@@ -237,7 +237,7 @@ class TestPresentationSuccessInteractor {
     //    referencing the mocked PID with one non-empty disclosed item.
     // 2. walletCoreDocumentsController.getDocumentById returns the mocked PID IssuedDocument.
     // 3. walletCorePresentationController.verifierName returns a non-empty name.
-    // 4. walletCorePresentationController.verifierIsTrusted returns true.
+    // 4. walletCorePresentationController.verifierIsFullyVerified returns true.
 
     // Case 2 Expected Result:
     // Success state with:
@@ -261,7 +261,7 @@ class TestPresentationSuccessInteractor {
             whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedPidId))
                 .thenReturn(pid)
             whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(true)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(true)
             mockSuccessHeaderStrings()
             mockTransformToUiItemsStrings(resourceProvider)
             whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
@@ -337,7 +337,7 @@ class TestPresentationSuccessInteractor {
             whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedPidId))
                 .thenReturn(pid)
             whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(true)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(true)
             mockSuccessHeaderStrings()
 
             // When
@@ -382,7 +382,7 @@ class TestPresentationSuccessInteractor {
             whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedPidId))
                 .thenThrow(mockedExceptionWithMessage)
             whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(false)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(false)
             mockSuccessHeaderStrings()
 
             // When
@@ -414,7 +414,7 @@ class TestPresentationSuccessInteractor {
         coroutineRule.runTest {
             // Given
             whenever(walletCorePresentationController.disclosedDocuments).thenReturn(null)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(false)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(false)
             whenever(walletCorePresentationController.verifierName)
                 .thenThrow(mockedExceptionWithMessage)
 
@@ -439,7 +439,7 @@ class TestPresentationSuccessInteractor {
         coroutineRule.runTest {
             // Given
             whenever(walletCorePresentationController.disclosedDocuments).thenReturn(null)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(false)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(false)
             whenever(walletCorePresentationController.verifierName)
                 .thenThrow(mockedExceptionWithNoMessage)
 
@@ -485,7 +485,7 @@ class TestPresentationSuccessInteractor {
             whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedPidId))
                 .thenReturn(pid)
             whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(true)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(true)
             mockSuccessHeaderStrings()
             mockTransformToUiItemsStrings(resourceProvider)
             whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
@@ -547,7 +547,7 @@ class TestPresentationSuccessInteractor {
             whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedSdJwtPidId))
                 .thenReturn(sdJwtPid)
             whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(true)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(true)
             mockSuccessHeaderStrings()
             mockTransformToUiItemsStrings(resourceProvider)
             whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)

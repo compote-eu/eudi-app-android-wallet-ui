@@ -17,6 +17,7 @@
 package eu.europa.ec.issuancefeature.interactor
 
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
 import eu.europa.ec.shared.navigation.SuccessRoute
 import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
@@ -651,7 +652,7 @@ class TestAddDocumentInteractor {
 
     // Case E:
     // the platform reports IssuerNotTrusted
-    // → AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted
+    // → AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE)
     @Test
     fun `Given the platform reports IssuerNotTrusted, When issueDocuments is called, Then IssuerNotTrusted is emitted`() {
         coroutineRule.runTest {
@@ -663,7 +664,7 @@ class TestAddDocumentInteractor {
                     issuerId = "issuerId",
                 )
             ).thenReturn(
-                IssueDocumentsPartialState.IssuerNotTrusted.toFlow()
+                IssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE).toFlow()
             )
 
             // When
@@ -674,7 +675,7 @@ class TestAddDocumentInteractor {
             ).runFlowTest {
                 // Then
                 assertEquals(
-                    AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted,
+                    AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE),
                     awaitItem()
                 )
             }

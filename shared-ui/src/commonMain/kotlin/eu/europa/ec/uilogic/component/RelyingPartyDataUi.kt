@@ -41,6 +41,8 @@ data class RelyingPartyDataUi(
     val isVerified: Boolean,
     val name: UiText,
     val nameTextConfig: TextConfig? = null,
+    /** The requester's registered identifier, from the registration certificate's subject. */
+    val uniqueId: String? = null,
     val description: UiText? = null,
     val descriptionTextConfig: TextConfig? = null,
 )

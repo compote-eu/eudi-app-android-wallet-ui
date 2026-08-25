@@ -27,6 +27,8 @@
 // Channel — a send with no active collector suspends and the assertion would hang.
 package eu.europa.ec.proximityfeature.ui.request
 
+import eu.europa.ec.corelogic.model.RelyingPartyDomain
+import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import eu.europa.ec.commonfeature.ui.request.Event
 import eu.europa.ec.commonfeature.ui.request.RequestBottomSheetContent
 import eu.europa.ec.commonfeature.ui.request.Effect
@@ -162,8 +164,13 @@ class ProximityRequestViewModelTest {
             verifierIsTrusted: Boolean = true,
             claimsAreSelectable: Boolean = true,
         ) = ProximityRequestInteractorPartialState.Success(
-            verifierName = verifierName,
-            verifierIsTrusted = verifierIsTrusted,
+            relyingParty = RelyingPartyDomain(
+                name = verifierName,
+                uniqueId = null,
+                hasTrustedAccessCertificate = verifierIsTrusted,
+                logoUri = null,
+                registration = RegistrationStatusDomain.NotEvaluated,
+            ),
             combinationsUi = combinations.toList(),
             claimsAreSelectable = claimsAreSelectable,
         )
@@ -246,8 +253,13 @@ class ProximityRequestViewModelTest {
     fun no_disclosable_data_leaves_share_disabled() = runTest(mainDispatcher) {
         val (_, viewModel) = viewModel(
             ProximityRequestInteractorPartialState.NoData(
-                verifierName = "Acme",
-                verifierIsTrusted = false,
+                relyingParty = RelyingPartyDomain(
+                    name = "Acme",
+                    uniqueId = null,
+                    hasTrustedAccessCertificate = false,
+                    logoUri = null,
+                    registration = RegistrationStatusDomain.NotEvaluated,
+                ),
             )
         )
 

@@ -23,6 +23,7 @@ import eu.europa.ec.corelogic.controller.TransferEventPartialState
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.testfeature.util.mockedUntrustedRelyingParty
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
 import eu.europa.ec.testfeature.util.mockedGenericErrorMessage
@@ -442,8 +443,7 @@ class TestProximityQRInteractor {
                     emit(
                         TransferEventPartialState.RequestReceived(
                             combinationsDomain = emptyList(),
-                            verifierName = null,
-                            verifierIsTrusted = false
+                            relyingParty = mockedUntrustedRelyingParty,
                         )
                     )
                     emit(TransferEventPartialState.ResponseSent)

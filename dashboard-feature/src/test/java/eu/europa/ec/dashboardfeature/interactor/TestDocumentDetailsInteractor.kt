@@ -18,6 +18,7 @@ package eu.europa.ec.dashboardfeature.interactor
 
 import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.config.ConfigLogic
@@ -1230,7 +1231,7 @@ class TestDocumentDetailsInteractor {
                     allowAuthorizationFallback = true,
                 )
             ).thenReturn(
-                IssueDocumentsPartialState.IssuerNotTrusted.toFlow()
+                IssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE).toFlow()
             )
 
             // When

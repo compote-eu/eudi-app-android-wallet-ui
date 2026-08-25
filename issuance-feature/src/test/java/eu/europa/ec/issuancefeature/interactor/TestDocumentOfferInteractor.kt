@@ -18,6 +18,8 @@ package eu.europa.ec.issuancefeature.interactor
 
 import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.config.ConfigLogic
@@ -198,8 +200,9 @@ class TestDocumentOfferInteractor {
             )
             mockWalletDocumentsControllerResolveOfferEventEmission(
                 event = ResolveDocumentOfferPartialState.Success(
-                    offer = mockedOffer
-                )
+                offer = mockedOffer,
+                issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+            )
             )
 
             // When
@@ -247,7 +250,10 @@ class TestDocumentOfferInteractor {
             ).thenReturn(mockedInvalidCodeFormatMessage)
 
             mockWalletDocumentsControllerResolveOfferEventEmission(
-                event = ResolveDocumentOfferPartialState.Success(mockedOffer)
+                event = ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                )
             )
 
             // When
@@ -294,7 +300,10 @@ class TestDocumentOfferInteractor {
             ).thenReturn(mockedInvalidCodeFormatMessage)
 
             mockWalletDocumentsControllerResolveOfferEventEmission(
-                event = ResolveDocumentOfferPartialState.Success(mockedOffer)
+                event = ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                )
             )
 
             // When
@@ -345,7 +354,10 @@ class TestDocumentOfferInteractor {
                 mainPid = mockedMainPid
             )
             mockWalletDocumentsControllerResolveOfferEventEmission(
-                event = ResolveDocumentOfferPartialState.Success(mockedOffer)
+                event = ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                )
             )
 
             // When
@@ -399,7 +411,10 @@ class TestDocumentOfferInteractor {
             )
 
             mockWalletDocumentsControllerResolveOfferEventEmission(
-                event = ResolveDocumentOfferPartialState.Success(mockedOffer)
+                event = ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                )
             )
 
             // When
@@ -449,7 +464,10 @@ class TestDocumentOfferInteractor {
             whenever(strings[Res.string.issuance_document_offer_error_missing_pid_text])
                 .thenReturn(mockedWalletActivationErrorMessage)
             mockWalletDocumentsControllerResolveOfferEventEmission(
-                event = ResolveDocumentOfferPartialState.Success(mockedOffer)
+                event = ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                )
             )
 
             // When
@@ -552,7 +570,10 @@ class TestDocumentOfferInteractor {
             )
             mockGetMainPidDocumentCall(mainPid = getMockedMainPid())
             mockWalletDocumentsControllerResolveOfferEventEmission(
-                event = ResolveDocumentOfferPartialState.Success(mockedOffer)
+                event = ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                )
             )
 
             // When
@@ -589,7 +610,10 @@ class TestDocumentOfferInteractor {
                 )
             ).thenReturn(mockedInvalidCodeFormatMessage)
             mockWalletDocumentsControllerResolveOfferEventEmission(
-                event = ResolveDocumentOfferPartialState.Success(mockedOffer)
+                event = ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                )
             )
 
             // When
@@ -628,7 +652,10 @@ class TestDocumentOfferInteractor {
                 )
             ).thenReturn(mockedInvalidCodeFormatMessage)
             mockWalletDocumentsControllerResolveOfferEventEmission(
-                event = ResolveDocumentOfferPartialState.Success(mockedOffer)
+                event = ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                )
             )
 
             // When
@@ -645,7 +672,7 @@ class TestDocumentOfferInteractor {
 
     // Case 14:
     // 1. walletCoreDocumentsController.resolveDocumentOffer emits
-    // ResolveDocumentOfferPartialState.IssuerNotTrusted.
+    // ResolveDocumentOfferPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE).
 
     // Case 14 Expected Result:
     // ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted
@@ -654,7 +681,7 @@ class TestDocumentOfferInteractor {
         coroutineRule.runTest {
             // Given
             mockWalletDocumentsControllerResolveOfferEventEmission(
-                event = ResolveDocumentOfferPartialState.IssuerNotTrusted
+                event = ResolveDocumentOfferPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE)
             )
 
             // When
@@ -1072,7 +1099,7 @@ class TestDocumentOfferInteractor {
 
     // Case 11:
     // 1. walletCoreDocumentsController.issueDocumentsByOffer emits
-    // IssueDocumentsPartialState.IssuerNotTrusted.
+    // IssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE).
 
     // Case 11 Expected Result:
     // IssueDocumentsInteractorPartialState.IssuerNotTrusted
@@ -1082,7 +1109,7 @@ class TestDocumentOfferInteractor {
             // Given
             mockWalletDocumentsControllerIssueByUriEventEmission(
                 offerUri = mockedUriPath1,
-                event = IssueDocumentsPartialState.IssuerNotTrusted
+                event = IssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE)
             )
 
             // When
@@ -1269,7 +1296,10 @@ class TestDocumentOfferInteractor {
             offeredDocuments = mockedOfferedDocumentsList,
         )
         whenever(walletCoreDocumentsController.resolveDocumentOffer(offerUri))
-            .thenReturn(ResolveDocumentOfferPartialState.Success(mockedOffer).toFlow())
+            .thenReturn(ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                ).toFlow())
         bridge.resolveOffer(offerUri = offerUri, locale = mockedDefaultLocale.toLanguageTag())
         whenever(
             walletCoreDocumentsController.issueDocumentsByOffer(
@@ -1287,7 +1317,10 @@ class TestDocumentOfferInteractor {
             offeredDocuments = mockedOfferedDocumentsList,
         )
         whenever(walletCoreDocumentsController.resolveDocumentOffer(offerUri))
-            .thenReturn(ResolveDocumentOfferPartialState.Success(mockedOffer).toFlow())
+            .thenReturn(ResolveDocumentOfferPartialState.Success(
+                    offer = mockedOffer,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                ).toFlow())
         bridge.resolveOffer(offerUri = offerUri, locale = mockedDefaultLocale.toLanguageTag())
         return mockedOffer
     }

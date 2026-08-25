@@ -26,6 +26,7 @@ import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
 import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.model.FormatType
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.platform.PlatformContext
@@ -74,6 +75,10 @@ class AddDocumentInteractorImpl(
                     AddDocumentInteractorScopedPartialState.Failure(
                         error = state.errorMessage
                     )
+                )
+
+                is FetchScopedDocumentsPartialState.NoTrustedIssuers -> emit(
+                    AddDocumentInteractorScopedPartialState.NoTrustedIssuers
                 )
 
                 is FetchScopedDocumentsPartialState.Success -> {
@@ -177,7 +182,7 @@ class AddDocumentInteractorImpl(
 
             val successIds: MutableList<String> = mutableListOf()
             var isDeferred = false
-            var issuerNotTrusted = false
+            var issuerNotTrustedReason: UntrustedIssuerReasonDomain? = null
             var error: String? = null
             var authenticationData: Pair<BiometricCrypto, DeviceAuthenticationResult>? = null
 
@@ -191,7 +196,7 @@ class AddDocumentInteractorImpl(
                 }
 
                 is IssueDocumentsPartialState.IssuerNotTrusted -> {
-                    issuerNotTrusted = true
+                    issuerNotTrustedReason = state.reason
                 }
 
                 is IssueDocumentsPartialState.PartialSuccess -> {
@@ -211,8 +216,10 @@ class AddDocumentInteractorImpl(
                 }
             }
 
-            val state = if (issuerNotTrusted) {
-                AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted
+            val state = if (issuerNotTrustedReason != null) {
+                AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted(
+                    reason = issuerNotTrustedReason
+                )
             } else if (isDeferred) {
                 AddDocumentInteractorIssueDocumentsPartialState.DeferredSuccess
             } else if (successIds.isNotEmpty()) {

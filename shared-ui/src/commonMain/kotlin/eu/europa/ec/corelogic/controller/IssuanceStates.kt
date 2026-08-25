@@ -25,6 +25,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenti
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.corelogic.model.ScopedDocumentDomain
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 
 /** What an issuer offers, or why it could not be asked. */
 sealed class FetchScopedDocumentsPartialState {
@@ -32,6 +33,12 @@ sealed class FetchScopedDocumentsPartialState {
         FetchScopedDocumentsPartialState()
 
     data class Failure(val errorMessage: String) : FetchScopedDocumentsPartialState()
+
+    /**
+     * Every configured issuer was refused on trust grounds, so there is nothing to offer — as
+     * distinct from [Failure], which is a fault the user can retry.
+     */
+    data object NoTrustedIssuers : FetchScopedDocumentsPartialState()
 }
 
 /** How an issuance attempt ended, including the two ways it can end without documents. */
@@ -53,7 +60,10 @@ sealed class IssueDocumentsPartialState {
 
     data class Failure(val errorMessage: String) : IssueDocumentsPartialState()
 
-    data object IssuerNotTrusted : IssueDocumentsPartialState()
+    /** @property reason which of the two trust layers refused — the screens word it differently. */
+    data class IssuerNotTrusted(
+        val reason: UntrustedIssuerReasonDomain,
+    ) : IssueDocumentsPartialState()
 
     /**
      * The issuer's keys need the user present. The platform raises the prompt (see

@@ -30,6 +30,7 @@ import eu.europa.ec.corelogic.model.PresentationCombinationDomain
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.testfeature.util.mockedRelyingParty
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.getMockedMdlWithBasicFields
 import eu.europa.ec.testfeature.util.getMockedPidWithBasicFields
@@ -152,16 +153,14 @@ class TestPresentationRequestInteractor {
             mockWalletCorePresentationControllerEventEmission(
                 event = TransferEventPartialState.RequestReceived(
                     combinationsDomain = emptyList(),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
             // When
             interactor.getRequestDocuments().runFlowTest {
                 val expectedResult = PresentationRequestInteractorPartialState.NoData(
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
 
                 // Then
@@ -218,8 +217,7 @@ class TestPresentationRequestInteractor {
                             matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
             whenever(walletCoreDocumentsController.getAllIssuedDocuments())
@@ -274,8 +272,7 @@ class TestPresentationRequestInteractor {
                             )
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -296,8 +293,7 @@ class TestPresentationRequestInteractor {
                     )
 
                     val expectedResult = PresentationRequestInteractorPartialState.Success(
-                        verifierName = mockedVerifierName,
-                        verifierIsTrusted = mockedVerifierIsTrusted,
+                        relyingParty = mockedRelyingParty,
                         combinationsUi = listOf(
                             RequestCombinationUi(
                                 documents = RequestTransformer.transformToUiItems(
@@ -342,8 +338,7 @@ class TestPresentationRequestInteractor {
                             matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
             whenever(walletCoreDocumentsController.getAllIssuedDocuments())
@@ -419,8 +414,7 @@ class TestPresentationRequestInteractor {
                             matches = listOf(mockedValidPidWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -429,8 +423,7 @@ class TestPresentationRequestInteractor {
                 // Then
                 assertEquals(
                     PresentationRequestInteractorPartialState.NoData(
-                        verifierName = mockedVerifierName,
-                        verifierIsTrusted = mockedVerifierIsTrusted,
+                        relyingParty = mockedRelyingParty,
                     ),
                     awaitItem()
                 )
@@ -511,8 +504,7 @@ class TestPresentationRequestInteractor {
                             )
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -530,8 +522,7 @@ class TestPresentationRequestInteractor {
                     )
 
                     val expectedResult = PresentationRequestInteractorPartialState.Success(
-                        verifierName = mockedVerifierName,
-                        verifierIsTrusted = mockedVerifierIsTrusted,
+                        relyingParty = mockedRelyingParty,
                         combinationsUi = listOf(
                             RequestCombinationUi(
                                 documents = RequestTransformer.transformToUiItems(
@@ -574,8 +565,7 @@ class TestPresentationRequestInteractor {
                             matches = listOf(mockedValidPidWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
             mockRequestAllowsClaimSelection(response = mockedNonSelectableClaims)
@@ -590,8 +580,7 @@ class TestPresentationRequestInteractor {
                 )
 
                 val expectedResult = PresentationRequestInteractorPartialState.Success(
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted,
+                    relyingParty = mockedRelyingParty,
                     combinationsUi = listOf(
                         RequestCombinationUi(
                             documents = RequestTransformer.transformToUiItems(

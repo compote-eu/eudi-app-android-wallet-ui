@@ -26,20 +26,19 @@ package eu.europa.ec.presentationfeature.interactor
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractor
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
+import eu.europa.ec.corelogic.model.RelyingPartyDomain
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import kotlinx.coroutines.flow.Flow
 
 sealed class PresentationRequestInteractorPartialState {
     data class Success(
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
+        val relyingParty: RelyingPartyDomain,
         val combinationsUi: List<RequestCombinationUi>,
         val claimsAreSelectable: Boolean,
     ) : PresentationRequestInteractorPartialState()
 
     data class NoData(
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
+        val relyingParty: RelyingPartyDomain,
     ) : PresentationRequestInteractorPartialState()
 
     data class Failure(val error: String) : PresentationRequestInteractorPartialState()
