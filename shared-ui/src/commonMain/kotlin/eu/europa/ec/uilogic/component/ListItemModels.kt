@@ -42,8 +42,9 @@ import eu.europa.ec.uilogic.component.wrap.SwitchDataUi
  * the main content.
  * @param overlineText Optional text displayed above the `mainContentData`, providing context
  * or a brief heading for the item.
- * @param supportingText Optional text displayed below the `mainContentData`, offering
- * additional details or description to supplement the main content.
+ * @param supportingContentData Optional data for content displayed below the `mainContentData`,
+ * offering additional details or description to supplement the main content. See
+ * [ListItemSupportingContentDataUi] for details on supported supporting content types.
  * @param leadingContentData Optional data for content displayed at the beginning of the list item.
  * This could be an icon, image, or other visual element. See [ListItemLeadingContentDataUi]
  * for details on supported leading content types.
@@ -55,7 +56,7 @@ data class ListItemDataUi(
     val itemId: String,
     val mainContentData: ListItemMainContentDataUi,
     val overlineText: String? = null,
-    val supportingText: String? = null,
+    val supportingContentData: ListItemSupportingContentDataUi? = null,
     val leadingContentData: ListItemLeadingContentDataUi? = null,
     val trailingContentData: ListItemTrailingContentDataUi? = null,
 )
@@ -69,6 +70,25 @@ data class ListItemDataUi(
 sealed class ListItemMainContentDataUi {
     data class Text(val text: String) : ListItemMainContentDataUi()
     data class Image(val base64Image: String) : ListItemMainContentDataUi()
+}
+
+/**
+ * Represents the supporting content displayed below a list item's main content.
+ *
+ * It mirrors the main/leading/trailing content families so a supporting line can carry its own
+ * colour, instead of every call site passing one down to [ListItem].
+ *
+ * @property textColorKey Optional [ColorKey] for the supporting content, resolved at render time.
+ * When null, [ListItem] renders it with the default supporting text colour, `onSurfaceVariant`.
+ */
+sealed class ListItemSupportingContentDataUi {
+    abstract val textColorKey: ColorKey?
+
+    data class Text(
+        val text: String,
+        val maxLines: Int = 1,
+        override val textColorKey: ColorKey? = null,
+    ) : ListItemSupportingContentDataUi()
 }
 
 /**
@@ -132,7 +152,11 @@ sealed class ListItemTrailingContentDataUi {
     data class Icon(val iconData: IconDataUi, val tint: ColorKey? = null) :
         ListItemTrailingContentDataUi()
 
-    data class Checkbox(val checkboxData: CheckboxDataUi) : ListItemTrailingContentDataUi()
+    data class Checkbox(
+        val checkboxData: CheckboxDataUi,
+        val tint: ColorKey? = null,
+    ) : ListItemTrailingContentDataUi()
+
     data class RadioButton(val radioButtonData: RadioButtonDataUi) : ListItemTrailingContentDataUi()
     data class Switch(val switchData: SwitchDataUi) : ListItemTrailingContentDataUi()
     data class TextWithIcon(

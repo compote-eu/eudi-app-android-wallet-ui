@@ -33,6 +33,7 @@ import eu.europa.ec.shared.resources.asUiTextOr
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
@@ -113,7 +114,9 @@ class PresentationSuccessInteractorImpl(
                                     queryId = selection.queryId,
                                 ).encode(),
                                 mainContentData = ListItemMainContentDataUi.Text(text = document.name),
-                                supportingText = resourceProvider.getString(Res.string.document_success_collapsed_supporting_text),
+                                supportingContentData = ListItemSupportingContentDataUi.Text(
+                                    text = resourceProvider.getString(Res.string.document_success_collapsed_supporting_text),
+                                ),
                                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                                     iconData = AppIcons.KeyboardArrowDown
                                 )

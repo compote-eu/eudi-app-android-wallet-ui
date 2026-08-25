@@ -41,6 +41,7 @@ import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import kotlinx.coroutines.flow.Flow
@@ -143,7 +144,9 @@ internal class IosTransactionDetailsInteractor(
             header = ListItemDataUi(
                 itemId = ClaimItemId.DocumentHeader(docId = documentId, queryId = null).encode(),
                 mainContentData = ListItemMainContentDataUi.Text(text = documentName),
-                supportingText = strings[Res.string.transaction_details_collapsed_supporting_text],
+                supportingContentData = ListItemSupportingContentDataUi.Text(
+                    text = strings[Res.string.transaction_details_collapsed_supporting_text],
+                ),
                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                     iconData = AppIcons.KeyboardArrowDown,
                 ),

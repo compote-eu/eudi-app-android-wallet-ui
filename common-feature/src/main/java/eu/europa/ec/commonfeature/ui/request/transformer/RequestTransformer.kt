@@ -39,6 +39,7 @@ import eu.europa.ec.shared.resources.request_collapsed_supporting_text
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 
@@ -153,7 +154,9 @@ object RequestTransformer {
                             queryId = documentDomain.queryId,
                         ).encode(),
                         mainContentData = ListItemMainContentDataUi.Text(text = documentDomain.docName),
-                        supportingText = resourceProvider.getString(Res.string.request_collapsed_supporting_text),
+                        supportingContentData = ListItemSupportingContentDataUi.Text(
+                            text = resourceProvider.getString(Res.string.request_collapsed_supporting_text),
+                        ),
                         trailingContentData = ListItemTrailingContentDataUi.Icon(
                             iconData = AppIcons.KeyboardArrowDown
                         )

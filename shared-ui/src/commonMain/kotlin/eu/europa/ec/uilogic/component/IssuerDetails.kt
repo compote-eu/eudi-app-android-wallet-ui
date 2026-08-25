@@ -48,6 +48,7 @@ import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.WrapButton
 import eu.europa.ec.uilogic.component.wrap.WrapCard
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableCard
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
 import eu.europa.ec.shared.resources.Res
@@ -115,31 +116,41 @@ fun IssuerDetailsCard(
                 // Bound to a local: IssuerDetailsCardDataUi now lives in :shared-ui, and a `when` over a
                 // public property of another module's class does not smart-cast.
                 val documentState = data.documentState
-                val (supportingText: String?, supportingTextColor: Color) = when (documentState) {
-                    is IssuerDetailsCardDataUi.DocumentState.Issued -> {
-                        documentState.expirationDate?.let { safeExpirationDate ->
-                            stringResource(
-                                Res.string.document_details_issuer_card_expires_on_text,
-                                safeExpirationDate
-                            )
-                        } to MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-
-                    is IssuerDetailsCardDataUi.DocumentState.Expired -> {
-                        val expiredText =
+                val supportingContentData: ListItemSupportingContentDataUi? =
+                    when (documentState) {
+                        is IssuerDetailsCardDataUi.DocumentState.Issued -> {
                             documentState.expirationDate?.let { safeExpirationDate ->
-                                stringResource(
-                                    Res.string.document_details_issuer_card_expired_on_text,
-                                    safeExpirationDate
+                                ListItemSupportingContentDataUi.Text(
+                                    text = stringResource(
+                                        Res.string.document_details_issuer_card_expires_on_text,
+                                        safeExpirationDate
+                                    ),
                                 )
-                            } ?: stringResource(Res.string.document_details_issuer_card_expired_text)
-                        expiredText to MaterialTheme.colorScheme.error
-                    }
+                            }
+                        }
 
-                    is IssuerDetailsCardDataUi.DocumentState.Revoked -> {
-                        stringResource(Res.string.document_details_issuer_card_revoked_text) to MaterialTheme.colorScheme.error
+                        is IssuerDetailsCardDataUi.DocumentState.Expired -> {
+                            val expiredText =
+                                documentState.expirationDate?.let { safeExpirationDate ->
+                                    stringResource(
+                                        Res.string.document_details_issuer_card_expired_on_text,
+                                        safeExpirationDate
+                                    )
+                                }
+                                    ?: stringResource(Res.string.document_details_issuer_card_expired_text)
+                            ListItemSupportingContentDataUi.Text(
+                                text = expiredText,
+                                textColorKey = ColorKey.Error,
+                            )
+                        }
+
+                        is IssuerDetailsCardDataUi.DocumentState.Revoked -> {
+                            ListItemSupportingContentDataUi.Text(
+                                text = stringResource(Res.string.document_details_issuer_card_revoked_text),
+                                textColorKey = ColorKey.Error,
+                            )
+                        }
                     }
-                }
 
                 WrapListItem(
                     modifier = Modifier.fillMaxWidth(),
@@ -149,7 +160,7 @@ fun IssuerDetailsCard(
                             text = data.issuerName
                                 ?: stringResource(Res.string.document_details_issuer_card_unknown_issuer)
                         ),
-                        supportingText = supportingText,
+                        supportingContentData = supportingContentData,
                         leadingContentData = leadingContent,
                         trailingContentData = ListItemTrailingContentDataUi.Icon(
                             iconData = if (data.isExpanded)
@@ -161,7 +172,6 @@ fun IssuerDetailsCard(
                         onExpandedChange()
                     },
                     mainContentVerticalPadding = SPACING_MEDIUM.dp,
-                    supportingTextColor = supportingTextColor,
                     colors = colors,
                 )
             },

@@ -72,6 +72,7 @@ import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.CheckboxDataUi
 import eu.europa.ec.uilogic.component.wrap.ColorKey
@@ -252,14 +253,32 @@ class DocumentsInteractorImpl(
                         // Bound to a local because WalletDocument lives in another module, where a
                         // null-check on its `val` does not smart-cast.
                         val expiresAt = document.expiresAt
-                        val supportingText = when {
-                            isPending -> strings.get(Res.string.dashboard_document_deferred_pending)
-                            document.isRevoked -> strings.get(Res.string.dashboard_document_revoked)
-                            document.isExpired -> strings.get(Res.string.dashboard_document_has_expired)
+                        // The colour travels with the text: DocumentsScreen used to re-derive it
+                        // from `documentIssuanceState`, which meant the two could drift apart. The
+                        // branches below are in the same order as that state, so the pairing holds.
+                        val supportingContentData = when {
+                            isPending -> ListItemSupportingContentDataUi.Text(
+                                text = strings.get(Res.string.dashboard_document_deferred_pending),
+                                textColorKey = ColorKey.Warning,
+                            )
+
+                            document.isRevoked -> ListItemSupportingContentDataUi.Text(
+                                text = strings.get(Res.string.dashboard_document_revoked),
+                                textColorKey = ColorKey.Error,
+                            )
+
+                            document.isExpired -> ListItemSupportingContentDataUi.Text(
+                                text = strings.get(Res.string.dashboard_document_has_expired),
+                                textColorKey = ColorKey.Error,
+                            )
+
                             expiresAt == null -> null
-                            else -> strings.get(
-                                Res.string.dashboard_document_has_not_expired,
-                                expiresAt.formatInstant()
+
+                            else -> ListItemSupportingContentDataUi.Text(
+                                text = strings.get(
+                                    Res.string.dashboard_document_has_not_expired,
+                                    expiresAt.formatInstant()
+                                ),
                             )
                         }
 
@@ -300,7 +319,7 @@ class DocumentsInteractorImpl(
                                     itemId = document.id,
                                     mainContentData = ListItemMainContentDataUi.Text(text = document.name),
                                     overlineText = issuerName,
-                                    supportingText = supportingText,
+                                    supportingContentData = supportingContentData,
                                     leadingContentData = ListItemLeadingContentDataUi.AsyncImage(
                                         imageUrl = document.issuerLogoUri.orEmpty(),
                                         contentDescription = strings.get(Res.string.content_description_issuer_logo_icon),

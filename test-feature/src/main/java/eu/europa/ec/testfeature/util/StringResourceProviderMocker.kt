@@ -24,6 +24,7 @@ import eu.europa.ec.shared.resources.document_details_boolean_item_true_readable
 import eu.europa.ec.shared.resources.document_details_document_credentials_info_text
 import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
 import eu.europa.ec.shared.resources.issuance_success_header_issuer_default_name
+import eu.europa.ec.shared.resources.request_collapsed_supporting_text
 import eu.europa.ec.shared.resources.request_gender_female
 import eu.europa.ec.shared.resources.request_gender_male
 import eu.europa.ec.shared.resources.request_gender_not_applicable
@@ -103,6 +104,12 @@ object StringResourceProviderMocker {
         resourceProvider: ResourceProvider,
     ) {
         mockCreateKeyValueStrings(resourceProvider)
+
+        // The document header's collapsed supporting text. It is stubbed here rather than per-suite
+        // because ListItemSupportingContentDataUi.Text takes a non-null String, so an unstubbed mock
+        // returning null now fails the construction instead of quietly producing a null field.
+        whenever(resourceProvider.getString(Res.string.request_collapsed_supporting_text))
+            .thenReturn(mockedRequestCollapsedSupportingText)
 
         whenever(resourceProvider.getLocale())
             .thenReturn(mockedDefaultLocale)

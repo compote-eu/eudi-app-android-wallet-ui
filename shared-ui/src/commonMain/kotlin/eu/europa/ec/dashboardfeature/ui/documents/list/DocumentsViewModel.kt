@@ -42,6 +42,7 @@ import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.uilogic.component.AppIcons
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.ModalOptionUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
@@ -390,7 +391,10 @@ class DocumentsViewModel(
                 data.copy(
                     documentIssuanceState = DocumentIssuanceStateUi.Failed,
                     uiData = data.uiData.copy(
-                        supportingText = interactor.deferredFailedSupportingText,
+                        supportingContentData = ListItemSupportingContentDataUi.Text(
+                            text = interactor.deferredFailedSupportingText,
+                            textColorKey = ColorKey.Error,
+                        ),
                         trailingContentData = ListItemTrailingContentDataUi.Icon(
                             iconData = AppIcons.ErrorFilled,
                             tint = ColorKey.Error

@@ -49,6 +49,7 @@ import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.CheckboxDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
@@ -203,7 +204,9 @@ class TransactionsInteractorImpl(
                                 itemId = transaction.id,
                                 mainContentData = ListItemMainContentDataUi.Text(text = transactionName),
                                 overlineText = transactionStatus.toUiText(strings),
-                                supportingText = transaction.createdAt.toFormattedDisplayableDate(),
+                                supportingContentData = ListItemSupportingContentDataUi.Text(
+                                    text = transaction.createdAt.toFormattedDisplayableDate(),
+                                ),
                                 trailingContentData = trailingContentData
                             )
                         ),

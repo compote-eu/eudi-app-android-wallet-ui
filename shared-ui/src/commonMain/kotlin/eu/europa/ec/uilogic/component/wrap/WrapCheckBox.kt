@@ -17,6 +17,7 @@
 package eu.europa.ec.uilogic.component.wrap
 
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxColors
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,7 @@ import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 fun WrapCheckbox(
     checkboxData: CheckboxDataUi,
     modifier: Modifier = Modifier,
+    checkboxColors: CheckboxColors? = null,
 ) {
     // This is needed, otherwise M3 adds unwanted space around CheckBoxes.
     CompositionLocalProvider(
@@ -45,7 +47,7 @@ fun WrapCheckbox(
             onCheckedChange = checkboxData.onCheckedChange,
             modifier = modifier,
             enabled = checkboxData.enabled,
-            colors = CheckboxDefaults.colors(
+            colors = checkboxColors ?: CheckboxDefaults.colors(
                 uncheckedColor = MaterialTheme.colorScheme.primary
             )
         )

@@ -90,10 +90,8 @@ class TestRequestTransformer {
 
         // The transformer reads the locale + the boolean/gender value strings while
         // materialising the claim tree; this helper stubs all of them (and getLocale()).
+        // Also stubs the document header's collapsed supporting text.
         mockTransformToUiItemsStrings(resourceProvider)
-        // Document header's collapsed supporting text (used by transformToUiItems).
-        whenever(resourceProvider.getString(Res.string.request_collapsed_supporting_text))
-            .thenReturn(mockedRequestCollapsedSupportingText)
     }
 
     @After
@@ -1279,7 +1277,6 @@ class TestRequestTransformer {
     //region helpers
 
     /** The collapsed supporting text the document header shows on the request screen. */
-    private val mockedRequestCollapsedSupportingText = "View details"
 
     /**
      * Builds the real UI rows the request screen would render for [matches] against

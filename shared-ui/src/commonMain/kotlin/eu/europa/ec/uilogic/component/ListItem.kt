@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -83,7 +84,7 @@ enum class ClickableArea {
  * **Content Customization:**
  * - **Leading Content:** Can be an icon or a user image specified by [ListItemDataUi.leadingContentData].
  * - **Main Content:** Can be text or an image specified by [ListItemDataUi.mainContentData].
- * - **Supporting Text:** Provides additional information below the main content, specified by [ListItemDataUi.supportingText].
+ * - **Supporting Content:** Provides additional information below the main content, specified by [ListItemDataUi.supportingContentData].
  * - **Trailing Content:** Can be a checkbox or an icon specified by [ListItemDataUi.trailingContentData].
  * - **Overline Text:**  Displays text above the main content, specified by [ListItemDataUi.overlineText].
  *
@@ -114,10 +115,8 @@ fun ListItem(
     overlineTextStyle: TextStyle = MaterialTheme.typography.labelMedium.copy(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     ),
-    supportingTextColor: Color? = null,
     mainContentTextStyle: TextStyle? = null,
 ) {
-    val maxSecondaryTextLines = 1
     val textOverflow = TextOverflow.Ellipsis
     val mainTextStyle = mainContentTextStyle ?: MaterialTheme.typography.bodyLarge.copy(
         color = MaterialTheme.colorScheme.onSurface
@@ -274,17 +273,19 @@ fun ListItem(
                     }
                 }
 
-                // Supporting Text
-                supportingText?.let { safeSupportingText ->
-                    Text(
-                        text = safeSupportingText,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = supportingTextColor
-                                ?: MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        maxLines = maxSecondaryTextLines,
-                        overflow = textOverflow,
-                    )
+                // Supporting Content
+                supportingContentData?.let { safeSupportingContentData ->
+                    when (safeSupportingContentData) {
+                        is ListItemSupportingContentDataUi.Text -> Text(
+                            text = safeSupportingContentData.text,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = safeSupportingContentData.textColorKey?.toColor()
+                                    ?: MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            maxLines = safeSupportingContentData.maxLines,
+                            overflow = textOverflow,
+                        )
+                    }
                 }
             }
 
@@ -298,6 +299,13 @@ fun ListItem(
                             } else null
                         ),
                         modifier = Modifier.padding(start = SIZE_MEDIUM.dp),
+                        checkboxColors = safeTrailingContentData.tint?.let { safeTint ->
+                            val checkboxColor = safeTint.toColor()
+                            CheckboxDefaults.colors(
+                                checkedColor = checkboxColor,
+                                uncheckedColor = checkboxColor,
+                            )
+                        },
                     )
 
                     is ListItemTrailingContentDataUi.Icon -> WrapIconButton(
@@ -357,13 +365,15 @@ private fun ListItemPreview() {
                 onItemClick = {},
             )
 
-            // ListItem with overlineText and supportingText
+            // ListItem with overlineText and supporting content
             ListItem(
                 item = ListItemDataUi(
                     itemId = "2",
                     mainContentData = ListItemMainContentDataUi.Text(text = "Item with Overline and Supporting Text"),
                     overlineText = "Overline Text",
-                    supportingText = "Supporting Text"
+                    supportingContentData = ListItemSupportingContentDataUi.Text(
+                        text = "Supporting Text",
+                    )
                 ),
                 modifier = modifier,
                 onItemClick = {},
@@ -405,7 +415,9 @@ private fun ListItemPreview() {
                         text = "1/2",
                         iconData = AppIcons.KeyboardArrowRight
                     ),
-                    supportingText = "Supporting Text"
+                    supportingContentData = ListItemSupportingContentDataUi.Text(
+                        text = "Supporting Text",
+                    )
                 ),
                 modifier = modifier,
                 onItemClick = {},
@@ -608,7 +620,9 @@ private fun ListItemPreview() {
                     itemId = "17",
                     mainContentData = ListItemMainContentDataUi.Text(text = "Full Item Example"),
                     overlineText = "Overline Text",
-                    supportingText = "Supporting Text",
+                    supportingContentData = ListItemSupportingContentDataUi.Text(
+                        text = "Supporting Text",
+                    ),
                     leadingContentData = ListItemLeadingContentDataUi.Icon(iconData = AppIcons.Add),
                     trailingContentData = ListItemTrailingContentDataUi.Icon(
                         iconData = AppIcons.KeyboardArrowDown,

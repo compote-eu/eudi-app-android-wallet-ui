@@ -42,6 +42,7 @@ import eu.europa.ec.shared.wallet.multipaz.IosPresentmentRequest
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 
@@ -141,7 +142,9 @@ private fun IosPresentmentRequest.RequestedDocument.toItemUi(
             header = ListItemDataUi(
                 itemId = ClaimItemId.DocumentHeader(docId = documentId, queryId = queryId).encode(),
                 mainContentData = ListItemMainContentDataUi.Text(text = documentName),
-                supportingText = strings[Res.string.request_collapsed_supporting_text],
+                supportingContentData = ListItemSupportingContentDataUi.Text(
+                    text = strings[Res.string.request_collapsed_supporting_text],
+                ),
                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                     iconData = AppIcons.KeyboardArrowDown,
                 ),

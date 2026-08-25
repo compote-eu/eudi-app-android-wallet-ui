@@ -43,6 +43,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenti
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
@@ -173,7 +174,10 @@ class DocumentIssuanceSuccessInteractorTest {
             "PID (MSO MDoc)",
             assertIs<ListItemMainContentDataUi.Text>(first.header.mainContentData).text,
         )
-        assertEquals("VIEW DETAILS", first.header.supportingText)
+        assertEquals(
+            ListItemSupportingContentDataUi.Text(text = "VIEW DETAILS"),
+            first.header.supportingContentData
+        )
         // Collapsed: the screen expands on tap, and an already-expanded list would hide the second
         // document below the fold.
         assertFalse(first.isExpanded)

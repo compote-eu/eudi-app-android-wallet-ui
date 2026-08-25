@@ -46,6 +46,7 @@ import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import org.junit.After
@@ -233,7 +234,10 @@ class TestProximitySuccessInteractor {
                     ListItemMainContentDataUi.Text(text = pid.name),
                     docUi.header.mainContentData
                 )
-                assertEquals(mockedDocumentSupportingText, docUi.header.supportingText)
+                assertEquals(
+                    ListItemSupportingContentDataUi.Text(text = mockedDocumentSupportingText),
+                    docUi.header.supportingContentData
+                )
                 assertEquals(
                     ListItemTrailingContentDataUi.Icon(iconData = AppIcons.KeyboardArrowDown),
                     docUi.header.trailingContentData

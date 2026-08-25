@@ -87,6 +87,7 @@ const val mockedDocumentHasExpired = false
 const val mockedVerifierName = "EUDIW Verifier"
 const val mockedIssuerName = "EUDIW Issuer"
 const val mockedDocumentSuccessCollapsedSupportingText = "View details"
+const val mockedRequestCollapsedSupportingText = "View details"
 const val mockedUriPath1 = "eudi-wallet://example.com/path1"
 const val mockedUriPath2 = "eudi-wallet://example.com/path2"
 const val mockedUuid = "00000000-0000-0000-0000-000000000000"

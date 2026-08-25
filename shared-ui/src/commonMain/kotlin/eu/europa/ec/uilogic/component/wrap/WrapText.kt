@@ -27,7 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import org.jetbrains.compose.ui.tooling.preview.PreviewParameter
-import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.resourceslogic.theme.values.success
+import eu.europa.ec.resourceslogic.theme.values.pending
+import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.TextLengthPreviewProvider
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
@@ -54,11 +56,11 @@ fun WrapText(
 fun ColorKey.toColor(): Color = when (this) {
     ColorKey.OnSurface -> MaterialTheme.colorScheme.onSurface
     ColorKey.OnSurfaceVariant -> MaterialTheme.colorScheme.onSurfaceVariant
-    ColorKey.Success -> ThemeColors.success
-    ColorKey.Pending -> ThemeColors.pending
-    ColorKey.Primary -> ThemeColors.primary
-    ColorKey.Warning -> ThemeColors.warning
-    ColorKey.Error -> ThemeColors.error
+    ColorKey.Success -> MaterialTheme.colorScheme.success
+    ColorKey.Pending -> MaterialTheme.colorScheme.pending
+    ColorKey.Primary -> MaterialTheme.colorScheme.primary
+    ColorKey.Warning -> MaterialTheme.colorScheme.warning
+    ColorKey.Error -> MaterialTheme.colorScheme.error
 }
 
 /** Resolves a [TextAlignKey] to a Compose [TextAlign]. */

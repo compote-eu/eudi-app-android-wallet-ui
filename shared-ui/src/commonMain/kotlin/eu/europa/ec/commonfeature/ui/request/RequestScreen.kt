@@ -54,6 +54,7 @@ import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ErrorInfo
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.SectionTitle
@@ -580,7 +581,9 @@ private fun previewRequestDocumentItem(): RequestDocumentItemUi {
             header = ListItemDataUi(
                 itemId = "000",
                 mainContentData = ListItemMainContentDataUi.Text(text = "Digital ID"),
-                supportingText = stringResource(Res.string.request_collapsed_supporting_text),
+                supportingContentData = ListItemSupportingContentDataUi.Text(
+                    text = stringResource(Res.string.request_collapsed_supporting_text),
+                ),
                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                     iconData = AppIcons.KeyboardArrowDown
                 ),

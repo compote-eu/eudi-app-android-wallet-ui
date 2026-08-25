@@ -128,7 +128,7 @@ interface DocumentsInteractor {
     /**
      * The supporting line shown under a deferred document whose issuance failed.
      *
-     * It belongs here rather than in the view-model because `ListItemDataUi.supportingText` is a
+     * It belongs here rather than in the view-model because `ListItemDataUi.supportingContentData` is a
      * resolved `String` — this interactor already fills it for the *pending* case a few lines away —
      * and exposing it is what lets `DocumentsViewModel` stop injecting a resolver of its own.
      */

@@ -46,6 +46,7 @@ import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -432,7 +433,13 @@ class DocumentsViewModelTest {
         assertEquals(DocumentIssuanceStateUi.Failed, payload.documentIssuanceState)
         // The supporting line comes from the interactor, which is why this view-model needs no
         // string resolver of its own.
-        assertEquals("Issuance failed", payload.uiData.supportingText)
+        assertEquals(
+            ListItemSupportingContentDataUi.Text(
+                text = "Issuance failed",
+                textColorKey = ColorKey.Error,
+            ),
+            payload.uiData.supportingContentData
+        )
         val trailing = assertIs<ListItemTrailingContentDataUi.Icon>(payload.uiData.trailingContentData)
         assertEquals(AppIcons.ErrorFilled, trailing.iconData)
         assertEquals(ColorKey.Error, trailing.tint)
