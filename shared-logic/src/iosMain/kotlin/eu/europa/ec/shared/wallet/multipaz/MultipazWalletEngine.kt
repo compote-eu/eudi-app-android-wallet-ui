@@ -49,11 +49,13 @@ import org.multipaz.storage.KeyExistsStorageException
  *    multipaz had `org.multipaz.sdjwt` on the classpath the whole time.
  *  - ✅ **revocation**, over multipaz's own Token Status List implementation — see
  *    [MultipazRevocationChecker] for why not `eudi-lib-kmp-statium`. Cached in storage like Android's
- *    Room table; the *trigger* is the host's, since iOS has no WorkManager.
+ *    Room table; the *trigger* is the host's — see [refreshRevocationStatuses] for what iOS has
+ *    instead of WorkManager, and why revocation is not on it yet.
  *
- * Not a Koin `@Factory`: iOS has no DI graph for the wallet layer yet, and the shared view-models
- * that consume `WalletEngine` are not reachable on iOS until their screens are shared. Construct it
- * through [create].
+ * Not a Koin `@Factory`, though iOS now has a DI graph and the shared view-models do consume
+ * `WalletEngine` through it: `IosWalletModule` provides the *public* [IosWalletEngine], and this class
+ * is internal and multipaz-typed, so exposing it would put multipaz in the graph's signature. Construct
+ * it through [create].
  */
 internal class MultipazWalletEngine(
     private val store: MultipazWalletStore,
@@ -259,9 +261,9 @@ internal class MultipazWalletEngine(
      *
      * This is the body of Android's `RevocationWorkManager` — including its two-way behaviour, which
      * is easy to miss: a credential that is valid again has its cached row **removed**, so revocation
-     * is not a one-way door. What it deliberately does not do is decide *when* to run. Android has
-     * WorkManager and a 15-minute period; iOS has no equivalent that a Compose-only host can install,
-     * so the trigger is the caller's (see `IosWalletEngine.refreshRevocationStatuses`).
+     * is not a one-way door. What it deliberately does not do is decide *when* to run: the trigger is
+     * the caller's (see `IosWalletEngine.refreshRevocationStatuses`, which explains what iOS now has
+     * instead of Android's 15-minute WorkManager period, and why revocation does not use it yet).
      *
      * The return value is what a caller needs to raise the "documents revoked" notification the
      * Android broadcast produces; ignoring it and reading [getRevokedDocumentIds] afterwards is also

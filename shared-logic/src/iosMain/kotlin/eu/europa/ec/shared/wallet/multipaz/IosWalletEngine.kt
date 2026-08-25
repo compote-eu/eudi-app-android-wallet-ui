@@ -63,12 +63,17 @@ class IosWalletEngine : WalletEngine {
      * Re-checks every document against its status list and updates the cached flags, returning the
      * documents that *became* revoked.
      *
-     * **The trigger is the host's, and that is the design, not an omission.** Android runs this every
-     * 15 minutes through WorkManager; iOS has no equivalent a Compose-only host can install —
-     * `BGTaskScheduler` needs app-delegate wiring and an Info.plist identifier on the Swift side. So
-     * the host decides: at launch, on foreground, or from a pull-to-refresh. Calling it more often than
-     * the status list's `ttl` only wastes a request; calling it never leaves documents unflagged,
-     * exactly as Android behaves before its first period elapses.
+     * **The trigger is the host's, and that is now a choice rather than a limitation.** Android runs
+     * this every 15 minutes through WorkManager. iOS has the equivalent since `8a0e27db` — a
+     * `BGProcessingTask` registered in `iOSApp.swift`, declared in `iosApp/project.yml` — and
+     * revocation deliberately does **not** ride it yet: until the trust gate opens
+     * (`eudi-lib-kmp-etsi-1196x2#130`) a status list's `x5c` cannot be validated, so every background
+     * check would spend a request per document to conclude `Unknown`. Wiring it up is a few lines the
+     * day that gate opens; doing it sooner only burns battery and data.
+     *
+     * So the host decides for now: at launch, on foreground, or from a pull-to-refresh. Calling it more
+     * often than the status list's `ttl` only wastes a request; calling it never leaves documents
+     * unflagged, exactly as Android behaves before its first period elapses.
      *
      * The [HttpClient] is created per call and closed after: refreshes are minutes apart at best, so
      * holding a client (and its connection pool) open between them buys nothing.

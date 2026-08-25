@@ -53,10 +53,13 @@ internal class IosDocumentsPlatformBridge(
         get() = DocumentCategories.Default
 
     /**
-     * False, unlike the Android flavours' `true`.
+     * False, **as in both Android flavours** — `ConfigLogic.forcePidActivation` defaults to `false` and
+     * neither `src/dev` nor `src/demo` overrides it.
      *
-     * Not a gap: iOS *can* issue a PID now. This is the per-flavour policy of whether a wallet without
-     * one is pushed into getting one before it can do anything else, and this build does not push.
+     * This is the policy of whether a wallet holding no PID is pushed into getting one before it can do
+     * anything else, and no build of either platform pushes. The previous sweep corrected this comment's
+     * stale premise ("iOS cannot issue") but asserted Android was `true`, which it is not — checking the
+     * claim about *our* code is only half of checking the claim.
      */
     override val forcePidActivation: Boolean get() = false
 

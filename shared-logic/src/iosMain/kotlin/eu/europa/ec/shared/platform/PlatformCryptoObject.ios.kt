@@ -17,7 +17,11 @@
 package eu.europa.ec.shared.platform
 
 /**
- * Uninhabited until iOS implements biometrics; LocalAuthentication has no direct equivalent, so the
- * shape is deliberately left open rather than guessed at.
+ * Uninhabited, and it stays that way even though iOS unlocks with Face ID.
+ *
+ * This is Android's `BiometricPrompt.CryptoObject` — a cipher handed to the prompt so the key is
+ * released by the authentication itself. iOS expresses the same guarantee differently: the key lives in
+ * the Keychain behind `kSecAccessControlBiometryCurrentSet` and the Secure Enclave releases it, so
+ * there is no object to pass and nothing for this type to hold. See `IosBiometricGate`.
  */
 actual class PlatformCryptoObject private constructor()

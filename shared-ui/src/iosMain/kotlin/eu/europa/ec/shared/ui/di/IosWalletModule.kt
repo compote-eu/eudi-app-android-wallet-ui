@@ -336,8 +336,9 @@ fun provideIosBiometricGate(): IosBiometricGate =
 
 /**
  * The real splash routing, replacing the stand-in that always went to the dashboard: no PIN yet sends the
- * user to create one, an existing PIN sends them to unlock. `forcePidActivation` is false here — iOS has no
- * configuration layer, so it does not insist on a PID before anything else.
+ * user to create one, an existing PIN sends them to unlock. `forcePidActivation` is false here, which
+ * matches both Android flavours — neither overrides the interface default — so no build of either
+ * platform insists on a PID before anything else.
  */
 @Factory
 fun provideIosSplashInteractor(
