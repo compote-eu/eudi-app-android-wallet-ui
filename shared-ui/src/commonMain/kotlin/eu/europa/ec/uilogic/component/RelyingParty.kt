@@ -38,6 +38,12 @@ import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.TextLengthPreviewProvider
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.SPACING_EXTRA_SMALL
+import org.jetbrains.compose.resources.stringResource
+import eu.europa.ec.shared.resources.request_relying_party_id_format
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.uilogic.component.wrap.ColorKey
+import eu.europa.ec.uilogic.component.utils.ICON_SIZE_40
+import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.utils.VSpacer
 import eu.europa.ec.uilogic.component.wrap.TextAlignKey
 import eu.europa.ec.uilogic.component.wrap.TextConfig
@@ -46,32 +52,91 @@ import eu.europa.ec.uilogic.component.wrap.WrapAsyncImage
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
 import eu.europa.ec.uilogic.component.wrap.WrapText
 
+/**
+ * How [RelyingParty] arranges the logo against the identity block.
+ */
+enum class RelyingPartyLayout {
+
+    /** Logo beside the identity block, everything start-aligned. */
+    InlineStart,
+
+    /** Logo stacked above the identity block, everything centred. */
+    StackedCentered,
+}
+
+/**
+ * The reusable party-identity block: logo, verified badge + name, "(ID: …)" line, optional
+ * description.
+ */
 @Composable
 fun RelyingParty(
     modifier: Modifier = Modifier,
     relyingPartyData: RelyingPartyDataUi,
+    layout: RelyingPartyLayout = RelyingPartyLayout.StackedCentered,
 ) {
-    val commonTextAlign = TextAlignKey.Center
+    when (layout) {
+        RelyingPartyLayout.InlineStart -> Row(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RelyingPartyIdentity(
+                modifier = Modifier.weight(1f),
+                relyingPartyData = relyingPartyData,
+                horizontalAlignment = Alignment.Start,
+                textAlignKey = TextAlignKey.Start,
+            )
 
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        with(relyingPartyData) {
-            logo?.let { safeLogo ->
+            relyingPartyData.logo?.let { safeLogo ->
+                WrapAsyncImage(
+                    modifier = Modifier
+                        .padding(all = SPACING_SMALL.dp)
+                        .size(ICON_SIZE_40.dp),
+                    source = safeLogo,
+                    error = AppIcons.Id,
+                )
+            }
+        }
+
+        RelyingPartyLayout.StackedCentered -> Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            relyingPartyData.logo?.let { safeLogo ->
                 WrapAsyncImage(
                     modifier = Modifier.fillMaxWidth(0.5f),
                     source = safeLogo,
-                    contentScale = ContentScale.FillWidth
+                    contentScale = ContentScale.FillWidth,
+                    error = AppIcons.Id,
                 )
                 VSpacer.Small()
             }
 
-            Row(
+            RelyingPartyIdentity(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
+                relyingPartyData = relyingPartyData,
+                horizontalAlignment = Alignment.CenterHorizontally,
+                textAlignKey = TextAlignKey.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RelyingPartyIdentity(
+    modifier: Modifier = Modifier,
+    relyingPartyData: RelyingPartyDataUi,
+    horizontalAlignment: Alignment.Horizontal,
+    textAlignKey: TextAlignKey,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = horizontalAlignment,
+    ) {
+        with(relyingPartyData) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (isVerified) {
                     WrapIcon(
@@ -87,8 +152,23 @@ fun RelyingParty(
                     text = name.resolve(),
                     textConfig = nameTextConfig ?: TextConfig(
                         styleKey = TextStyleKey.TitleMedium,
-                        textAlignKey = commonTextAlign,
+                        textAlignKey = textAlignKey,
                     )
+                )
+            }
+
+            uniqueId?.let { safeUniqueId ->
+                WrapText(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = stringResource(
+                        Res.string.request_relying_party_id_format,
+                        safeUniqueId,
+                    ),
+                    textConfig = TextConfig(
+                        styleKey = TextStyleKey.BodySmall,
+                        colorKey = ColorKey.OnSurfaceVariant,
+                        textAlignKey = textAlignKey,
+                    ),
                 )
             }
 
@@ -98,7 +178,7 @@ fun RelyingParty(
                     text = safeDescription.resolve(),
                     textConfig = descriptionTextConfig ?: TextConfig(
                         styleKey = TextStyleKey.BodySmall,
-                        textAlignKey = commonTextAlign,
+                        textAlignKey = textAlignKey,
                     )
                 )
             }

@@ -95,6 +95,19 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.request_registration_acknowledge_text
+import eu.europa.ec.shared.resources.request_registration_overasked_warning_text
+import eu.europa.ec.shared.resources.request_registration_not_verified_warning_text
+import eu.europa.ec.shared.resources.request_intended_use_section_title
+import eu.europa.ec.shared.resources.request_privacy_policy_section_title
+import eu.europa.ec.shared.resources.request_cancel_button_text
+import eu.europa.ec.shared.resources.request_screen_title
+import eu.europa.ec.uilogic.component.content.ContentTitle
+import eu.europa.ec.uilogic.component.RelyingPartyLayout
+import eu.europa.ec.uilogic.component.RelyingParty
+import eu.europa.ec.uilogic.component.InfoSection
+import eu.europa.ec.uilogic.component.InfoLinkSection
+import eu.europa.ec.commonfeature.ui.request.model.RelyingPartyHeaderUi
 import eu.europa.ec.shared.resources.request_blocked_bottom_sheet_message
 import eu.europa.ec.shared.resources.request_blocked_bottom_sheet_primary_button_text
 import eu.europa.ec.shared.resources.request_blocked_bottom_sheet_title
@@ -132,23 +145,27 @@ fun RequestScreen(
         isLoading = state.isLoading,
         onBack = { viewModel.setEvent(Event.OnBack) },
         stickyBottom = { paddingValues ->
-            WrapStickyBottomContent(
-                modifier = Modifier
-                    .applyTestTag(TestTag.RequestScreen.BUTTON)
-                    .fillMaxWidth()
-                    .padding(paddingValues),
-                stickyBottomConfig = StickyBottomConfig(
-                    type = StickyBottomType.OneButton(
-                        config = ButtonConfig(
-                            type = ButtonType.PRIMARY,
-                            enabled = !state.isLoading && state.allowShare,
-                            onClick = { viewModel.setEvent(Event.StickyButtonPressed) }
+            ConsentStickyBottomSection(
+                modifier = Modifier.fillMaxWidth(),
+                paddingValues = paddingValues,
+                buttonsTestTag = TestTag.RequestScreen.BUTTON,
+                warningSection = ConsentWarningSection(
+                    registrationWarning = state.registrationWarning,
+                    notVerifiedWarningText = stringResource(Res.string.request_registration_not_verified_warning_text),
+                    overaskedWarningText = stringResource(Res.string.request_registration_overasked_warning_text),
+                    acknowledgeText = stringResource(Res.string.request_registration_acknowledge_text),
+                    onAcknowledgeChange = { isAccepted ->
+                        viewModel.setEvent(
+                            Event.RegistrationRiskToggled(isAccepted = isAccepted)
                         )
-                    )
-                )
-            ) {
-                Text(text = stringResource(Res.string.request_sticky_button_text))
-            }
+                    },
+                ),
+                primaryButtonText = stringResource(Res.string.request_sticky_button_text),
+                cancelButtonText = stringResource(Res.string.request_cancel_button_text),
+                primaryButtonEnabled = !state.isLoading && state.allowShare,
+                onPrimaryButtonClick = { viewModel.setEvent(Event.StickyButtonPressed) },
+                onCancelButtonClick = { viewModel.setEvent(Event.OnBack) },
+            )
         },
         contentErrorConfig = state.error
     ) { paddingValues ->
@@ -177,6 +194,10 @@ fun RequestScreen(
                     is Effect.Navigation.Finish -> {
                         platformActions.finishApp()
                     }
+
+                    is Effect.Navigation.OpenUrlExternally -> {
+                        platformActions.openUrlExternally(url = navigationEffect.url)
+                    }
                 }
             },
             paddingValues = paddingValues,
@@ -189,11 +210,11 @@ fun RequestScreen(
                 onDismissRequest = {
                     viewModel.setEvent(
                         when (state.sheetContent) {
-                            RequestBottomSheetContent.WARNING -> {
+                            is RequestBottomSheetContent.Warning -> {
                                 Event.BottomSheet.UpdateBottomSheetState(isOpen = false)
                             }
 
-                            RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
+                            is RequestBottomSheetContent.VerifierNotTrusted -> {
                                 Event.BottomSheet.VerifierNotTrusted.Close
                             }
                         }
@@ -242,11 +263,20 @@ private fun Content(
         verticalArrangement = Arrangement.Top
     ) {
         // Screen Header.
-        ContentHeader(
+        ContentTitle(
             modifier = Modifier.fillMaxWidth(),
-            config = state.headerConfig,
-            descriptionTestTag = TestTag.RequestScreen.CONTENT_HEADER_DESCRIPTION,
+            title = stringResource(Res.string.request_screen_title),
         )
+
+        state.relyingPartyHeader?.let { safeRelyingPartyHeader ->
+            VerifierHeaderSection(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_SMALL.dp),
+                header = safeRelyingPartyHeader,
+                onEventSend = onEventSend,
+            )
+        }
 
         // Screen Main Content.
         DisplayRequestContent(
@@ -423,13 +453,55 @@ private fun RequestWarningNote(
     )
 }
 
+/**
+ * The who-is-asking header: the requester's identity and the verified registration sections
+ * (privacy policy, intended use).
+ */
+@Composable
+private fun VerifierHeaderSection(
+    modifier: Modifier,
+    header: RelyingPartyHeaderUi,
+    onEventSend: (Event) -> Unit,
+) {
+    Column(modifier = modifier) {
+        RelyingParty(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = SPACING_SMALL.dp),
+            relyingPartyData = header.relyingParty,
+            layout = RelyingPartyLayout.InlineStart,
+        )
+
+        header.privacyPolicyUrl?.let { safePrivacyPolicyUrl ->
+            InfoLinkSection(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_SMALL.dp),
+                title = stringResource(Res.string.request_privacy_policy_section_title),
+                linkText = safePrivacyPolicyUrl,
+                onLinkClick = { onEventSend(Event.PrivacyPolicyLinkClicked) },
+            )
+        }
+
+        header.intendedUse?.let { safeIntendedUse ->
+            InfoSection(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_SMALL.dp),
+                title = stringResource(Res.string.request_intended_use_section_title),
+                body = safeIntendedUse,
+            )
+        }
+    }
+}
+
 @Composable
 private fun SheetContent(
     sheetContent: RequestBottomSheetContent,
     onEventSent: (Event) -> Unit,
 ) {
     when (sheetContent) {
-        RequestBottomSheetContent.WARNING -> {
+        is RequestBottomSheetContent.Warning -> {
             SimpleBottomSheet(
                 textData = BottomSheetTextDataUi(
                     title = UiText.Resource(Res.string.request_bottom_sheet_warning_title),
@@ -440,7 +512,7 @@ private fun SheetContent(
             )
         }
 
-        RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
+        is RequestBottomSheetContent.VerifierNotTrusted -> {
             DialogBottomSheet(
                 textData = BottomSheetTextDataUi(
                     title = UiText.Resource(Res.string.request_blocked_bottom_sheet_title),
@@ -462,14 +534,14 @@ private fun ContentPreview() {
     PreviewTheme {
         Content(
             state = State(
-                headerConfig = ContentHeaderConfig(
-                    description = UiText.Resource(Res.string.request_header_description),
-                    mainText = UiText.Resource(Res.string.request_header_main_text),
-                    relyingPartyData = RelyingPartyDataUi(
+                relyingPartyHeader = RelyingPartyHeaderUi(
+                    relyingParty = RelyingPartyDataUi(
                         isVerified = true,
                         name = UiText.Resource(Res.string.request_relying_party_default_name),
-                        description = UiText.Resource(Res.string.request_relying_party_description)
-                    )
+                        uniqueId = "rp:preview:prod",
+                    ),
+                    intendedUse = "Verifying your identity to open an account.",
+                    privacyPolicyUrl = "https://relying.example/privacy",
                 ),
                 requestDataUi = RequestDataUi.Single(
                     combination = RequestCombinationUi(
@@ -495,14 +567,14 @@ private fun ContentNoDataPreview() {
     PreviewTheme {
         Content(
             state = State(
-                headerConfig = ContentHeaderConfig(
-                    description = UiText.Resource(Res.string.request_header_description),
-                    mainText = UiText.Resource(Res.string.request_header_main_text),
-                    relyingPartyData = RelyingPartyDataUi(
+                relyingPartyHeader = RelyingPartyHeaderUi(
+                    relyingParty = RelyingPartyDataUi(
                         isVerified = true,
                         name = UiText.Resource(Res.string.request_relying_party_default_name),
-                        description = UiText.Resource(Res.string.request_relying_party_description)
-                    )
+                        uniqueId = "rp:preview:prod",
+                    ),
+                    intendedUse = "Verifying your identity to open an account.",
+                    privacyPolicyUrl = "https://relying.example/privacy",
                 ),
                 requestDataUi = RequestDataUi.NoData,
             ),
@@ -524,14 +596,14 @@ private fun ContentMultipleCombinationsPreview() {
         val previewItem = previewRequestDocumentItem()
         Content(
             state = State(
-                headerConfig = ContentHeaderConfig(
-                    description = UiText.Resource(Res.string.request_header_description),
-                    mainText = UiText.Resource(Res.string.request_header_main_text),
-                    relyingPartyData = RelyingPartyDataUi(
+                relyingPartyHeader = RelyingPartyHeaderUi(
+                    relyingParty = RelyingPartyDataUi(
                         isVerified = true,
                         name = UiText.Resource(Res.string.request_relying_party_default_name),
-                        description = UiText.Resource(Res.string.request_relying_party_description)
-                    )
+                        uniqueId = "rp:preview:prod",
+                    ),
+                    intendedUse = "Verifying your identity to open an account.",
+                    privacyPolicyUrl = "https://relying.example/privacy",
                 ),
                 requestDataUi = RequestDataUi.Multiple(
                     combinations = listOf(
@@ -625,7 +697,7 @@ private fun previewRequestDocumentItem(): RequestDocumentItemUi {
 private fun SheetContentWarningPreview() {
     PreviewTheme {
         SheetContent(
-            sheetContent = RequestBottomSheetContent.WARNING,
+            sheetContent = RequestBottomSheetContent.Warning,
             onEventSent = {},
         )
     }
@@ -636,7 +708,7 @@ private fun SheetContentWarningPreview() {
 private fun SheetContentVerifierNotTrustedPreview() {
     PreviewTheme {
         SheetContent(
-            sheetContent = RequestBottomSheetContent.VERIFIER_NOT_TRUSTED,
+            sheetContent = RequestBottomSheetContent.VerifierNotTrusted,
             onEventSent = {},
         )
     }

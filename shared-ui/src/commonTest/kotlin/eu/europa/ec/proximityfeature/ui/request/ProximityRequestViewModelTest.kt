@@ -27,6 +27,8 @@
 // Channel — a send with no active collector suspends and the assertion would hang.
 package eu.europa.ec.proximityfeature.ui.request
 
+import eu.europa.ec.commonfeature.ui.request.model.RegistrationWarningVariantUi
+import eu.europa.ec.corelogic.model.RegistrationFailureReasonDomain
 import eu.europa.ec.corelogic.model.RelyingPartyDomain
 import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import eu.europa.ec.commonfeature.ui.request.Event
@@ -175,6 +177,24 @@ class ProximityRequestViewModelTest {
             claimsAreSelectable = claimsAreSelectable,
         )
 
+        /** Success whose registration failed validation, so the consent screen must warn. */
+        fun successWithUnverifiedRegistration(
+            vararg combinations: RequestCombinationUi,
+        ) = ProximityRequestInteractorPartialState.Success(
+            relyingParty = RelyingPartyDomain(
+                name = "Acme",
+                uniqueId = null,
+                hasTrustedAccessCertificate = true,
+                logoUri = null,
+                registration = RegistrationStatusDomain.NotVerified(
+                    reason = RegistrationFailureReasonDomain.CERTIFICATE_ABSENT,
+                    details = null,
+                ),
+            ),
+            combinationsUi = combinations.toList(),
+            claimsAreSelectable = true,
+        )
+
         fun viewModel(vararg states: ProximityRequestInteractorPartialState) =
             FakeProximityRequestInteractor(states.toList()).let { fake ->
                 fake to ProximityRequestViewModel(fake, SCOPE)
@@ -199,7 +219,7 @@ class ProximityRequestViewModelTest {
         assertIs<RequestDataUi.Initial>(state.requestDataUi)
         // Nothing resolved yet, so Share must be inert.
         assertFalse(state.allowShare)
-        assertFalse(state.headerConfig.relyingPartyData!!.isVerified)
+        assertNull(state.relyingPartyHeader)
     }
 
     @Test
@@ -217,10 +237,53 @@ class ProximityRequestViewModelTest {
         assertEquals(1, single.combination.documents.size)
         assertTrue(state.allowShare)
         // The verifier's identity is folded into the header.
-        assertTrue(state.headerConfig.relyingPartyData!!.isVerified)
+        assertTrue(state.relyingPartyHeader!!.relyingParty.isVerified)
         // ...and the selection was pushed back to the interactor exactly once.
         assertEquals(1, fake.disclosed.size)
         assertNotNull(fake.disclosed.single())
+    }
+
+    @Test
+    fun an_unverified_registration_blocks_share_until_the_risk_is_acknowledged() =
+        runTest(mainDispatcher) {
+            val (_, viewModel) = viewModel(
+                successWithUnverifiedRegistration(
+                    combination(document("d1", "c1", checked = true))
+                )
+            )
+            viewModel.setEvent(Event.DoWork)
+            advanceUntilIdle()
+
+            // A claim is ticked, so the only thing holding Share back is the warning.
+            val warned = viewModel.viewState.value
+            assertEquals(
+                RegistrationWarningVariantUi.NOT_VERIFIED,
+                warned.registrationWarning!!.variant
+            )
+            assertFalse(warned.registrationWarning!!.riskAccepted)
+            assertFalse(warned.allowShare)
+            // The badge must not claim verified, whatever the access certificate said.
+            assertFalse(warned.relyingPartyHeader!!.relyingParty.isVerified)
+
+            viewModel.setEvent(Event.RegistrationRiskToggled(isAccepted = true))
+            advanceUntilIdle()
+
+            val accepted = viewModel.viewState.value
+            assertTrue(accepted.registrationWarning!!.riskAccepted)
+            assertTrue(accepted.allowShare)
+        }
+
+    @Test
+    fun a_registration_that_was_never_evaluated_raises_no_warning() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(success(combination(document("d1", "c1", checked = true))))
+        viewModel.setEvent(Event.DoWork)
+        advanceUntilIdle()
+
+        // The default build never evaluates registrations, so the consent screen must look
+        // exactly as it did before this feature.
+        val state = viewModel.viewState.value
+        assertNull(state.registrationWarning)
+        assertTrue(state.allowShare)
     }
 
     @Test
@@ -301,7 +364,7 @@ class ProximityRequestViewModelTest {
             assertIs<Effect.ShowBottomSheet>(effect.await())
             assertEquals(1, fake.stopCount)
             assertEquals(
-                RequestBottomSheetContent.VERIFIER_NOT_TRUSTED,
+                RequestBottomSheetContent.VerifierNotTrusted,
                 viewModel.viewState.value.sheetContent,
             )
         }
@@ -333,7 +396,7 @@ class ProximityRequestViewModelTest {
             assertIs<Effect.ShowBottomSheet>(effect.await())
             val state = viewModel.viewState.value
             assertTrue(state.hasWarnedUser)
-            assertEquals(RequestBottomSheetContent.WARNING, state.sheetContent)
+            assertEquals(RequestBottomSheetContent.Warning, state.sheetContent)
             // Still checked: the warning is shown INSTEAD of toggling.
             assertTrue(state.allowShare)
         }
@@ -504,7 +567,7 @@ class ProximityRequestViewModelTest {
         advanceUntilIdle()
 
         // Sheet state only; the WARNING branch is deliberately inert.
-        assertEquals(RequestBottomSheetContent.WARNING, viewModel.viewState.value.sheetContent)
+        assertEquals(RequestBottomSheetContent.Warning, viewModel.viewState.value.sheetContent)
     }
 
     @Test

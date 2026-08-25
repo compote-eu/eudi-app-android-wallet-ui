@@ -20,6 +20,8 @@ import androidx.lifecycle.viewModelScope
 import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
+import eu.europa.ec.commonfeature.ui.request.model.toRegistrationWarningUi
+import eu.europa.ec.commonfeature.ui.request.model.toRelyingPartyHeaderUi
 import eu.europa.ec.commonfeature.ui.request.Event
 import eu.europa.ec.commonfeature.ui.request.RequestBottomSheetContent
 import eu.europa.ec.commonfeature.ui.request.RequestViewModel
@@ -57,17 +59,6 @@ class ProximityRequestViewModel(
     private val interactor: ProximityRequestInteractor,
     @InjectedParam private val presentationScopeId: String
 ) : RequestViewModel() {
-
-    override fun getHeaderConfig(): ContentHeaderConfig {
-        return ContentHeaderConfig(
-            description = UiText.Resource(Res.string.request_header_description),
-            mainText = UiText.Resource(Res.string.request_header_main_text),
-            relyingPartyData = getRelyingPartyData(
-                name = null,
-                isVerified = false,
-            ),
-        )
-    }
 
     override fun getNextRoute(): AppRoute {
         return BiometricRoute(
@@ -135,20 +126,17 @@ class ProximityRequestViewModel(
                     is ProximityRequestInteractorPartialState.Success -> {
                         val requestData = RequestDataUi.of(combinations = response.combinationsUi)
 
-                        val updatedHeaderConfig = viewState.value.headerConfig.copy(
-                            relyingPartyData = getRelyingPartyData(
-                                name = response.relyingParty.name,
-                                // Both trust layers, not just the access certificate.
-                                isVerified = response.relyingParty.isFullyVerified,
-                                uniqueId = response.relyingParty.uniqueId,
-                            )
+                        val relyingPartyHeader = response.relyingParty.toRelyingPartyHeaderUi(
+                            fallbackName = UiText.Resource(Res.string.request_relying_party_default_name),
                         )
+                        val registrationWarning = response.relyingParty.toRegistrationWarningUi()
 
                         setState {
                             copy(
                                 isLoading = false,
                                 error = null,
-                                headerConfig = updatedHeaderConfig,
+                                relyingPartyHeader = relyingPartyHeader,
+                                registrationWarning = registrationWarning,
                                 requestDataUi = requestData,
                                 claimsAreSelectable = response.claimsAreSelectable,
                             )
@@ -165,7 +153,7 @@ class ProximityRequestViewModel(
                                 error = null
                             )
                         }
-                        showBottomSheet(sheetContent = RequestBottomSheetContent.VERIFIER_NOT_TRUSTED)
+                        showBottomSheet(sheetContent = RequestBottomSheetContent.VerifierNotTrusted)
                     }
 
                     is ProximityRequestInteractorPartialState.Disconnect -> {
@@ -173,20 +161,17 @@ class ProximityRequestViewModel(
                     }
 
                     is ProximityRequestInteractorPartialState.NoData -> {
-                        val updatedHeaderConfig = viewState.value.headerConfig.copy(
-                            relyingPartyData = getRelyingPartyData(
-                                name = response.relyingParty.name,
-                                // Both trust layers, not just the access certificate.
-                                isVerified = response.relyingParty.isFullyVerified,
-                                uniqueId = response.relyingParty.uniqueId,
-                            )
+                        val relyingPartyHeader = response.relyingParty.toRelyingPartyHeaderUi(
+                            fallbackName = UiText.Resource(Res.string.request_relying_party_default_name),
                         )
+                        val registrationWarning = response.relyingParty.toRegistrationWarningUi()
 
                         setState {
                             copy(
                                 isLoading = false,
                                 error = null,
-                                headerConfig = updatedHeaderConfig,
+                                relyingPartyHeader = relyingPartyHeader,
+                                registrationWarning = registrationWarning,
                                 requestDataUi = RequestDataUi.NoData,
                             )
                         }

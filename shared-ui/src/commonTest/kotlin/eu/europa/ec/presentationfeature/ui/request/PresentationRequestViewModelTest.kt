@@ -222,7 +222,7 @@ class PresentationRequestViewModelTest {
         assertNull(state.error)
         assertIs<RequestDataUi.Single>(state.requestDataUi)
         assertTrue(state.allowShare)
-        assertTrue(state.headerConfig.relyingPartyData!!.isVerified)
+        assertTrue(state.relyingPartyHeader!!.relyingParty.isVerified)
         assertNotNull(fake.disclosed.lastOrNull())
     }
 
@@ -304,7 +304,7 @@ class PresentationRequestViewModelTest {
             assertIs<Effect.ShowBottomSheet>(effect.await())
             assertEquals(1, fake.stopCount)
             assertEquals(
-                RequestBottomSheetContent.VERIFIER_NOT_TRUSTED,
+                RequestBottomSheetContent.VerifierNotTrusted,
                 viewModel.viewState.value.sheetContent,
             )
         }

@@ -184,6 +184,15 @@
     <string name="request_header_description">The following transaction requires your permission and authentication.</string>
     <string name="request_header_main_text">DATA SHARING REQUEST</string>
     <string name="request_relying_party_default_name">Relying Party</string>
+    <string name="request_relying_party_id_format">(ID: %1$s)</string>
+    <string name="request_screen_title">Data sharing request</string>
+    <string name="request_privacy_policy_section_title">Privacy policy</string>
+    <string name="request_intended_use_section_title">Intended use</string>
+    <string name="request_requested_data_section_title">Requested data</string>
+    <string name="request_cancel_button_text">Cancel</string>
+    <string name="request_registration_not_verified_warning_text">Warning: The information registered about the entity could not be obtained. Review carefully before sharing your data.</string>
+    <string name="request_registration_overasked_warning_text">Warning: Some of the requested data are not registered with this interacting party. Review carefully before sharing your data.</string>
+    <string name="request_registration_acknowledge_text">I understand the risks and agree to share my data</string>
     <string name="request_relying_party_description">requests the following</string>
     <string name="request_warning_text">Please review carefully before sharing your data.</string>
     <string name="request_collapsed_supporting_text">View details</string>

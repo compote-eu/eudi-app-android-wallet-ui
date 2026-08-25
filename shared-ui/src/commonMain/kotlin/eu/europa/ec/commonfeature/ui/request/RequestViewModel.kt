@@ -16,6 +16,8 @@
 
 package eu.europa.ec.commonfeature.ui.request
 
+import eu.europa.ec.commonfeature.ui.request.model.RelyingPartyHeaderUi
+import eu.europa.ec.commonfeature.ui.request.model.RegistrationWarningUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.shared.navigation.AppRoute
@@ -37,11 +39,12 @@ import kotlinx.coroutines.Job
 
 data class State(
     val isLoading: Boolean = true,
-    val headerConfig: ContentHeaderConfig,
+    val relyingPartyHeader: RelyingPartyHeaderUi? = null,
+    val registrationWarning: RegistrationWarningUi? = null,
     val error: ContentErrorConfig? = null,
     val isBottomSheetOpen: Boolean = false,
     val bottomSheetClosingInProgress: Boolean = false,
-    val sheetContent: RequestBottomSheetContent = RequestBottomSheetContent.WARNING,
+    val sheetContent: RequestBottomSheetContent = RequestBottomSheetContent.Warning,
     val hasWarnedUser: Boolean = false,
     val presentationScopeId: String = "",
 
@@ -51,10 +54,16 @@ data class State(
     val intentAction: IntentAction? = null,
 ) : ViewState {
     val allowShare: Boolean
-        get() = if (claimsAreSelectable) {
-            requestDataUi.selectedDocuments.anyClaimChecked()
-        } else {
-            requestDataUi.selectedDocuments.isNotEmpty()
+        get() {
+            val claimsSatisfied = if (claimsAreSelectable) {
+                requestDataUi.selectedDocuments.anyClaimChecked()
+            } else {
+                requestDataUi.selectedDocuments.isNotEmpty()
+            }
+
+            // a shown warning banner gates Share until its switch is flipped
+            val riskAcknowledged = registrationWarning?.riskAccepted != false
+            return claimsSatisfied && riskAcknowledged
         }
 }
 
@@ -64,6 +73,9 @@ sealed class Event : ViewEvent {
     data object DismissError : Event()
     data object OnBack : Event()
     data object StickyButtonPressed : Event()
+    data object PrivacyPolicyLinkClicked : Event()
+
+    data class RegistrationRiskToggled(val isAccepted: Boolean) : Event()
 
     data class UserIdentificationClicked(val itemId: String) : Event()
     data class ExpandOrCollapseRequestDocumentItem(val itemId: String) : Event()
@@ -87,6 +99,7 @@ sealed class Effect : ViewSideEffect {
 
         data object Pop : Navigation()
         data object Finish : Navigation()
+        data class OpenUrlExternally(val url: String) : Navigation()
         data class PopTo(
             val route: AppRoute,
         ) : Navigation()
@@ -96,9 +109,9 @@ sealed class Effect : ViewSideEffect {
     data object CloseBottomSheet : Effect()
 }
 
-enum class RequestBottomSheetContent {
-    WARNING,
-    VERIFIER_NOT_TRUSTED,
+sealed class RequestBottomSheetContent {
+    data object Warning : RequestBottomSheetContent()
+    data object VerifierNotTrusted : RequestBottomSheetContent()
 }
 
 abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
@@ -116,7 +129,6 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
      */
     private var hasRunInitialWork = false
 
-    abstract fun getHeaderConfig(): ContentHeaderConfig
     abstract fun getNextRoute(): AppRoute
     abstract fun doWork()
 
@@ -135,7 +147,6 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
 
     override fun setInitialState(): State {
         return State(
-            headerConfig = getHeaderConfig(),
             error = null,
         )
     }
@@ -177,12 +188,30 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
                     setState {
                         copy(hasWarnedUser = true)
                     }
-                    showBottomSheet(sheetContent = RequestBottomSheetContent.WARNING)
+                    showBottomSheet(sheetContent = RequestBottomSheetContent.Warning)
                 }
             }
 
             is Event.ExpandOrCollapseRequestDocumentItem -> {
                 expandOrCollapseRequestDocumentItem(id = event.itemId)
+            }
+
+            is Event.PrivacyPolicyLinkClicked -> {
+                viewState.value.relyingPartyHeader?.privacyPolicyUrl?.let { safeUrl ->
+                    setEffect {
+                        Effect.Navigation.OpenUrlExternally(url = safeUrl)
+                    }
+                }
+            }
+
+            is Event.RegistrationRiskToggled -> {
+                setState {
+                    copy(
+                        registrationWarning = registrationWarning?.copy(
+                            riskAccepted = event.isAccepted,
+                        ),
+                    )
+                }
             }
 
             is Event.CombinationSelected -> {
@@ -201,8 +230,8 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
 
             is Event.BottomSheet.FinishedClosing -> {
                 when (viewState.value.sheetContent) {
-                    RequestBottomSheetContent.WARNING -> Unit
-                    RequestBottomSheetContent.VERIFIER_NOT_TRUSTED -> {
+                    is RequestBottomSheetContent.Warning -> Unit
+                    is RequestBottomSheetContent.VerifierNotTrusted -> {
                         handleOnBack()
                     }
                 }
