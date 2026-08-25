@@ -144,7 +144,7 @@ fun AddDocumentScreen(
         isLoading = state.isLoading,
         toolBarConfig = toolbarConfig,
         navigatableAction = state.navigatableAction,
-        onBack = state.onBackAction,
+        onBack = { viewModel.setEvent(Event.OnBack) },
         contentErrorConfig = state.error,
         broadcastAction = BroadcastAction(
             intentFilters = listOf(
@@ -261,6 +261,8 @@ private fun Content(
                     }.invokeOnCompletion {
                         if (!modalBottomSheetState.isVisible) {
                             onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = false))
+                        } else {
+                            onEventSend(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
                         }
                     }
                 }

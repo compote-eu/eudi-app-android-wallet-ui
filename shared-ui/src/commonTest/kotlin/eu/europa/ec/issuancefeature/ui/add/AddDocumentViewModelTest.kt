@@ -383,6 +383,33 @@ class AddDocumentViewModelTest {
     }
 
     @Test
+    fun back_pops_from_an_extra_document_flow_and_finishes_from_the_first_one() =
+        runTest(mainDispatcher) {
+            // The destination used to be a lambda held in State; it is decided by the view-model now,
+            // from the flow type, so both cases are worth pinning.
+            val extra = viewModel(
+                config = IssuanceUiConfig(
+                    flowType = IssuanceFlowType.ExtraDocument(formatType = null)
+                )
+            )
+            val (extraEffects, extraJob) = collectEffects(extra)
+            extra.setEvent(Event.OnBack)
+            advanceUntilIdle()
+            extraJob.cancel()
+            assertTrue(extraEffects.any { it is Effect.Navigation.Pop })
+
+            val first = viewModel(
+                config = IssuanceUiConfig(flowType = IssuanceFlowType.NoDocument)
+            )
+            val (firstEffects, firstJob) = collectEffects(first)
+            first.setEvent(Event.OnBack)
+            advanceUntilIdle()
+            firstJob.cancel()
+            // Nothing to pop back to: this screen is the app's entry point in that flow.
+            assertTrue(firstEffects.any { it is Effect.Navigation.Finish })
+        }
+
+    @Test
     fun popping_and_finishing_are_distinct() = runTest(mainDispatcher) {
         val viewModel = viewModel()
 

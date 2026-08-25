@@ -61,7 +61,6 @@ import org.koin.core.annotation.KoinViewModel
 
 data class State(
     val navigatableAction: ScreenNavigateAction,
-    val onBackAction: (() -> Unit)? = null,
 
     val issuanceConfig: IssuanceUiConfig,
 
@@ -81,6 +80,7 @@ data class State(
 sealed class Event : ViewEvent {
     data class Init(val deepLink: String?) : Event()
     data object GoToQrScan : Event()
+    data object OnBack : Event()
     data object Pop : Event()
     data object OnPause : Event()
     data class OnResumeIssuance(val uri: String) : Event()
@@ -125,7 +125,6 @@ class AddDocumentViewModel(
         return State(
             issuanceConfig = issuanceConfig,
             navigatableAction = getNavigatableAction(issuanceConfig.flowType),
-            onBackAction = getOnBackAction(issuanceConfig.flowType),
             title = UiText.Resource(Res.string.issuance_add_document_title),
             subtitle = UiText.Resource(Res.string.issuance_add_document_subtitle),
         )
@@ -139,6 +138,10 @@ class AddDocumentViewModel(
                 } else {
                     handleDeepLink(event.deepLink)
                 }
+            }
+
+            is Event.OnBack -> {
+                getOnBackAction(viewState.value.issuanceConfig.flowType).invoke()
             }
 
             is Event.Pop -> setEffect { Effect.Navigation.Pop }
