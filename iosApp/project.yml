@@ -8,6 +8,44 @@ options:
     iOS: "17.0"
   createIntermediateGroups: true
 
+# Swift package dependencies. RQES (remote document signing) is the iOS mirror of Android's
+# `eudi-lib-android-rqes` stack, shipped by the same org as a SwiftUI library with its own UI.
+packages:
+  EudiRQESUi:
+    url: https://github.com/eu-digital-identity-wallet/eudi-lib-ios-rqes-ui.git
+    exactVersion: 0.4.3
+  # ⚠️ NOT a dependency we use — a *version override*, and it must stay declared even though no
+  # Swift file imports `Copyable`.
+  #
+  # EudiRQESUi depends on eu-digital-identity-wallet/SwiftCopyableMacro `from: "0.0.5"`, whose
+  # Package.swift bounds swift-syntax at `..<603.0.0`. Swift 6.3 ships swift-syntax 603.x, so on
+  # Xcode 26.x that graph cannot resolve and the whole RQES stack is unbuildable.
+  #
+  # SwiftPM resolves packages by *identity* — the lowercased last path component of the URL — so
+  # declaring our fork here (same identity, `swiftcopyablemacro`) supersedes the copy EudiRQESUi
+  # pulls, without forking EudiRQESUi itself. Our fork changes exactly one line: the bound widened
+  # to `..<604.0.0`. Verified: swift-syntax then resolves to 603.0.2 instead of 602.0.0.
+  # SwiftPM warns "Conflicting identity for swiftcopyablemacro ... will be escalated to an error in
+  # future versions of SwiftPM" — expected, and why the upstream PR matters.
+  #
+  # Upstream PR: eu-digital-identity-wallet/SwiftCopyableMacro#16, for issue #15. When it lands
+  # *and is tagged* 0.0.6, delete this entry — EudiRQESUi's `from: "0.0.5"` picks it up on its own.
+  # A merge alone is not enough; the tag is what it resolves against.
+  #
+  # ⚠️ Building this graph requires dropping `-sdk iphonesimulator` from the xcodebuild command.
+  # `-sdk` overrides SDKROOT for EVERY target, including the macro *compiler plugin*, which must be
+  # built for the host. With it, CopyablePlugin compiles as `arm64-apple-ios13.0-simulator` and dies
+  # on `could not find module 'SwiftCompilerPlugin' ... found: arm64-apple-macos`. Use `-destination`
+  # alone, which sets the platform for the app without forcing the SDK on host tools. Verified: with
+  # `-sdk` removed the plugin builds `arm64-apple-macos10.15` and the app links RQES cleanly.
+  # Reproduced with an unrelated macro package (pointfreeco/swift-case-paths), so this is about the
+  # flag, not this package. `-skipMacroValidation` does NOT work around it — it makes Xcode skip the
+  # macro machinery and mis-target the plugin the same way; the macro is trusted once in Xcode
+  # instead (cached in ~/Library/org.swift.swiftpm/security/macros.json).
+  SwiftCopyableMacro:
+    url: https://github.com/mc1100/SwiftCopyableMacro.git
+    branch: widen-swift-syntax-bound-to-603
+
 targets:
   iosApp:
     type: application
@@ -73,6 +111,9 @@ targets:
           - eu.europa.ec.euidi.reissuance
         UIBackgroundModes:
           - processing
+    dependencies:
+      - package: EudiRQESUi
+        product: EudiRQESUi
     settings:
       base:
         # The same identity the EUDI reference iOS wallet uses
