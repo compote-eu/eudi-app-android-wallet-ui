@@ -1239,7 +1239,9 @@ class TestDocumentDetailsInteractor {
                 .runFlowTest {
                     // Then
                     assertEquals(
-                        DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted,
+                        DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted(
+                reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE
+            ),
                         awaitItem()
                     )
                 }

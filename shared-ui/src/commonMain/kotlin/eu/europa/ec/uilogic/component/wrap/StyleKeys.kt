@@ -21,11 +21,20 @@ import kotlinx.serialization.Serializable
 /**
  * KMP-clean, serializable stand-ins for Compose UI types carried by [TextConfig] and other UI
  * models (the same pattern as [TextStyleKey]). The destination resolves each key to its concrete
- * Compose value at render time via the `@Composable`/plain resolvers in :ui-logic
+ * Compose value at render time via the `@Composable`/plain resolvers in `WrapText.kt`
  * (`ColorKey.toColor()`, `TextAlignKey.toTextAlign()`, `TextOverflowKey.toTextOverflow()`), so the
  * config can round-trip through a navigation argument and live in commonMain.
  *
  * Add a case here + a branch in the corresponding resolver; the compiler enforces exhaustiveness.
+ *
+ * **Porting from upstream:** upstream's `:ui-logic` has a narrower equivalent named
+ * `ThemeColorKey`, added in `d396a816` a week after this family, for the staleness reason
+ * [ColorKey] already solves — a resolved `Color` baked into a UI model keeps the wrong light/dark
+ * variant across a theme toggle. Translate `ThemeColorKey.X` to `ColorKey.X` and do **not** add a
+ * second enum. The two are not interchangeable, though: the mapping is 1:1 only on `Pending`,
+ * `Warning`, `Error`, `Success` and `Primary`. [ColorKey.OnSurface] and [ColorKey.OnSurfaceVariant]
+ * are ours alone, because upstream has no [TextConfig] or `StyleKeys` for them to serve — which is
+ * also why this is named for what it is rather than for the theme.
  */
 @Serializable
 enum class ColorKey {

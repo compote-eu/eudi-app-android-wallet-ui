@@ -52,7 +52,6 @@ class ReIssuanceWorkManager(
         try {
 
             val failed = mutableListOf<String>()
-            val succeed = mutableListOf<String>()
             val idsRemoved = mutableListOf<String>()
 
             val now = Clock.System.now()
@@ -86,23 +85,10 @@ class ReIssuanceWorkManager(
                     ).first()
 
                     when (state) {
-                        is IssueDocumentsPartialState.DeferredSuccess -> {
-                            succeed.addAll(state.deferredDocuments.keys)
-                            idsRemoved.add(document.id)
-                        }
-
-                        is IssueDocumentsPartialState.PartialSuccess -> {
-                            succeed.addAll(state.documentIds)
-                            idsRemoved.add(document.id)
-                        }
-
-                        is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer -> {
-                            succeed.addAll(state.issuedDocumentIds)
-                            idsRemoved.add(document.id)
-                        }
-
+                        is IssueDocumentsPartialState.DeferredSuccess,
+                        is IssueDocumentsPartialState.PartialSuccess,
+                        is IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer,
                         is IssueDocumentsPartialState.Success -> {
-                            succeed.addAll(state.documentIds)
                             idsRemoved.add(document.id)
                         }
 
@@ -127,7 +113,10 @@ class ReIssuanceWorkManager(
                 storeFailedToStorage(failed)
             }
 
-            if (succeed.isNotEmpty()) {
+            // Gated on what notifyDocumentDetails actually sends, not on the newly issued ids:
+            // the two could disagree, and then the broadcast either fired with nothing to say or
+            // stayed silent about a document that had in fact been replaced.
+            if (idsRemoved.isNotEmpty()) {
                 notifyDocumentsList()
                 notifyDocumentDetails(idsRemoved)
             }

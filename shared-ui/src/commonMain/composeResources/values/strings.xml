@@ -25,6 +25,10 @@
   original by design:
     - `@string/x` aliases are flattened to their literal value; compose-resources treats an
       unresolved alias as literal text, so leaving them would ship "@string/generic_close".
+      Each flattened entry carries an `upstream alias of <name>` marker, so the duplication is
+      visible as duplication: change one of a pair and you almost certainly meant to change both,
+      and a later upstream port that edits the alias target must be applied to every mirror.
+      `grep 'upstream alias of' ` lists all 45.
     - bare %d/%s specifiers are numbered positionally (%d/%d -> %1$d/%2$d) so Android's and
       Compose Multiplatform's formatters cannot disagree.
     - Android lint-only `tools:ignore` attributes are dropped.
@@ -46,7 +50,7 @@
     <string name="generic_close">Close</string>
     <string name="generic_ok">OK</string>
     <string name="generic_dash">-</string>
-    <string name="generic_default_relying_party_name">Relying Party</string>
+    <string name="generic_default_relying_party_name">Unknown Relying Party</string>
     <string name="generic_default_issuer_name">Issuer</string>
     <string name="generic_view_details">View details</string>
     <string name="generic_deferred_success_text">In progress!</string>
@@ -149,10 +153,10 @@
     <!-- region Document Success -->
     <string name="document_success_header_description">You successfully shared the following information with</string>
     <string name="document_success_header_description_when_error">You successfully shared the information with</string>
-    <string name="document_success_relying_party_default_name">Relying Party</string>
+    <string name="document_success_relying_party_default_name">Unknown Relying Party</string> <!-- upstream alias of generic_default_relying_party_name -->
     <string name="document_success_banner_text">Authentication successful</string>
-    <string name="document_success_collapsed_supporting_text">View details</string>
-    <string name="document_success_sticky_button_text">Close</string>
+    <string name="document_success_collapsed_supporting_text">View details</string> <!-- upstream alias of generic_view_details -->
+    <string name="document_success_sticky_button_text">Close</string> <!-- upstream alias of generic_close -->
     <!--endregion-->
 
     <!-- region Quick Pin -->
@@ -172,31 +176,31 @@
     <string name="quick_pin_create_success_no_activation_description">Your wallet is ready for use.</string>
     <string name="quick_pin_create_success_btn">Add my Digital ID</string>
     <string name="quick_pin_create_success_no_activation_btn">GO TO HOME</string>
-    <string name="quick_pin_change_success_text">Success</string>
+    <string name="quick_pin_change_success_text">Success</string> <!-- upstream alias of generic_success -->
     <string name="quick_pin_change_success_description">You successfully changed the pin</string>
     <string name="quick_pin_change_success_btn">BACK TO HOME</string>
     <string name="quick_pin_bottom_sheet_cancel_title">Cancel pin changing?</string>
     <string name="quick_pin_bottom_sheet_cancel_subtitle">Cancel will redirect you back to the home without changing the pin</string>
-    <string name="quick_pin_bottom_sheet_cancel_primary_button_text">CONTINUE</string>
-    <string name="quick_pin_bottom_sheet_cancel_secondary_button_text">CANCEL</string>
+    <string name="quick_pin_bottom_sheet_cancel_primary_button_text">CONTINUE</string> <!-- upstream alias of generic_continue_capitalized -->
+    <string name="quick_pin_bottom_sheet_cancel_secondary_button_text">CANCEL</string> <!-- upstream alias of generic_cancel_capitalized -->
     <!--endregion-->
 
     <!-- region Request Screen -->
     <string name="request_header_description">The following transaction requires your permission and authentication.</string>
     <string name="request_header_main_text">DATA SHARING REQUEST</string>
-    <string name="request_relying_party_default_name">Relying Party</string>
+    <string name="request_relying_party_default_name">Unknown Relying Party</string> <!-- upstream alias of generic_default_relying_party_name -->
     <string name="request_relying_party_id_format">(ID: %1$s)</string>
     <string name="request_screen_title">Data sharing request</string>
     <string name="request_privacy_policy_section_title">Privacy policy</string>
     <string name="request_intended_use_section_title">Intended use</string>
     <string name="request_requested_data_section_title">Requested data</string>
-    <string name="request_cancel_button_text">Cancel</string>
+    <string name="request_cancel_button_text">Cancel</string> <!-- upstream alias of generic_cancel -->
     <string name="request_registration_not_verified_warning_text">Warning: The information registered about the entity could not be obtained. Review carefully before sharing your data.</string>
     <string name="request_registration_overasked_warning_text">Warning: Some of the requested data are not registered with this interacting party. Review carefully before sharing your data.</string>
     <string name="request_registration_acknowledge_text">I understand the risks and agree to share my data</string>
     <string name="request_relying_party_description">requests the following</string>
     <string name="request_warning_text">Please review carefully before sharing your data.</string>
-    <string name="request_collapsed_supporting_text">View details</string>
+    <string name="request_collapsed_supporting_text">View details</string> <!-- upstream alias of generic_view_details -->
     <string name="request_claim_not_registered_supporting_text">Not registered data</string>
     <string name="request_combination_option_title">Option %1$d of %2$d</string>
     <string name="request_no_data">The requested document is not available in your EUDI Wallet. Please contact the authorised issuer for further information.</string>
@@ -205,7 +209,7 @@
     <string name="request_bottom_sheet_warning_subtitle">Choosing not to share certain data may result in failure to issue the requested document.</string>
     <string name="request_blocked_bottom_sheet_title">Presentation blocked</string>
     <string name="request_blocked_bottom_sheet_message">This presentation request has been blocked because the relying party could not be verified by your Wallet.\n\nYour personal information or other data has not been shared with this relying party.</string>
-    <string name="request_blocked_bottom_sheet_primary_button_text">Close</string>
+    <string name="request_blocked_bottom_sheet_primary_button_text">Close</string> <!-- upstream alias of generic_close -->
     <string name="request_gender_male">Male</string>
     <string name="request_gender_female">Female</string>
     <string name="request_gender_not_known">Not known</string>
@@ -227,12 +231,12 @@
     <string name="dashboard_document_credentials_info_text">%1$d/%2$d</string>
     <string name="dashboard_bottom_sheet_bluetooth_title">Enable bluetooth?</string>
     <string name="dashboard_bottom_sheet_bluetooth_subtitle">Enable bluetooth to share your information using the Authenticate in person or online option</string>
-    <string name="dashboard_bottom_sheet_bluetooth_primary_button_text">ENABLE</string>
-    <string name="dashboard_bottom_sheet_bluetooth_secondary_button_text">CANCEL</string>
-    <string name="dashboard_bottom_sheet_deferred_document_pressed_title">Remove document?</string>
-    <string name="dashboard_bottom_sheet_deferred_document_pressed_subtitle">This document will be removed from your wallet and may affect access to services.</string>
-    <string name="dashboard_bottom_sheet_deferred_document_pressed_primary_button_text">Remove</string>
-    <string name="dashboard_bottom_sheet_deferred_document_pressed_secondary_button_text">Cancel</string>
+    <string name="dashboard_bottom_sheet_bluetooth_primary_button_text">ENABLE</string> <!-- upstream alias of generic_enable_capitalized -->
+    <string name="dashboard_bottom_sheet_bluetooth_secondary_button_text">CANCEL</string> <!-- upstream alias of generic_cancel_capitalized -->
+    <string name="dashboard_bottom_sheet_deferred_document_pressed_title">Remove document?</string> <!-- upstream alias of generic_bottom_sheet_delete_title -->
+    <string name="dashboard_bottom_sheet_deferred_document_pressed_subtitle">This document will be removed from your wallet and may affect access to services.</string> <!-- upstream alias of generic_bottom_sheet_delete_subtitle -->
+    <string name="dashboard_bottom_sheet_deferred_document_pressed_primary_button_text">Remove</string> <!-- upstream alias of generic_bottom_sheet_delete_primary_button_text -->
+    <string name="dashboard_bottom_sheet_deferred_document_pressed_secondary_button_text">Cancel</string> <!-- upstream alias of generic_bottom_sheet_delete_secondary_button_text -->
     <string name="dashboard_bottom_sheet_deferred_documents_ready_title">Documents issued</string>
     <string name="dashboard_bottom_sheet_deferred_documents_ready_subtitle">New documents have been added to your wallet.</string>
     <string name="dashboard_bottom_sheet_revoked_document_dialog_title">Revoked documents</string>
@@ -283,16 +287,16 @@
 
     <!-- region Documents Screen -->
     <string name="documents_screen_title">Documents</string>
-    <string name="documents_screen_search_label">Search</string>
+    <string name="documents_screen_search_label">Search</string> <!-- upstream alias of generic_search -->
     <string name="documents_screen_search_no_results">No documents match your search. Try changing your search query or filters.</string>
     <string name="documents_screen_add_document_title">Add document</string>
     <string name="documents_screen_add_document_description">Add documents to your wallet by choosing from a list or by scanning a provided QR code.</string>
     <string name="documents_screen_add_document_fab">Add document</string>
     <string name="documents_screen_add_document_option_list">From list</string>
-    <string name="documents_screen_add_document_option_qr">Scan QR</string>
-    <string name="documents_screen_add_document_option_or">OR</string>
-    <string name="documents_screen_filters_title">Filter by</string>
-    <string name="documents_screen_filters_sort_by">Sort by</string>
+    <string name="documents_screen_add_document_option_qr">Scan QR</string> <!-- upstream alias of generic_scan_qr -->
+    <string name="documents_screen_add_document_option_or">OR</string> <!-- upstream alias of generic_or -->
+    <string name="documents_screen_filters_title">Filter by</string> <!-- upstream alias of generic_filters_title -->
+    <string name="documents_screen_filters_sort_by">Sort by</string> <!-- upstream alias of generic_filters_sort_by -->
     <string name="documents_screen_filters_sort_default">Default</string>
     <string name="documents_screen_filters_filter_by_issuer">Issuer</string>
     <string name="documents_screen_filters_filter_by_category">Category</string>
@@ -305,14 +309,14 @@
     <string name="documents_screen_filters_filter_by_expiry_period_2">Next 30 days</string>
     <string name="documents_screen_filters_filter_by_expiry_period_3">Beyond 30 days</string>
     <string name="documents_screen_filters_filter_by_expiry_period_4">Before today (expired)</string>
-    <string name="documents_screen_filters_apply">Apply</string>
-    <string name="documents_screen_filters_reset">Reset all</string>
-    <string name="documents_screen_filters_unknown_issuer">Unknown</string>
+    <string name="documents_screen_filters_apply">Apply</string> <!-- upstream alias of generic_filters_apply -->
+    <string name="documents_screen_filters_reset">Reset all</string> <!-- upstream alias of generic_filters_reset -->
+    <string name="documents_screen_filters_unknown_issuer">Unknown</string> <!-- upstream alias of generic_unknown_issuer -->
     <!--endregion-->
 
     <!-- region Transactions Screen -->
     <string name="transactions_screen_title">History</string>
-    <string name="transactions_screen_search_label">Search</string>
+    <string name="transactions_screen_search_label">Search</string> <!-- upstream alias of generic_search -->
     <string name="transactions_screen_search_no_results">No transactions found. Try changing your search query or filters.</string>
     <string name="transactions_screen_0_minutes_ago_message">Just now</string>
     <plurals name="transactions_screen_some_minutes_ago_message">
@@ -323,8 +327,8 @@
     <!--endregion-->
 
     <!-- region Transactions Screen, Filter labels -->
-    <string name="transactions_screen_filters_title">Filter by</string>
-    <string name="transactions_screen_filters_sort_by">Sort by</string>
+    <string name="transactions_screen_filters_title">Filter by</string> <!-- upstream alias of generic_filters_title -->
+    <string name="transactions_screen_filters_sort_by">Sort by</string> <!-- upstream alias of generic_filters_sort_by -->
     <string name="transactions_screen_filters_sort_transaction_date">Transaction Date</string>
     <string name="transactions_screen_filter_by_date_period">Date</string>
     <string name="transactions_screen_filter_by_status">Status</string>
@@ -338,8 +342,8 @@
     <string name="transactions_filter_item_status_completed">Completed</string>
     <string name="transactions_filter_item_status_failed">Failed</string>
     <string name="transactions_filter_item_no_relying_party_transactions">No Relying Party</string>
-    <string name="transactions_screen_filters_apply">Apply</string>
-    <string name="transactions_screen_filters_reset">Reset all</string>
+    <string name="transactions_screen_filters_apply">Apply</string> <!-- upstream alias of generic_filters_apply -->
+    <string name="transactions_screen_filters_reset">Reset all</string> <!-- upstream alias of generic_filters_reset -->
     <!--endregion-->
 
     <!-- region Document Sign -->
@@ -358,23 +362,23 @@
     <!-- region Document Details -->
     <string name="document_details_boolean_item_true_readable_value">yes</string>
     <string name="document_details_boolean_item_false_readable_value">no</string>
-    <string name="document_details_bottom_sheet_delete_title">Remove document?</string>
-    <string name="document_details_bottom_sheet_delete_subtitle">This document will be removed from your wallet and may affect access to services.</string>
-    <string name="document_details_bottom_sheet_delete_primary_button_text">Remove</string>
-    <string name="document_details_bottom_sheet_delete_secondary_button_text">Cancel</string>
+    <string name="document_details_bottom_sheet_delete_title">Remove document?</string> <!-- upstream alias of generic_bottom_sheet_delete_title -->
+    <string name="document_details_bottom_sheet_delete_subtitle">This document will be removed from your wallet and may affect access to services.</string> <!-- upstream alias of generic_bottom_sheet_delete_subtitle -->
+    <string name="document_details_bottom_sheet_delete_primary_button_text">Remove</string> <!-- upstream alias of generic_bottom_sheet_delete_primary_button_text -->
+    <string name="document_details_bottom_sheet_delete_secondary_button_text">Cancel</string> <!-- upstream alias of generic_bottom_sheet_delete_secondary_button_text -->
     <string name="document_details_toolbar_action_reissue">Re-issue</string>
     <string name="document_details_toolbar_action_remove">Remove</string>
     <string name="document_details_document_credentials_info_text">Instances remaining %1$d/%2$d</string>
     <string name="document_details_main_section_text">DOCUMENT DATA</string>
     <string name="document_details_issuer_section_text">ISSUER DETAILS</string>
-    <string name="document_details_issuer_card_unknown_issuer">Unknown</string>
+    <string name="document_details_issuer_card_unknown_issuer">Unknown</string> <!-- upstream alias of generic_unknown_issuer -->
     <string name="document_details_issuer_card_expires_on_text">Expires on: %1$s</string>
     <string name="document_details_issuer_card_revoked_text">Document revoked</string>
     <string name="document_details_issuer_card_issued_on_text">Issued on: %1$s</string>
     <string name="document_details_issuer_card_issued_message_text">You may reissue this document at any time.</string>
     <string name="document_details_issuer_card_issued_action_btn_text">Reissue document</string>
     <string name="document_details_issuer_card_revoked_message_text">This document cannot be used for verification.</string>
-    <string name="document_details_issuer_card_expired_action_btn_text">Reissue document</string>
+    <string name="document_details_issuer_card_expired_action_btn_text">Reissue document</string> <!-- upstream alias of document_details_issuer_card_issued_action_btn_text -->
     <string name="document_details_issuer_card_expired_on_text">Expired on: %1$s</string>
     <string name="document_details_issuer_card_expired_text">Expired</string>
     <string name="document_details_issuer_card_expired_message_text">This document has expired. You may reissue it.</string>
@@ -396,7 +400,7 @@
     <string name="transaction_details_report_transaction_button">Report suspicious transaction</string>
     <string name="transaction_details_data_shared_section_title">DATA SHARED</string>
     <string name="transaction_details_data_signed_section_title">DATA SIGNED</string>
-    <string name="transaction_details_collapsed_supporting_text">View details</string>
+    <string name="transaction_details_collapsed_supporting_text">View details</string> <!-- upstream alias of generic_view_details -->
     <!--endregion-->
 
     <!-- region Proximity QR -->
@@ -420,9 +424,9 @@
     <string name="issuance_add_document_title">Add document from list</string>
     <string name="issuance_add_document_subtitle">Choose a digital document from the list below to add to your wallet. You may add more documents by scanning the QR code provided to you by an authorised issuing service.</string>
     <string name="issuance_add_document_no_options">No available documents</string>
-    <string name="issuance_add_document_deferred_success_text">In progress!</string>
+    <string name="issuance_add_document_deferred_success_text">In progress!</string> <!-- upstream alias of generic_deferred_success_text -->
     <string name="issuance_add_document_deferred_success_description">Your document has been requested. You will be notified when it has been issued to your wallet.</string>
-    <string name="issuance_add_document_deferred_success_primary_button_text">OK</string>
+    <string name="issuance_add_document_deferred_success_primary_button_text">OK</string> <!-- upstream alias of generic_ok -->
     <string name="issuance_add_document_pid_combined">PID Combined</string>
     <!--endregion-->
 
@@ -430,7 +434,7 @@
     <string name="issuance_success_header_description">You have successfully added the following to your wallet</string>
     <string name="issuance_success_banner_text">Document issued</string>
     <string name="issuance_success_header_description_when_error">You have successfully added the document(s) to your wallet</string>
-    <string name="issuance_success_header_issuer_default_name">Issuer</string>
+    <string name="issuance_success_header_issuer_default_name">Issuer</string> <!-- upstream alias of generic_default_issuer_name -->
     <!--endregion-->
 
     <!-- region Issuance Qr Scan -->
@@ -440,18 +444,18 @@
 
     <!-- region Issuance Document Offer -->
     <string name="issuance_document_offer_primary_button_text_add">Add</string>
-    <string name="issuance_document_offer_deferred_success_text">In progress!</string>
+    <string name="issuance_document_offer_deferred_success_text">In progress!</string> <!-- upstream alias of generic_deferred_success_text -->
     <string name="issuance_document_offer_deferred_success_description">Your documents from %1$s have been requested. You will be notified when they have been issued to your wallet.</string>
-    <string name="issuance_document_offer_deferred_success_primary_button_text">OK</string>
+    <string name="issuance_document_offer_deferred_success_primary_button_text">OK</string> <!-- upstream alias of generic_ok -->
     <string name="issuance_document_offer_error_missing_pid_text">Wallet needs to be activated first with a National ID</string>
     <string name="issuance_document_offer_error_invalid_txcode_format">Invalid transaction code format. Length should be between %1$d to %2$d digits and only numeric characters are allowed.</string>
     <string name="issuance_document_offer_error_no_document">Unable to fetch and process the credential offer</string>
     <string name="issuance_document_offer_description">The following transaction requires your permission and authentication.</string>
-    <string name="issuance_document_offer_cancel_button_text">Cancel</string>
+    <string name="issuance_document_offer_cancel_button_text">Cancel</string> <!-- upstream alias of generic_cancel -->
     <string name="issuance_document_offer_accept_button_text">Accept</string>
     <string name="issuance_document_offer_screen_title">Issuance request</string>
     <string name="issuance_document_offer_header_main_text">ISSUANCE REQUEST</string>
-    <string name="issuance_document_offer_relying_party_default_name">Issuer</string>
+    <string name="issuance_document_offer_relying_party_default_name">Issuer</string> <!-- upstream alias of generic_default_issuer_name -->
     <string name="issuance_document_offer_relying_party_description">wants to add the following</string>
     <!--endregion-->
 
@@ -464,10 +468,10 @@
     <string name="issuance_generic_error">Something went wrong issuing your document(s)</string>
     <string name="issuance_blocked_bottom_sheet_title">Issuance blocked</string>
     <string name="issuance_blocked_bottom_sheet_message">This issuance request has been blocked because the provider could not be verified by your Wallet.\n\nYour personal information or other data has not been shared with this provider.</string>
-    <string name="issuance_blocked_bottom_sheet_primary_button_text">Close</string>
+    <string name="issuance_blocked_bottom_sheet_primary_button_text">Close</string> <!-- upstream alias of generic_close -->
     <string name="issuance_partially_blocked_bottom_sheet_title">Not all documents were added</string>
     <string name="issuance_partially_blocked_bottom_sheet_message">Some documents were added to your Wallet. The rest were blocked because their provider could not be verified, and no data was shared for those.</string>
-    <string name="issuance_partially_blocked_bottom_sheet_primary_button_text">Continue</string>
+    <string name="issuance_partially_blocked_bottom_sheet_primary_button_text">Continue</string> <!-- upstream alias of generic_continue -->
     <!--endregion-->
 
     <!-- region Document Categories -->

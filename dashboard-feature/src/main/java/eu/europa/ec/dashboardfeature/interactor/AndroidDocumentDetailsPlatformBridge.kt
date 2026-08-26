@@ -16,6 +16,7 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
@@ -174,7 +175,7 @@ class AndroidDocumentDetailsPlatformBridge(
 
             val successIds: MutableList<String> = mutableListOf()
             var isDeferred = false
-            var issuerNotTrusted = false
+            var issuerNotTrustedReason: UntrustedIssuerReasonDomain? = null
             var error: String? = null
             var authenticationData: Pair<BiometricCrypto, DeviceAuthenticationResult>? = null
 
@@ -188,7 +189,7 @@ class AndroidDocumentDetailsPlatformBridge(
                 }
 
                 is IssueDocumentsPartialState.IssuerNotTrusted -> {
-                    issuerNotTrusted = true
+                    issuerNotTrustedReason = state.reason
                 }
 
                 is IssueDocumentsPartialState.PartialSuccess -> {
@@ -208,8 +209,10 @@ class AndroidDocumentDetailsPlatformBridge(
                 }
             }
 
-            val state = if (issuerNotTrusted) {
-                DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted
+            val state = if (issuerNotTrustedReason != null) {
+                DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted(
+                    reason = issuerNotTrustedReason
+                )
             } else if (successIds.isNotEmpty() || isDeferred) {
                 DocumentDetailsInteractorIssuancePartialState.Success
             } else if (error != null) {

@@ -88,6 +88,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.request_requested_data_section_title
 import eu.europa.ec.shared.resources.request_registration_acknowledge_text
 import eu.europa.ec.shared.resources.request_registration_overasked_warning_text
 import eu.europa.ec.shared.resources.request_registration_not_verified_warning_text
@@ -323,20 +324,34 @@ private fun DisplayRequestContent(
             informativeText = stringResource(Res.string.request_no_data),
         )
 
-        is RequestDataUi.Single -> DisplayRequestItems(
-            modifier = modifier,
-            requestDocuments = requestDataUi.combination.documents,
-            claimsAreSelectable = claimsAreSelectable,
-            onEventSend = onEventSend,
-            showWarning = true,
-        )
+        is RequestDataUi.Single -> Column(modifier = modifier) {
+            RequestedDataSectionTitle(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_SMALL.dp),
+            )
+            DisplayRequestItems(
+                modifier = Modifier.fillMaxWidth(),
+                requestDocuments = requestDataUi.combination.documents,
+                claimsAreSelectable = claimsAreSelectable,
+                onEventSend = onEventSend,
+                showWarning = true,
+            )
+        }
 
-        is RequestDataUi.Multiple -> DisplayCombinationCards(
-            modifier = modifier,
-            requestDataUi = requestDataUi,
-            claimsAreSelectable = claimsAreSelectable,
-            onEventSend = onEventSend,
-        )
+        is RequestDataUi.Multiple -> Column(modifier = modifier) {
+            RequestedDataSectionTitle(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_SMALL.dp),
+            )
+            DisplayCombinationCards(
+                modifier = Modifier.fillMaxWidth(),
+                requestDataUi = requestDataUi,
+                claimsAreSelectable = claimsAreSelectable,
+                onEventSend = onEventSend,
+            )
+        }
     }
 }
 
@@ -378,6 +393,21 @@ private fun DisplayCombinationCards(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+@Composable
+private fun RequestedDataSectionTitle(
+    modifier: Modifier,
+) {
+    SectionTitle(
+        modifier = modifier,
+        text = stringResource(Res.string.request_requested_data_section_title),
+        textConfig = TextConfig(
+            styleKey = TextStyleKey.LabelLarge,
+            colorKey = ColorKey.OnSurface,
+            maxLines = Int.MAX_VALUE,
+        )
+    )
 }
 
 @Composable

@@ -21,6 +21,7 @@
 // Package unchanged.
 package eu.europa.ec.dashboardfeature.interactor
 
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsDomain
@@ -34,7 +35,10 @@ sealed class DocumentDetailsInteractorIssuancePartialState {
 
     data class Failure(val errorMessage: String) : DocumentDetailsInteractorIssuancePartialState()
 
-    data object IssuerNotTrusted : DocumentDetailsInteractorIssuancePartialState()
+    /** @property reason which of the two trust layers refused the re-issue. */
+    data class IssuerNotTrusted(
+        val reason: UntrustedIssuerReasonDomain,
+    ) : DocumentDetailsInteractorIssuancePartialState()
 
     data class UserAuthRequired(
         val crypto: BiometricCrypto,

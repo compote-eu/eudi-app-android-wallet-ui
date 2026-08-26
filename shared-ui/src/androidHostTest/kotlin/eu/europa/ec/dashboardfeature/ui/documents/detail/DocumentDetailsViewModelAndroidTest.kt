@@ -24,6 +24,7 @@
 package eu.europa.ec.dashboardfeature.ui.documents.detail
 
 import android.content.Context
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorIssuancePartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorPartialState
@@ -155,7 +156,9 @@ class DocumentDetailsViewModelAndroidTest {
                 issuanceDate = "01-01-2024 10:00",
                 expirationDate = "01 Jan 2030",
             ),
-            reIssueResults = listOf(DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted),
+            reIssueResults = listOf(DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted(
+                reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE
+            )),
         )
         val viewModel = loadedViewModel(interactor)
         viewModel.setEvent(Event.Init(deepLink = null))
