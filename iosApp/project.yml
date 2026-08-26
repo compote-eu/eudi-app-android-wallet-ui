@@ -83,6 +83,13 @@ targets:
           # because the wallet does not choose: the *verifier* builds the link, and the EUDI dev
           # verifier emits `haip-vp://` by default while its OpenID4VP profile emits `openid4vp://`.
           # See `IosDeepLinks.PRESENTATION_SCHEMES`, which must list exactly these.
+          # The RQES authorization result. The QTSP redirects here when the user has authorized the
+          # signature, and `WalletDocumentSigner.resume` continues the flow the SDK already started.
+          # Same value Android builds as BuildConfig.RQES_DEEPLINK (`rqes://oauth/callback`), so both
+          # platforms register the identical redirect with the signing service.
+          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER).rqes
+            CFBundleURLSchemes:
+              - rqes
           - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER).presentation
             CFBundleURLSchemes:
               - openid4vp

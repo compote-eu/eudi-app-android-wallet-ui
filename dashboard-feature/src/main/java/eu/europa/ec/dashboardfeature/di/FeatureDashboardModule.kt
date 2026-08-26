@@ -169,9 +169,9 @@ fun provideTransactionInteractor(
 
 @Factory
 fun provideDocumentSignInteractor(
-    resourceProvider: ResourceProvider,
+    stringCatalog: StringCatalog,
 ): DocumentSignInteractor = DocumentSignInteractorImpl(
-    resourceProvider,
+    stringCatalog,
 )
 
 /**

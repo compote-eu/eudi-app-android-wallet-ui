@@ -16,8 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.document_sign
 
-import android.content.Context
-import android.net.Uri
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
 import eu.europa.ec.dashboardfeature.ui.document_sign.model.DocumentSignButtonUi
 import eu.europa.ec.shared.resources.Res
@@ -42,7 +40,9 @@ data class State(
 sealed class Event : ViewEvent {
     data object Pop : Event()
     data object OnSelectDocument : Event()
-    data class DocumentUriRetrieved(val context: Context, val uri: Uri) : Event()
+
+    /** What the platform's picker-and-handover did; see [DocumentSignOutcome]. */
+    data class SignOutcomeReceived(val outcome: DocumentSignOutcome) : Event()
 }
 
 sealed class Effect : ViewSideEffect {
@@ -50,7 +50,14 @@ sealed class Effect : ViewSideEffect {
         data object Pop : Navigation()
     }
 
-    data class OpenDocumentSelection(val selection: List<String>) : Effect()
+    /**
+     * Run the platform trigger.
+     *
+     * Carries no mime type any more: which documents are offered is part of picking, and picking is
+     * now wholly on the platform side. Android filtered to `application/pdf` through the launcher's
+     * contract, iOS states the same restriction with a UTType.
+     */
+    data object SelectAndSign : Effect()
 }
 
 @KoinViewModel
@@ -64,15 +71,27 @@ class DocumentSignViewModel(
 
     override fun handleEvents(event: Event) {
         when (event) {
-            is Event.OnSelectDocument -> {
-                setEffect { Effect.OpenDocumentSelection(listOf("application/pdf")) }
-            }
+            is Event.OnSelectDocument -> setEffect { Effect.SelectAndSign }
 
             is Event.Pop -> setEffect { Effect.Navigation.Pop }
-            is Event.DocumentUriRetrieved -> documentSignInteractor.launchRqesSdk(
-                event.context,
-                event.uri
-            )
+
+            is Event.SignOutcomeReceived -> when (val outcome = event.outcome) {
+                // The SDK owns the screen from here and reports its own failures; nothing to show.
+                is DocumentSignOutcome.Started -> setState { copy(error = null) }
+
+                // Backing out of the picker is not an error — the screen simply stays as it was.
+                is DocumentSignOutcome.Cancelled -> setState { copy(error = null) }
+
+                is DocumentSignOutcome.Failed -> setState {
+                    copy(
+                        error = ContentErrorConfig(
+                            errorSubTitle = UiText.Raw(outcome.reason),
+                            onRetry = { setEvent(Event.OnSelectDocument) },
+                            onCancel = { setEvent(Event.Pop) },
+                        )
+                    )
+                }
+            }
         }
     }
 }

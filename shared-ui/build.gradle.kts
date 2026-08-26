@@ -157,6 +157,11 @@ kotlin {
             implementation(libs.androidx.camera.lifecycle)
             implementation(libs.androidx.camera.view)
             implementation(libs.androidx.camera.camera2)
+            // The RQES signing SDK, behind the Android half of `rememberDocumentSignTrigger`. It
+            // brings its own UI, which is why the shared screen stops at handing over a document.
+            // iOS's half is the Swift package `EudiRQESUi`, declared in `iosApp/project.yml` — the
+            // Kotlin side there cannot depend on it, so neither platform carries the other's.
+            implementation(libs.rqes.ui.sdk)
         }
         // iOS-only: the navigation host's pieces. The Compose UI artifacts moved to commonMain with
         // the first shared screen.

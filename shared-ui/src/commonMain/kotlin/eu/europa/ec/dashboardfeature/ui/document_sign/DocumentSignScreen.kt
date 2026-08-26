@@ -16,8 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.ui.document_sign
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,7 +26,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.dashboardfeature.ui.document_sign.model.DocumentSignButtonUi
@@ -59,7 +56,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-internal fun DocumentSignScreen(
+fun DocumentSignScreen(
     navigator: AppNavigator,
     viewModel: DocumentSignViewModel,
 ) {
@@ -95,7 +92,11 @@ private fun Content(
     paddingValues: PaddingValues,
 ) {
 
-    val context = LocalContext.current
+    // The platform half: opens the picker and hands the choice to the signing SDK. Created here
+    // rather than in the view-model because both platforms scope it to composition.
+    val signTrigger = rememberDocumentSignTrigger(
+        onOutcome = { onEventSend(Event.SignOutcomeReceived(it)) },
+    )
 
     Column(
         modifier = Modifier
@@ -116,21 +117,11 @@ private fun Content(
         )
     }
 
-    val selectPdfLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-    ) { uri ->
-        uri?.let {
-            onEventSend(Event.DocumentUriRetrieved(context, it))
-        }
-    }
-
     LaunchedEffect(Unit) {
         effectFlow.onEach { effect ->
             when (effect) {
                 is Effect.Navigation.Pop -> onNavigationRequested(effect)
-                is Effect.OpenDocumentSelection -> selectPdfLauncher.launch(
-                    effect.selection.toTypedArray()
-                )
+                is Effect.SelectAndSign -> signTrigger.selectAndSign()
             }
         }.collect()
     }

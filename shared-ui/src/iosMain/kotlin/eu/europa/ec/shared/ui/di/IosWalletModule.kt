@@ -30,6 +30,8 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
+import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
+import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
@@ -193,6 +195,17 @@ fun provideIosSettingsInteractor(
 ): SettingsInteractor = SettingsInteractorImpl(
     strings = strings,
     platform = platform,
+)
+
+/**
+ * The sign screen's shared half. Nothing iOS-specific in it — the platform work is
+ * `rememberDocumentSignTrigger`, which reaches the Swift signer rather than a Koin dependency.
+ */
+@Single
+fun provideIosDocumentSignInteractor(
+    stringCatalog: StringCatalog,
+): DocumentSignInteractor = DocumentSignInteractorImpl(
+    strings = stringCatalog,
 )
 
 @Single

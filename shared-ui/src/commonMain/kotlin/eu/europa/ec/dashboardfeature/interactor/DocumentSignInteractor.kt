@@ -16,41 +16,37 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
-import android.content.Context
-import android.net.Uri
 import eu.europa.ec.dashboardfeature.ui.document_sign.model.DocumentSignButtonUi
-import eu.europa.ec.eudi.rqesui.infrastructure.DocumentUri
-import eu.europa.ec.eudi.rqesui.infrastructure.EudiRQESUi
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.document_sign_select_document
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 
+/**
+ * The shared half of the sign screen.
+ *
+ * Only the button's presentation lives here now. Launching the signing SDK used to be the other
+ * member of this interface and took an Android `Context` and `Uri`; it moved to
+ * [eu.europa.ec.dashboardfeature.ui.document_sign.rememberDocumentSignTrigger], because picking a
+ * document and handing it over are both scoped to composition on both platforms.
+ */
 interface DocumentSignInteractor {
-    fun launchRqesSdk(context: Context, uri: Uri)
     fun getItemUi(): DocumentSignButtonUi
 }
 
 class DocumentSignInteractorImpl(
-    private val resourceProvider: ResourceProvider,
+    private val strings: StringCatalog,
 ) : DocumentSignInteractor {
-
-    override fun launchRqesSdk(context: Context, uri: Uri) {
-        EudiRQESUi.initiate(
-            context = context,
-            documentUri = DocumentUri(uri)
-        )
-    }
 
     override fun getItemUi(): DocumentSignButtonUi {
         return DocumentSignButtonUi(
             data = ListItemDataUi(
                 itemId = DOCUMENT_SIGN_BUTTON_ID,
                 mainContentData = ListItemMainContentDataUi.Text(
-                    text = resourceProvider.getString(Res.string.document_sign_select_document)
+                    text = strings.get(Res.string.document_sign_select_document)
                 ),
                 trailingContentData = ListItemTrailingContentDataUi.Icon(
                     iconData = AppIcons.Add

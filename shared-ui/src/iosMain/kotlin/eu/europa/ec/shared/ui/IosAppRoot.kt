@@ -36,6 +36,10 @@ import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
+import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
+import eu.europa.ec.dashboardfeature.ui.document_sign.DocumentSignScreen
+import eu.europa.ec.dashboardfeature.ui.document_sign.DocumentSignViewModel
+import eu.europa.ec.shared.navigation.DocumentSignRoute
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.ui.dashboard.DashboardScreen
@@ -454,6 +458,19 @@ fun WalletViewController(): UIViewController {
                         SettingsScreen(
                             navigator = navigator,
                             viewModel = remember { SettingsViewModel(settingsInteractor) },
+                        )
+                    }
+
+                    entry<DocumentSignRoute> {
+                        // Reached from Home's sign card, which `HomeInteractor.canSignDocuments`
+                        // gates. The screen is shared; the platform half is
+                        // `rememberDocumentSignTrigger`, which hands the picked PDF to the Swift
+                        // `EudiRQESUi` through the signer registered in `iOSApp.swift`.
+                        val documentSignInteractor =
+                            remember { KoinPlatform.getKoin().get<DocumentSignInteractor>() }
+                        DocumentSignScreen(
+                            navigator = navigator,
+                            viewModel = remember { DocumentSignViewModel(documentSignInteractor) },
                         )
                     }
                 }

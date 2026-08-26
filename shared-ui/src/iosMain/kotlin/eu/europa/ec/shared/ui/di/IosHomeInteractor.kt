@@ -55,15 +55,17 @@ internal class IosHomeInteractor(
     override fun isBleAvailable(): Boolean = true
 
     /**
-     * No RQES on iOS yet, so Home omits the sign card rather than offering one that leads nowhere.
+     * True since the RQES bridge landed.
      *
-     * `DocumentSignRoute` has no entry in `IosAppRoot`, so before this gate existed the card was
-     * shown and tapping it navigated to a route the app could not build. The library itself is now
-     * linked (`EudiRQESUi`, via the package declared in `iosApp/project.yml`); what is missing is
-     * the bridge that picks a PDF and hands it to `initiate(on:fileUrl:)`. Flip this to true in the
-     * same change that adds that bridge and the iOS route entry — not before.
+     * The wallet picks a PDF and hands it to the Swift `EudiRQESUi`, which owns the flow from there.
+     * One limit worth stating: the iOS library has no remote-URI entry point and no
+     * `documentRetrievalConfig`, so signing a document *fetched from a QR or deep link* remains
+     * Android-only — what this answers for is signing a document the user chooses from Files.
+     *
+     * If `iOSApp.swift` ever stops registering a signer, the flow reports itself unavailable on the
+     * sign screen rather than crashing; see `IosDocumentSigning`.
      */
-    override fun canSignDocuments(): Boolean = false
+    override fun canSignDocuments(): Boolean = true
 
     /**
      * False, and correctly so rather than pending.

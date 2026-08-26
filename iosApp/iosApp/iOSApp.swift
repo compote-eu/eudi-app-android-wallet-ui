@@ -21,6 +21,7 @@ import class SharedKit.IosAuthorizationRedirects
 import class SharedKit.IosDeepLinks
 import class SharedKit.IosBackgroundReIssuanceKt
 import class SharedKit.BackgroundReIssuanceSummary
+import class SharedKit.IosDocumentSigning
 
 /// Launch argument that turns the wallet probe on.
 ///
@@ -73,6 +74,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         }
         print("BACKGROUND-REISSUANCE: registered \(reIssuanceTaskIdentifier)")
         scheduleBackgroundReIssuance()
+
+        // The Swift half of document signing. Kotlin cannot call `EudiRQESUi` itself — it is a Swift
+        // package, so none of its API crosses the Kotlin/Native bridge — so the shared screen calls
+        // this instead. Without this line signing reports itself unavailable rather than crashing;
+        // `HomeInteractor.canSignDocuments` is what decides the card is offered at all.
+        IosDocumentSigning.shared.signer = WalletDocumentSigner.shared
+        print("DOCUMENT-SIGN: registered the RQES signer")
         return true
     }
 
@@ -85,6 +93,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // authorization redirect belongs to a flow already waiting for it, while a credential offer or
         // a presentation request starts one. Authorization is tried first because it is the narrower
         // match — `IosDeepLinks` decides between the other two by scheme.
+        // The RQES authorization result belongs to a signing flow the SDK is already running, and it
+        // is the narrowest match of the three, so it is offered first.
+        if WalletDocumentSigner.shared.resume(url: url) {
+            print("RQES-CALLBACK: delivered \(url.absoluteString.prefix(60))")
+            return true
+        }
         if IosAuthorizationRedirects.shared.deliver(url: url.absoluteString) {
             print("AUTHORIZATION-REDIRECT: delivered \(url.absoluteString.prefix(60))")
             return true
@@ -179,7 +193,9 @@ struct iOSApp: App {
             .onOpenURL { url in
                 // Same destinations as the app delegate above; whichever path the system picks, the
                 // URL ends up in the same place.
-                if IosAuthorizationRedirects.shared.deliver(url: url.absoluteString) {
+                if WalletDocumentSigner.shared.resume(url: url) {
+                    print("RQES-CALLBACK: delivered \(url.scheme ?? "?")")
+                } else if IosAuthorizationRedirects.shared.deliver(url: url.absoluteString) {
                     print("AUTHORIZATION-REDIRECT: delivered \(url.scheme ?? "?")")
                 } else if IosDeepLinks.shared.deliver(url: url.absoluteString) {
                     print("DEEP-LINK: delivered \(url.scheme ?? "?")")
