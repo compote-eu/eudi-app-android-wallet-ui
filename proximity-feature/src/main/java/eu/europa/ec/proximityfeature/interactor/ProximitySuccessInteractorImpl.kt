@@ -27,6 +27,7 @@ import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.document_success_banner_text
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiTextOr
@@ -139,7 +140,8 @@ class ProximitySuccessInteractorImpl(
             emit(
                 ProximitySuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = documentsUi,
-                    headerConfig = headerConfig
+                    headerConfig = headerConfig,
+                    bannerText = UiText.Resource(Res.string.document_success_banner_text),
                 )
             )
         }.safeAsync {

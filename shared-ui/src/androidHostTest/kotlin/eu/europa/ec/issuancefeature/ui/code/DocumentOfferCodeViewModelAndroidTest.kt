@@ -23,6 +23,7 @@
 package eu.europa.ec.issuancefeature.ui.code
 
 import android.content.Context
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.authenticationlogic.secure.SecurePin
@@ -177,7 +178,7 @@ class DocumentOfferCodeViewModelAndroidTest {
 
     @Test
     fun `an untrusted issuer opens its sheet rather than an error`() = runTest(mainDispatcher) {
-        val interactor = interactorWith(IssueDocumentsInteractorPartialState.IssuerNotTrusted)
+        val interactor = interactorWith(IssueDocumentsInteractorPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE))
         val viewModel = viewModel(interactor)
 
         val (effects, job) = collectEffects(viewModel)

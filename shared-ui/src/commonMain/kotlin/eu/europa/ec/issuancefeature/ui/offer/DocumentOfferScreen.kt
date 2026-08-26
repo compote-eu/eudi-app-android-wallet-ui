@@ -51,12 +51,13 @@ import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
+import eu.europa.ec.uilogic.component.PlatformScreenActions
 import eu.europa.ec.uilogic.component.ErrorInfo
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.BroadcastAction
-import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
@@ -67,13 +68,8 @@ import eu.europa.ec.uilogic.component.utils.LifecycleEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
-import eu.europa.ec.uilogic.component.wrap.ButtonConfig
-import eu.europa.ec.uilogic.component.wrap.ButtonType
-import eu.europa.ec.uilogic.component.wrap.StickyBottomConfig
-import eu.europa.ec.uilogic.component.wrap.StickyBottomType
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
-import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.applyTestTag
@@ -87,6 +83,18 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.request_intended_use_section_title
+import eu.europa.ec.shared.resources.request_privacy_policy_section_title
+import eu.europa.ec.shared.resources.issuance_document_offer_cancel_button_text
+import eu.europa.ec.shared.resources.issuance_document_offer_accept_button_text
+import eu.europa.ec.shared.resources.issuance_document_offer_screen_title
+import eu.europa.ec.uilogic.component.content.ContentTitle
+import eu.europa.ec.uilogic.component.RelyingPartyLayout
+import eu.europa.ec.uilogic.component.RelyingParty
+import eu.europa.ec.uilogic.component.InfoSection
+import eu.europa.ec.uilogic.component.InfoLinkSection
+import eu.europa.ec.commonfeature.ui.request.model.RelyingPartyHeaderUi
+import eu.europa.ec.commonfeature.ui.request.ConsentStickyBottomSection
 import eu.europa.ec.shared.resources.issuance_document_offer_description
 import eu.europa.ec.shared.resources.issuance_document_offer_error_no_document
 import eu.europa.ec.shared.resources.issuance_document_offer_header_main_text
@@ -118,6 +126,7 @@ fun DocumentOfferScreen(
     val platformContext = rememberPlatformContextOrNull()
 
     val isBottomSheetOpen = state.isBottomSheetOpen
+    val platformActions = rememberPlatformScreenActions()
     val scope = rememberCoroutineScope()
     val bottomSheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
@@ -129,27 +138,23 @@ fun DocumentOfferScreen(
         navigatableAction = ScreenNavigateAction.BACKABLE,
         onBack = { viewModel.setEvent(Event.BackButtonPressed) },
         stickyBottom = { paddingValues ->
-            WrapStickyBottomContent(
-                modifier = Modifier
-                    .applyTestTag(TestTag.DocumentOfferScreen.BUTTON)
-                    .fillMaxWidth()
-                    .padding(paddingValues),
-                stickyBottomConfig = StickyBottomConfig(
-                    type = StickyBottomType.OneButton(
-                        config = ButtonConfig(
-                            type = ButtonType.PRIMARY,
-                            enabled = !state.isLoading && !state.noDocument,
-                            onClick = {
-                                platformContext?.let {
-                                    viewModel.setEvent(Event.StickyButtonPressed(it))
-                                }
-                            }
-                        )
-                    )
-                )
-            ) {
-                Text(text = stringResource(Res.string.issuance_document_offer_primary_button_text_add))
-            }
+            ConsentStickyBottomSection(
+                modifier = Modifier.fillMaxWidth(),
+                paddingValues = paddingValues,
+                buttonsTestTag = TestTag.DocumentOfferScreen.BUTTON,
+                // Issuance has no registration warning: an offer whose registration is refused
+                // never reaches this screen — the resolve gate turns it into IssuerNotTrusted.
+                warningSection = null,
+                primaryButtonText = stringResource(Res.string.issuance_document_offer_accept_button_text),
+                cancelButtonText = stringResource(Res.string.issuance_document_offer_cancel_button_text),
+                primaryButtonEnabled = !state.isLoading && state.allowAccept,
+                onPrimaryButtonClick = {
+                    platformContext?.let {
+                        viewModel.setEvent(Event.StickyButtonPressed(it))
+                    }
+                },
+                onCancelButtonClick = { viewModel.setEvent(Event.BackButtonPressed) },
+            )
         },
         broadcastAction = BroadcastAction(
             intentFilters = listOf(
@@ -175,7 +180,12 @@ fun DocumentOfferScreen(
             effectFlow = viewModel.effect,
             onEventSend = { viewModel.setEvent(it) },
             onNavigationRequested = { navigationEffect ->
-                handleNavigationEffect(navigationEffect, navigator, onExternalDeepLink)
+                handleNavigationEffect(
+                    navigationEffect = navigationEffect,
+                    navigator = navigator,
+                    onExternalDeepLink = onExternalDeepLink,
+                    platformActions = platformActions,
+                )
             },
             paddingValues = paddingValues,
             coroutineScope = scope,
@@ -225,6 +235,48 @@ fun DocumentOfferScreen(
     }
 }
 
+/**
+ * The who-is-issuing header: the provider's identity and the registration sections a verified
+ * registration certificate supplies.
+ */
+@Composable
+private fun IssuerHeaderSection(
+    modifier: Modifier,
+    header: RelyingPartyHeaderUi,
+    onEventSend: (Event) -> Unit,
+) {
+    Column(modifier = modifier) {
+        RelyingParty(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = SPACING_SMALL.dp),
+            relyingPartyData = header.relyingParty,
+            layout = RelyingPartyLayout.InlineStart,
+        )
+
+        header.privacyPolicyUrl?.let { safePrivacyPolicyUrl ->
+            InfoLinkSection(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_SMALL.dp),
+                title = stringResource(Res.string.request_privacy_policy_section_title),
+                linkText = safePrivacyPolicyUrl,
+                onLinkClick = { onEventSend(Event.PrivacyPolicyLinkClicked) },
+            )
+        }
+
+        header.intendedUse?.let { safeIntendedUse ->
+            InfoSection(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_SMALL.dp),
+                title = stringResource(Res.string.request_intended_use_section_title),
+                body = safeIntendedUse,
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
@@ -241,11 +293,21 @@ private fun Content(
             .fillMaxSize()
             .padding(paddingValues)
     ) {
-        ContentHeader(
+        // Screen Header.
+        ContentTitle(
             modifier = Modifier.fillMaxWidth(),
-            config = state.headerConfig,
-            descriptionTestTag = TestTag.DocumentOfferScreen.CONTENT_HEADER_DESCRIPTION,
+            title = stringResource(Res.string.issuance_document_offer_screen_title),
         )
+
+        state.relyingPartyHeader?.let { safeRelyingPartyHeader ->
+            IssuerHeaderSection(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_SMALL.dp),
+                header = safeRelyingPartyHeader,
+                onEventSend = onEventSend,
+            )
+        }
 
         if (state.noDocument) {
             ErrorInfo(
@@ -312,8 +374,13 @@ private fun handleNavigationEffect(
     navigationEffect: Effect.Navigation,
     navigator: AppNavigator,
     onExternalDeepLink: (link: String, routeToPop: AppRoute?) -> Unit,
+    platformActions: PlatformScreenActions,
 ) {
     when (navigationEffect) {
+        is Effect.Navigation.OpenUrlExternally -> {
+            platformActions.openUrlExternally(url = navigationEffect.url)
+        }
+
         is Effect.Navigation.SwitchScreen -> {
             navigator.navigateReplacingCurrent(
                 route = navigationEffect.route,
@@ -353,14 +420,14 @@ private fun ContentPreview() {
                 )
             ),
             noDocument = false,
-            headerConfig = ContentHeaderConfig(
-                description = UiText.Resource(Res.string.issuance_document_offer_description),
-                mainText = UiText.Resource(Res.string.issuance_document_offer_header_main_text),
-                relyingPartyData = RelyingPartyDataUi(
+            relyingPartyHeader = RelyingPartyHeaderUi(
+                relyingParty = RelyingPartyDataUi(
                     isVerified = true,
                     name = UiText.Resource(Res.string.issuance_document_offer_relying_party_default_name),
-                    description = UiText.Resource(Res.string.issuance_document_offer_relying_party_description)
-                )
+                    uniqueId = "issuer:preview:prod",
+                ),
+                intendedUse = "Issuing your personal identification document.",
+                privacyPolicyUrl = "https://issuer.example/privacy",
             ),
             offerUiConfig = OfferUiConfig(
                 offerUri = "",

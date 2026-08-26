@@ -38,7 +38,6 @@ import eu.europa.ec.commonfeature.util.TestTag
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.platform.PlatformIntent
-import eu.europa.ec.uilogic.component.content.ContentHeader
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
@@ -46,6 +45,27 @@ import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.StickyBottomConfig
+import eu.europa.ec.shared.resources.resolve
+import eu.europa.ec.uilogic.component.wrap.shadowsAtElevation1
+import eu.europa.ec.uilogic.component.wrap.WrapText
+import eu.europa.ec.uilogic.component.wrap.WrapIcon
+import eu.europa.ec.uilogic.component.wrap.WrapCard
+import eu.europa.ec.uilogic.component.wrap.TextStyleKey
+import eu.europa.ec.uilogic.component.wrap.TextConfig
+import eu.europa.ec.uilogic.component.wrap.TextAlignKey
+import eu.europa.ec.uilogic.component.wrap.ColorKey
+import eu.europa.ec.uilogic.component.utils.SPACING_EXTRA_SMALL
+import eu.europa.ec.uilogic.component.utils.DEFAULT_ICON_SIZE
+import eu.europa.ec.uilogic.component.RelyingPartyLayout
+import eu.europa.ec.uilogic.component.RelyingParty
+import eu.europa.ec.uilogic.component.AppIcons
+import eu.europa.ec.uilogic.component.AppIconAndText
+import eu.europa.ec.resourceslogic.theme.values.surfaceAtElevation1
+import eu.europa.ec.resourceslogic.theme.values.success
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
 import eu.europa.ec.uilogic.component.wrap.StickyBottomType
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableListItem
 import eu.europa.ec.uilogic.component.wrap.WrapStickyBottomContent
@@ -150,41 +170,99 @@ private fun Content(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(paddingValues)
     ) {
-        ContentHeader(
-            modifier = Modifier.fillMaxWidth(),
-            config = state.headerConfig,
-            descriptionTestTag = TestTag.DocumentSuccessScreen.CONTENT_HEADER_DESCRIPTION,
-        )
-
-        Column(
+        WrapCard(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(vertical = SPACING_SMALL.dp),
-            verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
+                .fillMaxWidth()
+                .weight(1f),
+            enabled = false,
+            onClick = null,
+            throttleClicks = false,
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceAtElevation1,
+            ),
+            border = null,
+            shadows = shadowsAtElevation1,
         ) {
-            state.items.forEachIndexed { index, successItem ->
-                WrapExpandableListItem(
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(all = SPACING_SMALL.dp),
+                verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                AppIconAndText(
                     modifier = Modifier
-                        .applyTestTag(TestTag.DocumentSuccessScreen.successDocument(index = index))
-                        .fillMaxWidth(),
-                    header = successItem.header,
-                    data = successItem.nestedItems,
-                    onItemClick = null,
-                    onExpandedChange = { expandedItem ->
-                        onEventSend(Event.ExpandOrCollapseSuccessDocumentItem(itemId = expandedItem.itemId))
-                    },
-                    isExpanded = successItem.isExpanded,
-                    throttleClicks = false,
-                    hideSensitiveContent = false,
-                    collapsedMainContentVerticalPadding = SPACING_MEDIUM.dp,
-                    expandedMainContentVerticalPadding = SPACING_MEDIUM.dp,
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                    )
+                        .fillMaxWidth()
+                        .padding(top = SPACING_SMALL.dp),
+                    appIconAndTextData = state.headerConfig.appIconAndTextData,
                 )
+
+                SuccessBanner(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            horizontal = 20.dp,
+                            vertical = SPACING_MEDIUM.dp
+                        ),
+                    text = state.bannerText.resolve(),
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(SPACING_EXTRA_SMALL.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    state.headerConfig.description?.let { safeDescription ->
+                        WrapText(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .applyTestTag(TestTag.DocumentSuccessScreen.CONTENT_HEADER_DESCRIPTION),
+                            text = safeDescription.resolve(),
+                            textConfig = state.headerConfig.descriptionTextConfig ?: TextConfig(
+                                styleKey = TextStyleKey.BodyMedium,
+                                colorKey = ColorKey.OnSurfaceVariant,
+                                textAlignKey = TextAlignKey.Center,
+                                maxLines = Int.MAX_VALUE,
+                            ),
+                        )
+                    }
+
+                    state.headerConfig.relyingPartyData?.let { safeRelyingPartyData ->
+                        RelyingParty(
+                            modifier = Modifier.fillMaxWidth(),
+                            relyingPartyData = safeRelyingPartyData,
+                            layout = RelyingPartyLayout.StackedCentered,
+                        )
+                    }
+                }
+
+                state.items.forEachIndexed { index, successItem ->
+                    WrapExpandableListItem(
+                        modifier = Modifier
+                            .applyTestTag(TestTag.DocumentSuccessScreen.successDocument(index = index))
+                            .fillMaxWidth(),
+                        header = successItem.header,
+                        data = successItem.nestedItems,
+                        onItemClick = null,
+                        onExpandedChange = { expandedItem ->
+                            onEventSend(Event.ExpandOrCollapseSuccessDocumentItem(itemId = expandedItem.itemId))
+                        },
+                        isExpanded = successItem.isExpanded,
+                        throttleClicks = false,
+                        hideSensitiveContent = false,
+                        collapsedMainContentVerticalPadding = SPACING_MEDIUM.dp,
+                        expandedMainContentVerticalPadding = SPACING_MEDIUM.dp,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        )
+                    )
+                }
             }
         }
     }
@@ -195,5 +273,56 @@ private fun Content(
                 is Effect.Navigation -> onNavigationRequested(effect)
             }
         }.collect()
+    }
+}
+
+
+@Composable
+private fun SuccessBanner(
+    modifier: Modifier,
+    text: String,
+) {
+    val contentColor = MaterialTheme.colorScheme.onPrimary
+
+    WrapCard(
+        modifier = modifier,
+        enabled = false,
+        onClick = null,
+        throttleClicks = false,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.success,
+            contentColor = contentColor,
+        ),
+        border = null,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = SPACING_MEDIUM.dp,
+                    vertical = SPACING_SMALL.dp,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(
+                space = SPACING_SMALL.dp,
+                alignment = Alignment.CenterHorizontally,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            WrapIcon(
+                modifier = Modifier.size(DEFAULT_ICON_SIZE.dp),
+                iconData = AppIcons.Check,
+                customTint = contentColor,
+                enabled = true,
+            )
+            WrapText(
+                text = text,
+                textConfig = TextConfig(
+                    styleKey = TextStyleKey.TitleMedium,
+                    textAlignKey = TextAlignKey.Center,
+                    maxLines = 2,
+                ),
+            )
+        }
     }
 }

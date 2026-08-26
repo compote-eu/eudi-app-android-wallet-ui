@@ -24,6 +24,7 @@
 // already made exactly this call for the same reason.
 package eu.europa.ec.issuancefeature.interactor
 
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +33,7 @@ sealed class DocumentIssuanceSuccessInteractorGetUiItemsPartialState {
     data class Success(
         val documentsUi: List<ExpandableListItemUi.NestedListItem>,
         val headerConfig: ContentHeaderConfig,
+        val bannerText: UiText,
     ) : DocumentIssuanceSuccessInteractorGetUiItemsPartialState()
 
     data class Failed(

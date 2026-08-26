@@ -19,6 +19,7 @@
 // shared UI models. `ProximitySuccessInteractorImpl` keeps wallet-core in :proximity-feature.
 package eu.europa.ec.proximityfeature.interactor
 
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractor
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
@@ -28,6 +29,7 @@ sealed class ProximitySuccessInteractorGetUiItemsPartialState {
     data class Success(
         val documentsUi: List<ExpandableListItemUi.NestedListItem>,
         val headerConfig: ContentHeaderConfig,
+        val bannerText: UiText,
     ) : ProximitySuccessInteractorGetUiItemsPartialState()
 
     data class Failed(

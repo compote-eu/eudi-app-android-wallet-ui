@@ -22,6 +22,8 @@
 // lookup — passing a fake is the supported path, and is why none of this needs a Koin runtime.
 package eu.europa.ec.issuancefeature.ui.offer
 
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.authenticationlogic.secure.SecurePin
@@ -83,6 +85,7 @@ internal class FakeDocumentOfferInteractor(
             issuerName = "Test Issuer",
             issuerLogo = "https://issuer.test/logo.png",
             txCodeLength = null,
+            issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
         )
     ),
     private val issueResults: List<IssueDocumentsInteractorPartialState> = emptyList(),
@@ -194,6 +197,7 @@ class DocumentOfferViewModelTest {
                 ResolveDocumentOfferInteractorPartialState.NoDocument(
                     issuerName = "Empty Issuer",
                     issuerLogo = null,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
                 )
             )
         )
@@ -244,7 +248,7 @@ class DocumentOfferViewModelTest {
     @Test
     fun an_untrusted_issuer_opens_its_own_sheet() = runTest(mainDispatcher) {
         val interactor = FakeDocumentOfferInteractor(
-            resolveResults = listOf(ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted)
+            resolveResults = listOf(ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE))
         )
         val viewModel = viewModel(interactor)
 
@@ -276,6 +280,7 @@ class DocumentOfferViewModelTest {
                         issuerName = "Test Issuer",
                         issuerLogo = null,
                         txCodeLength = 5,
+                        issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
                     )
                 )
             )
@@ -444,7 +449,7 @@ class DocumentOfferViewModelTest {
     @Test
     fun dismissing_the_untrusted_issuer_sheet_cancels_the_whole_offer() = runTest(mainDispatcher) {
         val interactor = FakeDocumentOfferInteractor(
-            resolveResults = listOf(ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted)
+            resolveResults = listOf(ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE))
         )
         val viewModel = viewModel(interactor)
         viewModel.setEvent(Event.Init(deepLink = null))

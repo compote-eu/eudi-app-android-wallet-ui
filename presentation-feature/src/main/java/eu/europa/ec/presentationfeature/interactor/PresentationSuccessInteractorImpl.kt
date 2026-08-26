@@ -28,6 +28,7 @@ import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.document_success_banner_text
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiTextOr
 import eu.europa.ec.uilogic.component.AppIcons
@@ -151,7 +152,8 @@ class PresentationSuccessInteractorImpl(
             emit(
                 PresentationSuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = documentsUi,
-                    headerConfig = headerConfig
+                    headerConfig = headerConfig,
+                    bannerText = UiText.Resource(Res.string.document_success_banner_text),
                 )
             )
         }.safeAsync {

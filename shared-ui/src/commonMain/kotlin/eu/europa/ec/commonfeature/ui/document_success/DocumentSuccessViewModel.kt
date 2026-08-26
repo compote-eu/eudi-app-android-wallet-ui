@@ -21,6 +21,7 @@
 // code has no business naming -1. Package unchanged.
 package eu.europa.ec.commonfeature.ui.document_success
 
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.shared.platform.PlatformIntent
@@ -40,6 +41,8 @@ import eu.europa.ec.uilogic.mvi.ViewState
 data class State(
     val isLoading: Boolean = false,
     val headerConfig: ContentHeaderConfig,
+
+    val bannerText: UiText = UiText.Empty,
 
     val items: List<ExpandableListItemUi.NestedListItem> = emptyList(),
 ) : ViewState

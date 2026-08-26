@@ -142,6 +142,7 @@ class DocumentSuccessViewModelTest {
             PresentationSuccessInteractorGetUiItemsPartialState.Success(
                 documentsUi = rows.toList(),
                 headerConfig = header("shared with Acme"),
+                bannerText = UiText.Raw("done"),
             )
     }
 
@@ -162,6 +163,7 @@ class DocumentSuccessViewModelTest {
                 ProximitySuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = listOf(documentRow("d1")),
                     headerConfig = header("shared in person"),
+                    bannerText = UiText.Raw("done"),
                 )
             )
         )
@@ -196,6 +198,7 @@ class DocumentSuccessViewModelTest {
                     ProximitySuccessInteractorGetUiItemsPartialState.Success(
                         documentsUi = listOf(documentRow("d1")),
                         headerConfig = header("h"),
+                        bannerText = UiText.Raw("done"),
                     )
                 )
             )
@@ -218,6 +221,7 @@ class DocumentSuccessViewModelTest {
                 ProximitySuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = listOf(documentRow("d1")),
                     headerConfig = header("h"),
+                    bannerText = UiText.Raw("done"),
                 )
             )
         )
@@ -240,6 +244,7 @@ class DocumentSuccessViewModelTest {
                 ProximitySuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = listOf(documentRow("d1"), documentRow("d2")),
                     headerConfig = header("h"),
+                    bannerText = UiText.Raw("done"),
                 )
             )
         )

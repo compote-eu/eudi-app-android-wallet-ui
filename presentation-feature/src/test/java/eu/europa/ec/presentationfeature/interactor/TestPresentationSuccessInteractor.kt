@@ -22,6 +22,7 @@ import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.document_success_banner_text
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
@@ -219,6 +220,7 @@ class TestPresentationSuccessInteractor {
                 // Then
                 val expectedResult = PresentationSuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
+                    bannerText = UiText.Resource(Res.string.document_success_banner_text),
                     headerConfig = ContentHeaderConfig(
                         description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
@@ -345,6 +347,7 @@ class TestPresentationSuccessInteractor {
                 // Then
                 val expectedResult = PresentationSuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
+                    bannerText = UiText.Resource(Res.string.document_success_banner_text),
                     headerConfig = ContentHeaderConfig(
                         description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
@@ -390,6 +393,7 @@ class TestPresentationSuccessInteractor {
                 // Then
                 val expectedResult = PresentationSuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
+                    bannerText = UiText.Resource(Res.string.document_success_banner_text),
                     headerConfig = ContentHeaderConfig(
                         description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(

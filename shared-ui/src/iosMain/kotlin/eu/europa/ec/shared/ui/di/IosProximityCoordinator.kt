@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.shared.resources.document_success_banner_text
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.corelogic.model.RelyingPartyDomain
 import eu.europa.ec.corelogic.model.RegistrationStatusDomain
@@ -246,6 +247,7 @@ internal class IosProximityCoordinator(
 
         return ProximitySuccessInteractorGetUiItemsPartialState.Success(
             documentsUi = documentsUi,
+            bannerText = UiText.Resource(Res.string.document_success_banner_text),
             headerConfig = ContentHeaderConfig(
                 description = UiText.Resource(
                     if (documentsUi.isEmpty()) {

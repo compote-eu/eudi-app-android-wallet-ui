@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
@@ -78,6 +79,7 @@ internal class IosDocumentOfferPlatformBridge(
                     PlatformOfferResolution.NoDocuments(
                         issuerName = resolution.issuerName,
                         issuerLogoUri = resolution.issuerLogoUri,
+                        issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
                     )
                 } else {
                     PlatformOfferResolution.Success(
@@ -87,6 +89,8 @@ internal class IosDocumentOfferPlatformBridge(
                         containsPid = resolution.containsPid,
                         txCodeLength = resolution.offer.txCodeLength,
                         txCodeIsNumeric = resolution.offer.txCodeIsNumeric,
+                        // multipaz evaluates no registration certificate; see RelyingPartyDomain.
+                        issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
                     )
                 }
             }

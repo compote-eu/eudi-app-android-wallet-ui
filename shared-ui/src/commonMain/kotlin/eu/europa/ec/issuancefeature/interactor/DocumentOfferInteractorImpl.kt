@@ -80,12 +80,15 @@ class DocumentOfferInteractorImpl(
                         ResolveDocumentOfferInteractorPartialState.Failure(resolution.errorMessage)
 
                     is PlatformOfferResolution.IssuerNotTrusted ->
-                        ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted
+                        ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted(
+                            reason = resolution.reason
+                        )
 
                     is PlatformOfferResolution.NoDocuments ->
                         ResolveDocumentOfferInteractorPartialState.NoDocument(
                             issuerName = resolution.issuerName.ifEmptyOrNull(defaultIssuerName),
                             issuerLogo = resolution.issuerLogoUri,
+                            issuerRegistration = resolution.issuerRegistration,
                         )
 
                     is PlatformOfferResolution.Success -> resolution.toState(defaultIssuerName)
@@ -132,6 +135,7 @@ class DocumentOfferInteractorImpl(
             issuerName = issuerName.ifEmptyOrNull(defaultIssuerName),
             issuerLogo = issuerLogoUri,
             txCodeLength = txCodeLength,
+            issuerRegistration = issuerRegistration,
         )
     }
 
@@ -152,7 +156,9 @@ class DocumentOfferInteractorImpl(
                         }
 
                         is IssueDocumentsPartialState.IssuerNotTrusted -> {
-                            IssueDocumentsInteractorPartialState.IssuerNotTrusted
+                            IssueDocumentsInteractorPartialState.IssuerNotTrusted(
+                                reason = response.reason
+                            )
                         }
 
                         is IssueDocumentsPartialState.PartialSuccess -> {

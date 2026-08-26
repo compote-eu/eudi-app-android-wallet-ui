@@ -150,6 +150,7 @@
     <string name="document_success_header_description">You successfully shared the following information with</string>
     <string name="document_success_header_description_when_error">You successfully shared the information with</string>
     <string name="document_success_relying_party_default_name">Relying Party</string>
+    <string name="document_success_banner_text">Authentication successful</string>
     <string name="document_success_collapsed_supporting_text">View details</string>
     <string name="document_success_sticky_button_text">Close</string>
     <!--endregion-->
@@ -427,6 +428,7 @@
 
     <!-- region Issuance Success Screen -->
     <string name="issuance_success_header_description">You have successfully added the following to your wallet</string>
+    <string name="issuance_success_banner_text">Document issued</string>
     <string name="issuance_success_header_description_when_error">You have successfully added the document(s) to your wallet</string>
     <string name="issuance_success_header_issuer_default_name">Issuer</string>
     <!--endregion-->
@@ -445,6 +447,9 @@
     <string name="issuance_document_offer_error_invalid_txcode_format">Invalid transaction code format. Length should be between %1$d to %2$d digits and only numeric characters are allowed.</string>
     <string name="issuance_document_offer_error_no_document">Unable to fetch and process the credential offer</string>
     <string name="issuance_document_offer_description">The following transaction requires your permission and authentication.</string>
+    <string name="issuance_document_offer_cancel_button_text">Cancel</string>
+    <string name="issuance_document_offer_accept_button_text">Accept</string>
+    <string name="issuance_document_offer_screen_title">Issuance request</string>
     <string name="issuance_document_offer_header_main_text">ISSUANCE REQUEST</string>
     <string name="issuance_document_offer_relying_party_default_name">Issuer</string>
     <string name="issuance_document_offer_relying_party_description">wants to add the following</string>

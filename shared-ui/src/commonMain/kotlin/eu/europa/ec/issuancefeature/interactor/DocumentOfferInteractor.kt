@@ -26,6 +26,8 @@ package eu.europa.ec.issuancefeature.interactor
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.authenticationlogic.secure.SecurePin
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.issuancefeature.ui.offer.model.DocumentOfferUi
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.platform.PlatformContext
@@ -37,17 +39,21 @@ sealed class ResolveDocumentOfferInteractorPartialState {
         val documents: List<DocumentOfferUi>,
         val issuerName: String,
         val issuerLogo: String?,
-        val txCodeLength: Int?
+        val txCodeLength: Int?,
+        val issuerRegistration: IssuerRegistrationDomain,
     ) : ResolveDocumentOfferInteractorPartialState()
 
     data class NoDocument(
         val issuerName: String,
         val issuerLogo: String?,
+        val issuerRegistration: IssuerRegistrationDomain,
     ) : ResolveDocumentOfferInteractorPartialState()
 
     data class Failure(val errorMessage: String) : ResolveDocumentOfferInteractorPartialState()
 
-    data object IssuerNotTrusted : ResolveDocumentOfferInteractorPartialState()
+    data class IssuerNotTrusted(
+        val reason: UntrustedIssuerReasonDomain,
+    ) : ResolveDocumentOfferInteractorPartialState()
 }
 
 sealed class IssueDocumentsInteractorPartialState {
@@ -65,7 +71,9 @@ sealed class IssueDocumentsInteractorPartialState {
 
     data class Failure(val errorMessage: String) : IssueDocumentsInteractorPartialState()
 
-    data object IssuerNotTrusted : IssueDocumentsInteractorPartialState()
+    data class IssuerNotTrusted(
+        val reason: UntrustedIssuerReasonDomain,
+    ) : IssueDocumentsInteractorPartialState()
 
     data class UserAuthRequired(
         val crypto: BiometricCrypto,

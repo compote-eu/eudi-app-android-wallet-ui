@@ -16,6 +16,7 @@
 
 package eu.europa.ec.issuancefeature.interactor
 
+import eu.europa.ec.shared.resources.issuance_success_banner_text
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
@@ -110,6 +111,7 @@ class DocumentIssuanceSuccessInteractorImpl(
         emit(
             DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success(
                 documentsUi = documentsUi,
+                bannerText = UiText.Resource(Res.string.issuance_success_banner_text),
                 headerConfig = ContentHeaderConfig(
                     description = UiText.Resource(
                         if (documentsUi.isEmpty()) {

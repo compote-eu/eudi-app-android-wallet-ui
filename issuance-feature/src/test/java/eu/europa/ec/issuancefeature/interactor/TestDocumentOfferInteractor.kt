@@ -210,6 +210,7 @@ class TestDocumentOfferInteractor {
                 val expectedResult = ResolveDocumentOfferInteractorPartialState.NoDocument(
                     issuerName = mockedOffer.getIssuerName(mockedDefaultLocale),
                     issuerLogo = null,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
                 )
                 // Then
                 assertEquals(expectedResult, awaitItem())
@@ -372,6 +373,7 @@ class TestDocumentOfferInteractor {
                     issuerName = mockedIssuerName,
                     txCodeLength = mockedTxCodeFourDigits,
                     issuerLogo = null,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
                 )
                 // Then
                 assertEquals(expectedResult, awaitItem())
@@ -429,6 +431,7 @@ class TestDocumentOfferInteractor {
                     issuerName = mockedIssuerName,
                     txCodeLength = mockedOffer.txCodeSpec?.length,
                     issuerLogo = null,
+                    issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
                 )
 
                 // Then
@@ -675,7 +678,7 @@ class TestDocumentOfferInteractor {
     // ResolveDocumentOfferPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE).
 
     // Case 14 Expected Result:
-    // ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted
+    // ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE)
     @Test
     fun `Given Case 14, When resolveDocumentOffer is called, Then Case 14 Expected Result is returned`() =
         coroutineRule.runTest {
@@ -688,7 +691,7 @@ class TestDocumentOfferInteractor {
             interactor.resolveDocumentOffer(mockedUriPath1).runFlowTest {
                 // Then
                 assertEquals(
-                    ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted,
+                    ResolveDocumentOfferInteractorPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE),
                     awaitItem()
                 )
             }
@@ -1102,7 +1105,7 @@ class TestDocumentOfferInteractor {
     // IssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE).
 
     // Case 11 Expected Result:
-    // IssueDocumentsInteractorPartialState.IssuerNotTrusted
+    // IssueDocumentsInteractorPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE)
     @Test
     fun `Given Case 11, When issueDocuments is called, Then Case 11 Expected Result is returned`() =
         coroutineRule.runTest {
@@ -1121,7 +1124,7 @@ class TestDocumentOfferInteractor {
             ).runFlowTest {
                 // Then
                 assertEquals(
-                    IssueDocumentsInteractorPartialState.IssuerNotTrusted,
+                    IssueDocumentsInteractorPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE),
                     awaitItem()
                 )
             }

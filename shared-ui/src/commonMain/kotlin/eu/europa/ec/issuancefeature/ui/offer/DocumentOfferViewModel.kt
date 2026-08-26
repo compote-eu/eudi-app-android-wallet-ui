@@ -17,6 +17,8 @@
 package eu.europa.ec.issuancefeature.ui.offer
 
 import androidx.lifecycle.viewModelScope
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.commonfeature.ui.request.model.RelyingPartyHeaderUi
 import eu.europa.ec.commonfeature.config.IssuanceSuccessUiConfig
 import eu.europa.ec.commonfeature.config.OfferCodeUiConfig
 import eu.europa.ec.commonfeature.config.OfferUiConfig
@@ -62,7 +64,7 @@ data class State(
     val offerUiConfig: OfferUiConfig,
 
     val isLoading: Boolean = true,
-    val headerConfig: ContentHeaderConfig,
+    val relyingPartyHeader: RelyingPartyHeaderUi? = null,
     val error: ContentErrorConfig? = null,
     val isInitialised: Boolean = false,
     val notifyOnAuthenticationFailure: Boolean = false,
@@ -81,11 +83,15 @@ data class State(
     val isBottomSheetOpen: Boolean = false,
     val bottomSheetClosingInProgress: Boolean = false,
     val sheetContent: DocumentOfferBottomSheetContent = DocumentOfferBottomSheetContent.IssuerNotTrusted,
-) : ViewState
+) : ViewState {
+    val allowAccept: Boolean
+        get() = !noDocument
+}
 
 sealed class Event : ViewEvent {
     data class Init(val deepLink: String?) : Event()
     data object BackButtonPressed : Event()
+    data object PrivacyPolicyLinkClicked : Event()
     data object OnPause : Event()
     data class OnResumeIssuance(val uri: String) : Event()
     data class OnDynamicPresentation(val uri: String) : Event()
@@ -113,6 +119,7 @@ sealed class Effect : ViewSideEffect {
         ) : Navigation()
 
         data object Pop : Navigation()
+        data class OpenUrlExternally(val url: String) : Navigation()
 
         data class DeepLink(
             val link: String,
@@ -150,7 +157,6 @@ class DocumentOfferViewModel(
     override fun setInitialState(): State {
         return State(
             offerUiConfig = offerUiConfig,
-            headerConfig = getInitialHeaderConfig()
         )
     }
 
@@ -171,6 +177,14 @@ class DocumentOfferViewModel(
                 if (viewState.value.bottomSheetClosingInProgress) return
                 setState { copy(error = null) }
                 doNavigation(viewState.value.offerUiConfig.onCancelNavigation)
+            }
+
+            is Event.PrivacyPolicyLinkClicked -> {
+                viewState.value.relyingPartyHeader?.privacyPolicyUrl?.let { safeUrl ->
+                    setEffect {
+                        Effect.Navigation.OpenUrlExternally(url = safeUrl)
+                    }
+                }
             }
 
             is Event.DismissError -> {
@@ -299,11 +313,10 @@ class DocumentOfferViewModel(
                                 noDocument = false,
                                 txCodeLength = response.txCodeLength,
                                 issuerName = response.issuerName,
-                                headerConfig = headerConfig.copy(
-                                    relyingPartyData = getHeaderConfigIssuerData(
-                                        issuerName = response.issuerName,
-                                        issuerLogo = response.issuerLogo,
-                                    )
+                                relyingPartyHeader = buildRelyingPartyHeader(
+                                    issuerName = response.issuerName,
+                                    issuerLogo = response.issuerLogo,
+                                    issuerRegistration = response.issuerRegistration,
                                 ),
                             )
                         }
@@ -320,11 +333,10 @@ class DocumentOfferViewModel(
                                 isInitialised = true,
                                 noDocument = true,
                                 issuerName = response.issuerName,
-                                headerConfig = headerConfig.copy(
-                                    relyingPartyData = getHeaderConfigIssuerData(
-                                        issuerName = response.issuerName,
-                                        issuerLogo = response.issuerLogo,
-                                    )
+                                relyingPartyHeader = buildRelyingPartyHeader(
+                                    issuerName = response.issuerName,
+                                    issuerLogo = response.issuerLogo,
+                                    issuerRegistration = response.issuerRegistration,
                                 ),
                             )
                         }
@@ -334,27 +346,34 @@ class DocumentOfferViewModel(
         }
     }
 
-    private fun getInitialHeaderConfig(): ContentHeaderConfig {
-        return ContentHeaderConfig(
-            description = UiText.Resource(Res.string.issuance_document_offer_description),
-            mainText = UiText.Resource(Res.string.issuance_document_offer_header_main_text),
-            relyingPartyData = RelyingPartyDataUi(
-                isVerified = false,
-                name = UiText.Resource(Res.string.issuance_document_offer_relying_party_default_name),
-                description = UiText.Resource(Res.string.issuance_document_offer_relying_party_description)
-            )
-        )
-    }
-
-    private fun getHeaderConfigIssuerData(
+    /**
+     * The offer screen's who-is-issuing header: the provider's identity, and the registration
+     * sections from the registration-certificate evaluation. Only a verified registration renders
+     * details, and only a verified one earns the badge.
+     */
+    private fun buildRelyingPartyHeader(
         issuerName: String,
         issuerLogo: String?,
-    ): RelyingPartyDataUi {
-        return RelyingPartyDataUi(
-            logo = issuerLogo,
-            isVerified = false,
-            name = issuerName.asUiText(),
-            description = UiText.Resource(Res.string.issuance_document_offer_relying_party_description)
+        issuerRegistration: IssuerRegistrationDomain,
+    ): RelyingPartyHeaderUi {
+        val details = when (issuerRegistration) {
+            is IssuerRegistrationDomain.Verified -> issuerRegistration.details
+
+            is IssuerRegistrationDomain.Blocked,
+            is IssuerRegistrationDomain.NotVerified,
+            is IssuerRegistrationDomain.NotEvaluated -> null
+        }
+
+        return RelyingPartyHeaderUi(
+            relyingParty = RelyingPartyDataUi(
+                logo = issuerLogo,
+                isVerified = issuerRegistration is IssuerRegistrationDomain.Verified,
+                name = issuerName.asUiText(),
+                uniqueId = details?.uniqueId,
+                description = null,
+            ),
+            intendedUse = details?.intendedUse,
+            privacyPolicyUrl = details?.privacyPolicyUrl,
         )
     }
 

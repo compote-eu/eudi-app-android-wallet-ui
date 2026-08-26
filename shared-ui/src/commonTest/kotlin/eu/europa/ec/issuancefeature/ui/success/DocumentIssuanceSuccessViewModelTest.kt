@@ -104,6 +104,7 @@ class DocumentIssuanceSuccessViewModelTest {
             DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success(
                 documentsUi = rows.toList(),
                 headerConfig = ContentHeaderConfig(description = UiText.Raw("added")),
+                bannerText = UiText.Raw("done"),
             )
     }
 

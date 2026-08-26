@@ -16,6 +16,8 @@
 
 package eu.europa.ec.issuancefeature.interactor
 
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
@@ -48,15 +50,25 @@ sealed class PlatformOfferResolution {
         val containsPid: Boolean,
         val txCodeLength: Int?,
         val txCodeIsNumeric: Boolean,
+        /**
+         * The provider's registration-certificate outcome. Always
+         * [IssuerRegistrationDomain.NotEvaluated] where nothing evaluates registrations, which is
+         * iOS and any Android build with the check off.
+         */
+        val issuerRegistration: IssuerRegistrationDomain,
     ) : PlatformOfferResolution()
 
     /** No document in the offer — kept distinct from a failure, since the issuer *did* answer. */
     data class NoDocuments(
         val issuerName: String?,
         val issuerLogoUri: String?,
+        val issuerRegistration: IssuerRegistrationDomain,
     ) : PlatformOfferResolution()
 
-    data object IssuerNotTrusted : PlatformOfferResolution()
+    /** @property reason which trust layer refused — the screens word the two differently. */
+    data class IssuerNotTrusted(
+        val reason: UntrustedIssuerReasonDomain,
+    ) : PlatformOfferResolution()
 
     data class Failure(val errorMessage: String) : PlatformOfferResolution()
 }

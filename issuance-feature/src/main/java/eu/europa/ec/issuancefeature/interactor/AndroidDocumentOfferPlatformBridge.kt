@@ -76,7 +76,7 @@ class AndroidDocumentOfferPlatformBridge(
                 PlatformOfferResolution.Failure(errorMessage = response.errorMessage)
 
             is ResolveDocumentOfferPartialState.IssuerNotTrusted ->
-                PlatformOfferResolution.IssuerNotTrusted
+                PlatformOfferResolution.IssuerNotTrusted(reason = response.reason)
 
             is ResolveDocumentOfferPartialState.Success -> {
                 val offer = response.offer
@@ -86,6 +86,7 @@ class AndroidDocumentOfferPlatformBridge(
                     PlatformOfferResolution.NoDocuments(
                         issuerName = offer.getIssuerName(userLocale),
                         issuerLogoUri = offer.getIssuerLogo(userLocale)?.toString(),
+                        issuerRegistration = response.issuerRegistration,
                     )
                 } else {
                     PlatformOfferResolution.Success(
@@ -102,6 +103,7 @@ class AndroidDocumentOfferPlatformBridge(
                         // A text code is one this wallet cannot ask for; the shared side decides what to
                         // do about that.
                         txCodeIsNumeric = offer.txCodeSpec?.inputMode != TxCodeInputMode.TEXT,
+                        issuerRegistration = response.issuerRegistration,
                     )
                 }
             }

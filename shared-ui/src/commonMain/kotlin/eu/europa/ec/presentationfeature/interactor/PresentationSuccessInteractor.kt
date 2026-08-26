@@ -24,6 +24,7 @@
 // which on Android is a typealias so the implementation is unchanged.
 package eu.europa.ec.presentationfeature.interactor
 
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractor
 import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
@@ -34,6 +35,7 @@ sealed class PresentationSuccessInteractorGetUiItemsPartialState {
     data class Success(
         val documentsUi: List<ExpandableListItemUi.NestedListItem>,
         val headerConfig: ContentHeaderConfig,
+        val bannerText: UiText,
     ) : PresentationSuccessInteractorGetUiItemsPartialState()
 
     data class Failed(
