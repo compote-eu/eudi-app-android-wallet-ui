@@ -68,7 +68,8 @@ data class State(
 
     val welcomeUserMessage: UiText,
     val authenticateCardConfig: ActionCardConfig,
-    val signCardConfig: ActionCardConfig,
+    /** Null when the platform cannot sign at all — the card is then omitted, not disabled. */
+    val signCardConfig: ActionCardConfig?,
 
     val bleAvailability: BleAvailability = BleAvailability.UNKNOWN,
     val isBleCentralClientModeEnabled: Boolean = false
@@ -161,12 +162,16 @@ class HomeViewModel(
                 primaryButtonText = UiText.Resource(Res.string.home_screen_authenticate),
                 secondaryButtonText = UiText.Resource(Res.string.home_screen_learn_more)
             ),
-            signCardConfig = ActionCardConfig(
-                title = UiText.Resource(Res.string.home_screen_sign_card_title),
-                icon = AppIcons.Contract,
-                primaryButtonText = UiText.Resource(Res.string.home_screen_sign),
-                secondaryButtonText = UiText.Resource(Res.string.home_screen_learn_more)
-            ),
+            signCardConfig = if (homeInteractor.canSignDocuments()) {
+                ActionCardConfig(
+                    title = UiText.Resource(Res.string.home_screen_sign_card_title),
+                    icon = AppIcons.Contract,
+                    primaryButtonText = UiText.Resource(Res.string.home_screen_sign),
+                    secondaryButtonText = UiText.Resource(Res.string.home_screen_learn_more)
+                )
+            } else {
+                null
+            },
             isBleCentralClientModeEnabled = homeInteractor.isBleCentralClientModeEnabled(),
         )
     }

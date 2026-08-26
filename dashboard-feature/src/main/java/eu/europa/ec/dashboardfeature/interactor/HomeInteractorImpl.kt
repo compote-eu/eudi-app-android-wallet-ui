@@ -40,6 +40,9 @@ class HomeInteractorImpl(
         return bluetoothManager?.adapter?.isEnabled == true
     }
 
+    /** Android initialises `EudiRQESUi` in `Application.onCreate`, so the flow is reachable. */
+    override fun canSignDocuments(): Boolean = true
+
     override fun isBleCentralClientModeEnabled(): Boolean =
         walletCoreConfig.config.enableBleCentralMode
 

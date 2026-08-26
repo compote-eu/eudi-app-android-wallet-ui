@@ -47,6 +47,8 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -76,8 +78,11 @@ class HomeViewModelTest {
             HomeInteractorGetUserNameViaMainPidDocumentPartialState.Success(userFirstName = ""),
         private val bleAvailable: Boolean = true,
         private val bleCentralClientMode: Boolean = false,
+        private val canSign: Boolean = true,
     ) : HomeInteractor {
         override fun isBleAvailable(): Boolean = bleAvailable
+
+        override fun canSignDocuments(): Boolean = canSign
 
         override fun isBleCentralClientModeEnabled(): Boolean = bleCentralClientMode
 
@@ -94,6 +99,8 @@ class HomeViewModelTest {
         private var calls = 0
 
         override fun isBleAvailable(): Boolean = true
+
+        override fun canSignDocuments(): Boolean = true
 
         override fun isBleCentralClientModeEnabled(): Boolean = false
 
@@ -214,6 +221,26 @@ class HomeViewModelTest {
             viewModel.viewState.value.welcomeUserMessage
         )
         assertFalse(viewModel.viewState.value.isLoading)
+    }
+
+    @Test
+    fun the_sign_card_is_offered_when_the_platform_can_sign() = runTest(mainDispatcher) {
+        val viewModel = HomeViewModel(FakeHomeInteractor(canSign = true))
+        advanceUntilIdle()
+
+        assertNotNull(viewModel.viewState.value.signCardConfig)
+    }
+
+    /**
+     * Omitted, not disabled. `DocumentSignRoute` has no entry on iOS, so a card that is merely
+     * greyed out would still be a card whose action leads nowhere.
+     */
+    @Test
+    fun the_sign_card_is_omitted_when_the_platform_cannot_sign() = runTest(mainDispatcher) {
+        val viewModel = HomeViewModel(FakeHomeInteractor(canSign = false))
+        advanceUntilIdle()
+
+        assertNull(viewModel.viewState.value.signCardConfig)
     }
 
     @Test

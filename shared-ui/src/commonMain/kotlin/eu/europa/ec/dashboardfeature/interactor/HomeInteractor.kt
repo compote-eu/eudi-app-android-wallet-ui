@@ -36,6 +36,15 @@ sealed class HomeInteractorGetUserNameViaMainPidDocumentPartialState {
 
 interface HomeInteractor {
     fun isBleAvailable(): Boolean
+
+    /**
+     * Whether this platform can sign documents (RQES) at all.
+     *
+     * False omits the sign card from Home entirely, rather than leaving a card that navigates to a
+     * route the platform has no entry for. The same "omit, don't show inert" rule the settings
+     * screen uses for registration checks.
+     */
+    fun canSignDocuments(): Boolean
     fun isBleCentralClientModeEnabled(): Boolean
     fun getUserNameViaMainPidDocument(): Flow<HomeInteractorGetUserNameViaMainPidDocumentPartialState>
 }

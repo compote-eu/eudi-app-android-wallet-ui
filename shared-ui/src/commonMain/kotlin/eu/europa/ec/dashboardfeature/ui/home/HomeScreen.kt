@@ -241,19 +241,23 @@ private fun Content(
             }
         )
 
-        WrapActionCard(
-            config = state.signCardConfig,
-            onActionClick = {
-                onEventSent(
-                    Event.SignDocumentCard.SignDocumentPressed
-                )
-            },
-            onLearnMoreClick = {
-                onEventSent(
-                    Event.SignDocumentCard.LearnMorePressed
-                )
-            }
-        )
+        // Omitted rather than disabled where the platform cannot sign: `DocumentSignRoute` has no
+        // entry on iOS, so a visible card would navigate nowhere. See `HomeInteractor.canSignDocuments`.
+        state.signCardConfig?.let { signCardConfig ->
+            WrapActionCard(
+                config = signCardConfig,
+                onActionClick = {
+                    onEventSent(
+                        Event.SignDocumentCard.SignDocumentPressed
+                    )
+                },
+                onLearnMoreClick = {
+                    onEventSent(
+                        Event.SignDocumentCard.LearnMorePressed
+                    )
+                }
+            )
+        }
     }
 
     if (state.bleAvailability == BleAvailability.NO_PERMISSION) {

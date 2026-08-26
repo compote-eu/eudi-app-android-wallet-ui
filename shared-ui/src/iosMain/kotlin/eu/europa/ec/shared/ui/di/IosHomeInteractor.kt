@@ -55,6 +55,17 @@ internal class IosHomeInteractor(
     override fun isBleAvailable(): Boolean = true
 
     /**
+     * No RQES on iOS yet, so Home omits the sign card rather than offering one that leads nowhere.
+     *
+     * `DocumentSignRoute` has no entry in `IosAppRoot`, so before this gate existed the card was
+     * shown and tapping it navigated to a route the app could not build. The library itself is now
+     * linked (`EudiRQESUi`, via the package declared in `iosApp/project.yml`); what is missing is
+     * the bridge that picks a PDF and hands it to `initiate(on:fileUrl:)`. Flip this to true in the
+     * same change that adds that bridge and the iOS route entry — not before.
+     */
+    override fun canSignDocuments(): Boolean = false
+
+    /**
      * False, and correctly so rather than pending.
      *
      * This wallet advertises in **peripheral-server mode** on iOS — see

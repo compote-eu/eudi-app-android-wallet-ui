@@ -188,6 +188,21 @@ class TestHomeInteractor {
     }
     //endregion
 
+    //region canSignDocuments
+
+    // Android initialises EudiRQESUi in Application.onCreate, so the sign flow is always reachable
+    // here. This is the half of the gate that keeps Home's sign card visible on Android; iOS answers
+    // false until the RQES bridge lands.
+    @Test
+    fun `Given Android, When canSignDocuments is called, Then it returns true`() {
+        // When
+        val actual = interactor.canSignDocuments()
+
+        // Then
+        assertEquals(true, actual)
+    }
+    //endregion
+
     //region getUserNameViaMainPidDocument
 
     // Case 1:
