@@ -16,6 +16,8 @@
 
 package eu.europa.ec.corelogic.config
 
+import eu.europa.ec.shared.wallet.config.SharedWalletConfig
+
 import eu.europa.ec.corelogic.model.DocumentCategories
 import eu.europa.ec.corelogic.model.DocumentCategory
 import eu.europa.ec.corelogic.model.DocumentIdentifier
@@ -25,7 +27,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
-interface WalletCoreConfig {
+interface WalletCoreConfig : SharedWalletConfig {
 
 
     /**
@@ -111,7 +113,8 @@ interface WalletCoreConfig {
     val documentIssuanceConfig: DocumentIssuanceConfig
 
     /**
-     * Host for the Wallet Provider.
+     * Derived from [issuersConfig], so the two cannot name different issuers. Only Android holds the
+     * per-issuer `OpenId4VciManager.Config`; the URLs themselves are shared.
      */
-    val walletProviderHost: String
+    override val issuerUrls: List<String> get() = issuersConfig.map { it.issuerUrl }
 }

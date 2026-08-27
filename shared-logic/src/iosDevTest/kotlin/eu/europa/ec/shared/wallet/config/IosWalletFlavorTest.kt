@@ -19,6 +19,7 @@
 // demo, which an unflagged build must never do.
 package eu.europa.ec.shared.wallet.config
 
+import eu.europa.ec.businesslogic.config.AppFlavor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -28,14 +29,23 @@ class IosWalletFlavorTest {
     fun an_unflagged_build_is_dev() {
         // Every documented probe run and `assembleDevDebug` assume it. A build that quietly defaulted
         // to demo would talk to the production-shaped issuers and wallet provider instead.
-        assertEquals(IosAppFlavor.DEV, iosWalletConfig.appFlavor)
+        assertEquals(AppFlavor.DEV, iosWalletConfig.appFlavor)
     }
 
     @Test
     fun the_dev_values_match_androids_dev_flavour_exactly() {
         // Copied from `core-logic/src/dev/.../WalletCoreConfigImpl.kt` and
-        // `business-logic/src/dev/.../ConfigLogicImpl.kt`. If Android changes, this fails — the point
-        // is that these are a mirror, not a choice.
+        // `business-logic/src/dev/.../ConfigLogicImpl.kt`.
+        //
+        // ⚠️ Read what this can and cannot catch. It said "if Android changes, this fails", and that
+        // was never true: both sides of every assertion below are literals on the *iOS* compile path,
+        // and Android's config lives in Android source sets of other modules that this test cannot
+        // reference. So it pins iOS against a copy taken by hand, and is blind to Android moving.
+        //
+        // What it does catch: an accidental edit to `IosWalletConfigImpl`, and the wrong flavour being
+        // selected. What catches Android drift is the configuration-parity audit, by hand. The
+        // structural fix is to stop copying — `appFlavor` and `walletProviderUrl` are shared or
+        // identically named as of 2026-08-27; the rest still are not.
         assertEquals(
             listOf("https://ec.dev.issuer.eudiw.dev", "https://dev.issuer-backend.eudiw.dev"),
             iosWalletConfig.issuerUrls,

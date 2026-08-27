@@ -25,7 +25,6 @@ import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -57,7 +56,7 @@ import org.multipaz.securearea.KeyAttestation
  * unreachable there (see its note).
  *
  * @param walletProviderBaseUrl e.g. `https://dev.wallet-provider.eudiw.dev` — Android's
- * `WalletCoreConfig.walletProviderHost`.
+ * `WalletCoreConfig.walletProviderUrl`.
  * @param clientId the OAuth `client_id` the wallet provider issues attestations for; Android's dev
  * flavour uses `eudiw-abca`.
  */

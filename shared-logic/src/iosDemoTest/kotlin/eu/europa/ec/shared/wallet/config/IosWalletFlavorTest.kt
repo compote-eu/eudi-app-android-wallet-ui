@@ -18,6 +18,7 @@
 // shares this name and asserts the other flavour.
 package eu.europa.ec.shared.wallet.config
 
+import eu.europa.ec.businesslogic.config.AppFlavor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -25,13 +26,15 @@ class IosWalletFlavorTest {
 
     @Test
     fun a_demo_flagged_build_is_demo() {
-        assertEquals(IosAppFlavor.DEMO, iosWalletConfig.appFlavor)
+        assertEquals(AppFlavor.DEMO, iosWalletConfig.appFlavor)
     }
 
     @Test
     fun the_demo_values_match_androids_demo_flavour_exactly() {
         // Copied from `core-logic/src/demo/.../WalletCoreConfigImpl.kt` and
-        // `business-logic/src/demo/.../ConfigLogicImpl.kt`.
+        // `business-logic/src/demo/.../ConfigLogicImpl.kt` — by hand, and this test cannot verify that
+        // copy: Android's config is unreachable from the iOS compile path. See the note in the dev
+        // twin for what that means.
         assertEquals(
             listOf("https://issuer.eudiw.dev", "https://issuer-backend.eudiw.dev"),
             iosWalletConfig.issuerUrls,

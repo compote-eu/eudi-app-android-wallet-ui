@@ -22,11 +22,12 @@
 // disagree, the Android file is right and this one is a bug.
 package eu.europa.ec.shared.wallet.config
 
+import eu.europa.ec.businesslogic.config.AppFlavor
 import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
 
 internal object IosWalletConfigImpl : IosWalletConfig {
 
-    override val appFlavor = IosAppFlavor.DEV
+    override val appFlavor = AppFlavor.DEV
 
     override val issuerUrls = listOf(
         "https://ec.dev.issuer.eudiw.dev",
@@ -39,9 +40,9 @@ internal object IosWalletConfigImpl : IosWalletConfig {
     // costs more on iOS than it does there.
     override val credentialBatchSize = 60
 
-    // Android names its rotating set `eudi-android-wallet-logs%g.txt`; multipaz writes one file, so
-    // there is no `%g` counter to mirror.
-    override val logFileName = "eudi-ios-wallet-logs.txt"
+    // Mirrors Android's `eudi-android-wallet-logs%g.txt`, `%g` being the generation counter that
+    // Treessence substitutes there and `IosLogFile` substitutes here.
+    override val logFileName = "eudi-ios-wallet-logs%g.txt"
 
     // Matches Android's dev flavour, which sets INFORM for the document status resolver.
     // See [IosWalletConfig.statusTrustPolicy] for what that does and does not buy.

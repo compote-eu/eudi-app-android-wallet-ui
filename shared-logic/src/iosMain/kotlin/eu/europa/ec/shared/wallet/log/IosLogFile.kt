@@ -17,86 +17,244 @@
 package eu.europa.ec.shared.wallet.log
 
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
+import kotlinx.atomicfu.locks.ReentrantLock
+import kotlinx.atomicfu.locks.reentrantLock
+import kotlinx.atomicfu.locks.withLock
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.io.Sink
+import kotlinx.io.buffered
 import kotlinx.io.files.Path
 import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.writeString
 import org.multipaz.util.Logger
 import platform.Foundation.NSCachesDirectory
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSUserDomainMask
+import kotlin.time.Clock
 
 /**
- * iOS's log file: where it lives, and getting multipaz to write it.
+ * iOS's log: a rotating set of files, written by multipaz's own logger.
  *
- * The design is taken from the official iOS wallet, which lets **its engine own the log** — it hands
+ * The shape is taken from the official iOS wallet, which lets **its engine own the log** — it hands
  * `EudiWallet` a `logFileName` at init and later asks `EudiWallet.getLogFileURL(name)` for the URL to
- * share. multipaz offers the same thing to us (`Logger.startLoggingToFile`), so iOS gets a real log
- * without this fork implementing a logging framework, and everything multipaz already narrates —
- * issuance, presentment, the trust evaluation behind revocation — lands in it for free.
+ * share. multipaz gives us the same reach, so iOS gets a real log without this fork implementing a
+ * logging framework: everything multipaz narrates — issuance, presentment, the trust evaluation behind
+ * revocation — lands in it alongside our own iosMain call sites.
  *
- * Android's counterpart is `LogController` in `:business-logic`, a Treessence `FileLoggerTree`.
+ * ## Why this does not simply call `Logger.startLoggingToFile`
  *
- * ## Two limits, both inherited and both deliberate rather than overlooked
+ * It did at first, and that is what the official iOS wallet settles for. Two properties of multipaz's
+ * own file writer made it worth replacing:
  *
- * **It truncates.** `Logger.startLoggingToFile` opens `SystemFileSystem.sink(path)` without append, so
- * each launch starts an empty file: what you can share is *this* session. Android keeps 10 files of
- * 5 MB and rotates. Matching Android would mean writing our own rotation on top of multipaz's sink,
- * which is a bigger thing than this feature; matching the official iOS wallet means accepting the
- * single truncating file, which is what it does too.
+ *  - **it truncates.** `startLoggingToFile` opens `SystemFileSystem.sink(path)` with no `append`, so
+ *    every launch began an empty file and the previous session's log was simply gone.
+ *  - **it has no size cap**, so a long-lived session grew one file without bound.
  *
- * **It has no size cap.** A long session grows the file unbounded. `Library/Caches` is therefore the
- * right home: iOS may reclaim it under storage pressure, and it is excluded from device backups,
- * which is what a diagnostic log should be. `NSCachesDirectory` is created by the system, so unlike
- * the official iOS wallet — which makes its directory and an empty file before sharing — nothing has
- * to be prepared here. Note this is *not* where the wallet's data lives; that is multipaz's own
- * non-backed-up store, so losing this directory costs nothing but diagnostics.
+ * Android has neither problem: `LogController` plants a Treessence `FileLoggerTree` with
+ * `withSizeLimit`, `withFileLimit` and `appendToFile(true)`. [FILE_SIZE_LIMIT] and [FILE_LIMIT] are
+ * those same numbers, so the two platforms keep a comparable amount of history and share a comparable
+ * bundle.
+ *
+ * The hook is `Logger.logPrinter`, which multipaz consults for **every** entry. Two consequences worth
+ * knowing before touching this:
+ *
+ *  - it **replaces** the platform printer rather than adding to it (`printLine` reads
+ *    `this.logPrinter ?: getPlatformLogPrinter()`), so this class owes the console the output that
+ *    printer used to provide — hence the [println]. `getPlatformLogPrinter` is `internal` to multipaz,
+ *    so it cannot be delegated to.
+ *  - `Logger.startLoggingToFile` is deliberately **not** called. Its writer is independent of
+ *    `logPrinter`, so it would duplicate every line into a second, non-rotating file.
+ *
+ * ## Location
+ *
+ * `Library/Caches/logs`, the counterpart of Android's `filesDir/logs`, with one deliberate difference:
+ * Caches is excluded from device backups and reclaimable under storage pressure, which is what a
+ * diagnostic log should be. Android's `filesDir` is *not* excluded — that project's `backup_rules.xml`
+ * and `data_extraction_rules.xml` are both empty templates — so its logs are eligible for cloud
+ * backup. The asymmetry favours iOS and is worth keeping. This is not where wallet data lives; that is
+ * multipaz's own non-backed-up store, so losing this directory costs nothing but diagnostics.
  */
 object IosLogFile {
 
+    /** Android's `FILE_SIZE_LIMIT`, so a generation holds a comparable amount on both platforms. */
+    private const val FILE_SIZE_LIMIT = 5_242_880L
+
+    /** Android's `FILE_LIMIT`: the file being written plus nine older generations. */
+    private const val FILE_LIMIT = 10
+
     /**
-     * The log file's absolute path, whether or not anything has been written to it yet.
+     * Guards [sink] and the rotation that swaps it.
      *
-     * Null only if iOS reports no caches directory, which does not happen on a real device but is not
-     * worth crashing over: the caller then reports "no logs", the same answer a platform without
-     * logging gives.
+     * multipaz calls its printer from whatever thread emitted the entry and Kotlin/Native has no
+     * `@Synchronized`, so two concurrent writes to one buffered sink could interleave or throw.
+     * `atomicfu`'s `ReentrantLock` is the answer `NativeSecurePin` already uses here. Note multipaz's
+     * own file writer takes no such lock, which is one more reason not to use it.
      */
-    val path: String? by lazy {
+    private val lock: ReentrantLock = reentrantLock()
+
+    private var sink: Sink? = null
+
+    /** The directory holding the rotating set. Mirrors Android's `filesDir/logs`. */
+    private val directory: Path? by lazy {
         val caches = NSSearchPathForDirectoriesInDomains(
             NSCachesDirectory,
             NSUserDomainMask,
             true,
         ).firstOrNull() as? String ?: return@lazy null
 
-        "$caches/${iosWalletConfig.logFileName}"
+        Path("$caches/logs")
     }
 
     /**
-     * Points multipaz's logger at [path]. Idempotent by way of multipaz, which closes and reopens an
-     * existing sink rather than failing.
+     * The file currently being written, generation 0.
+     *
+     * Null only if iOS reports no caches directory, which does not happen on a device but is not worth
+     * crashing over: callers then report "no logs", the same answer a platform without logging gives.
+     */
+    val path: String? get() = generation(0)?.toString()
+
+    /**
+     * Every generation that has content, newest first — what the settings row offers for sharing.
+     *
+     * Android shares its whole rotating set, so this hands the user a comparable bundle rather than the
+     * single file the first version of this class could offer.
+     */
+    fun paths(): List<String> = lock.withLock {
+        (0 until FILE_LIMIT)
+            .mapNotNull { index -> generation(index) }
+            .filter { candidate -> sizeOf(candidate) > 0L }
+            .map { candidate -> candidate.toString() }
+    }
+
+    /** Whether anything has been logged yet, which is what the settings row asks before offering it. */
+    fun hasContent(): Boolean = paths().isNotEmpty()
+
+    /**
+     * Installs the printer, **appending** to the current generation rather than truncating it.
      *
      * Called once at startup, before anything the log should capture. Failure is swallowed: a wallet
-     * that cannot open a diagnostic file must still start, and the only symptom is an empty log.
+     * that cannot open a diagnostic file must still start, and the symptom is console-only logging.
      */
     fun start() {
-        val target = path ?: return
+        val dir = directory ?: return
         try {
-            Logger.startLoggingToFile(Path(target))
-            Logger.i(TAG, "logging to $target")
+            SystemFileSystem.createDirectories(dir, mustCreate = false)
+            lock.withLock { openAppending() }
+            Logger.logPrinter = LogPrinter
+            Logger.i(TAG, "logging to $dir, up to $FILE_LIMIT x $FILE_SIZE_LIMIT bytes")
         } catch (t: Throwable) {
-            // Deliberately not rethrown — see above. The console still gets multipaz's output.
-            Logger.w(TAG, "could not open the log file at $target", t)
+            // Not rethrown — see above. The printer is left uninstalled, so multipaz keeps its own
+            // console output and nothing else changes.
+            println("$TAG: could not open the log directory at $dir: $t")
         }
     }
 
-    /** Whether there is a log file with anything in it, which is what the settings row asks. */
-    fun hasContent(): Boolean {
-        val target = path ?: return false
-        val metadata = try {
-            SystemFileSystem.metadataOrNull(Path(target))
-        } catch (_: Throwable) {
-            null
+    /**
+     * Every entry multipaz emits: to the console, because taking over `logPrinter` took that away, and
+     * to the current generation, rotating first when it is full.
+     */
+    private object LogPrinter : Logger.LogPrinter {
+        override fun print(
+            level: Logger.LogPrinter.Level,
+            tag: String,
+            msg: String,
+            throwable: Throwable?,
+        ) {
+            val line = prepareLine(level, tag, msg, throwable)
+            // Restores what `getPlatformLogPrinter` used to do; `simctl launch --console-pty` and the
+            // Xcode console both pick this up.
+            println(line)
+            append(line)
         }
-        return (metadata?.size ?: 0L) > 0L
     }
 
+    private fun append(line: String) = lock.withLock {
+        val open = sink ?: return@withLock
+        try {
+            if (sizeOf(generation(0)) >= FILE_SIZE_LIMIT) {
+                rotate()
+            }
+            (sink ?: return@withLock).apply {
+                writeString(line + "\n")
+                flush()
+            }
+        } catch (t: Throwable) {
+            // A failed write must not take down whatever was being logged. Drop the sink so the app
+            // carries on with console-only output instead of throwing on every subsequent entry.
+            runCatching { open.close() }
+            sink = null
+            println("$TAG: log write failed, continuing without a file: $t")
+        }
+    }
+
+    /**
+     * Shifts every generation up by one and starts a fresh 0, dropping the oldest.
+     *
+     * The caller holds [lock]. `atomicMove` rather than copy-then-delete: the set must never contain
+     * two files claiming the same generation, which a half-finished copy would produce.
+     */
+    private fun rotate() {
+        sink?.let { open -> runCatching { open.close() } }
+        sink = null
+
+        generation(FILE_LIMIT - 1)?.let { oldest ->
+            SystemFileSystem.delete(oldest, mustExist = false)
+        }
+        for (index in FILE_LIMIT - 2 downTo 0) {
+            val from = generation(index) ?: continue
+            val to = generation(index + 1) ?: continue
+            if (SystemFileSystem.exists(from)) {
+                SystemFileSystem.atomicMove(from, to)
+            }
+        }
+        openAppending()
+    }
+
+    /** The caller holds [lock]. */
+    private fun openAppending() {
+        val target = generation(0) ?: return
+        sink = SystemFileSystem.sink(target, append = true).buffered()
+    }
+
+    /**
+     * Generation [index]'s path, substituting Android's `%g` placeholder so the two names line up:
+     * `eudi-android-wallet-logs%g.txt` there, `eudi-ios-wallet-logs%g.txt` here. A configured name
+     * without the placeholder still rotates — the index is prefixed instead — so a mis-set config
+     * degrades rather than collapsing every generation onto one file.
+     */
+    private fun generation(index: Int): Path? {
+        val dir = directory ?: return null
+        val name = iosWalletConfig.logFileName
+        val resolved =
+            if (name.contains(GENERATION)) name.replace(GENERATION, index.toString())
+            else "$index-$name"
+        return Path(dir, resolved)
+    }
+
+    private fun sizeOf(candidate: Path?): Long =
+        candidate?.let { runCatching { SystemFileSystem.metadataOrNull(it)?.size }.getOrNull() } ?: 0L
+
+    /**
+     * multipaz's own line format, mirrored because `Logger.prepareLine` is `internal` to it. Keeping
+     * the shape identical means a line written through this printer reads the same as one multipaz
+     * wrote itself, which matters when comparing an iOS log against the console or against Android's.
+     */
+    private fun prepareLine(
+        level: Logger.LogPrinter.Level,
+        tag: String,
+        msg: String,
+        throwable: Throwable?,
+    ): String {
+        val timestamp = Clock.System.now()
+            .toLocalDateTime(TimeZone.currentSystemDefault())
+            .format(LocalDateTime.Formats.ISO)
+        val suffix = throwable?.let { "\nEXCEPTION: $it" } ?: ""
+        return "$timestamp: ${level.name}: $tag: $msg$suffix"
+    }
+
+    private const val GENERATION = "%g"
     private const val TAG = "IosLogFile"
 }

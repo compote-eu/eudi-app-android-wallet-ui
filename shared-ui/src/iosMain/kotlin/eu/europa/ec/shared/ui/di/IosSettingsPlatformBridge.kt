@@ -142,10 +142,10 @@ internal class IosSettingsPlatformBridge(
      * is no longer omitted: [canRetrieveLogs] is true and this points at the file
      * [IosLogFile] has multipaz writing.
      *
-     * At most one path, where Android has up to ten — it rotates and multipaz does not.
+     * Up to ten paths, the same as Android: [IosLogFile] rotates rather than leaning on multipaz's
+     * single truncating file, so both platforms hand over a comparable bundle.
      */
-    override fun logFilePaths(): List<String> =
-        if (IosLogFile.hasContent()) listOfNotNull(IosLogFile.path) else emptyList()
+    override fun logFilePaths(): List<String> = IosLogFile.paths()
 }
 
 private const val CFBundleShortVersionString = "CFBundleShortVersionString"

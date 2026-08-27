@@ -21,20 +21,6 @@ import eu.europa.ec.shared.wallet.revocation.StatusSignerTrustDomain
 import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
 
 /**
- * Which build this is, mirroring Android's `AppFlavor`.
- *
- * The names match Android's product flavours exactly, because the whole point of this file is that a
- * reader comparing the two platforms should find the same two words.
- */
-enum class IosAppFlavor {
-    /** Talks to the EU **dev** deployments. Android suffixes its application id with `.dev`. */
-    DEV,
-
-    /** Talks to the EU **production-shaped** deployments. Android's un-suffixed flavour. */
-    DEMO,
-}
-
-/**
  * Everything that differs between the two builds — and nothing that does not.
  *
  * The iOS counterpart of Android's per-flavour source sets. Android varies a build by shipping two
@@ -44,28 +30,18 @@ enum class IosAppFlavor {
  * `-PappFlavor`, and [IosWalletConfigImpl] is the file with one name and two bodies.
  *
  * **Membership is deliberate and narrow.** A value belongs here only if Android's two
- * `WalletCoreConfigImpl.kt` / `ConfigLogicImpl.kt` files disagree about it — measured by diffing
- * them, which yields exactly these five. Everything else stays where it is: the client id, the
- * redirect URI and the trust configuration are **identical** in both Android flavours, so putting
- * them here would invite a divergence the Android side does not have.
+ * `WalletCoreConfigImpl.kt` / `ConfigLogicImpl.kt` files disagree about it — measured by diffing them.
+ * Everything else stays where it is: the client id, the redirect URI and the trust configuration are
+ * **identical** in both Android flavours, so putting them here would invite a divergence the Android
+ * side does not have.
+ *
+ * **What is left here is what only iOS has.** The settings both platforms answer moved to
+ * [SharedAppConfig] and [SharedWalletConfig] in commonMain, which this extends — so `appFlavor`,
+ * `changelogUrl`, `walletProviderUrl` and `issuerUrls` are now declared once for both platforms and
+ * still supplied per flavour here. The three below remain iOS-only because Android hard-codes their
+ * equivalents rather than exposing them; [SharedWalletConfig] records what hoisting them would cost.
  */
-interface IosWalletConfig {
-
-    /** Which build this is. Only for display and diagnostics; nothing branches on it. */
-    val appFlavor: IosAppFlavor
-
-    /**
-     * The OpenID4VCI issuers, most-preferred first, as `WalletCoreConfigImpl.issuersConfig` lists
-     * them.
-     *
-     * URLs only. The client id and redirect URI are the same in both Android flavours, so
-     * `IosIssuerCatalog` supplies them and a flavour file cannot accidentally disagree about the one
-     * value the authorization server matches on.
-     */
-    val issuerUrls: List<String>
-
-    /** The wallet provider that attests this instance — Android's `walletProviderUrl`. */
-    val walletProviderUrl: String
+interface IosWalletConfig : SharedAppConfig, SharedWalletConfig {
 
     /**
      * How many credentials to ask for per document, from Android's `RotatingBatch`/`OnceOnly`
@@ -76,9 +52,6 @@ interface IosWalletConfig {
      * whose cost is platform-specific — if issuance becomes slow, this is why.
      */
     val credentialBatchSize: Int
-
-    /** Where "what's new" points, or null when this build publishes no changelog. */
-    val changelogUrl: String?
 
     /**
      * What a status list whose signer cannot be trusted costs, mirroring the
@@ -114,9 +87,10 @@ interface IosWalletConfig {
      * ours is `org.multipaz.util.Logger`, theirs is Wallet Kit — so this is a name, not a path: where
      * it lands is [IosLogFile]'s business.
      *
-     * Android's equivalent rotates (`eudi-android-wallet-logs%g.txt`, 10 files of 5 MB, via
-     * Treessence). multipaz's file logger has **no rotation and no size cap**, and truncates on every
-     * `startLoggingToFile`, so this is one session's log — see [IosLogFile].
+     * A pattern, not a plain filename: `%g` is the generation counter, exactly as in Android's
+     * `eudi-android-wallet-logs%g.txt`. [IosLogFile] substitutes it and keeps the same 10 files of
+     * 5 MB that Treessence keeps there, because multipaz's own file writer has no rotation and
+     * truncates on every `startLoggingToFile`.
      */
     val logFileName: String
 }

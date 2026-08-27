@@ -225,6 +225,6 @@ internal class WalletCoreConfigImpl(
             )
         )
 
-    override val walletProviderHost: String
+    override val walletProviderUrl: String
         get() = "https://wallet-provider.eudiw.dev"
 }
