@@ -29,6 +29,8 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
+import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
@@ -36,6 +38,7 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.X509CertChain
 import org.multipaz.revocation.RevocationStatus
 import org.multipaz.revocation.StatusList
 import org.multipaz.cbor.Tstr
@@ -434,6 +437,46 @@ class MultipazWalletEngineTest {
                 subject = "https://issuer.test/statuslists/1",
             )
 
+    /**
+     * The same list signed with an `x5c` chain rather than anonymously — a root plus a leaf, because
+     * `buildJwt` emits `toX5c(excludeRoot = true)` and a lone self-signed certificate would leave the
+     * header's `x5c` empty. Paired with a credential naming no `certificate`, this is the unanchored
+     * case: readable, but nothing ties it to a trusted party.
+     */
+    private suspend fun x5cTokenSaying(key: EcPrivateKey, revoked: List<Int>): String {
+        val rootKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val rootName = X500Name.fromName("CN=Status List Root")
+        val root = X509Cert.Builder(
+            publicKey = rootKey.publicKey,
+            signingKey = AsymmetricKey.AnonymousExplicit(privateKey = rootKey),
+            serialNumber = ASN1Integer(20L),
+            subject = rootName,
+            issuer = rootName,
+            validFrom = Clock.System.now() - 1.days,
+            validUntil = Clock.System.now() + 30.days,
+        ).build()
+        val leaf = X509Cert.Builder(
+            publicKey = key.publicKey,
+            signingKey = AsymmetricKey.AnonymousExplicit(privateKey = rootKey),
+            serialNumber = ASN1Integer(21L),
+            subject = X500Name.fromName("CN=Status List Signer"),
+            issuer = rootName,
+            validFrom = Clock.System.now() - 1.days,
+            validUntil = Clock.System.now() + 30.days,
+        ).build()
+        return StatusList.Builder(1)
+            .apply { revoked.forEach { addStatus(it, 1) } }
+            .build()
+            .compress()
+            .serializeAsJwt(
+                key = AsymmetricKey.X509CertifiedExplicit(
+                    certChain = X509CertChain(listOf(leaf, root)),
+                    privateKey = key,
+                ),
+                subject = "https://issuer.test/statuslists/1",
+            )
+    }
+
     private fun checkerServing(token: String) =
         MultipazRevocationChecker(HttpClient(MockEngine { respond(token) }))
 
@@ -468,6 +511,88 @@ class MultipazWalletEngineTest {
         assertEquals(listOf(documentId), engine.getRevokedDocumentIds())
         // And the flag reaches the projection the document list renders.
         assertTrue(engine.getAllDocumentsWithDetails("en").single().isRevoked)
+    }
+
+    // ---- the configured trust policy decides what an unanchored reading may do ----------------
+
+    @Test
+    fun under_inform_an_unanchored_reading_flags_a_document_it_calls_revoked() = runTest {
+        // The shipped posture, and the reference wallets': the status decides. Being unable to
+        // anchor the signer must not mean a revoked credential keeps displaying as valid.
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val store = store()
+        val documentId = store.seedPid(
+            revocationStatus = RevocationStatus.StatusList(
+                idx = 4,
+                uri = "https://issuer.test/statuslists/1",
+                certificate = null,
+            )
+        )
+        val engine = MultipazWalletEngine(store)
+        val outcomes = mutableMapOf<String, RevocationOutcome>()
+
+        val newlyRevoked = engine.refreshRevocationStatuses(
+            checker = checkerServing(x5cTokenSaying(key, revoked = listOf(4))),
+            policy = StatusTrustPolicyDomain.Inform,
+            onOutcome = { id, outcome -> outcomes[id] = outcome },
+        )
+
+        // The reading is honest about what it could establish...
+        val outcome = outcomes.getValue(documentId)
+        assertTrue(outcome.isRevoked)
+        assertFalse(outcome.signerAnchored)
+        // ...and under Inform it still decides.
+        assertEquals(listOf(documentId), newlyRevoked.map { it.id })
+        assertTrue(engine.isDocumentRevoked(documentId))
+    }
+
+    @Test
+    fun under_enforce_an_unanchored_reading_decides_nothing() = runTest {
+        // The other posture the config allows. Same token, same reading, opposite outcome — which is
+        // the whole point of the knob being config rather than a hard-coded gate.
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val store = store()
+        val documentId = store.seedPid(
+            revocationStatus = RevocationStatus.StatusList(
+                idx = 4,
+                uri = "https://issuer.test/statuslists/1",
+                certificate = null,
+            )
+        )
+        val engine = MultipazWalletEngine(store)
+
+        val newlyRevoked = engine.refreshRevocationStatuses(
+            checker = checkerServing(x5cTokenSaying(key, revoked = listOf(4))),
+            policy = StatusTrustPolicyDomain.Enforce,
+        )
+
+        assertTrue(newlyRevoked.isEmpty())
+        assertFalse(engine.isDocumentRevoked(documentId))
+    }
+
+    @Test
+    fun under_enforce_an_unanchored_valid_cannot_clear_an_existing_revocation() = runTest {
+        // The dangerous direction. Under Enforce, answering the status list URL must not be enough
+        // to un-revoke a credential — which is the whole purpose of verifying the list's signature.
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val store = store()
+        val documentId = store.seedPid(
+            revocationStatus = RevocationStatus.StatusList(
+                idx = 4,
+                uri = "https://issuer.test/statuslists/1",
+                certificate = null,
+            )
+        )
+        store.revokedDocumentsTable().insert(key = documentId, data = ByteString())
+        val engine = MultipazWalletEngine(store)
+        assertTrue(engine.isDocumentRevoked(documentId))
+
+        engine.refreshRevocationStatuses(
+            checker = checkerServing(x5cTokenSaying(key, revoked = emptyList())),
+            policy = StatusTrustPolicyDomain.Enforce,
+        )
+
+        assertTrue(engine.isDocumentRevoked(documentId), "an unanchored Valid must not un-revoke")
     }
 
     @Test

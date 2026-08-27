@@ -16,6 +16,9 @@
 
 package eu.europa.ec.shared.wallet.config
 
+import eu.europa.ec.shared.wallet.revocation.StatusSignerTrustDomain
+import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
+
 /**
  * Which build this is, mirroring Android's `AppFlavor`.
  *
@@ -75,6 +78,32 @@ interface IosWalletConfig {
 
     /** Where "what's new" points, or null when this build publishes no changelog. */
     val changelogUrl: String?
+
+    /**
+     * What a status list whose signer cannot be trusted costs, mirroring the
+     * `configureDocumentStatusResolver { configureTrust { policy { … } } }` knob Android sets in
+     * `WalletCoreConfigImpl`.
+     *
+     * **[StatusTrustPolicyDomain.Inform], matching Android and the official iOS wallet.** The
+     * tempting alternative is `Enforce`, on the grounds that iOS has no trust anchors and so cannot
+     * check a signer at all. That argument does not survive contact with what `INFORM` actually does
+     * upstream: wallet-core evaluates the chain and then **discards the result**, acting on the
+     * status either way. So its evaluation buys no protection under `INFORM`, and `Enforce` here
+     * would not be matching Android's guarantee — it would be inventing a stricter posture than
+     * either reference wallet has.
+     *
+     * The cost of that stricter posture is the deciding argument against it: on iOS every reading is
+     * [StatusSignerTrustDomain.NoAnchorsAvailable], so `Enforce` makes revocation **permanently
+     * inert** — a credential its issuer revoked would keep displaying as valid, which is the exact
+     * harm the whole check exists to prevent. The un-revoke risk it would trade that for requires
+     * control of the status list's HTTPS endpoint, and an attacker with that can equally serve
+     * Android a list saying "valid".
+     *
+     * Set this to [StatusTrustPolicyDomain.Enforce] for a deployment that ships its own anchors, or
+     * once eudi-lib-kmp-etsi-1196x2#130 makes the ETSI lists usable on iOS. It is one line, on
+     * purpose.
+     */
+    val statusTrustPolicy: StatusTrustPolicyDomain
 }
 
 /**

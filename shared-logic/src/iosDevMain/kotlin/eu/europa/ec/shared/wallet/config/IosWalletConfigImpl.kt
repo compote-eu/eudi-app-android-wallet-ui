@@ -22,6 +22,8 @@
 // disagree, the Android file is right and this one is a bug.
 package eu.europa.ec.shared.wallet.config
 
+import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
+
 internal object IosWalletConfigImpl : IosWalletConfig {
 
     override val appFlavor = IosAppFlavor.DEV
@@ -36,6 +38,10 @@ internal object IosWalletConfigImpl : IosWalletConfig {
     // Android's dev flavour asks for 60. See [IosWalletConfig.credentialBatchSize] for why this number
     // costs more on iOS than it does there.
     override val credentialBatchSize = 60
+
+    // Matches Android's dev flavour, which sets INFORM for the document status resolver.
+    // See [IosWalletConfig.statusTrustPolicy] for what that does and does not buy.
+    override val statusTrustPolicy = StatusTrustPolicyDomain.Inform
 
     // Android's dev flavour publishes no changelog, so the settings screen has one row fewer.
     override val changelogUrl: String? = null

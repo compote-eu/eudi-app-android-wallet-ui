@@ -29,6 +29,10 @@ import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.document.toWalletDocument
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.document.Document
+import eu.europa.ec.shared.wallet.config.iosWalletConfig
+import eu.europa.ec.shared.wallet.revocation.RevocationActionDomain
+import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
+import eu.europa.ec.shared.wallet.revocation.revocationAction
 import org.multipaz.storage.KeyExistsStorageException
 
 /**
@@ -271,6 +275,7 @@ internal class MultipazWalletEngine(
      */
     suspend fun refreshRevocationStatuses(
         checker: MultipazRevocationChecker,
+        policy: StatusTrustPolicyDomain = iosWalletConfig.statusTrustPolicy,
         onOutcome: (documentId: String, outcome: RevocationOutcome) -> Unit = { _, _ -> },
     ): List<WalletDocument> {
         val table = store.revokedDocumentsTable()
@@ -281,17 +286,25 @@ internal class MultipazWalletEngine(
             val outcome = checker.check(document.revocationStatus())
             onOutcome(document.identifier, outcome)
 
-            when {
-                outcome.isRevoked && document.identifier !in alreadyRevoked -> {
+            // The decision is not made here. Both platforms map their library's result onto the
+            // shared reading and ask `revocationAction`, so the rule lives in one place and is
+            // tested on both targets — see `eu.europa.ec.shared.wallet.revocation`.
+            val action = revocationAction(
+                status = outcome.toDocumentStatusDomain(),
+                signerTrust = outcome.toSignerTrustDomain(),
+                policy = policy,
+                currentlyFlagged = document.identifier in alreadyRevoked,
+            )
+
+            when (action) {
+                RevocationActionDomain.Flag -> {
                     table.insert(key = document.identifier, data = ByteString())
                     newlyRevoked += WalletDocument(id = document.identifier)
                 }
 
-                // Valid again: drop the flag. `Unknown` deliberately does not — an unreachable
-                // status list must not silently clear a revocation.
-                outcome is RevocationOutcome.Valid && document.identifier in alreadyRevoked -> {
-                    table.delete(document.identifier)
-                }
+                RevocationActionDomain.Clear -> table.delete(document.identifier)
+
+                RevocationActionDomain.Leave -> Unit
             }
         }
 

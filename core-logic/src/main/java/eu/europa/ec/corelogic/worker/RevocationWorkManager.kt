@@ -22,6 +22,11 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.shared.wallet.WalletEngine
+import eu.europa.ec.shared.wallet.revocation.DocumentStatusDomain
+import eu.europa.ec.shared.wallet.revocation.RevocationActionDomain
+import eu.europa.ec.shared.wallet.revocation.StatusSignerTrustDomain
+import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
+import eu.europa.ec.shared.wallet.revocation.revocationAction
 import eu.europa.ec.corelogic.model.RevokedDocumentParcel
 import eu.europa.ec.corelogic.util.CoreActions
 import eu.europa.ec.corelogic.util.CoreActions.REVOCATION_IDS_DETAILS_EXTRA
@@ -54,6 +59,19 @@ import org.koin.android.annotation.KoinWorker
  * @param appContext The application context.
  * @param workerParams Parameters for the worker.
  */
+/**
+ * wallet-core's status, in the vocabulary the shared policy speaks.
+ *
+ * `Status` has more cases than the wallet acts on; everything outside the three below is a value this
+ * wallet does not interpret, which is exactly [DocumentStatusDomain.Unknown].
+ */
+private fun Status.toDocumentStatusDomain(): DocumentStatusDomain = when (this) {
+    is Status.Valid -> DocumentStatusDomain.Valid
+    is Status.Invalid -> DocumentStatusDomain.Invalid
+    is Status.Suspended -> DocumentStatusDomain.Suspended
+    else -> DocumentStatusDomain.Unknown
+}
+
 @KoinWorker
 class RevocationWorkManager(
     appContext: Context,
@@ -79,22 +97,32 @@ class RevocationWorkManager(
                 .forEach { document ->
                     walletCoreDocumentsController.resolveDocumentStatus(document).fold(
                         onSuccess = { status ->
-                            when (status) {
-                                is Status.Invalid, Status.Suspended -> {
-                                    if (!storedRevokedDocuments.any { it == document.id }) {
-                                        revokedDocuments.add(document)
-                                    }
-                                }
-
-                                is Status.Valid -> {
-                                    if (storedRevokedDocuments.any { it == document.id }) {
-                                        fromRevokedToValid.add(document.id)
-                                    }
-                                }
-
-                                else -> {}
+                            // The decision is shared with iOS rather than written twice: both
+                            // platforms map their library's result onto the same reading and ask
+                            // `revocationAction`. See `eu.europa.ec.shared.wallet.revocation`, whose
+                            // tests run on the JVM and on Kotlin/Native.
+                            //
+                            // `NotEvaluated` is the honest trust value here, not a placeholder:
+                            // wallet-core *does* evaluate the signer's chain, but under
+                            // `TrustPolicy.Action.INFORM` it logs the result and discards it, so
+                            // `resolveStatus` returns a bare status and this worker cannot see it.
+                            // Set the resolver's policy to ENFORCE in `WalletCoreConfigImpl` and an
+                            // untrusted list arrives as a failure below instead.
+                            val action = revocationAction(
+                                status = status.toDocumentStatusDomain(),
+                                signerTrust = StatusSignerTrustDomain.NotEvaluated,
+                                policy = StatusTrustPolicyDomain.Inform,
+                                currentlyFlagged = storedRevokedDocuments.any { it == document.id },
+                            )
+                            when (action) {
+                                RevocationActionDomain.Flag -> revokedDocuments.add(document)
+                                RevocationActionDomain.Clear -> fromRevokedToValid.add(document.id)
+                                RevocationActionDomain.Leave -> {}
                             }
                         },
+                        // A trust failure under ENFORCE lands here (StatusListNotTrustedException),
+                        // as does any transport or parse error. Leaving the document as it was is the
+                        // same outcome the shared policy produces for a reading it may not use.
                         onFailure = {}
                     )
                 }

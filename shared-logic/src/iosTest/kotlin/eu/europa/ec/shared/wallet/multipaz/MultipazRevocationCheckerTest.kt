@@ -30,6 +30,7 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.X509CertChain
 import org.multipaz.revocation.RevocationStatus
 import org.multipaz.revocation.StatusList
 import kotlin.test.Test
@@ -89,6 +90,63 @@ class MultipazRevocationCheckerTest {
             )
     }
 
+    /**
+     * A leaf certificate for [key], issued by a separate self-signed root.
+     *
+     * ⚠️ Two certificates are required, not one. `buildJwt` emits
+     * `certChain.toX5c(excludeRoot = true)`, so a lone self-signed certificate **is** the root and is
+     * dropped — the header then carries an empty `x5c` and multipaz fails with "List is empty."
+     * A root plus a leaf transmits the leaf, which is what a real issuer publishes.
+     */
+    private suspend fun leafCertifiedBy(
+        key: EcPrivateKey,
+        rootKey: EcPrivateKey,
+    ): X509CertChain {
+        val rootName = X500Name.fromName("CN=Status List Root")
+        val root = X509Cert.Builder(
+            publicKey = rootKey.publicKey,
+            signingKey = AsymmetricKey.AnonymousExplicit(privateKey = rootKey),
+            serialNumber = ASN1Integer(10L),
+            subject = rootName,
+            issuer = rootName,
+            validFrom = Clock.System.now() - 1.days,
+            validUntil = Clock.System.now() + 30.days,
+        ).build()
+        val leaf = X509Cert.Builder(
+            publicKey = key.publicKey,
+            signingKey = AsymmetricKey.AnonymousExplicit(privateKey = rootKey),
+            serialNumber = ASN1Integer(11L),
+            subject = X500Name.fromName("CN=Status List Signer"),
+            issuer = rootName,
+            validFrom = Clock.System.now() - 1.days,
+            validUntil = Clock.System.now() + 30.days,
+        ).build()
+        return X509CertChain(listOf(leaf, root))
+    }
+
+    /**
+     * The same list, but signed with an `x5c` chain instead of anonymously — which is what both EU
+     * dev issuers actually publish.
+     */
+    private suspend fun x5cStatusListToken(
+        key: EcPrivateKey,
+        revokedIndices: List<Int> = emptyList(),
+        bitsPerItem: Int = 1,
+        statuses: Map<Int, Int> = revokedIndices.associateWith { 1 },
+    ): String {
+        val builder = StatusList.Builder(bitsPerItem)
+        statuses.forEach { (index, status) -> builder.addStatus(index, status) }
+        return builder.build()
+            .compress()
+            .serializeAsJwt(
+                key = AsymmetricKey.X509CertifiedExplicit(
+                    certChain = leafCertifiedBy(key, rootKey = signerKey()),
+                    privateKey = key,
+                ),
+                subject = "https://issuer.test/statuslists/1",
+            )
+    }
+
     private fun checkerServing(token: String): MultipazRevocationChecker =
         MultipazRevocationChecker(
             HttpClient(MockEngine { respond(token) })
@@ -112,7 +170,7 @@ class MultipazRevocationCheckerTest {
 
         val outcome = checker.check(statusEntry(key, idx = 0))
 
-        assertEquals(RevocationOutcome.Valid, outcome)
+        assertEquals(RevocationOutcome.Valid(signerAnchored = true), outcome)
         assertTrue(!outcome.isRevoked)
     }
 
@@ -123,7 +181,7 @@ class MultipazRevocationCheckerTest {
 
         val outcome = checker.check(statusEntry(key, idx = 7))
 
-        assertEquals(RevocationOutcome.Invalid, outcome)
+        assertEquals(RevocationOutcome.Invalid(signerAnchored = true), outcome)
         // The bit that makes the document show as revoked in the UI.
         assertTrue(outcome.isRevoked)
     }
@@ -138,7 +196,7 @@ class MultipazRevocationCheckerTest {
 
         val outcome = checker.check(statusEntry(key, idx = 3))
 
-        assertEquals(RevocationOutcome.Suspended, outcome)
+        assertEquals(RevocationOutcome.Suspended(signerAnchored = true), outcome)
         assertTrue(outcome.isRevoked)
     }
 
@@ -233,11 +291,10 @@ class MultipazRevocationCheckerTest {
     }
 
     @Test
-    fun a_status_list_with_no_signer_key_says_why_rather_than_failed_requirement() = runTest {
-        // What both EU dev issuers actually publish: an `x5c`-signed status list, and a credential whose
-        // status claim names no `certificate`. multipaz refuses it — correctly, an unverifiable list must
-        // not be believed — but with a bare "Failed requirement." that says nothing. The reason a reader
-        // needs is that trust anchors are missing, and that the fix is not in this class.
+    fun an_unparseable_list_with_no_named_signer_says_why_it_was_rejected() = runTest {
+        // No `certificate` in the credential, so the unanchored path runs — and the token is not a
+        // JWT at all, so it is refused. The reason has to name the rejection rather than surface
+        // multipaz's bare "Failed requirement.".
         val checker = MultipazRevocationChecker(
             httpClient = HttpClient(MockEngine { respond("not.a.validjwt") }),
         )
@@ -247,7 +304,70 @@ class MultipazRevocationCheckerTest {
         )
 
         val unknown = assertIs<RevocationOutcome.Unknown>(outcome)
-        assertTrue(unknown.reason.contains("cannot validate"), unknown.reason)
-        assertTrue(unknown.reason.contains("trust anchors"), unknown.reason)
+        assertTrue(unknown.reason.contains("was rejected"), unknown.reason)
+    }
+
+    // ---- INFORM: an x5c-only list is read, and marked unanchored ------------------------------
+
+    @Test
+    fun an_x5c_signed_list_the_credential_does_not_name_is_read_but_not_anchored() = runTest {
+        // Exactly what both EU dev issuers publish: the list carries an `x5c` chain and the
+        // credential's status claim names no `certificate`. This used to be refused outright. Now the
+        // chain is validated structurally and the status is read — with `signerAnchored = false`, so
+        // no caller may act on it. Android's document status resolver is INFORM for the same reason.
+        val key = signerKey()
+        val checker = checkerServing(x5cStatusListToken(key, revokedIndices = listOf(7)))
+
+        val valid = checker.check(
+            RevocationStatus.StatusList(idx = 0, uri = "https://issuer.test/sl", certificate = null)
+        )
+        val revoked = checker.check(
+            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null)
+        )
+
+        assertEquals(RevocationOutcome.Valid(signerAnchored = false), valid)
+        assertEquals(RevocationOutcome.Invalid(signerAnchored = false), revoked)
+        // The verdict is still readable — it just may not move persisted state.
+        assertTrue(revoked.isRevoked)
+    }
+
+    @Test
+    fun naming_the_signer_anchors_the_same_list_that_would_otherwise_be_unanchored() = runTest {
+        // The contrast that gives `signerAnchored` its meaning: identical token, and the only
+        // difference is whether the issuer named the signer in data it signed.
+        val key = signerKey()
+        val token = x5cStatusListToken(key, revokedIndices = listOf(7))
+
+        val anchored = checkerServing(token).check(statusEntry(key, idx = 7))
+        val unanchored = checkerServing(token).check(
+            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null)
+        )
+
+        assertEquals(RevocationOutcome.Invalid(signerAnchored = true), anchored)
+        assertEquals(RevocationOutcome.Invalid(signerAnchored = false), unanchored)
+    }
+
+    @Test
+    fun a_list_whose_x5c_chain_does_not_verify_is_still_refused() = runTest {
+        // The floor under the INFORM change: unanchored is not unchecked. The chain's own signature
+        // is verified, so a token whose `x5c` certifies a different key than the one that signed it
+        // must not be read at all.
+        val signingKey = signerKey()
+        val unrelatedKey = signerKey()
+        val token = StatusList.Builder(1).build()
+            .compress()
+            .serializeAsJwt(
+                key = AsymmetricKey.X509CertifiedExplicit(
+                    certChain = leafCertifiedBy(unrelatedKey, rootKey = signerKey()),
+                    privateKey = signingKey,
+                ),
+                subject = "https://issuer.test/statuslists/1",
+            )
+
+        val outcome = checkerServing(token).check(
+            RevocationStatus.StatusList(idx = 0, uri = "https://issuer.test/sl", certificate = null)
+        )
+
+        assertIs<RevocationOutcome.Unknown>(outcome)
     }
 }

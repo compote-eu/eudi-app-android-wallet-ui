@@ -22,6 +22,8 @@
 // disagree, the Android file is right and this one is a bug.
 package eu.europa.ec.shared.wallet.config
 
+import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
+
 internal object IosWalletConfigImpl : IosWalletConfig {
 
     override val appFlavor = IosAppFlavor.DEMO
@@ -35,6 +37,10 @@ internal object IosWalletConfigImpl : IosWalletConfig {
 
     // Android's demo flavour asks for 10.
     override val credentialBatchSize = 10
+
+    // Matches Android's demo flavour, which sets INFORM for the document status resolver.
+    // See [IosWalletConfig.statusTrustPolicy] for what that does and does not buy.
+    override val statusTrustPolicy = StatusTrustPolicyDomain.Inform
 
     override val changelogUrl: String? =
         "https://github.com/eu-digital-identity-wallet/eudi-app-android-wallet-ui/releases"
