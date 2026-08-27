@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.config
 
+import eu.europa.ec.shared.wallet.log.IosLogFile
 import eu.europa.ec.shared.wallet.revocation.StatusSignerTrustDomain
 import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
 
@@ -104,6 +105,20 @@ interface IosWalletConfig {
      * purpose.
      */
     val statusTrustPolicy: StatusTrustPolicyDomain
+
+    /**
+     * The file multipaz's logger writes to, inside the app's own container.
+     *
+     * Mirrors `walletKitConfig.logFileName` in the official iOS wallet, which hands the same kind of
+     * name to `EudiWallet` and later asks it for the URL. The engine owns the file on both sides —
+     * ours is `org.multipaz.util.Logger`, theirs is Wallet Kit — so this is a name, not a path: where
+     * it lands is [IosLogFile]'s business.
+     *
+     * Android's equivalent rotates (`eudi-android-wallet-logs%g.txt`, 10 files of 5 MB, via
+     * Treessence). multipaz's file logger has **no rotation and no size cap**, and truncates on every
+     * `startLoggingToFile`, so this is one session's log — see [IosLogFile].
+     */
+    val logFileName: String
 }
 
 /**

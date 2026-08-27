@@ -25,7 +25,6 @@ import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvai
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.shared.platform.PlatformContext
-import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
@@ -50,7 +49,7 @@ class SettingsInteractorImpl(
 
     override fun getChangelogUrl(): String? = platform.changelogUrl
 
-    override fun getLogShareIntent(): PlatformIntent? = platform.logShareIntent()
+    override fun getLogFilePaths(): List<String> = platform.logFilePaths()
 
     override fun getBiometricsAvailability(): BiometricsAvailability =
         platform.biometricsAvailability()

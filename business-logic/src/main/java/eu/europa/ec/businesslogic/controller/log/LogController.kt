@@ -17,9 +17,7 @@
 package eu.europa.ec.businesslogic.controller.log
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
-import androidx.core.content.FileProvider
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import fr.bipi.treessence.file.FileLoggerTree
 import timber.log.Timber
@@ -36,11 +34,19 @@ interface LogController {
     fun w(message: () -> String)
     fun i(tag: String, message: () -> String)
     fun i(message: () -> String)
-    fun retrieveLogFileUris(): List<Uri>
+    /**
+     * The log files themselves. Replaces `retrieveLogFileUris`: the settings bridge now reports
+     * absolute paths so iOS can answer the same question, and building a shareable `Uri` moved to the
+     * platform's share action, which is the only place that needs a `FileProvider`.
+     */
+    fun retrieveLogFiles(): List<File>
 }
 
 class LogControllerImpl(
-    private val context: Context,
+    // Not a property: only the `logsDir` initializer below needs it, and that runs at construction.
+    // It held a `val` while `retrieveLogFileUris` built FileProvider Uris here; that moved to
+    // `PlatformScreenActions.shareFiles`, which is the only place a provider authority belongs.
+    context: Context,
     configLogic: ConfigLogic
 ) : LogController {
 
@@ -107,9 +113,5 @@ class LogControllerImpl(
         i(tag, message)
     }
 
-    override fun retrieveLogFileUris(): List<Uri> {
-        return fileLoggerTree.files.map {
-            FileProvider.getUriForFile(context, "${context.packageName}.provider", it)
-        }
-    }
+    override fun retrieveLogFiles(): List<File> = fileLoggerTree.files.toList()
 }

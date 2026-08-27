@@ -53,12 +53,27 @@ interface PlatformScreenActions {
     /**
      * Offers [intent] to the user's choice of app, under [title] — Android's share sheet.
      *
-     * The intent is built by whichever platform code owns the payload (the settings screen's log
-     * files, for instance) and is opaque here, so this seam only *presents* it. On iOS a
-     * [PlatformIntent] cannot be constructed at all, which makes this statically unreachable there
-     * rather than unimplemented.
+     * ⚠️ **Superseded for file sharing, and currently unreachable.** Its only caller was the settings
+     * log-share branch, which now uses [shareFiles] — a path is something both platforms have, an
+     * Android `Intent` is not. Kept rather than deleted because sharing an arbitrary platform intent
+     * is a legitimate capability Android may need again; reach for [shareFiles] for anything
+     * file-shaped, since this one can only ever be a no-op on iOS.
+     *
+     * The intent is built by whichever platform code owns the payload and is opaque here, so this
+     * seam only *presents* it. On iOS a [PlatformIntent] cannot be constructed at all, which makes
+     * this statically unreachable there rather than unimplemented.
      */
     fun shareViaChooser(intent: PlatformIntent, title: String?)
+
+    /**
+     * Offers [paths] to the platform's share UI — Android's chooser over `ACTION_SEND_MULTIPLE`, iOS's
+     * `UIActivityViewController`.
+     *
+     * Unlike [shareViaChooser] this takes no [PlatformIntent], which is the point: a path is something
+     * both platforms have, so shared code can decide *what* to share without being able to construct
+     * the platform's share object. Does nothing when [paths] is empty or nothing can receive them.
+     */
+    fun shareFiles(paths: List<String>, title: String?)
 }
 
 /** The host's [PlatformScreenActions], resolved from the current platform. */

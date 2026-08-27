@@ -16,7 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
-import android.net.Uri
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
@@ -33,8 +32,6 @@ import eu.europa.ec.shared.resources.settings_screen_option_changelog
 import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
 import eu.europa.ec.shared.resources.settings_screen_option_registration_check
 import eu.europa.ec.shared.resources.settings_screen_option_show_batch_issuance_counter
-import eu.europa.ec.testfeature.util.mockedUriPath1
-import eu.europa.ec.testfeature.util.mockedUriPath2
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
@@ -52,6 +49,8 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.io.File
+import org.junit.Assert.assertTrue
 
 class TestSettingsInteractor {
 
@@ -80,7 +79,7 @@ class TestSettingsInteractor {
 
     // The REAL bridge, not a stub: what these cases assert is end-to-end behaviour over ConfigLogic,
     // LogController, PrefKeys and BiometricInteractor, and that is worth keeping intact now that the
-    // interactor itself is shared. Held as the concrete type because `retrieveLogFileUris` is not on
+    // interactor itself is shared. Held as the concrete type because `retrieveLogFiles` is not on
     // the bridge contract, being an ArrayList<Uri>.
     private lateinit var platform: AndroidSettingsPlatformBridge
 
@@ -165,21 +164,33 @@ class TestSettingsInteractor {
     }
     //endregion
 
-    //region retrieveLogFileUris
+    //region logFilePaths
     @Test
-    fun `Given a list of logs via logController, When retrieveLogFileUris is called, Then expected logs are returned`() {
+    fun `Given log files via logController, When logFilePaths is called, Then paths are returned`() {
+        // The bridge used to hand back FileProvider Uris; building those moved to
+        // `PlatformScreenActions.shareFiles`, so what it owes the shared contract is paths — which is
+        // the shape iOS can answer too.
         // Given
-        val mockedArrayList = arrayListOf(
-            Uri.parse(mockedUriPath1),
-            Uri.parse(mockedUriPath2)
+        val files = listOf(
+            File("/data/logs/eudi-android-wallet-logs0.txt"),
+            File("/data/logs/eudi-android-wallet-logs1.txt"),
         )
-        whenever(logController.retrieveLogFileUris()).thenReturn(mockedArrayList)
+        whenever(logController.retrieveLogFiles()).thenReturn(files)
 
         // When
-        val expectedLogFileUris = platform.retrieveLogFileUris()
+        val paths = platform.logFilePaths()
 
         // Then
-        assertEquals(mockedArrayList, expectedLogFileUris)
+        assertEquals(files.map { it.absolutePath }, paths)
+    }
+
+    @Test
+    fun `Given no log files, When logFilePaths is called, Then it is empty so the row is not offered`() {
+        // Given
+        whenever(logController.retrieveLogFiles()).thenReturn(emptyList())
+
+        // When & Then
+        assertTrue(platform.logFilePaths().isEmpty())
     }
     //endregion
 

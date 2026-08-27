@@ -17,7 +17,8 @@
 // Phase 3b: the last view-model freed by the platform-handle layer, and the only one that needed a real
 // refactor rather than a retype. It used to BUILD the log-sharing intent itself, which shared code cannot
 // do — a `PlatformIntent` is opaque — so that construction moved into `SettingsInteractorImpl`, which
-// already owned the log files, behind `getLogShareIntent()`. The host `Context` became a
+// already owned the log files, behind `getLogFilePaths()` (originally `getLogShareIntent()`, which
+// was still Android-shaped and left iOS unable to answer). The host `Context` became a
 // `PlatformContext` and the changelog URL a `String`. Package unchanged, so `SettingsScreen` only had to
 // parse that URL at the point of use.
 package eu.europa.ec.dashboardfeature.ui.settings
@@ -29,7 +30,6 @@ import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.shared.platform.PlatformContext
-import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.settings_screen_title
@@ -76,7 +76,7 @@ sealed class Effect : ViewSideEffect {
         data class OpenUrlExternally(val url: String) : Navigation()
     }
 
-    data class ShareLogFile(val intent: PlatformIntent) : Effect()
+    data class ShareLogFiles(val paths: List<String>) : Effect()
     data class ShowSnackbar(val message: String) : Effect()
 }
 
@@ -204,11 +204,12 @@ class SettingsViewModel(
             }
 
             SettingsMenuItemType.RETRIEVE_LOGS -> {
-                // The interactor builds the intent: shared code cannot construct a PlatformIntent, and
-                // it returns null when there are no logs — the emptiness check that used to live here.
-                settingsInteractor.getLogShareIntent()?.let { logShareIntent ->
+                // Paths, not an intent: the platform turns them into its own share UI. Empty means
+                // this platform collects no logs, which is how the row stays honest.
+                val logPaths = settingsInteractor.getLogFilePaths()
+                if (logPaths.isNotEmpty()) {
                     setEffect {
-                        Effect.ShareLogFile(intent = logShareIntent)
+                        Effect.ShareLogFiles(paths = logPaths)
                     }
                 }
             }

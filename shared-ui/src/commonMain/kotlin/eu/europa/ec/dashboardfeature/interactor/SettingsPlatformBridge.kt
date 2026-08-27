@@ -19,7 +19,7 @@ package eu.europa.ec.dashboardfeature.interactor
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.shared.platform.PlatformContext
-import eu.europa.ec.shared.platform.PlatformIntent
+import eu.europa.ec.uilogic.component.PlatformScreenActions
 
 /**
  * The per-platform half of the settings screen.
@@ -89,9 +89,17 @@ interface SettingsPlatformBridge {
     suspend fun setBatchIssuanceCounterShown(shown: Boolean)
 
     /**
-     * An intent that shares the collected logs, or null when there is nothing to share. Shared code
-     * cannot build one — a [PlatformIntent] is opaque — so the platform does, and returning null is
-     * also how a platform with no logs answers.
+     * Absolute paths of the collected log files, newest-relevant first, or empty when there is
+     * nothing to share.
+     *
+     * **Paths rather than an intent, since 2026-08-27.** This used to be `logShareIntent(): PlatformIntent?`,
+     * which no iOS implementation could ever satisfy: `PlatformIntent` is uninhabited there, so iOS
+     * could only answer `null` and the settings row was omitted. A path is something both platforms
+     * genuinely have — Android's Treessence files, iOS's multipaz log — and turning one into a share
+     * sheet is the platform's job, which is what
+     * [PlatformScreenActions.shareFiles] is for.
+     *
+     * Android returns several because it rotates (10 files of 5 MB); iOS returns at most one.
      */
-    fun logShareIntent(): PlatformIntent?
+    fun logFilePaths(): List<String>
 }

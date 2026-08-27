@@ -15,7 +15,8 @@
  */
 
 // The `ItemClicked` branches of SettingsViewModel — Android-only because the event carries a
-// `PlatformContext`, and the log-sharing branch emits a `PlatformIntent`.
+// `PlatformContext`. The log-sharing branch used to need an Android `Intent` too; it carries
+// plain paths now, so only the context keeps these here.
 //
 // The branch worth the most here is the biometrics toggle, which must only flip AFTER a successful
 // prompt: flipping first would let a failed or cancelled authentication silently turn the wallet's
@@ -23,7 +24,6 @@
 package eu.europa.ec.dashboardfeature.ui.settings
 
 import android.content.Context
-import android.content.Intent
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
@@ -153,25 +153,29 @@ class SettingsViewModelAndroidTest {
     }
 
     @Test
-    fun retrieving_logs_shares_the_intent_the_interactor_built() = runTest(mainDispatcher) {
-        val logIntent = Intent(Intent.ACTION_SEND_MULTIPLE)
-        val fake = FakeSettingsInteractor(logShareIntent = logIntent)
-        val viewModel = SettingsViewModel(fake)
-        advanceUntilIdle()
+    fun retrieving_logs_hands_the_paths_the_interactor_reported_to_the_platform() =
+        runTest(mainDispatcher) {
+            // The effect used to carry an Android `Intent` the interactor had built. It carries paths
+            // now, so the same assertion is possible without a platform type — the test stays here
+            // only because `Event.ItemClicked` needs a `PlatformContext`, which iOS cannot construct.
+            val paths = listOf("/tmp/eudi-ios-wallet-logs.txt", "/tmp/eudi-android-wallet-logs0.txt")
+            val fake = FakeSettingsInteractor(logFilePaths = paths)
+            val viewModel = SettingsViewModel(fake)
+            advanceUntilIdle()
 
-        val effect = async { viewModel.effect.first() }
-        viewModel.setEvent(Event.ItemClicked(SettingsMenuItemType.RETRIEVE_LOGS, context))
-        advanceUntilIdle()
+            val effect = async { viewModel.effect.first() }
+            viewModel.setEvent(Event.ItemClicked(SettingsMenuItemType.RETRIEVE_LOGS, context))
+            advanceUntilIdle()
 
-        val share = assertIs<Effect.ShareLogFile>(effect.await())
-        assertEquals(logIntent, share.intent)
-    }
+            val share = assertIs<Effect.ShareLogFiles>(effect.await())
+            assertEquals(paths, share.paths)
+        }
 
     @Test
     fun retrieving_logs_with_nothing_to_share_emits_nothing() = runTest(mainDispatcher) {
-        // The interactor returns null when there are no logs — the emptiness check lives there now,
-        // because shared code cannot build a PlatformIntent to inspect.
-        val fake = FakeSettingsInteractor(logShareIntent = null)
+        // No paths means this platform collects no logs, or none yet. The emptiness check is in the
+        // view-model again, now that the value it inspects is something shared code can hold.
+        val fake = FakeSettingsInteractor(logFilePaths = emptyList())
         val viewModel = SettingsViewModel(fake)
         advanceUntilIdle()
 

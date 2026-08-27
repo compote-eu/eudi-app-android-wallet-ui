@@ -32,7 +32,6 @@ import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.shared.platform.PlatformContext
-import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import kotlinx.coroutines.Dispatchers
@@ -115,7 +114,7 @@ internal open class FakeBiometricInteractor(
 internal class FakeSettingsInteractor(
     private val appVersion: String = "1.2.3",
     private val changelogUrl: String? = "https://changelog.test",
-    private val logShareIntent: PlatformIntent? = null,
+    private val logFilePaths: List<String> = emptyList(),
     availability: BiometricsAvailability = BiometricsAvailability.CanAuthenticate,
     authResult: BiometricsAuthenticate = BiometricsAuthenticate.Success,
 ) : FakeBiometricInteractor(availability = availability, authResult = authResult),
@@ -132,7 +131,7 @@ internal class FakeSettingsInteractor(
 
     override fun getAppVersion(): String = appVersion
     override fun getChangelogUrl(): String? = changelogUrl
-    override fun getLogShareIntent(): PlatformIntent? = logShareIntent
+    override fun getLogFilePaths(): List<String> = logFilePaths
 
     override suspend fun getSettingsItemsUi(changelogUrl: String?): List<SettingsItemUi> {
         itemsBuilds++

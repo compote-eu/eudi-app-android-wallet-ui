@@ -187,9 +187,9 @@ private fun Content(
         effectFlow.onEach { effect ->
             when (effect) {
                 is Effect.Navigation -> onNavigationRequested(effect)
-                is Effect.ShareLogFile -> {
-                    platformActions.shareViaChooser(
-                        intent = effect.intent,
+                is Effect.ShareLogFiles -> {
+                    platformActions.shareFiles(
+                        paths = effect.paths,
                         title = logShareChooserTitle,
                     )
                 }

@@ -16,8 +16,6 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
-import android.content.Intent
-import android.net.Uri
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.businesslogic.config.ConfigLogic
@@ -88,22 +86,10 @@ class AndroidSettingsPlatformBridge(
         registrationCheckProvider.setEnabled(enabled = enabled)
 
     /**
-     * Builds the log-sharing intent, which shared code cannot: an intent is an opaque
-     * `PlatformIntent` there. Returns null when there is nothing to share.
+     * The rotating Treessence set's absolute paths. Turning them into a share is
+     * `PlatformScreenActions.shareFiles`'s job now — this used to build the `ACTION_SEND_MULTIPLE`
+     * intent itself, which no iOS implementation could mirror.
      */
-    override fun logShareIntent(): Intent? {
-        val logs = retrieveLogFileUris()
-        if (logs.isEmpty()) return null
-
-        return Intent().apply {
-            action = Intent.ACTION_SEND_MULTIPLE
-            putParcelableArrayListExtra(Intent.EXTRA_STREAM, logs)
-            type = "text/*"
-        }
-    }
-
-    // Not on the bridge contract: an ArrayList<Uri> is a platform detail only this class needs.
-    fun retrieveLogFileUris(): ArrayList<Uri> {
-        return ArrayList(logController.retrieveLogFileUris())
-    }
+    override fun logFilePaths(): List<String> =
+        logController.retrieveLogFiles().map { it.absolutePath }
 }

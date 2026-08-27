@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.shared.wallet.log.IosLogFile
+
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
 
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
@@ -32,7 +34,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
 import eu.europa.ec.shared.platform.PlatformContext
-import eu.europa.ec.shared.platform.PlatformIntent
 import platform.Foundation.NSBundle
 
 /**
@@ -66,7 +67,12 @@ internal class IosSettingsPlatformBridge(
     /** Per build flavour, as on Android: `dev` publishes none, `demo` points at the GitHub releases. */
     override val changelogUrl: String? get() = iosWalletConfig.changelogUrl
 
-    override val canRetrieveLogs: Boolean get() = false
+    /**
+     * True since multipaz writes a log file — see [IosLogFile]. The row
+     * still disappears when the file is empty, because [logFilePaths] answers empty and the interactor
+     * treats that as "nothing to share", exactly as it does on an Android build with no logs yet.
+     */
+    override val canRetrieveLogs: Boolean get() = true
 
     override fun biometricsAvailability(): BiometricsAvailability =
         when (gate.availability()) {
@@ -128,9 +134,18 @@ internal class IosSettingsPlatformBridge(
 
     override suspend fun setRegistrationCheckEnabled(enabled: Boolean) = Unit
 
-    /** Null, and it could not be anything else: `PlatformIntent` is uninhabited on iOS. */
-    override fun logShareIntent(): PlatformIntent? = null
+    /**
+     * multipaz's log file, when it has anything in it.
+     *
+     * This used to be `logShareIntent(): PlatformIntent?` returning null — not a limitation of iOS but
+     * of the seam, which asked for an Android `Intent`. Paths are answerable here, so the settings row
+     * is no longer omitted: [canRetrieveLogs] is true and this points at the file
+     * [IosLogFile] has multipaz writing.
+     *
+     * At most one path, where Android has up to ten — it rotates and multipaz does not.
+     */
+    override fun logFilePaths(): List<String> =
+        if (IosLogFile.hasContent()) listOfNotNull(IosLogFile.path) else emptyList()
 }
 
-private const val TAG = "IosSettingsPlatformBridge"
 private const val CFBundleShortVersionString = "CFBundleShortVersionString"

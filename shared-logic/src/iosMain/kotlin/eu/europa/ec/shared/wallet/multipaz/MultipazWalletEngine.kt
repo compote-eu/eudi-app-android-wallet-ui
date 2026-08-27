@@ -59,7 +59,8 @@ import org.multipaz.storage.KeyExistsStorageException
  * Not a Koin `@Factory`, though iOS now has a DI graph and the shared view-models do consume
  * `WalletEngine` through it: `IosWalletModule` provides the *public* [IosWalletEngine], and this class
  * is internal and multipaz-typed, so exposing it would put multipaz in the graph's signature. Construct
- * it through [create].
+ * it through [createIosWalletEngine], which opens the store and hands back the `WalletEngine`
+ * interface rather than this type.
  */
 internal class MultipazWalletEngine(
     private val store: MultipazWalletStore,
@@ -294,6 +295,15 @@ internal class MultipazWalletEngine(
                 signerTrust = outcome.toSignerTrustDomain(),
                 policy = policy,
                 currentlyFlagged = document.identifier in alreadyRevoked,
+            )
+
+            // Into multipaz's logger, which means into the shareable log file on iOS. The anchoring
+            // half is the point: a reading acted on without an anchored signer is exactly what a
+            // reader of these logs needs to see, and until iOS has trust anchors that is every one.
+            Logger.i(
+                TAG,
+                "${document.identifier}: ${outcome.toDocumentStatusDomain()} " +
+                        "signer=${outcome.toSignerTrustDomain()} policy=$policy -> $action",
             )
 
             when (action) {

@@ -18,20 +18,19 @@
 // `SplashInteractor` pattern; `SettingsInteractorImpl` keeps ConfigLogic, LogController, PrefKeys and
 // ResourceProvider in :dashboard-feature.
 //
-// This one needed a real change rather than a retype. The view-model used to BUILD the log-sharing
-// intent itself — `Intent().apply { action = ACTION_SEND_MULTIPLE; putParcelableArrayListExtra(...) }` —
-// and an opaque `PlatformIntent` cannot be constructed from common code. So [getLogShareIntent] moves
-// that construction to the implementation, which already owned the log files; it returns null when there
-// is nothing to share, which is the emptiness check the view-model used to do. `retrieveLogFileUris`
-// (an `ArrayList<Uri>`) is deliberately NOT on this contract any more: it is a platform detail that only
-// the implementation needs now.
+// This one needed a real change rather than a retype, twice. The view-model originally BUILT the
+// log-sharing intent itself — `Intent().apply { action = ACTION_SEND_MULTIPLE; ... }` — which common
+// code cannot do, so it became `getLogShareIntent(): PlatformIntent?`. That was still Android-shaped:
+// `PlatformIntent` is uninhabited on iOS, so iOS could only ever answer null and the settings row was
+// omitted there. It is now [getLogFilePaths], which both platforms can answer, with the share itself
+// delegated to `PlatformScreenActions.shareFiles`. `retrieveLogFileUris` (an `ArrayList<Uri>`) remains
+// deliberately OFF this contract: a platform detail only Android's implementation needs.
 package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.shared.platform.PlatformContext
-import eu.europa.ec.shared.platform.PlatformIntent
 
 /**
  * No longer `: BiometricInteractor`.
@@ -50,10 +49,10 @@ interface SettingsInteractor {
     fun getChangelogUrl(): String?
 
     /**
-     * An intent that shares the collected log files, or null when there are none to share — which on
-     * iOS is *always*, since a `PlatformIntent` cannot be constructed there at all.
+     * Absolute paths of the collected log files, or empty when there are none to share. The emptiness
+     * check the view-model used to do lives here.
      */
-    fun getLogShareIntent(): PlatformIntent?
+    fun getLogFilePaths(): List<String>
     suspend fun getSettingsItemsUi(changelogUrl: String?): List<SettingsItemUi>
     suspend fun toggleBiometricsAuthentication()
     suspend fun toggleShowBatchIssuanceCounter()

@@ -128,8 +128,8 @@ import eu.europa.ec.startupfeature.ui.splash.SplashScreen
 import eu.europa.ec.startupfeature.ui.splash.SplashViewModel
 import kotlinx.coroutines.runBlocking
 import org.koin.core.context.startKoin
-import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
+import eu.europa.ec.shared.wallet.log.IosLogFile
 import platform.UIKit.UIViewController
 
 /**
@@ -140,6 +140,9 @@ import platform.UIKit.UIViewController
  * (`State`, `State_`, `State__`, …) harmless on this architecture.
  */
 fun WalletViewController(): UIViewController {
+    // Before Koin, so anything the graph logs while starting is captured. Android's equivalent is
+    // `LogController`'s Timber tree, installed in `Application.onCreate`.
+    IosLogFile.start()
     startKoinIfNeeded()
     // The string catalog resolves synchronously once warmed, which is what lets shared interactors read
     // strings outside a coroutine — so it must be warmed before anything renders. Android does this in

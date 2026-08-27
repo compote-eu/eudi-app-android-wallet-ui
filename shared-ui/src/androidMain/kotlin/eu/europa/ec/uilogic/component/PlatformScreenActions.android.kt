@@ -25,7 +25,10 @@ import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import eu.europa.ec.shared.platform.PlatformIntent
+import java.io.File
 
 /**
  * Resolved from `LocalContext` rather than provided by the host, which keeps the seam self-contained —
@@ -33,12 +36,15 @@ import eu.europa.ec.shared.platform.PlatformIntent
  *
  * The implementations are written out here rather than delegating to `:ui-logic`'s `Context`
  * extensions, because :ui-logic depends on :shared-ui and importing back would be a cycle. They are
- * the same intents; the only difference is that [finishApp] walks up to the host `Activity` instead of
- * casting to `EudiComponentActivity`, which is strictly more general and does not name a :ui-logic
- * type.
+ * the same intents; the only difference is that [PlatformScreenActions.finishApp] walks up to the
+ * host `Activity` instead of casting to `EudiComponentActivity`, which is strictly more general and
+ * does not name a :ui-logic type.
  *
- * `Uri.parse` rather than androidx's `toUri`: this source set takes only `activity-compose`, and the
- * extension lives in `core-ktx`, which is not a dependency here.
+ * This used to say `Uri.parse` was used "rather than androidx's `toUri`" because the extension lived
+ * in `core-ktx`, which was not a dependency here. That expired: `core-ktx` was folded into
+ * `androidx.core:core`, so `toUri` resolves from the same artifact as the `FileProvider` that
+ * [PlatformScreenActions.shareFiles] needs. `Uri.fromParts` below has no extension form and stays
+ * as it is.
  */
 @Composable
 actual fun rememberPlatformScreenActions(): PlatformScreenActions {
@@ -67,11 +73,36 @@ actual fun rememberPlatformScreenActions(): PlatformScreenActions {
 
             override fun openUrlExternally(url: String) {
                 try {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                 } catch (_: Exception) {
                     // Same swallow as `:ui-logic`'s `Context.openUrl`: no handler for the scheme, or
                     // an unparseable url, and nothing the screen could do about either.
                 }
+            }
+
+            override fun shareFiles(paths: List<String>, title: String?) {
+                if (paths.isEmpty()) return
+                val uris = paths.mapNotNull { path ->
+                    try {
+                        FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.provider",
+                            File(path),
+                        )
+                    } catch (_: IllegalArgumentException) {
+                        // Outside the paths the provider is configured for: skip it rather than
+                        // failing the whole share.
+                        null
+                    }
+                }
+                if (uris.isEmpty()) return
+
+                val intent = Intent().apply {
+                    action = Intent.ACTION_SEND_MULTIPLE
+                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                    type = "text/*"
+                }
+                shareViaChooser(intent = intent, title = title)
             }
 
             override fun shareViaChooser(intent: PlatformIntent, title: String?) {
@@ -93,3 +124,4 @@ private fun Context.findActivityOrNull(): Activity? {
     }
     return null
 }
+

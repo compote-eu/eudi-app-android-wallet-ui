@@ -28,7 +28,6 @@ import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuth
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.shared.platform.PlatformContext
-import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
@@ -50,6 +49,7 @@ private class FakeSettingsPlatformBridge(
     override val appVersion: String = "1.2.3",
     override val changelogUrl: String? = null,
     override val canRetrieveLogs: Boolean = true,
+    private val logFilePaths: List<String> = emptyList(),
     override val canCheckRegistrations: Boolean = true,
     private val availability: BiometricsAvailability = BiometricsAvailability.CanAuthenticate,
     private val biometricsEnabled: Boolean = false,
@@ -92,7 +92,7 @@ private class FakeSettingsPlatformBridge(
         registrationCheckEnabled = enabled
     }
 
-    override fun logShareIntent(): PlatformIntent? = null
+    override fun logFilePaths(): List<String> = logFilePaths
 }
 
 private class FakeStringCatalog(private val values: Map<StringResource, String>) : StringCatalog {

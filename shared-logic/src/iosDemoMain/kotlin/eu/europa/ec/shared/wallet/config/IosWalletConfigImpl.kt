@@ -38,6 +38,10 @@ internal object IosWalletConfigImpl : IosWalletConfig {
     // Android's demo flavour asks for 10.
     override val credentialBatchSize = 10
 
+    // Android names its rotating set `eudi-android-wallet-logs%g.txt`; multipaz writes one file, so
+    // there is no `%g` counter to mirror.
+    override val logFileName = "eudi-ios-wallet-logs.txt"
+
     // Matches Android's demo flavour, which sets INFORM for the document status resolver.
     // See [IosWalletConfig.statusTrustPolicy] for what that does and does not buy.
     override val statusTrustPolicy = StatusTrustPolicyDomain.Inform
