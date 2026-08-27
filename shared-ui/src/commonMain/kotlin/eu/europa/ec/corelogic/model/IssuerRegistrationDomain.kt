@@ -25,8 +25,8 @@ sealed interface IssuerRegistrationDomain {
     data class Verified(val details: RegistrationDetailsDomain) : IssuerRegistrationDomain
 
     /**
-     * Issuance must be refused, not just warned about: the registration is valid but the offer
-     * exceeds its registered scope.
+     * Issuance must be refused, not just warned about: the registration is valid but does not
+     * cover the offer.
      */
     data class Blocked(
         val reason: BlockedReasonDomain,
@@ -52,7 +52,11 @@ sealed interface IssuerRegistrationDomain {
      * Why an issuance is refused.
      */
     enum class BlockedReasonDomain {
-        ATTESTATION_NOT_REGISTERED,
+        /** The offer includes attestations outside the registered provides_attestations scope. */
+        ATTESTATION_OVER_PROVIDED,
+
+        /** The issuer is not registered for the provider role the offered attestations require. */
+        ENTITLEMENT_MISSING,
     }
 }
 
@@ -60,9 +64,9 @@ sealed interface IssuerRegistrationDomain {
  * The one rule deciding whether a registration outcome refuses an issuance — the offer resolve
  * gate and the pre-flights of the flows with no approval screen consult this and nothing else.
  *
- * Anything short of [IssuerRegistrationDomain.Verified] refuses: over-providing and a failed
- * validation, and equally an outcome that was never established — a provider whose registration
- * cannot be confirmed does not issue.
+ * Anything short of [IssuerRegistrationDomain.Verified] refuses: over-providing, a missing
+ * entitlement and a failed validation, and equally an outcome that was never established — a
+ * provider whose registration cannot be confirmed does not issue.
  *
  * **Read this with [eu.europa.ec.corelogic.config.WalletCoreConfig.isRegistrationCheckEnabled], not
  * on its own.** [IssuerRegistrationDomain.NotEvaluated] is what a *disabled* policy produces, and

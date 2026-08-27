@@ -40,9 +40,19 @@ class IssuerRegistrationDomainTest {
     }
 
     @Test
-    fun an_offer_beyond_the_registered_scope_is_refused() {
+    fun an_offer_the_issuer_over_provides_is_refused() {
         val registration = IssuerRegistrationDomain.Blocked(
-            reason = IssuerRegistrationDomain.BlockedReasonDomain.ATTESTATION_NOT_REGISTERED,
+            reason = IssuerRegistrationDomain.BlockedReasonDomain.ATTESTATION_OVER_PROVIDED,
+            details = mockedDetails,
+        )
+
+        assertTrue(registration.isBlockedForIssuance)
+    }
+
+    @Test
+    fun an_offer_the_issuer_is_not_entitled_to_issue_is_refused() {
+        val registration = IssuerRegistrationDomain.Blocked(
+            reason = IssuerRegistrationDomain.BlockedReasonDomain.ENTITLEMENT_MISSING,
             details = mockedDetails,
         )
 

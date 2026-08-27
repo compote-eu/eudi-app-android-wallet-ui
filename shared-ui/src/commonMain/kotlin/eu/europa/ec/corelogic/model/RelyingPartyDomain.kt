@@ -90,6 +90,7 @@ enum class RegistrationFailureReasonDomain {
     REVOKED,
     REVOCATION_STATUS_UNKNOWN,
     NOT_BOUND_TO_REQUESTER,
+    ENTITLEMENT_MISSING,
 }
 
 /**
