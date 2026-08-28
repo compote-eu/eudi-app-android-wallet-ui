@@ -90,6 +90,19 @@ kotlin {
             // Nav3 route model (AppRoute : NavKey, AppNavigator) lives here: config-carrying routes
             // reference the shared-ui UI-model, and AppRoute is sealed so its subtypes must co-locate.
             api(libs.androidx.navigation3.runtime)
+            // `NavDisplay`, so that `AppNavDisplay` — the host body both platforms compose — can live
+            // in commonMain. It comes from JetBrains' multiplatform build of navigation3-ui because
+            // androidx publishes navigation3-*runtime* for iOS but not navigation3-*ui*. This is safe
+            // to declare commonly rather than per platform: the fork's own Android variant depends on
+            // `androidx.navigation3:navigation3-ui`, so Android still resolves Google's build and only
+            // the native targets take the fork's own code.
+            implementation(libs.jetbrains.navigation3.ui)
+            // `LocalViewModelStoreOwner` / `rememberViewModelStoreProvider`, and the per-entry
+            // ViewModelStore decorator that clears a store when its entry is popped. Both artifacts
+            // are genuinely multiplatform (common + androidJvm + native), on the same 2.11.0 line as
+            // the `lifecycle-viewmodel` already here.
+            implementation(libs.androidx.lifecycle.viewModelCompose)
+            implementation(libs.androidx.lifecycle.viewmodel.navigation3)
             // DI for the shared view-models. `api` because downstream Android modules resolve them
             // (SharedUiModule is referenced from assembly-logic's @KoinApplication) and because the
             // Koin compiler plugin generates `module { viewModelOf(...) }` bodies into this module's
@@ -171,19 +184,9 @@ kotlin {
             // Kotlin side there cannot depend on it, so neither platform carries the other's.
             implementation(libs.rqes.ui.sdk)
         }
-        // iOS-only: the navigation host's pieces. The Compose UI artifacts moved to commonMain with
-        // the first shared screen.
-        iosMain.dependencies {
-            // For `LocalViewModelStoreOwner`, which the iOS navigation host provides per back-stack
-            // entry — the job `rememberViewModelStoreNavEntryDecorator` does on Android. Same 2.11.0
-            // version line as the KMP `lifecycle-viewmodel` already in commonMain.
-            implementation(libs.androidx.lifecycle.viewModelCompose)
-            // The real `NavDisplay`, from JetBrains' multiplatform build of navigation3-ui — androidx
-            // publishes navigation3-runtime for iOS but not navigation3-ui.
-            implementation(libs.jetbrains.navigation3.ui)
-            // Per-entry ViewModelStore decorator, as the Android host uses.
-            implementation(libs.androidx.lifecycle.viewmodel.navigation3)
-        }
+        // No iosMain.dependencies block: iOS adds nothing of its own any more. The Compose UI
+        // artifacts moved to commonMain with the first shared screen, and the navigation host's
+        // pieces followed when `AppNavDisplay` became shared.
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)

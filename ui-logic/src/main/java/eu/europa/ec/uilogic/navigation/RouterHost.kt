@@ -14,7 +14,10 @@
  * governing permissions and limitations under the Licence.
  */
 
-// Nav3 Stage 5: the host is a `NavDisplay` over a typed `AppRoute` back stack.
+// Nav3 Stage 5: the host is a `NavDisplay` over a typed `AppRoute` back stack — composed by
+// `AppNavDisplay` in :shared-ui/commonMain, which iOS's `IosNavHost` composes too. This file is the
+// Android-only part: the saveable back stack, the imperative surface below, and the assertion that
+// the Activity provided a ViewModelStoreOwner.
 //
 // What used to be a `NavHost` with six nested `navigation(route = ModuleRoute.X)` subgraphs is now
 // one flat back stack plus six per-feature `entryProvider` contributions. The imperative surface
@@ -25,28 +28,18 @@ package eu.europa.ec.uilogic.navigation
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import androidx.lifecycle.viewmodel.compose.rememberViewModelStoreProvider
-import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.navigation3.ui.NavDisplay
 import eu.europa.ec.analyticslogic.controller.AnalyticsController
+import eu.europa.ec.shared.navigation.AppNavDisplay
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.SplashRoute
-import eu.europa.ec.shared.navigation.analyticsName
-import eu.europa.ec.shared.navigation.analyticsParams
 import eu.europa.ec.uilogic.config.ConfigUILogic
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlin.reflect.KClass
 
 interface RouterHost {
@@ -94,32 +87,19 @@ class RouterHostImpl(
         this.navigator = navigator
         context = LocalContext.current
 
-        // Each entry needs its own ViewModelStore, cleared when the entry is popped — that is what
-        // NavBackStackEntry gave `koinViewModel()` under navigation-compose.
-        val viewModelStoreProvider = rememberViewModelStoreProvider(
-            parent = checkNotNull(LocalViewModelStoreOwner.current) {
-                "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
-            }
-        )
-
-        NavDisplay(
+        // The host body itself is shared with iOS — see `AppNavDisplay`. What stays here is what
+        // only Android does: a back stack that survives process death, publishing the navigator for
+        // the activity's out-of-composition deep-link surface, and asserting that the Activity
+        // really did provide a ViewModelStoreOwner rather than silently falling back to one.
+        AppNavDisplay(
             backStack = backStack,
-            onBack = { navigator.pop() },
-            entryDecorators = listOf(
-                rememberSaveableStateHolderNavEntryDecorator(),
-                rememberViewModelStoreNavEntryDecorator(viewModelStoreProvider),
-            ),
-            entryProvider = entryProvider { entries(navigator) },
+            navigator = navigator,
+            analytics = analyticsController,
+            rootOwner = checkNotNull(LocalViewModelStoreOwner.current) {
+                "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
+            },
+            entries = entries,
         )
-
-        LaunchedEffect(backStack) {
-            snapshotFlow { backStack.lastOrNull() as? AppRoute }
-                .filterNotNull()
-                .distinctUntilChanged()
-                .collect { route ->
-                    analyticsController.logScreen(route.analyticsName, route.analyticsParams)
-                }
-        }
     }
 
     override fun userIsLoggedInWithDocuments(): Boolean =
