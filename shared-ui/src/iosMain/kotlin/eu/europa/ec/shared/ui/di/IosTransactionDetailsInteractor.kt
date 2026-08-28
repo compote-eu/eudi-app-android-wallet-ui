@@ -47,6 +47,7 @@ import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.number
 
 /**
  * What one recorded transaction shows, read back out of multipaz's event log.
@@ -166,6 +167,6 @@ internal class IosTransactionDetailsInteractor(
  * this builds the same shape by hand rather than pulling java.time-shaped code into iosMain.
  */
 private fun LocalDateTime.toDisplayableDateTime(): String =
-    "${dayOfMonth.padded()}/${monthNumber.padded()}/$year ${hour.padded()}:${minute.padded()}"
+    "${day.padded()}/${month.number.padded()}/$year ${hour.padded()}:${minute.padded()}"
 
 private fun Int.padded(): String = toString().padStart(2, '0')

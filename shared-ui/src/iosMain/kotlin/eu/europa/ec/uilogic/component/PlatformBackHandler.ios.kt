@@ -17,11 +17,32 @@
 package eu.europa.ec.uilogic.component
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.backhandler.BackHandler
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 
-@OptIn(ExperimentalComposeUiApi::class)
+/**
+ * iOS's back gesture, over `androidx.navigationevent` rather than Compose's deprecated `BackHandler`.
+ *
+ * [NavigationBackHandler] is the back-only convenience wrapper — it delegates to
+ * `NavigationEventHandler` with forward disabled — so the swap costs only the hoisted state that API
+ * requires. `NavigationEventInfo.None` because nothing here animates against the gesture's progress;
+ * a screen that wanted a predictive-back animation would hoist real info instead.
+ *
+ * 🪤 **It needs a `LocalNavigationEventDispatcherOwner` in composition and throws if there is none.**
+ * That holds because the only caller is `ContentScreen`, which every screen renders inside, and every
+ * screen is a `NavDisplay` entry — `NavDisplay` provides the owner. A future caller *outside* the
+ * navigation host would crash on first composition rather than fail quietly, so keep it under the host.
+ *
+ * No `@OptIn` any more: `androidx.compose.ui.backhandler.BackHandler` was experimental as well as
+ * deprecated, and this API is neither.
+ */
 @Composable
 actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
-    BackHandler(enabled = enabled, onBack = onBack)
+    val state = rememberNavigationEventState(NavigationEventInfo.None)
+    NavigationBackHandler(
+        state = state,
+        isBackEnabled = enabled,
+        onBackCompleted = onBack,
+    )
 }

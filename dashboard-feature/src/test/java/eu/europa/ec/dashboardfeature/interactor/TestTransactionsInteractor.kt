@@ -73,7 +73,6 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import org.mockito.kotlin.wheneverBlocking
 import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toKotlinLocalDateTime
 import java.time.DayOfWeek
@@ -1052,7 +1051,7 @@ class TestTransactionsInteractor {
             .thenReturn("Failed")
         whenever(strings.get(Res.string.transactions_screen_0_minutes_ago_message))
             .thenReturn("Just now")
-        wheneverBlocking {
+        whenever {
             stringResolver.resolvePlural(
                 eq(Res.plurals.transactions_screen_some_minutes_ago_message),
                 org.mockito.kotlin.any(),

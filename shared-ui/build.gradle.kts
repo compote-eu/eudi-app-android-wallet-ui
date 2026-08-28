@@ -116,7 +116,15 @@ kotlin {
             // preview functions carry that annotation. NB it has neither `uiMode` nor
             // `backgroundColor` — the light/dark preview *pairs* the Android-only annotation used to
             // generate are not expressible here; see ThemePreviews.kt.
-            api(compose.components.uiToolingPreview)
+            //
+            // ⚠️ Deliberately the `org.jetbrains.compose.ui:ui-tooling-preview` module and **not** the
+            // `compose.components.uiToolingPreview` accessor this used to use. They are different
+            // artifacts: the accessor resolves to
+            // `org.jetbrains.compose.components:components-ui-tooling-preview`, whose
+            // `org.jetbrains.compose.ui.tooling.preview` package is deprecated in favour of the
+            // androidx-named one this module provides. Switching the accessor back re-deprecates every
+            // preview annotation in commonMain — 18 warnings' worth.
+            api(libs.jetbrains.compose.ui.tooling.preview)
             // The seven Material `ImageVector` icons `AppIconResolvers` falls back to for keys with no
             // drawable of their own (ArrowBack, Close, KeyboardArrow*, DateRange, Info). Via the
             // Compose plugin accessor, since androidx's `material-icons-extended` is Android-only.

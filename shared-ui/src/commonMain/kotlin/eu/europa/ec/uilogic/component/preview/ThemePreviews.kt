@@ -16,7 +16,7 @@
 
 package eu.europa.ec.uilogic.component.preview
 
-import org.jetbrains.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 
 /**
  * Marks a component preview. Applied to ~35 component preview functions, all of which now live in

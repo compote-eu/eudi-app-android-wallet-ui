@@ -141,6 +141,11 @@ jetbrains-navigation3-ui = { group = "org.jetbrains.androidx.navigation3", name 
 androidx-lifecycle-viewmodel-navigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "androidxLifecycleViewmodel" }
 jetbrains-compose-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "composeMultiplatform" }
 jetbrains-compose-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "composeMultiplatform" }
+# NOT `compose.components.uiToolingPreview`, which is a *different* artifact
+# (org.jetbrains.compose.components:components-ui-tooling-preview) carrying the deprecated
+# `org.jetbrains.compose.ui.tooling.preview` package. This one carries the androidx package the
+# deprecation names, and does track `composeMultiplatform`.
+jetbrains-compose-ui-tooling-preview = { group = "org.jetbrains.compose.ui", name = "ui-tooling-preview", version.ref = "composeMultiplatform" }
 # NB: Compose Multiplatform's UI artifacts (foundation, material3, ui) are deliberately NOT listed here.
 # They are consumed through the `org.jetbrains.compose` plugin's `compose.*` accessors in
 # shared-ui/build.gradle.kts, because their versions do not all track `composeMultiplatform` — material3
