@@ -18,35 +18,12 @@ package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
-import eu.europa.ec.businesslogic.validator.FilterValidator
-import eu.europa.ec.businesslogic.validator.FilterValidatorPartialState
-import eu.europa.ec.businesslogic.validator.model.FilterAction
-import eu.europa.ec.businesslogic.validator.model.FilterElement.FilterItem
-import eu.europa.ec.businesslogic.validator.model.FilterGroup
-import eu.europa.ec.businesslogic.validator.model.FilterMultipleAction
-import eu.europa.ec.businesslogic.validator.model.FilterSort
-import eu.europa.ec.businesslogic.validator.model.FilterableAttributes
-import eu.europa.ec.businesslogic.validator.model.FilterableItem
-import eu.europa.ec.businesslogic.validator.model.FilterableItemPayload
-import eu.europa.ec.businesslogic.validator.model.FilterableList
-import eu.europa.ec.businesslogic.validator.model.Filters
-import eu.europa.ec.businesslogic.validator.model.SortOrder
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDeferredDocumentPartialState
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
-import eu.europa.ec.shared.wallet.WalletDocument
-import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
-import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
-import eu.europa.ec.corelogic.model.DocumentCategories
-import eu.europa.ec.corelogic.model.DocumentCategory
-import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.model.FormatType
-import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentIssuanceStateUi
-import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentFilterIds
-import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentUi
-import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentsFilterableAttributes
 import eu.europa.ec.dashboardfeature.util.mockedPendingMdlUi
 import eu.europa.ec.dashboardfeature.util.mockedPendingPidUi
 import eu.europa.ec.eudi.wallet.document.Document
@@ -54,8 +31,6 @@ import eu.europa.ec.eudi.wallet.document.DocumentId
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testfeature.util.copy
 import eu.europa.ec.testfeature.util.getMockedFullDocuments
-import eu.europa.ec.testfeature.util.mockedDefaultLocale
-import eu.europa.ec.testfeature.util.mockedMdocPidDocType
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
 import eu.europa.ec.testfeature.util.mockedGenericErrorMessage
@@ -64,12 +39,7 @@ import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
-import eu.europa.ec.uilogic.component.AppIcons
-import eu.europa.ec.uilogic.component.ListItemDataUi
-import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
-import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import junit.framework.TestCase.assertEquals
-import junit.framework.TestCase.assertNotNull
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import org.junit.After
@@ -79,16 +49,10 @@ import org.junit.Test
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
-import org.mockito.kotlin.any
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import java.time.Instant
-import kotlin.time.toKotlinInstant
-import java.time.temporal.ChronoUnit
-import kotlin.test.assertTrue
 
 /**
  * The Android [DocumentsPlatformBridge] — deferred issuance and deletion, i.e. everything about the

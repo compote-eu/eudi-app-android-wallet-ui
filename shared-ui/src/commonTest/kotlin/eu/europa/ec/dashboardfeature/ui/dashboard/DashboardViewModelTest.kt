@@ -20,7 +20,6 @@
 // view-model hands straight back — see DashboardViewModelAndroidTest for that one.
 package eu.europa.ec.dashboardfeature.ui.dashboard
 
-import eu.europa.ec.commonfeature.config.OfferUiConfig
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain

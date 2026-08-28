@@ -109,11 +109,8 @@ import eu.europa.ec.shared.resources.request_bottom_sheet_warning_subtitle
 import eu.europa.ec.shared.resources.request_bottom_sheet_warning_title
 import eu.europa.ec.shared.resources.request_collapsed_supporting_text
 import eu.europa.ec.shared.resources.request_combination_option_title
-import eu.europa.ec.shared.resources.request_header_description
-import eu.europa.ec.shared.resources.request_header_main_text
 import eu.europa.ec.shared.resources.request_no_data
 import eu.europa.ec.shared.resources.request_relying_party_default_name
-import eu.europa.ec.shared.resources.request_relying_party_description
 import eu.europa.ec.shared.resources.request_sticky_button_text
 import eu.europa.ec.shared.resources.request_warning_text
 

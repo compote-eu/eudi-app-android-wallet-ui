@@ -19,7 +19,6 @@ package eu.europa.ec.startupfeature.di
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.config.SharedAppConfig
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.startupfeature.interactor.SplashInteractorImpl
 import org.koin.core.annotation.ComponentScan

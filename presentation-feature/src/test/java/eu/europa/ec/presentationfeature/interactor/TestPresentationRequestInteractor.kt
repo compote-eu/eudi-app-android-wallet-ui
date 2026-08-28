@@ -42,8 +42,6 @@ import eu.europa.ec.testfeature.util.mockedPlainFailureMessage
 import eu.europa.ec.testfeature.util.mockedSelectableClaims
 import eu.europa.ec.testfeature.util.mockedValidMdlWithBasicFieldsRequestMatch
 import eu.europa.ec.testfeature.util.mockedValidPidWithBasicFieldsRequestMatch
-import eu.europa.ec.testfeature.util.mockedVerifierIsTrusted
-import eu.europa.ec.testfeature.util.mockedVerifierName
 import eu.europa.ec.testlogic.extension.expectNoEvents
 import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest

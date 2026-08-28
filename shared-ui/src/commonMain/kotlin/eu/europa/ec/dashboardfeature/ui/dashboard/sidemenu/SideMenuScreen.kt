@@ -36,7 +36,6 @@ import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.dashboard_side_menu_option_change_pin
 import eu.europa.ec.shared.resources.dashboard_side_menu_option_settings
-import eu.europa.ec.shared.resources.dashboard_side_menu_title
 import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi

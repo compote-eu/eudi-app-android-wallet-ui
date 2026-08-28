@@ -28,7 +28,6 @@ import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.issuancefeature.ui.add.model.AddDocumentUi
-import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppRoute

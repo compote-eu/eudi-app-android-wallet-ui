@@ -97,7 +97,6 @@ import eu.europa.ec.shared.resources.transaction_details_report_transaction_mess
 import eu.europa.ec.shared.resources.transaction_details_request_deletion_button
 import eu.europa.ec.shared.resources.transaction_details_request_deletion_message
 import eu.europa.ec.shared.resources.transaction_details_screen_card_date_label
-import eu.europa.ec.shared.resources.transaction_details_screen_title
 
 @Composable
 fun TransactionDetailsScreen(

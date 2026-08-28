@@ -32,8 +32,6 @@ import eu.europa.ec.issuancefeature.util.mockedMdlOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedPhotoIdOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedPidOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedScopedDocuments
-import eu.europa.ec.issuancefeature.util.mockedSuccessContentDescription
-import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.testfeature.util.mockedDefaultLocale
@@ -41,16 +39,13 @@ import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
 import eu.europa.ec.testfeature.util.mockedGenericErrorMessage
 import eu.europa.ec.testfeature.util.mockedMdocPidFormat
-import eu.europa.ec.testfeature.util.mockedNotifyOnAuthenticationFailure
 import eu.europa.ec.testfeature.util.mockedPidId
 import eu.europa.ec.testfeature.util.mockedPlainFailureMessage
-import eu.europa.ec.testfeature.util.mockedUriPath1
 import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
-import eu.europa.ec.uilogic.component.contentDescriptionRes
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
 import junit.framework.TestCase.assertEquals
 import org.junit.After
@@ -58,7 +53,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mock
-import org.mockito.Mockito.mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.times

@@ -75,7 +75,6 @@ import eu.europa.ec.shared.resources.quick_pin_create_success_no_activation_btn
 import eu.europa.ec.shared.resources.quick_pin_create_success_no_activation_description
 import eu.europa.ec.shared.resources.quick_pin_create_success_text
 import eu.europa.ec.shared.resources.quick_pin_create_title
-import eu.europa.ec.shared.resources.quick_pin_locked_out
 
 enum class PinValidationState {
     ENTER,

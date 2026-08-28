@@ -59,7 +59,6 @@ import eu.europa.ec.issuancefeature.util.mockedTxCode
 import eu.europa.ec.issuancefeature.util.mockedTxCodeFourDigits
 import eu.europa.ec.issuancefeature.util.mockedWalletActivationErrorMessage
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.testfeature.util.getMockedMainPid
 import eu.europa.ec.testfeature.util.mockedDefaultLocale

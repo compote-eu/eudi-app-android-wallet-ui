@@ -22,8 +22,6 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.document_details_boolean_item_false_readable_value
 import eu.europa.ec.shared.resources.document_details_boolean_item_true_readable_value
 import eu.europa.ec.shared.resources.document_details_document_credentials_info_text
-import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
-import eu.europa.ec.shared.resources.issuance_success_header_issuer_default_name
 import eu.europa.ec.shared.resources.request_collapsed_supporting_text
 import eu.europa.ec.shared.resources.request_gender_female
 import eu.europa.ec.shared.resources.request_gender_male
@@ -115,19 +113,4 @@ object StringResourceProviderMocker {
             .thenReturn(mockedDefaultLocale)
     }
 
-    fun mockIssuerName(
-        resourceProvider: ResourceProvider,
-        name: String
-    ) {
-        whenever(resourceProvider.getString(Res.string.issuance_success_header_issuer_default_name))
-            .thenReturn(name)
-    }
-
-    fun mockGetUiItemsStrings(
-        resourceProvider: ResourceProvider,
-        supportingText: String,
-    ) {
-        whenever(resourceProvider.getString(Res.string.document_success_collapsed_supporting_text))
-            .thenReturn(supportingText)
-    }
 }

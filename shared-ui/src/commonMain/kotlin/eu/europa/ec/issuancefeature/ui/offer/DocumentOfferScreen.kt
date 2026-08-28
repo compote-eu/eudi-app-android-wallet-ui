@@ -58,7 +58,6 @@ import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.BroadcastAction
-import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
@@ -72,7 +71,6 @@ import eu.europa.ec.uilogic.component.wrap.WrapListItem
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
-import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
 import kotlinx.coroutines.CoroutineScope
@@ -95,12 +93,8 @@ import eu.europa.ec.uilogic.component.InfoSection
 import eu.europa.ec.uilogic.component.InfoLinkSection
 import eu.europa.ec.commonfeature.ui.request.model.RelyingPartyHeaderUi
 import eu.europa.ec.commonfeature.ui.request.ConsentStickyBottomSection
-import eu.europa.ec.shared.resources.issuance_document_offer_description
 import eu.europa.ec.shared.resources.issuance_document_offer_error_no_document
-import eu.europa.ec.shared.resources.issuance_document_offer_header_main_text
-import eu.europa.ec.shared.resources.issuance_document_offer_primary_button_text_add
 import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_default_name
-import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_description
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

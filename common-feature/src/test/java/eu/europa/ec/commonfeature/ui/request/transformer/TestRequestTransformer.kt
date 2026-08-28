@@ -39,7 +39,6 @@ import eu.europa.ec.eudi.wallet.document.format.SdJwtVcData
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.Res
-import eu.europa.ec.shared.resources.request_collapsed_supporting_text
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.copy
 import eu.europa.ec.testfeature.util.getMockedMdlWithBasicFields

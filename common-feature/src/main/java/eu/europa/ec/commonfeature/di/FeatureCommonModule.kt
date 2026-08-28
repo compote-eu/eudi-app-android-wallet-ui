@@ -31,7 +31,6 @@ import eu.europa.ec.commonfeature.interactor.QrScanInteractor
 import eu.europa.ec.commonfeature.interactor.QrScanInteractorImpl
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorImpl
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.StringCatalog
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration

@@ -24,7 +24,6 @@ import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
-import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.extension.toggleCheckboxState

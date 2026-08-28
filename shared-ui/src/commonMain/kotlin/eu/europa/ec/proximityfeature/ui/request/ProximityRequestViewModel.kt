@@ -41,13 +41,10 @@ import eu.europa.ec.shared.resources.asUiTextOr
 import eu.europa.ec.shared.resources.biometric_default_mode_text_above_pin_field
 import eu.europa.ec.shared.resources.loading_biometry_biometrics_enabled_description
 import eu.europa.ec.shared.resources.loading_biometry_biometrics_not_enabled_description
-import eu.europa.ec.shared.resources.request_header_description
-import eu.europa.ec.shared.resources.request_header_main_text
 import eu.europa.ec.shared.resources.request_relying_party_default_name
 import eu.europa.ec.shared.resources.request_relying_party_description
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
-import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import kotlinx.coroutines.launch

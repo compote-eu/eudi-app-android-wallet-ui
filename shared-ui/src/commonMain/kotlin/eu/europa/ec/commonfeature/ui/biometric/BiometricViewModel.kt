@@ -39,10 +39,8 @@ import eu.europa.ec.commonfeature.ui.pin.buildPinLockoutMessage
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.shared.platform.PlatformContext
-import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
-import eu.europa.ec.shared.resources.quick_pin_locked_out
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType

@@ -32,8 +32,6 @@ import eu.europa.ec.dashboardfeature.ui.document_sign.model.DocumentSignButtonUi
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.document_sign_select_document
-import eu.europa.ec.shared.resources.document_sign_subtitle
-import eu.europa.ec.shared.resources.document_sign_title
 import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi

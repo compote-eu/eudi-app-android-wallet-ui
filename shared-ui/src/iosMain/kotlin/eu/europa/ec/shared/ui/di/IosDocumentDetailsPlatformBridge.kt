@@ -30,7 +30,6 @@ import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimPathSegment
 import eu.europa.ec.corelogic.model.ClaimType
-import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.model.isPid
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.shared.wallet.config.iosWalletConfig

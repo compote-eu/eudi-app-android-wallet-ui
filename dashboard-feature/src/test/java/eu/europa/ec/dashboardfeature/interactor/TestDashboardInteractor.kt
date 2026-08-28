@@ -21,7 +21,6 @@ import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.dashboard_side_menu_option_change_pin
 import eu.europa.ec.shared.resources.dashboard_side_menu_option_settings
-import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockResourceProviderStrings
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi

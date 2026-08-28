@@ -73,7 +73,6 @@ import eu.europa.ec.dashboardfeature.ui.component.BottomNavigationItem
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentIssuanceStateUi
 import eu.europa.ec.dashboardfeature.ui.documents.list.model.DocumentUi
 import eu.europa.ec.dashboardfeature.util.TestTag
-import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.FiltersSearchBar

@@ -11,7 +11,6 @@
 package eu.europa.ec.shared.ui.harness
 
 import eu.europa.ec.shared.wallet.WalletDocument
-import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosTransactionKind
 import eu.europa.ec.shared.wallet.multipaz.createIosWalletEngine

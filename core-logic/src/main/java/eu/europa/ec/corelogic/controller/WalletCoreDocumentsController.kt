@@ -43,7 +43,6 @@ import eu.europa.ec.corelogic.model.isBlockedForIssuance
 import eu.europa.ec.corelogic.model.TransactionLogDataDomain
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
-import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadataError
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
 import eu.europa.ec.eudi.openid4vci.SdJwtVcCredential
 import eu.europa.ec.eudi.statium.Status
@@ -64,7 +63,6 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OfferResult
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.registration.RegistrationCertificateResult
-import eu.europa.ec.eudi.wallet.trust.IssuerNotTrustedException
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao

@@ -129,9 +129,6 @@ object IosLogFile {
             .map { candidate -> candidate.toString() }
     }
 
-    /** Whether anything has been logged yet, which is what the settings row asks before offering it. */
-    fun hasContent(): Boolean = paths().isNotEmpty()
-
     /**
      * Installs the printer, **appending** to the current generation rather than truncating it.
      *

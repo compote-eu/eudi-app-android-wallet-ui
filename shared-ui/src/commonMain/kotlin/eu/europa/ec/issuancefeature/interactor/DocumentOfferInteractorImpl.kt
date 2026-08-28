@@ -30,7 +30,6 @@ import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.config.SharedAppConfig
 import eu.europa.ec.issuancefeature.ui.offer.model.DocumentOfferUi
-import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.SuccessRoute
 import eu.europa.ec.uilogic.component.wrap.ColorKey

@@ -32,7 +32,6 @@ import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimItemId
-import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.PresentationMatchDomain
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog

@@ -37,12 +37,10 @@ import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
-import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
-import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.mvi.MviViewModel
@@ -54,11 +52,6 @@ import eu.europa.ec.uilogic.navigation.helper.DeepLinkKind
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
-import eu.europa.ec.shared.resources.Res
-import eu.europa.ec.shared.resources.issuance_document_offer_description
-import eu.europa.ec.shared.resources.issuance_document_offer_header_main_text
-import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_default_name
-import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_description
 
 data class State(
     val offerUiConfig: OfferUiConfig,

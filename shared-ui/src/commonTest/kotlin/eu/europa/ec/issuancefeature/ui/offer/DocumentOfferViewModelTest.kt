@@ -33,10 +33,7 @@ import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
 import eu.europa.ec.issuancefeature.interactor.IssueDocumentsInteractorPartialState
 import eu.europa.ec.issuancefeature.interactor.ResolveDocumentOfferInteractorPartialState
 import eu.europa.ec.issuancefeature.ui.offer.model.DocumentOfferUi
-import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
-import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
-import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.platform.PlatformContext
