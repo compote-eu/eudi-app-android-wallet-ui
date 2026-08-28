@@ -79,9 +79,16 @@ data class IosIssuerReference(
 /**
  * Which of the wallet's activities an entry records.
  *
- * Signing is absent because this wallet does not sign *yet* — not because iOS cannot, which is what
- * this used to say. The EUDI org ships the iOS signing stack in Swift (`eudi-lib-ios-rqes-ui` and
- * friends); it is a bridge waiting on SwiftCopyableMacro#15, so add a `Signing` entry when that lands.
+ * ⚠️ **Signing is absent, and no longer for the reason this used to give.** It said the wallet "does
+ * not sign yet" and to add a `Signing` entry once the SwiftCopyableMacro#15 bridge landed. It landed —
+ * iOS has signed since `1597109a` — and the entry was never added.
+ *
+ * The blocker moved rather than cleared: **multipaz's `Event` hierarchy has only `EventPresentment`
+ * and `EventProvisioning`**, so there is nothing to map a signature onto. Android gets its entry from
+ * wallet-core's `TransactionLog.Type.Signing`. The consequence is visible in the shared UI, which
+ * carries a `TransactionTypeUi.SIGNING` filter that can never match anything on iOS. Closing it needs
+ * an upstream event type or a side channel; the app half is ready, since `selectAndSign(onOutcome:)`
+ * already reports the outcome back to Kotlin.
  */
 enum class IosTransactionKind { Presentation, Issuance }
 

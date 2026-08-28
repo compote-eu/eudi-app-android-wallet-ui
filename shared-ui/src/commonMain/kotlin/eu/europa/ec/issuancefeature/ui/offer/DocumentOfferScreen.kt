@@ -110,8 +110,9 @@ fun DocumentOfferScreen(
     /**
      * Hands an external deep link to whatever flow owns it, parking it for [AppRoute] first when one is
      * given. Injected for the same reason, and additionally because Android's `handleDeepLinkAction`
-     * reaches the Android-only RQES UI SDK. The iOS default does nothing; iOS deep links arrive through
-     * the app delegate and are not wired yet.
+     * reaches the Android-only RQES UI SDK. the iOS entry for this screen keeps the no-op default,
+     * because nothing on iOS hands a link out from here. Deep links *arriving* are wired: the app
+     * delegate hands them to `IosDeepLinks` and the shared classifier routes them.
      */
     onExternalDeepLink: (link: String, routeToPop: AppRoute?) -> Unit = { _, _ -> },
 ) {

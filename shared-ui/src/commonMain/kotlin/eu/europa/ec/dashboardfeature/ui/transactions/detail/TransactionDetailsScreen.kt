@@ -22,11 +22,16 @@
 // `MsoMdocFormat`/`SdJwtVcFormat`, `createKeyValue`, `ClaimDomain` — building the shared-data tree; take
 // that away and ~30 lines of data-class assembly are left. A bridge would therefore have to return
 // essentially the whole `TransactionDetailsUi`, which is the fat-bridge shape `DocumentDetails` needed
-// *because* both platforms had claims to render. iOS has none: it writes no transaction log (nothing
-// issues, presents or signs there yet), so the transactions list has no row to tap and this screen is
-// unreachable — an iOS interactor would be dead code, and `IosNavHost`'s fallback covers the route.
-// When iOS gains a presentation stack it will bring its own log shape; that is the moment to design the
-// split, against a real input rather than an imagined one.
+// *because* both platforms had claims to render.
+//
+// ⚠️ The reason recorded here has expired. It said iOS "writes no transaction log (nothing issues,
+// presents or signs there yet)", that the screen was "unreachable", and that "an iOS interactor would
+// be dead code". All three are now false: issuance and both presentment paths write through multipaz's
+// event logger, `IosTransactionDetailsInteractor` exists and is provided by `IosWalletModule`, and
+// `IosAppRoot` gives `TransactionDetailsRoute` a real entry rather than the fallback. What remains true
+// is the *shape* argument above — a bridge would have to return almost the whole UI model — which is
+// why the iOS side is its own interactor instead. Signing rows are still absent, for the reason in
+// `IosTransactionKind`.
 package eu.europa.ec.dashboardfeature.ui.transactions.detail
 
 import androidx.compose.foundation.layout.Arrangement

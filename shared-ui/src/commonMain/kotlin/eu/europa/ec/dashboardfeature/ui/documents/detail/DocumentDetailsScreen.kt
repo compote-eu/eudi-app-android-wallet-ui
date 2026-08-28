@@ -126,8 +126,9 @@ fun DocumentDetailsScreen(
      * Injected by the host instead of hidden behind an expect/actual, because the Android
      * implementation is `handleDeepLinkAction`, which lives in `:ui-logic` and reaches the RQES UI SDK
      * and `EudiComponentActivity` — and `:ui-logic` depends on `:shared-ui`, so an actual in this
-     * module could not call it without inverting the dependency. The iOS default does nothing; iOS deep
-     * links arrive through the app delegate and are not wired yet.
+     * module could not call it without inverting the dependency. The iOS entry for this screen keeps
+     * the no-op default, because nothing on iOS hands a link out from here. Deep links *arriving* are
+     * wired: the app delegate hands them to `IosDeepLinks` and the shared classifier routes them.
      */
     onExternalDeepLink: (link: String, routeToPop: AppRoute?) -> Unit = { _, _ -> },
 ) {

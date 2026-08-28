@@ -63,17 +63,20 @@ class IosWalletEngine : WalletEngine {
      * Re-checks every document against its status list and updates the cached flags, returning the
      * documents that *became* revoked.
      *
-     * **The trigger is the host's, and that is now a choice rather than a limitation.** Android runs
-     * this every 15 minutes through WorkManager. iOS has the equivalent since `8a0e27db` — a
-     * `BGProcessingTask` registered in `iOSApp.swift`, declared in `iosApp/project.yml` — and
-     * revocation deliberately does **not** ride it yet: until the trust gate opens
-     * (`eudi-lib-kmp-etsi-1196x2#130`) a status list's `x5c` cannot be validated, so every background
-     * check would spend a request per document to conclude `Unknown`. Wiring it up is a few lines the
-     * day that gate opens; doing it sooner only burns battery and data.
+     * **Two hosts call this, and until `38bdb5c4` neither did.** See [runBackgroundRevocation]:
+     * once per process at launch, which is the dependable trigger, and from the `BGProcessingTask`
+     * that also tops up credentials, which is the only path that runs with the app closed. Android
+     * runs the same body every 15 minutes through WorkManager.
      *
-     * So the host decides for now: at launch, on foreground, or from a pull-to-refresh. Calling it more
-     * often than the status list's `ttl` only wastes a request; calling it never leaves documents
-     * unflagged, exactly as Android behaves before its first period elapses.
+     * 🪤 **This KDoc previously said the opposite** — that revocation "deliberately does not ride"
+     * the background task until the trust gate opens, because every check "would spend a request per
+     * document to conclude `Unknown`", and that "the host decides for now: at launch, on foreground,
+     * or from a pull-to-refresh". No host did any of those, so the cached flags were never written and
+     * a revoked credential kept displaying as valid. The reasoning had also expired: since `650e8c1e`
+     * a status list is read and acted on under `INFORM` without an anchor, so a sweep reaches a real
+     * verdict. **A comment describing a trigger nobody implemented is how that went unnoticed.**
+     *
+     * Calling it more often than the status list's `ttl` only wastes a request.
      *
      * The [HttpClient] is created per call and closed after: refreshes are minutes apart at best, so
      * holding a client (and its connection pool) open between them buys nothing.

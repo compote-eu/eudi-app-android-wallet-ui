@@ -18,6 +18,11 @@ package eu.europa.ec.shared.platform
 
 /**
  * Uninhabited for the same reason as [PlatformActivity]: iOS has no Context, and nothing on that
- * platform produces one yet. When iOS grows biometric prompts this becomes whatever they need.
+ * platform produces one.
+ *
+ * It used to say "when iOS grows biometric prompts this becomes whatever they need". iOS grew them —
+ * `IosBiometricGate` — and needed nothing here: `LAContext` is created where it is used, so the prompt
+ * never had to be passed a platform context. Left uninhabited rather than deleted because the shared
+ * signatures that mention it are Android's, and they still need the type to exist.
  */
 actual abstract class PlatformContext private constructor()

@@ -53,8 +53,8 @@ import org.multipaz.storage.KeyExistsStorageException
  *    multipaz had `org.multipaz.sdjwt` on the classpath the whole time.
  *  - ✅ **revocation**, over multipaz's own Token Status List implementation — see
  *    [MultipazRevocationChecker] for why not `eudi-lib-kmp-statium`. Cached in storage like Android's
- *    Room table; the *trigger* is the host's — see [refreshRevocationStatuses] for what iOS has
- *    instead of WorkManager, and why revocation is not on it yet.
+ *    Room table; the *trigger* is the host's — see [refreshRevocationStatuses] for the two iOS has
+ *    instead of WorkManager.
  *
  * Not a Koin `@Factory`, though iOS now has a DI graph and the shared view-models do consume
  * `WalletEngine` through it: `IosWalletModule` provides the *public* [IosWalletEngine], and this class
@@ -267,8 +267,8 @@ internal class MultipazWalletEngine(
      * This is the body of Android's `RevocationWorkManager` — including its two-way behaviour, which
      * is easy to miss: a credential that is valid again has its cached row **removed**, so revocation
      * is not a one-way door. What it deliberately does not do is decide *when* to run: the trigger is
-     * the caller's (see `IosWalletEngine.refreshRevocationStatuses`, which explains what iOS now has
-     * instead of Android's 15-minute WorkManager period, and why revocation does not use it yet).
+     * the caller's (see `IosWalletEngine.refreshRevocationStatuses` for the two triggers iOS uses
+     * instead of Android's 15-minute WorkManager period).
      *
      * The return value is what a caller needs to raise the "documents revoked" notification the
      * Android broadcast produces; ignoring it and reading [getRevokedDocumentIds] afterwards is also

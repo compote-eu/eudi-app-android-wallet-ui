@@ -97,9 +97,16 @@ internal class IosDocumentsPlatformBridge(
     }
 
     /**
-     * Reports nothing issued, rather than attempting a retry: deferred issuance is part of OpenID4VCI,
-     * which has no iOS implementation yet. An empty result is the same shape the Android side produces
-     * when no deferred document is ready, so the caller needs no special case.
+     * Reports nothing issued, rather than attempting a retry: **deferred** issuance has no iOS
+     * implementation — multipaz treats the issuer's `202 Accepted` as an error and keeps the token and
+     * DPoP state private, so there is nothing to resume from.
+     *
+     * ⚠️ This used to blame OpenID4VCI as a whole "having no iOS implementation", which is false:
+     * `IosCredentialIssuer`, `IosOpenID4VciBackend`, `OpenID4VciHttpClient` and
+     * `IosBackgroundReIssuance` are that implementation. Only the deferred branch is missing.
+     *
+     * An empty result is the same shape the Android side produces when no deferred document is ready,
+     * so the caller needs no special case.
      */
     override fun tryIssuingDeferredDocuments(
         deferredDocuments: Map<String, FormatType>,

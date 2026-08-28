@@ -111,8 +111,9 @@ fun AddDocumentScreen(
     /**
      * Hands an external deep link to whatever flow owns it, going to [AppRoute] when the link resolves
      * to one. Injected for the same reason, and additionally because Android's `handleDeepLinkAction`
-     * reaches the Android-only RQES UI SDK. The iOS default does nothing; iOS deep links arrive through
-     * the app delegate and are not wired yet.
+     * reaches the Android-only RQES UI SDK. iOS supplies a handler here that navigates to the given
+     * route. Deep links themselves *are* wired: the app delegate hands them to `IosDeepLinks` and the
+     * shared classifier routes them.
      */
     onExternalDeepLink: (link: String, route: AppRoute?) -> Unit = { _, _ -> },
 ) {

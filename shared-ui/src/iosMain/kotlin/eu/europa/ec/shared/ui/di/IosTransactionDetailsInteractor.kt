@@ -124,8 +124,8 @@ internal class IosTransactionDetailsInteractor(
         transactionDetailsDataShared = TransactionDetailsDataSharedHolderUi(
             dataSharedItems = sharedDocuments.map { it.toNestedListItem() },
         ),
-        // Null because this wallet does not sign yet, not because iOS cannot — see `IosTransactionKind`.
-        // Populate this when the RQES bridge lands.
+        // Null because no signing entry is ever *logged*, not because the wallet cannot sign — it has
+        // since `1597109a`. multipaz has no signing `Event` to record one; see `IosTransactionKind`.
         transactionDetailsDataSigned = null,
     )
 

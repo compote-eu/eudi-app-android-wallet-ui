@@ -106,8 +106,10 @@ fun DashboardScreen(
      * to one.
      *
      * Injected for the same reason as [pendingLaunchIntent], and additionally because Android's
-     * `handleDeepLinkAction` reaches the Android-only RQES UI SDK. The iOS default does nothing: iOS
-     * deep links arrive through the app delegate and are not wired yet.
+     * `handleDeepLinkAction` reaches the Android-only RQES UI SDK. iOS supplies a handler here that navigates to the
+     * given route; what it does not do is reach an RQES SDK, which on iOS is driven from the signing
+     * screen instead. Deep links themselves *are* wired — the app delegate hands them to
+     * `IosDeepLinks` and the shared classifier routes them.
      */
     onExternalDeepLink: (link: String, route: AppRoute?) -> Unit = { _, _ -> },
     /**
