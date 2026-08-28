@@ -105,6 +105,59 @@ class IosDeepLinksTest {
     }
 
     @Test
+    fun the_schemes_ios_does_not_register_are_deliberate() {
+        // Android registers ten URL schemes; this app registers eight. The two it leaves out are
+        // choices, not oversights, and this test is what keeps them choices — before it existed,
+        // nothing compared the two lists, and the difference read as a gap when it was found.
+        //
+        // Android's set: `AndroidLibraryConventionPlugin.kt` declares the values and feeds them to the
+        // `${'$'}{...Scheme}` placeholders in assembly-logic's AndroidManifest.xml. Kotlin/Native cannot
+        // read either, so the list is restated here; changing Android's means changing this line, and
+        // the partition below then forces the new scheme to be classified rather than ignored.
+        val androidSchemes = setOf(
+            "openid4vp", "eudi-openid4vp", "mdoc-openid4vp", "haip-vp",
+            "openid-credential-offer", "haip-vci",
+            "eu.europa.ec.euidi",
+            "rqes",
+            "eudi-rqes",
+            "eudi-wallet",
+        )
+
+        // What iOS claims, from `CFBundleURLTypes` in iosApp/project.yml — the tracked source, since
+        // Info.plist is generated from it and git-ignored. Six of the eight route through
+        // `IosDeepLinks`; the other two have their own handlers and are named as literals because they
+        // are matched outside this class.
+        val iosRegistered = IosDeepLinks.OFFER_SCHEMES.toSet() +
+                IosDeepLinks.PRESENTATION_SCHEMES.toSet() +
+                // `IosAuthorizationRedirects` — a flow is already waiting for this one.
+                "eu.europa.ec.euidi" +
+                // Swift's `rqesCallbackScheme`, consumed by `WalletDocumentSigner.resume`.
+                "rqes"
+
+        // eudi-rqes: RP-initiated document retrieval. The iOS `EudiRQESUi` package exposes only
+        //   `initiate(on:fileUrl:)` and `resume(on:authorizationCode:)` — no remote-URI entry point —
+        //   so there is nothing to hand the link to (upstream rqes-ui#109).
+        // eudi-wallet: dead on Android too. Nothing produces or consumes it and `DeepLinkType` omits it.
+        val deliberatelyUnregistered = setOf("eudi-rqes", "eudi-wallet")
+
+        assertEquals(8, iosRegistered.size)
+        assertEquals(emptySet(), iosRegistered intersect deliberatelyUnregistered)
+        // The partition must be exact: every scheme Android registers is either claimed here or listed
+        // above with a reason. A new one on either side lands in neither and fails this.
+        assertEquals(androidSchemes, iosRegistered + deliberatelyUnregistered)
+    }
+
+    @Test
+    fun a_scheme_ios_deliberately_does_not_register_is_declined_if_it_arrives_anyway() {
+        // Belt and braces: even were the scheme registered by mistake, the slot must not keep the link.
+        // Keeping one nothing can consume is the failure this whole class exists to avoid.
+        assertFalse(IosDeepLinks.deliver("eudi-rqes://sign?uri=https%3A%2F%2Frp.test%2Fdoc"))
+        assertFalse(IosDeepLinks.deliver("eudi-wallet://issue"))
+
+        assertNull(IosDeepLinks.takePending())
+    }
+
+    @Test
     fun the_registered_schemes_are_the_ones_the_app_declares() {
         // These must match `CFBundleURLTypes` in iosApp/project.yml, or iOS never delivers the link at all.
         assertEquals(listOf("openid-credential-offer", "haip-vci"), IosDeepLinks.OFFER_SCHEMES)
