@@ -33,6 +33,8 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.analyticslogic.controller.AnalyticsLogger
+import eu.europa.ec.analyticslogic.controller.IosAnalytics
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
 import eu.europa.ec.authenticationlogic.config.WalletAuthenticationConfig
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
@@ -305,6 +307,15 @@ fun provideIosDocumentOfferInteractor(
  * The login gate. The PIN policy is shared; what iOS brings is where the verifier lives (the Keychain) and
  * how long a wrong PIN costs (`NSUserDefaults`, since a lockout is not a secret).
  */
+/**
+ * iOS's analytics, under the platform-neutral supertype the navigation host asks for.
+ *
+ * The object rather than a new instance: registration happens once at startup and the providers are
+ * process-wide, exactly as Android's `@Single` controller is.
+ */
+@Single
+fun provideIosAnalyticsLogger(): AnalyticsLogger = IosAnalytics
+
 /**
  * The app configuration commonMain reads, answered by this build's flavour file.
  *

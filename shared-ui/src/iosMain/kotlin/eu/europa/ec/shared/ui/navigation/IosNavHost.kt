@@ -60,6 +60,15 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import eu.europa.ec.shared.navigation.AppNavigator
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import eu.europa.ec.analyticslogic.controller.AnalyticsLogger
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.analyticsName
+import eu.europa.ec.shared.navigation.analyticsParams
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
+import org.koin.mp.KoinPlatform
 
 /**
  * Hosts a back stack of [NavKey] destinations.
@@ -94,6 +103,18 @@ fun IosNavHost(
     // Activity does, and the per-entry decorator needs a parent to hang stores off. Fall back to one
     // scoped to this host rather than requiring the caller to provide it.
     val rootOwner = LocalViewModelStoreOwner.current ?: rememberHostViewModelStoreOwner()
+
+    // Screen reporting, mirroring Android's `RouterHost` line for line — same `snapshotFlow` on the
+    // back stack, same `distinctUntilChanged`, same `analyticsName`/`analyticsParams`. Doing it here
+    // rather than per-entry is what keeps the two platforms reporting the same screens: a destination
+    // added to either host is reported without anyone remembering to add a call.
+    val analytics = remember { KoinPlatform.getKoin().get<AnalyticsLogger>() }
+    LaunchedEffect(backStack) {
+        snapshotFlow { backStack.lastOrNull() as? AppRoute }
+            .filterNotNull()
+            .distinctUntilChanged()
+            .collect { route -> analytics.logScreen(route.analyticsName, route.analyticsParams) }
+    }
 
     CompositionLocalProvider(LocalViewModelStoreOwner provides rootOwner) {
         val viewModelStoreProvider = rememberViewModelStoreProvider(parent = rootOwner)
