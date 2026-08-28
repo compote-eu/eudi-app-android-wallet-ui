@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.ui.navigation
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableIntStateOf
 import eu.europa.ec.dashboardfeature.ui.dashboard.PendingLaunchIntent
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AppRoute
@@ -43,6 +45,20 @@ import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
  * which is one-shot. If a link ever appears to go missing on iOS, this is the first place to look.
  */
 object IosNavPlatformActions : NavPlatformActions {
+
+    /**
+     * Bumped by [IosDeepLinks] on every delivery. Lives here rather than in `IosDeepLinks` because
+     * `:shared-logic` has no Compose on its classpath, and turning a callback into something
+     * composition can watch is a UI-layer concern.
+     */
+    private val retrigger = mutableIntStateOf(0)
+
+    init {
+        IosDeepLinks.setOnDelivered { retrigger.value += 1 }
+    }
+
+    @Composable
+    override fun rememberPendingLaunchRetrigger(): Int = retrigger.value
 
     override fun pendingDeepLink(): String? = IosDeepLinks.takePending()
 

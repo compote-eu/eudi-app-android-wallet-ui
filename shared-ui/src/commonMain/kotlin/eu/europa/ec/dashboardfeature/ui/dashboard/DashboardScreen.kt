@@ -130,6 +130,14 @@ fun DashboardScreen(
      * `SystemBroadcastReceiver` is a no-op.
      */
     revokedDocumentsFromBroadcast: (PlatformIntent) -> List<RevokedDocumentDataDomain>? = { null },
+    /**
+     * Bumped by the platform when a deep link arrives while this screen is **already resumed**.
+     *
+     * [pendingLaunchIntent] is otherwise only read on `ON_RESUME`, which never fires in that case, so
+     * the link would sit unread. Android leaves this at its default: caching an intent there is paired
+     * with a `popToDashboardScreen()` that performs the read on its own.
+     */
+    pendingLaunchRetrigger: Int = 0,
 ) {
     val platformActions = rememberPlatformScreenActions()
 
@@ -249,6 +257,20 @@ fun DashboardScreen(
                 intentAction = pending.intentAction,
             )
         )
+    }
+
+    // The same read as the ON_RESUME one above, for a link that arrives with the screen already up.
+    // Guarded twice: `> 0` so the initial composition does not race the resume read, and on the payload
+    // so an empty slot never dispatches an Init that would reset state for nothing.
+    LaunchedEffect(pendingLaunchRetrigger) {
+        if (pendingLaunchRetrigger > 0) {
+            val pending = pendingLaunchIntent()
+            if (pending.deepLink != null || pending.intentAction != null) {
+                viewModel.setEvent(
+                    Event.Init(deepLink = pending.deepLink, intentAction = pending.intentAction)
+                )
+            }
+        }
     }
 
     LaunchedEffect(Unit) {

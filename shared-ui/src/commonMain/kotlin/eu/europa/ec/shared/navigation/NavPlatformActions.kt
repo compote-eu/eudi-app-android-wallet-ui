@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.navigation
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
 import eu.europa.ec.dashboardfeature.ui.dashboard.PendingLaunchIntent
@@ -74,6 +75,17 @@ interface NavPlatformActions {
 
     /** Follows [link] now, to [route] when the caller already resolved where it leads. */
     fun openDeepLink(navigator: AppNavigator, link: String, route: AppRoute? = null) {}
+
+    /**
+     * Bumped when a link arrives while the app is **already open and resumed**, so the dashboard can
+     * read it there and then. Android returns a constant: it has no need of this, because caching the
+     * intent is paired with a `popToDashboardScreen()` that performs the read by itself.
+     *
+     * Composable because the platform's answer is observable state, and the caller has to recompose
+     * when it changes — that recomposition is the whole mechanism.
+     */
+    @Composable
+    fun rememberPendingLaunchRetrigger(): Int = 0
 
     /** Follows an app [action] — DC API on Android, nothing anywhere else. */
     fun openIntentAction(navigator: AppNavigator, action: IntentAction, route: AppRoute?) {}

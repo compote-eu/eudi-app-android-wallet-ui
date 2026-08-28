@@ -116,6 +116,7 @@ fun EntryProviderScope<NavKey>.sharedAppEntries(navigator: AppNavigator) {
             onExternalDeepLink = { link, route -> platform.openDeepLink(navigator, link, route) },
             onIntentAction = { action, route -> platform.openIntentAction(navigator, action, route) },
             revokedDocumentsFromBroadcast = { platform.revokedDocumentsFromBroadcast(it) },
+            pendingLaunchRetrigger = platform.rememberPendingLaunchRetrigger(),
         )
     }
 

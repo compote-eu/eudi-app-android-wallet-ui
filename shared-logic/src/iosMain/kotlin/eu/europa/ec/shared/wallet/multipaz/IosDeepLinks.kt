@@ -38,6 +38,30 @@ object IosDeepLinks {
 
     private var pending: String? = null
 
+    private var onDelivered: (() -> Unit)? = null
+
+    /**
+     * Registers what to do the moment a link is kept, or clears it with null.
+     *
+     * Storing the link is not enough on its own: the shared screens read it from a
+     * `LifecycleEffect(ON_RESUME)`, so a link arriving while the wallet is **already open and resumed**
+     * was stored and then never read — nothing resumed, so nobody asked. Android has no such hole
+     * because `EudiComponentActivity.handleDeepLink` caches the intent *and* calls
+     * `popToDashboardScreen()`; the recomposition that causes is what performs the read.
+     *
+     * A plain callback rather than observable state because this module has no Compose on its
+     * classpath, and should not: turning it into something composition can watch is
+     * `IosNavPlatformActions`' job, one layer up.
+     *
+     * 🪤 Re-entering the destination is NOT a usable substitute, and it was tried: navigating to
+     * `DashboardRoute` with `popUpTo(inclusive = true)` re-adds the **same** `NavKey`, so Nav3 keeps the
+     * existing entry rather than building a new one, no fresh composition happens and `ON_RESUME` never
+     * fires again. Only an explicit signal works.
+     */
+    fun setOnDelivered(listener: (() -> Unit)?) {
+        onDelivered = listener
+    }
+
     /**
      * Called by the app shell when a URL is opened on the app.
      *
@@ -57,6 +81,8 @@ object IosDeepLinks {
         }
         pending = url
         Logger.i(TAG, "$kind is waiting to be opened")
+        // After storing, never before: whoever reacts to this will immediately read `pending`.
+        onDelivered?.invoke()
         return true
     }
 
