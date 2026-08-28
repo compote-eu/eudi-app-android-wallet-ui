@@ -97,8 +97,9 @@ targets:
               - mdoc-openid4vp
               - haip-vp
           # ── Android registers two schemes this app deliberately does not ──────────────────────
-          # Checked by `IosDeepLinksTest.the_schemes_ios_does_not_register_are_deliberate`, which
-          # partitions Android's full set against these eight. Do not add either without also
+          # Checked by `DeepLinkSchemeParityTest` (a JVM test in :ui-logic), which reads Android's
+          # schemes from the generated BuildConfig and iOS's from *this file*, so neither list is
+          # restated anywhere. Do not add either without also
           # giving the link somewhere to land — registering a scheme the app cannot act on is
           # worse than not registering it, because the link then opens the wallet onto a dead end.
           #

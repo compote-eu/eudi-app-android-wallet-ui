@@ -105,28 +105,11 @@ class IosDeepLinksTest {
     }
 
     @Test
-    fun the_schemes_ios_does_not_register_are_deliberate() {
-        // Android registers ten URL schemes; this app registers eight. The two it leaves out are
-        // choices, not oversights, and this test is what keeps them choices — before it existed,
-        // nothing compared the two lists, and the difference read as a gap when it was found.
-        //
-        // Android's set: `AndroidLibraryConventionPlugin.kt` declares the values and feeds them to the
-        // `${'$'}{...Scheme}` placeholders in assembly-logic's AndroidManifest.xml. Kotlin/Native cannot
-        // read either, so the list is restated here; changing Android's means changing this line, and
-        // the partition below then forces the new scheme to be classified rather than ignored.
-        val androidSchemes = setOf(
-            "openid4vp", "eudi-openid4vp", "mdoc-openid4vp", "haip-vp",
-            "openid-credential-offer", "haip-vci",
-            "eu.europa.ec.euidi",
-            "rqes",
-            "eudi-rqes",
-            "eudi-wallet",
-        )
-
+    fun the_eight_schemes_ios_claims_are_the_eight_it_can_route() {
         // What iOS claims, from `CFBundleURLTypes` in iosApp/project.yml — the tracked source, since
-        // Info.plist is generated from it and git-ignored. Six of the eight route through
-        // `IosDeepLinks`; the other two have their own handlers and are named as literals because they
-        // are matched outside this class.
+        // Info.plist is generated from it and git-ignored. Six of the eight route through `IosDeepLinks`;
+        // the other two have their own handlers and are named here because they are matched outside this
+        // class.
         val iosRegistered = IosDeepLinks.OFFER_SCHEMES.toSet() +
                 IosDeepLinks.PRESENTATION_SCHEMES.toSet() +
                 // `IosAuthorizationRedirects` — a flow is already waiting for this one.
@@ -134,17 +117,16 @@ class IosDeepLinksTest {
                 // Swift's `rqesCallbackScheme`, consumed by `WalletDocumentSigner.resume`.
                 "rqes"
 
-        // eudi-rqes: RP-initiated document retrieval. The iOS `EudiRQESUi` package exposes only
-        //   `initiate(on:fileUrl:)` and `resume(on:authorizationCode:)` — no remote-URI entry point —
-        //   so there is nothing to hand the link to (upstream rqes-ui#109).
-        // eudi-wallet: dead on Android too. Nothing produces or consumes it and `DeepLinkType` omits it.
-        val deliberatelyUnregistered = setOf("eudi-rqes", "eudi-wallet")
-
+        // Every registered scheme has a handler, and no handler claims a scheme that is not registered:
+        // a scheme in `project.yml` with nothing to route it opens the app onto a dead end, and a scheme
+        // routed but unregistered never reaches the app at all.
         assertEquals(8, iosRegistered.size)
-        assertEquals(emptySet(), iosRegistered intersect deliberatelyUnregistered)
-        // The partition must be exact: every scheme Android registers is either claimed here or listed
-        // above with a reason. A new one on either side lands in neither and fails this.
-        assertEquals(androidSchemes, iosRegistered + deliberatelyUnregistered)
+
+        // ⚠️ This deliberately no longer restates Android's ten schemes to check the partition. It used
+        // to, and that made the comparison one-directional: Kotlin/Native can read neither Android's
+        // `BuildConfig` nor the repo's files, so an *Android-side* change failed nothing here.
+        // `DeepLinkSchemeParityTest` (a JVM test in :ui-logic) now reads both real sources — the
+        // generated `BuildConfig` and `iosApp/project.yml` — and owns the cross-platform partition.
     }
 
     @Test
