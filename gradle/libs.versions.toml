@@ -1,18 +1,18 @@
 [versions]
 # Kotlin
 kotlin = "2.4.10"
-composeMultiplatform = "1.11.1"
+composeMultiplatform = "1.12.0"
 androidxLifecycleViewmodel = "2.11.0"
-navigation3 = "1.1.5"
+navigation3 = "1.1.7"
 # JetBrains' multiplatform build of navigation3-ui. Google publishes navigation3-*runtime* for iOS but
 # NOT navigation3-ui, so `NavDisplay` is Android-only upstream; this fork fills exactly that gap and
 # delegates to the androidx artifacts on Android. Its own line, since it tracks the fork not androidx.
 jetbrainsNavigation3 = "1.1.1"
-kotlinxAtomicfu = "0.32.1"
+kotlinxAtomicfu = "0.33.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxDatetime = "0.8.0"
 kotlinxSerializationJson = "1.11.0"
-ksp = "2.3.10"
+ksp = "2.3.11"
 
 # AndroidX
 androidxActivity = "1.13.0"
@@ -27,7 +27,7 @@ androidxLifecycle = "2.11.0"
 androidxMetrics = "1.0.0"
 androidxProfileinstaller = "1.4.1"
 androidxRoom = "2.8.4"
-androidxTracing = "2.0.0"
+androidxTracing = "2.0.1"
 androidxWindowManager = "1.5.1"
 androidxWork = "2.11.2"
 constraintlayoutVersion = "1.1.2"
@@ -42,10 +42,10 @@ material3 = "1.4.0"
 materialIcons = "1.7.8"
 
 # CameraX
-cameraCore = "1.6.1"
+cameraCore = "1.6.2"
 
 # Coil (image loading)
-coil = "3.5.0"
+coil = "3.6.0"
 
 # Ktor (networking)
 ktor = "3.5.2"
@@ -71,7 +71,7 @@ treessence = "1.1.2"
 
 # Other libraries
 androidDesugarJdkLibs = "2.1.5"
-googlePhoneNumber = "9.0.37"
+googlePhoneNumber = "9.0.38"
 gson = "2.14.0"
 lint = "32.3.2"
 material = "1.14.0"
@@ -96,7 +96,7 @@ turbine = "1.2.1"
 
 # Gradle plugins
 androidGradlePlugin = "9.3.2"
-baselineprofile = "1.5.0-rc01"
+baselineprofile = "1.5.0-rc02"
 dependencyGraphPlugin = "0.13.0"
 detekt = "1.23.8"
 gmsPlugin = "4.5.0"
