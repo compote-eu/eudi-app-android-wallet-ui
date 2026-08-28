@@ -27,7 +27,7 @@ import eu.europa.ec.corelogic.extension.documentIdentifier
 import eu.europa.ec.corelogic.extension.getIssuerLogo
 import eu.europa.ec.corelogic.extension.getIssuerName
 import eu.europa.ec.corelogic.extension.getName
-import eu.europa.ec.corelogic.model.DocumentIdentifier
+import eu.europa.ec.corelogic.model.isPid
 import eu.europa.ec.eudi.openid4vci.TxCodeInputMode
 import eu.europa.ec.eudi.wallet.issue.openid4vci.Offer
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -92,7 +92,7 @@ class AndroidDocumentOfferPlatformBridge(
                         issuerLogoUri = offer.getIssuerLogo(userLocale)?.toString(),
                         containsPid = offer.offeredDocuments.any { offeredDocument ->
                             val id = offeredDocument.documentIdentifier
-                            id == DocumentIdentifier.MdocPid || id == DocumentIdentifier.SdJwtPid
+                            id.isPid
                         },
                         txCodeLength = offer.txCodeSpec?.length,
                         // A text code is one this wallet cannot ask for; the shared side decides what to

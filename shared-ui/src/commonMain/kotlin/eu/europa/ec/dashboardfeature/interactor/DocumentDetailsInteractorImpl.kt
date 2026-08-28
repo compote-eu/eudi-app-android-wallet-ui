@@ -91,7 +91,10 @@ class DocumentDetailsInteractorImpl(
                     ),
                     documentDetailsDomain = domain,
                     documentIsBookmarked = walletEngine.isDocumentBookmarked(documentId),
-                    documentCredentialsInfoUi = details.credentialsInfo,
+                    // Gated here, not in either platform's `getDocumentDetails` — see
+                    // `DocumentDetailsPlatformBridge.showBatchIssuanceCounter`.
+                    documentCredentialsInfoUi = details.credentialsInfo
+                        ?.takeIf { platform.showBatchIssuanceCounter() },
                 )
             )
         }

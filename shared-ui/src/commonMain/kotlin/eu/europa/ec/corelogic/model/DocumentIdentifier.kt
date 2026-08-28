@@ -70,3 +70,21 @@ fun DocumentIdentifier.toDocumentCategory(allCategories: DocumentCategories): Do
         this.formatType.lowercase() in formatTypesInCategory
     }?.key ?: DocumentCategory.Other
 }
+
+/**
+ * Whether this is a PID, in either of the two formats the wallet issues it in.
+ *
+ * One declaration because the wallet asks it in four unrelated places — whether deleting a document
+ * empties the wallet, whether an offer contains a PID, and on both platforms — and each had written
+ * the `MdocPid || SdJwtPid` pair out by hand. Adding a third PID format would otherwise mean finding
+ * all four.
+ *
+ * Nullable receiver so a caller that has just mapped an unknown `formatType` (which yields null) does
+ * not need its own null branch: an identifier the wallet does not recognise is not a PID.
+ *
+ * ⚠️ **Not for deciding what a credential *config* offers.** `WalletCoreDocumentsController` branches
+ * on the credential type first and checks `MdocPid` for mdoc and `SdJwtPid` for SD-JWT — narrower on
+ * purpose, since there a format mismatch means the offer is malformed rather than not-a-PID.
+ */
+val DocumentIdentifier?.isPid: Boolean
+    get() = this == DocumentIdentifier.MdocPid || this == DocumentIdentifier.SdJwtPid

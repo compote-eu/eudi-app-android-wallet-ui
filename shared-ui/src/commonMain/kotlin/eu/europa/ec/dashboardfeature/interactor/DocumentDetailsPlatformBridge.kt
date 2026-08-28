@@ -49,6 +49,18 @@ interface DocumentDetailsPlatformBridge {
     /** BCP-47 tag used to pick localized claim and issuer names. */
     fun localeTag(): String
 
+    /**
+     * Whether to show the `n/m` credential counter — the same user preference the documents *list*
+     * reads through `DocumentsPlatformBridge.showBatchIssuanceCounter`.
+     *
+     * Asked here rather than applied inside [getDocumentDetails] because both platforms were applying
+     * it themselves and iOS had stopped: it returned the counter unconditionally, behind a comment
+     * saying iOS "has no preferences store wired up" — untrue since `IosPreferences` landed. Turning the
+     * setting off therefore hid the counter in the list but not on this screen, on iOS only. One gate in
+     * the shared interactor is what stops that recurring.
+     */
+    suspend fun showBatchIssuanceCounter(): Boolean
+
     fun deleteDocument(
         documentId: String,
     ): Flow<DocumentDetailsInteractorDeleteDocumentPartialState>

@@ -31,6 +31,7 @@ import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimPathSegment
 import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.corelogic.model.DocumentIdentifier
+import eu.europa.ec.corelogic.model.isPid
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import eu.europa.ec.shared.wallet.document.DocumentDeletionScope
@@ -70,6 +71,10 @@ internal class IosDocumentDetailsPlatformBridge(
 ) : DocumentDetailsPlatformBridge {
 
     override fun localeTag(): String = NSLocale.currentLocale.languageCode
+
+    /** The same store the settings switch writes to, as on Android and as the documents list reads. */
+    override suspend fun showBatchIssuanceCounter(): Boolean =
+        IosPreferences.showBatchIssuanceCounter()
 
     override suspend fun getDocumentDetails(
         documentId: String,
@@ -186,11 +191,9 @@ internal class IosDocumentDetailsPlatformBridge(
         )
     }
 
-    /** Whether this is a PID in either format, the only distinction the deletion policy draws. */
-    private fun WalletDocument?.isPid(): Boolean {
-        val identifier = this?.formatType?.toDocumentIdentifier()
-        return identifier == DocumentIdentifier.MdocPid || identifier == DocumentIdentifier.SdJwtPid
-    }
+    /** Whether this document is a PID, deferring to the one shared predicate. */
+    private fun WalletDocument?.isPid(): Boolean =
+        this?.formatType?.toDocumentIdentifier().isPid
 
     /** iOS has no OpenID4VCI implementation, so this fails rather than appearing to start something. */
     /**
@@ -245,8 +248,12 @@ internal class IosDocumentDetailsPlatformBridge(
     override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
 
     /**
-     * The `n/m` counter, shown whenever the document reports a batch. Android gates this on a stored
-     * preference; iOS has no preferences store wired up, matching the Android default of on.
+     * The `n/m` counter whenever the document reports a batch — reported unconditionally, because
+     * whether to *show* it is the shared interactor's decision now.
+     *
+     * It used to be gated here on nothing at all, behind a comment claiming iOS "has no preferences
+     * store wired up". `IosPreferences` had made that untrue, so the setting hid the counter in the
+     * documents list and not on this screen.
      */
     private fun WalletDocument.credentialsInfo(): DocumentCredentialsInfoUi? =
         if (initialCredentialsCount > 0) {

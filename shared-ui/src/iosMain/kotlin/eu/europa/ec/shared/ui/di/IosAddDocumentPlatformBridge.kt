@@ -22,6 +22,7 @@ import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
 import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.model.DocumentIdentifier
+import eu.europa.ec.corelogic.model.isPid
 import eu.europa.ec.corelogic.model.ScopedDocumentDomain
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
@@ -72,7 +73,7 @@ internal class IosAddDocumentPlatformBridge(
                         // Which format types are PIDs is app knowledge, not the issuer's: the reader
                         // reports the type, and this decides — as Android's controller does.
                         isPid = credential.formatType?.toDocumentIdentifier()
-                            .let { it == DocumentIdentifier.MdocPid || it == DocumentIdentifier.SdJwtPid },
+                            .isPid,
                     )
                 }
             )

@@ -92,6 +92,11 @@ private class FakeDetailsBridge(
         return "en"
     }
 
+    // True, matching the stored preference's default on both platforms. This interactor does not read
+    // the counter — these cases construct `credentialsInfo = null` regardless — so the value only has
+    // to be the one that does not hide anything the tests do assert on.
+    override suspend fun showBatchIssuanceCounter(): Boolean = true
+
     override fun deleteDocument(
         documentId: String,
     ): Flow<DocumentDetailsInteractorDeleteDocumentPartialState> = emptyFlow()

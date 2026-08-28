@@ -34,6 +34,7 @@ import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.isExpired
 import eu.europa.ec.corelogic.extension.localizedIssuerMetadata
 import eu.europa.ec.corelogic.model.DocumentIdentifier
+import eu.europa.ec.corelogic.model.isPid
 import eu.europa.ec.shared.wallet.document.DocumentDeletionScope
 import eu.europa.ec.shared.wallet.document.documentDeletionScope
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
@@ -92,18 +93,16 @@ class AndroidDocumentDetailsPlatformBridge(
             issuerName = issuerDisplay?.name,
             issuerLogoUri = issuerDisplay?.logo?.uri?.toString(),
             isExpired = issuedDocument.isExpired(),
-            credentialsInfo = if (prefKeys.getShowBatchIssuanceCounter()) {
-                createDocumentCredentialsInfoUi(
-                    document = issuedDocument,
-                    resourceProvider = resourceProvider,
-                )
-            } else {
-                null
-            },
+            credentialsInfo = createDocumentCredentialsInfoUi(
+                document = issuedDocument,
+                resourceProvider = resourceProvider,
+            ),
         )
     }
 
     override fun localeTag(): String = resourceProvider.getLocale().toLanguageTag()
+
+    override suspend fun showBatchIssuanceCounter(): Boolean = prefKeys.getShowBatchIssuanceCounter()
 
     override fun deleteDocument(
         documentId: DocumentId
@@ -114,8 +113,7 @@ class AndroidDocumentDetailsPlatformBridge(
             val docType = (format as? MsoMdocFormat)?.docType ?: (format as? SdJwtVcFormat)?.vct
             val docIdentifier = docType?.toDocumentIdentifier()
 
-            val deletedDocumentIsPid = docIdentifier == DocumentIdentifier.MdocPid ||
-                    docIdentifier == DocumentIdentifier.SdJwtPid
+            val deletedDocumentIsPid = docIdentifier.isPid
 
             // Only counted when it can change the answer: the query is a store read, and the policy
             // ignores the count entirely unless this build forces PID activation and a PID is going.
