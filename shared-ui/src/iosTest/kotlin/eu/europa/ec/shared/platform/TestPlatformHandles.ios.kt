@@ -17,13 +17,14 @@
 package eu.europa.ec.shared.platform
 
 /**
- * Uninhabited: iOS has no intents. The equivalent hand-offs (universal links, `ASWebAuthenticationSession`)
- * do not share this shape, so the type stays uninhabited rather than pretending to generalise.
+ * iOS has neither a Context nor an Intent, so both handles stay uninhabited in production. These are
+ * tokens minted purely so the shared view-model tests run on this target too.
  *
- * The constructor is no longer `private`, so a test can mint a token instance. That is all it is: the
- * class has no members, so an instance carries nothing and can do nothing. It exists so `commonTest`
- * can reach the view-model paths that only pass a [PlatformIntent] through — the same role Android's
- * tests give a `mock<Context>()`. Common code still cannot construct one, because the `expect`
- * declaration exposes no constructor; that is what keeps common code off Android intents, not this.
+ * `PlatformContext` is abstract, so it needs a subclass — its constructor is `protected` for exactly
+ * this. `PlatformIntent` is a memberless class whose constructor is simply no longer private.
  */
-actual class PlatformIntent()
+private class TokenPlatformContext : PlatformContext()
+
+internal actual fun testPlatformContext(): PlatformContext = TokenPlatformContext()
+
+internal actual fun testPlatformIntent(): PlatformIntent = PlatformIntent()

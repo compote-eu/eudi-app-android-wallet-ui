@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The issuance outcomes of DocumentOfferCodeViewModel. Android-only because every one of them is
+// The issuance outcomes of DocumentOfferCodeViewModel. Their own file because every one of them is
 // reached through `Event.OnPinEntered`, which carries a `PlatformContext`: submitting a transaction
 // code can lead to a device-authentication prompt.
 //
@@ -22,7 +22,6 @@
 // six of them, each with a different consequence for where the user ends up.
 package eu.europa.ec.issuancefeature.ui.code
 
-import android.content.Context
 import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
@@ -35,6 +34,7 @@ import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.testPlatformContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -45,7 +45,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.mockito.kotlin.mock
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -57,12 +56,12 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class DocumentOfferCodeViewModelAndroidTest {
+class DocumentOfferCodeViewModelPlatformHandleTest {
 
     private val mainDispatcher = UnconfinedTestDispatcher()
 
-    // A mocked Context is faithful here: the view-model only forwards it to the interactor.
-    private val context: PlatformContext = mock<Context>()
+    // A stand-in is faithful here: the view-model only forwards the handle to the interactor.
+    private val context: PlatformContext = testPlatformContext()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(mainDispatcher)

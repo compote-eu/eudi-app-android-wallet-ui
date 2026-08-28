@@ -14,8 +14,9 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The pending-intent branch of `DocumentSuccessViewModel.handleStickyButtonPressed`, which cannot be
-// written in common code: it both takes and emits a `PlatformIntent`.
+// The pending-intent branch of `DocumentSuccessViewModel.handleStickyButtonPressed`, split out
+// because it both takes and emits a `PlatformIntent`. What is asserted is identity — the same handle
+// must come back out — so a token from `testPlatformIntent()` is a faithful stand-in.
 //
 // This is the DC-API return path — the wallet was invoked by the browser, so "done" means finishing the
 // activity with a result rather than navigating anywhere in-app. It takes precedence over the
@@ -23,7 +24,7 @@
 // browser waiting forever while the wallet cheerfully returned to its dashboard.
 package eu.europa.ec.presentationfeature.ui.success
 
-import android.content.Intent
+import eu.europa.ec.shared.platform.testPlatformIntent
 import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessViewModelTest.Companion.SCOPE
 import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessViewModelTest.Companion.documentRow
 import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessViewModelTest.Companion.presentationSuccess
@@ -46,7 +47,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class PresentationSuccessViewModelAndroidTest {
+class PresentationSuccessViewModelPlatformHandleTest {
 
     private val mainDispatcher = UnconfinedTestDispatcher()
 
@@ -58,7 +59,7 @@ class PresentationSuccessViewModelAndroidTest {
 
     @Test
     fun a_pending_intent_finishes_with_a_result_instead_of_navigating() = runTest(mainDispatcher) {
-        val pending = Intent("eu.europa.ec.test.RESULT")
+        val pending = testPlatformIntent()
         val fake = FakePresentationSuccessInteractor(
             listOf(presentationSuccess(documentRow("d1"))),
             pendingIntent = pending,
@@ -77,7 +78,7 @@ class PresentationSuccessViewModelAndroidTest {
 
     @Test
     fun a_pending_intent_wins_over_a_configured_redirect() = runTest(mainDispatcher) {
-        val pending = Intent("eu.europa.ec.test.RESULT")
+        val pending = testPlatformIntent()
         val fake = FakePresentationSuccessInteractor(
             listOf(presentationSuccess(documentRow("d1"))),
             // Both are present; the intent must take precedence.

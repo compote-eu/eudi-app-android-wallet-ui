@@ -16,9 +16,9 @@
 
 // PresentationLoadingViewModel's `doWork` — the OpenID4VP / DC-API send path.
 //
-// Android-only for the same two reasons as its proximity twin, doubled: `Event.DoWork` carries a
+// It needs BOTH platform handles, where its proximity twin needs only one: `Event.DoWork` carries a
 // `PlatformContext`, and this interactor's `IntentToSend` state carries a `PlatformIntent`. Both are
-// `expect class` with no common constructor and uninhabited on iOS.
+// `expect class` with no common constructor, so both come from the test factories.
 //
 // The interesting difference from proximity is that this stream has FIVE terminal-ish states rather
 // than three, and three of them (`Success`, `Redirect`, `IntentToSend`) all funnel into the same
@@ -27,8 +27,6 @@
 // could otherwise mistake the ignored payloads for a bug.
 package eu.europa.ec.presentationfeature.ui.loading
 
-import android.content.Context
-import android.content.Intent
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.commonfeature.ui.loading.Effect
@@ -40,6 +38,8 @@ import eu.europa.ec.presentationfeature.interactor.PresentationLoadingSendReques
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.PresentationSuccessRoute
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.testPlatformContext
+import eu.europa.ec.shared.platform.testPlatformIntent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -52,7 +52,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.mockito.kotlin.mock
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -62,7 +61,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class PresentationLoadingViewModelAndroidTest {
+class PresentationLoadingViewModelPlatformHandleTest {
 
     private class FakePresentationLoadingInteractor(
         private val responses: List<PresentationLoadingObserveResponsePartialState>,
@@ -106,7 +105,7 @@ class PresentationLoadingViewModelAndroidTest {
     }
 
     private val mainDispatcher = UnconfinedTestDispatcher()
-    private val context: PlatformContext = mock<Context>()
+    private val context: PlatformContext = testPlatformContext()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(mainDispatcher)
@@ -153,7 +152,7 @@ class PresentationLoadingViewModelAndroidTest {
     fun an_intent_to_send_navigates_to_success_and_ignores_the_intent_here() =
         runTest(mainDispatcher) {
             assertNavigatesToSuccess(
-                PresentationLoadingObserveResponsePartialState.IntentToSend(intent = Intent()),
+                PresentationLoadingObserveResponsePartialState.IntentToSend(intent = testPlatformIntent()),
                 this,
             )
         }

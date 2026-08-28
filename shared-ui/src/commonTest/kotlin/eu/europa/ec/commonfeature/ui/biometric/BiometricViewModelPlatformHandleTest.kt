@@ -14,9 +14,9 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The biometric-prompt half of BiometricViewModel — Android-only because `Event.OnBiometricsClicked`
-// carries a `PlatformContext`. The PIN-fallback half, which is the security-critical part, is in
-// commonTest and runs on both targets.
+// The biometric-prompt half of BiometricViewModel, kept apart from the PIN-fallback half in
+// BiometricViewModelTest only because `Event.OnBiometricsClicked` carries a `PlatformContext`.
+// Both halves run on both targets: the handle comes from `testPlatformContext()`.
 //
 // `shouldThrowErrorIfNotAvailable` is the flag worth pinning here. The same event is sent from two
 // places with opposite expectations: the automatic on-create prompt passes false and must fail
@@ -24,13 +24,13 @@
 // went wrong. Collapsing the two would either nag on every launch or swallow a real error.
 package eu.europa.ec.commonfeature.ui.biometric
 
-import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.commonfeature.ui.biometric.BiometricViewModelTest.Companion.config
 import eu.europa.ec.dashboardfeature.ui.settings.FakeBiometricInteractor
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.testPlatformContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -40,7 +40,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.mockito.kotlin.mock
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -50,10 +49,10 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class BiometricViewModelAndroidTest {
+class BiometricViewModelPlatformHandleTest {
 
     private val mainDispatcher = UnconfinedTestDispatcher()
-    private val context: PlatformContext = mock<Context>()
+    private val context: PlatformContext = testPlatformContext()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(mainDispatcher)

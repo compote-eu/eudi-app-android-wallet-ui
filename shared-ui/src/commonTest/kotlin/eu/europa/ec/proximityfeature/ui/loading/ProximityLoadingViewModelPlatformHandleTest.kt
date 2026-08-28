@@ -17,14 +17,13 @@
 // ProximityLoadingViewModel's `doWork` — the ISO 18013-5 send path, including the device-authentication
 // hand-off that was the reason the PlatformContext handle exists.
 //
-// Android-only NOT because the logic is Android-specific — it is ordinary common code — but because
+// Its own file NOT because the logic is Android-specific — it is ordinary common code — but because
 // `Event.DoWork` carries a `PlatformContext`, an `expect class` with no common constructor that is
-// deliberately uninhabited on iOS. A mock stands in for it; the view-model never calls anything on it,
-// it only forwards it to the interactor, so a mock is a faithful stand-in rather than a compromise.
-// The base's own behaviour is covered in commonTest by LoadingViewModelTest and runs on both targets.
+// deliberately uninhabited on iOS. `testPlatformContext()` stands in for it; the view-model never
+// calls anything on it, only forwards it to the interactor, so a stand-in is faithful rather than a
+// compromise. The base's own behaviour is covered in commonTest by LoadingViewModelTest.
 package eu.europa.ec.proximityfeature.ui.loading
 
-import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.commonfeature.ui.loading.Effect
@@ -36,6 +35,7 @@ import eu.europa.ec.proximityfeature.interactor.ProximityLoadingSendRequestedDoc
 import eu.europa.ec.shared.navigation.ProximityRequestRoute
 import eu.europa.ec.shared.navigation.ProximitySuccessRoute
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.testPlatformContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -47,7 +47,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.mockito.kotlin.mock
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -58,7 +57,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ProximityLoadingViewModelAndroidTest {
+class ProximityLoadingViewModelPlatformHandleTest {
 
     private class FakeProximityLoadingInteractor(
         private val responses: List<ProximityLoadingObserveResponsePartialState>,
@@ -111,8 +110,8 @@ class ProximityLoadingViewModelAndroidTest {
 
     private val mainDispatcher = UnconfinedTestDispatcher()
 
-    /** `PlatformContext` is `android.content.Context` here; abstract, hence the mock. */
-    private val context: PlatformContext = mock<Context>()
+    /** Opaque on both targets; see `testPlatformContext`. */
+    private val context: PlatformContext = testPlatformContext()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(mainDispatcher)

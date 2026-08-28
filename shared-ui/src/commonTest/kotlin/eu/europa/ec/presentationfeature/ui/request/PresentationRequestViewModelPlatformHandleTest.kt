@@ -14,20 +14,18 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The one piece of request-screen behaviour that CANNOT be tested from common code.
+// The one piece of request-screen behaviour that needs a `PlatformIntent`.
 //
 // `RequestViewModel.handleOnBack()` finishes the activity instead of popping when the request arrived
 // through the Digital Credentials API, and it decides that from `State.intentAction?.type`. Building an
-// `IntentAction` needs a `PlatformIntent`, which is an `expect class` with no common constructor — so
-// this assertion belongs in the Android host-test source set, where the actual type is a real
-// `android.content.Intent`.
+// `IntentAction` needs a `PlatformIntent`, an `expect class` with no common constructor — supplied here
+// by `testPlatformIntent()`: a real `android.content.Intent` on Android, a token on iOS.
 //
-// That split is the point rather than an inconvenience: it keeps the platform-shaped input at the
-// platform edge, and everything else about these view-models stays in commonTest, running on both
-// targets. This is the first test in shared-ui's androidHostTest source set.
+// A token suffices because `IntentAction` carries `type` alongside the intent rather than deriving it
+// from one, so nothing here reads the intent — it is only passed through.
 package eu.europa.ec.presentationfeature.ui.request
 
-import android.content.Intent
+import eu.europa.ec.shared.platform.testPlatformIntent
 import eu.europa.ec.commonfeature.ui.request.Effect
 import eu.europa.ec.commonfeature.ui.request.Event
 import eu.europa.ec.presentationfeature.ui.request.PresentationRequestViewModelTest.Companion.OPENID_CONFIG
@@ -52,7 +50,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class PresentationRequestViewModelAndroidTest {
+class PresentationRequestViewModelPlatformHandleTest {
 
     private val mainDispatcher = UnconfinedTestDispatcher()
 
@@ -65,7 +63,7 @@ class PresentationRequestViewModelAndroidTest {
     private fun dcApiAction() = IntentAction(
         // Never inspected by the view-model — it only reads `type` — so a bare Intent is enough, and
         // needs no Android framework beyond the class itself.
-        intent = Intent(),
+        intent = testPlatformIntent(),
         type = IntentType.DC_API,
     )
 

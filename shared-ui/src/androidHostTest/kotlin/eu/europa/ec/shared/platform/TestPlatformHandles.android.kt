@@ -16,14 +16,18 @@
 
 package eu.europa.ec.shared.platform
 
+import android.content.Context
+import android.content.Intent
+import org.mockito.kotlin.mock
+
 /**
- * Uninhabited: iOS has no intents. The equivalent hand-offs (universal links, `ASWebAuthenticationSession`)
- * do not share this shape, so the type stays uninhabited rather than pretending to generalise.
+ * `PlatformContext` is `android.content.Context` here, which is abstract — hence a mock. That is
+ * faithful rather than a compromise for the tests using it: they only forward the handle.
  *
- * The constructor is no longer `private`, so a test can mint a token instance. That is all it is: the
- * class has no members, so an instance carries nothing and can do nothing. It exists so `commonTest`
- * can reach the view-model paths that only pass a [PlatformIntent] through — the same role Android's
- * tests give a `mock<Context>()`. Common code still cannot construct one, because the `expect`
- * declaration exposes no constructor; that is what keeps common code off Android intents, not this.
+ * It is also why this factory has to exist instead of `commonTest` building one itself. Mockito is
+ * JVM-only, so common code cannot reference it.
  */
-actual class PlatformIntent()
+internal actual fun testPlatformContext(): PlatformContext = mock<Context>()
+
+/** `PlatformIntent` is `android.content.Intent` here, which is concrete and constructible. */
+internal actual fun testPlatformIntent(): PlatformIntent = Intent()

@@ -14,20 +14,20 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The `ItemClicked` branches of SettingsViewModel — Android-only because the event carries a
+// The `ItemClicked` branches of SettingsViewModel, split out because the event carries a
 // `PlatformContext`. The log-sharing branch used to need an Android `Intent` too; it carries
-// plain paths now, so only the context keeps these here.
+// plain paths now, so the context is the only platform handle left in here.
 //
 // The branch worth the most here is the biometrics toggle, which must only flip AFTER a successful
 // prompt: flipping first would let a failed or cancelled authentication silently turn the wallet's
 // login protection off.
 package eu.europa.ec.dashboardfeature.ui.settings
 
-import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAuthenticate
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.testPlatformContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -37,7 +37,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.mockito.kotlin.mock
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -45,10 +44,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class SettingsViewModelAndroidTest {
+class SettingsViewModelPlatformHandleTest {
 
     private val mainDispatcher = UnconfinedTestDispatcher()
-    private val context: PlatformContext = mock<Context>()
+    private val context: PlatformContext = testPlatformContext()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(mainDispatcher)

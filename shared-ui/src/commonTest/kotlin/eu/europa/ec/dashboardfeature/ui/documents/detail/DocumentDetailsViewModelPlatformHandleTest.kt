@@ -14,21 +14,21 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The re-issuance branch of DocumentDetailsViewModel — Android-only because
+// The re-issuance branch of DocumentDetailsViewModel. Its own file because
 // `IssuerDetails.OnActionButtonClicked` carries a `PlatformContext` (re-issuing a document may need
-// to raise a device-authentication prompt).
+// to raise a device-authentication prompt), which `testPlatformContext()` supplies per target.
 //
 // The assertions that matter here: an untrusted issuer must NOT surface as a generic error but as its
 // own sheet (the user can act on that), and a revoked document must not offer re-issuance at all —
 // re-issuing from a revoked credential is exactly what the state is there to prevent.
 package eu.europa.ec.dashboardfeature.ui.documents.detail
 
-import android.content.Context
 import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorIssuancePartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorPartialState
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.testPlatformContext
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import eu.europa.ec.uilogic.navigation.helper.FakeDeepLinkClassifier
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +40,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.mockito.kotlin.mock
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -51,12 +50,12 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class DocumentDetailsViewModelAndroidTest {
+class DocumentDetailsViewModelPlatformHandleTest {
 
     private val mainDispatcher = UnconfinedTestDispatcher()
 
-    // A mocked Context is faithful here, not a compromise: the view-model only forwards it.
-    private val context: PlatformContext = mock<Context>()
+    // A stand-in is faithful here, not a compromise: the view-model only forwards the handle.
+    private val context: PlatformContext = testPlatformContext()
 
     @BeforeTest
     fun setUp() = Dispatchers.setMain(mainDispatcher)
@@ -204,7 +203,7 @@ class DocumentDetailsViewModelAndroidTest {
     }
 
     @Test
-    fun `re-issuance that needs device auth asks for it, forwarding the crypto handle`() =
+    fun `re-issuance that needs device auth asks for it and forwards the crypto handle`() =
         runTest(mainDispatcher) {
             val crypto = BiometricCrypto(cryptoObject = null)
             val interactor = interactorWith(
