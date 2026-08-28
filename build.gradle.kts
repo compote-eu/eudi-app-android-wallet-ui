@@ -32,6 +32,13 @@ plugins {
     alias(libs.plugins.androidx.room) apply false
     alias(libs.plugins.koin.compiler) apply false
     alias(libs.plugins.dependencyGraph)
+    // `apply false` puts these on the build's classpath without applying them here; the convention
+    // plugin below is what applies and configures them.
+    alias(libs.plugins.detekt) apply false
+    alias(libs.plugins.ktlint) apply false
+    // Applied to the root project only: it configures detekt here and ktlint across every
+    // project, so a new module is covered by the gate without having to remember it.
+    id("project.code.quality")
 }
 
 moduleGraphConfig {

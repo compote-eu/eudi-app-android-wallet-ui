@@ -140,6 +140,9 @@ import platform.UIKit.UIViewController
  * view-model, state, effect or route, which is what keeps the Obj-C flat-namespace export problem
  * (`State`, `State_`, `State__`, …) harmless on this architecture.
  */
+// PascalCase on purpose: Swift calls this as `WalletViewController()`, where it reads as the
+// UIViewController subclass it stands in for, not as a Kotlin function.
+@Suppress("FunctionNaming")
 fun WalletViewController(): UIViewController {
     // Before Koin, so anything the graph logs while starting is captured. Android's equivalent is
     // `LogController`'s Timber tree, installed in `Application.onCreate`.

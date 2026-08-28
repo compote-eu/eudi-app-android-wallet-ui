@@ -98,8 +98,12 @@ turbine = "1.2.1"
 androidGradlePlugin = "9.3.2"
 baselineprofile = "1.5.0-rc01"
 dependencyGraphPlugin = "0.13.0"
+detekt = "1.23.8"
 gmsPlugin = "4.5.0"
 kover = "0.9.9"
+# ktlintCli is the ktlint engine version; ktlintGradle is only the plugin wrapping it.
+ktlintCli = "1.6.0"
+ktlintGradle = "14.2.0"
 owaspDependencyCheck = "13.0.0"
 protobufPlugin = "0.10.0"
 secrets = "2.0.1"
@@ -255,8 +259,10 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 android-gradlePlugin = { group = "com.android.tools.build", name = "gradle", version.ref = "androidGradlePlugin" }
 androidx-room-gradlePlugin = { group = "androidx.room", name = "room-gradle-plugin", version.ref = "androidxRoom" }
 baselineprofile-gradlePlugin = { group = "androidx.benchmark", name = "benchmark-baseline-profile-gradle-plugin", version.ref = "baselineprofile" }
+detekt-gradlePlugin = { group = "io.gitlab.arturbosch.detekt", name = "detekt-gradle-plugin", version.ref = "detekt" }
 kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlinx-kover-gradlePlugin = { group = "org.jetbrains.kotlinx", name = "kover-gradle-plugin", version.ref = "kover" }
+ktlint-gradlePlugin = { group = "org.jlleitschuh.gradle", name = "ktlint-gradle", version.ref = "ktlintGradle" }
 ksp-gradlePlugin = { group = "com.google.devtools.ksp", name = "com.google.devtools.ksp.gradle.plugin", version.ref = "ksp" }
 owasp-dependencycheck-gradlePlugin = { group = "org.owasp", name = "dependency-check-gradle", version.ref = "owaspDependencyCheck" }
 secrets-gradlePlugin = { group = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", name = "secrets-gradle-plugin", version.ref = "secrets" }
@@ -279,8 +285,10 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
 # Build tooling & static analysis
 dependencyGraph = { id = "dev.iurysouza.modulegraph", version.ref = "dependencyGraphPlugin" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 gms = { id = "com.google.gms.google-services", version.ref = "gmsPlugin" }
 kotlinx-kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintGradle" }
 owasp-dependencycheck = { id = "org.owasp.dependencycheck", version.ref = "owaspDependencyCheck" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobufPlugin" }
 secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secrets" }

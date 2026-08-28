@@ -1,0 +1,91 @@
+# ktlint configuration. Only ktlint reads the `ktlint_*` properties below, so adding this file does
+# not change how Android Studio formats anything.
+#
+# WHY SO MUCH IS DISABLED, AND WHAT THE NUMBERS MEAN
+#
+# Same policy as detekt.yml, and the same reason: this repository is a fork that takes
+# upstream changes by HAND-PORTING individual commits. A reformatted file is a conflict in every
+# future port that touches it, so the gate was chosen to cost nothing cosmetically. Every rule
+# disabled below is one that already had findings; the number is how many, measured on 2026-08-28
+# over 773 `.kt` files with ktlint 1.6.0 in its default `ktlint_official` style.
+#
+# Enabling ktlint's ruleset wholesale would have meant a 14,394-finding reformat of the tree
+# (6,666 under `intellij_idea`, 9,079 under `android_studio` -- no style fits this code). Those
+# numbers are the cost of turning a rule back on. Chip away deliberately, in a pass of its own.
+#
+# WHAT IS ACTUALLY GATED
+#
+# ktlint owns imports; detekt owns static analysis, and no rule is enabled in both tools. Every rule
+# not listed below is enabled, including `no-unused-imports` and `no-wildcard-imports` -- the drift
+# this gate exists to stop. A rule ktlint adds in a future release arrives enabled: if it is noisy
+# it will fail the build, which is the moment to make a decision about it.
+
+root = true
+
+[*.{kt,kts}]
+# Unused imports were the drift that started this: 143 were removed by hand, and 3 more had already
+# crept back by the time this gate was added. Deliberately NOT disabled -- those 3 were fixed.
+ktlint_standard_no-unused-imports = enabled
+# 0 findings in our own code. The 78 that a tree-wide scan reports are all in local-services/, the
+# untracked upstream backend clones (see .git/info/exclude), which nothing here lints.
+ktlint_standard_no-wildcard-imports = enabled
+
+# --- Disabled: wrapping and line breaks. The largest block, and the least valuable: this is the
+# --- part of ktlint_official that this tree has simply never followed.
+ktlint_standard_multiline-expression-wrapping = disabled # 4162
+ktlint_standard_function-signature = disabled # 1816
+ktlint_standard_chain-method-continuation = disabled # 736
+ktlint_standard_class-signature = disabled # 509
+ktlint_standard_indent = disabled # 203
+ktlint_standard_argument-list-wrapping = disabled # 181
+ktlint_standard_if-else-wrapping = disabled # 66
+ktlint_standard_multiline-if-else = disabled # 56
+ktlint_standard_wrapping = disabled # 46
+ktlint_standard_string-template-indent = disabled # 31
+ktlint_standard_condition-wrapping = disabled # 31
+ktlint_standard_chain-wrapping = disabled # 29
+ktlint_standard_enum-wrapping = disabled # 20
+ktlint_standard_statement-wrapping = disabled # 18
+ktlint_standard_if-else-bracing = disabled # 13
+ktlint_standard_parameter-list-wrapping = disabled # 6
+ktlint_standard_binary-expression-wrapping = disabled # 4
+ktlint_standard_property-wrapping = disabled # 1
+
+# --- Disabled: trailing commas. A preference, and the second-largest block on its own.
+ktlint_standard_trailing-comma-on-call-site = disabled # 3756
+ktlint_standard_trailing-comma-on-declaration-site = disabled # 363
+
+# --- Disabled: blank lines and whitespace.
+ktlint_standard_blank-line-before-declaration = disabled # 396
+ktlint_standard_no-empty-first-line-in-class-body = disabled # 357
+ktlint_standard_final-newline = disabled # 330 -- upstream's style; would touch nearly every file
+ktlint_standard_no-empty-first-line-in-method-block = disabled # 97
+ktlint_standard_no-blank-line-in-list = disabled # 40
+ktlint_standard_no-blank-line-before-rbrace = disabled # 31
+ktlint_standard_no-consecutive-blank-lines = disabled # 30
+ktlint_standard_no-trailing-spaces = disabled # 15
+ktlint_standard_no-multi-spaces = disabled # 7
+ktlint_standard_function-return-type-spacing = disabled # 4
+ktlint_standard_paren-spacing = disabled # 1
+ktlint_standard_annotation-spacing = disabled # 1
+ktlint_standard_spacing-between-declarations-with-annotations = disabled # 2
+
+# --- Disabled: naming and file layout. detekt owns naming instead (see detekt.yml), where the same
+# --- rules could be narrowed by configuration to nearly zero rather than switched off.
+ktlint_standard_function-naming = disabled # 320
+ktlint_standard_property-naming = disabled # 174
+ktlint_standard_package-name = disabled # 17
+ktlint_standard_filename = disabled # 14
+ktlint_standard_backing-property-naming = disabled # 7
+
+# --- Disabled: the rest.
+ktlint_standard_import-ordering = disabled # 153
+ktlint_standard_function-expression-body = disabled # 239
+ktlint_standard_max-line-length = disabled # 70
+ktlint_standard_spacing-between-declarations-with-comments = disabled # 10
+ktlint_standard_no-consecutive-comments = disabled # 10
+ktlint_standard_comment-spacing = disabled # 10
+ktlint_standard_string-template = disabled # 3
+ktlint_standard_block-comment-initial-star-alignment = disabled # 3
+ktlint_standard_no-single-line-block-comment = disabled # 2
+ktlint_standard_no-semi = disabled # 1

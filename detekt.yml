@@ -1,0 +1,117 @@
+# detekt overrides for this repository. Layered on top of detekt's default config
+# (`buildUponDefaultConfig = true`), so this file only records the deliberate departures.
+#
+# WHY SO MUCH IS DISABLED, AND WHAT THE NUMBERS MEAN
+#
+# This repository is a fork that takes upstream changes by HAND-PORTING individual commits, not by
+# merging. Every file touched for cosmetic reasons therefore becomes a conflict in some future port.
+# So the gate was chosen to cost nothing cosmetically: each rule below that reports pre-existing
+# findings is disabled with its measured count, and nothing was reformatted to satisfy it.
+#
+# The counts are a debt ledger, measured on 2026-08-28 over 773 `.kt` files / ~119k lines with
+# detekt 1.23.8. They are the cost of turning a rule back on. Chip away deliberately, in a pass of
+# its own -- do not fold a reformat into an unrelated change.
+#
+# WHAT IS ACTUALLY GATED
+#
+# The four dead-code rules, which is the drift this gate exists to stop: a previous session removed
+# 143 unused imports and 3 dead declarations by hand, and nothing would have caught them coming
+# back. They are all active and all at zero. `FunctionNaming` and `TopLevelPropertyNaming` are
+# active too -- narrowed by configuration rather than switched off, since configuration costs no
+# churn. Unused *imports* are ktlint's job, not detekt's: see `.editorconfig`. No rule is enabled in
+# both tools.
+
+complexity:
+  # Architectural debt: each of these asks for a refactor, not a reformat.
+  CognitiveComplexMethod:
+    active: false
+  ComplexCondition:
+    active: false # 5
+  CyclomaticComplexMethod:
+    active: false # 26
+  LargeClass:
+    active: false # 10
+  LongMethod:
+    active: false # 106
+  LongParameterList:
+    active: false # 66
+  NestedBlockDepth:
+    active: false # 3
+  TooManyFunctions:
+    active: false # 44
+
+empty-blocks:
+  EmptyDefaultConstructor:
+    active: false # 1
+  EmptyFunctionBlock:
+    active: false # 2 -- both are EmptyTextToolbar, whose whole point is doing nothing
+
+exceptions:
+  SwallowedException:
+    active: false # 1 -- DateUtils.toDateFormatted deliberately returns null on any parse failure
+  ThrowingExceptionsWithoutMessageOrCause:
+    active: false # 1 -- in a test fixture named `mockedExceptionWithNoMessage`
+  TooGenericExceptionCaught:
+    active: false # 26
+  TooGenericExceptionThrown:
+    active: false # 12
+
+naming:
+  EnumNaming:
+    active: false # 1
+  FunctionNaming:
+    active: true
+    # @Composable functions are PascalCase by Compose convention, and the test suites name cases in
+    # snake_case on purpose. Ignoring those two takes this rule from 377 findings to 1, so it stays
+    # on: the one exception carries a local @Suppress that says why.
+    ignoreAnnotated: ['Composable', 'Test']
+  MatchingDeclarationName:
+    active: false # 28
+  PackageNaming:
+    active: false # 17
+  TopLevelPropertyNaming:
+    active: true
+    # 64 of the 65 findings are `mockedFoo` fixture constants in TestData.kt files, which read far
+    # better in camelCase than screaming snake. Excluding those files leaves 1, which carries a
+    # local @Suppress.
+    excludes: ['**/TestData.kt']
+  VariableNaming:
+    active: false # 1
+
+performance:
+  SpreadOperator:
+    active: false # 4
+
+style:
+  ForbiddenComment:
+    active: false # 2 -- TODOs that track upstream gates, and are meant to stay until those open
+  LoopWithTooManyJumpStatements:
+    active: false # 5
+  MagicNumber:
+    active: false # 661 -- overwhelmingly Compose dp/sp literals, where a named constant reads worse
+  MaxLineLength:
+    active: false # 299
+  NewLineAtEndOfFile:
+    active: false # 348 -- upstream's own style; fixing it would touch nearly every file in the tree
+  ReturnCount:
+    active: false # 29
+  ThrowsCount:
+    active: false # 4
+  UnusedParameter:
+    active: true
+  UnusedPrivateClass:
+    active: true
+  UnusedPrivateMember:
+    active: true
+    # @Preview/@ThemeModePreviews composables are called by the tooling, never by code, so all 110
+    # findings here were previews. Ignoring them left exactly 2, and both were genuinely dead
+    # (`getRelyingPartyData`, deleted) -- which is the whole reason this rule is on.
+    ignoreAnnotated: ['Composable', 'Preview', 'ThemeModePreviews']
+  UnusedPrivateProperty:
+    active: true
+  UseCheckOrError:
+    active: false # 21
+  UseRequire:
+    active: false # 1
+  UtilityClassWithPublicConstructor:
+    active: false # 3 -- the Theme* objects, which the theme DSL wants as classes

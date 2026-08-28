@@ -44,6 +44,8 @@ dependencies {
     compileOnly(libs.kotlinx.kover.gradlePlugin)
     compileOnly(libs.baselineprofile.gradlePlugin)
     compileOnly(libs.androidx.room.gradlePlugin)
+    compileOnly(libs.detekt.gradlePlugin)
+    compileOnly(libs.ktlint.gradlePlugin)
 }
 
 gradlePlugin {
@@ -91,6 +93,10 @@ gradlePlugin {
         register("androidLint") {
             id = "project.android.lint"
             implementationClass = "AndroidLintConventionPlugin"
+        }
+        register("codeQuality") {
+            id = "project.code.quality"
+            implementationClass = "CodeQualityConventionPlugin"
         }
         register("jvmLibrary") {
             id = "project.jvm.library"

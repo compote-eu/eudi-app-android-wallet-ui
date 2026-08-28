@@ -102,6 +102,21 @@ Run tests and checks:
 .\gradlew.bat dependencyCheckAnalyze
 ```
 
+Run the code-quality gate — detekt for static analysis, ktlint for imports:
+
+```powershell
+.\gradlew.bat detekt ktlintCheck
+```
+
+Both are also wired into `check`, so `.\gradlew.bat check` runs them too. They are expected to pass
+with no findings: if one fails, fix the code rather than the config. Most of each tool's ruleset is
+deliberately switched off, and `detekt.yml` and `.editorconfig` explain which rules,
+why, and what turning each one back on would cost.
+
+`.\gradlew.bat ktlintFormat` can fix formatting findings automatically, but note that almost every
+formatting rule is disabled here on purpose — see the note at the top of `.editorconfig` before
+enabling any of them.
+
 APK outputs are created under:
 
 ```text

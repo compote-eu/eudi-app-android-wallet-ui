@@ -148,4 +148,6 @@ internal class IosSettingsPlatformBridge(
     override fun logFilePaths(): List<String> = IosLogFile.paths()
 }
 
+// Named for the Info.plist key it holds, so the two read as the same thing at the call site.
+@Suppress("TopLevelPropertyNaming")
 private const val CFBundleShortVersionString = "CFBundleShortVersionString"
