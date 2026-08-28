@@ -27,6 +27,8 @@ import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
 import eu.europa.ec.corelogic.model.DocumentCategories
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.eudi.wallet.document.DocumentId
+import eu.europa.ec.shared.wallet.document.DocumentDeletionScope
+import eu.europa.ec.shared.wallet.document.documentDeletionOutcome
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.lastOrNull
@@ -177,12 +179,20 @@ class AndroidDocumentsPlatformBridge(
                     }
 
                     is DeleteDocumentPartialState.Success -> {
-                        if (configLogic.forcePidActivation
-                            && walletCoreDocumentsController.getAllDocuments().isEmpty()
-                        ) {
-                            emit(DocumentInteractorDeleteDocumentPartialState.AllDocumentsDeleted)
-                        } else
-                            emit(DocumentInteractorDeleteDocumentPartialState.SingleDocumentDeleted)
+                        val outcome = documentDeletionOutcome(
+                            forcePidActivation = configLogic.forcePidActivation,
+                            walletIsEmptyAfterDeletion =
+                                walletCoreDocumentsController.getAllDocuments().isEmpty(),
+                        )
+                        emit(
+                            when (outcome) {
+                                DocumentDeletionScope.WholeWallet ->
+                                    DocumentInteractorDeleteDocumentPartialState.AllDocumentsDeleted
+
+                                DocumentDeletionScope.SingleDocument ->
+                                    DocumentInteractorDeleteDocumentPartialState.SingleDocumentDeleted
+                            }
+                        )
                     }
                 }
             }

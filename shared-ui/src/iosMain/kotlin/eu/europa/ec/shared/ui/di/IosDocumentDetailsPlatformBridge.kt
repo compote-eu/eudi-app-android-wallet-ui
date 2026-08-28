@@ -30,7 +30,11 @@ import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimPathSegment
 import eu.europa.ec.corelogic.model.ClaimType
+import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
+import eu.europa.ec.shared.wallet.config.iosWalletConfig
+import eu.europa.ec.shared.wallet.document.DocumentDeletionScope
+import eu.europa.ec.shared.wallet.document.documentDeletionScope
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorDeleteDocumentPartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorIssuancePartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
@@ -113,27 +117,79 @@ internal class IosDocumentDetailsPlatformBridge(
         )
     }
 
+    /**
+     * Deletes the document, and — if the wallet cannot go on without it — everything else too.
+     *
+     * The decision comes from [documentDeletionScope] in commonMain, so Android and iOS answer it
+     * identically. It has to be taken *before* anything is deleted, because it changes what gets
+     * deleted; the previous version here deleted first and then reported `AllDocumentsDeleted`
+     * whenever the wallet happened to be left empty. That ignored `forcePidActivation` entirely, and
+     * since the view model turns that state into "go back to the splash screen", deleting your last
+     * document threw you out to the lock screen where Android simply popped back to the list.
+     */
     override fun deleteDocument(
         documentId: String,
     ): Flow<DocumentDetailsInteractorDeleteDocumentPartialState> = flow {
-        engine.deleteDocument(documentId).fold(
-            onSuccess = {
-                emit(
-                    if (engine.hasAnyDocument()) {
-                        DocumentDetailsInteractorDeleteDocumentPartialState.SingleDocumentDeleted
-                    } else {
-                        DocumentDetailsInteractorDeleteDocumentPartialState.AllDocumentsDeleted
-                    }
-                )
-            },
-            onFailure = { throwable ->
-                emit(
-                    DocumentDetailsInteractorDeleteDocumentPartialState.Failure(
-                        errorMessage = throwable.message.orEmpty()
-                    )
-                )
-            },
+        val forcePidActivation = iosWalletConfig.forcePidActivation
+        val documents = engine.getAllDocuments()
+
+        val deletedDocumentIsPid = documents
+            .firstOrNull { candidate -> candidate.id == documentId }
+            .isPid()
+
+        // Both only matter when a PID is going from a build that insists on holding one, and the
+        // policy ignores them otherwise — so neither is computed for an ordinary deletion.
+        val pidDocumentCount = if (forcePidActivation && deletedDocumentIsPid) {
+            documents.count { candidate -> candidate.isPid() }
+        } else {
+            0
+        }
+        val deletedDocumentIsMainPid = pidDocumentCount > 1 &&
+                engine.getMainPidDocument()?.id == documentId
+
+        val scope = documentDeletionScope(
+            forcePidActivation = forcePidActivation,
+            deletedDocumentIsPid = deletedDocumentIsPid,
+            pidDocumentCount = pidDocumentCount,
+            deletedDocumentIsMainPid = deletedDocumentIsMainPid,
         )
+
+        val targets = when (scope) {
+            DocumentDeletionScope.WholeWallet -> documents.map { candidate -> candidate.id }
+            DocumentDeletionScope.SingleDocument -> listOf(documentId)
+        }
+
+        // multipaz deletes one document at a time, so "delete everything" is a loop rather than the
+        // single `deleteAllDocuments()` wallet-core gives Android. The first failure stops it and is
+        // reported, leaving the rest in place — a partial wipe the user is told about beats a silent
+        // one, and retrying re-reads the wallet as it now stands.
+        var failure: Throwable? = null
+        for (target in targets) {
+            val result = engine.deleteDocument(target)
+            if (result.isFailure) {
+                failure = result.exceptionOrNull()
+                break
+            }
+        }
+
+        emit(
+            when {
+                failure != null -> DocumentDetailsInteractorDeleteDocumentPartialState.Failure(
+                    errorMessage = failure.message.orEmpty()
+                )
+
+                scope == DocumentDeletionScope.WholeWallet ->
+                    DocumentDetailsInteractorDeleteDocumentPartialState.AllDocumentsDeleted
+
+                else -> DocumentDetailsInteractorDeleteDocumentPartialState.SingleDocumentDeleted
+            }
+        )
+    }
+
+    /** Whether this is a PID in either format, the only distinction the deletion policy draws. */
+    private fun WalletDocument?.isPid(): Boolean {
+        val identifier = this?.formatType?.toDocumentIdentifier()
+        return identifier == DocumentIdentifier.MdocPid || identifier == DocumentIdentifier.SdJwtPid
     }
 
     /** iOS has no OpenID4VCI implementation, so this fails rather than appearing to start something. */

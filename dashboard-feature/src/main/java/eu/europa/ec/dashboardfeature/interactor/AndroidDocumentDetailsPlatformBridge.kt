@@ -34,6 +34,8 @@ import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.extension.isExpired
 import eu.europa.ec.corelogic.extension.localizedIssuerMetadata
 import eu.europa.ec.corelogic.model.DocumentIdentifier
+import eu.europa.ec.shared.wallet.document.DocumentDeletionScope
+import eu.europa.ec.shared.wallet.document.documentDeletionScope
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.dashboardfeature.ui.documents.detail.transformer.DocumentDetailsTransformer
 import eu.europa.ec.dashboardfeature.ui.documents.detail.transformer.DocumentDetailsTransformer.createDocumentCredentialsInfoUi
@@ -112,27 +114,36 @@ class AndroidDocumentDetailsPlatformBridge(
             val docType = (format as? MsoMdocFormat)?.docType ?: (format as? SdJwtVcFormat)?.vct
             val docIdentifier = docType?.toDocumentIdentifier()
 
-            val shouldDeleteAllDocuments: Boolean = if (configLogic.forcePidActivation
-                && (docIdentifier == DocumentIdentifier.MdocPid || docIdentifier == DocumentIdentifier.SdJwtPid)
-            ) {
+            val deletedDocumentIsPid = docIdentifier == DocumentIdentifier.MdocPid ||
+                    docIdentifier == DocumentIdentifier.SdJwtPid
 
-                val allPidDocuments = walletCoreDocumentsController.getAllDocumentsByType(
+            // Only counted when it can change the answer: the query is a store read, and the policy
+            // ignores the count entirely unless this build forces PID activation and a PID is going.
+            val pidDocumentCount = if (configLogic.forcePidActivation && deletedDocumentIsPid) {
+                walletCoreDocumentsController.getAllDocumentsByType(
                     documentIdentifiers = listOf(
                         DocumentIdentifier.MdocPid,
                         DocumentIdentifier.SdJwtPid
                     )
-                )
-
-                if (allPidDocuments.count() > 1) {
-                    walletEngine.getMainPidDocument()?.id == documentId
-                } else {
-                    true
-                }
+                ).count()
             } else {
-                false
+                0
             }
 
-            if (shouldDeleteAllDocuments) {
+            // Guarded on the count for the same reason, and on exactly the condition the original
+            // used: the policy consults this only when more than one PID exists, so a store read is
+            // pointless otherwise — and deleting a non-PID must not start querying the main PID.
+            val deletedDocumentIsMainPid = pidDocumentCount > 1 &&
+                    walletEngine.getMainPidDocument()?.id == documentId
+
+            val scope = documentDeletionScope(
+                forcePidActivation = configLogic.forcePidActivation,
+                deletedDocumentIsPid = deletedDocumentIsPid,
+                pidDocumentCount = pidDocumentCount,
+                deletedDocumentIsMainPid = deletedDocumentIsMainPid,
+            )
+
+            if (scope == DocumentDeletionScope.WholeWallet) {
                 walletCoreDocumentsController.deleteAllDocuments()
                     .map {
                         when (it) {

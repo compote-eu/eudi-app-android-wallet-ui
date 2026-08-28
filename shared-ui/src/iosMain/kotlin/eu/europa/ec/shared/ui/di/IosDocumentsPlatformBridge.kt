@@ -22,6 +22,8 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentInteractorDeleteDocument
 import eu.europa.ec.dashboardfeature.interactor.DocumentInteractorRetryIssuingDeferredDocumentsPartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
+import eu.europa.ec.shared.wallet.document.DocumentDeletionScope
+import eu.europa.ec.shared.wallet.document.documentDeletionOutcome
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -70,11 +72,17 @@ internal class IosDocumentsPlatformBridge(
     ): Flow<DocumentInteractorDeleteDocumentPartialState> = flow {
         deleteDocument.invoke(documentId).fold(
             onSuccess = {
+                val outcome = documentDeletionOutcome(
+                    forcePidActivation = iosWalletConfig.forcePidActivation,
+                    walletIsEmptyAfterDeletion = !hasAnyDocument(),
+                )
                 emit(
-                    if (iosWalletConfig.forcePidActivation && !hasAnyDocument()) {
-                        DocumentInteractorDeleteDocumentPartialState.AllDocumentsDeleted
-                    } else {
-                        DocumentInteractorDeleteDocumentPartialState.SingleDocumentDeleted
+                    when (outcome) {
+                        DocumentDeletionScope.WholeWallet ->
+                            DocumentInteractorDeleteDocumentPartialState.AllDocumentsDeleted
+
+                        DocumentDeletionScope.SingleDocument ->
+                            DocumentInteractorDeleteDocumentPartialState.SingleDocumentDeleted
                     }
                 )
             },
