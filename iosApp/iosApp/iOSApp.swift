@@ -21,6 +21,8 @@ import class SharedKit.IosAuthorizationRedirects
 import class SharedKit.IosDeepLinks
 import class SharedKit.IosBackgroundReIssuanceKt
 import class SharedKit.BackgroundReIssuanceSummary
+import class SharedKit.IosBackgroundRevocationKt
+import class SharedKit.BackgroundRevocationSummary
 import class SharedKit.IosDocumentSigning
 
 /// Launch argument that turns the wallet probe on.
@@ -74,6 +76,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         }
         print("BACKGROUND-REISSUANCE: registered \(reIssuanceTaskIdentifier)")
         scheduleBackgroundReIssuance()
+        refreshRevocationOnLaunch()
 
         // The Swift half of document signing. Kotlin cannot call `EudiRQESUi` itself — it is a Swift
         // package, so none of its API crosses the Kotlin/Native bridge — so the shared screen calls
@@ -145,6 +148,36 @@ private func scheduleBackgroundReIssuance() {
 /// future, so a failed sweep says so rather than claiming success. The next request is queued *first*,
 /// so a crash or an expiration in the work below cannot end the chain.
 @MainActor
+/// Refreshes revocation status once per launch, without blocking startup.
+///
+/// This is the trigger the wallet can actually depend on. The `BGProcessingTask` above is the only path
+/// that runs with the app closed, but `BGTaskScheduler` may leave it unrun for days — so on its own it
+/// would leave a revoked credential displaying as valid for exactly as long as the user keeps opening
+/// the app without the system granting background time. Android has no such uncertainty: its
+/// `RevocationWorkManager` is enqueued every 15 minutes.
+///
+/// Detached and unawaited on purpose: nothing on screen depends on the answer, and the Documents screen
+/// re-reads the store when it appears, so a flag set a second after launch still shows. Failure is
+/// already swallowed and logged inside `runBackgroundRevocation`.
+///
+/// Once per process rather than on every foreground, which keeps it free of any "last refreshed"
+/// bookkeeping while still guaranteeing the status is no older than the session the user is looking at.
+private func refreshRevocationOnLaunch() {
+    Task { @MainActor in
+        do {
+            let summary = try await IosBackgroundRevocationKt.runBackgroundRevocation()
+            print("LAUNCH-REVOCATION: \(summary)")
+        } catch {
+            print("LAUNCH-REVOCATION: failed — \(error)")
+        }
+    }
+}
+
+// `@MainActor` because that is already true: the registration closure uses `using: .main` and calls
+// this inside `MainActor.assumeIsolated`. Stating it lets Swift 6 see that `BGTask` — which is not
+// `Sendable` — never crosses an isolation boundary. Without it, adding the second `await` below made the
+// compiler treat `task` as sent into the child task.
+@MainActor
 private func handleBackgroundReIssuance(_ task: BGTask) {
     scheduleBackgroundReIssuance()
 
@@ -152,6 +185,15 @@ private func handleBackgroundReIssuance(_ task: BGTask) {
         do {
             let summary = try await IosBackgroundReIssuanceKt.runBackgroundReIssuance()
             print("BACKGROUND-REISSUANCE: \(summary)")
+
+            // Revocation rides the same task rather than getting its own identifier. The official iOS
+            // wallet pairs its two workers the same way, iOS would not grant a second task any more
+            // time, and a new identifier means editing `BGTaskSchedulerPermittedIdentifiers` in
+            // `project.yml` — a mismatch there is a launch-time crash. The identifier keeps its
+            // re-issuance name because renaming it costs that risk for no behavioural gain.
+            let revocation = try await IosBackgroundRevocationKt.runBackgroundRevocation()
+            print("BACKGROUND-REVOCATION: \(revocation)")
+
             task.setTaskCompleted(success: true)
         } catch is CancellationError {
             print("BACKGROUND-REISSUANCE: cancelled by the system")
