@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.multipaz.document.Document
@@ -28,9 +29,14 @@ import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.SecureEnclaveSecureArea
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
+import org.multipaz.storage.ios.IosStorage
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
-import org.multipaz.util.Platform
+import platform.Foundation.NSApplicationSupportDirectory
+import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSFileManager
+import platform.Foundation.NSURL
+import platform.Foundation.NSUserDomainMask
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
@@ -91,11 +97,54 @@ internal class MultipazWalletStore(
     companion object {
 
         /**
+         * Where the wallet's database lives: `Library/Application Support/wallet/wallet.db`.
+         *
+         * `create = true` matters — unlike Documents, **Application Support does not exist until
+         * something creates it**, and opening a SQLite file in a missing directory fails.
+         *
+         * Falls back to `NSDocumentDirectory` only if iOS reports no Application Support directory,
+         * which does not happen on a device; a wallet that cannot open its store is useless, so the
+         * fallback is preferable to refusing to start.
+         */
+        @OptIn(ExperimentalForeignApi::class)
+        private fun storeFileUrl(): NSURL {
+            val manager = NSFileManager.defaultManager
+            val base = manager.URLForDirectory(
+                directory = NSApplicationSupportDirectory,
+                inDomain = NSUserDomainMask,
+                appropriateForURL = null,
+                create = true,
+                error = null,
+            ) ?: manager.URLForDirectory(
+                directory = NSDocumentDirectory,
+                inDomain = NSUserDomainMask,
+                appropriateForURL = null,
+                create = true,
+                error = null,
+            ) ?: error("iOS reported no directory the wallet database could live in")
+
+            val directory = base.URLByAppendingPathComponent(STORE_DIRECTORY, isDirectory = true)!!
+            manager.createDirectoryAtURL(
+                url = directory,
+                withIntermediateDirectories = true,
+                attributes = null,
+                error = null,
+            )
+            return directory.URLByAppendingPathComponent(STORE_FILE, isDirectory = false)!!
+        }
+
+        /**
          * Scopes documents (and their credentials' multipaz `domain`) to this wallet, the way
          * `DocumentManagerImpl.identifier` does on Android. Changing it orphans existing documents,
          * so it is a stored-data contract, not a label.
          */
         const val DEFAULT_DOCUMENT_MANAGER_ID = "eudi-wallet-ios"
+
+        /** Under Application Support, so the wallet's files are not loose among the app's. */
+        private const val STORE_DIRECTORY = "wallet"
+
+        /** Our own name: nothing reads the multipaz-chosen `storageNoBackup.db` any more. */
+        private const val STORE_FILE = "wallet.db"
 
         /** How long a transaction stays in the log. multipaz's default, kept deliberately. */
         val EVENT_RETENTION = 60.days
@@ -120,14 +169,49 @@ internal class MultipazWalletStore(
         /**
          * Opens the wallet's persistent store on the device.
          *
-         * Uses multipaz's **non-backed-up** storage, matching Android, where the credential database
-         * lives in `no_backup/`: credentials are bound to this device's Secure Enclave, so restoring
-         * them onto another device would produce documents that can never be presented.
+         * **Non-backed-up**, matching Android, where the credential database lives in `no_backup/`:
+         * credentials are bound to this device's Secure Enclave, so restoring them onto another device
+         * would produce documents that can never be presented.
+         *
+         * ## Why not `Platform.nonBackedUpStorage`
+         *
+         * It was that until 2026-08-28. multipaz's own accessor is a `SqliteStorage` over
+         * `NSDocumentDirectory`, and two of its choices are worth not inheriting:
+         *
+         *  - **the file sits in `Documents`**, the directory iOS will expose to the Files app the moment
+         *    a build sets `UIFileSharingEnabled` or `LSSupportsOpeningDocumentsInPlace`. Neither is set
+         *    in `iosApp/project.yml` today, so nothing is exposed — but that makes the wallet database's
+         *    privacy depend on an unrelated plist key staying absent. Application Support is the
+         *    directory Apple documents for exactly this, and is where the official iOS wallet keeps its
+         *    own SwiftData store.
+         *  - **it excludes the wrong thing from backup.** `Platform`'s helper sets
+         *    `NSURLIsExcludedFromBackupKey` on the *directory*, not the file, so asking for
+         *    non-backed-up storage silently also excludes `Platform.storage` — the one meant to be
+         *    backed up. Our exclusion worked by accident. [IosStorage] sets the flag on the file.
+         *
+         * ⚠️ **This is placement and backup hygiene, not encryption.** The file is still plain SQLite.
+         * There is no encrypted `Storage` in multipaz 0.99.0 — `SqliteStorage`, `IosStorage`,
+         * `EphemeralStorage` and `WebStorage` are all plaintext — so at-rest protection is still iOS's
+         * default data-protection class, `NSFileProtectionCompleteUntilFirstUserAuthentication`.
+         * Android encrypts its own database with SQLCipher and the official iOS wallet keeps documents
+         * in the Keychain under `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`; we match neither.
+         *
+         * 🪤 **`NSFileProtectionComplete` is not available to us**, which is why it is not set here.
+         * It makes a file unreadable while the device is locked, and the `BGProcessingTask` behind
+         * credential top-up and revocation does network *and key* work in the background, where the
+         * device usually is locked. The official iOS wallet can afford the equivalent Keychain class
+         * precisely because it does no real background work — its "WorkManager" is a foreground polling
+         * loop. Our background top-up is the thing that makes their posture unaffordable here, so this
+         * is a trade rather than a shortfall. `NSFileProtectionCompleteUnlessOpen` is the one worth
+         * revisiting, and needs a locked physical device to test.
          */
         suspend fun open(
             documentManagerId: String = DEFAULT_DOCUMENT_MANAGER_ID,
         ): MultipazWalletStore {
-            val storage = Platform.nonBackedUpStorage
+            val storage = IosStorage(
+                storageFileUrl = storeFileUrl(),
+                excludeFromBackup = true,
+            )
             // The real key store. It works on the simulator too — multipaz drops the
             // user-authentication flags there rather than failing.
             val secureEnclave = SecureEnclaveSecureArea.create(storage)
