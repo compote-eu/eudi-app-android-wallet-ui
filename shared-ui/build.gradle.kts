@@ -109,6 +109,10 @@ kotlin {
             // compilations, which need koin-core + the KMP viewmodel DSL on the compile classpath.
             api(libs.koin.core)
             api(libs.koin.core.viewmodel)
+            // `koinViewModel()` for commonMain, so a shared `entry<Route> { }` can resolve a
+            // view-model the same way on both platforms. The definitions are already common:
+            // the shared view-models carry `@KoinViewModel` and SharedUiModule scans for them.
+            api(libs.koin.compose.viewmodel)
             api(libs.koin.annotations)
             // Compose Multiplatform UI, for the shared screens. On Android these map onto the same
             // androidx.compose artifacts the app already uses, so they add version *requests* that

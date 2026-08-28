@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
@@ -38,6 +40,8 @@ import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
+import eu.europa.ec.shared.navigation.LocalNavPlatformActions
+import eu.europa.ec.uilogic.navigation.AndroidNavPlatformActions
 import eu.europa.ec.uilogic.navigation.RouterHost
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
@@ -88,8 +92,15 @@ open class EudiComponentActivity : FragmentActivity() {
                     .fillMaxSize(),
                 color = MaterialTheme.colorScheme.surface
             ) {
-                routerHost.StartFlow { navigator ->
-                    entries(navigator)
+                // Android's answers for the shared entries. Provided here because this is the
+                // activity whose one-shot intent slots they read, and everything the host composes
+                // sits underneath. `LocalContext` is that activity, which `findActivity()` and the
+                // slot extensions both rely on.
+                val platformActions = remember(this) { AndroidNavPlatformActions(this) }
+                CompositionLocalProvider(LocalNavPlatformActions provides platformActions) {
+                    routerHost.StartFlow { navigator ->
+                        entries(navigator)
+                    }
                 }
                 LaunchedEffect(Unit) {
                     viewModel.onFlowStart()

@@ -19,12 +19,7 @@ package eu.europa.ec.assemblylogic.ui
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import eu.europa.ec.commonfeature.router.featureCommonEntries
-import eu.europa.ec.dashboardfeature.router.featureDashboardEntries
-import eu.europa.ec.issuancefeature.router.featureIssuanceEntries
-import eu.europa.ec.presentationfeature.router.presentationEntries
-import eu.europa.ec.proximityfeature.router.featureProximityEntries
-import eu.europa.ec.startupfeature.router.featureStartupEntries
+import eu.europa.ec.shared.navigation.sharedAppEntries
 import eu.europa.ec.uilogic.container.EudiComponentActivity
 
 class MainActivity : EudiComponentActivity() {
@@ -32,14 +27,10 @@ class MainActivity : EudiComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            Content(intent) { navigator ->
-                featureStartupEntries(navigator)
-                featureCommonEntries(navigator)
-                featureDashboardEntries(navigator)
-                presentationEntries(navigator)
-                featureProximityEntries(navigator)
-                featureIssuanceEntries(navigator)
-            }
+            // Every destination, from :shared-ui/commonMain — the same block iOS composes. The six
+            // per-feature `router/Entries.kt` files this replaced are gone; a feature module now
+            // contributes its screens, not its navigation.
+            Content(intent) { navigator -> sharedAppEntries(navigator) }
         }
     }
 }
