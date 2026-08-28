@@ -23,8 +23,6 @@ import platform.Foundation.NSUserDefaults
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * How long iOS makes someone wait after wrong PINs — the same escalation Android applies, over
@@ -101,24 +99,4 @@ class IosPinThrottle(
         const val KEY_LOCKOUT_STARTED_AT = "PinLockoutStartedAt"
         const val KEY_LOCKOUT_ENDS_AT = "PinLockoutEndsAt"
     }
-}
-
-/**
- * iOS's authentication policy, matching `AuthenticationConfigImpl` value for value.
- *
- * A constant because there is nothing to vary: Android's `AuthenticationConfigImpl` lives in `src/main`,
- * one class for both product flavours, so this mirrors it as one class too. (iOS *does* have flavours —
- * `iosDevMain`/`iosDemoMain` since `3a6b01f4` — which is exactly why the reason had to be restated:
- * "iOS has no flavours yet" was the old justification and both halves of it were wrong.)
- *
- * Changing the numbers changes how long a user is locked out, so they are stated here rather than
- * defaulted somewhere.
- */
-class IosAuthenticationConfig : AuthenticationConfig {
-    override val maxFailedPinAttempts: Int = 3
-    override val pinLockoutDurations: List<Duration> = listOf(
-        30.seconds,
-        90.seconds,
-        5.minutes,
-    )
 }

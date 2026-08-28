@@ -766,15 +766,16 @@ interface AuthenticationConfig {
 }
 ```
 
-Default policy (*AuthenticationConfigImpl*):
+Default policy (*WalletAuthenticationConfig*), declared once in
+*:shared-logic*'s commonMain and used by both the Android and iOS apps:
 
 ```kotlin
-class AuthenticationConfigImpl : AuthenticationConfig {
+object WalletAuthenticationConfig : AuthenticationConfig {
     override val maxFailedPinAttempts: Int = 3
     override val pinLockoutDurations: List<Duration> = listOf(
         30.seconds,
         90.seconds,
-        5.minutes
+        5.minutes,
     )
 }
 ```
@@ -791,13 +792,17 @@ Resulting behavior with the defaults:
 | App kill or device reboot                   | Active lockout window persists (wall-clock). |
 | Device clock rolled back                    | Detected; user remains locked.               |
 
-You can change the policy by providing your own *AuthenticationConfigImpl*
-and wiring it in *LogicAuthenticationModule*:
+You can change the policy by editing *WalletAuthenticationConfig*, which
+changes it for both platforms, or by providing your own implementation of
+*AuthenticationConfig* and wiring it in *LogicAuthenticationModule*:
 
 ```kotlin
 @Single
-fun provideAuthenticationConfig(): AuthenticationConfig = AuthenticationConfigImpl()
+fun provideAuthenticationConfig(): AuthenticationConfig = WalletAuthenticationConfig
 ```
+
+The iOS app wires the same object in *IosWalletModule*, so a substitution
+made for one platform only leaves the two policies disagreeing.
 
 The lockout is enforced through the *PinThrottleController* and applied
 in both the login screen (`BiometricViewModel`, via `BiometricInteractor`)

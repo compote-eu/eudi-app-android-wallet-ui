@@ -34,9 +34,9 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
+import eu.europa.ec.authenticationlogic.config.WalletAuthenticationConfig
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
-import eu.europa.ec.authenticationlogic.storage.IosAuthenticationConfig
 import eu.europa.ec.authenticationlogic.storage.IosBiometricGate
 import eu.europa.ec.authenticationlogic.storage.IosPinStorage
 import eu.europa.ec.authenticationlogic.storage.IosPinThrottle
@@ -302,7 +302,7 @@ fun provideIosDocumentOfferInteractor(
  * how long a wrong PIN costs (`NSUserDefaults`, since a lockout is not a secret).
  */
 @Single
-fun provideIosAuthenticationConfig(): AuthenticationConfig = IosAuthenticationConfig()
+fun provideIosAuthenticationConfig(): AuthenticationConfig = WalletAuthenticationConfig
 
 @Single
 fun provideIosPinStorage(): PinStorageController = IosPinStorage()

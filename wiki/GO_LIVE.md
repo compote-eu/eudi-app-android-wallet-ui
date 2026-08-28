@@ -1492,7 +1492,7 @@ Persisted state keys (encrypted DataStore):
 * `PinLockoutEndsAt` — wall-clock timestamp when the current lockout
   ends.
 
-Default policy (`AuthenticationConfigImpl`):
+Default policy (`WalletAuthenticationConfig`):
 
 | Event                                       | Behavior                                     |
 |---------------------------------------------|----------------------------------------------|
