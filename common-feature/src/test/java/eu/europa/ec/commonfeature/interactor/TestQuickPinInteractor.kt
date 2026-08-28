@@ -21,7 +21,6 @@ import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 import eu.europa.ec.authenticationlogic.secure.SecurePin
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.Res
@@ -56,8 +55,6 @@ class TestQuickPinInteractor {
     @Mock
     private lateinit var pinStorageController: PinStorageController
 
-    @Mock
-    private lateinit var resourceProvider: ResourceProvider
 
     @Mock
     private lateinit var strings: StringCatalog

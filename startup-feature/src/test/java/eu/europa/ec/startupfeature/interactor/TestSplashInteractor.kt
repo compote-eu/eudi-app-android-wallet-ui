@@ -31,7 +31,6 @@ import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -57,8 +56,6 @@ class TestSplashInteractor {
     @Mock
     private lateinit var quickPinInteractor: QuickPinInteractor
 
-    @Mock
-    private lateinit var resourceProvider: ResourceProvider
 
     @Mock
     private lateinit var walletEngine: WalletEngine

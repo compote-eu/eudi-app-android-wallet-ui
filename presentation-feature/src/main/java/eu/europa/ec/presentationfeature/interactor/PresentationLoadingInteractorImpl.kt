@@ -27,7 +27,6 @@ import eu.europa.ec.corelogic.controller.WalletCorePartialState
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
-import java.net.URI
 
 // Phase 3b: the contract and both partial states moved to :shared-ui/commonMain (same package).
 class PresentationLoadingInteractorImpl(

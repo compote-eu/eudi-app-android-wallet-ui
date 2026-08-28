@@ -37,13 +37,10 @@ import eu.europa.ec.shared.navigation.ProximityRequestRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
-import eu.europa.ec.shared.resources.asUiTextOr
 import eu.europa.ec.shared.resources.biometric_default_mode_text_above_pin_field
 import eu.europa.ec.shared.resources.loading_biometry_biometrics_enabled_description
 import eu.europa.ec.shared.resources.loading_biometry_biometrics_not_enabled_description
 import eu.europa.ec.shared.resources.request_relying_party_default_name
-import eu.europa.ec.shared.resources.request_relying_party_description
-import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
@@ -189,20 +186,5 @@ class ProximityRequestViewModel(
         super.cleanUp()
         interactor.stopPresentation()
         getOrNullKoinScope(presentationScopeId)?.close()
-    }
-
-    private fun getRelyingPartyData(
-        name: String?,
-        isVerified: Boolean,
-        uniqueId: String? = null,
-    ): RelyingPartyDataUi {
-        return RelyingPartyDataUi(
-            isVerified = isVerified,
-            uniqueId = uniqueId,
-            name = name.asUiTextOr(
-                fallback = UiText.Resource(Res.string.request_relying_party_default_name)
-            ),
-            description = UiText.Resource(Res.string.request_relying_party_description),
-        )
     }
 }

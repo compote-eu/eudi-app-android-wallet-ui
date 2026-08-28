@@ -126,7 +126,6 @@ class BiometricAuthenticationControllerImpl(
 
                 if (data.authenticationResult != null) {
                     val state = verifyCrypto(
-                        context = context,
                         result = data.authenticationResult,
                         biometricAuthentication = biometricData
                     )
@@ -208,7 +207,6 @@ class BiometricAuthenticationControllerImpl(
         }
 
     private suspend fun verifyCrypto(
-        context: Context,
         result: AuthenticationResult?,
         biometricAuthentication: BiometricAuthentication?
     ): BiometricsAuthenticate = withContext(dispatcher) {
