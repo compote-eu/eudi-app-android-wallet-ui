@@ -154,12 +154,15 @@ class TestDocumentOfferInteractor {
             walletCoreDocumentsController = walletCoreDocumentsController,
             deviceAuthenticationInteractor = deviceAuthenticationInteractor,
             resourceProvider = resourceProvider,
-            configLogic = configLogic,
         )
         interactor = DocumentOfferInteractorImpl(
             strings = strings,
             walletEngine = walletEngine,
             platform = bridge,
+            // `ConfigLogic` *is* a `SharedAppConfig`; the flag moved off the bridge and onto the config,
+            // so the same mock now answers it one layer up. That it substitutes here at all is the point
+            // of the Android binding in `LogicBusinessModule`.
+            appConfig = configLogic,
         )
         biometricCrypto = BiometricCrypto(cryptoObject = null)
 

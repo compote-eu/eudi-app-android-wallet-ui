@@ -60,9 +60,6 @@ class AndroidDocumentsPlatformBridge(
     override val documentCategories: DocumentCategories
         get() = walletCoreConfig.documentCategories
 
-    override val forcePidActivation: Boolean
-        get() = configLogic.forcePidActivation
-
     override fun localeTag(): String = resourceProvider.getLocale().toLanguageTag()
 
     override suspend fun showBatchIssuanceCounter(): Boolean = prefKeys.getShowBatchIssuanceCounter()

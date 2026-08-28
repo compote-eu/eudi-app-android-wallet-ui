@@ -53,20 +53,6 @@ internal class IosDocumentOfferPlatformBridge(
 
     override fun localeTag(): String = NSLocale.currentLocale.languageCode
 
-    /**
-     * False — **the same value both Android flavours use**, so this is parity, not a divergence.
-     *
-     * `ConfigLogic.forcePidActivation` defaults to `false` in the interface and neither `src/dev` nor
-     * `src/demo` overrides it, so no build of either platform insists on holding a PID before accepting
-     * an offer. The rule itself lives in the shared interactor and would apply to both the moment a
-     * flavour turned it on.
-     *
-     * This comment used to say iOS lacked a configuration layer to read it from, and that Android's
-     * `dev` flavour would refuse such an offer. Both halves were false: iOS has `IosWalletConfig`, and
-     * Android's dev flavour behaves exactly like this one.
-     */
-    override val forcePidActivation: Boolean = false
-
     override suspend fun resolveOffer(offerUri: String, locale: String): PlatformOfferResolution =
         when (val resolution = offers.resolve(offerUri = offerUri, locale = locale)) {
             is IosOfferResolution.Failure ->

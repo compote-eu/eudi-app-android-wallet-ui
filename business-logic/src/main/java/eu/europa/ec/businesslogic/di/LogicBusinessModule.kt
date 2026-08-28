@@ -36,6 +36,7 @@ import eu.europa.ec.businesslogic.validator.FilterValidatorImpl
 import eu.europa.ec.businesslogic.validator.FormValidator
 import eu.europa.ec.businesslogic.validator.FormValidatorImpl
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -49,6 +50,17 @@ class LogicBusinessModule
 
 @Single
 fun provideConfigLogic(context: Context): ConfigLogic = ConfigLogicImpl(context)
+
+/**
+ * The same instance under the supertype shared code asks for.
+ *
+ * `ConfigLogic` extends [SharedAppConfig], but Koin resolves by the exact type a provider declares, so
+ * without this binding `get<SharedAppConfig>()` fails even though the object implements it. iOS registers
+ * its own `IosWalletConfig` the same way, which is what lets commonMain read app configuration through one
+ * seam instead of each consumer being handed the one flag it needs.
+ */
+@Single
+fun provideSharedAppConfig(configLogic: ConfigLogic): SharedAppConfig = configLogic
 
 @Single
 fun provideLogController(context: Context, configLogic: ConfigLogic): LogController =

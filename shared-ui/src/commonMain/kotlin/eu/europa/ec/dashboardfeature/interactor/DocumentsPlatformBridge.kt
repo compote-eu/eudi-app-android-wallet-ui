@@ -39,9 +39,6 @@ interface DocumentsPlatformBridge {
     /** The wallet's configured document categories — static configuration, not a query. */
     val documentCategories: DocumentCategories
 
-    /** Whether the wallet insists on a PID before anything else; a build configuration flag. */
-    val forcePidActivation: Boolean
-
     /** BCP-47 tag for the user's locale, used to pick issuer display names. */
     fun localeTag(): String
 

@@ -39,6 +39,7 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.biometric_login_biometrics_enabled_subtitle
 import eu.europa.ec.shared.resources.biometric_login_biometrics_not_enabled_subtitle
 import eu.europa.ec.shared.resources.biometric_login_title
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
 
 /**
  * Where the app goes after the splash: to create a PIN, or to unlock with the one it has.
@@ -50,18 +51,23 @@ class SplashInteractorImpl(
     private val quickPinInteractor: QuickPinInteractor,
     private val walletEngine: WalletEngine,
     /**
-     * Whether this build refuses to go anywhere before a PID is issued. Android reads it from
-     * `ConfigLogic`, which is Android-only; iOS has no configuration layer yet and answers false. A lambda
-     * rather than a value because the Android config resolves it lazily.
+     * The app's configuration, for [SharedAppConfig.forcePidActivation] — whether this build refuses to
+     * go anywhere before a PID is issued.
+     *
+     * Was a `() -> Boolean` until 2026-08-28, on the reasoning that "Android reads it from `ConfigLogic`,
+     * which is Android-only; iOS has no configuration layer yet". Both halves stopped being true: the flag
+     * moved onto [SharedAppConfig] in commonMain, and iOS has `IosWalletConfig`. A lambda here meant every
+     * host had to be handed this one flag, which is how the same setting came to be declared through four
+     * different seams.
      */
-    private val forcePidActivation: () -> Boolean,
+    private val appConfig: SharedAppConfig,
 ) : SplashInteractor {
 
     private suspend fun hasDocuments(): Boolean =
         walletEngine.getAllDocuments().isNotEmpty()
 
     private suspend fun shouldActivateWithPid(): Boolean =
-        forcePidActivation() && !hasDocuments()
+        appConfig.forcePidActivation && !hasDocuments()
 
     override suspend fun getAfterSplashRoute(): AppRoute = when (quickPinInteractor.hasPin()) {
         true -> {

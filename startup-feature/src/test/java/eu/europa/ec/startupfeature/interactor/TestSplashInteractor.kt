@@ -75,12 +75,14 @@ class TestSplashInteractor {
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
 
-        // The interactor is shared now; `forcePidActivation` is the one thing its host supplies, and
-        // these cases still drive it through the same `ConfigLogic` they always did.
+        // The interactor is shared, and so is the configuration it reads: `forcePidActivation` is a
+        // member of `SharedAppConfig`, which `ConfigLogic` extends. These cases still drive it through
+        // the same mock they always did — it is now passed as the config rather than unwrapped into a
+        // lambda by the host.
         interactor = SplashInteractorImpl(
             quickPinInteractor = quickPinInteractor,
             walletEngine = walletEngine,
-            forcePidActivation = { configLogic.forcePidActivation }
+            appConfig = configLogic,
         )
     }
 

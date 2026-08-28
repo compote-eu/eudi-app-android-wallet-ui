@@ -16,7 +16,6 @@
 
 package eu.europa.ec.issuancefeature.di
 
-import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
@@ -33,6 +32,7 @@ import eu.europa.ec.issuancefeature.interactor.AndroidDocumentOfferPlatformBridg
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractorImpl
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferPlatformBridge
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -85,12 +85,10 @@ fun provideDocumentOfferPlatformBridge(
     walletCoreDocumentsController: WalletCoreDocumentsController,
     deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     resourceProvider: ResourceProvider,
-    configLogic: ConfigLogic,
 ): DocumentOfferPlatformBridge = AndroidDocumentOfferPlatformBridge(
     walletCoreDocumentsController,
     deviceAuthenticationInteractor,
     resourceProvider,
-    configLogic,
 )
 
 @Scope(CredentialOfferIssuanceScope::class)
@@ -99,8 +97,10 @@ fun provideDocumentOfferInteractor(
     strings: StringCatalog,
     walletEngine: WalletEngine,
     platformBridge: DocumentOfferPlatformBridge,
+    appConfig: SharedAppConfig,
 ): DocumentOfferInteractor = DocumentOfferInteractorImpl(
     strings,
     walletEngine,
     platformBridge,
+    appConfig,
 )

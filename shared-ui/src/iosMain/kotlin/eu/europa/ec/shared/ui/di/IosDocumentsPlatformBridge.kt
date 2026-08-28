@@ -21,6 +21,7 @@ import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.dashboardfeature.interactor.DocumentInteractorDeleteDocumentPartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentInteractorRetryIssuingDeferredDocumentsPartialState
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
+import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -52,17 +53,6 @@ internal class IosDocumentsPlatformBridge(
     override val documentCategories: DocumentCategories
         get() = DocumentCategories.Default
 
-    /**
-     * False, **as in both Android flavours** — `ConfigLogic.forcePidActivation` defaults to `false` and
-     * neither `src/dev` nor `src/demo` overrides it.
-     *
-     * This is the policy of whether a wallet holding no PID is pushed into getting one before it can do
-     * anything else, and no build of either platform pushes. The previous sweep corrected this comment's
-     * stale premise ("iOS cannot issue") but asserted Android was `true`, which it is not — checking the
-     * claim about *our* code is only half of checking the claim.
-     */
-    override val forcePidActivation: Boolean get() = false
-
     /** The device locale's language, which is all the issuer-display lookup matches on. */
     override fun localeTag(): String =
         NSLocale.currentLocale.languageCode
@@ -81,7 +71,7 @@ internal class IosDocumentsPlatformBridge(
         deleteDocument.invoke(documentId).fold(
             onSuccess = {
                 emit(
-                    if (forcePidActivation && !hasAnyDocument()) {
+                    if (iosWalletConfig.forcePidActivation && !hasAnyDocument()) {
                         DocumentInteractorDeleteDocumentPartialState.AllDocumentsDeleted
                     } else {
                         DocumentInteractorDeleteDocumentPartialState.SingleDocumentDeleted

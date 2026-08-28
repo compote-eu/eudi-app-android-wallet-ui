@@ -28,6 +28,7 @@ import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.issuance_document_offer_relying_party_default_name
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.wallet.WalletEngine
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
 import eu.europa.ec.issuancefeature.ui.offer.model.DocumentOfferUi
 import eu.europa.ec.resourceslogic.theme.values.ThemeColors
 import eu.europa.ec.shared.navigation.AppRoute
@@ -60,6 +61,7 @@ class DocumentOfferInteractorImpl(
     private val strings: StringCatalog,
     private val walletEngine: WalletEngine,
     private val platform: DocumentOfferPlatformBridge,
+    private val appConfig: SharedAppConfig,
 ) : DocumentOfferInteractor {
 
     private val genericErrorMsg
@@ -124,7 +126,7 @@ class DocumentOfferInteractorImpl(
 
         // A build that requires a PID first refuses an offer that neither is one nor follows one.
         val walletHasPid = walletEngine.getMainPidDocument() != null
-        if (platform.forcePidActivation && !walletHasPid && !containsPid) {
+        if (appConfig.forcePidActivation && !walletHasPid && !containsPid) {
             return ResolveDocumentOfferInteractorPartialState.Failure(
                 errorMessage = strings[Res.string.issuance_document_offer_error_missing_pid_text]
             )

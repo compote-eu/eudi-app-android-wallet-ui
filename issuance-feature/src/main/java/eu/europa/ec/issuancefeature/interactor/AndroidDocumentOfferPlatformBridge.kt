@@ -19,7 +19,6 @@ package eu.europa.ec.issuancefeature.interactor
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
-import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.ResolveDocumentOfferPartialState
@@ -51,15 +50,11 @@ class AndroidDocumentOfferPlatformBridge(
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
     private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     private val resourceProvider: ResourceProvider,
-    private val configLogic: ConfigLogic,
 ) : DocumentOfferPlatformBridge {
 
     private val resolvedOffers: MutableMap<String, Offer> = mutableMapOf()
 
     override fun localeTag(): String = resourceProvider.getLocale().toLanguageTag()
-
-    override val forcePidActivation: Boolean
-        get() = configLogic.forcePidActivation
 
     override suspend fun resolveOffer(
         offerUri: String,

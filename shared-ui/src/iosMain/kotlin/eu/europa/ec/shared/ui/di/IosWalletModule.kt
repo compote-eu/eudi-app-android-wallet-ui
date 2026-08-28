@@ -73,6 +73,8 @@ import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
 import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.shared.wallet.WalletEngine
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
+import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import org.koin.core.annotation.Factory
 import org.koin.core.annotation.Single
@@ -291,16 +293,27 @@ fun provideIosDocumentOfferInteractor(
     strings: StringCatalog,
     walletEngine: WalletEngine,
     platform: DocumentOfferPlatformBridge,
+    appConfig: SharedAppConfig,
 ): DocumentOfferInteractor = DocumentOfferInteractorImpl(
     strings = strings,
     walletEngine = walletEngine,
     platform = platform,
+    appConfig = appConfig,
 )
 
 /**
  * The login gate. The PIN policy is shared; what iOS brings is where the verifier lives (the Keychain) and
  * how long a wrong PIN costs (`NSUserDefaults`, since a lockout is not a secret).
  */
+/**
+ * The app configuration commonMain reads, answered by this build's flavour file.
+ *
+ * `IosWalletConfig` extends [SharedAppConfig]; Koin resolves by the declared type, so shared consumers
+ * asking for the supertype need this binding. Android binds its `ConfigLogic` the same way.
+ */
+@Single
+fun provideIosSharedAppConfig(): SharedAppConfig = iosWalletConfig
+
 @Single
 fun provideIosAuthenticationConfig(): AuthenticationConfig = WalletAuthenticationConfig
 
@@ -349,18 +362,21 @@ fun provideIosBiometricGate(): IosBiometricGate =
 
 /**
  * The real splash routing, replacing the stand-in that always went to the dashboard: no PIN yet sends the
- * user to create one, an existing PIN sends them to unlock. `forcePidActivation` is false here, which
- * matches both Android flavours — neither overrides the interface default — so no build of either
- * platform insists on a PID before anything else.
+ * user to create one, an existing PIN sends them to unlock.
+ *
+ * `forcePidActivation` used to be passed in as a `{ false }` lambda. It now comes from [SharedAppConfig],
+ * the one place either platform declares it, so this provider no longer restates the value — it is false
+ * because neither `IosWalletConfig` nor Android's `ConfigLogic` overrides the interface default.
  */
 @Factory
 fun provideIosSplashInteractor(
     quickPinInteractor: QuickPinInteractor,
     walletEngine: WalletEngine,
+    appConfig: SharedAppConfig,
 ): SplashInteractor = SplashInteractorImpl(
     quickPinInteractor = quickPinInteractor,
     walletEngine = walletEngine,
-    forcePidActivation = { false },
+    appConfig = appConfig,
 )
 
 /**

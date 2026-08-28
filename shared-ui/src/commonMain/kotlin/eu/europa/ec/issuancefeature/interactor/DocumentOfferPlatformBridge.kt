@@ -87,13 +87,6 @@ interface DocumentOfferPlatformBridge {
     /** BCP-47 tag used to pick localized document and issuer names. */
     fun localeTag(): String
 
-    /**
-     * Whether this build refuses to hold documents before a PID. Comes from the app's configuration,
-     * which is Android-only (`ConfigLogic`), so it is reported here rather than read directly — the rule
-     * it feeds ("an offer with no PID is refused unless the wallet already has one") stays shared.
-     */
-    val forcePidActivation: Boolean
-
     /** Fetches and remembers the offer at [offerUri]. */
     suspend fun resolveOffer(offerUri: String, locale: String): PlatformOfferResolution
 

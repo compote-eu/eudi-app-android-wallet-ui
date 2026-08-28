@@ -16,9 +16,9 @@
 
 package eu.europa.ec.startupfeature.di
 
-import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.shared.wallet.WalletEngine
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.startupfeature.interactor.SplashInteractorImpl
@@ -32,14 +32,15 @@ import org.koin.core.annotation.Module
 @ComponentScan("eu.europa.ec.startupfeature")
 class FeatureStartupModule
 
-// Shared implementation; only "does this build require a PID first" is Android configuration.
+// Shared implementation, and now shared configuration too: `forcePidActivation` is a member of
+// `SharedAppConfig`, which Android answers with `ConfigLogic` and iOS with `IosWalletConfig`.
 @Factory
 fun provideSplashInteractor(
     quickPinInteractor: QuickPinInteractor,
     walletEngine: WalletEngine,
-    configLogic: ConfigLogic
+    appConfig: SharedAppConfig,
 ): SplashInteractor = SplashInteractorImpl(
     quickPinInteractor = quickPinInteractor,
     walletEngine = walletEngine,
-    forcePidActivation = { configLogic.forcePidActivation },
+    appConfig = appConfig,
 )
