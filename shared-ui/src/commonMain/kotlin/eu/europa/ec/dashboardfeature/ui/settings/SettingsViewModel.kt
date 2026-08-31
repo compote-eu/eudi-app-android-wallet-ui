@@ -148,7 +148,9 @@ class SettingsViewModel(
             // leave that visible switch dead on iOS.
             SettingsMenuItemType.BIOMETRICS_AUTHENTICATION -> {
                 when (val availability = settingsInteractor.getBiometricsAvailability()) {
-                    is BiometricsAvailability.CanAuthenticate -> authenticate(context)
+                    is BiometricsAvailability.CanAuthenticate -> viewModelScope.launch {
+                        confirmBiometricsChange(context)
+                    }
 
                     is BiometricsAvailability.NonEnrolled -> {
                         setEffect {
@@ -228,28 +230,60 @@ class SettingsViewModel(
         }
     }
 
-    private fun authenticate(context: PlatformContext?) {
+    /**
+     * Flips biometric login, with the platform's prompt as the confirmation.
+     *
+     * **The order depends on the direction, and has to.** On iOS the biometry-gated Keychain item *is*
+     * the setting, so a prompt is only possible while that item exists: switching on has to write
+     * first and undo the write if the prompt goes unanswered, while switching off has to prompt before
+     * deleting. Android is indifferent — its prompt is backed by a Keystore key that outlives the
+     * preference — so one order serves both platforms and neither needs to know which it is.
+     *
+     * Prompting first in both directions is what used to be here, and it made switching on impossible
+     * on iOS: the prompt read an item that only switching on would have created, got
+     * `errSecItemNotFound`, and raised no prompt at all. The switch sat there and did nothing.
+     *
+     * Either direction only survives a prompt the user answered, which is the property worth keeping:
+     * nobody turns the wallet's biometric login on or off without authenticating.
+     */
+    private suspend fun confirmBiometricsChange(context: PlatformContext?) {
+        val turningOn = !settingsInteractor.isBiometricsEnabled()
+        if (turningOn) {
+            settingsInteractor.setBiometricsAuthentication(enabled = true)
+        }
         settingsInteractor.authenticateWithBiometrics(
             context = context,
             notifyOnAuthenticationFailure = true,
         ) { result ->
-            when (result) {
-                is BiometricsAuthenticate.Success -> {
-                    viewModelScope.launch {
-                        settingsInteractor.toggleBiometricsAuthentication()
-                        val settingsItems = settingsInteractor.getSettingsItemsUi(
-                            changelogUrl = viewState.value.changelogUrl
-                        )
-                        setState {
-                            copy(
-                                settingsItems = settingsItems,
-                            )
+            viewModelScope.launch {
+                when (result) {
+                    // Switching off is the half that still has work to do here; switching on already
+                    // wrote, and the prompt it just passed is what makes that write final.
+                    is BiometricsAuthenticate.Success ->
+                        if (!turningOn) {
+                            settingsInteractor.setBiometricsAuthentication(enabled = false)
                         }
-                    }
-                }
 
-                else -> {}
+                    // Cancelled or failed: leave the setting as the user found it. Only the "on"
+                    // direction has anything to undo, because only it wrote before prompting.
+                    else ->
+                        if (turningOn) {
+                            settingsInteractor.setBiometricsAuthentication(enabled = false)
+                        }
+                }
+                refreshSettingsItems()
             }
+        }
+    }
+
+    private suspend fun refreshSettingsItems() {
+        val settingsItems = settingsInteractor.getSettingsItemsUi(
+            changelogUrl = viewState.value.changelogUrl
+        )
+        setState {
+            copy(
+                settingsItems = settingsItems,
+            )
         }
     }
 }

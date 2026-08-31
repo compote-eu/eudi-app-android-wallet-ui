@@ -41,7 +41,9 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelPlatformHandleTest {
@@ -56,8 +58,33 @@ class SettingsViewModelPlatformHandleTest {
     fun tearDown() = Dispatchers.resetMain()
 
     @Test
-    fun toggling_biometrics_prompts_first_and_flips_only_on_success() = runTest(mainDispatcher) {
-        val fake = FakeSettingsInteractor(authResult = BiometricsAuthenticate.Success)
+    fun switching_biometrics_on_writes_before_prompting_and_keeps_it_on_success() =
+        runTest(mainDispatcher) {
+            // The order is the fix. On iOS the gated Keychain item *is* the setting, so the write is
+            // what makes a prompt possible: prompting first read an item that nothing had created
+            // yet, raised no prompt, and left the switch dead.
+            val fake = FakeSettingsInteractor(authResult = BiometricsAuthenticate.Success)
+            val viewModel = SettingsViewModel(fake)
+            advanceUntilIdle()
+
+            viewModel.setEvent(
+                Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context)
+            )
+            advanceUntilIdle()
+
+            assertEquals(1, fake.authPrompts)
+            assertEquals(listOf("set(true)", "prompt"), fake.calls)
+            assertTrue(fake.biometricsEnabledNow)
+        }
+
+    @Test
+    fun switching_biometrics_off_prompts_before_writing() = runTest(mainDispatcher) {
+        // The other direction, and the reason one order cannot serve both: deleting the item first
+        // would destroy the very thing the prompt authenticates against.
+        val fake = FakeSettingsInteractor(
+            authResult = BiometricsAuthenticate.Success,
+            initiallyEnabled = true,
+        )
         val viewModel = SettingsViewModel(fake)
         advanceUntilIdle()
 
@@ -66,8 +93,8 @@ class SettingsViewModelPlatformHandleTest {
         )
         advanceUntilIdle()
 
-        assertEquals(1, fake.authPrompts)
-        assertEquals(1, fake.biometricsToggles)
+        assertEquals(listOf("prompt", "set(false)"), fake.calls)
+        assertFalse(fake.biometricsEnabledNow)
     }
 
     @Test
@@ -82,8 +109,10 @@ class SettingsViewModelPlatformHandleTest {
         advanceUntilIdle()
 
         assertEquals(1, fake.authPrompts)
-        // The whole point: a failed prompt must NOT disable login protection.
-        assertEquals(0, fake.biometricsToggles)
+        // The whole point: a failed prompt must leave login protection as it was. Switching on wrote
+        // before prompting, so "unchanged" here means the write was undone.
+        assertEquals(listOf("set(true)", "prompt", "set(false)"), fake.calls)
+        assertFalse(fake.biometricsEnabledNow)
     }
 
     @Test
@@ -97,7 +126,8 @@ class SettingsViewModelPlatformHandleTest {
         )
         advanceUntilIdle()
 
-        assertEquals(0, fake.biometricsToggles)
+        assertEquals(listOf("set(true)", "prompt", "set(false)"), fake.calls)
+        assertFalse(fake.biometricsEnabledNow)
     }
 
     @Test
@@ -233,7 +263,7 @@ class SettingsViewModelPlatformHandleTest {
         advanceUntilIdle()
 
         assertEquals(1, fake.authPrompts)
-        assertEquals(1, fake.biometricsToggles)
+        assertTrue(fake.biometricsEnabledNow)
     }
 
     @Test

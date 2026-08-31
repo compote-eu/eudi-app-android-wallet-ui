@@ -54,7 +54,18 @@ interface SettingsInteractor {
      */
     fun getLogFilePaths(): List<String>
     suspend fun getSettingsItemsUi(changelogUrl: String?): List<SettingsItemUi>
-    suspend fun toggleBiometricsAuthentication()
+    suspend fun isBiometricsEnabled(): Boolean
+
+    /**
+     * Turns biometric login on or off, to the value asked for rather than to the opposite of whatever
+     * is stored.
+     *
+     * This replaced a `toggle` that read the current value and inverted it. The caller has to choose
+     * the moment it writes — on iOS the biometry-gated Keychain item *is* the setting, so the write is
+     * what makes a prompt possible at all — and an inverting toggle cannot be sequenced around a
+     * prompt without undoing itself. See `SettingsViewModel.confirmBiometricsChange`.
+     */
+    suspend fun setBiometricsAuthentication(enabled: Boolean)
     suspend fun toggleShowBatchIssuanceCounter()
     suspend fun toggleRegistrationCheck()
 

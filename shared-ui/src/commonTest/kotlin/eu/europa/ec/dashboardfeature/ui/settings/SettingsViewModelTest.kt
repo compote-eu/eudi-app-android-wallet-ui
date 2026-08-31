@@ -78,6 +78,13 @@ internal open class FakeBiometricInteractor(
     var storedDecision: Boolean? = null
         private set
 
+    /**
+     * Every prompt and every biometrics write, in the order they happened. The order is the whole
+     * point for the settings switch: writing and prompting in the wrong sequence is a bug that no
+     * count of either can see.
+     */
+    val calls: MutableList<String> = mutableListOf()
+
     override fun getBiometricsAvailability(): BiometricsAvailability = availability
 
     override suspend fun getBiometricUserSelection(): Boolean = biometricUserSelection
@@ -91,6 +98,7 @@ internal open class FakeBiometricInteractor(
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit,
     ) {
+        calls += "prompt"
         authPrompts++
         listener(authResult)
     }
@@ -117,6 +125,7 @@ internal class FakeSettingsInteractor(
     private val logFilePaths: List<String> = emptyList(),
     availability: BiometricsAvailability = BiometricsAvailability.CanAuthenticate,
     authResult: BiometricsAuthenticate = BiometricsAuthenticate.Success,
+    initiallyEnabled: Boolean = false,
 ) : FakeBiometricInteractor(availability = availability, authResult = authResult),
     SettingsInteractor {
 
@@ -124,8 +133,12 @@ internal class FakeSettingsInteractor(
         private set
     var lastChangelogUrlAsked: String? = null
         private set
-    var biometricsToggles: Int = 0
+    var biometricsWrites: Int = 0
         private set
+    private var biometricsOn: Boolean = initiallyEnabled
+
+    /** What a real platform would report afterwards — the outcome, rather than the churn. */
+    val biometricsEnabledNow: Boolean get() = biometricsOn
     var batchCounterToggles: Int = 0
         private set
 
@@ -147,8 +160,12 @@ internal class FakeSettingsInteractor(
         }
     }
 
-    override suspend fun toggleBiometricsAuthentication() {
-        biometricsToggles++
+    override suspend fun isBiometricsEnabled(): Boolean = biometricsOn
+
+    override suspend fun setBiometricsAuthentication(enabled: Boolean) {
+        biometricsOn = enabled
+        biometricsWrites++
+        calls += "set($enabled)"
     }
 
     override suspend fun toggleShowBatchIssuanceCounter() {

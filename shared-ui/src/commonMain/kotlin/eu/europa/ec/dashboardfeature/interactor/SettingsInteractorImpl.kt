@@ -175,8 +175,10 @@ class SettingsInteractorImpl(
         }
     }
 
-    override suspend fun toggleBiometricsAuthentication() {
-        platform.setBiometricsEnabled(enabled = !platform.isBiometricsEnabled())
+    override suspend fun isBiometricsEnabled(): Boolean = platform.isBiometricsEnabled()
+
+    override suspend fun setBiometricsAuthentication(enabled: Boolean) {
+        platform.setBiometricsEnabled(enabled = enabled)
     }
 
     override suspend fun toggleShowBatchIssuanceCounter() {

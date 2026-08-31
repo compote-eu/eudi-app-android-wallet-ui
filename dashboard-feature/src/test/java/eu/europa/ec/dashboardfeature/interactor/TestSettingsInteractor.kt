@@ -465,31 +465,42 @@ class TestSettingsInteractor {
         }
     //endregion
 
-    //region toggleBiometricsAuthentication
+    //region setBiometricsAuthentication
+    // These used to drive a `toggle` that read the stored value and inverted it. The caller now says
+    // which value it wants, because it has to choose when the write happens relative to the prompt —
+    // see `SettingsViewModel.confirmBiometricsChange`. So there is nothing to read here any more, and
+    // that absence is the point: no read means no inversion to get the wrong way round.
     @Test
-    fun `Given Biometrics user selection is false, When toggleBiometricsAuthentication is called, Then true is stored`() =
+    fun `When setBiometricsAuthentication is called with true, Then true is stored`() =
         coroutineRule.runTest {
-            // Given
-            whenever(biometricInteractor.getBiometricUserSelection()).thenReturn(false)
-
             // When
-            interactor.toggleBiometricsAuthentication()
+            interactor.setBiometricsAuthentication(enabled = true)
 
             // Then
             verify(biometricInteractor).storeBiometricsUsageDecision(true)
         }
 
     @Test
-    fun `Given Biometrics user selection is true, When toggleBiometricsAuthentication is called, Then false is stored`() =
+    fun `When setBiometricsAuthentication is called with false, Then false is stored`() =
+        coroutineRule.runTest {
+            // When
+            interactor.setBiometricsAuthentication(enabled = false)
+
+            // Then
+            verify(biometricInteractor).storeBiometricsUsageDecision(false)
+        }
+
+    @Test
+    fun `Given biometrics are enabled, When isBiometricsEnabled is called, Then the platform is asked`() =
         coroutineRule.runTest {
             // Given
             whenever(biometricInteractor.getBiometricUserSelection()).thenReturn(true)
 
             // When
-            interactor.toggleBiometricsAuthentication()
+            val enabled = interactor.isBiometricsEnabled()
 
             // Then
-            verify(biometricInteractor).storeBiometricsUsageDecision(false)
+            assertTrue(enabled)
         }
     //endregion
 
