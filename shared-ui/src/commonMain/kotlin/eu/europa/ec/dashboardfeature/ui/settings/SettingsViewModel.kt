@@ -48,6 +48,13 @@ data class State(
 
     val appVersion: String = "",
     val changelogUrl: String?,
+
+    /**
+     * Only ever the "no biometrics enrolled" explainer, so there is no sheet-content type to choose
+     * between. If a second sheet ever lands here, this becomes a sealed content class as on the home
+     * screen.
+     */
+    val isBottomSheetOpen: Boolean = false,
 ) : ViewState
 
 sealed class Event : ViewEvent {
@@ -62,6 +69,11 @@ sealed class Event : ViewEvent {
         val itemType: SettingsMenuItemType,
         val context: PlatformContext?
     ) : Event()
+
+    data class UpdateBottomSheetState(val isOpen: Boolean) : Event()
+
+    /** The explainer's positive button: go where the platform can actually take us. */
+    data object BiometricEnrolmentSettingsPressed : Event()
 }
 
 sealed class Effect : ViewSideEffect {
@@ -111,6 +123,15 @@ class SettingsViewModel(
                 settingsInteractor.launchBiometricSystemScreen()
             }
 
+            is Event.UpdateBottomSheetState -> {
+                setState { copy(isBottomSheetOpen = event.isOpen) }
+            }
+
+            is Event.BiometricEnrolmentSettingsPressed -> {
+                setState { copy(isBottomSheetOpen = false) }
+                setEffect { Effect.Navigation.LaunchBiometricsSystemScreen }
+            }
+
             is Event.ItemClicked -> handleSettingsMenuItemClicked(
                 itemType = event.itemType,
                 context = event.context
@@ -152,9 +173,18 @@ class SettingsViewModel(
                         confirmBiometricsChange(context)
                     }
 
+                    // Android can open the enrolment screen itself, and arriving there needs no
+                    // explaining, so it goes straight. Where the platform cannot — iOS, which may not
+                    // link past its own Settings pane — being thrown out of the app with no
+                    // explanation is worse than being asked first, so the sheet says what is wrong and
+                    // leaves the choice with the user.
                     is BiometricsAvailability.NonEnrolled -> {
-                        setEffect {
-                            Effect.Navigation.LaunchBiometricsSystemScreen
+                        if (settingsInteractor.canOpenBiometricEnrolment) {
+                            setEffect {
+                                Effect.Navigation.LaunchBiometricsSystemScreen
+                            }
+                        } else {
+                            setState { copy(isBottomSheetOpen = true) }
                         }
                     }
 

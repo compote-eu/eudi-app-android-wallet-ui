@@ -94,6 +94,9 @@ internal class IosSettingsPlatformBridge(
         if (enabled) gate.enable() else gate.disable()
     }
 
+    /** No app may link to Settings › Face ID & Passcode, so the destination has to be explained. */
+    override val canOpenBiometricEnrolment: Boolean get() = false
+
     override fun authenticateWithBiometrics(
         context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,

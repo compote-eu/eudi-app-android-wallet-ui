@@ -51,6 +51,7 @@ private class FakeSettingsPlatformBridge(
     override val canRetrieveLogs: Boolean = true,
     private val logFilePaths: List<String> = emptyList(),
     override val canCheckRegistrations: Boolean = true,
+    override val canOpenBiometricEnrolment: Boolean = true,
     private val availability: BiometricsAvailability = BiometricsAvailability.CanAuthenticate,
     private val biometricsEnabled: Boolean = false,
     private var batchCounterShown: Boolean = true,

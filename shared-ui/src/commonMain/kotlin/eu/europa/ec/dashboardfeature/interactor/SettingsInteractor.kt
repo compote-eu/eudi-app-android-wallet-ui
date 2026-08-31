@@ -86,5 +86,8 @@ interface SettingsInteractor {
         listener: (BiometricsAuthenticate) -> Unit
     )
 
+    /** See [SettingsPlatformBridge.canOpenBiometricEnrolment]. */
+    val canOpenBiometricEnrolment: Boolean
+
     fun launchBiometricSystemScreen()
 }

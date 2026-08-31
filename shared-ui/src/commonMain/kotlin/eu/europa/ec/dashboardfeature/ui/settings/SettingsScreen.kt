@@ -25,12 +25,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,8 +47,13 @@ import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.generic_cancel
 import eu.europa.ec.shared.resources.resolve
 import eu.europa.ec.shared.resources.settings_intent_chooser_logs_share_title
+import eu.europa.ec.shared.resources.settings_screen_biometrics_not_enrolled_message
+import eu.europa.ec.shared.resources.settings_screen_biometrics_not_enrolled_primary_button
+import eu.europa.ec.shared.resources.settings_screen_biometrics_not_enrolled_title
 import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -63,7 +70,10 @@ import eu.europa.ec.uilogic.component.rememberPlatformContextOrNull
 import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
+import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
+import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
 import eu.europa.ec.uilogic.component.wrap.WrapListItem
+import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.emptyFlow
@@ -71,6 +81,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navigator: AppNavigator,
@@ -78,10 +89,12 @@ fun SettingsScreen(
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
     // Null on iOS, where there is no host context to raise a biometric prompt with. Only the
-    // biometrics row needs one, and that row is not shown there.
+    // biometrics row needs one, and it is passed on rather than used as a gate: that row IS shown on
+    // iOS, whose prompt the system owns and raises without a host.
     val platformContext = rememberPlatformContextOrNull()
     val platformActions = rememberPlatformScreenActions()
     val snackbarHostState = remember { SnackbarHostState() }
+    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ContentScreen(
         navigatableAction = ScreenNavigateAction.BACKABLE,
@@ -117,6 +130,34 @@ fun SettingsScreen(
         )
     }
 
+    if (state.isBottomSheetOpen) {
+        WrapModalBottomSheet(
+            onDismissRequest = {
+                viewModel.setEvent(Event.UpdateBottomSheetState(isOpen = false))
+            },
+            sheetState = bottomSheetState,
+        ) {
+            DialogBottomSheet(
+                textData = BottomSheetTextDataUi(
+                    title = UiText.Resource(Res.string.settings_screen_biometrics_not_enrolled_title),
+                    message = UiText.Resource(
+                        Res.string.settings_screen_biometrics_not_enrolled_message
+                    ),
+                    positiveButtonText = UiText.Resource(
+                        Res.string.settings_screen_biometrics_not_enrolled_primary_button
+                    ),
+                    negativeButtonText = UiText.Resource(Res.string.generic_cancel),
+                ),
+                leadingIcon = AppIcons.TouchId,
+                onPositiveClick = {
+                    viewModel.setEvent(Event.BiometricEnrolmentSettingsPressed)
+                },
+                onNegativeClick = {
+                    viewModel.setEvent(Event.UpdateBottomSheetState(isOpen = false))
+                },
+            )
+        }
+    }
 }
 
 private fun handleNavigationEffect(

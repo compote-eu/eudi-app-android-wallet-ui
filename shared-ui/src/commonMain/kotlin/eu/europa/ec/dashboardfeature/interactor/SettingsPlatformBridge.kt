@@ -81,7 +81,20 @@ interface SettingsPlatformBridge {
         listener: (BiometricsAuthenticate) -> Unit
     )
 
-    /** Sends the user to the OS screen where biometrics are enrolled. */
+    /**
+     * Whether [launchBiometricSystemScreen] actually lands on biometric enrolment.
+     *
+     * True on Android, which can open that OS screen directly — self-explanatory, so the caller sends
+     * the user straight there. False on iOS, where no app may link deeper than its own Settings pane;
+     * a caller that arrives there having been told nothing has been dumped somewhere unrelated to what
+     * it asked for, so the shared screen explains first and offers the choice.
+     *
+     * A capability rather than a platform check, so the screens never ask which platform they are on —
+     * the same arrangement as [canRetrieveLogs] and [canCheckRegistrations].
+     */
+    val canOpenBiometricEnrolment: Boolean
+
+    /** Sends the user to the OS screen where biometrics are enrolled, or as near as it can get. */
     fun launchBiometricSystemScreen()
 
     /** Whether document rows show their credentials counter. */

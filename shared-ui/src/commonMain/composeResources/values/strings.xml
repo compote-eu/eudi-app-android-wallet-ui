@@ -253,6 +253,9 @@
     <string name="settings_screen_title">Settings</string>
     <string name="settings_screen_option_biometrics_authentication">Authenticate with biometrics</string>
     <string name="settings_screen_option_show_batch_issuance_counter">Batch issuance counter</string>
+    <string name="settings_screen_biometrics_not_enrolled_title">No biometrics set up</string>
+    <string name="settings_screen_biometrics_not_enrolled_message">This device has no face or fingerprint enrolled yet, so biometric login cannot be used. Set one up in the system settings.</string>
+    <string name="settings_screen_biometrics_not_enrolled_primary_button">Go to settings</string>
     <string name="settings_screen_option_registration_check">Check Registration Certificates</string>
     <string name="settings_screen_option_registration_check_restart">Restart the app to apply this change</string>
     <string name="settings_screen_option_retrieve_logs">Retrieve logs</string>

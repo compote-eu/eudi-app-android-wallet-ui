@@ -126,6 +126,8 @@ internal class FakeSettingsInteractor(
     availability: BiometricsAvailability = BiometricsAvailability.CanAuthenticate,
     authResult: BiometricsAuthenticate = BiometricsAuthenticate.Success,
     initiallyEnabled: Boolean = false,
+    // Android's answer, so the existing tests keep asserting Android's behaviour.
+    override val canOpenBiometricEnrolment: Boolean = true,
 ) : FakeBiometricInteractor(availability = availability, authResult = authResult),
     SettingsInteractor {
 

@@ -131,6 +131,79 @@ class SettingsViewModelPlatformHandleTest {
     }
 
     @Test
+    fun no_enrolment_on_a_platform_that_cannot_reach_it_explains_instead_of_leaving() =
+        runTest(mainDispatcher) {
+            // iOS may not link to Settings › Face ID & Passcode, so sending the user out of the app
+            // with no explanation drops them somewhere unrelated to what they asked for. The sheet
+            // says what is wrong and leaves the choice with them.
+            val fake = FakeSettingsInteractor(
+                availability = BiometricsAvailability.NonEnrolled,
+                canOpenBiometricEnrolment = false,
+            )
+            val viewModel = SettingsViewModel(fake)
+            advanceUntilIdle()
+
+            val effect = async { viewModel.effect.first() }
+            viewModel.setEvent(
+                Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context)
+            )
+            advanceUntilIdle()
+
+            assertTrue(viewModel.viewState.value.isBottomSheetOpen)
+            assertEquals(0, fake.authPrompts)
+            // No navigation was emitted, so a following event is what the collector must see.
+            viewModel.setEvent(Event.Pop)
+            advanceUntilIdle()
+            assertIs<Effect.Navigation.Pop>(effect.await())
+        }
+
+    @Test
+    fun accepting_the_explainer_hands_off_to_the_platform_and_closes_the_sheet() =
+        runTest(mainDispatcher) {
+            val fake = FakeSettingsInteractor(
+                availability = BiometricsAvailability.NonEnrolled,
+                canOpenBiometricEnrolment = false,
+            )
+            val viewModel = SettingsViewModel(fake)
+            advanceUntilIdle()
+            viewModel.setEvent(
+                Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context)
+            )
+            advanceUntilIdle()
+            // Without this the test passes even when the click navigates away instead of explaining,
+            // because pressing the sheet's button works whether or not the sheet was ever shown.
+            assertTrue(viewModel.viewState.value.isBottomSheetOpen)
+
+            val effect = async { viewModel.effect.first() }
+            viewModel.setEvent(Event.BiometricEnrolmentSettingsPressed)
+            advanceUntilIdle()
+
+            assertIs<Effect.Navigation.LaunchBiometricsSystemScreen>(effect.await())
+            assertFalse(viewModel.viewState.value.isBottomSheetOpen)
+        }
+
+    @Test
+    fun declining_the_explainer_leaves_the_app_alone() = runTest(mainDispatcher) {
+        val fake = FakeSettingsInteractor(
+            availability = BiometricsAvailability.NonEnrolled,
+            canOpenBiometricEnrolment = false,
+        )
+        val viewModel = SettingsViewModel(fake)
+        advanceUntilIdle()
+        viewModel.setEvent(
+            Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context)
+        )
+        advanceUntilIdle()
+        assertTrue(viewModel.viewState.value.isBottomSheetOpen)
+
+        viewModel.setEvent(Event.UpdateBottomSheetState(isOpen = false))
+        advanceUntilIdle()
+
+        assertFalse(viewModel.viewState.value.isBottomSheetOpen)
+        assertEquals(0, fake.systemScreenLaunches)
+    }
+
+    @Test
     fun no_enrolled_biometrics_sends_the_user_to_the_system_screen() = runTest(mainDispatcher) {
         val fake = FakeSettingsInteractor(availability = BiometricsAvailability.NonEnrolled)
         val viewModel = SettingsViewModel(fake)

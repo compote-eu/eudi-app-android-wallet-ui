@@ -60,6 +60,8 @@ class SettingsInteractorImpl(
         listener: (BiometricsAuthenticate) -> Unit
     ) = platform.authenticateWithBiometrics(context, notifyOnAuthenticationFailure, listener)
 
+    override val canOpenBiometricEnrolment: Boolean get() = platform.canOpenBiometricEnrolment
+
     override fun launchBiometricSystemScreen() = platform.launchBiometricSystemScreen()
 
     override suspend fun getSettingsItemsUi(changelogUrl: String?): List<SettingsItemUi> {

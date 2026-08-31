@@ -58,6 +58,9 @@ class AndroidSettingsPlatformBridge(
     override suspend fun setBiometricsEnabled(enabled: Boolean) =
         biometricInteractor.storeBiometricsUsageDecision(shouldUseBiometrics = enabled)
 
+    /** Android opens the enrolment screen itself, so the destination needs no explaining. */
+    override val canOpenBiometricEnrolment: Boolean get() = true
+
     override fun authenticateWithBiometrics(
         context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,
