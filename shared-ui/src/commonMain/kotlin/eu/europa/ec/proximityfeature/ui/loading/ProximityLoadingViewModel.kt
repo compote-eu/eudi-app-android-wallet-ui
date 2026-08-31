@@ -81,7 +81,7 @@ class ProximityLoadingViewModel(
 
     override fun getCancellableTimeout(): Duration = 5.toDuration(DurationUnit.SECONDS)
 
-    override fun doWork(context: PlatformContext) {
+    override fun doWork(context: PlatformContext?) {
         viewModelScope.launch {
 
             interactor.setScopeId(presentationScopeId)
@@ -160,12 +160,29 @@ class ProximityLoadingViewModel(
     }
 
     private fun openAuthenticationPrompt(
-        context: PlatformContext,
+        context: PlatformContext?,
         popEffect: Effect,
         authenticationDataList: List<AuthenticationData>,
         sendRequestedDocumentsAction: () -> Unit,
         index: Int = 0,
     ) {
+        // No platform handle means no way to raise a device-authentication prompt — iOS. Report it
+        // instead of proceeding or hanging: the send genuinely cannot continue, and an honest error is
+        // what the rest of this screen already does when it has no authentication data.
+        if (context == null) {
+            setState {
+                copy(
+                    error = ContentErrorConfig(
+                        errorSubTitle = UiText.Resource(Res.string.generic_error_message),
+                        onCancel = {
+                            setEvent(Event.DismissError)
+                            doNavigation(NavigationType.PopTo(getPreviousRoute()))
+                        }
+                    )
+                )
+            }
+            return
+        }
         val authenticationData = authenticationDataList.getOrNull(index)
         if (authenticationData == null) {
             setState {

@@ -60,16 +60,22 @@ import kotlin.time.Duration.Companion.seconds
 class LoadingViewModelTest {
 
     /**
-     * Stands in for ProximityLoading/PresentationLoading. [doWork] records that it was called but
-     * cannot be *invoked* from a test, since that needs a [PlatformContext]; the counter exists to
-     * prove the [LoadingViewModel.startInitialWork] guard, which is reachable without one only
-     * because `Event.Initialize` is sent alongside `Event.DoWork`.
+     * Stands in for ProximityLoading/PresentationLoading, recording every [doWork] call and the handle
+     * it arrived with.
+     *
+     * It used to say `doWork` "cannot be invoked from a test, since that needs a `PlatformContext`".
+     * That was the shape of the bug: the handle is null on iOS, and requiring one meant the work never
+     * started there at all. It is nullable now, so a test can drive exactly what iOS does.
      */
     private class TestLoadingViewModel(
         private val timeout: Duration,
         private val previousRoute: AppRoute = ProximityRequestRoute("scope"),
     ) : LoadingViewModel() {
         var doWorkCalls: Int = 0
+            private set
+
+        /** The handle the last [doWork] arrived with — null is what iOS passes. */
+        var lastContext: PlatformContext? = null
             private set
 
         override fun getHeaderConfig(): ContentHeaderConfig =
@@ -79,8 +85,9 @@ class LoadingViewModelTest {
         override fun getCallerRoute(): AppRoute = DashboardRoute
         override fun getCancellableTimeout(): Duration = timeout
 
-        override fun doWork(context: PlatformContext) {
+        override fun doWork(context: PlatformContext?) {
             doWorkCalls++
+            lastContext = context
         }
 
         /** Exposes the protected mapping so each `NavigationType` branch can be asserted directly. */
@@ -96,6 +103,28 @@ class LoadingViewModelTest {
 
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
+
+    @Test
+    fun the_work_starts_even_without_a_platform_handle() = runTest(mainDispatcher) {
+        // iOS has no `PlatformContext`, and the screen used to guard the start on having one, so the
+        // presentation was never sent and the screen span forever. The handle is an argument, never a
+        // precondition.
+        val viewModel = TestLoadingViewModel(timeout = Duration.ZERO)
+
+        viewModel.startInitialWork(context = null)
+
+        assertEquals(1, viewModel.doWorkCalls)
+        assertNull(viewModel.lastContext)
+    }
+
+    @Test
+    fun the_work_runs_once_per_instance_however_often_the_screen_recomposes() = runTest(mainDispatcher) {
+        val viewModel = TestLoadingViewModel(timeout = Duration.ZERO)
+
+        repeat(3) { viewModel.startInitialWork(context = null) }
+
+        assertEquals(1, viewModel.doWorkCalls)
+    }
 
     @Test
     fun a_positive_timeout_starts_the_screen_uncancellable() = runTest(mainDispatcher) {

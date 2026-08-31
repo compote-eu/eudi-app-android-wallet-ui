@@ -43,7 +43,12 @@ data class State(
 ) : ViewState
 
 sealed class Event : ViewEvent {
-    data class DoWork(val context: PlatformContext) : Event()
+    /**
+     * @param context the platform handle device authentication needs, and **null on iOS**, which has
+     *   none. Nullable rather than absent so the work still starts there: guarding the dispatch on it
+     *   is what left the loading screen spinning forever with nothing sent.
+     */
+    data class DoWork(val context: PlatformContext?) : Event()
     data object Initialize : Event()
     data object GoBack : Event()
     data object DismissError : Event()
@@ -84,7 +89,7 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
      * Gets called once upon initialization of the [LoadingScreen] +
      * each time the user presses "Try again" in its Error screen.
      */
-    abstract fun doWork(context: PlatformContext)
+    abstract fun doWork(context: PlatformContext?)
 
     /**
      * Start the Screen without back navigation until timer is run out.
@@ -116,7 +121,7 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
      * Called from a plain `LaunchedEffect(Unit)`, which re-runs whenever the composition is rebuilt;
      * this ViewModel-scoped guard is what makes the work once-per-instance.
      */
-    fun startInitialWork(context: PlatformContext) {
+    fun startInitialWork(context: PlatformContext?) {
         if (hasRunInitialWork) return
         hasRunInitialWork = true
         setEvent(Event.Initialize)

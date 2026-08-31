@@ -44,7 +44,10 @@ fun LoadingScreen(
     viewModel: LoadingViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
-    // Null on iOS: the work this screen kicks off is wallet-core's, which needs an Android context.
+    // Null on iOS, which has no such handle. Passed on rather than used as a gate: the work itself is
+    // platform-neutral, and only the device-authentication branch inside it needs a context. Guarding
+    // the start on this was why iOS never sent a presentation at all — the screen simply span forever.
+    // See `openAuthenticationPrompt`, which now reports honestly when it has no handle to prompt with.
     val platformContext = rememberPlatformContextOrNull()
 
     ContentScreen(
@@ -86,7 +89,7 @@ fun LoadingScreen(
     }
 
     LaunchedEffect(Unit) {
-        platformContext?.let { viewModel.startInitialWork(it) }
+        viewModel.startInitialWork(platformContext)
     }
 }
 
