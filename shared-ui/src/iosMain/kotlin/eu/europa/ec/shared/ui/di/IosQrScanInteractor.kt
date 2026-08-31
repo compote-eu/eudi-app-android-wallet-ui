@@ -44,7 +44,7 @@ internal class IosQrScanInteractor : QrScanInteractor {
      * [eu.europa.ec.commonfeature.config.QrScanFlow.Signature] is the only route to this call. Saying so
      * rather than failing silently is the standing rule for iOS bridges.
      */
-    override fun launchRqesSdk(context: PlatformContext, uri: String) {
+    override fun launchRqesSdk(context: PlatformContext?, uri: String) {
         println("$TAG: iOS has no remote signing, so a signature QR cannot be acted on.")
     }
 }

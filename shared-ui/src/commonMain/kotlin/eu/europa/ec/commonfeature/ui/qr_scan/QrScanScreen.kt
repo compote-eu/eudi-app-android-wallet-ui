@@ -152,10 +152,13 @@ private fun Content(
                 shouldShowPermissionRational = state.shouldShowPermissionRational,
                 onEventSend = onEventSend,
                 onQrScanned = { qrCode ->
-                    // The context is only read on the signature flow, which needs the RQES SDK and so
-                    // exists on Android alone; dropping the scan when there is none is better than a
-                    // scanner that appears to work and then does nothing.
-                    context?.let { onEventSend(Event.OnQrScanned(context = it, resultQr = qrCode)) }
+                    // The handle is read by the signature flow alone, which needs the RQES SDK and so
+                    // exists on Android alone. It used to gate the dispatch, on the argument that a
+                    // scanner which appears to work and then does nothing is worse than one that drops
+                    // the scan — but those were the same thing, and it applied the signature flow's
+                    // limitation to presentation and issuance, which need no handle. Every scan on iOS
+                    // did nothing. It rides in the event now, and the signature flow answers for it.
+                    onEventSend(Event.OnQrScanned(context = context, resultQr = qrCode))
                 }
             )
 

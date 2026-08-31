@@ -44,6 +44,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -230,6 +231,61 @@ class DocumentDetailsViewModelPlatformHandleTest {
             // interactor's handler rather than replacing it, so issuance can continue after auth.
             assertEquals(1, interactor.userAuthCalls)
             assertNotNull(interactor.lastAuthResultHandler)
+        }
+
+    @Test
+    fun `re-issuance runs without a platform handle`() = runTest(mainDispatcher) {
+        // The regression. iOS re-issues for real — the bridge refreshes the credential against the
+        // authorization multipaz kept — and needs no host handle to do it. The screen used to gate the
+        // dispatch on that handle, so the one platform that needed nothing got a dead button.
+        val interactor = interactorWith(
+            documentState = IssuerDetailsCardDataUi.DocumentState.Issued(
+                issuanceDate = "01-01-2024 10:00",
+                expirationDate = "01 Jan 2030",
+            ),
+            reIssueResults = listOf(DocumentDetailsInteractorIssuancePartialState.Success),
+        )
+        val viewModel = loadedViewModel(interactor)
+        viewModel.setEvent(Event.Init(deepLink = null))
+        advanceUntilIdle()
+
+        val effect = async { viewModel.effect.first() }
+        viewModel.setEvent(Event.IssuerDetails.OnActionButtonClicked(context = null))
+        advanceUntilIdle()
+
+        assertEquals(listOf(TEST_DOC_ID to "issuer-1"), interactor.reIssuedWith)
+        assertIs<Effect.Navigation.Pop>(effect.await())
+    }
+
+    @Test
+    fun `a prompt with no handle to raise it reports an error instead of asking`() =
+        runTest(mainDispatcher) {
+            // Unreachable on iOS, whose re-issuance reports only success or failure. Pinned anyway,
+            // because the type now permits it and a spinner that never resolves is the worst answer.
+            val interactor = interactorWith(
+                documentState = IssuerDetailsCardDataUi.DocumentState.Issued(
+                    issuanceDate = "01-01-2024 10:00",
+                    expirationDate = "01 Jan 2030",
+                ),
+                reIssueResults = listOf(
+                    DocumentDetailsInteractorIssuancePartialState.UserAuthRequired(
+                        crypto = BiometricCrypto(cryptoObject = null),
+                        resultHandler = eu.europa.ec.authenticationlogic.controller.authentication
+                            .DeviceAuthenticationResult(),
+                    )
+                ),
+            )
+            val viewModel = loadedViewModel(interactor)
+            viewModel.setEvent(Event.Init(deepLink = null))
+            advanceUntilIdle()
+
+            viewModel.setEvent(Event.IssuerDetails.OnActionButtonClicked(context = null))
+            advanceUntilIdle()
+
+            // No prompt was attempted, and the screen is not left spinning.
+            assertEquals(0, interactor.userAuthCalls)
+            assertNotNull(viewModel.viewState.value.error)
+            assertFalse(viewModel.viewState.value.isLoading)
         }
 
     @Test

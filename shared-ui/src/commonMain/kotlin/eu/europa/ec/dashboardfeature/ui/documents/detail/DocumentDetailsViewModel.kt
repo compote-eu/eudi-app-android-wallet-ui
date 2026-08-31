@@ -37,6 +37,7 @@ import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.SplashRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.document_details_bottom_sheet_badge_subtitle
 import eu.europa.ec.shared.resources.document_details_bottom_sheet_badge_title
@@ -109,7 +110,12 @@ sealed class Event : ViewEvent {
 
     sealed class IssuerDetails : Event() {
         data object OnExpandedStateChanged : IssuerDetails()
-        data class OnActionButtonClicked(val context: PlatformContext) : IssuerDetails()
+        /**
+         * @param context the host context, or null where there is none — iOS. Re-issuance itself needs
+         * no handle on either platform: only the `UserAuthRequired` branch does, and iOS never reports
+         * it, because multipaz's `SecureEnclaveSecureArea` raises its own dialog.
+         */
+        data class OnActionButtonClicked(val context: PlatformContext?) : IssuerDetails()
     }
 
     data object OnPause : Event()
@@ -522,7 +528,7 @@ class DocumentDetailsViewModel(
 
     private fun reIssueDocument(
         event: Event,
-        context: PlatformContext,
+        context: PlatformContext?,
         document: DocumentDetailsUi
     ) {
 
@@ -569,6 +575,25 @@ class DocumentDetailsViewModel(
                     }
 
                     is DocumentDetailsInteractorIssuancePartialState.UserAuthRequired -> {
+                        // The one branch that needs a host handle. Unreachable on iOS, whose
+                        // `reIssueDocument` reports only success or failure, but a platform that asks
+                        // for a prompt and has nothing to raise it with is told so rather than left
+                        // on a spinner — the same answer the failure branch above gives.
+                        if (context == null) {
+                            setState {
+                                copy(
+                                    isLoading = false,
+                                    error = ContentErrorConfig(
+                                        onRetry = null,
+                                        errorSubTitle = UiText.Resource(
+                                            Res.string.generic_error_message
+                                        ),
+                                        onCancel = { setEvent(Event.DismissError) }
+                                    )
+                                )
+                            }
+                            return@collect
+                        }
                         documentDetailsInteractor.handleUserAuth(
                             context = context,
                             crypto = it.crypto,
@@ -600,7 +625,7 @@ class DocumentDetailsViewModel(
 
     private fun handleIssuerDetailsAction(
         event: Event,
-        context: PlatformContext,
+        context: PlatformContext?,
         documentState: IssuerDetailsCardDataUi.DocumentState
     ) {
         when (documentState) {

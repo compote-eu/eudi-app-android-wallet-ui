@@ -51,7 +51,12 @@ class QrScanInteractorImpl(
         )
     ).isValid
 
-    override fun launchRqesSdk(context: Context, uri: String) {
+    override fun launchRqesSdk(context: Context?, uri: String) {
+        // Nullable only so the shared signature admits iOS, which has no host context and no RQES SDK
+        // to hand one to. On Android the scanner always has one, so this cannot happen; the SDK simply
+        // cannot be started without it. Not logged because nothing in these feature modules logs, and
+        // an unreachable branch is a poor reason to introduce the first one.
+        if (context == null) return
         EudiRQESUi.initiate(
             context = context,
             remoteUri = RemoteUri(uri.toUriOrEmpty())

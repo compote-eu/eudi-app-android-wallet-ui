@@ -259,12 +259,13 @@ private fun getToolbarConfig(
                 ToolbarActionUi(
                     text = stringResource(Res.string.document_details_toolbar_action_reissue),
                     icon = null,
-                    // Re-issuance needs the Android platform handle; there is nothing to re-issue
-                    // through on iOS, where this is null.
+                    // The handle is Android's and rides along as it comes. iOS re-issues for real —
+                    // `IosDocumentDetailsPlatformBridge.reIssueDocument` refreshes the credential
+                    // against the authorization multipaz kept — so the old claim here, that there was
+                    // "nothing to re-issue through on iOS", was false, and gating on the handle is what
+                    // made this button dead on the one platform that needed no handle for it.
                     onClick = {
-                        platformContext?.let {
-                            onEventSend(Event.IssuerDetails.OnActionButtonClicked(it))
-                        }
+                        onEventSend(Event.IssuerDetails.OnActionButtonClicked(platformContext))
                     },
                     enabled = !state.isLoading && state.issuerDetails?.documentState != IssuerDetailsCardDataUi.DocumentState.Revoked,
                     throttleClicks = true,
@@ -346,7 +347,9 @@ private fun Content(
                             onEventSend(Event.IssuerDetails.OnExpandedStateChanged)
                         },
                         onActionButtonClick = {
-                            platformContext?.let { onEventSend(Event.IssuerDetails.OnActionButtonClicked(it)) }
+                            onEventSend(
+                                Event.IssuerDetails.OnActionButtonClicked(platformContext)
+                            )
                         }
                     )
                 }

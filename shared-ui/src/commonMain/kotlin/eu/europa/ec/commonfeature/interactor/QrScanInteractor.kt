@@ -43,5 +43,5 @@ interface QrScanInteractor {
      * Only reachable from [eu.europa.ec.commonfeature.config.QrScanFlow.Signature], which only Android
      * offers; a platform without remote signing reports that rather than pretending to start one.
      */
-    fun launchRqesSdk(context: PlatformContext, uri: String)
+    fun launchRqesSdk(context: PlatformContext?, uri: String)
 }

@@ -74,7 +74,12 @@ data class State(
 
 sealed class Event : ViewEvent {
     data object GoBack : Event()
-    data class OnQrScanned(val context: PlatformContext, val resultQr: String) : Event()
+    /**
+     * @param context the host context, or null where there is none — iOS. Only the signature flow
+     * reads it, so a scan is dispatched either way: presentation and issuance QR codes need no handle,
+     * and dropping the event here made every scan on iOS do nothing at all.
+     */
+    data class OnQrScanned(val context: PlatformContext?, val resultQr: String) : Event()
     data object CameraAccessGranted : Event()
     data object ShowPermissionRational : Event()
     data object GoToAppSettings : Event()
@@ -134,7 +139,7 @@ class QrScanViewModel(
         }
     }
 
-    private fun handleScannedQr(context: PlatformContext, scannedQr: String) {
+    private fun handleScannedQr(context: PlatformContext?, scannedQr: String) {
         viewModelScope.launch {
             val currentState = viewState.value
 
@@ -165,7 +170,7 @@ class QrScanViewModel(
     }
 
     private fun calculateNextStep(
-        context: PlatformContext,
+        context: PlatformContext?,
         qrScanFlow: QrScanFlow,
         scanResult: String,
     ) {
@@ -254,7 +259,7 @@ class QrScanViewModel(
         }
     }
 
-    private fun navigateToRqesSdk(context: PlatformContext, scanResult: String) {
+    private fun navigateToRqesSdk(context: PlatformContext?, scanResult: String) {
         interactor.launchRqesSdk(context = context, uri = scanResult)
         setEffect {
             Effect.Navigation.Pop
