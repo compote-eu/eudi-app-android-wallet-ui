@@ -29,6 +29,7 @@ import eu.europa.ec.shared.navigation.DocumentIssuanceSuccessRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.issuance_code_caption
 import eu.europa.ec.shared.resources.issuance_code_title
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
@@ -59,7 +60,12 @@ data class State(
 sealed class Event : ViewEvent {
     data object Pop : Event()
     data object DismissError : Event()
-    data class OnPinEntered(val code: SecurePin, val context: PlatformContext) : Event()
+    /**
+     * @param context the handle device authentication needs, and **null on iOS**, which has none.
+     *   Nullable rather than absent so the action still reaches the view-model: guarding the
+     *   dispatch on it is what made this silently do nothing on iOS.
+     */
+    data class OnPinEntered(val code: SecurePin, val context: PlatformContext?) : Event()
 
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
@@ -167,7 +173,7 @@ class DocumentOfferCodeViewModel(
     }
 
     private fun issueDocuments(
-        context: PlatformContext,
+        context: PlatformContext?,
         offerUri: String,
         issuerName: String,
         onSuccessNavigation: ConfigNavigation,
@@ -249,6 +255,19 @@ class DocumentOfferCodeViewModel(
                     }
 
                     is IssueDocumentsInteractorPartialState.UserAuthRequired -> {
+                        // See DocumentOfferViewModel: no handle, no prompt, so say so.
+                        if (context == null) {
+                            setState {
+                                copy(
+                                    isLoading = false,
+                                    error = ContentErrorConfig(
+                                        errorSubTitle = UiText.Resource(Res.string.generic_error_message),
+                                        onCancel = { setEvent(Event.DismissError) }
+                                    )
+                                )
+                            }
+                            return@collect
+                        }
                         documentOfferInteractor.handleUserAuthentication(
                             context = context,
                             crypto = response.crypto,

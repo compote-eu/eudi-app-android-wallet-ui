@@ -210,18 +210,17 @@ private fun Content(
                 .padding(top = SPACING_LARGE.dp),
             pinInputState = pinInputState,
             state = state,
+            // The handle rides along in the event. It used to gate the dispatch, which meant the code
+            // was never submitted on iOS — the `?: securePin.close()` below disposed of the pin
+            // correctly, so nothing leaked, but the user's entry simply vanished. The view-model now
+            // consumes the pin either way and reports honestly if it cannot raise a prompt.
             onPinComplete = { securePin ->
-                platformContext?.let {
-                    onEventSend(
-                        Event.OnPinEntered(
-                            code = securePin,
-                            context = it
-                        )
+                onEventSend(
+                    Event.OnPinEntered(
+                        code = securePin,
+                        context = platformContext
                     )
-                }
-                // Nobody will consume it, so zero it here rather than waiting for the collector: the
-                // whole point of `SecurePin` is that the characters do not linger.
-                    ?: securePin.close()
+                )
             }
         )
     }

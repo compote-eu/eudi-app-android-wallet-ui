@@ -335,17 +335,17 @@ private fun MainContent(
             Options(
                 options = state.options,
                 modifier = Modifier.fillMaxSize(),
+                // The handle rides along in the event; it is null on iOS, where gating the dispatch
+                // made choosing an issuance option do nothing at all.
                 onOptionClicked = { itemIds, issuerId ->
-                    platformContext?.let {
-                        onEventSend(
-                            Event.IssueDocument(
-                                issuanceMethod = IssuanceMethod.OPENID4VCI,
-                                issuerId = issuerId,
-                                configIds = itemIds,
-                                context = it
-                            )
+                    onEventSend(
+                        Event.IssueDocument(
+                            issuanceMethod = IssuanceMethod.OPENID4VCI,
+                            issuerId = issuerId,
+                            configIds = itemIds,
+                            context = platformContext
                         )
-                    }
+                    )
                 }
             )
         }

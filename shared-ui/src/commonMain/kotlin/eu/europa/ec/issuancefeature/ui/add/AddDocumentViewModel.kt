@@ -42,6 +42,7 @@ import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.issuance_add_document_subtitle
 import eu.europa.ec.shared.resources.issuance_add_document_title
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
@@ -93,7 +94,7 @@ sealed class Event : ViewEvent {
         val issuanceMethod: IssuanceMethod,
         val issuerId: String,
         val configIds: List<String>,
-        val context: PlatformContext
+        val context: PlatformContext?
     ) : Event()
 
     sealed class BottomSheet : Event() {
@@ -351,7 +352,7 @@ class AddDocumentViewModel(
         issuanceMethod: IssuanceMethod,
         issuerId: String,
         configIds: List<String>,
-        context: PlatformContext
+        context: PlatformContext?
     ) {
         issuanceJob?.cancel()
         issuanceJob = viewModelScope.launch {
@@ -421,6 +422,20 @@ class AddDocumentViewModel(
                     }
 
                     is AddDocumentInteractorIssueDocumentsPartialState.UserAuthRequired -> {
+                        // See DocumentOfferViewModel: no handle, no prompt, so say so.
+                        if (context == null) {
+                            setState {
+                                copy(
+                                    error = ContentErrorConfig(
+                                        onRetry = null,
+                                        errorSubTitle = UiText.Resource(Res.string.generic_error_message),
+                                        onCancel = { setEvent(Event.DismissError) }
+                                    ),
+                                    isLoading = false
+                                )
+                            }
+                            return@collect
+                        }
                         addDocumentInteractor.handleUserAuth(
                             context = context,
                             crypto = response.crypto,

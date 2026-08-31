@@ -38,6 +38,9 @@ import eu.europa.ec.shared.navigation.DocumentOfferCodeRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
@@ -90,7 +93,12 @@ sealed class Event : ViewEvent {
     data class OnDynamicPresentation(val uri: String) : Event()
     data object DismissError : Event()
 
-    data class StickyButtonPressed(val context: PlatformContext) : Event()
+    /**
+     * @param context the handle device authentication needs, and **null on iOS**, which has none.
+     *   Nullable rather than absent so the action still reaches the view-model: guarding the
+     *   dispatch on it is what made this silently do nothing on iOS.
+     */
+    data class StickyButtonPressed(val context: PlatformContext?) : Event()
 
     sealed class BottomSheet : Event() {
         data class UpdateBottomSheetState(val isOpen: Boolean) : BottomSheet()
@@ -371,7 +379,7 @@ class DocumentOfferViewModel(
     }
 
     private fun issueDocuments(
-        context: PlatformContext,
+        context: PlatformContext?,
         offerUri: String,
         issuerName: String,
         onSuccessNavigation: ConfigNavigation,
@@ -464,6 +472,20 @@ class DocumentOfferViewModel(
                     }
 
                     is IssueDocumentsInteractorPartialState.UserAuthRequired -> {
+                        // No handle means no way to raise the prompt — iOS. Report it rather than
+                        // dropping the outcome on the floor, which is what the old UI-level guard did.
+                        if (context == null) {
+                            setState {
+                                copy(
+                                    isLoading = false,
+                                    error = ContentErrorConfig(
+                                        errorSubTitle = UiText.Resource(Res.string.generic_error_message),
+                                        onCancel = { setEvent(Event.DismissError) }
+                                    )
+                                )
+                            }
+                            return@collect
+                        }
                         documentOfferInteractor.handleUserAuthentication(
                             context = context,
                             crypto = response.crypto,

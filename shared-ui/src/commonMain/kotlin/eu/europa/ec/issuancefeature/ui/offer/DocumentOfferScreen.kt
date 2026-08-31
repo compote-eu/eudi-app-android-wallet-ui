@@ -143,10 +143,10 @@ fun DocumentOfferScreen(
                 primaryButtonText = stringResource(Res.string.issuance_document_offer_accept_button_text),
                 cancelButtonText = stringResource(Res.string.issuance_document_offer_cancel_button_text),
                 primaryButtonEnabled = !state.isLoading && state.allowAccept,
+                // The handle goes into the event, never into a guard around it: it is null on iOS,
+                // and gating the dispatch made Accept a dead button there.
                 onPrimaryButtonClick = {
-                    platformContext?.let {
-                        viewModel.setEvent(Event.StickyButtonPressed(it))
-                    }
+                    viewModel.setEvent(Event.StickyButtonPressed(platformContext))
                 },
                 onCancelButtonClick = { viewModel.setEvent(Event.BackButtonPressed) },
             )
