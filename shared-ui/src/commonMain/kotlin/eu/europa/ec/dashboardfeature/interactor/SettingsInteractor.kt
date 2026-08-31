@@ -70,7 +70,7 @@ interface SettingsInteractor {
     fun getBiometricsAvailability(): BiometricsAvailability
 
     fun authenticateWithBiometrics(
-        context: PlatformContext,
+        context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit
     )

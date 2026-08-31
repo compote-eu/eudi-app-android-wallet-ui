@@ -20,8 +20,11 @@ import androidx.compose.runtime.Composable
 import eu.europa.ec.shared.platform.PlatformContext
 
 /**
- * Always null: `PlatformContext` has no constructor on iOS, by design. Nothing to return, and nothing
- * that needs one is reachable here.
+ * Always null: `PlatformContext` has no constructor on iOS, by design.
+ *
+ * Screens that ask for one ARE reachable here — the biometric login button and the settings
+ * biometrics switch both are. They pass the null on instead of dropping the event: the iOS
+ * implementations ignore the handle and raise the system prompt themselves.
  */
 @Composable
 actual fun rememberPlatformContextOrNull(): PlatformContext? = null

@@ -198,14 +198,12 @@ private fun Body(
                 WrapIconButton(
                     iconData = AppIcons.TouchId,
                     onClick = {
-                        platformContext?.let {
-                            onEventSent(
-                                Event.OnBiometricsClicked(
-                                    context = it,
-                                    shouldThrowErrorIfNotAvailable = true
-                                )
+                        onEventSent(
+                            Event.OnBiometricsClicked(
+                                context = platformContext,
+                                shouldThrowErrorIfNotAvailable = true
                             )
-                        }
+                        )
                     }
                 )
             }
@@ -220,14 +218,12 @@ private fun Body(
                 }
 
                 is Effect.InitializeBiometricAuthOnCreate -> {
-                    platformContext?.let {
-                        onEventSent(
-                            Event.OnBiometricsClicked(
-                                context = it,
-                                shouldThrowErrorIfNotAvailable = false,
-                            )
+                    onEventSent(
+                        Event.OnBiometricsClicked(
+                            context = platformContext,
+                            shouldThrowErrorIfNotAvailable = false,
                         )
-                    }
+                    )
                 }
             }
         }.collect()

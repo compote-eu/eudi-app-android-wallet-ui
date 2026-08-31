@@ -87,7 +87,7 @@ internal open class FakeBiometricInteractor(
     }
 
     override fun authenticateWithBiometrics(
-        context: PlatformContext,
+        context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit,
     ) {
@@ -251,28 +251,6 @@ class SettingsViewModelTest {
             // No effect here: the interactor owns the Android intent.
             assertEquals(1, fake.systemScreenLaunches)
         }
-
-    @Test
-    fun clicking_biometrics_without_a_host_context_does_nothing() = runTest(mainDispatcher) {
-        // iOS: `PlatformContext` is uninhabited, so the screen has none to send. The row is not shown
-        // there either — the interactor omits it — but the event is still expressible, and it must not
-        // raise a prompt or emit anything.
-        val fake = FakeSettingsInteractor()
-        val viewModel = SettingsViewModel(fake)
-        advanceUntilIdle()
-
-        val effect = async { viewModel.effect.first() }
-        viewModel.setEvent(
-            Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context = null)
-        )
-        advanceUntilIdle()
-
-        assertEquals(0, fake.authPrompts)
-        // Nothing was emitted, so a following event is what the collector must see.
-        viewModel.setEvent(Event.Pop)
-        advanceUntilIdle()
-        assertIs<Effect.Navigation.Pop>(effect.await())
-    }
 
     @Test
     fun the_other_rows_stay_clickable_without_a_host_context() = runTest(mainDispatcher) {

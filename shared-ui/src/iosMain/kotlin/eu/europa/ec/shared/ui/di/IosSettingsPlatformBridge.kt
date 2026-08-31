@@ -94,12 +94,12 @@ internal class IosSettingsPlatformBridge(
     }
 
     override fun authenticateWithBiometrics(
-        context: PlatformContext,
+        context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit
     ) {
         // The settings switch confirms with a prompt before it changes anything, exactly as Android's
-        // does. `PlatformContext` is uninhabited here and unused: the prompt is the system's.
+        // does. `PlatformContext` is always null here and unused: the prompt is the system's.
         CoroutineScope(Dispatchers.Main).launch {
             listener(
                 when (val outcome = gate.authenticate(strings[Res.string.biometric_prompt_subtitle])) {

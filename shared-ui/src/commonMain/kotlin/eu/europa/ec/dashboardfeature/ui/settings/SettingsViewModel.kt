@@ -141,13 +141,14 @@ class SettingsViewModel(
         context: PlatformContext?,
     ) {
         when (itemType) {
-            // Without a host context there is no prompt to raise, so the row does nothing. It is not
-            // shown in that case either — a platform with no biometrics reports
-            // `BiometricsAvailability.Failure` and the interactor omits the row — so this is the
-            // belt-and-braces half of that.
-            SettingsMenuItemType.BIOMETRICS_AUTHENTICATION -> context?.let { hostContext ->
+            // The row appears wherever biometrics exist, iOS included: `deviceSupportsBiometrics`
+            // asks the platform, and iOS answers `CanAuthenticate` once Face ID is enrolled. So the
+            // handle is passed on exactly as it arrives rather than used as a gate — it is Android's
+            // alone, and iOS raises the same prompt without one. Gating on it here is what used to
+            // leave that visible switch dead on iOS.
+            SettingsMenuItemType.BIOMETRICS_AUTHENTICATION -> {
                 when (val availability = settingsInteractor.getBiometricsAvailability()) {
-                    is BiometricsAvailability.CanAuthenticate -> authenticate(hostContext)
+                    is BiometricsAvailability.CanAuthenticate -> authenticate(context)
 
                     is BiometricsAvailability.NonEnrolled -> {
                         setEffect {
@@ -227,7 +228,7 @@ class SettingsViewModel(
         }
     }
 
-    private fun authenticate(context: PlatformContext) {
+    private fun authenticate(context: PlatformContext?) {
         settingsInteractor.authenticateWithBiometrics(
             context = context,
             notifyOnAuthenticationFailure = true,

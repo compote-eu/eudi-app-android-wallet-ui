@@ -178,4 +178,26 @@ class BiometricViewModelPlatformHandleTest {
         // An error card on every cold start would be intolerable on a device with no sensor.
         assertNull(viewModel.viewState.value.error)
     }
+
+    @Test
+    fun the_prompt_is_raised_without_a_platform_handle() = runTest(mainDispatcher) {
+        // The handle is Android's alone, and iOS's interactor ignores it — the prompt there is the
+        // system's. What this pins is that the whole chain, event through interactor, accepts null,
+        // so the shared screen can dispatch the tap unconditionally instead of swallowing it
+        // wherever there is no context to pass.
+        val fake = FakeBiometricInteractor(authResult = BiometricsAuthenticate.Success)
+        val viewModel = BiometricViewModel(fake, config())
+        advanceUntilIdle()
+
+        val effect = async { viewModel.effect.first() }
+        viewModel.setEvent(
+            Event.OnBiometricsClicked(context = null, shouldThrowErrorIfNotAvailable = true)
+        )
+        advanceUntilIdle()
+
+        assertIs<Effect.Navigation.SwitchScreen>(effect.await())
+        assertEquals(1, fake.authPrompts)
+        assertEquals(1, fake.throttleResets)
+    }
+
 }

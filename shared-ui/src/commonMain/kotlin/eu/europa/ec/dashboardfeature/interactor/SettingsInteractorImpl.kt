@@ -55,7 +55,7 @@ class SettingsInteractorImpl(
         platform.biometricsAvailability()
 
     override fun authenticateWithBiometrics(
-        context: PlatformContext,
+        context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit
     ) = platform.authenticateWithBiometrics(context, notifyOnAuthenticationFailure, listener)

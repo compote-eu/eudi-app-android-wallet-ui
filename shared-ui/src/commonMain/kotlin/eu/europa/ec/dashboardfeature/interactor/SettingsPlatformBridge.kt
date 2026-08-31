@@ -73,9 +73,10 @@ interface SettingsPlatformBridge {
     /**
      * Raises the platform's biometric prompt. Takes the host [PlatformContext] because Android's
      * `BiometricPrompt` needs the activity; the caller has it from the click that started this.
+     * Null where the platform has none: iOS raises the same prompt without one.
      */
     fun authenticateWithBiometrics(
-        context: PlatformContext,
+        context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit
     )

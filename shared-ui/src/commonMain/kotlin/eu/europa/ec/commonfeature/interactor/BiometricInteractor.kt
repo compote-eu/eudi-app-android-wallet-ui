@@ -34,8 +34,16 @@ interface BiometricInteractor {
     fun getBiometricsAvailability(): BiometricsAvailability
     suspend fun getBiometricUserSelection(): Boolean
     suspend fun storeBiometricsUsageDecision(shouldUseBiometrics: Boolean)
+    /**
+     * Raises the platform's biometric prompt.
+     *
+     * [context] is Android's host handle, and null wherever the platform has none — iOS, whose
+     * [PlatformContext] is uninhabited and whose prompt belongs to the system rather than to a host
+     * screen. A platform that needs the handle and is given null must still report an outcome:
+     * a caller left with no callback at all waits on a spinner forever.
+     */
     fun authenticateWithBiometrics(
-        context: PlatformContext,
+        context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit
     )

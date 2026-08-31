@@ -55,8 +55,13 @@ import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 
 sealed class Event : ViewEvent {
+    /**
+     * @param context the host context, or null where there is none — iOS, whose [PlatformContext] is
+     * uninhabited. Sent either way: iOS's interactor ignores the handle and raises the system prompt
+     * itself, so dropping this event was the only thing that had ever made Face ID unreachable there.
+     */
     data class OnBiometricsClicked(
-        val context: PlatformContext,
+        val context: PlatformContext?,
         val shouldThrowErrorIfNotAvailable: Boolean
     ) : Event()
 
@@ -282,7 +287,7 @@ class BiometricViewModel(
         }
     }
 
-    private fun authenticate(context: PlatformContext) {
+    private fun authenticate(context: PlatformContext?) {
         biometricInteractor.authenticateWithBiometrics(
             context = context,
             notifyOnAuthenticationFailure = viewState.value.notifyOnAuthenticationFailure

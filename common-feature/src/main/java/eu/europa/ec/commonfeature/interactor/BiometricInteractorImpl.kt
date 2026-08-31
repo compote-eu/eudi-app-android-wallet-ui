@@ -65,10 +65,18 @@ class BiometricInteractorImpl(
     }
 
     override fun authenticateWithBiometrics(
-        context: Context,
+        context: Context?,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit
     ) {
+        // Nullable only because the shared signature has to admit iOS, which has no host context.
+        // On Android the screen always has one, so this is unreachable in practice — it reports an
+        // outcome regardless, because the alternative is a caller that never hears back. Neither
+        // caller shows the message; `notifyOnAuthenticationFailure` is what surfaces a real failure.
+        if (context == null) {
+            listener(BiometricsAuthenticate.Failed(errorMessage = "No host context for the prompt."))
+            return
+        }
         biometricAuthenticationController.authenticate(
             context,
             notifyOnAuthenticationFailure,

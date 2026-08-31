@@ -59,7 +59,7 @@ class AndroidSettingsPlatformBridge(
         biometricInteractor.storeBiometricsUsageDecision(shouldUseBiometrics = enabled)
 
     override fun authenticateWithBiometrics(
-        context: PlatformContext,
+        context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit
     ) = biometricInteractor.authenticateWithBiometrics(

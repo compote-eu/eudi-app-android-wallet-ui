@@ -77,11 +77,11 @@ internal class IosBiometricInteractor(
     /**
      * Raises the prompt, on the callback shape the shared screen expects.
      *
-     * [context] is unused and uninhabited on iOS: the prompt belongs to the system rather than to a
+     * [context] is always null on iOS and unused: the prompt belongs to the system rather than to a
      * host activity, which is exactly why Android needs the parameter and this does not.
      */
     override fun authenticateWithBiometrics(
-        context: PlatformContext,
+        context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit,
     ) {

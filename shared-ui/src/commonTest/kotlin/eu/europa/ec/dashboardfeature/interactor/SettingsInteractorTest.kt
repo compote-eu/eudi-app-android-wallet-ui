@@ -67,7 +67,7 @@ private class FakeSettingsPlatformBridge(
     override suspend fun setBiometricsEnabled(enabled: Boolean) = Unit
 
     override fun authenticateWithBiometrics(
-        context: PlatformContext,
+        context: PlatformContext?,
         notifyOnAuthenticationFailure: Boolean,
         listener: (BiometricsAuthenticate) -> Unit
     ) = Unit
@@ -141,9 +141,11 @@ class SettingsInteractorTest {
     }
 
     @Test
-    fun the_ios_shaped_bridge_leaves_exactly_the_batch_counter_row() = runTest {
-        // No biometrics, no logs, no changelog, no registration checking — what
-        // `IosSettingsPlatformBridge` reports today.
+    fun a_platform_that_offers_nothing_leaves_exactly_the_batch_counter_row() = runTest {
+        // No biometrics, no logs, no changelog, no registration checking. This was once labelled the
+        // iOS shape; it is not one. `IosSettingsPlatformBridge` reports `canRetrieveLogs = true` and
+        // real biometric availability, so it takes the branches below, not this one — see
+        // [the_real_ios_shape_keeps_the_biometrics_and_logs_rows].
         val interactor = SettingsInteractorImpl(
             strings = strings,
             platform = FakeSettingsPlatformBridge(
@@ -164,6 +166,28 @@ class SettingsInteractorTest {
         // The switch reflects the platform's stored preference, not a default.
         val switch = assertIs<ListItemTrailingContentDataUi.Switch>(items[0].data.trailingContentData)
         assertFalse(switch.switchData.isChecked)
+    }
+
+    @Test
+    fun the_real_ios_shape_keeps_the_biometrics_and_logs_rows() = runTest {
+        // What `IosSettingsPlatformBridge` actually reports: Face ID enrolled, so `CanAuthenticate`;
+        // multipaz writes a log file, so logs; no registration checking. The biometrics row being
+        // present here is the point — the claim that iOS omits it is what left that switch dead.
+        val interactor = SettingsInteractorImpl(
+            strings = strings,
+            platform = FakeSettingsPlatformBridge(
+                availability = BiometricsAvailability.CanAuthenticate,
+                canRetrieveLogs = true,
+                logFilePaths = listOf("/tmp/wallet.log"),
+                canCheckRegistrations = false,
+            ),
+        )
+
+        val types = interactor.getSettingsItemsUi(changelogUrl = null).map { it.type }
+
+        assertTrue(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION in types)
+        assertTrue(SettingsMenuItemType.RETRIEVE_LOGS in types)
+        assertFalse(SettingsMenuItemType.REGISTRATION_CHECK in types)
     }
 
     @Test

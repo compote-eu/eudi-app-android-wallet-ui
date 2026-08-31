@@ -217,4 +217,42 @@ class SettingsViewModelPlatformHandleTest {
         advanceUntilIdle()
         assertIs<Effect.Navigation.Pop>(effect.await())
     }
+
+    @Test
+    fun the_switch_prompts_even_without_a_platform_handle() = runTest(mainDispatcher) {
+        // The regression. This branch used to be gated on a non-null handle, which left the switch
+        // visibly present on iOS — the row is built from `biometricsAvailability()`, which answers
+        // `CanAuthenticate` there once Face ID is enrolled — and permanently dead.
+        val fake = FakeSettingsInteractor(authResult = BiometricsAuthenticate.Success)
+        val viewModel = SettingsViewModel(fake)
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context = null)
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, fake.authPrompts)
+        assertEquals(1, fake.biometricsToggles)
+    }
+
+    @Test
+    fun no_enrolment_and_no_platform_handle_still_offers_the_system_screen() =
+        runTest(mainDispatcher) {
+            // The old gate wrapped the whole `when`, so every availability branch was unreachable
+            // without a handle, not just the prompt. This covers a second one of them.
+            val fake = FakeSettingsInteractor(availability = BiometricsAvailability.NonEnrolled)
+            val viewModel = SettingsViewModel(fake)
+            advanceUntilIdle()
+
+            val effect = async { viewModel.effect.first() }
+            viewModel.setEvent(
+                Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context = null)
+            )
+            advanceUntilIdle()
+
+            assertIs<Effect.Navigation.LaunchBiometricsSystemScreen>(effect.await())
+            assertEquals(0, fake.authPrompts)
+        }
+
 }
