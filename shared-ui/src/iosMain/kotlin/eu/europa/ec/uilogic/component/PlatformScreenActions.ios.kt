@@ -22,7 +22,6 @@ import eu.europa.ec.shared.platform.PlatformIntent
 import platform.Foundation.NSURL
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
-import platform.UIKit.UIApplicationOpenSettingsURLString
 import platform.UIKit.UIViewController
 import platform.UIKit.popoverPresentationController
 
@@ -49,20 +48,10 @@ import platform.UIKit.popoverPresentationController
 actual fun rememberPlatformScreenActions(): PlatformScreenActions = remember {
     object : PlatformScreenActions {
         override fun finishApp() = log("finishApp")
-        override fun openAppSettings() {
-            // Deep-linking further than the app's own pane is not possible, and this is the pane that
-            // holds the camera switch a denied scanner needs the user to flip.
-            val settings = NSURL.URLWithString(UIApplicationOpenSettingsURLString)
-            if (settings == null) {
-                log("openAppSettings")
-                return
-            }
-            UIApplication.sharedApplication.openURL(
-                url = settings,
-                options = emptyMap<Any?, Any>(),
-                completionHandler = null,
-            )
-        }
+        // Deep-linking further than the app's own pane is not possible, and this is the pane that
+        // holds the camera switch a denied scanner needs the user to flip. Shared with the biometric
+        // callers, which want the same pane for a different reason — see [openIosAppSettings].
+        override fun openAppSettings() = openIosAppSettings()
         override fun openBluetoothSettings() = log("openBluetoothSettings")
 
         override fun openUrlExternally(url: String) {

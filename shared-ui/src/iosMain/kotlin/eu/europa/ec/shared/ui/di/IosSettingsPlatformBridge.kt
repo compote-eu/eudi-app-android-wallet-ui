@@ -29,6 +29,7 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.biometric_no_hardware
 import eu.europa.ec.shared.resources.biometric_prompt_subtitle
+import eu.europa.ec.uilogic.component.openIosAppSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -112,8 +113,12 @@ internal class IosSettingsPlatformBridge(
         }
     }
 
-    /** iOS has no biometric-enrolment screen a third-party app may open. */
-    override fun launchBiometricSystemScreen() = Unit
+    /**
+     * The app's own Settings pane, which is as close to biometric enrolment as iOS allows anyone to
+     * link — see [openIosAppSettings]. The switch's "you have nothing enrolled" branch used to end
+     * here in silence.
+     */
+    override fun launchBiometricSystemScreen() = openIosAppSettings()
 
     /** Real, and shared with the documents list — see [IosPreferences]. */
     override suspend fun isBatchIssuanceCounterShown(): Boolean =

@@ -31,6 +31,7 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.biometric_no_hardware
 import eu.europa.ec.shared.resources.biometric_prompt_subtitle
+import eu.europa.ec.uilogic.component.openIosAppSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -103,11 +104,18 @@ internal class IosBiometricInteractor(
     }
 
     /**
-     * Nothing to launch. iOS has no biometric-enrolment screen a third-party app may open — Settings
-     * is not addressable that deeply — so the honest answer is to do nothing rather than open Settings'
-     * front page and leave the user to find it.
+     * iOS still has no biometric-enrolment screen a third-party app may open, so this opens the app's
+     * own Settings pane: the nearest reachable place, and where a *denied* Face ID permission is
+     * turned back on.
+     *
+     * This used to do nothing, on the argument that landing the user somewhere that is not the
+     * enrolment screen is worse than being honest. That was wrong about which failure is worse. The
+     * caller reaches here only from the "you have no biometrics set up" branch, so doing nothing
+     * makes a deliberate tap look broken, and the official native EUDI iOS wallet answers the same
+     * situation the same way — an explanatory alert with a *Go to settings* button. The message half
+     * is still missing here; see [openIosAppSettings].
      */
-    override fun launchBiometricSystemScreen() = Unit
+    override fun launchBiometricSystemScreen() = openIosAppSettings()
 
     override fun isPinValid(pin: SecurePin): Flow<QuickPinInteractorPinValidPartialState> =
         quickPinInteractor.isCurrentPinValid(pin)
