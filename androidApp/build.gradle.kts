@@ -40,8 +40,19 @@ android {
     }
 
     defaultConfig {
-        applicationId = "eu.europa.ec.euidi"
-        versionCode = 1
+        // From app.properties, which iOS's project.yml reads as `${APP_ID}` for its bundle id, so
+        // both platforms claim one identity from one line. The per-flavour suffix is applied by
+        // build-logic's `configureFlavors`, from the same file.
+        applicationId = requireNotNull(getProperty<String>("APP_ID", "app.properties")) {
+            "APP_ID is missing from app.properties"
+        }
+        // From version.properties, the file that also carries VERSION_NAME, so a release pipeline
+        // moves Android's versionCode and iOS's CFBundleVersion with one edit. See that file: this
+        // makes fastlane's `increment_version_code` lane — which rewrites the literal that used to be
+        // here — inert on this fork.
+        versionCode = requireNotNull(getProperty<String>("VERSION_CODE", "version.properties")) {
+            "VERSION_CODE is missing from version.properties"
+        }.toInt()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -68,6 +79,8 @@ android {
         }
     }
 
+    // Deliberately a literal, not APP_ID: this is the R/BuildConfig package, it is never suffixed,
+    // and moving it would move generated classes. See app.properties' closing note.
     namespace = "eu.europa.ec.euidi"
 }
 

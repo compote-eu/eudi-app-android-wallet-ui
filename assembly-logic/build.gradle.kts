@@ -42,11 +42,9 @@ plugins {
 
 extensions.configure<LibraryExtension>("android") {
     namespace = "eu.europa.ec.assemblylogic"
-
-    defaultConfig {
-        // App name
-        manifestPlaceholders["appName"] = "EUDI Wallet"
-    }
+    // NB: no `manifestPlaceholders["appName"]` here. The label in this module's manifest,
+    // `android:label="${appName}${appNameSuffix}"`, is fed by build-logic's `configureFlavors` from
+    // `app.properties`, so the name has one home and iOS reads the same file. See that file's header.
 }
 
 moduleConfig {

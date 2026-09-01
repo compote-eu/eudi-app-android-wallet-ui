@@ -17,9 +17,10 @@
 
 <!--
   KMP-shared strings (compose-resources), resolvable from commonMain via Res.string.* /
-  Res.plurals.* on both Android and iOS. This is the single source of truth for app strings;
-  resources-logic/src/main/res/values/strings.xml retains only what the Android platform
-  itself must resolve (AndroidManifest android:label).
+  Res.plurals.* on both Android and iOS. This is the single source of truth for app strings.
+
+  It does not carry the app's own name: `android:label` and iOS's CFBundleDisplayName are build
+  inputs rather than app strings, and both come from `app.properties` at the repository root.
 
   Generated from the Android corpus in the Phase 3a bulk move. Three things differ from the
   original by design:
