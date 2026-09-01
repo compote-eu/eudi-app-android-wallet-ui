@@ -1,5 +1,6 @@
 # The Xcode project is generated from project.yml by XcodeGen — regenerate with
-# `cd iosApp && xcodegen generate`. project.yml is the committed source of truth.
+# `./gradlew generateIosProject`, which is what puts version.properties / app.properties into the
+# environment XcodeGen expands `${...}` from. project.yml is the committed source of truth.
 iosApp.xcodeproj/
 
 # Xcode build output & per-user state

@@ -17,10 +17,9 @@
 package eu.europa.ec.uilogic.navigation.helper
 
 import eu.europa.ec.uilogic.BuildConfig
+import eu.europa.ec.uilogic.identity.RepoFiles
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * Whether the two platforms register the same URL schemes.
@@ -96,7 +95,12 @@ class DeepLinkSchemeParityTest {
             }
             val open = listIndent ?: continue
             if (content.startsWith("- ") && indent > open) {
-                schemes += content.removePrefix("- ").trim().trim('"', '\'')
+                // Resolved, because the authorization scheme is a `${...}` reference to
+                // `app.properties` — the file Android's convention plugin reads for the same string.
+                // Comparing the reference text would fail against Android's resolved value.
+                schemes += RepoFiles.resolveReferences(
+                    content.removePrefix("- ").trim().trim('"', '\''),
+                )
             } else if (indent <= open) {
                 // Dedented out of the list: any following `- ` belongs to something else.
                 listIndent = null
@@ -105,19 +109,8 @@ class DeepLinkSchemeParityTest {
         return schemes
     }
 
-    private fun projectYml(): File {
-        // Gradle runs unit tests with the module directory as the working directory, but that is not
-        // contractual, so walk up to the build that owns us rather than assuming a depth.
-        val workingDir = requireNotNull(System.getProperty("user.dir")) { "no user.dir" }
-        var dir: File? = File(workingDir).absoluteFile
-        while (dir != null && !File(dir, "settings.gradle.kts").isFile) {
-            dir = dir.parentFile
-        }
-        val root = requireNotNull(dir) { "could not find the repository root from $workingDir" }
-        return File(root, "iosApp/project.yml").also {
-            assertTrue("no project.yml at ${it.absolutePath}", it.isFile)
-        }
-    }
+    /** Shared with `AppIdentityParityTest`, which needs the same file and the same resolution. */
+    private fun projectYml() = RepoFiles.file("iosApp/project.yml")
 
     @Test
     fun ios_registers_every_android_scheme_except_the_documented_exclusions() {

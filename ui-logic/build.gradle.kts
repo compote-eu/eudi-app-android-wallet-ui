@@ -61,3 +61,17 @@ excludeFromKoverReport(
     excludedClasses = KoverExclusionRules.UiLogic.classes,
     excludedPackages = KoverExclusionRules.UiLogic.packages,
 )
+
+// `AppIdentityParityTest` and `DeepLinkSchemeParityTest` compare the two platforms' build inputs by
+// reading these three files at run time, which Gradle cannot infer: nothing on the test classpath
+// changes when one of them does, so the test task stays UP-TO-DATE and the guard silently does not
+// run. Verified by breaking project.yml and watching the suite pass in 600ms.
+tasks.withType<Test>().configureEach {
+    inputs.files(
+        rootProject.file("version.properties"),
+        rootProject.file("app.properties"),
+        rootProject.file("iosApp/project.yml"),
+    )
+        .withPropertyName("crossPlatformBuildInputs")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}

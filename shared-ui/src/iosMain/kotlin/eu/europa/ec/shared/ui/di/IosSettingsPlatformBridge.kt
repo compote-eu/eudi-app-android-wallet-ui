@@ -57,9 +57,13 @@ internal class IosSettingsPlatformBridge(
 ) : SettingsPlatformBridge {
 
     /**
-     * `CFBundleShortVersionString`, the counterpart of Android's `BuildConfig.APP_VERSION`. Empty
-     * rather than a placeholder when absent — the screen centres it under the list, where an honest
-     * blank is better than the word "unknown".
+     * `CFBundleShortVersionString`, the counterpart of Android's `BuildConfig.APP_VERSION` — and the
+     * same value, since `iosApp/project.yml` feeds the key from `version.properties`, the file that
+     * also gives Android its versionName. `AppIdentityParityTest` fails if that wiring is replaced by
+     * a literal, which is how this screen once showed "1.0" against Android's `yyyy.mm.v`.
+     *
+     * The fallback is defensive rather than expected: the key is always present in a generated plist,
+     * but empty beats the word "unknown" on a screen that centres this under the list.
      */
     override val appVersion: String
         get() = NSBundle.mainBundle.objectForInfoDictionaryKey(CFBundleShortVersionString) as? String
