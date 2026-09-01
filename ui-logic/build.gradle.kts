@@ -71,6 +71,7 @@ tasks.withType<Test>().configureEach {
         rootProject.file("version.properties"),
         rootProject.file("app.properties"),
         rootProject.file("iosApp/project.yml"),
+        rootProject.file("androidApp/build.gradle.kts"),
     )
         .withPropertyName("crossPlatformBuildInputs")
         .withPathSensitivity(PathSensitivity.RELATIVE)
