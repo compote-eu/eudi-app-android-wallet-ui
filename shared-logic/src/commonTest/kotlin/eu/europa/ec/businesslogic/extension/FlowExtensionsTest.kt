@@ -16,6 +16,7 @@
 
 package eu.europa.ec.businesslogic.extension
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -24,6 +25,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /** Runs on both Android (JVM) and iOS (Kotlin/Native) from the same source. */
+@OptIn(ExperimentalCoroutinesApi::class) // UnconfinedTestDispatcher
 class FlowExtensionsTest {
 
     @Test

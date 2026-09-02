@@ -28,6 +28,7 @@ import eu.europa.ec.businesslogic.validator.model.FilterableList
 import eu.europa.ec.businesslogic.validator.model.Filters
 import eu.europa.ec.businesslogic.validator.model.SortOrder
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -102,6 +103,12 @@ class FilterValidatorImpl(
 
     // Flow
     private val emissionMutableFlow = MutableSharedFlow<FilterValidatorPartialState>()
+
+    // `debounce` is a preview API. The Android convention plugin opts in for the whole compilation
+    // (`-opt-in=kotlinx.coroutines.FlowPreview`), but the KMP modules do not inherit those flags, so
+    // this is the one place in shared code that needs it named. Scoped to the property rather than the
+    // class, so a future preview API elsewhere in here still has to opt in for itself.
+    @OptIn(FlowPreview::class)
     private val filterResultFlow: SharedFlow<FilterValidatorPartialState> = emissionMutableFlow
         .debounce(200L)
         .shareIn(
