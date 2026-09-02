@@ -22,13 +22,27 @@ import eu.europa.ec.shared.wallet.multipaz.harness.sampleIssuerMetadata
 import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
 import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.Simple
+import org.multipaz.cbor.buildCborArray
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.mdoc.request.DeviceRequestGenerator
+import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.util.toBase64Url
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
@@ -42,17 +56,20 @@ import kotlin.time.Duration.Companion.days
  * the right [IosDcApiOutcome], and that consent is not invoked for a request that never parses — which
  * is the property that matters most here, because reaching consent is what releases documents.
  *
- * It does **not** yet cover a full successful exchange. That needs a well-formed `org-iso-mdoc`
- * request: `{"deviceRequest": <base64url CBOR>, "encryptionInfo": <base64url CBOR>}` where the latter
- * is `["dcapi", {"recipientPublicKey": <COSE key>}]`. Buildable from multipaz's own primitives and worth
- * doing — see the note below on why it is worth more here than usual — but it is a piece of work rather
- * than a line, and is scoped separately.
+ * It also covers a **full exchange**: a well-formed `org-iso-mdoc` request built the way iOS's
+ * ISO 18013 scene delivers one — `{"deviceRequest": <base64url CBOR>, "encryptionInfo": <base64url
+ * CBOR>}`, the latter `["dcapi", {"recipientPublicKey": <COSE key>}]` — carried through consent to an
+ * HPKE-encrypted response. The success case asserts the response really is one: `protocol` comes back
+ * as `org-iso-mdoc` and `data.response` is a substantial ciphertext, not an empty envelope.
  *
- * ⚠️ **multipaz's own tests do not cover this protocol either.** `digitalCredentialsPresentmentTest`
- * exercises `openid4vp`, `openid4vp-v1-signed` and `openid4vp-v1-unsigned` only — while multipaz's iOS
- * registration advertises **`org-iso-mdoc`**, the branch iOS actually drives. So the round-trip test
- * above would be the first coverage that branch has anywhere, which raises its value and lowers how
- * much its correctness should be assumed.
+ * ⚠️ **This is the only coverage that branch has anywhere.** multipaz's own
+ * `digitalCredentialsPresentmentTest` exercises `openid4vp`, `openid4vp-v1-signed` and
+ * `openid4vp-v1-unsigned` only — while multipaz's own iOS registration advertises **`org-iso-mdoc`**,
+ * which is what iOS actually drives. Treat these tests as load-bearing rather than as a formality, and
+ * do not assume the branch beneath them is exercised elsewhere.
+ *
+ * What is still unproven is everything *outside* Kotlin: that iOS routes a real request here at all,
+ * and that a verifier accepts the response. Both need the entitlement and a device.
  */
 class IosDcApiPresenterTest {
 
@@ -193,4 +210,113 @@ class IosDcApiPresenterTest {
             assertIs<IosDcApiOutcome.Failed>(withExplicit).message,
         )
     }
+
+    //region a full exchange — the branch nothing upstream covers
+
+    /**
+     * A well-formed `org-iso-mdoc` request, exactly as iOS's ISO 18013 scene delivers one.
+     *
+     * `encryptionInfo` is `["dcapi", {"recipientPublicKey": <COSE key>}]`; multipaz reads the key out of
+     * it and HPKE-encrypts the response to it, so the key has to be real even though this test never
+     * decrypts. The device request itself carries no reader authentication — the ordinary case for the
+     * dev verifiers, and what the wallet must still answer.
+     */
+    private suspend fun mdocApiRequest(
+        docType: String = MDOC_PID_DOC_TYPE,
+        elements: Map<String, Boolean> = mapOf("family_name" to false, "given_name" to false),
+    ): String {
+        val deviceRequest = DeviceRequestGenerator(encodedSessionTranscript = Cbor.encode(Simple.NULL))
+            .addDocumentRequest(
+                docType = docType,
+                itemsToRequest = mapOf(docType to elements),
+                requestInfo = null,
+                readerKey = null,
+                signatureAlgorithm = Algorithm.UNSET,
+                readerKeyCertificateChain = null,
+            )
+            .generate()
+
+        val recipientKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey
+        val recipient = buildCborMap { put("recipientPublicKey", recipientKey.toCoseKey().toDataItem()) }
+        val encryptionInfo = Cbor.encode(
+            buildCborArray {
+                add("dcapi")
+                add(recipient)
+            }
+        )
+
+        return """{"deviceRequest":"${deviceRequest.toBase64Url()}",""" +
+            """"encryptionInfo":"${encryptionInfo.toBase64Url()}"}"""
+    }
+
+    /** Everything the request matched — what a user who unchecks nothing agrees to. */
+    private val acceptEverything: suspend (
+        org.multipaz.request.Requester,
+        org.multipaz.trustmanagement.TrustMetadata?,
+        org.multipaz.presentment.CredentialPresentmentData,
+    ) -> CredentialPresentmentSelection? = { _, _, data ->
+        CredentialPresentmentSelection(
+            matches = data.credentialSets
+                .flatMap { it.options }
+                .flatMap { it.members }
+                .mapNotNull { it.matches.firstOrNull() },
+        )
+    }
+
+    @Test
+    fun a_matching_request_is_answered_and_names_what_was_shared() = runTest {
+        val store = store()
+        store.seedPid()
+
+        val outcome = IosDcApiPresenter(store).present(
+            protocol = "org-iso-mdoc",
+            data = mdocApiRequest(),
+            origin = "https://verifier.example",
+            onConsent = acceptEverything,
+        )
+
+        val sent = assertIs<IosDcApiOutcome.Sent>(outcome)
+        assertEquals(listOf("PID MSO MDoc"), sent.sharedDocuments)
+        // The DC API result is a JSON object carrying `protocol` and `data`; `data` holds the
+        // HPKE-encrypted response, so a non-trivial value there is what says a response was actually
+        // built rather than an empty envelope returned.
+        val result = Json.parseToJsonElement(sent.responseJson).jsonObject
+        assertEquals("org-iso-mdoc", result["protocol"]?.jsonPrimitive?.content)
+        val encrypted = assertNotNull(result["data"]).jsonObject["response"]?.jsonPrimitive?.content
+        assertTrue(assertNotNull(encrypted).length > 100, "encrypted response looks empty")
+    }
+
+    /** Declining releases nothing, and is an answer rather than a failure. */
+    @Test
+    fun declining_a_matching_request_shares_nothing() = runTest {
+        val store = store()
+        store.seedPid()
+
+        val outcome = IosDcApiPresenter(store).present(
+            protocol = "org-iso-mdoc",
+            data = mdocApiRequest(),
+            origin = "https://verifier.example",
+            onConsent = { _, _, _ -> null },
+        )
+
+        assertIs<IosDcApiOutcome.Declined>(outcome)
+    }
+
+    /** A doctype the wallet does not hold is "nothing to share", not an error. */
+    @Test
+    fun a_request_for_a_doctype_the_wallet_lacks_shares_nothing() = runTest {
+        val store = store()
+        store.seedPid()
+
+        val outcome = IosDcApiPresenter(store).present(
+            protocol = "org-iso-mdoc",
+            data = mdocApiRequest(docType = "org.iso.18013.5.1.mDL"),
+            origin = "https://verifier.example",
+            onConsent = acceptEverything,
+        )
+
+        assertIs<IosDcApiOutcome.NothingToShare>(outcome)
+    }
+
+    //endregion
 }
