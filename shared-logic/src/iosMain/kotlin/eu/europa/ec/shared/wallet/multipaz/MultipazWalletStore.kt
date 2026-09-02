@@ -24,6 +24,7 @@ import org.multipaz.document.DocumentStore
 import org.multipaz.document.DocumentUtil
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.eventlogger.SimpleEventLogger
+import org.multipaz.util.Logger
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.SecureEnclaveSecureArea
@@ -34,6 +35,7 @@ import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
@@ -97,19 +99,50 @@ internal class MultipazWalletStore(
     companion object {
 
         /**
-         * Where the wallet's database lives: `Library/Application Support/wallet/wallet.db`.
+         * Where the wallet's database lives: `<app group>/wallet/wallet.db`, falling back to
+         * `Library/Application Support/wallet/wallet.db`.
          *
-         * `create = true` matters — unlike Documents, **Application Support does not exist until
-         * something creates it**, and opening a SQLite file in a missing directory fails.
+         * ## Why the app group
          *
-         * Falls back to `NSDocumentDirectory` only if iOS reports no Application Support directory,
-         * which does not happen on a device; a wallet that cannot open its store is useless, so the
-         * fallback is preferable to refusing to start.
+         * The document-provider extension that answers Digital Credentials requests is a **separate
+         * process with its own container**, so a store inside the app's own container is invisible to
+         * it. An app group is the only place both can read, which makes this a prerequisite for the
+         * responder rather than a preference.
+         *
+         * The group is `group.<bundle id>`, so dev and demo get their own — matching the reference iOS
+         * wallet's `group.$(PRODUCT_BUNDLE_IDENTIFIER)`, and matching the fact that the two flavours
+         * already hold separate wallets under separate bundle ids.
+         *
+         * ## Why a fallback rather than a hard failure
+         *
+         * `com.apple.security.application-groups` is not a restricted entitlement, and it resolves even
+         * on this fork's ad-hoc-signed simulator builds — verified, not assumed. But a signing setup
+         * that has not registered the group would return null, and the same reasoning the directory
+         * fallback below already follows applies with more force: a wallet that refuses to start is
+         * worse than one that starts. The degradation is logged rather than silent, because its
+         * consequence is specific — the app keeps working and the extension finds an empty wallet.
+         *
+         * ⚠️ **No migration, deliberately.** Nothing reads the old location afterwards and nothing
+         * moves it. This fork has never been distributed, so there is no installed wallet whose data
+         * could be stranded; clearing an existing simulator or device install is an uninstall, not a
+         * code path. **Shipping to real users would make a migration necessary** — it is absent because
+         * it is not needed yet, not because it was overlooked.
          */
         @OptIn(ExperimentalForeignApi::class)
         private fun storeFileUrl(): NSURL {
             val manager = NSFileManager.defaultManager
-            val base = manager.URLForDirectory(
+
+            val appGroup = NSBundle.mainBundle.bundleIdentifier
+                ?.let { manager.containerURLForSecurityApplicationGroupIdentifier("group.$it") }
+            if (appGroup == null) {
+                Logger.w(
+                    "MultipazWalletStore",
+                    "no app-group container; the wallet stays in this app's own container and the " +
+                        "document-provider extension will not see its documents",
+                )
+            }
+
+            val base = appGroup ?: manager.URLForDirectory(
                 directory = NSApplicationSupportDirectory,
                 inDomain = NSUserDomainMask,
                 appropriateForURL = null,

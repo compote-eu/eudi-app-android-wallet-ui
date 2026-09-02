@@ -203,6 +203,16 @@ targets:
           - eu.europa.ec.eudi.pid.1
           - org.iso.18013.5.1.mDL
           - org.iso.23220.2.photoid.1
+        # The container the wallet database moves into, so the document-provider extension — a
+        # separate process with its own container — can read the same documents the app writes.
+        # `$(...)` is Xcode expanding at build time, so dev and demo get their own group and their
+        # own wallet, exactly as they get their own bundle id.
+        #
+        # Unlike the entitlement above this one is NOT restricted, so it may be honoured on an
+        # ad-hoc-signed build where that one is not. Whether it actually is decides where the store
+        # can live before team signing, which is why it is checked at launch rather than assumed.
+        com.apple.security.application-groups:
+          - group.$(PRODUCT_BUNDLE_IDENTIFIER)
     dependencies:
       - package: EudiRQESUi
         product: EudiRQESUi
