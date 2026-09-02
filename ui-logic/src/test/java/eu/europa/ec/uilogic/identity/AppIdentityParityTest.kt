@@ -122,7 +122,25 @@ class AppIdentityParityTest {
         assertEquals(
             "the bundle id is no longer built from APP_ID plus the current variant's suffix",
             "\${APP_ID}$(BUNDLE_ID_SUFFIX_$(BUILD_VARIANT))",
-            RepoFiles.projectYmlValue("PRODUCT_BUNDLE_IDENTIFIER"),
+            RepoFiles.projectYmlValue("APP_BUNDLE_ID"),
+        )
+    }
+
+    /**
+     * The app and its document-provider extension must stay one identity: the extension's bundle id is
+     * the app's plus a suffix, and iOS pairs them on exactly that. Both derive from `APP_BUNDLE_ID`
+     * rather than restating the expression, so this asserts the derivation rather than the value.
+     *
+     * This test exists because adding the extension broke the one above in a way worth keeping caught:
+     * a second `PRODUCT_BUNDLE_IDENTIFIER` appeared and the helper silently returned it instead of the
+     * app's.
+     */
+    @Test
+    fun the_extension_bundle_id_is_derived_from_the_app_s() {
+        assertEquals(
+            "the app and its extension no longer derive their ids from one place",
+            listOf("$(APP_BUNDLE_ID).provider", "$(APP_BUNDLE_ID)"),
+            RepoFiles.projectYmlValues("PRODUCT_BUNDLE_IDENTIFIER"),
         )
     }
 

@@ -57,7 +57,113 @@ packages:
     url: https://github.com/mc1100/SwiftCopyableMacro.git
     branch: widen-swift-syntax-bound-to-603
 
+# Settings both targets need identical values for. A setting group is expanded into each target at
+# generate time, which is the only way two Xcode targets can share a value — build settings do not
+# cross target boundaries.
+#
+# The bundle id lives here rather than in either target because the extension's must be the app's plus
+# a suffix. Stating the expression twice would give the identity two homes that could disagree, which
+# is the drift the identity work removed; `AppIdentityParityTest` asserts against APP_BUNDLE_ID for
+# that reason.
+settingGroups:
+  identity:
+    APP_BUNDLE_ID: "${APP_ID}$(BUNDLE_ID_SUFFIX_$(BUILD_VARIANT))"
+    BUNDLE_ID_SUFFIX_dev: "${APP_ID_SUFFIX_dev}"
+    BUNDLE_ID_SUFFIX_demo: "${APP_ID_SUFFIX_demo}"
+    BUILD_VARIANT: dev
+    MARKETING_VERSION: "${VERSION_NAME}"
+    CURRENT_PROJECT_VERSION: "${VERSION_CODE}"
+
 targets:
+  # ── The Digital Credentials provider extension ───────────────────────────────────────────────────
+  #
+  # A second *process*, launched by iOS when a website or app asks for a credential. It is an
+  # ExtensionKit extension rather than the older app-extension kind, which is what
+  # `com.apple.identity-document-services.document-provider-ui` requires.
+  #
+  # ⚠️ XcodeGen 2.46.0 does not know this product type by name — `type:` normally takes one of its
+  # own aliases. It passes an unrecognised string through to the pbxproj verbatim, which is what
+  # makes this expressible at all; verified by generating and reading the product type back, not
+  # assumed. If a future XcodeGen starts validating the field, this line is where it will fail.
+  #
+  # It links the same `SharedKit` framework the app does, so the consent screen is the shared Compose
+  # one rather than a second UI written in SwiftUI.
+  EudiWalletDocumentProvider:
+    type: com.apple.product-type.extensionkit-extension
+    platform: iOS
+    # The registration API is iOS 26.0; the reference wallet's own extension target is 26.2, and this
+    # matches it rather than the app's 17.0 — an extension cannot be loaded below its own floor, and
+    # the entitlement that makes any of this work is iOS 26+ regardless.
+    deploymentTarget: "26.2"
+    sources:
+      - path: DocumentProvider
+    info:
+      path: DocumentProvider/Info.plist
+      properties:
+        # An extension whose version differs from its containing app is rejected at submission, so
+        # both come from the same two properties files the app reads. XcodeGen otherwise writes 1.0/1.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # What makes iOS treat this bundle as a document provider. `EXAppExtensionAttributes` is the
+        # ExtensionKit form; the older `NSExtension` dictionary is for the previous extension model
+        # and is not interchangeable.
+        EXAppExtensionAttributes:
+          EXExtensionPointIdentifier: com.apple.identity-document-services.document-provider-ui
+    entitlements:
+      path: DocumentProvider/EudiWalletDocumentProvider.entitlements
+      properties:
+        # The extension reads the wallet the app writes, so it needs the same group and nothing else:
+        # the doctype entitlement belongs to the app, which is what registers documents.
+        # Built from the same two variables the app's bundle id is, rather than derived from this
+        # target's own identifier — `$(PRODUCT_BUNDLE_IDENTIFIER:base)` would also work but relies on
+        # Xcode's path-style `:base` modifier treating a dotted id as a filename, which is not obvious
+        # to a reader and not obviously stable.
+        com.apple.security.application-groups:
+          - group.$(APP_BUNDLE_ID)
+    preBuildScripts:
+      # The extension links SharedKit, and the app's own copy of this phase cannot serve it: the app
+      # now *depends* on the extension, so Xcode builds the extension first and would otherwise
+      # compile it against whatever framework the previous build left behind. (That is exactly how
+      # this was found — `IosDocumentProviderBridge does not exist in module SharedKit`, against a
+      # framework built before the bridge was written.)
+      #
+      # Running Gradle twice per build is cheap: the second invocation is up-to-date and returns in
+      # under a second. If Xcode builds the two targets in parallel, Gradle's own file lock
+      # serialises them rather than racing.
+      #
+      # The reference in-house project takes the same approach — its project carries the phase on
+      # several targets rather than trying to share one.
+      - name: Compile Kotlin Framework (SharedKit)
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ "$ACTION" = "indexbuild" ] || [ "$ENABLE_PREVIEWS" = "YES" ]; then
+            echo "Skipping Kotlin framework build during indexing / SwiftUI preview."
+            exit 0
+          fi
+          cd "$SRCROOT/.."
+          ./gradlew :shared-ui:embedAndSignAppleFrameworkForXcode \
+            -PappFlavor="${BUILD_VARIANT:-dev}"
+    settings:
+      groups: [identity]
+      base:
+        # Derived from the app's rather than restated, so there is one place the wallet's identity is
+        # written and the pair cannot drift apart.
+        PRODUCT_BUNDLE_IDENTIFIER: "$(APP_BUNDLE_ID).provider"
+        SWIFT_VERSION: "6.0"
+        CODE_SIGNING_ALLOWED: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        # The same framework the app links, built by the app target's pre-build script. Search path
+        # rather than a copy: the extension is embedded in the app, so the binary is already there.
+        FRAMEWORK_SEARCH_PATHS:
+          - $(inherited)
+          - $(SRCROOT)/../shared-ui/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
+        OTHER_LDFLAGS:
+          - $(inherited)
+          - -framework
+          - SharedKit
+          - -lsqlite3
+
   # `PRODUCT_NAME` defaults to the target name, which is what `CFBundleName` and the built `.app` are
   # called — so this is `EudiWallet`, as in the reference wallet. The *user-visible* name is
   # `CFBundleDisplayName` below; the two differ on purpose, exactly as they do there.
@@ -216,7 +322,12 @@ targets:
     dependencies:
       - package: EudiRQESUi
         product: EudiRQESUi
+      # The app carries the extension: an ExtensionKit extension ships inside its containing app and
+      # is launched from there by the OS. Without this the target builds and is never installed.
+      - target: EudiWalletDocumentProvider
+        embed: true
     settings:
+      groups: [identity]
       base:
         # ── Identity and version, all from the two properties files Android reads ─────────────────
         #
@@ -234,9 +345,7 @@ targets:
         # ⚠️ It is therefore the *same bundle id as the reference wallet*, so the two cannot be
         # installed side by side — whichever is installed second replaces the first, along with its
         # wallet data. Deliberate: this app is the KMP build of that wallet, not a companion to it.
-        PRODUCT_BUNDLE_IDENTIFIER: "${APP_ID}$(BUNDLE_ID_SUFFIX_$(BUILD_VARIANT))"
-        BUNDLE_ID_SUFFIX_dev: "${APP_ID_SUFFIX_dev}"
-        BUNDLE_ID_SUFFIX_demo: "${APP_ID_SUFFIX_demo}"
+        PRODUCT_BUNDLE_IDENTIFIER: "$(APP_BUNDLE_ID)"
         # The launcher name, reaching CFBundleDisplayName above. Both variants are named identically
         # today (the suffixes are empty in `app.properties`, as upstream and the reference wallet both
         # do); the mechanism is here so that changing one file changes both platforms.
@@ -246,20 +355,18 @@ targets:
         APP_DISPLAY_NAME: "$(APP_NAME)$(APP_NAME_SUFFIX_$(BUILD_VARIANT))"
         # Android's versionName and versionCode, from version.properties. `yyyy.mm.v` is upstream's
         # committed CalVer placeholder, replaced at release time — see that file.
-        MARKETING_VERSION: "${VERSION_NAME}"
-        CURRENT_PROJECT_VERSION: "${VERSION_CODE}"
+
         # Which of Android's two product flavours this build mirrors, named as the reference iOS
         # wallet names it (`BUILD_VARIANT` in its `Wallet*.xcconfig`). Passed straight through to
         # Gradle as `-PappFlavor` by the pre-build script below, which is what selects
         # `shared-logic/src/iosDevMain` or `src/iosDemoMain`.
         #
-        # `dev` by default, matching `assembleDevDebug` and every documented probe run. Build the
-        # other flavour with:
+        # `dev` by default; the value itself lives in the `identity` setting group above, because the
+        # extension needs the same one. Build the other flavour with:
         #   xcodebuild ... BUILD_VARIANT=demo
         # Xcode caches the framework per configuration, not per setting, so switch flavours with a
         # clean build (or `./gradlew clean`) — a stale SharedKit is the one way to get a dev framework
         # inside a demo app.
-        BUILD_VARIANT: dev
         # NB: no GENERATE_INFOPLIST_FILE here. Compose Multiplatform requires
         # `CADisableMinimumFrameDurationOnPhone`, and Xcode's generated-plist mechanism only honours a
         # documented allowlist of INFOPLIST_KEY_* settings — an arbitrary one is silently dropped

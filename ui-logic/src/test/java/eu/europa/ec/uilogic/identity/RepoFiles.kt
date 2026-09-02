@@ -85,11 +85,18 @@ internal object RepoFiles {
      * Deliberately *not* reference-resolved — several assertions are about whether the spec still
      * references the properties files at all, which resolving would hide.
      */
-    fun projectYmlValue(key: String): String? = file("iosApp/project.yml").readLines()
-        .asSequence()
+    fun projectYmlValue(key: String): String? = projectYmlValues(key).firstOrNull()
+
+    /**
+     * Every value for [key], in file order.
+     *
+     * Added when the document-provider extension gave `PRODUCT_BUNDLE_IDENTIFIER` a second occurrence
+     * and [projectYmlValue] silently returned the wrong one — the extension's, because it is declared
+     * first. A key that legitimately appears twice has to be asserted about explicitly rather than
+     * read as if it were unique.
+     */
+    fun projectYmlValues(key: String): List<String> = file("iosApp/project.yml").readLines()
         .map { it.substringBefore('#').trim() }
-        .firstOrNull { it.startsWith("$key:") }
-        ?.removePrefix("$key:")
-        ?.trim()
-        ?.trim('"', '\'')
+        .filter { it.startsWith("$key:") }
+        .map { it.removePrefix("$key:").trim().trim('"', '\'') }
 }
