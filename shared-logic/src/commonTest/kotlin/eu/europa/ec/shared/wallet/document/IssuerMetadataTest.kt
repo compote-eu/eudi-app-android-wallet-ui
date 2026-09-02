@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
 /** Runs on both Android (JVM) and iOS (Kotlin/Native) from the same source. */
 class IssuerMetadataTest {
 
-    private val JsonFormatForTest = Json { ignoreUnknownKeys = true }
+    private val jsonFormatForTest = Json { ignoreUnknownKeys = true }
 
     // The wire form the Android document manager writes: locales as BCP-47 tags, logo URIs as
     // strings. Parsing this unchanged is the whole point of the port.
@@ -240,7 +240,7 @@ class IssuerMetadataTest {
             {"path":["eu.europa.ec.eudi.pid.1","family_name"],"mandatory":true,
              "display":[{"name":"Family Name(s)","locale":"en"}]}
         """.trimIndent()
-        val parsed = JsonFormatForTest.decodeFromString(IssuerMetadata.Claim.serializer(), wire)
+        val parsed = jsonFormatForTest.decodeFromString(IssuerMetadata.Claim.serializer(), wire)
 
         assertEquals(listOf("eu.europa.ec.eudi.pid.1", "family_name"), parsed.path)
         assertEquals(true, parsed.mandatory)

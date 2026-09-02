@@ -159,9 +159,7 @@ class IosCredentialOfferReader(
         val configurationIds = offer["credential_configuration_ids"]?.jsonArray
             ?.mapNotNull { it.jsonPrimitive.contentOrNull }
             ?: emptyList()
-        if (configurationIds.isEmpty()) {
-            throw IllegalArgumentException("The offer names no document.")
-        }
+        require(configurationIds.isNotEmpty()) { "The offer names no document." }
 
         val txCode = offer["grants"]?.jsonObject
             ?.get(PRE_AUTHORIZED_CODE_GRANT)?.jsonObject

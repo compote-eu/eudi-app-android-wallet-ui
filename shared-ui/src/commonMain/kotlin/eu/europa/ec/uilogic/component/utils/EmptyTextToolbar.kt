@@ -20,6 +20,10 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.TextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 
+// The empty bodies are the implementation: this toolbar exists to suppress the text-selection menu,
+// so `hide` and `showMenu` must do nothing. Suppressed here rather than disabling the rule, which
+// still gates every other empty block in the tree.
+@Suppress("EmptyFunctionBlock")
 object EmptyTextToolbar : TextToolbar {
 
     override val status: TextToolbarStatus = TextToolbarStatus.Hidden

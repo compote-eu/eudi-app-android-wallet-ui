@@ -23,7 +23,9 @@ import com.android.build.api.dsl.ProductFlavor
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.invoke
 
-@Suppress("EnumEntryName")
+// Lowercase on purpose: the entry name is the Gradle flavour *dimension* string, and renaming it
+// would rename the dimension. "EnumEntryName" is the IDE's inspection, "EnumNaming" is detekt's.
+@Suppress("EnumEntryName", "EnumNaming")
 enum class FlavorDimension {
     contentType
 }
