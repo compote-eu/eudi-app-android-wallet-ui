@@ -78,6 +78,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         scheduleBackgroundReIssuance()
         refreshRevocationOnLaunch()
 
+        // Tells iOS which documents this wallet holds, so they appear in the system credential
+        // picker. The first of the two halves of being a Digital Credentials API provider; the
+        // second — an ExtensionKit extension that answers a request — does not exist yet, and this
+        // is useful and observable without it. See `DocumentRegistration.swift`.
+        registerDocumentsWithSystem()
+
         // The Swift half of document signing. Kotlin cannot call `EudiRQESUi` itself — it is a Swift
         // package, so none of its API crosses the Kotlin/Native bridge — so the shared screen calls
         // this instead. Without this line signing reports itself unavailable rather than crashing;

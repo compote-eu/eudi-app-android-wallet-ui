@@ -176,6 +176,33 @@ targets:
           - eu.europa.ec.euidi.reissuance
         UIBackgroundModes:
           - processing
+    # ── Digital Credentials API: the provider entitlement ────────────────────────────────────────
+    #
+    # Registering a document with iOS's credential picker needs this restricted entitlement, and the
+    # array is the OS's filter: a doctype absent from it cannot be registered, and the attempt comes
+    # back as `.notAuthorized` rather than as anything that names the cause. multipaz's own
+    # registration path carries the same warning in its error branch ("did you add it to the
+    # entitlement file?").
+    #
+    # ⚠️ **Inert under ad-hoc signing, which is how this fork builds today.** The entitlement is
+    # restricted: it is only honoured when it also appears in a real provisioning profile, so with
+    # `CODE_SIGN_IDENTITY: "-"` the registry answers `notAuthorized` and nothing is registered.
+    # Declaring it anyway is deliberate — it is what makes the build correct the moment the fork moves
+    # onto team signing, and `DocumentRegistrationManagerImpl.status()` prints exactly which of the
+    # two states we are in rather than leaving an empty picker unexplained.
+    #
+    # The doctypes are ours, not the reference wallet's list copied over: these are the three mdoc
+    # types this tree can actually hold. Theirs also names `eu.europa.ec.av.1` and
+    # `org.iso.23220.1.jp.mnc`, which nothing here issues, and spells photo ID `org.iso.23220.photoid.1`
+    # where our documents use `org.iso.23220.2.photoid.1`. Registering a doctype we never hold would be
+    # a claim with no document behind it.
+    entitlements:
+      path: iosApp/EudiWallet.entitlements
+      properties:
+        com.apple.developer.identity-document-services.document-provider.mobile-document-types:
+          - eu.europa.ec.eudi.pid.1
+          - org.iso.18013.5.1.mDL
+          - org.iso.23220.2.photoid.1
     dependencies:
       - package: EudiRQESUi
         product: EudiRQESUi

@@ -12,3 +12,8 @@ xcuserdata/
 
 # Info.plist is generated from project.yml by XcodeGen (see the `info:` block there).
 Info.plist
+
+# Likewise the entitlements, from the `entitlements:` block. Committing it would give the Digital
+# Credentials doctype list two homes that could disagree — the same drift the identity work removed
+# when it made version.properties and app.properties the single source for name, id and version.
+EudiWallet.entitlements
