@@ -40,7 +40,12 @@ class IosWalletEngine : WalletEngine {
     private var delegate: WalletEngine? = null
     private var store: MultipazWalletStore? = null
 
-    /** Deletes a document. Not on [WalletEngine]: Android deletes through its wallet-core controller. */
+    /**
+     * Deletes a document. Not on [WalletEngine]: Android deletes through its wallet-core controller.
+     *
+     * Notifying iOS's document-provider registry is [MultipazWalletEngine.deleteDocument]'s job, not
+     * this wrapper's — it is where the document actually goes, so no caller can delete around it.
+     */
     suspend fun deleteDocument(documentId: String): Result<Unit> =
         (delegate() as MultipazWalletEngine).deleteDocument(documentId)
 

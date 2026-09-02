@@ -24,6 +24,7 @@ import class SharedKit.BackgroundReIssuanceSummary
 import class SharedKit.IosBackgroundRevocationKt
 import class SharedKit.BackgroundRevocationSummary
 import class SharedKit.IosDocumentSigning
+import class SharedKit.IosDocumentRegistration
 
 /// Launch argument that turns the wallet probe on.
 ///
@@ -78,11 +79,16 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         scheduleBackgroundReIssuance()
         refreshRevocationOnLaunch()
 
-        // Tells iOS which documents this wallet holds, so they appear in the system credential
-        // picker. The first of the two halves of being a Digital Credentials API provider; the
-        // second — an ExtensionKit extension that answers a request — does not exist yet, and this
-        // is useful and observable without it. See `DocumentRegistration.swift`.
-        registerDocumentsWithSystem()
+        // Lets Kotlin tell us when the document set changes, so a deleted document leaves the system
+        // credential picker instead of lingering in it. Registered before the first reconciliation
+        // below, though nothing depends on the order: the seam is only read on a later delete.
+        IosDocumentRegistration.shared.registry = WalletDocumentRegistry.shared
+
+        // Brings the OS registry in line with the wallet: adds what is missing, removes what is gone.
+        // The first of the two halves of being a Digital Credentials API provider; the second — an
+        // ExtensionKit extension that answers a request — does not exist yet, and this is useful and
+        // observable without it. See `DocumentRegistration.swift`.
+        reconcileDocumentRegistrations()
 
         // The Swift half of document signing. Kotlin cannot call `EudiRQESUi` itself — it is a Swift
         // package, so none of its API crosses the Kotlin/Native bridge — so the shared screen calls

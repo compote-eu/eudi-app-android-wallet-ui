@@ -120,6 +120,38 @@ internal suspend fun MultipazWalletStore.registrableDocuments(): List<IosRegistr
     }.also { Logger.i(TAG, "registrable documents: ${it.size} (${it.joinToString()})") }
 }
 
+/**
+ * The Swift half of registration, supplied by the app at launch.
+ *
+ * Kotlin cannot unregister a document itself: `IdentityDocumentServices` is a **Swift** framework, so
+ * none of its API crosses the Kotlin/Native bridge — the same reason `EudiRQESUi` needed a seam, and
+ * the opposite direction to the camera and Bluetooth, which are Objective-C and reachable by cinterop.
+ * So Swift registers an implementation here and Kotlin calls it when the document set changes.
+ *
+ * Nullable on purpose, exactly as [eu.europa.ec.dashboardfeature.ui.document_sign.IosDocumentSigning]
+ * is: a build that forgets to wire it still compiles and still runs, and simply leaves the OS registry
+ * to be reconciled at the next launch instead of crashing on a delete.
+ */
+object IosDocumentRegistration {
+
+    /** Set once from `iOSApp.swift`. Null in a build that never wires it, and on Android-only paths. */
+    var registry: IosDocumentRegistry? = null
+}
+
+/**
+ * What Swift implements: bring the OS registry back in line with the wallet.
+ *
+ * Deliberately *not* `documentDeleted(id)`. A full reconciliation is what multipaz's own registration
+ * does, and it is the shape that cannot drift: it fixes a removal this call was raised for, a removal
+ * an earlier failed call missed, and a document that arrived by some path nobody thought to hook. The
+ * cost is reading a list the OS already holds.
+ */
+interface IosDocumentRegistry {
+
+    /** Called after the wallet's document set changes. Returns immediately; the work is Swift's. */
+    fun documentsChanged()
+}
+
 /** NSDate is anchored to 2001-01-01; 978_307_200 s is the offset from the 1970 Unix epoch. */
 private fun Instant.toNSDate(): NSDate =
     NSDate(timeIntervalSinceReferenceDate = (toEpochMilliseconds() / 1000.0) - 978_307_200.0)

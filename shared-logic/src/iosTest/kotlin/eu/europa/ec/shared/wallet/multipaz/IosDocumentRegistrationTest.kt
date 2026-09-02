@@ -166,6 +166,81 @@ class IosDocumentRegistrationTest {
         )
     }
 
+    //region the registry seam — the half deletion depends on
+
+    /**
+     * Deleting a document must tell the OS registry, or the registration outlives the document and the
+     * credential picker keeps offering something that can no longer be presented.
+     *
+     * This is the exact defect the reference iOS wallet ships: its single-document delete never
+     * unregisters, and its delete-all reads the ids to unregister *after* deleting them, so that list
+     * is empty. Asserting it here is what stops ours drifting back to theirs.
+     */
+    @Test
+    fun deleting_a_document_notifies_the_registry() = runTest {
+        val store = store()
+        val documentId = store.seedPid()
+        val notified = mutableListOf<Unit>()
+        IosDocumentRegistration.registry = object : IosDocumentRegistry {
+            override fun documentsChanged() {
+                notified += Unit
+            }
+        }
+
+        try {
+            MultipazWalletEngine(store).deleteDocument(documentId)
+
+            assertEquals(1, notified.size)
+            assertTrue(store.registrableDocuments().isEmpty())
+        } finally {
+            IosDocumentRegistration.registry = null
+        }
+    }
+
+    /**
+     * Deleting an id the store does not hold **succeeds** — checked here rather than assumed, because
+     * the guard on the notification is `onSuccess` and it matters what that admits.
+     *
+     * This started as a test asserting the opposite, that an unknown id fails and therefore does not
+     * notify. It does not fail, so the `onSuccess` guard cannot be exercised from here at all: what
+     * protects a still-present document is that a real deletion failure would throw inside
+     * `runCatching`. Notifying on a no-op delete is harmless anyway — reconciliation is idempotent and
+     * costs one read of a list the OS already holds — which is the property this pins.
+     */
+    @Test
+    fun deleting_an_unknown_document_succeeds_and_leaves_the_wallet_alone() = runTest {
+        val store = store()
+        val documentId = store.seedPid()
+        var notifications = 0
+        IosDocumentRegistration.registry = object : IosDocumentRegistry {
+            override fun documentsChanged() {
+                notifications++
+            }
+        }
+
+        try {
+            assertTrue(MultipazWalletEngine(store).deleteDocument("no-such-document").isSuccess)
+
+            // The real document is untouched, so a reconciliation triggered by this changes nothing.
+            assertEquals(1, notifications)
+            assertEquals(documentId, store.registrableDocuments().single().documentIdentifier)
+        } finally {
+            IosDocumentRegistration.registry = null
+        }
+    }
+
+    /** A build that never wires the Swift half still deletes; it just leaves the OS to be reconciled. */
+    @Test
+    fun deleting_without_a_registry_wired_does_not_fail() = runTest {
+        val store = store()
+        val documentId = store.seedPid()
+        IosDocumentRegistration.registry = null
+
+        assertTrue(MultipazWalletEngine(store).deleteDocument(documentId).isSuccess)
+    }
+
+    //endregion
+
     /**
      * One entry per *document*, however many credentials it holds.
      *

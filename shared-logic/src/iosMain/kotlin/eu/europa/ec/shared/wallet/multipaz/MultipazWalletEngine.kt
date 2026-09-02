@@ -211,6 +211,20 @@ internal class MultipazWalletEngine(
     suspend fun deleteDocument(documentId: String): Result<Unit> = runCatching {
         store.documentStore.deleteDocument(documentId)
         deleteBookmark(documentId)
+    }.onSuccess {
+        // Tell iOS's document-provider registry, or the registration outlives the document and the
+        // system credential picker keeps offering something that can no longer be presented.
+        //
+        // Here rather than on `IosWalletEngine`, which is the host-facing wrapper: this is where the
+        // document actually goes, so no caller can delete around the notification. Putting it on the
+        // wrapper first is what the deletion test caught.
+        //
+        // 📌 **The reference iOS wallet gets this wrong twice, so do not "align" it back.** Its
+        // `deleteDocument(with:status:)` never unregisters at all, and its `clearAllDocuments()` asks
+        // for the ids to unregister *after* deleting every document, so that list is empty and the
+        // call removes nothing. Their registration API is mirrored on our Swift side; their wiring
+        // of it is not.
+        IosDocumentRegistration.registry?.documentsChanged()
     }
 
     /** The document's mdoc claims with their namespaces, for the details screen. */
