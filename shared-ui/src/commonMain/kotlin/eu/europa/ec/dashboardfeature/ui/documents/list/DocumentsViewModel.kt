@@ -71,7 +71,6 @@ data class State(
     val deferredFailedDocIds: List<String> = emptyList(),
     val searchText: String = "",
     val allowUserInteraction: Boolean = true,
-    val isFromOnPause: Boolean = true,
     val shouldRevertFilterChanges: Boolean = true,
 
     val filtersUi: List<ExpandableListItemUi.NestedListItem> = emptyList(),
@@ -193,7 +192,8 @@ class DocumentsViewModel(
             is Event.OnPause -> {
                 stopDeferredIssuing()
                 stopFetchDocuments()
-                setState { copy(isFromOnPause = true) }
+                // No "first load again" flag: the derived filter groups are rebuilt on every load,
+                // because a pause is not the only way the document list can change.
             }
 
             is Event.TryIssuingDeferredDocuments -> {
@@ -356,15 +356,17 @@ class DocumentsViewModel(
                                 response.allDocuments
                                     .generateFailedDeferredDocs(deferredFailedDocIds)
 
-                            if (viewState.value.isFromOnPause) {
-                                interactor.initializeFilters(
-                                    filterableList = documentsWithFailed
-                                )
-                            } else {
-                                interactor.updateLists(
-                                    filterableList = documentsWithFailed
-                                )
-                            }
+                            // Rebuilt on EVERY load, not only on the first one after a pause: the
+                            // issuer group is *derived from the documents themselves*, so a group
+                            // built against an older list has no item for an issuer seen since, and a
+                            // multiple-selection group hides every item it has no selected filter for.
+                            // Worse here than for transactions, because an issuer group derived from
+                            // an empty list is genuinely empty, which hides everything.
+                            // `initializeFilters` merges, so the user's selections survive; see
+                            // `FilterValidatorTest` and the same call in `TransactionsViewModel`.
+                            interactor.initializeFilters(
+                                filterableList = documentsWithFailed
+                            )
 
                             interactor.applyFilters()
 
@@ -374,7 +376,6 @@ class DocumentsViewModel(
                                     error = null,
                                     deferredFailedDocIds = deferredFailedDocIds,
                                     allowUserInteraction = response.shouldAllowUserInteraction,
-                                    isFromOnPause = false
                                 )
                             }
                             setEffect { Effect.DocumentsFetched(deferredDocs) }

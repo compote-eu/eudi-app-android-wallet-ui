@@ -356,7 +356,7 @@ class DocumentsViewModelTest {
         }
 
     @Test
-    fun the_first_fetch_initializes_the_filters_and_a_refetch_only_updates_the_lists() =
+    fun every_fetch_rebuilds_the_filters_rather_than_only_swapping_the_list() =
         runTest(mainDispatcher) {
             val interactor = FakeDocumentsInteractor(
                 getDocumentsResults = listOf(successOf(documentUi("doc-1"))),
@@ -371,15 +371,44 @@ class DocumentsViewModelTest {
             advanceUntilIdle()
             job.cancel()
 
-            // Rebuilding the filters from scratch would discard the user's selection, so it happens
-            // only on the first fetch after the screen (re-)appears.
-            assertEquals(1, interactor.initializedWith.size)
-            assertEquals(1, interactor.updatedWith.size)
+            // This used to assert the opposite, justified by "rebuilding the filters from scratch
+            // would discard the user's selection". It does not: `initializeFilters` merges, keeping
+            // every selection whose filter still exists — `FilterValidatorTest` pins that. What the
+            // cheap path really discarded was the *issuer* group's items, which are derived from the
+            // documents, so a document from an issuer not in the old list was hidden outright.
+            assertEquals(2, interactor.initializedWith.size)
+            assertEquals(0, interactor.updatedWith.size)
             assertEquals(2, interactor.applyFilterCalls)
         }
 
     @Test
-    fun resuming_after_a_pause_initializes_the_filters_again() = runTest(mainDispatcher) {
+    fun a_document_that_appears_between_fetches_reaches_the_filters() = runTest(mainDispatcher) {
+        // The severe half of the same defect. The issuer filter group has no unconditional entry — it
+        // is one item per issuer found in the list — so a group derived from an empty list is *empty*,
+        // and an empty multiple-selection group excludes every document rather than none.
+        val interactor = FakeDocumentsInteractor(
+            getDocumentsResults = listOf(
+                successOf(),
+                successOf(documentUi("doc-1")),
+            ),
+        )
+        val viewModel = DocumentsViewModel(interactor)
+        advanceUntilIdle()
+
+        val (_, job) = collectEffects(viewModel)
+        viewModel.setEvent(Event.GetDocuments)
+        advanceUntilIdle()
+        viewModel.setEvent(Event.GetDocuments)
+        advanceUntilIdle()
+        job.cancel()
+
+        assertEquals(2, interactor.initializedWith.size)
+        assertEquals(0, interactor.initializedWith.first().items.size)
+        assertEquals(1, interactor.initializedWith.last().items.size)
+    }
+
+    @Test
+    fun every_load_initializes_the_filters_pause_or_no_pause() = runTest(mainDispatcher) {
         val interactor = FakeDocumentsInteractor(
             getDocumentsResults = listOf(successOf(documentUi("doc-1"))),
         )
@@ -391,13 +420,13 @@ class DocumentsViewModelTest {
         advanceUntilIdle()
         viewModel.setEvent(Event.OnPause)
         advanceUntilIdle()
-        assertTrue(viewModel.viewState.value.isFromOnPause)
         viewModel.setEvent(Event.GetDocuments)
         advanceUntilIdle()
         job.cancel()
 
-        // Documents may have been added or removed elsewhere while the screen was away, so the
-        // dynamic filter groups (issuer, category) have to be rebuilt.
+        // Pausing used to be what made the next fetch rebuild the derived groups. It no longer
+        // decides anything — every fetch rebuilds — and this is here so that a reintroduced special
+        // case fails.
         assertEquals(2, interactor.initializedWith.size)
         assertEquals(0, interactor.updatedWith.size)
     }

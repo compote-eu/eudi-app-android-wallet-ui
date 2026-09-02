@@ -53,7 +53,6 @@ data class State(
     val error: ContentErrorConfig? = null,
 
     val searchText: String = "",
-    val isFromOnPause: Boolean = true,
     val isFilteringActive: Boolean,
     val showNoResultsFound: Boolean = false,
     val isBottomSheetOpen: Boolean = false,
@@ -154,7 +153,9 @@ class TransactionsViewModel(
             }
 
             is Event.OnPause -> {
-                setState { copy(isFromOnPause = true) }
+                // Nothing to do. It used to flag the next load as a "first" load, which is what
+                // decided whether the derived filter groups were rebuilt; they are now rebuilt on
+                // every load, because a pause is not the only way the list can change.
             }
 
             is Event.FiltersPressed -> {
@@ -446,11 +447,20 @@ class TransactionsViewModel(
                 when (response) {
                     is TransactionInteractorGetTransactionsPartialState.Success -> {
 
-                        if (viewState.value.isFromOnPause) {
-                            interactor.initializeFilters(filterableList = response.allTransactions)
-                        } else {
-                            interactor.updateLists(filterableList = response.allTransactions)
-                        }
+                        // Rebuilt on EVERY load, not only on the first one after a pause.
+                        //
+                        // The relying-party group is *derived from the transactions themselves*, so a
+                        // group built against an older list carries no item for a relying party seen
+                        // since — and a multiple-selection group answers "no" for every item it has no
+                        // selected filter for. The transaction is then hidden completely, "Reset all"
+                        // cannot recover it (it restores the group as it was built) and only a restart
+                        // brings it back. Presentations reach History without a pause, since the QR
+                        // scanner and the deep-link handler both stay inside the app, so the cheap
+                        // `updateLists` path was the normal one.
+                        //
+                        // `initializeFilters` merges: the user's own selections survive the rebuild.
+                        // `FilterValidatorTest` pins both halves of that.
+                        interactor.initializeFilters(filterableList = response.allTransactions)
 
                         interactor.applyFilters()
 
@@ -465,7 +475,6 @@ class TransactionsViewModel(
                             copy(
                                 isLoading = false,
                                 error = null,
-                                isFromOnPause = false,
                                 datePickerLimits = newDatePickerAllowedLimits,
                                 filterDateRangeSelectionUi = resolveUpdatedFilterDateRange(
                                     hasNewLimits = hasNewLimits,

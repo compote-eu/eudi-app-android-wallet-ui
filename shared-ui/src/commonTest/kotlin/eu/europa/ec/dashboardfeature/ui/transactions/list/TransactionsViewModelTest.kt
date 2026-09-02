@@ -257,7 +257,7 @@ class TransactionsViewModelTest {
         }
 
     @Test
-    fun the_first_load_initializes_the_filters_and_a_reload_only_updates_the_lists() =
+    fun every_load_rebuilds_the_filters_rather_than_only_swapping_the_list() =
         runTest(mainDispatcher) {
             val interactor = FakeTransactionsInteractor()
             val viewModel = TransactionsViewModel(interactor)
@@ -267,12 +267,47 @@ class TransactionsViewModelTest {
             viewModel.setEvent(Event.OnResume)
             advanceUntilIdle()
 
-            assertEquals(1, interactor.initializedWith.size)
-            assertEquals(1, interactor.updatedWith.size)
+            // The relying-party filter group is derived from the transactions, so a reload that only
+            // swapped the list would judge new transactions with a group built for the old one — and
+            // a multiple-selection group hides everything it has no selected filter for. See
+            // `FilterValidatorTest`, which pins that.
+            assertEquals(2, interactor.initializedWith.size)
+            assertEquals(0, interactor.updatedWith.size)
         }
 
     @Test
-    fun pausing_makes_the_next_load_a_first_load_again() = runTest(mainDispatcher) {
+    fun a_transaction_that_appears_between_loads_reaches_the_filters() = runTest(mainDispatcher) {
+        // The History bug, in the shape it was seen on a device: the tab is opened while the log is
+        // still empty, a presentation happens without the app ever pausing (the QR scanner and the
+        // deep-link handler both stay inside it), and the tab is looked at again. Before the fix the
+        // second load never rebuilt the groups, so the entry stayed invisible until a restart, and
+        // "Reset all" could not recover it either.
+        val interactor = FakeTransactionsInteractor(
+            transactionResults = listOf(
+                TransactionInteractorGetTransactionsPartialState.Success(
+                    allTransactions = filterableListOf(),
+                    availableDates = null,
+                ),
+                TransactionInteractorGetTransactionsPartialState.Success(
+                    allTransactions = filterableListOf("t-1"),
+                    availableDates = EARLIEST to LATEST,
+                ),
+            )
+        )
+        val viewModel = TransactionsViewModel(interactor)
+
+        viewModel.setEvent(Event.OnResume)
+        advanceUntilIdle()
+        viewModel.setEvent(Event.OnResume)
+        advanceUntilIdle()
+
+        assertEquals(2, interactor.initializedWith.size)
+        assertEquals(0, interactor.initializedWith.first().items.size)
+        assertEquals(1, interactor.initializedWith.last().items.size)
+    }
+
+    @Test
+    fun pausing_does_not_change_how_the_next_load_behaves() = runTest(mainDispatcher) {
         val interactor = FakeTransactionsInteractor()
         val viewModel = TransactionsViewModel(interactor)
 
@@ -280,12 +315,13 @@ class TransactionsViewModelTest {
         advanceUntilIdle()
         viewModel.setEvent(Event.OnPause)
         advanceUntilIdle()
-        assertTrue(viewModel.viewState.value.isFromOnPause)
         viewModel.setEvent(Event.OnResume)
         advanceUntilIdle()
 
-        // Transactions may have been added while away, so the dynamic filter groups are rebuilt.
+        // A pause used to be what made a load rebuild the filters. It no longer decides anything —
+        // every load rebuilds — and this is here so that a reintroduced special case fails.
         assertEquals(2, interactor.initializedWith.size)
+        assertEquals(0, interactor.updatedWith.size)
     }
 
     @Test
