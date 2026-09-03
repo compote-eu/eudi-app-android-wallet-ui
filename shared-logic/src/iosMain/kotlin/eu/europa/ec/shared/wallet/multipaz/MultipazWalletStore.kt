@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.platform.IosAppGroup
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -35,7 +36,6 @@ import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSDocumentDirectory
-import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
@@ -109,9 +109,12 @@ internal class MultipazWalletStore(
          * it. An app group is the only place both can read, which makes this a prerequisite for the
          * responder rather than a preference.
          *
-         * The group is `group.<bundle id>`, so dev and demo get their own — matching the reference iOS
-         * wallet's `group.$(PRODUCT_BUNDLE_IDENTIFIER)`, and matching the fact that the two flavours
-         * already hold separate wallets under separate bundle ids.
+         * The group is `group.<the app's bundle id>`, so dev and demo get their own — matching the
+         * reference iOS wallet's `group.$(PRODUCT_BUNDLE_IDENTIFIER)`, and matching the fact that the
+         * two flavours already hold separate wallets under separate bundle ids.
+         *
+         * ⚠️ **The app's** bundle id, not the running process's — see [IosAppGroup], which is where
+         * that distinction is resolved and why it matters.
          *
          * ## Why a fallback rather than a hard failure
          *
@@ -132,8 +135,7 @@ internal class MultipazWalletStore(
         private fun storeFileUrl(): NSURL {
             val manager = NSFileManager.defaultManager
 
-            val appGroup = NSBundle.mainBundle.bundleIdentifier
-                ?.let { manager.containerURLForSecurityApplicationGroupIdentifier("group.$it") }
+            val appGroup = IosAppGroup.containerUrl()
             if (appGroup == null) {
                 Logger.w(
                     "MultipazWalletStore",

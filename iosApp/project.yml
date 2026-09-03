@@ -104,6 +104,9 @@ targets:
         # both come from the same two properties files the app reads. XcodeGen otherwise writes 1.0/1.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # The shared container, from the same expression the app publishes and both entitlements
+        # name. This process must not derive it from its own bundle id — see the app target's copy.
+        EUDIAppGroupIdentifier: group.$(APP_BUNDLE_ID)
         # What makes iOS treat this bundle as a document provider. `EXAppExtensionAttributes` is the
         # ExtensionKit form; the older `NSExtension` dictionary is for the previous extension model
         # and is not interchangeable.
@@ -202,6 +205,17 @@ targets:
         # reads it, as the official iOS wallet's `ConfigLogicImpl.appVersion` reads the same key.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # The shared container both processes read, published so neither has to *derive* it.
+        #
+        # 🪤 Deriving it is exactly the bug this key exists to prevent. The wallet used to ask iOS for
+        # `group.` + `NSBundle.mainBundle.bundleIdentifier`, which is the id of the *running* process:
+        # right in the app, but `…dev.provider` inside the extension, which is not a group either
+        # binary is entitled to. iOS returns nil for an unentitled group rather than failing, so the
+        # extension silently fell back to its own container and opened an empty wallet.
+        #
+        # Both targets publish this from `$(APP_BUNDLE_ID)`, the same expression both entitlements
+        # use, so the app, the extension and the entitlements cannot disagree.
+        EUDIAppGroupIdentifier: group.$(APP_BUNDLE_ID)
         # The OpenID4VCI authorization redirect. The authorization server will only redirect to the
         # URI registered for our client_id — `eu.europa.ec.euidi://authorization`, the same value
         # Android builds as ISSUE_AUTHORIZATION_DEEPLINK — so iOS has to claim that scheme or the
@@ -343,8 +357,13 @@ targets:
         # Unlike the entitlement above this one is NOT restricted, so it may be honoured on an
         # ad-hoc-signed build where that one is not. Whether it actually is decides where the store
         # can live before team signing, which is why it is checked at launch rather than assumed.
+        #
+        # ⚠️ `$(APP_BUNDLE_ID)`, not `$(PRODUCT_BUNDLE_IDENTIFIER)` — the two are equal *for this
+        # target* but not for the extension, whose product id carries a `.provider` suffix. Both
+        # entitlements name this one expression so the pair cannot drift; a group only one of them
+        # holds is a container neither can share.
         com.apple.security.application-groups:
-          - group.$(PRODUCT_BUNDLE_IDENTIFIER)
+          - group.$(APP_BUNDLE_ID)
     dependencies:
       - package: EudiRQESUi
         product: EudiRQESUi

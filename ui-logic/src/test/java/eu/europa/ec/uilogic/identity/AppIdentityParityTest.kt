@@ -46,6 +46,9 @@ class AppIdentityParityTest {
     private val appProperties = "app.properties"
     private val flavour = BuildConfig.FLAVOR
 
+    /** Mirrors `IosAppGroup.INFO_PLIST_KEY`; this module cannot see the iOS source set. */
+    private val appGroupKey = "EUDIAppGroupIdentifier"
+
     @Test
     fun android_takes_its_version_from_version_properties() {
         // `BuildConfig.APP_VERSION` is what `ConfigLogic.appVersion` shows on the settings screen.
@@ -199,6 +202,30 @@ class AppIdentityParityTest {
             "iOS no longer registers the authorization scheme from $appProperties",
             RepoFiles.file("iosApp/project.yml").readText()
                 .contains("- \${OID4VCI_REDIRECT_SCHEME}"),
+        )
+    }
+
+    @Test
+    fun the_app_group_is_published_to_both_processes_and_never_derived() {
+        // Two occurrences, one per target. The app and the extension are separate processes with
+        // separate containers, and the group is the only place both can read — so a target that stops
+        // publishing this key does not misbehave visibly, it just opens an empty wallet.
+        assertEquals(
+            "both targets must publish $appGroupKey from \$(APP_BUNDLE_ID)",
+            listOf("group.\$(APP_BUNDLE_ID)", "group.\$(APP_BUNDLE_ID)"),
+            RepoFiles.projectYmlValues(appGroupKey),
+        )
+        // And the entitlements must name that same expression. `$(PRODUCT_BUNDLE_IDENTIFIER)` is
+        // equal to it for the app but NOT for the extension, whose product id carries `.provider`:
+        // that mismatch is what made the extension request a group neither binary is entitled to.
+        val entitlementGroups = RepoFiles.file("iosApp/project.yml").readLines()
+            .map { it.substringBefore('#').trim() }
+            .filter { it.startsWith("- group.") }
+            .map { it.removePrefix("-").trim() }
+        assertEquals(
+            "both application-groups entitlements must name group.\$(APP_BUNDLE_ID)",
+            listOf("group.\$(APP_BUNDLE_ID)", "group.\$(APP_BUNDLE_ID)"),
+            entitlementGroups,
         )
     }
 
