@@ -84,11 +84,24 @@ data class IosIssuerReference(
  * iOS has signed since `1597109a` — and the entry was never added.
  *
  * The blocker moved rather than cleared: **multipaz's `Event` hierarchy has only `EventPresentment`
- * and `EventProvisioning`**, so there is nothing to map a signature onto. Android gets its entry from
- * wallet-core's `TransactionLog.Type.Signing`. The consequence is visible in the shared UI, which
- * carries a `TransactionTypeUi.SIGNING` filter that can never match anything on iOS. Closing it needs
- * an upstream event type or a side channel; the app half is ready, since `selectAndSign(onOutcome:)`
- * already reports the outcome back to Kotlin.
+ * and `EventProvisioning`**, so there is nothing to map a signature onto.
+ *
+ * 🚨 **But this is NOT an iOS gap, and the previous version of this comment said it was.** It claimed
+ * "Android gets its entry from wallet-core's `TransactionLog.Type.Signing`". Android does not. In
+ * wallet-core 0.30.2 the only assignment of a transaction type anywhere is
+ * `TransactionLogBuilder.kt:63`, `type = TransactionLog.Type.Presentation`; every `transactionLogger
+ * .log(...)` call sits on the presentation path. `Type.Signing` is a declared enum case with **no
+ * writer**, and `core-logic`'s own `parseTransactionLog()` throws `UnSupported transaction log type`
+ * for it above a TODO reading *"RETURN PROPER OBJECTS ONCE READY FROM CORE ISSUANCE,SIGNING"*.
+ *
+ * So the shared UI's `TransactionTypeUi.SIGNING` filter matches nothing on **either** platform, and
+ * the feature is unfinished in all three trees rather than missing from this one. Building it here
+ * would put iOS *ahead* of Android — the app half is ready, since `selectAndSign(onOutcome:)` already
+ * reports the outcome back to Kotlin, so a side channel needs no upstream event type — and that is a
+ * deliberate divergence to decide on, not a gap to close quietly.
+ *
+ * 📌 The asymmetry runs the other way for **issuance**: multipaz has `EventProvisioning`, so iOS
+ * records issuance transactions and Android — by the same absence of a writer — does not.
  */
 enum class IosTransactionKind { Presentation, Issuance }
 
