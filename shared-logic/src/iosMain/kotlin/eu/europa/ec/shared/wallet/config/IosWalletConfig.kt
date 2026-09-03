@@ -66,23 +66,22 @@ interface IosWalletConfig : SharedAppConfig, SharedWalletConfig {
      * would not be matching Android's guarantee — it would be inventing a stricter posture than
      * either reference wallet has.
      *
-     * The cost of that stricter posture is the deciding argument against it: on iOS every reading is
-     * still [StatusSignerTrustDomain.NoAnchorsAvailable], so `Enforce` would make revocation
-     * **permanently inert** — a credential its issuer revoked would keep displaying as valid, which
-     * is the exact harm the whole check exists to prevent. The un-revoke risk it would trade that
-     * for requires control of the status list's HTTPS endpoint, and an attacker with that can
-     * equally serve Android a list saying "valid".
+     * ⚠️ **`Enforce` is no longer inert, and the old argument against it no longer applies.** It
+     * used to be that every iOS reading was [StatusSignerTrustDomain.NoAnchorsAvailable], so
+     * enforcing would have meant never acting on any revocation — the exact harm the check exists to
+     * prevent. Since the status path consults the EU trusted lists, a **PID**'s status signer reaches
+     * a real `Trusted`/`NotTrusted` verdict, and `Enforce` would act on it.
      *
-     * ⚠️ **The reason `NoAnchorsAvailable` is still the answer has changed, and the old one should
-     * not be repeated.** It was recorded as eudi-lib-kmp-etsi-1196x2#130 leaving the ETSI lists
-     * unusable on iOS. That issue turns out to constrain **Swift** consumers only — a Kotlin caller
-     * can pass its own `VerifyJwtSignature`, which `IosEtsiTrust` does — so iOS reads the lists and
-     * reaches real verdicts today. What is missing is only that the *status* path does not ask them
-     * for anchors; see the iOS revocation checker for the exact connection.
+     * 📌 **The reason to stay on `Inform` is now parity, not incapacity.** Android's
+     * `configureDocumentStatusResolver` is `INFORM` and the official iOS wallet sets `.warning`;
+     * choosing `Enforce` here would invent a posture stricter than either reference wallet. The
+     * flavour files' own header settles it: every value in them is copied from the Android dev
+     * flavour rather than chosen, and if the two disagree the Android file is right.
      *
-     * So flipping this to [StatusTrustPolicyDomain.Enforce] is still one line, but it is no longer
-     * *only* one line: anchoring the status reading has to come first, or enforcement refuses
-     * everything.
+     * What `Enforce` would still cost is the credential types no trusted list classifies — an mDL, a
+     * PubEAA — which report `NoAnchorsAvailable` on **both** platforms, so revocation would go inert
+     * for those while working for PIDs. A deployment that wants it should weigh that, not just flip
+     * the line.
      */
     val statusTrustPolicy: StatusTrustPolicyDomain
 

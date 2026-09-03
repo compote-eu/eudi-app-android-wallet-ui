@@ -22,6 +22,11 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpStatusCode
 import kotlinx.io.bytestring.ByteString
+import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
+import eu.europa.ec.shared.wallet.multipaz.harness.MDOC_PID_DOC_TYPE
+import eu.europa.ec.shared.wallet.revocation.StatusSignerTrustDomain
+import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
+import eu.europa.ec.shared.wallet.trust.TrustVerdict
 import kotlinx.coroutines.test.runTest
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.crypto.AsymmetricKey
@@ -35,6 +40,8 @@ import org.multipaz.revocation.RevocationStatus
 import org.multipaz.revocation.StatusList
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Clock
@@ -147,9 +154,19 @@ class MultipazRevocationCheckerTest {
             )
     }
 
-    private fun checkerServing(token: String): MultipazRevocationChecker =
+    /**
+     * A checker serving [token], consulting [issuerTrust] for who may sign a status list.
+     *
+     * `null` by default and on purpose: a real [eu.europa.ec.shared.wallet.trust.IosEtsiTrust] would
+     * download the EU trusted lists, so every test here would pass or fail with the network.
+     */
+    private fun checkerServing(
+        token: String,
+        issuerTrust: IssuerTrustSource? = null,
+    ): MultipazRevocationChecker =
         MultipazRevocationChecker(
-            HttpClient(MockEngine { respond(token) })
+            HttpClient(MockEngine { respond(token) }),
+            issuerTrust = issuerTrust,
         )
 
     private suspend fun statusEntry(
@@ -168,9 +185,9 @@ class MultipazRevocationCheckerTest {
         val key = signerKey()
         val checker = checkerServing(statusListToken(key, revokedIndices = listOf(7)))
 
-        val outcome = checker.check(statusEntry(key, idx = 0))
+        val outcome = checker.check(statusEntry(key, idx = 0), formatType = MDOC_PID_DOC_TYPE)
 
-        assertEquals(RevocationOutcome.Valid(signerAnchored = true), outcome)
+        assertEquals(RevocationOutcome.Valid(StatusSignerTrustDomain.Trusted), outcome)
         assertTrue(!outcome.isRevoked)
     }
 
@@ -179,9 +196,9 @@ class MultipazRevocationCheckerTest {
         val key = signerKey()
         val checker = checkerServing(statusListToken(key, revokedIndices = listOf(7)))
 
-        val outcome = checker.check(statusEntry(key, idx = 7))
+        val outcome = checker.check(statusEntry(key, idx = 7), formatType = MDOC_PID_DOC_TYPE)
 
-        assertEquals(RevocationOutcome.Invalid(signerAnchored = true), outcome)
+        assertEquals(RevocationOutcome.Invalid(StatusSignerTrustDomain.Trusted), outcome)
         // The bit that makes the document show as revoked in the UI.
         assertTrue(outcome.isRevoked)
     }
@@ -194,9 +211,9 @@ class MultipazRevocationCheckerTest {
             statusListToken(key, bitsPerItem = 2, statuses = mapOf(3 to 2))
         )
 
-        val outcome = checker.check(statusEntry(key, idx = 3))
+        val outcome = checker.check(statusEntry(key, idx = 3), formatType = MDOC_PID_DOC_TYPE)
 
-        assertEquals(RevocationOutcome.Suspended(signerAnchored = true), outcome)
+        assertEquals(RevocationOutcome.Suspended(StatusSignerTrustDomain.Trusted), outcome)
         assertTrue(outcome.isRevoked)
     }
 
@@ -207,7 +224,7 @@ class MultipazRevocationCheckerTest {
         // The list says index 7 is *valid* — the lie a MITM would tell to un-revoke a credential.
         val checker = checkerServing(statusListToken(attackerKey, revokedIndices = emptyList()))
 
-        val outcome = checker.check(statusEntry(credentialKey, idx = 7))
+        val outcome = checker.check(statusEntry(credentialKey, idx = 7), formatType = MDOC_PID_DOC_TYPE)
 
         val unknown = assertIs<RevocationOutcome.Unknown>(outcome)
         assertTrue("rejected" in unknown.reason, "unexpected reason: ${unknown.reason}")
@@ -227,7 +244,8 @@ class MultipazRevocationCheckerTest {
                 idx = 7,
                 uri = "https://issuer.test/statuslists/1",
                 certificate = null,
-            )
+            ),
+            formatType = MDOC_PID_DOC_TYPE,
         )
 
         assertIs<RevocationOutcome.Unknown>(outcome)
@@ -240,7 +258,7 @@ class MultipazRevocationCheckerTest {
             HttpClient(MockEngine { respondError(HttpStatusCode.NotFound) })
         )
 
-        val outcome = checker.check(statusEntry(key, idx = 7))
+        val outcome = checker.check(statusEntry(key, idx = 7), formatType = MDOC_PID_DOC_TYPE)
 
         val unknown = assertIs<RevocationOutcome.Unknown>(outcome)
         assertTrue("could not be fetched" in unknown.reason, "unexpected reason: ${unknown.reason}")
@@ -254,14 +272,14 @@ class MultipazRevocationCheckerTest {
         )
 
         // A refresh loops over every document; one unreachable list must not abort the rest.
-        assertIs<RevocationOutcome.Unknown>(checker.check(statusEntry(key, idx = 7)))
+        assertIs<RevocationOutcome.Unknown>(checker.check(statusEntry(key, idx = 7), formatType = MDOC_PID_DOC_TYPE))
     }
 
     @Test
     fun a_credential_with_no_status_entry_is_unknown() = runTest {
         val checker = checkerServing("unused")
 
-        val unknown = assertIs<RevocationOutcome.Unknown>(checker.check(null))
+        val unknown = assertIs<RevocationOutcome.Unknown>(checker.check(null, formatType = MDOC_PID_DOC_TYPE))
 
         assertTrue("no revocation status" in unknown.reason, "unexpected reason: ${unknown.reason}")
     }
@@ -275,7 +293,8 @@ class MultipazRevocationCheckerTest {
                 id = ByteString(1, 2, 3),
                 uri = "https://issuer.test/identifiers/1",
                 certificate = null,
-            )
+            ),
+            formatType = MDOC_PID_DOC_TYPE,
         )
 
         val unknown = assertIs<RevocationOutcome.Unknown>(outcome)
@@ -287,7 +306,7 @@ class MultipazRevocationCheckerTest {
         val key = signerKey()
         val checker = checkerServing("this is not a jwt")
 
-        assertIs<RevocationOutcome.Unknown>(checker.check(statusEntry(key, idx = 7)))
+        assertIs<RevocationOutcome.Unknown>(checker.check(statusEntry(key, idx = 7), formatType = MDOC_PID_DOC_TYPE))
     }
 
     @Test
@@ -300,11 +319,107 @@ class MultipazRevocationCheckerTest {
         )
 
         val outcome = checker.check(
-            RevocationStatus.StatusList(idx = 1791, uri = "https://issuer.test/sl", certificate = null)
+            RevocationStatus.StatusList(idx = 1791, uri = "https://issuer.test/sl", certificate = null),
+            formatType = MDOC_PID_DOC_TYPE,
         )
 
         val unknown = assertIs<RevocationOutcome.Unknown>(outcome)
         assertTrue(unknown.reason.contains("was rejected"), unknown.reason)
+    }
+
+    // ---- Anchoring an x5c-only list against the EU trusted lists ------------------------------
+
+    @Test
+    fun an_x5c_chain_the_trusted_lists_vouch_for_is_anchored() = runTest {
+        // The case that did not exist before trust shipped: no `certificate` in the credential, but
+        // the list's own chain validates against the EU lists for this credential's status context.
+        val key = signerKey()
+        val outcome = checkerServing(
+            x5cStatusListToken(key, revokedIndices = listOf(7)),
+            issuerTrust = { _, _ -> TrustVerdict.TRUSTED },
+        ).check(
+            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null),
+            formatType = MDOC_PID_DOC_TYPE,
+        )
+
+        assertEquals(RevocationOutcome.Invalid(StatusSignerTrustDomain.Trusted), outcome)
+    }
+
+    @Test
+    fun a_chain_the_trusted_lists_reject_is_NotTrusted_and_the_list_is_still_read() = runTest {
+        // Load-bearing: a refused signer must not collapse into "unreadable list". The status is
+        // reported, and `revocationAction` — not this file — decides what NotTrusted may do.
+        val key = signerKey()
+        val outcome = checkerServing(
+            x5cStatusListToken(key, revokedIndices = listOf(7)),
+            issuerTrust = { _, _ -> TrustVerdict.NOT_TRUSTED },
+        ).check(
+            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null),
+            formatType = MDOC_PID_DOC_TYPE,
+        )
+
+        assertEquals(RevocationOutcome.Invalid(StatusSignerTrustDomain.NotTrusted), outcome)
+        assertTrue(outcome.isRevoked, "the status was read even though the signer was refused")
+    }
+
+    @Test
+    fun an_undetermined_verdict_is_NoAnchorsAvailable_rather_than_NotTrusted() = runTest {
+        // The distinction that keeps an offline moment from reading as a hostile issuer. Under
+        // `Enforce` both refuse to act, but only one of them says the issuer failed a check.
+        val key = signerKey()
+        val outcome = checkerServing(
+            x5cStatusListToken(key, revokedIndices = listOf(7)),
+            issuerTrust = { _, _ -> TrustVerdict.UNDETERMINED },
+        ).check(
+            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null),
+            formatType = MDOC_PID_DOC_TYPE,
+        )
+
+        assertEquals(RevocationOutcome.Invalid(StatusSignerTrustDomain.NoAnchorsAvailable), outcome)
+    }
+
+    @Test
+    fun a_credential_type_no_list_classifies_is_never_asked_about() = runTest {
+        // Mirrors Android's `AttestationClassifications`, which classifies only PIDs. Asking about an
+        // mDL's status signer could only ever answer "don't know" — verified against the live lists,
+        // where `PubEAAStatus` comes back "no trust list covers" it — so the question is not asked.
+        var asked = false
+        val key = signerKey()
+        val outcome = checkerServing(
+            x5cStatusListToken(key, revokedIndices = listOf(7)),
+            issuerTrust = { _, _ -> asked = true; TrustVerdict.TRUSTED },
+        ).check(
+            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null),
+            formatType = "org.iso.18013.5.1.mDL",
+        )
+
+        assertEquals(RevocationOutcome.Invalid(StatusSignerTrustDomain.NoAnchorsAvailable), outcome)
+        assertFalse(asked, "no trusted list classifies an mDL's status, so nothing should be asked")
+    }
+
+    @Test
+    fun the_trust_source_is_handed_the_tokens_own_x5c_chain() = runTest {
+        // Not a tautology: an empty chain is what a trust check can only ever refuse, so passing one
+        // would make every anchoring attempt fail for the wrong reason. multipaz's `buildJwt` emits
+        // `toX5c(excludeRoot = true)`, so the transmitted chain is the leaf and any intermediates.
+        var seenChainSize: Int? = null
+        var seenContext: VerificationContext? = null
+        val key = signerKey()
+        checkerServing(
+            x5cStatusListToken(key, revokedIndices = listOf(7)),
+            issuerTrust = { chain, context ->
+                seenChainSize = chain.size
+                seenContext = context
+                TrustVerdict.TRUSTED
+            },
+        ).check(
+            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null),
+            formatType = MDOC_PID_DOC_TYPE,
+        )
+
+        assertNotNull(seenChainSize)
+        assertTrue(seenChainSize!! > 0, "the trust source was handed an empty chain")
+        assertEquals(VerificationContext.PIDStatus, seenContext)
     }
 
     // ---- INFORM: an x5c-only list is read, and marked unanchored ------------------------------
@@ -313,38 +428,42 @@ class MultipazRevocationCheckerTest {
     fun an_x5c_signed_list_the_credential_does_not_name_is_read_but_not_anchored() = runTest {
         // Exactly what both EU dev issuers publish: the list carries an `x5c` chain and the
         // credential's status claim names no `certificate`. This used to be refused outright. Now the
-        // chain is validated structurally and the status is read — with `signerAnchored = false`, so
-        // no caller may act on it. Android's document status resolver is INFORM for the same reason.
+        // chain is validated structurally and the status is read. With no trust source configured the
+        // signer is `NoAnchorsAvailable`, so under `Enforce` no caller may act on it. Android's
+        // document status resolver is INFORM for the same reason.
         val key = signerKey()
         val checker = checkerServing(x5cStatusListToken(key, revokedIndices = listOf(7)))
 
         val valid = checker.check(
-            RevocationStatus.StatusList(idx = 0, uri = "https://issuer.test/sl", certificate = null)
+            RevocationStatus.StatusList(idx = 0, uri = "https://issuer.test/sl", certificate = null),
+            formatType = MDOC_PID_DOC_TYPE,
         )
         val revoked = checker.check(
-            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null)
+            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null),
+            formatType = MDOC_PID_DOC_TYPE,
         )
 
-        assertEquals(RevocationOutcome.Valid(signerAnchored = false), valid)
-        assertEquals(RevocationOutcome.Invalid(signerAnchored = false), revoked)
+        assertEquals(RevocationOutcome.Valid(StatusSignerTrustDomain.NoAnchorsAvailable), valid)
+        assertEquals(RevocationOutcome.Invalid(StatusSignerTrustDomain.NoAnchorsAvailable), revoked)
         // The verdict is still readable — it just may not move persisted state.
         assertTrue(revoked.isRevoked)
     }
 
     @Test
     fun naming_the_signer_anchors_the_same_list_that_would_otherwise_be_unanchored() = runTest {
-        // The contrast that gives `signerAnchored` its meaning: identical token, and the only
+        // The contrast that gives the trust domain its meaning: identical token, and the only
         // difference is whether the issuer named the signer in data it signed.
         val key = signerKey()
         val token = x5cStatusListToken(key, revokedIndices = listOf(7))
 
-        val anchored = checkerServing(token).check(statusEntry(key, idx = 7))
+        val anchored = checkerServing(token).check(statusEntry(key, idx = 7), formatType = MDOC_PID_DOC_TYPE)
         val unanchored = checkerServing(token).check(
-            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null)
+            RevocationStatus.StatusList(idx = 7, uri = "https://issuer.test/sl", certificate = null),
+            formatType = MDOC_PID_DOC_TYPE,
         )
 
-        assertEquals(RevocationOutcome.Invalid(signerAnchored = true), anchored)
-        assertEquals(RevocationOutcome.Invalid(signerAnchored = false), unanchored)
+        assertEquals(RevocationOutcome.Invalid(StatusSignerTrustDomain.Trusted), anchored)
+        assertEquals(RevocationOutcome.Invalid(StatusSignerTrustDomain.NoAnchorsAvailable), unanchored)
     }
 
     @Test
@@ -365,7 +484,8 @@ class MultipazRevocationCheckerTest {
             )
 
         val outcome = checkerServing(token).check(
-            RevocationStatus.StatusList(idx = 0, uri = "https://issuer.test/sl", certificate = null)
+            RevocationStatus.StatusList(idx = 0, uri = "https://issuer.test/sl", certificate = null),
+            formatType = MDOC_PID_DOC_TYPE,
         )
 
         assertIs<RevocationOutcome.Unknown>(outcome)

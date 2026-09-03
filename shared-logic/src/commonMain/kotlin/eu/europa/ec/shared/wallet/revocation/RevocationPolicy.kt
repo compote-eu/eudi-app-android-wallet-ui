@@ -47,10 +47,13 @@ enum class StatusSignerTrustDomain {
     NotTrusted,
 
     /**
-     * No anchors exist to check against. **This is what iOS still reports today**, but no longer
-     * because it cannot do better: it reads the ETSI trusted lists for real now, and the status path
-     * simply does not ask them for anchors yet. See the iOS revocation checker, which says what the
-     * remaining connection is.
+     * No anchors exist to check against — nothing failed a check, there was simply nothing to check
+     * against.
+     *
+     * On iOS this is now what a credential type **no trusted list classifies** reports (an mDL, a
+     * PubEAA), or a reading taken while the lists could not be consulted at all. A PID's status
+     * signer reaches [Trusted] or [NotTrusted] instead. Android's classifications cover exactly the
+     * same set, so this is a shared limit rather than an iOS one.
      */
     NoAnchorsAvailable,
 
@@ -99,11 +102,12 @@ enum class RevocationActionDomain {
  * this. Identical readings under identical policy therefore produce identical actions by
  * construction, and the tests covering it run on the JVM *and* on Kotlin/Native.
  *
- * The platforms still differ in what they can *observe* — Android reports
- * [StatusSignerTrustDomain.NotEvaluated] because wallet-core does not return its trust result, iOS
- * reports [StatusSignerTrustDomain.NoAnchorsAvailable] because it has no anchors — but that is a
- * difference in evidence, not in policy, and it is visible in the type rather than buried in an
- * engine.
+ * The platforms still differ in what they can *observe*, and that difference is visible in the type
+ * rather than buried in an engine: Android reports [StatusSignerTrustDomain.NotEvaluated] because
+ * wallet-core computes its trust result and does not return it, while iOS reports a measured value —
+ * [StatusSignerTrustDomain.Trusted] or [StatusSignerTrustDomain.NotTrusted] for a PID, whose status
+ * signer the EU trusted lists classify, and [StatusSignerTrustDomain.NoAnchorsAvailable] for a
+ * credential type they do not. A difference in evidence, not in policy.
  *
  * @param currentlyFlagged whether this document is already marked revoked, which decides whether
  *   there is anything to change: re-flagging an already-flagged document would re-fire the

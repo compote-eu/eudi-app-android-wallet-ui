@@ -34,6 +34,7 @@ import eu.europa.ec.shared.wallet.platform.IosAppGroup
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.io.files.Path
+import org.multipaz.crypto.X509Cert
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.Logger
@@ -226,16 +227,8 @@ internal class IosEtsiTrust(
      * being wrong runs the other way. Nothing is refused on this path; the consent screen still
      * opens, it simply does not vouch for who is asking.
      */
-    @OptIn(ExperimentalEncodingApi::class, BetaInteropApi::class)
     override suspend fun trustMetadataFor(requester: Requester): TrustMetadata? {
-        val chain = requester.certChain?.certificates?.map { certificate ->
-            // Round-tripping through base64 rather than pinning bytes with `memScoped`: `NSData` needs
-            // a stable buffer, and `NSData(base64Encoded:)` gives one without cinterop lifetime rules.
-            NSData.create(
-                base64EncodedString = Base64.Default.encode(certificate.encoded.toByteArray()),
-                options = 0uL,
-            )
-        }?.filterNotNull().orEmpty()
+        val chain = requester.certChain?.certificates.toTrustChain()
 
         if (chain.isEmpty()) {
             // A URI-scheme presentation can arrive with no chain at all; "unknown" is the honest
@@ -309,3 +302,21 @@ private fun SupportedLists<LotEMeta<VerificationContext>>.relaxedEndEntityProfil
         eaaProviders = eaaProviders.mapValues { (_, meta) -> meta.relaxed() },
     )
 }
+
+/**
+ * multipaz certificates as the `NSData` chain this library's iOS validators take.
+ *
+ * Round-tripping through base64 rather than pinning bytes with `memScoped`: `NSData` needs a stable
+ * buffer, and `NSData(base64Encoded:)` gives one without cinterop lifetime rules.
+ *
+ * Shared by reader trust and by the revocation checker — the two callers that have a multipaz chain
+ * and need to ask about it. A second copy is how the conversion would come to differ.
+ */
+@OptIn(ExperimentalEncodingApi::class, BetaInteropApi::class)
+internal fun List<X509Cert>?.toTrustChain(): List<NSData> =
+    this?.mapNotNull { certificate ->
+        NSData.create(
+            base64EncodedString = Base64.Default.encode(certificate.encoded.toByteArray()),
+            options = 0uL,
+        )
+    }.orEmpty()

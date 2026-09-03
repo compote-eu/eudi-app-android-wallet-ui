@@ -29,6 +29,7 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
+import eu.europa.ec.shared.wallet.revocation.StatusSignerTrustDomain
 import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.asn1.ASN1Integer
@@ -540,7 +541,7 @@ class MultipazWalletEngineTest {
         // The reading is honest about what it could establish...
         val outcome = outcomes.getValue(documentId)
         assertTrue(outcome.isRevoked)
-        assertFalse(outcome.signerAnchored)
+        assertEquals(StatusSignerTrustDomain.NoAnchorsAvailable, outcome.signerTrust)
         // ...and under Inform it still decides.
         assertEquals(listOf(documentId), newlyRevoked.map { it.id })
         assertTrue(engine.isDocumentRevoked(documentId))

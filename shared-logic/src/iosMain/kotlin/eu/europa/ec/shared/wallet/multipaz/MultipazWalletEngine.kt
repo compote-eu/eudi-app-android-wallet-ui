@@ -208,7 +208,12 @@ internal class MultipazWalletEngine(
         val newlyRevoked = mutableListOf<WalletDocument>()
 
         ownDocuments().forEach { document ->
-            val outcome = checker.check(document.revocationStatus())
+            // The format type decides which trusted list, if any, says who may sign this
+            // credential's status list — see `MultipazRevocationChecker.statusContextFor`.
+            val outcome = checker.check(
+                status = document.revocationStatus(),
+                formatType = document.eudiMetadata?.format?.identifier,
+            )
             onOutcome(document.identifier, outcome)
 
             // The decision is not made here. Both platforms map their library's result onto the
@@ -216,18 +221,19 @@ internal class MultipazWalletEngine(
             // tested on both targets — see `eu.europa.ec.shared.wallet.revocation`.
             val action = revocationAction(
                 status = outcome.toDocumentStatusDomain(),
-                signerTrust = outcome.toSignerTrustDomain(),
+                signerTrust = outcome.signerTrust,
                 policy = policy,
                 currentlyFlagged = document.identifier in alreadyRevoked,
             )
 
             // Into multipaz's logger, which means into the shareable log file on iOS. The anchoring
             // half is the point: a reading acted on without an anchored signer is exactly what a
-            // reader of these logs needs to see, and until iOS has trust anchors that is every one.
+            // reader of these logs needs to see. Since trust shipped this is no longer every one —
+            // a PID's status list now logs `signer=Trusted`, and anything else `NoAnchorsAvailable`.
             Logger.i(
                 TAG,
                 "${document.identifier}: ${outcome.toDocumentStatusDomain()} " +
-                        "signer=${outcome.toSignerTrustDomain()} policy=$policy -> $action",
+                        "signer=${outcome.signerTrust} policy=$policy -> $action",
             )
 
             when (action) {
