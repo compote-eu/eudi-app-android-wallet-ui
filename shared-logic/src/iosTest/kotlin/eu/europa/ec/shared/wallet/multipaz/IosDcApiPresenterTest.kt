@@ -27,16 +27,22 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Simple
+import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.Hpke
 import org.multipaz.crypto.EcCurve
 import org.multipaz.mdoc.request.DeviceRequestGenerator
 import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -72,6 +78,8 @@ import kotlin.time.Duration.Companion.days
  * and that a verifier accepts the response. Both need the entitlement and a device.
  */
 class IosDcApiPresenterTest {
+
+    private val verifierOrigin = "https://verifier.example"
 
     private suspend fun store(
         storage: Storage = EphemeralStorage(),
@@ -221,10 +229,22 @@ class IosDcApiPresenterTest {
      * decrypts. The device request itself carries no reader authentication — the ordinary case for the
      * dev verifiers, and what the wallet must still answer.
      */
+    /** A request plus the two things a test needs to decrypt what comes back. */
+    private data class BuiltRequest(
+        val json: String,
+        val recipientKey: EcPrivateKey,
+        val encryptionInfoBase64: String,
+    )
+
     private suspend fun mdocApiRequest(
         docType: String = MDOC_PID_DOC_TYPE,
         elements: Map<String, Boolean> = mapOf("family_name" to false, "given_name" to false),
-    ): String {
+    ): String = buildRequest(docType, elements).json
+
+    private suspend fun buildRequest(
+        docType: String = MDOC_PID_DOC_TYPE,
+        elements: Map<String, Boolean> = mapOf("family_name" to false, "given_name" to false),
+    ): BuiltRequest {
         val deviceRequest = DeviceRequestGenerator(encodedSessionTranscript = Cbor.encode(Simple.NULL))
             .addDocumentRequest(
                 docType = docType,
@@ -236,17 +256,24 @@ class IosDcApiPresenterTest {
             )
             .generate()
 
-        val recipientKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey
-        val recipient = buildCborMap { put("recipientPublicKey", recipientKey.toCoseKey().toDataItem()) }
+        val recipientKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val recipient = buildCborMap {
+            put("recipientPublicKey", recipientKey.publicKey.toCoseKey().toDataItem())
+        }
         val encryptionInfo = Cbor.encode(
             buildCborArray {
                 add("dcapi")
                 add(recipient)
             }
         )
+        val encryptionInfoBase64 = encryptionInfo.toBase64Url()
 
-        return """{"deviceRequest":"${deviceRequest.toBase64Url()}",""" +
-            """"encryptionInfo":"${encryptionInfo.toBase64Url()}"}"""
+        return BuiltRequest(
+            json = """{"deviceRequest":"${deviceRequest.toBase64Url()}",""" +
+                """"encryptionInfo":"$encryptionInfoBase64"}""",
+            recipientKey = recipientKey,
+            encryptionInfoBase64 = encryptionInfoBase64,
+        )
     }
 
     /** Everything the request matched — what a user who unchecks nothing agrees to. */
@@ -316,6 +343,98 @@ class IosDcApiPresenterTest {
         )
 
         assertIs<IosDcApiOutcome.NothingToShare>(outcome)
+    }
+
+
+    /**
+     * Decrypts what the wallet sent back, so the response can be inspected rather than counted.
+     *
+     * Rebuilds the session transcript exactly as multipaz does — `["dcapi", sha256(["encryptionInfo",
+     * origin])]` under two nulls — because HPKE binds it as `info`, so getting it wrong fails to
+     * decrypt rather than yielding wrong plaintext. That is also what makes this a real check of the
+     * transcript, not only of the claims.
+     */
+    private suspend fun decryptResponse(
+        responseJson: String,
+        request: BuiltRequest,
+        origin: String,
+    ): ByteArray {
+        val response = Json.parseToJsonElement(responseJson).jsonObject
+        val encoded = assertNotNull(response["data"]).jsonObject["response"]!!.jsonPrimitive.content
+        val envelope = Cbor.decode(encoded.fromBase64Url())
+        assertEquals("dcapi", envelope.asArray[0].asTstr, "not a dcapi response envelope")
+        val parts = envelope.asArray[1].asMap
+
+        val dcapiInfo = buildCborArray {
+            add(request.encryptionInfoBase64)
+            add(origin)
+        }
+        val digest = Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo))
+        val handover = buildCborArray {
+            add("dcapi")
+            add(digest)
+        }
+        val sessionTranscript = buildCborArray {
+            add(Simple.NULL)
+            add(Simple.NULL)
+            add(handover)
+        }
+
+        return Hpke.getDecrypter(
+            cipherSuite = Hpke.CipherSuite.DHKEM_P256_HKDF_SHA256_HKDF_SHA256_AES_128_GCM,
+            receiverPrivateKey = AsymmetricKey.AnonymousExplicit(privateKey = request.recipientKey),
+            encapsulatedKey = parts[Tstr("enc")]!!.asBstr,
+            info = Cbor.encode(sessionTranscript),
+        ).decrypt(
+            ciphertext = parts[Tstr("cipherText")]!!.asBstr,
+            aad = ByteArray(0),
+        )
+    }
+
+    /**
+     * **Selective disclosure, proven rather than assumed.**
+     *
+     * The verifier asks for two elements and the user keeps one. Every earlier test could only show
+     * that *a* response came back; this decrypts it and reads what is inside, which is the only way to
+     * tell "the wallet honoured the selection" from "the wallet sent everything and the UI hid the
+     * rest". The second would be a privacy failure invisible to every other assertion here.
+     *
+     * Decryption succeeding is itself a second result: HPKE binds the session transcript as `info`, so
+     * a transcript built differently from multipaz's would fail to decrypt rather than mislead.
+     */
+    @Test
+    fun the_response_carries_only_the_claims_the_user_kept() = runTest {
+        val store = store()
+        store.seedPid()
+        val request = buildRequest()
+
+        val outcome = IosDcApiPresenter(store).present(
+            protocol = "org-iso-mdoc",
+            data = request.json,
+            origin = verifierOrigin,
+            onConsent = { _, _, data ->
+                CredentialPresentmentSelection(
+                    matches = data.credentialSets
+                        .flatMap { it.options }
+                        .flatMap { it.members }
+                        .mapNotNull { member ->
+                            val match = member.matches.firstOrNull() ?: return@mapNotNull null
+                            val kept = match.claims.filterKeys {
+                                it is MdocRequestedClaim && it.dataElementName == "family_name"
+                            }
+                            if (kept.isEmpty()) null else match.copy(claims = kept)
+                        },
+                )
+            },
+        )
+
+        val sent = assertIs<IosDcApiOutcome.Sent>(outcome)
+        val plaintext = decryptResponse(sent.responseJson, request, verifierOrigin).decodeToString(
+            throwOnInvalidSequence = false,
+        )
+
+        assertTrue("family_name" in plaintext, "the kept claim is missing from the response")
+        assertFalse("given_name" in plaintext, "a claim the user dropped was sent anyway")
     }
 
     //endregion
