@@ -150,9 +150,12 @@ targets:
         # written and the pair cannot drift apart.
         PRODUCT_BUNDLE_IDENTIFIER: "$(APP_BUNDLE_ID).provider"
         SWIFT_VERSION: "6.0"
+        # Same team and style as the app; an extension is signed with its container's identity and
+        # Xcode provisions the two together.
         CODE_SIGNING_ALLOWED: YES
-        CODE_SIGN_IDENTITY: "-"
-        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: D2YJRYD9TA
         # The same framework the app links, built by the app target's pre-build script. Search path
         # rather than a copy: the extension is embedded in the app, so the binary is already there.
         FRAMEWORK_SEARCH_PATHS:
@@ -297,18 +300,41 @@ targets:
     # onto team signing, and `DocumentRegistrationManagerImpl.status()` prints exactly which of the
     # two states we are in rather than leaving an empty picker unexplained.
     #
-    # The doctypes are ours, not the reference wallet's list copied over: these are the three mdoc
-    # types this tree can actually hold. Theirs also names `eu.europa.ec.av.1` and
-    # `org.iso.23220.1.jp.mnc`, which nothing here issues, and spells photo ID `org.iso.23220.photoid.1`
-    # where our documents use `org.iso.23220.2.photoid.1`. Registering a doctype we never hold would be
-    # a claim with no document behind it.
+    # ⚠️ **This list must be a subset of what the App ID grants**, or signing fails with "provisioning
+    # profile doesn't match the entitlements file's value for the …mobile-document-types entitlement".
+    # The team's App ID currently grants: org.iso.18013.5.1.mDL, org.iso.23220.1.jp.mnc,
+    # org.iso.23220.photoid.1, eu.europa.ec.eudi.pid.1, eu.europa.ec.av.1 — so only a subset of those
+    # may appear below. `eu.europa.ec.av.1` and `org.iso.23220.1.jp.mnc` come from the reference wallet
+    # and nothing here issues them.
+    #
+    # 🪤 **Photo ID: three spellings are in play, and the one below is not a doctype at all.** The App
+    # ID grants `org.iso.23220.photoid.1`, but that string is a **namespace**. Our own tree says so
+    # twice: `TestData.kt` names it `mockedMdocPhotoIdNameSpace`, directly beside
+    # `mockedMdocPhotoIdDocType = "org.iso.23220.2.photoid.1"`; and in `photo_id_mdoc.json` all 25
+    # claims carry it as the leading `path` segment — the namespace — and `issuer_config.namespace`
+    # names it outright, while the file's `"doctype"` is `org.iso.23220.2.photoid.1`. The two real
+    # doctypes are in `DocumentCategory.kt` (lines 96/99):
+    # `org.iso.23220.2.photoid.1` and `org.iso.23220.photoID.1`.
+    #
+    # **So this entitlement satisfies signing but can never match a photo ID.** Registration is called
+    # with the document's real docType, which the list does not contain, so it is refused — multipaz
+    # reports `.noAuth`, whose error text asks whether the type was added to the entitlement file.
+    #
+    # This is inherited, not ours: the reference iOS wallet's `EudiWallet.entitlements` declares the
+    # same namespace, and its own `WalletKitConfig.swift` knows only the same two doctypes — so it
+    # cannot register a photo ID either. It has gone unnoticed because none has ever been issued on
+    # iOS. Do not read the two wallets agreeing here as corroboration: it is one mistake, propagated.
+    #
+    # The string stays because the **App ID grant is a build constraint** — a doctype absent from it
+    # fails signing outright, which is a louder failure than a document that quietly does not register.
+    # Making photo ID work means adding `org.iso.23220.2.photoid.1` to the App ID *first*, then here.
     entitlements:
       path: iosApp/EudiWallet.entitlements
       properties:
         com.apple.developer.identity-document-services.document-provider.mobile-document-types:
           - eu.europa.ec.eudi.pid.1
           - org.iso.18013.5.1.mDL
-          - org.iso.23220.2.photoid.1
+          - org.iso.23220.photoid.1
         # The container the wallet database moves into, so the document-provider extension — a
         # separate process with its own container — can read the same documents the app writes.
         # `$(...)` is Xcode expanding at build time, so dev and demo get their own group and their
@@ -373,12 +399,23 @@ targets:
         # (verified: the key never reached the built Info.plist). So the plist is generated from the
         # `info:` block below instead, which is also more XcodeGen-idiomatic.
         SWIFT_VERSION: "6.0"
-        # Ad-hoc signing rather than none: an unsigned app has no entitlements at all, and the Keychain
-        # then refuses every `SecItem` call with -34018 (errSecMissingEntitlement) — which is where the
-        # wallet's PIN lives. "-" needs no development team, so this still builds on any machine.
+        # ── Signing ──────────────────────────────────────────────────────────────────────────────
+        #
+        # ⚠️ **Team signing, not ad-hoc, and the reason is the Digital Credentials entitlement.**
+        # `com.apple.developer.identity-document-services.document-provider.mobile-document-types` is
+        # restricted: it is only honoured when it also appears in a real provisioning profile. Ad-hoc
+        # (`CODE_SIGN_IDENTITY: "-"`) produced a build whose registration the OS refused with
+        # `notAuthorized` — measured, not assumed, and the reason this changed at all.
+        #
+        # 🪤 **This now needs the Compote team in Xcode ▸ Settings ▸ Accounts.** Xcode creates the two
+        # App IDs and their profiles itself on first build; without the account it cannot, and signing
+        # fails rather than silently falling back. A machine that only needs the *simulator* can still
+        # build — simulator builds do not use profiles (see the `-Simulated.xcent` note in the
+        # entitlements section) — but a device build cannot.
         CODE_SIGNING_ALLOWED: YES
-        CODE_SIGN_IDENTITY: "-"
-        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: D2YJRYD9TA
         # The Kotlin framework is built by the pre-build script below into this folder.
         FRAMEWORK_SEARCH_PATHS:
           - $(inherited)
