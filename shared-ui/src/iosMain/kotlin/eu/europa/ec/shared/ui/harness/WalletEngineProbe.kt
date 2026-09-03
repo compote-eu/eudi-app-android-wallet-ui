@@ -77,6 +77,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
 import platform.Foundation.NSFileManager
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import platform.Foundation.writeToFile
 import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSString
 import platform.Foundation.NSUTF8StringEncoding
@@ -394,17 +398,50 @@ private fun WalletDocument.describe(locale: String): String =
  * The consent step keeps **one** of the two requested claims, so the printed plaintext distinguishes a
  * wallet that honours the selection from one that sends everything and hides the rest.
  */
+/** What the host script left for us: the verifier's request, and the origin it will bind. */
+private class SuppliedDcApiRequest(val json: String, val origin: String)
+
+/** `Documents/dcapi-request.json`, the same handover the authorization redirect uses. */
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+private fun suppliedDcApiRequest(): SuppliedDcApiRequest? {
+    val path = NSHomeDirectory() + "/Documents/dcapi-request.json"
+    if (!NSFileManager.defaultManager.fileExistsAtPath(path)) return null
+    val contents = NSString.stringWithContentsOfFile(path, NSUTF8StringEncoding, null) ?: return null
+    val parsed = Json.parseToJsonElement(contents).jsonObject
+    val origin = parsed["origin"]?.jsonPrimitive?.content ?: return null
+    val data = parsed["data"] ?: return null
+    return SuppliedDcApiRequest(json = data.toString(), origin = origin)
+}
+
+/** Where the host script picks the answer up. Overwritten each run, like the redirect file. */
+@OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+private fun writeDcApiResponse(responseJson: String) {
+    val path = NSHomeDirectory() + "/Documents/dcapi-response.json"
+    (responseJson as NSString).writeToFile(path, true, NSUTF8StringEncoding, null)
+}
+
 private suspend fun probeDcApi(onResult: (String) -> Unit) {
     onResult("--- DC API: the provider extension's chain, on real documents ---")
 
-    val request = buildDcApiProbeRequest()
+    // A request from the local `org-iso-mdoc` verifier if the host left one, otherwise one we build.
+    // The verifier is the only thing that can drive this branch for real — Apple hands a provider ISO
+    // 18013-7 requests and nothing else, and no deployed verifier speaks that — so answering *its*
+    // request is what turns this probe from a self-test into an interop check.
+    val supplied = suppliedDcApiRequest()
+    val request = if (supplied == null) buildDcApiProbeRequest() else null
+    val requestJson = supplied?.json ?: request!!.json
+    val origin = supplied?.origin ?: DC_API_PROBE_ORIGIN
+    onResult(
+        if (supplied != null) "answering the verifier's request (origin $origin)"
+        else "no verifier request on disk - answering one we built ourselves"
+    )
     val bridge = IosDocumentProviderBridge.create()
 
     var offered: String? = null
     val result = bridge.present(
         protocol = "org-iso-mdoc",
-        data = request.json,
-        origin = DC_API_PROBE_ORIGIN,
+        data = requestJson,
+        origin = origin,
         consent = object : IosDcApiConsent {
             override suspend fun requestConsent(
                 request: IosPresentmentRequest,
@@ -432,6 +469,12 @@ private suspend fun probeDcApi(onResult: (String) -> Unit) {
     onResult("consent saw: ${offered ?: "the screen was never reached"}")
 
     val responseJson = result.responseJson
+    if (responseJson != null && supplied != null) {
+        // Handed back the way the redirect comes in: a file the host script polls. The verifier
+        // decrypts it, so nothing here has to be trusted to say the exchange worked.
+        writeDcApiResponse(responseJson)
+        onResult("wrote the response for the verifier (${responseJson.length} chars)")
+    }
     if (responseJson == null) {
         onResult(
             "present -> no response " +
@@ -441,7 +484,11 @@ private suspend fun probeDcApi(onResult: (String) -> Unit) {
     }
 
     onResult("present -> a response of ${responseJson.length} chars")
-    val plaintext = request.decryptResponse(responseJson, DC_API_PROBE_ORIGIN)
+    if (request == null) {
+        onResult("the verifier holds the key for this one - read its log for the verdict")
+        return
+    }
+    val plaintext = request.decryptResponse(responseJson, origin)
         .decodeToString(throwOnInvalidSequence = false)
     onResult("decrypted ${plaintext.length} bytes — the session transcript matches multipaz's")
 
