@@ -36,6 +36,25 @@ data class IosDcApiResult(
 }
 
 /**
+ * What Swift implements to answer the consent step.
+ *
+ * ⚠️ **An interface, not a `suspend` lambda parameter, and it has to be.** Kotlin/Native exports a
+ * suspend *function type* as `KotlinSuspendFunction1`, which a Swift closure cannot satisfy — the
+ * compiler says "closure passed to parameter of type 'any KotlinSuspendFunction1' that does not accept
+ * a closure". A suspend method *on an interface* exports as a completion-handler method that Swift
+ * implements with `async`, which is why every seam in this codebase is shaped this way
+ * ([eu.europa.ec.dashboardfeature.ui.document_sign.IosDocumentSigner] is the other one).
+ */
+interface IosDcApiConsent {
+
+    /**
+     * Suspends until the user answers. Null refuses; so does a list that keeps nothing, because the
+     * response is built from exactly the claims the selection carries.
+     */
+    suspend fun requestConsent(request: IosPresentmentRequest): List<IosPresentmentDisclosure>?
+}
+
+/**
  * The extension's whole entry into the wallet: opens the store, answers one request, and nothing else.
  *
  * ## Why a bridge, and why it opens its own store
@@ -78,7 +97,7 @@ class IosDocumentProviderBridge private constructor(
         data: String,
         origin: String,
         appId: String? = null,
-        onConsent: suspend (IosPresentmentRequest) -> List<IosPresentmentDisclosure>?,
+        consent: IosDcApiConsent,
     ): IosDcApiResult {
         val outcome = IosDcApiPresenter(store, store.documentManagerId).present(
             protocol = protocol,
@@ -92,7 +111,7 @@ class IosDocumentProviderBridge private constructor(
                 requesterName = trustMetadata?.displayName ?: requester.certificateCommonName() ?: origin,
                 requesterIsTrusted = trustMetadata != null,
             )
-            onConsent(request)?.let { disclosures -> presentmentData.toSelection(disclosures) }
+            consent.requestConsent(request)?.let { presentmentData.toSelection(it) }
         }
 
         return when (outcome) {

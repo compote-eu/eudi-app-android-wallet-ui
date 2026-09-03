@@ -14,72 +14,191 @@
  * governing permissions and limitations under the Licence.
  */
 
+import IdentityDocumentServices
 import IdentityDocumentServicesUI
 import SwiftUI
 import class SharedKit.IosDocumentProviderBridge
+import class SharedKit.IosPresentmentDisclosure
+import class SharedKit.IosPresentmentRequest
+import protocol SharedKit.IosDcApiConsent
 
-/// What the extension shows while a request is being decided.
+/// The extension's screen: open the wallet, ask, answer.
 ///
-/// ## Deliberately not the final screen
+/// The whole exchange runs **inside `context.sendResponse`**, which is the shape the reference iOS
+/// wallet uses and the reason for it is structural rather than stylistic: the closure is handed the
+/// *raw* request, and that — not `context.request` — is the Annex C JSON multipaz parses. Building a
+/// response from anything else would bind a different session transcript than the one the verifier
+/// will check against.
 ///
-/// This opens the wallet through `IosDocumentProviderBridge` and reports what it found. It does **not**
-/// yet run consent or send a response, and the reason is worth stating rather than leaving as a gap:
+/// Consent is the **shared Compose screen**, hosted by `ConsentHost`. It is the same screen the app
+/// shows for remote and proximity presentation, so selective disclosure behaves identically in the
+/// extension and cannot drift from it.
 ///
-///  - **The consent screen should be the shared Compose one**, not a second UI written here. That is
-///    reachable — a `ComposeUIViewController` inside a `UIViewControllerRepresentable` renders shared
-///    Compose in an ExtensionKit extension, which an in-house project already does in production — but
-///    our consent screen is bound to `RequestViewModel`, so hosting it is its own piece of work rather
-///    than a line. Writing throwaway SwiftUI in the meantime would be building the thing that reuse
-///    exists to avoid.
-///  - **The response encoding cannot be confirmed from here.** `sendResponse` wants an
-///    `ISO18013MobileDocumentResponse(responseData:)` while multipaz returns
-///    `{"protocol": …, "data": {"response": <base64>}}`, and which of those bytes iOS expects is not
-///    determinable without a request from the OS to answer. Guessing it would produce code that
-///    compiles, looks finished, and fails the first time it runs — worse than an honest gap.
-///
-/// So this target's milestone is narrower than it looks, and it is the one that can go silently wrong:
-/// **an ExtensionKit extension that builds, links the shared Kotlin framework and embeds correctly.**
-///
-/// ⚠️ Nothing here can be *invoked* yet regardless. The app is ad-hoc signed, so its registration is
-/// refused with `notAuthorized` and iOS has no reason to route a request here. Team signing and an
-/// iOS 26.2 device are what change that.
+/// ⚠️ **One reading here is unverified and cannot be verified without a device.** multipaz returns
+/// `{"protocol": …, "data": {"response": <base64url>}}`; `ISO18013MobileDocumentResponse` takes
+/// `responseData`. This decodes `data.response` and passes those bytes, which is what the Annex C shape
+/// implies — multipaz has already HPKE-encrypted them to the reader's key, so they are the payload
+/// rather than an envelope to unwrap further. **If the first on-device run fails at the verifier, this
+/// line is the first thing to question.** Nothing runs at all before team signing: registration is
+/// refused with `notAuthorized`, so iOS never routes a request here.
 struct RequestAuthorizationView: View {
 
     let context: ISO18013MobileDocumentRequestContext
 
+    @State private var request: IosPresentmentRequest?
     @State private var status: String = "Opening the wallet…"
+    @State private var failed: String?
+
+    private let decision = DecisionBox()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Credential request")
-                .font(.headline)
-
-            if let origin = context.requestingWebsiteOrigin {
-                Text(origin.absoluteString)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
-            Text(status)
-                .font(.body)
-
-            Spacer()
-
-            Button("Cancel") { context.cancel() }
-                .buttonStyle(.bordered)
-                .frame(maxWidth: .infinity)
-        }
-        .padding()
-        .task {
-            // Proves the extension process can reach the wallet: a separate process, its own
-            // container, opening the app-group store the app writes to. If this reports a document
-            // count the cross-process half of the design is working.
-            do {
-                _ = try await IosDocumentProviderBridge.companion.create()
-                status = "Wallet opened. Consent and response are not wired yet — see the file comment."
-            } catch {
-                status = "Could not open the wallet: \(error.localizedDescription)"
+        Group {
+            if let request {
+                ConsentHost(request: request) { disclosures in
+                    decision.resolve(disclosures)
+                }
+            } else {
+                VStack(spacing: 16) {
+                    if let failed {
+                        Text(failed).multilineTextAlignment(.center)
+                    } else {
+                        ProgressView()
+                        Text(status).font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Button("Cancel") { context.cancel() }.buttonStyle(.bordered)
+                }
+                .padding()
             }
         }
+        .task { await run() }
+    }
+
+    private func run() async {
+        do {
+            let bridge = try await IosDocumentProviderBridge.companion.create()
+
+            try await context.sendResponse { rawRequest in
+                let result = try await bridge.present(
+                    protocol: "org-iso-mdoc",
+                    data: String(data: rawRequest.requestData, encoding: .utf8) ?? "",
+                    origin: context.requestingWebsiteOrigin?.absoluteString ?? "",
+                    appId: nil,
+                    consent: ConsentBridge(
+                        show: { box in await MainActor.run { self.request = box.value } },
+                        answer: { await decision.wait() }
+                    )
+                )
+
+                guard let json = result.responseJson,
+                      let responseData = responseBytes(from: json) else {
+                    // A refusal and a failure both end without a response. `cancel()` is the only way
+                    // to say so — `sendResponse` has no "declined" outcome — so the distinction lives
+                    // in the message, not in the OS call.
+                    throw ProviderError.noResponse(result.declined ? nil : result.errorMessage)
+                }
+                return ISO18013MobileDocumentResponse(responseData: responseData)
+            }
+        } catch {
+            await MainActor.run {
+                failed = (error as? ProviderError)?.message ?? error.localizedDescription
+            }
+        }
+    }
+
+}
+
+/// Pulls the encrypted mdoc response out of multipaz's DC API result. See the ⚠️ on the view.
+///
+/// File scope rather than a member: a SwiftUI `View` is main-actor isolated, and this is called from
+/// inside `sendResponse`'s `@Sendable` closure, which is not. It touches nothing but its argument.
+private func responseBytes(from json: String) -> Data? {
+    guard let object = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
+          let data = object["data"] as? [String: Any],
+          let response = data["response"] as? String
+    else { return nil }
+    // base64url, as multipaz writes it: pad and translate before decoding.
+    var padded = response.replacingOccurrences(of: "-", with: "+")
+        .replacingOccurrences(of: "_", with: "/")
+    while padded.count % 4 != 0 { padded += "=" }
+    return Data(base64Encoded: padded)
+}
+
+private enum ProviderError: Error {
+    case noResponse(String?)
+
+    var message: String {
+        switch self {
+        case .noResponse(let reason): return reason ?? "Nothing was shared."
+        }
+    }
+}
+
+/// Carries a Kotlin value across an isolation boundary it never actually crosses at runtime.
+///
+/// The same device `DocumentSigning.swift` needs and for the same reason: Kotlin/Native types are not
+/// `Sendable`, so Swift 6 refuses to let one reach the main actor or leave an actor's method, even
+/// though only the reference moves. Checked by hand rather than asserted — a request and a list of
+/// disclosures are both immutable once Kotlin has produced them.
+fileprivate struct RequestBox: @unchecked Sendable { let value: IosPresentmentRequest }
+fileprivate struct DisclosureBox: @unchecked Sendable { let value: [IosPresentmentDisclosure]? }
+
+/// Swift's half of `IosDcApiConsent`: show the request, then wait for the screen to answer.
+///
+/// A class implementing a Kotlin protocol rather than a closure, because Kotlin/Native exports a
+/// suspend *function type* as `KotlinSuspendFunction1` which no Swift closure can satisfy. A suspend
+/// method on a protocol arrives as `async`, which this implements directly.
+///
+/// `@unchecked Sendable` on the same terms as `WalletDocumentSigner`: both stored properties are
+/// immutable closures, and everything mutable lives in the actor below.
+fileprivate final class ConsentBridge: IosDcApiConsent, @unchecked Sendable {
+
+    private let show: (RequestBox) async -> Void
+    private let answer: () async -> DisclosureBox
+
+    init(
+        show: @escaping (RequestBox) async -> Void,
+        answer: @escaping () async -> DisclosureBox
+    ) {
+        self.show = show
+        self.answer = answer
+    }
+
+    func requestConsent(request: IosPresentmentRequest) async throws -> [IosPresentmentDisclosure]? {
+        await show(RequestBox(value: request))
+        return await answer().value
+    }
+}
+
+/// Carries the user's answer from the Compose screen into the suspended Kotlin call.
+///
+/// An actor because two isolation domains touch it — Compose answers on the main actor, the Kotlin
+/// coroutine resumes on its own — and because resuming a continuation twice is a crash rather than a
+/// loggable bug. Every `resolve` after the first is ignored.
+fileprivate actor DecisionBox {
+
+    private var continuation: CheckedContinuation<DisclosureBox, Never>?
+    private var settled = false
+    private var pending: DisclosureBox?
+
+    func wait() async -> DisclosureBox {
+        if let pending { return pending }
+        return await withCheckedContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    /// Boxed at the boundary rather than inside: the array itself cannot be sent into a `Task`, so the
+    /// wrapping has to happen on this side of it.
+    nonisolated func resolve(_ disclosures: [IosPresentmentDisclosure]?) {
+        let box = DisclosureBox(value: disclosures)
+        Task { await settle(box) }
+    }
+
+    private func settle(_ box: DisclosureBox) {
+        guard !settled else { return }
+        settled = true
+        pending = box
+        continuation?.resume(returning: box)
+        continuation = nil
     }
 }
