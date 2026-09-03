@@ -65,6 +65,11 @@ import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractorGetUiItemsPartialState
 import eu.europa.ec.shared.wallet.multipaz.harness.seedIosWalletFixture
+import eu.europa.ec.shared.wallet.multipaz.harness.buildDcApiProbeRequest
+import eu.europa.ec.shared.wallet.multipaz.IosDocumentProviderBridge
+import eu.europa.ec.shared.wallet.multipaz.IosDcApiConsent
+import eu.europa.ec.shared.wallet.multipaz.IosPresentmentDisclosure
+import eu.europa.ec.shared.wallet.multipaz.IosPresentmentRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -350,6 +355,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             probeBackgroundReIssuance(onResult)
             probeIssuance(onResult)
             probeCredentialOffer(onResult)
+            probeDcApi(onResult)
 
             onResult("OK")
         } catch (t: Throwable) {
@@ -373,6 +379,88 @@ private fun WalletDocument.describe(locale: String): String =
  * shows when advertising cannot start: the simulator has no radio, so this *should* report an error
  * rather than hang on a QR that never appears. On a device the same call publishes an `mdoc:` payload.
  */
+/**
+ * The document-provider extension's whole chain, against the real store, without iOS.
+ *
+ * This is the closest thing to a device run that exists today, and it is closer than it sounds: the
+ * extension does exactly three things — take a raw ISO 18013-7 request, ask the user, hand back a
+ * response — and only the first is Apple's. So driving [IosDocumentProviderBridge] with a request we
+ * build ourselves exercises everything the extension owns, on documents a real issuer issued.
+ *
+ * ⚠️ What it cannot show is that iOS *routes* a request here, and nothing on the simulator can: the
+ * provider entitlement is never authorised there, and `addRegistration` does not even refuse — it
+ * hangs. That gap needs hardware and an `org-iso-mdoc` verifier, in that order.
+ *
+ * The consent step keeps **one** of the two requested claims, so the printed plaintext distinguishes a
+ * wallet that honours the selection from one that sends everything and hides the rest.
+ */
+private suspend fun probeDcApi(onResult: (String) -> Unit) {
+    onResult("--- DC API: the provider extension's chain, on real documents ---")
+
+    val request = buildDcApiProbeRequest()
+    val bridge = IosDocumentProviderBridge.create()
+
+    var offered: String? = null
+    val result = bridge.present(
+        protocol = "org-iso-mdoc",
+        data = request.json,
+        origin = DC_API_PROBE_ORIGIN,
+        consent = object : IosDcApiConsent {
+            override suspend fun requestConsent(
+                request: IosPresentmentRequest,
+            ): List<IosPresentmentDisclosure>? {
+                val documents = request.combinations.firstOrNull()?.documents.orEmpty()
+                offered = "requester=${request.requesterName} trusted=${request.requesterIsTrusted} " +
+                        "combinations=${request.combinations.size} " +
+                        documents.joinToString(prefix = "[", postfix = "]") { document ->
+                            "${document.documentName}/${document.docType}: " +
+                                    document.claims.joinToString { it.displayName }
+                        }
+                // Keep the first claim only. Dropping the rest is the whole point: anything absent
+                // here must be absent from the response.
+                return documents.map { document ->
+                    IosPresentmentDisclosure(
+                        documentId = document.documentId,
+                        credentialId = document.credentialId,
+                        claims = document.claims.take(1).map { it.claim }.toSet(),
+                    )
+                }
+            }
+        },
+    )
+
+    onResult("consent saw: ${offered ?: "the screen was never reached"}")
+
+    val responseJson = result.responseJson
+    if (responseJson == null) {
+        onResult(
+            "present -> no response " +
+                    "(declined=${result.declined}, error=${result.errorMessage ?: "none"})"
+        )
+        return
+    }
+
+    onResult("present -> a response of ${responseJson.length} chars")
+    val plaintext = request.decryptResponse(responseJson, DC_API_PROBE_ORIGIN)
+        .decodeToString(throwOnInvalidSequence = false)
+    onResult("decrypted ${plaintext.length} bytes — the session transcript matches multipaz's")
+
+    // Named rather than dumped: the response is a whole mdoc, and what matters is which of the two
+    // requested elements survived consent.
+    val present = DC_API_PROBE_ELEMENTS.filter { it in plaintext }
+    val absent = DC_API_PROBE_ELEMENTS - present.toSet()
+    onResult("disclosed=$present withheld=$absent")
+}
+
+/**
+ * A plausible verifier origin. It is never contacted — it only has to be the same string on both sides,
+ * because it is bound into the session transcript the response is encrypted against.
+ */
+private const val DC_API_PROBE_ORIGIN = "https://verifier.example"
+
+/** What [buildDcApiProbeRequest] asks for by default, in the order consent will see them. */
+private val DC_API_PROBE_ELEMENTS = listOf("family_name", "given_name")
+
 private suspend fun probeProximity(onResult: (String) -> Unit) {
     onResult("--- proximity: interactors and engagement ---")
     val koin = KoinPlatform.getKoin()
