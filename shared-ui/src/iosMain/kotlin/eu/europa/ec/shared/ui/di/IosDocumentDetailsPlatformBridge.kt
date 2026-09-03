@@ -62,8 +62,7 @@ import platform.Foundation.languageCode
  *
  * Claim display titles are the issuer's own localized names, resolved for the requested locale from the
  * per-claim display stored with the document — the same source Android's `getLocalizedClaimName` reads.
- * They fall back to the raw data-element identifier for documents provisioned before those names were
- * stored, and for claims the issuer never named.
+ * They fall back to the raw data-element identifier for claims the issuer never named.
  */
 internal class IosDocumentDetailsPlatformBridge(
     private val engine: IosWalletEngine,
@@ -277,8 +276,8 @@ internal class IosDocumentDetailsPlatformBridge(
     ): List<ClaimDomain> = map { (identifier, claim) ->
         ClaimDomain.Primitive(
             key = identifier,
-            // The issuer's own name for this claim, falling back to the identifier — which is what every
-            // document provisioned before claim names were stored still shows.
+            // The issuer's own name for this claim, falling back to the identifier when the issuer
+            // published none.
             displayTitle = displayNames[identifier] ?: identifier,
             path = ClaimPathDomain(
                 segments = listOf(ClaimPathSegment.Key(identifier)),

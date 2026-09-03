@@ -65,22 +65,3 @@ internal fun credentialPolicyFor(
     } else {
         WalletCredentialPolicy.RotatingBatch(numberOfCredentials = numberOfCredentials)
     }
-
-/**
- * Corrects a policy read back from a document stamped before [credentialPolicyFor] existed.
- *
- * Applied on the read path rather than by rewriting the store: the *kind* of policy is app policy
- * derived from the document's format, so deriving it on read keeps every document consistent with the
- * wallet's current rules and needs no migration. Only the case the old rule got wrong is touched — a
- * PID stamped `RotatingBatch` — so a policy this wallet never produces is passed through untouched
- * rather than being overwritten by a guess.
- */
-internal fun WalletCredentialPolicy.correctedForFormat(formatType: String): WalletCredentialPolicy =
-    if (formatType in PidFormatTypes && this is WalletCredentialPolicy.RotatingBatch) {
-        WalletCredentialPolicy.OnceOnly(
-            numberOfCredentials = numberOfCredentials,
-            reissueTriggerUnused = PID_REISSUE_TRIGGER_UNUSED,
-        )
-    } else {
-        this
-    }

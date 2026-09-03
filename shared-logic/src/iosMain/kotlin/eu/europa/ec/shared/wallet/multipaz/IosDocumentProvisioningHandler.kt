@@ -68,13 +68,13 @@ internal class IosDocumentProvisioningHandler(
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
     /**
      * The issuer's per-claim display names, filled in by [OpenID4VciCompatibilityEngine] while it reads
-     * the metadata. Null leaves claims unnamed, which is what every document issued before this did.
+     * the metadata. Null leaves claims unnamed and the reader falls back to the identifier.
      */
     private val claimDisplay: IssuerClaimDisplayNotice? = null,
     /**
      * The issuer's advertised reuse policy, filled in by [OpenID4VciCompatibilityEngine] while it reads
      * the metadata. When the issuer published one it decides the batch size and the stored policy;
-     * null falls back to [credentialPolicyFor], which is all any document issued before this had.
+     * null falls back to [credentialPolicyFor], which decides by format.
      */
     private val reusePolicy: IssuerReusePolicyNotice? = null,
 ) : DocumentProvisioningHandler(
@@ -156,11 +156,9 @@ internal class IosDocumentProvisioningHandler(
         // multipaz surfaces no credential *configuration* id on `CredentialMetadata`, so the format's
         // own identifier stands in. It is shown, never matched on.
         documentConfigurationIdentifier = credentialMetadata.format.formatId,
-        // The issuer's URL, which is what an identifier is. This used to be `display.text` — the
-        // issuer's *name* — which nothing read until re-issuance needed to find the issuer a document
-        // came from, and then matched nothing: every provisioned document claimed to come from
-        // "Digital Credentials Issuer". Documents issued before this fix keep the old value and cannot
-        // be refreshed; they report an unknown issuer, which is true of them.
+        // The issuer's URL, which is what an identifier is — re-issuance resolves it to find where a
+        // document came from. It must not be `display.text`, the issuer's *name*: that matches nothing,
+        // because every document would claim to come from "Digital Credentials Issuer".
         credentialIssuerIdentifier = issuerMetadata.url,
         display = listOf(
             IssuerMetadata.Display(name = credentialMetadata.display.text)
