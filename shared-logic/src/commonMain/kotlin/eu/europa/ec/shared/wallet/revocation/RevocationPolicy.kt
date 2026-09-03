@@ -47,9 +47,10 @@ enum class StatusSignerTrustDomain {
     NotTrusted,
 
     /**
-     * No anchors exist to check against. **This is iOS's permanent state**: its anchors would come
-     * from the ETSI trusted lists, whose iOS verifier accepts every signature
-     * (eudi-lib-kmp-etsi-1196x2#130), and the wallet ships no trust store of its own.
+     * No anchors exist to check against. **This is what iOS still reports today**, but no longer
+     * because it cannot do better: it reads the ETSI trusted lists for real now, and the status path
+     * simply does not ask them for anchors yet. See the iOS revocation checker, which says what the
+     * remaining connection is.
      */
     NoAnchorsAvailable,
 

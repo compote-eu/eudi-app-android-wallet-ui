@@ -41,6 +41,7 @@ import eu.europa.ec.commonfeature.interactor.QrScanInteractor
 import eu.europa.ec.authenticationlogic.storage.IosBiometricGate
 import eu.europa.ec.authenticationlogic.storage.IosBiometricOutcome
 import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
+import eu.europa.ec.shared.wallet.trust.probeLoteTrustLists
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -349,6 +350,10 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                 "refreshRevocationStatuses -> ${newlyRevoked.size} newly revoked " +
                         "${newlyRevoked.map { it.id }}; cached=${engineForRevocation.getRevokedDocumentIds()}"
             )
+
+            // Before issuance, because issuance now consults it: the signer of the issuer's signed
+            // metadata is checked against the EU PID Providers list.
+            probeLoteTrustLists(onResult)
 
             onResult("--- issuance ---")
             probeAuthentication(onResult)

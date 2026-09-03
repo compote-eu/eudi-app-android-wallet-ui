@@ -38,6 +38,7 @@ import io.ktor.http.parseUrlEncodedParameters
 import io.ktor.http.Url
 import io.ktor.client.utils.EmptyContent
 import io.ktor.util.Attributes
+import kotlinx.cinterop.BetaInteropApi
 import kotlinx.coroutines.Job
 import io.ktor.utils.io.InternalAPI
 import io.ktor.util.date.GMTDate
@@ -51,10 +52,16 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
+import eu.europa.ec.shared.wallet.trust.TrustVerdict
 import org.multipaz.util.Logger
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import platform.Foundation.NSData
+import platform.Foundation.create
 
 /**
  * What an issuer said when it deferred an issuance instead of performing it.
@@ -171,9 +178,23 @@ internal fun openID4VciHttpClient(
     /** Filled in with the issuer's per-claim display names, which multipaz discards. */
     claimDisplayNotice: IssuerClaimDisplayNotice? = null,
     reusePolicyNotice: IssuerReusePolicyNotice? = null,
+    /**
+     * Checks the signer of signed issuer metadata against the EU trust lists.
+     *
+     * Null disables the check, which is what the compatibility tests use — they serve metadata from a
+     * `MockEngine` and have no business reaching the network.
+     */
+    issuerTrust: IssuerTrustSource? = IosEtsiTrust(),
 ): HttpClient =
     HttpClient(
-        OpenID4VciCompatibilityEngine(engine, deferredNotice, refusalNotice, claimDisplayNotice, reusePolicyNotice)
+        OpenID4VciCompatibilityEngine(
+            engine,
+            deferredNotice,
+            refusalNotice,
+            claimDisplayNotice,
+            reusePolicyNotice,
+            issuerTrust,
+        )
     ) {
         // multipaz's requirement, not ours: the OAuth redirect must come back to the caller so the
         // authorization code can be read off it.
@@ -196,6 +217,7 @@ internal class OpenID4VciCompatibilityEngine(
     private val refusalNotice: TokenRefusalNotice? = null,
     private val claimDisplayNotice: IssuerClaimDisplayNotice? = null,
     private val reusePolicyNotice: IssuerReusePolicyNotice? = null,
+    private val issuerTrust: IssuerTrustSource? = null,
 ) : HttpClientEngineBase("openid4vci-compat") {
 
     override val config: HttpClientEngineConfig get() = delegate.config
@@ -640,12 +662,11 @@ internal class OpenID4VciCompatibilityEngine(
     /**
      * Replaces a `statuslist`-style signed metadata response with the JWT's payload.
      *
-     * ⚠️ **The signature is NOT verified, and that is a known gap rather than an oversight.** Verifying
-     * it means validating the `x5c` chain to a trust anchor, and iOS has no ARF trust list wired up yet
-     * — the same gap that leaves `wallet.trust` on the Android side of the port. Leaf-only verification
-     * would be theatre: an attacker who can rewrite the body can present their own chain. What still
-     * holds is TLS, and the check below that the metadata actually describes the issuer we asked about,
-     * which catches a substituted document. The signer is logged so a run can be audited by eye.
+     * The signer's `x5c` chain **is** checked against the EU trust lists — see [enforceIssuerTrust],
+     * which is also where the one deliberate divergence from Android is written down. Two cheaper
+     * checks sit alongside it and neither is redundant: TLS to the issuer's host, and the check below
+     * that the metadata actually describes the issuer we asked about, which catches a substituted
+     * document whoever signed it. The signer is logged either way, so a run can be audited by eye.
      */
     @OptIn(ExperimentalEncodingApi::class)
     private suspend fun unwrapSignedMetadata(
@@ -677,10 +698,67 @@ internal class OpenID4VciCompatibilityEngine(
                 "signed metadata from ${data.url} describes '$issuer', not '$expected'"
             )
         }
+        enforceIssuerTrust(parts[0], issuer)
         Logger.i(TAG, "unwrapped signed metadata for $issuer (signer: ${signerOf(parts[0])})")
 
         return response.replacingBody(payload.encodeToByteArray(), asJson = true)
     }
+
+    /**
+     * Rejects signed metadata whose signer the EU trust lists say is **not** a PID provider.
+     *
+     * Android's equivalent is
+     * `configureIssuerTrust { policy { default(ENFORCE) }; requireSignedMetadata() }`, so a definite
+     * "not trusted" is a hard failure here too.
+     *
+     * ⚠️ **An *undetermined* verdict is allowed through, and that is a deliberate divergence.** The
+     * check cannot tell "this issuer is not on the list" from "the list was unreachable", and treating
+     * the second as a refusal would make every offline or flaky-network moment look like a hostile
+     * issuer and block issuance outright. So it is logged loudly and permitted.
+     *
+     * The trust lists are cached on disk (see `IosEtsiTrust.loader`), which narrows that window a
+     * great deal — an undetermined verdict now means the wallet has never successfully fetched a list,
+     * not merely that it is offline right now.
+     *
+     * 📌 Note this is the **opposite** choice from reader trust, where undetermined shows as
+     * untrusted. The asymmetry is the point: there, being wrong means vouching for a stranger; here,
+     * it means a wallet that cannot add a document on a train.
+     */
+    private suspend fun enforceIssuerTrust(encodedHeader: String, issuer: String?) {
+        val trust = issuerTrust ?: return
+        val chain = certificateChainOf(encodedHeader)
+        if (chain.isEmpty()) {
+            Logger.w(TAG, "signed metadata for $issuer carries no x5c; cannot check its signer")
+            return
+        }
+        when (trust.verdict(chain, VerificationContext.PID)) {
+            TrustVerdict.TRUSTED ->
+                Logger.i(TAG, "the signer of $issuer's metadata is a trusted PID provider")
+
+            TrustVerdict.NOT_TRUSTED -> throw IllegalStateException(
+                "the signer of $issuer's signed metadata is not a trusted PID provider"
+            )
+
+            TrustVerdict.UNDETERMINED -> Logger.w(
+                TAG,
+                "could not establish whether $issuer's metadata signer is trusted; allowing it through",
+            )
+        }
+    }
+
+    /** The `x5c` chain from a JWS header, as DER in `NSData`. */
+    @OptIn(ExperimentalEncodingApi::class, BetaInteropApi::class)
+    private fun certificateChainOf(encodedHeader: String): List<NSData> = runCatching {
+        val header = Json.parseToJsonElement(
+            Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL)
+                .decode(encodedHeader)
+                .decodeToString()
+        ).jsonObject
+        // `x5c` is standard-alphabet base64 (RFC 7515 §4.1.6), unlike the JWS segments around it.
+        header["x5c"]?.jsonArray?.mapNotNull {
+            NSData.create(base64EncodedString = it.jsonPrimitive.content, options = 0uL)
+        }.orEmpty()
+    }.getOrElse { emptyList() }
 
     /** The `kid`/`x5c` hint from the JWT header, for the log line only. */
     @OptIn(ExperimentalEncodingApi::class)

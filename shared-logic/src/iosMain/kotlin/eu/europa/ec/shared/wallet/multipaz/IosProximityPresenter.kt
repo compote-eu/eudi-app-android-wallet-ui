@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +33,6 @@ import org.multipaz.cbor.Simple
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
-import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.engagement.EngagementGenerator
 import org.multipaz.mdoc.transport.MdocTransport
@@ -45,7 +46,6 @@ import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.presentment.Iso18013Presentment
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
-import org.multipaz.presentment.SimplePresentmentSource
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.Logger
@@ -90,12 +90,33 @@ sealed interface IosProximityState {
  * response, which `mdocPresentment` performs with no transport involved. When a device is available, the
  * thing to watch is the connection, not the CBOR.
  */
-class IosProximityPresenter(
+class IosProximityPresenter internal constructor(
     private val walletEngine: IosWalletEngine,
     /** Where the wallet's own credentials live; anything else in the store is not offered. */
-    private val credentialDomain: String = MultipazWalletStore.DEFAULT_DOCUMENT_MANAGER_ID,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
+    private val credentialDomain: String,
+    private val scope: CoroutineScope,
+    /**
+     * Who the verifier is. Null answers "unknown" without asking anyone — which is what a presentment
+     * test wants, since a real check would make it pass or fail with the network.
+     *
+     * No default *here* on purpose: two constructors both accepting three arguments would be an
+     * ambiguous overload, so the public one below is the single place the production value is chosen.
+     */
+    private val readerTrust: ReaderTrustSource?,
 ) {
+
+    /**
+     * The constructor `:shared-ui` and Swift use.
+     *
+     * Reader trust is deliberately not a parameter of it: [IosEtsiTrust] hands back a multipaz
+     * `TrustMetadata`, and this module's boundary is that nothing above it names a multipaz type. So
+     * the primary constructor is `internal` and this one supplies the production value.
+     */
+    constructor(
+        walletEngine: IosWalletEngine,
+        credentialDomain: String = MultipazWalletStore.DEFAULT_DOCUMENT_MANAGER_ID,
+        scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
+    ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust())
 
     private val mutableState = MutableStateFlow<IosProximityState>(IosProximityState.Idle)
     val state: StateFlow<IosProximityState> = mutableState.asStateFlow()
@@ -259,20 +280,14 @@ class IosProximityPresenter(
         }
     }
 
-    /**
-     * The wallet's answer to "what may be presented, and does the user agree".
-     *
-     * `domainsMdocSignature` is the wallet's own credential domain, so a document some other component put
-     * in the same store is never offered — the same scoping the reader applies when listing documents.
-     */
-    private suspend fun presentmentSource() = SimplePresentmentSource(
-        documentStore = walletEngine.store().documentStore,
-        documentTypeRepository = documentTypeRepository,
-        // As on the remote path: multipaz logs the event once the response is out, so handing it the
-        // logger is what puts a completed proximity exchange in the History tab.
-        eventLogger = walletEngine.store().eventLogger(),
-        domainsMdocSignature = listOf(credentialDomain),
-        showConsentPromptFn = { requester, trustMetadata, data, _, _ ->
+    /** See [walletPresentmentSource], which holds every decision this shares with the other paths. */
+    private suspend fun presentmentSource() = walletPresentmentSource(
+        store = walletEngine.store(),
+        credentialDomain = credentialDomain,
+        readerTrust = readerTrust,
+        // ISO 18013-5 has no SD-JWT, so there is nothing to offer.
+        offersSdJwt = false,
+        showConsent = { requester, trustMetadata, data ->
             awaitConsent(
                 requester = requester,
                 trustMetadata = trustMetadata,
@@ -336,14 +351,6 @@ class IosProximityPresenter(
             "Could not start sharing over Bluetooth. Check that Bluetooth is on and that this app is " +
                     "allowed to use it."
 
-        /**
-         * Empty on purpose. Localized claim names live in multipaz's separate `multipaz-doctypes`
-         * artifact; without it a claim shows its data-element identifier, which is exactly what iOS
-         * already does on the documents and details screens. Adding the artifact for this one screen
-         * would make proximity the only place iOS speaks in display names — the fix is to give the whole
-         * app localized claim names at once, not to special-case consent.
-         */
-        val documentTypeRepository = DocumentTypeRepository()
     }
 }
 

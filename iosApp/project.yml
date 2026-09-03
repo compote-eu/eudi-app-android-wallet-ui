@@ -56,6 +56,19 @@ packages:
   SwiftCopyableMacro:
     url: https://github.com/mc1100/SwiftCopyableMacro.git
     branch: widen-swift-syntax-bound-to-603
+  # ⚠️ VENDORED, and a *local* path package rather than a URL — see PKIXBridge/VENDORED.md.
+  #
+  # The Swift half of the ETSI consultation library's cinterop. Its published klib records the Swift
+  # symbols (`PKIXValidator`, `PKIXConfiguration`, `PKIXCertificateInspector`) but ships no
+  # implementation, so the consuming Xcode target has to supply them — the same shape as `-lsqlite3`
+  # for multipaz's SQLite. It cannot be a remote SPM dependency because upstream's `Package.swift`
+  # for it sits in a subdirectory (`ios/cinterop/`), which SwiftPM cannot address.
+  #
+  # The module name is load-bearing: the cinterop `.def` says `modules = PKIXBridge` and the mangled
+  # symbols are `_TtC10PKIXBridge…`, so these sources must compile as a Swift module called exactly
+  # `PKIXBridge`. Compiling them into a target directly would not match.
+  PKIXBridge:
+    path: PKIXBridge
 
 # Settings both targets need identical values for. A setting group is expanded into each target at
 # generate time, which is the only way two Xcode targets can share a value — build settings do not
@@ -123,6 +136,11 @@ targets:
         # to a reader and not obviously stable.
         com.apple.security.application-groups:
           - group.$(APP_BUNDLE_ID)
+    dependencies:
+      # This target answers Digital Credentials requests, and that path consults reader trust — so
+      # the extension needs the cinterop's Swift implementation just as the app does. An extension
+      # is a separate binary and inherits nothing from its container.
+      - package: PKIXBridge
     preBuildScripts:
       # The extension links SharedKit, and the app's own copy of this phase cannot serve it: the app
       # now *depends* on the extension, so Xcode builds the extension first and would otherwise
@@ -367,6 +385,8 @@ targets:
     dependencies:
       - package: EudiRQESUi
         product: EudiRQESUi
+      # Satisfies the ETSI consultation klib's cinterop symbols; see the `packages:` note above.
+      - package: PKIXBridge
       # The app carries the extension: an ExtensionKit extension ships inside its containing app and
       # is launched from there by the OS. Without this the target builds and is never installed.
       - target: EudiWalletDocumentProvider

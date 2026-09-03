@@ -16,13 +16,13 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import kotlinx.coroutines.CancellationException
-import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
-import org.multipaz.presentment.SimplePresentmentSource
 import org.multipaz.presentment.digitalCredentialsPresentment
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustMetadata
@@ -89,6 +89,12 @@ internal class IosDcApiPresenter(
     private val store: MultipazWalletStore,
     /** Where the wallet's own credentials live; anything else in the store is not offered. */
     private val credentialDomain: String = MultipazWalletStore.DEFAULT_DOCUMENT_MANAGER_ID,
+    /**
+     * Who the verifier is. Null answers "unknown" without asking anyone, which is what the tests
+     * want; this class is already `internal`, so unlike the other two presenters it needs no
+     * constructor split to keep multipaz types off the Swift-facing API.
+     */
+    private val readerTrust: ReaderTrustSource? = IosEtsiTrust(),
 ) {
 
     /**
@@ -171,15 +177,12 @@ internal class IosDcApiPresenter(
             trustMetadata: TrustMetadata?,
             data: CredentialPresentmentData,
         ) -> CredentialPresentmentSelection?,
-    ) = SimplePresentmentSource(
-        documentStore = store.documentStore,
-        documentTypeRepository = documentTypeRepository,
-        eventLogger = store.eventLogger(),
-        domainsMdocSignature = listOf(credentialDomain),
-        domainsKeyBoundSdJwt = listOf(credentialDomain),
-        showConsentPromptFn = { requester, trustMetadata, data, _, _ ->
-            showConsent(requester, trustMetadata, data)
-        },
+    ) = walletPresentmentSource(
+        store = store,
+        credentialDomain = credentialDomain,
+        readerTrust = readerTrust,
+        offersSdJwt = true,
+        showConsent = showConsent,
     )
 
     private companion object {
@@ -190,11 +193,5 @@ internal class IosDcApiPresenter(
 
         const val SHARING_FAILED = "Sharing failed. The request could not be answered."
 
-        /**
-         * Empty on purpose, as in both existing presenters: localized claim names live in multipaz's
-         * separate `multipaz-doctypes` artifact, and adding it here would make this the only place iOS
-         * speaks in display names.
-         */
-        val documentTypeRepository = DocumentTypeRepository()
     }
 }

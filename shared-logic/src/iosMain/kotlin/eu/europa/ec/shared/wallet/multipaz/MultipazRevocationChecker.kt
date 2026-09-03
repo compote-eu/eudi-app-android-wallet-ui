@@ -127,10 +127,15 @@ internal fun RevocationOutcome.toSignerTrustDomain(): StatusSignerTrustDomain = 
  *    inside data the issuer signed, so it is the strongest binding available, and it anchors the
  *    reading. Neither EU dev issuer populates it.
  *  - otherwise the token's own `x5c` chain is all there is. It can be validated *structurally*, and
- *    the token's signature checked against that chain's leaf, but nothing ties the chain to a party
- *    this wallet trusts: **iOS has no trust anchors at all.** Android's come from the ETSI LoTE
- *    trusted lists, whose iOS verifier is still `InsecureAcceptAllJwtSignature`
- *    (eudi-lib-kmp-etsi-1196x2#130), and this repository ships no wallet trust store of its own.
+ *    the token's signature checked against that chain's leaf, but this class does not yet tie the
+ *    chain to a party the wallet trusts.
+ *
+ *    ⚠️ **That is now a wiring gap, not an impossibility — the reason changed.** iOS reads the ETSI
+ *    LoTE trusted lists for real (`IosEtsiTrust`, which supplies its own `VerifyJwtSignature` rather
+ *    than the library's insecure default), so anchors *are* obtainable here. What is missing is the
+ *    connection: the status path would have to ask for `VerificationContext.PIDStatus` anchors and
+ *    hand them to `validateJwt`'s `certificateChainValidator`, which [readWithoutAnchor] does not
+ *    pass. Until it does, this branch still reports `signerAnchored = false`.
  *
  * So the second case is read and reported with `signerAnchored = false`, and callers must not act on
  * it. That is deliberately Android's posture for this specific check — its

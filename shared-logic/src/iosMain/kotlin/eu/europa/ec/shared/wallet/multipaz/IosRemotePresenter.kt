@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -28,12 +30,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.multipaz.asn1.OID
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
-import org.multipaz.presentment.SimplePresentmentSource
 import org.multipaz.presentment.uriSchemePresentment
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustMetadata
@@ -88,12 +88,33 @@ sealed interface IosRemotePresentationState {
  * response — request object over `request_uri`, DCQL match, encrypted `direct_post.jwt` response, and a
  * device signature over the `OpenID4VPHandover` session transcript.
  */
-class IosRemotePresenter(
+class IosRemotePresenter internal constructor(
     private val walletEngine: IosWalletEngine,
     /** Where the wallet's own credentials live; anything else in the store is not offered. */
-    private val credentialDomain: String = MultipazWalletStore.DEFAULT_DOCUMENT_MANAGER_ID,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
+    private val credentialDomain: String,
+    private val scope: CoroutineScope,
+    /**
+     * Who the verifier is. Null answers "unknown" without asking anyone — which is what a presentment
+     * test wants, since a real check would make it pass or fail with the network.
+     *
+     * No default *here* on purpose: two constructors both accepting three arguments would be an
+     * ambiguous overload, so the public one below is the single place the production value is chosen.
+     */
+    private val readerTrust: ReaderTrustSource?,
 ) {
+
+    /**
+     * The constructor `:shared-ui` and Swift use.
+     *
+     * Reader trust is deliberately not a parameter of it: [IosEtsiTrust] hands back a multipaz
+     * `TrustMetadata`, and this module's boundary is that nothing above it names a multipaz type. So
+     * the primary constructor is `internal` and this one supplies the production value.
+     */
+    constructor(
+        walletEngine: IosWalletEngine,
+        credentialDomain: String = MultipazWalletStore.DEFAULT_DOCUMENT_MANAGER_ID,
+        scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
+    ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust())
 
     private val mutableState =
         MutableStateFlow<IosRemotePresentationState>(IosRemotePresentationState.Idle)
@@ -206,15 +227,12 @@ class IosRemotePresenter(
      * proximity source does, correctly, since ISO 18013-5 has no SD-JWT — would make every SD-JWT request
      * report "you have nothing this verifier asked for" while the credential sat in the wallet.
      */
-    private suspend fun presentmentSource() = SimplePresentmentSource(
-        documentStore = walletEngine.store().documentStore,
-        documentTypeRepository = documentTypeRepository,
-        // What makes a successful exchange show up in the History tab: multipaz logs the event
-        // itself once the response is out, so supplying the logger *is* the whole write side.
-        eventLogger = walletEngine.store().eventLogger(),
-        domainsMdocSignature = listOf(credentialDomain),
-        domainsKeyBoundSdJwt = listOf(credentialDomain),
-        showConsentPromptFn = { requester, trustMetadata, data, _, _ ->
+    private suspend fun presentmentSource() = walletPresentmentSource(
+        store = walletEngine.store(),
+        credentialDomain = credentialDomain,
+        readerTrust = readerTrust,
+        offersSdJwt = true,
+        showConsent = { requester, trustMetadata, data ->
             awaitConsent(
                 requester = requester,
                 trustMetadata = trustMetadata,
@@ -286,12 +304,6 @@ class IosRemotePresenter(
         /** What Kotlin's `check(...)` produces with no message. See [fail]. */
         const val CHECK_FAILED = "Check failed."
 
-        /**
-         * Empty on purpose, exactly as in [IosProximityPresenter]: localized claim names live in
-         * multipaz's separate `multipaz-doctypes` artifact, and adding it for this one screen would make
-         * presentation the only place iOS speaks in display names.
-         */
-        val documentTypeRepository = DocumentTypeRepository()
     }
 }
 

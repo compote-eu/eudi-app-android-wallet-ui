@@ -67,15 +67,22 @@ interface IosWalletConfig : SharedAppConfig, SharedWalletConfig {
      * either reference wallet has.
      *
      * The cost of that stricter posture is the deciding argument against it: on iOS every reading is
-     * [StatusSignerTrustDomain.NoAnchorsAvailable], so `Enforce` makes revocation **permanently
-     * inert** — a credential its issuer revoked would keep displaying as valid, which is the exact
-     * harm the whole check exists to prevent. The un-revoke risk it would trade that for requires
-     * control of the status list's HTTPS endpoint, and an attacker with that can equally serve
-     * Android a list saying "valid".
+     * still [StatusSignerTrustDomain.NoAnchorsAvailable], so `Enforce` would make revocation
+     * **permanently inert** — a credential its issuer revoked would keep displaying as valid, which
+     * is the exact harm the whole check exists to prevent. The un-revoke risk it would trade that
+     * for requires control of the status list's HTTPS endpoint, and an attacker with that can
+     * equally serve Android a list saying "valid".
      *
-     * Set this to [StatusTrustPolicyDomain.Enforce] for a deployment that ships its own anchors, or
-     * once eudi-lib-kmp-etsi-1196x2#130 makes the ETSI lists usable on iOS. It is one line, on
-     * purpose.
+     * ⚠️ **The reason `NoAnchorsAvailable` is still the answer has changed, and the old one should
+     * not be repeated.** It was recorded as eudi-lib-kmp-etsi-1196x2#130 leaving the ETSI lists
+     * unusable on iOS. That issue turns out to constrain **Swift** consumers only — a Kotlin caller
+     * can pass its own `VerifyJwtSignature`, which `IosEtsiTrust` does — so iOS reads the lists and
+     * reaches real verdicts today. What is missing is only that the *status* path does not ask them
+     * for anchors; see the iOS revocation checker for the exact connection.
+     *
+     * So flipping this to [StatusTrustPolicyDomain.Enforce] is still one line, but it is no longer
+     * *only* one line: anchoring the status reading has to come first, or enforcement refuses
+     * everything.
      */
     val statusTrustPolicy: StatusTrustPolicyDomain
 

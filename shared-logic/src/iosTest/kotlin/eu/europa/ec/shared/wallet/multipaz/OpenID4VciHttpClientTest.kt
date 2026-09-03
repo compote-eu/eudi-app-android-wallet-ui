@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
+import eu.europa.ec.shared.wallet.trust.TrustVerdict
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -56,10 +58,15 @@ class OpenID4VciHttpClientTest {
 
     private val metadataUrl = "https://issuer.test/.well-known/openid-credential-issuer"
 
-    private fun jwtOf(payload: String): String {
+    private fun jwtOf(payload: String, x5c: List<String>? = listOf("fake")): String {
         val b64 = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
+        // `x5c` entries are standard-alphabet base64 of DER, unlike the JWS segments around them.
+        val header = when (x5c) {
+            null -> """{"typ":"JWT","alg":"ES256"}"""
+            else -> """{"typ":"JWT","alg":"ES256","x5c":[${x5c.joinToString(",") { "\"$it\"" }}]}"""
+        }
         return listOf(
-            b64.encode("""{"typ":"JWT","alg":"ES256","x5c":["fake"]}""".encodeToByteArray()),
+            b64.encode(header.encodeToByteArray()),
             b64.encode(payload.encodeToByteArray()),
             b64.encode("signature".encodeToByteArray()),
         ).joinToString(".")
@@ -74,13 +81,103 @@ class OpenID4VciHttpClientTest {
                     content = jwtOf(metadata),
                     headers = headersOf("Content-Type", "application/jwt"),
                 )
-            }
+            },
+            // No trust check: this test is about unwrapping, and a real one would download four EU
+            // trust lists to judge a signer whose `x5c` is the string "fake".
+            issuerTrust = null,
         )
 
         val body = client.get(metadataUrl).readRawBytes().decodeToString()
 
         // multipaz parses this with `Json.parseToJsonElement(...).jsonObject`, so it must be the object.
         assertEquals(metadata, body)
+    }
+
+    @Test
+    fun signed_metadata_from_an_untrusted_signer_is_refused() = runTest {
+        val metadata = """{"credential_issuer":"https://issuer.test"}"""
+        val client = openID4VciHttpClient(
+            MockEngine {
+                respond(
+                    content = jwtOf(metadata),
+                    headers = headersOf("Content-Type", "application/jwt"),
+                )
+            },
+            issuerTrust = { _, _ -> TrustVerdict.NOT_TRUSTED },
+        )
+
+        val failure = assertFailsWith<IllegalStateException> { client.get(metadataUrl) }
+        assertTrue(
+            "not a trusted PID provider" in failure.message.orEmpty(),
+            "unexpected: ${failure.message}",
+        )
+    }
+
+    @Test
+    fun signed_metadata_is_allowed_through_when_trust_cannot_be_established() = runTest {
+        // The deliberate divergence from Android, and the reason it is a test rather than a comment:
+        // "the trust list was unreachable" must not read as "this issuer is hostile", or the wallet
+        // could not add a document offline. If this ever starts throwing, that decision was reversed
+        // by accident.
+        val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
+        val client = openID4VciHttpClient(
+            MockEngine {
+                respond(
+                    content = jwtOf(metadata),
+                    headers = headersOf("Content-Type", "application/jwt"),
+                )
+            },
+            issuerTrust = { _, _ -> TrustVerdict.UNDETERMINED },
+        )
+
+        assertEquals(metadata, client.get(metadataUrl).readRawBytes().decodeToString())
+    }
+
+    @Test
+    fun a_trusted_signer_is_asked_about_with_the_whole_x5c_chain() = runTest {
+        // Two entries, because a chain is what PKIX validates: handing the checker only the leaf
+        // would make any chain-building failure invisible. `PID` is the context Android's
+        // `configureIssuerTrust` enforces for a credential issuer.
+        var seenChainSize: Int? = null
+        var seenContext: VerificationContext? = null
+        val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
+        val client = openID4VciHttpClient(
+            MockEngine {
+                respond(
+                    content = jwtOf(metadata, x5c = listOf("Zm9v", "YmFy")),
+                    headers = headersOf("Content-Type", "application/jwt"),
+                )
+            },
+            issuerTrust = { chain, context ->
+                seenChainSize = chain.size
+                seenContext = context
+                TrustVerdict.TRUSTED
+            },
+        )
+
+        assertEquals(metadata, client.get(metadataUrl).readRawBytes().decodeToString())
+        assertEquals(2, seenChainSize)
+        assertEquals(VerificationContext.PID, seenContext)
+    }
+
+    @Test
+    fun signed_metadata_without_an_x5c_is_not_refused_for_having_no_signer_to_check() = runTest {
+        // Nothing to check is not the same as a failed check. multipaz would still have to parse the
+        // payload, and the issuer-identity check above still applies.
+        var asked = false
+        val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
+        val client = openID4VciHttpClient(
+            MockEngine {
+                respond(
+                    content = jwtOf(metadata, x5c = null),
+                    headers = headersOf("Content-Type", "application/jwt"),
+                )
+            },
+            issuerTrust = { _, _ -> asked = true; TrustVerdict.NOT_TRUSTED },
+        )
+
+        assertEquals(metadata, client.get(metadataUrl).readRawBytes().decodeToString())
+        assertFalse(asked, "a JWT with no x5c has no signer to ask about")
     }
 
     @Test
@@ -100,15 +197,17 @@ class OpenID4VciHttpClientTest {
 
     @Test
     fun signed_metadata_for_a_different_issuer_is_rejected() = runTest {
-        // The one check that survives not verifying the signature: a document that describes someone
-        // else was substituted, whoever signed it.
+        // Independent of who signed it: a document describing someone else was substituted, and this
+        // check fires before the signer is ever consulted — which is why `issuerTrust` being absent
+        // does not weaken the test.
         val client = openID4VciHttpClient(
             MockEngine {
                 respond(
                     content = jwtOf("""{"credential_issuer":"https://attacker.test"}"""),
                     headers = headersOf("Content-Type", "application/jwt"),
                 )
-            }
+            },
+            issuerTrust = null,
         )
 
         val failure = assertFailsWith<IllegalStateException> { client.get(metadataUrl) }
