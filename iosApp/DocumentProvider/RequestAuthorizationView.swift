@@ -34,13 +34,15 @@ import protocol SharedKit.IosDcApiConsent
 /// shows for remote and proximity presentation, so selective disclosure behaves identically in the
 /// extension and cannot drift from it.
 ///
-/// ⚠️ **One reading here is unverified and cannot be verified without a device.** multipaz returns
-/// `{"protocol": …, "data": {"response": <base64url>}}`; `ISO18013MobileDocumentResponse` takes
-/// `responseData`. This decodes `data.response` and passes those bytes, which is what the Annex C shape
-/// implies — multipaz has already HPKE-encrypted them to the reader's key, so they are the payload
-/// rather than an envelope to unwrap further. **If the first on-device run fails at the verifier, this
-/// line is the first thing to question.** Nothing runs at all before team signing: registration is
-/// refused with `notAuthorized`, so iOS never routes a request here.
+/// ✅ **The response encoding is verified, from both sides, and needed no device.**
+/// multipaz builds `Cbor.encode(["dcapi", {"enc": …, "cipherText": …}]).toBase64Url()` and puts that in
+/// `data.response`. The reference iOS wallet's `DcApi18013AnnexC.buildAndEncryptResponse` returns
+/// `Data(CBOR.array(["dcapi", ["enc": …, "cipherText": …]]).encode())` and hands it straight to
+/// `ISO18013MobileDocumentResponse(responseData:)`. So base64url-decoding `data.response` yields
+/// byte-for-byte what the reference passes — which is exactly what `responseBytes` below does.
+///
+/// What remains untested is the OS half: that iOS routes a request here and a verifier accepts the
+/// result. That needs the entitlement honoured on real hardware.
 struct RequestAuthorizationView: View {
 
     let context: ISO18013MobileDocumentRequestContext
@@ -107,7 +109,11 @@ struct RequestAuthorizationView: View {
 
 }
 
-/// Pulls the encrypted mdoc response out of multipaz's DC API result. See the ⚠️ on the view.
+/// Pulls the encrypted mdoc response out of multipaz's DC API result.
+///
+/// The bytes are the CBOR `["dcapi", {"enc", "cipherText"}]` that multipaz base64url-encodes into
+/// `data.response`, and they are what `ISO18013MobileDocumentResponse` wants — see the view's doc for
+/// where that was confirmed on both sides.
 ///
 /// File scope rather than a member: a SwiftUI `View` is main-actor isolated, and this is called from
 /// inside `sendResponse`'s `@Sendable` closure, which is not. It touches nothing but its argument.
