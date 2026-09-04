@@ -45,8 +45,12 @@ import platform.Security.SecAccessControlCreateWithFlags
 import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
+import org.multipaz.util.Logger
+import platform.Security.errSecInteractionNotAllowed
 import platform.Security.errSecSuccess
 import platform.Security.kSecAccessControlBiometryCurrentSet
+import platform.Security.kSecUseAuthenticationUI
+import platform.Security.kSecUseAuthenticationUIFail
 import platform.Security.kSecAttrAccessControl
 import platform.Security.kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
 import platform.Security.kSecAttrAccount
@@ -122,10 +126,23 @@ class IosBiometricGate(
     /**
      * Whether the user has turned biometric login on.
      *
-     * Asks for the item's *attributes* and not its data, which is what keeps this from raising a
-     * prompt: the access-control policy guards the secret, not the fact that a secret exists. A version
-     * of this that requested data would put a Face ID prompt in front of every launch of the settings
-     * screen.
+     * 🪤 **Asking for attributes instead of data is NOT enough to avoid a prompt, whatever the docs
+     * suggest.** This function used to say so, and a device disproved it: measured on an iPhone SE
+     * (iOS 26.6.1), an attributes-only `SecItemCopyMatching` against a `BiometryCurrentSet` item
+     * **blocked for 12.7 seconds** waiting for Touch ID and returned `-128` (`errSecUserCanceled`)
+     * when the prompt was refused. The simulator never showed it, because there the read returns
+     * instantly without enforcing the ACL at all.
+     *
+     * The consequence was not cosmetic: reading the *switch state* raised a biometric prompt, so the
+     * settings screen and the post-splash routing would each demand a fingerprint to answer a
+     * question about configuration.
+     *
+     * 🪤 **`…UISkip` is the wrong constant here** — measured, not assumed: it makes the Keychain
+     * *omit* auth-requiring items from the search, so a freshly added item reads back as
+     * `errSecItemNotFound` and the switch reports off immediately after being turned on.
+     * **`…UIFail` is the one that means "answer, but do not ask"**: it returns
+     * `errSecInteractionNotAllowed`, and that refusal *is* the answer — an item is there and it is
+     * gated, which is precisely "enabled". Only `errSecItemNotFound` means off.
      */
     fun isEnabled(): Boolean = memScoped {
         val query = CFDictionaryCreateMutable(kCFAllocatorDefault, 5, null, null)
@@ -133,11 +150,12 @@ class IosBiometricGate(
         CFDictionarySetValue(query, kSecAttrService, CFBridgingRetain(service))
         CFDictionarySetValue(query, kSecAttrAccount, CFBridgingRetain(account))
         CFDictionarySetValue(query, kSecReturnAttributes, kCFBooleanTrue)
+        CFDictionarySetValue(query, kSecUseAuthenticationUI, kSecUseAuthenticationUIFail)
 
         val result = alloc<CFTypeRefVar>()
         val status = SecItemCopyMatching(query, result.ptr)
         result.value?.let { CFBridgingRelease(it) }
-        status == errSecSuccess
+        status == errSecSuccess || status == errSecInteractionNotAllowed
     }
 
     /**
@@ -154,7 +172,10 @@ class IosBiometricGate(
             kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
             kSecAccessControlBiometryCurrentSet,
             null,
-        ) ?: return false
+        ) ?: run {
+            Logger.w(TAG, "SecAccessControlCreateWithFlags returned null — the policy was refused")
+            return false
+        }
 
         try {
             val attributes = CFDictionaryCreateMutable(kCFAllocatorDefault, 5, null, null)
@@ -164,7 +185,15 @@ class IosBiometricGate(
             CFDictionarySetValue(attributes, kSecValueData, CFBridgingRetain(randomSecret().toNSData()))
             CFDictionarySetValue(attributes, kSecAttrAccessControl, accessControl)
 
-            SecItemAdd(attributes, null) == errSecSuccess
+            val status = SecItemAdd(attributes, null)
+            if (status != errSecSuccess) {
+                // The status, not a guess at it. This used to return a bare false and the KDoc
+                // speculated "no passcode or no enrolment" — which a device disproved while reporting
+                // biometrics as available, leaving nothing to go on. `-34018` is
+                // errSecMissingEntitlement, `-25293` errSecAuthFailed, `-25299` errSecDuplicateItem.
+                Logger.w(TAG, "SecItemAdd refused the biometry-gated item: OSStatus $status")
+            }
+            status == errSecSuccess
         } finally {
             CFRelease(accessControl)
         }
@@ -244,3 +273,5 @@ class IosBiometricGate(
 private fun ByteArray.toNSData(): NSData = usePinned { pinned ->
     NSData.create(bytes = pinned.addressOf(0), length = size.toULong())
 }
+
+private const val TAG = "IosBiometricGate"

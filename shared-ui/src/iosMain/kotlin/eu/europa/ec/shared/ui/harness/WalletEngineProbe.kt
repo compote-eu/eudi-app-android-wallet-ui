@@ -930,6 +930,10 @@ private suspend fun probeAuthentication(onResult: (String) -> Unit) {
     // "Use Face ID" — but everything around it can be seen: whether the device offers biometrics,
     // whether the Keychain will accept the access-control policy at all, and whether the switch's
     // state follows the item rather than a preference.
+    //
+    // 📌 On a REAL device these reads must not prompt at all. If a Touch ID prompt appears while this
+    // section runs, `IosBiometricGate.isEnabled` has lost its `kSecUseAuthenticationUISkip` — see the
+    // trap recorded there.
     val biometrics = koin.get<BiometricInteractor>()
     val settings = koin.get<SettingsPlatformBridge>()
     onResult("biometrics availability: ${biometrics.getBiometricsAvailability()}")
@@ -941,7 +945,12 @@ private suspend fun probeAuthentication(onResult: (String) -> Unit) {
     onResult(
         "enabling it -> $enabled" +
                 if (enabled) " (the Keychain accepted a biometry-gated item)"
-                else " (the Keychain refused the policy: no passcode or no enrolment)"
+                // 🪤 Not "the Keychain refused the policy", which this used to claim. On a device that
+                // reported biometrics available, the policy was accepted and the *read-back* prompted
+                // and was cancelled — so the honest message names both possibilities and points at the
+                // log, where `IosBiometricGate` records the actual OSStatus.
+                else " (no item afterwards: either SecItemAdd was refused or the read-back failed —" +
+                        " see the IosBiometricGate OSStatus in the log)"
     )
     // The settings switch must agree with the login screen, since both read the same item.
     onResult("settings row agrees: ${settings.isBiometricsEnabled() == enabled}")
