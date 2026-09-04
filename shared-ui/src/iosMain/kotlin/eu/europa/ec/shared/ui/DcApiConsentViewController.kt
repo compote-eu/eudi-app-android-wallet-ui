@@ -38,7 +38,9 @@ import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.shared.ui.di.SharedUiModule
 import eu.europa.ec.uilogic.extension.toggleCheckboxState
 import eu.europa.ec.resourceslogic.theme.ThemeManager
+import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.request_combination_option_title
 import eu.europa.ec.shared.ui.di.keptDocuments
 import eu.europa.ec.shared.ui.di.module as sharedUiDefinitions
 import eu.europa.ec.shared.ui.di.toCombinationsUi
@@ -48,6 +50,7 @@ import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.WrapButton
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableListItem
+import eu.europa.ec.uilogic.component.wrap.WrapSelectableCard
 import kotlinx.coroutines.runBlocking
 import org.koin.core.context.startKoin
 import org.koin.mp.KoinPlatform
@@ -113,16 +116,28 @@ private fun DcApiConsentScreen(
     strings: StringCatalog,
     onDecision: (List<IosPresentmentDisclosure>?) -> Unit,
 ) {
-    // Only the first combination is offered. The app's screen lets the user pick between alternative
-    // ways to satisfy a request when the wallet holds several; doing that here would need the card
-    // picker too, and a request that produces more than one combination is the uncommon case. The
-    // first is what multipaz orders best-first, so this is a narrowing, not a wrong answer — and it is
-    // the honest place to stop for a screen whose OS handshake is still unproven.
-    val initial: RequestCombinationUi? = remember(request) {
-        request.toCombinationsUi(strings).firstOrNull()
+    // Every combination is offered, as `RequestScreen` does for the app's own request screens: one
+    // `WrapSelectableCard` per alternative, titled "Option n of N", contents rendered inside.
+    //
+    // 📌 This used to take only the first, on the reasoning that more than one combination was "the
+    // uncommon case". **Measured 2026-09-04 and it is not**: multipaz produces one combination per
+    // candidate document, so a probe run with 4 documents reported `combinations=4` and one with 6
+    // reported `combinations=6`. A wallet holding two documents of the requested type already has a
+    // choice to make, and taking the first made it silently.
+    //
+    // ⚠️ The options are labelled but not described — every row reads the document's name over the
+    // literal string "View details", so two PIDs from the same issuer look identical. That is
+    // upstream's row construction (`RequestTransformer.kt:167` on `main`, mirrored by
+    // `IosPresentmentConsentMapping`), shared by the app's own screens on both platforms, and it is
+    // deliberately matched here rather than improved in one place only.
+    val combinations: List<RequestCombinationUi> = remember(request) {
+        request.toCombinationsUi(strings)
     }
-    var documents: List<RequestDocumentItemUi> by remember(initial) {
-        mutableStateOf(initial?.documents.orEmpty())
+    var selected: Int by remember(combinations) { mutableStateOf(0) }
+    // One editable document list per combination: claims are toggled per option, so switching options
+    // must not carry the previous option's checkboxes across.
+    var documentsPerCombination: List<List<RequestDocumentItemUi>> by remember(combinations) {
+        mutableStateOf(combinations.map { it.documents })
     }
 
     Column(
@@ -135,13 +150,59 @@ private fun DcApiConsentScreen(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            documents.forEachIndexed { index, document ->
-                WrapExpandableListItem(
-                    modifier = Modifier.fillMaxWidth(),
-                    header = document.headerUi.header,
-                    data = document.headerUi.nestedItems,
-                    onItemClick = { item ->
-                        documents = documents.map { candidate ->
+            if (combinations.size > 1) {
+                combinations.forEachIndexed { option, _ ->
+                    WrapSelectableCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        title = strings.get(
+                            Res.string.request_combination_option_title,
+                            option + 1,
+                            combinations.size,
+                        ),
+                        isSelected = option == selected,
+                        onSelected = { selected = option },
+                    ) {
+                        DocumentRows(
+                            documents = documentsPerCombination[option],
+                            onDocumentsChange = { updated ->
+                                documentsPerCombination = documentsPerCombination.mapIndexed { at, existing ->
+                                    if (at == option) updated else existing
+                                }
+                            },
+                        )
+                    }
+                }
+            } else {
+                DocumentRows(
+                    documents = documentsPerCombination.firstOrNull().orEmpty(),
+                    onDocumentsChange = { updated -> documentsPerCombination = listOf(updated) },
+                )
+            }
+        }
+
+        ShareAndCancel(
+            combination = combinations.getOrNull(selected),
+            documents = documentsPerCombination.getOrNull(selected).orEmpty(),
+            onDecision = onDecision,
+        )
+    }
+}
+
+/** The document rows of one option, with their claim checkboxes. */
+@Composable
+private fun DocumentRows(
+    documents: List<RequestDocumentItemUi>,
+    onDocumentsChange: (List<RequestDocumentItemUi>) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        documents.forEachIndexed { index, document ->
+            WrapExpandableListItem(
+                modifier = Modifier.fillMaxWidth(),
+                header = document.headerUi.header,
+                data = document.headerUi.nestedItems,
+                onItemClick = { item ->
+                    onDocumentsChange(
+                        documents.map { candidate ->
                             candidate.copy(
                                 headerUi = candidate.headerUi.copy(
                                     nestedItems = candidate.headerUi.nestedItems.map {
@@ -150,10 +211,12 @@ private fun DcApiConsentScreen(
                                 ),
                             )
                         }
-                    },
-                    isExpanded = document.headerUi.isExpanded,
-                    onExpandedChange = {
-                        documents = documents.mapIndexed { position, candidate ->
+                    )
+                },
+                isExpanded = document.headerUi.isExpanded,
+                onExpandedChange = {
+                    onDocumentsChange(
+                        documents.mapIndexed { position, candidate ->
                             if (position != index) {
                                 candidate
                             } else {
@@ -164,17 +227,33 @@ private fun DcApiConsentScreen(
                                 )
                             }
                         }
-                    },
-                )
-            }
+                    )
+                },
+            )
         }
+    }
+}
+
+/**
+ * The two decisions, over whichever option is selected.
+ *
+ * Null is a refusal, and so is a selection that keeps nothing — the disclosures are what the response
+ * is built from, so an empty list would otherwise send an empty response rather than declining.
+ */
+@Composable
+private fun ShareAndCancel(
+    combination: RequestCombinationUi?,
+    documents: List<RequestDocumentItemUi>,
+    onDecision: (List<IosPresentmentDisclosure>?) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
         WrapButton(
             modifier = Modifier.fillMaxWidth(),
             buttonConfig = ButtonConfig(
                 type = ButtonType.PRIMARY,
                 onClick = {
-                    val kept = initial
+                    val kept = combination
                         ?.copy(documents = documents)
                         ?.keptDocuments()
                         .orEmpty()
