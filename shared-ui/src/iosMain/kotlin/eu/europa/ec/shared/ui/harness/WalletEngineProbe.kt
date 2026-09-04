@@ -932,8 +932,9 @@ private suspend fun probeAuthentication(onResult: (String) -> Unit) {
     // state follows the item rather than a preference.
     //
     // 📌 On a REAL device these reads must not prompt at all. If a Touch ID prompt appears while this
-    // section runs, `IosBiometricGate.isEnabled` has lost its `kSecUseAuthenticationUISkip` — see the
-    // trap recorded there.
+    // section runs, `IosBiometricGate.isEnabled` has lost its `kSecUseAuthenticationUIFail` — see the
+    // trap recorded there. 🪤 Not `…UISkip`: Skip *omits* auth-requiring items from the search, so a
+    // freshly enabled switch reads back as `errSecItemNotFound`. Fail answers; Skip hides.
     val biometrics = koin.get<BiometricInteractor>()
     val settings = koin.get<SettingsPlatformBridge>()
     onResult("biometrics availability: ${biometrics.getBiometricsAvailability()}")
