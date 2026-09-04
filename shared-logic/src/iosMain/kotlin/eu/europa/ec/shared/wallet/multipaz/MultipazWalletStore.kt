@@ -43,6 +43,7 @@ import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSError
 import platform.Foundation.NSFileProtectionComplete
+import platform.Foundation.NSURLIsExcludedFromBackupKey
 import platform.Foundation.NSFileProtectionKey
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
@@ -175,9 +176,21 @@ internal class MultipazWalletStore(
                 attributes = mapOf(NSFileProtectionKey to NSFileProtectionComplete),
                 error = null,
             )
-            // And again unconditionally, because `createDirectoryAtURL` applies `attributes` only to a
-            // directory it actually creates — on an existing install the class would otherwise never
-            // reach the directory at all.
+            // Backup exclusion belongs on the directory, not the database file. It is a per-item
+            // resource value that new siblings do not inherit, and under WAL the database has two of
+            // them — `-wal` holds rows that have not been checkpointed yet, so excluding only
+            // `wallet.db` would let recent credential data reach a backup while the database itself is
+            // kept out of one. Directory exclusion cascades to contents; `657a8077` established that,
+            // when multipaz's own helper set it there and silently excluded `Platform.storage` too.
+            directory.setResourceValue(
+                value = true,
+                forKey = NSURLIsExcludedFromBackupKey,
+                error = null,
+            )
+            // And the protection class again unconditionally, because `createDirectoryAtURL` applies
+            // `attributes` only to a directory it actually creates — on an existing install the class
+            // would otherwise never reach the directory at all, and the `-wal`/`-shm` sidecars depend
+            // on inheriting it.
             //
             // 🚩 This is not cosmetic. SQLite writes a `-journal` beside the database, and multipaz
             // creates it, not us: with the directory unprotected that sidecar inherits iOS's *default*
@@ -283,10 +296,18 @@ internal class MultipazWalletStore(
          *
          * ⚠️ **This is placement and backup hygiene, not encryption.** The file is still plain SQLite.
          * There is no encrypted `Storage` in multipaz 0.99.0 — `SqliteStorage`, `IosStorage`,
-         * `EphemeralStorage` and `WebStorage` are all plaintext — so at-rest protection is still iOS's
-         * default data-protection class, `NSFileProtectionCompleteUntilFirstUserAuthentication`.
-         * Android encrypts its own database with SQLCipher and the official iOS wallet keeps documents
-         * in the Keychain under `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`; we match neither.
+         * `EphemeralStorage` and `WebStorage` are all plaintext — so at-rest protection rests entirely on
+         * the file's data-protection class, which is `NSFileProtectionComplete` as of 2026-09-04 rather
+         * than the `…UntilFirstUserAuthentication` default (see below, and [storeFileUrl]).
+         * 🪤 **"Android encrypts its database with SQLCipher" is true of a *different* database.** Android's
+         * SQLCipher store is `eudi.app.wallet.storage`, the Room database in `storage-logic` holding
+         * bookmarks, the transaction log, revoked documents and failed re-issuances. Its *documents and
+         * keys* live in wallet-core's default store, and this repository configures no storage for it at
+         * all — so they are plaintext SQLite under Android's file-based encryption. The comparison is
+         * therefore split: on documents we are *ahead* of Android (`Complete` beats FBE-after-first-unlock),
+         * and on those auxiliary tables we are *behind* (they share this plaintext file). The official iOS
+         * wallet keeps documents in the Keychain under
+         * `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`, which we do not match either way.
          *
          * ✅ **`NSFileProtectionComplete` IS set here as of 2026-09-04** — see [storeFileUrl]. 🪤 This
          * KDoc said the exact opposite until then ("not available to us, which is why it is not set
@@ -295,8 +316,14 @@ internal class MultipazWalletStore(
          * work while it usually was. **That task was removed to buy this class** (`5cd85c25`), which is
          * the same trade the official iOS wallet makes — it runs no background work either, which is
          * precisely what lets it keep documents in the Keychain under a passcode-required class. So
-         * is a trade rather than a shortfall. `NSFileProtectionCompleteUnlessOpen` is the one worth
-         * revisiting, and needs a locked physical device to test.
+         * giving up unattended work is a trade rather than a shortfall.
+         *
+         * ⛔ **`NSFileProtectionCompleteUnlessOpen` is MEASURED AND REJECTED — do not re-propose it.**
+         * It was tested on a locked iPhone SE (iOS 26.6.1) on 2026-09-04: a *fresh* `open()` while the
+         * device is locked gives `EPERM` under `CompleteUnlessOpen` exactly as it does under `Complete`,
+         * because the class only keeps an *already open* file readable. It would therefore buy nothing
+         * and still break a cold-launch background top-up. The remaining improvement is a SQLCipher-backed
+         * connection keyed from the Keychain ("Option C"), which is real work rather than five lines.
          */
         suspend fun open(
             documentManagerId: String = DEFAULT_DOCUMENT_MANAGER_ID,

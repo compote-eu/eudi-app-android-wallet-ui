@@ -61,6 +61,38 @@ class WalletSqliteStorageTest {
     }
 
     @Test
+    fun the_connection_is_in_WAL_mode() {
+        // The pragma that actually removes the contention, and the one that can fail *silently*: SQLite
+        // answers `PRAGMA journal_mode` with the mode it really used rather than raising, so a refusal
+        // looks like success unless the value is read back.
+        val connection = WalletSqliteStorage.openConnection(temporaryUrl())
+
+        val mode = connection.prepare("PRAGMA journal_mode").use { statement ->
+            assertTrue(statement.step(), "PRAGMA journal_mode returned no row")
+            statement.getText(0)
+        }
+        connection.close()
+
+        assertEquals("wal", mode.lowercase(), "a writer would still block readers")
+    }
+
+    @Test
+    fun the_default_journal_mode_would_have_been_delete() {
+        // Pins why the pragma is needed rather than restating SQLite: under `delete` a writer takes an
+        // exclusive lock and readers get SQLITE_BUSY, which is the launch race. If a future driver
+        // starts defaulting to WAL, this failing is the signal that the pragma may be redundant.
+        val bare = androidx.sqlite.driver.NativeSQLiteDriver().open(temporaryUrl().path!!)
+
+        val mode = bare.prepare("PRAGMA journal_mode").use { statement ->
+            statement.step()
+            statement.getText(0)
+        }
+        bare.close()
+
+        assertEquals("delete", mode.lowercase(), "SQLite's default journal mode changed — re-read the KDoc")
+    }
+
+    @Test
     fun the_default_would_have_been_zero() {
         // Not a tautology about SQLite: it pins *why* the pragma is needed. If a future driver or
         // multipaz version started defaulting to a non-zero timeout, this failing is the signal that

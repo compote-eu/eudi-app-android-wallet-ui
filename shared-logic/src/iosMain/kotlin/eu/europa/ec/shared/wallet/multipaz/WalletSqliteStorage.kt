@@ -26,7 +26,6 @@ import kotlinx.coroutines.newSingleThreadContext
 import org.multipaz.storage.sqlite.SqliteStorage
 import org.multipaz.util.Logger
 import platform.Foundation.NSURL
-import platform.Foundation.NSURLIsExcludedFromBackupKey
 
 /**
  * multipaz's `IosStorage`, plus the one pragma it does not set.
@@ -51,10 +50,34 @@ import platform.Foundation.NSURLIsExcludedFromBackupKey
  * contention it exists for — a launch sweep, milliseconds — so that a real deadlock still surfaces as
  * an error instead of hanging forever.
  *
- * 🚩 `journal_mode = WAL` would be the stronger change and is **deliberately not made here**: it adds
- * `-wal` and `-shm` sidecars that would need the same `NSFileProtectionComplete` and backup treatment
- * as the database, and getting a file attribute onto the wrong thing has already cost this project
- * once. Decide it separately, with a device to check it on.
+ * 🚩 **WAL brings two sidecars, and both are handled elsewhere on purpose.** `-wal` and `-shm` need the
+ * same treatment as the database itself, and the two mechanisms differ:
+ *
+ *  - **Protection class** comes free by inheritance — a file created in the store directory picks up
+ *    `NSFileProtectionComplete` from it, measured on a device (created with no class of its own, and
+ *    refused with `EPERM` while locked). `MultipazWalletStore.storeFileUrl` sets the directory's class
+ *    unconditionally for exactly this reason.
+ *  - **Backup exclusion does NOT inherit.** `NSURLIsExcludedFromBackupKey` is per-item, so it moved from
+ *    the database file to the directory in the same change. Excluding only `wallet.db` would have left a
+ *    `-wal` full of un-checkpointed rows eligible for backup.
+ *
+ * 📌 **Measured on a device 2026-09-04, and one file is NOT sealed**:
+ *
+ *     wallet.db      class=NSFileProtectionComplete                         locked -> EPERM
+ *     wallet.db-wal  class=NSFileProtectionComplete                         locked -> EPERM
+ *     wallet.db-shm  class=…CompleteUntilFirstUserAuthentication            locked -> OPENS
+ *
+ * The `-shm` does not inherit the directory's class and is **left that way deliberately**. It holds the
+ * shared-memory *index* of WAL frames — page numbers, commit markers, checksums — while the rows live in
+ * the `-wal`, which is sealed; so what stays readable while locked is closer to traffic analysis than to
+ * content. Apple's SQLite picks the weaker class for it because processes coordinate through that file,
+ * and forcing `Complete` risks breaking WAL across a lock/unlock — a functional bug traded for a
+ * metadata exposure. ⛔ Do not "fix" it without measuring what it breaks.
+ *
+ * ⚠️ **Known WAL risk, not yet observed here**: a suspended process holding a read snapshot can prevent
+ * checkpointing, so the `-wal` grows. With the app and the document-provider extension both able to open
+ * this store, iOS suspending one at the wrong moment is the way to hit it. Watch the file size if the
+ * store ever bloats.
  *
  * Everything else mirrors `IosStorage` exactly, including the backup exclusion and the single-thread
  * context, because the point is to change one pragma and nothing else.
@@ -71,19 +94,52 @@ internal class WalletSqliteStorage(
         /** Long enough to outlast a launch sweep; short enough that a true deadlock still reports. */
         internal const val BUSY_TIMEOUT_MS = 5_000
 
+        /**
+         * Applied in order, and both matter.
+         *
+         * `journal_mode=WAL` is what actually removes the contention: under the default rollback
+         * journal a writer takes an exclusive lock and readers get `SQLITE_BUSY`, while WAL lets a
+         * reader continue against the last committed snapshot while a writer appends. Both launch
+         * sweeps write, so this is on the exact path that failed.
+         *
+         * `busy_timeout` stays anyway. WAL still serialises *writers*, so two of them can contend, and
+         * a timeout is what makes the second wait rather than fail.
+         */
+        internal val PRAGMAS = listOf(
+            "journal_mode" to "WAL",
+            "busy_timeout" to "$BUSY_TIMEOUT_MS",
+        )
+
         private const val TAG = "WalletSqliteStorage"
 
         internal fun openConnection(storageFileUrl: NSURL): SQLiteConnection {
-            storageFileUrl.setResourceValue(
-                value = true,
-                forKey = NSURLIsExcludedFromBackupKey,
-                error = null,
-            )
+            // ⛔ Backup exclusion is NOT set here any more — it is set on the *directory* by
+            // `MultipazWalletStore.storeFileUrl`, because `NSURLIsExcludedFromBackupKey` is a per-item
+            // resource value that new siblings do not inherit. Under WAL the database has two of them
+            // (`-wal`, `-shm`), and a `-wal` carries rows that have not been checkpointed yet — so
+            // excluding only `wallet.db` would have let recently written credential data reach a backup
+            // while the database itself was kept out of one. Directory exclusion cascades; `657a8077`
+            // established that the hard way, when multipaz's own helper set it there and silently
+            // excluded `Platform.storage` too.
             val connection = NativeSQLiteDriver().open(storageFileUrl.path!!)
             // Reported rather than assumed: a pragma that failed to take would leave the original
             // defect in place while looking exactly like the fix.
-            runCatching { connection.execSQL("PRAGMA busy_timeout = $BUSY_TIMEOUT_MS") }
-                .onFailure { Logger.w(TAG, "busy_timeout was refused: ${it.message}") }
+            for ((pragma, value) in PRAGMAS) {
+                runCatching { connection.execSQL("PRAGMA $pragma = $value") }
+                    .onFailure { Logger.w(TAG, "PRAGMA $pragma was refused: ${it.message}") }
+            }
+            // `journal_mode` is the one pragma that answers, and a refusal is silent: SQLite returns the
+            // mode it actually used rather than failing, so asking is the only way to know.
+            val mode = runCatching {
+                connection.prepare("PRAGMA journal_mode").use { statement ->
+                    if (statement.step()) statement.getText(0) else null
+                }
+            }.getOrNull()
+            if (mode?.lowercase() != "wal") {
+                Logger.w(TAG, "journal_mode is '$mode', not WAL — the launch race is only softened, not removed")
+            } else {
+                Logger.i(TAG, "journal_mode=WAL busy_timeout=${BUSY_TIMEOUT_MS}ms")
+            }
             return connection
         }
     }
