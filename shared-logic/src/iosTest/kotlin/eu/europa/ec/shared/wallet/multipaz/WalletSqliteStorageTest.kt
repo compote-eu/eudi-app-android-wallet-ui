@@ -29,7 +29,7 @@ import kotlin.test.assertTrue
  * `SQLiteException: Error code: 5, message: database is locked` in 2 of 5 runs, because
  * multipaz's `IosStorage` opens with no pragmas and SQLite's default busy timeout is **0** — a
  * contended reader fails outright rather than retrying. The app makes two connections at every launch
- * (`reconcileDocumentRegistrations` and `refreshRevocationOnLaunch`), so the race is its own.
+ * (`reconcileDocumentRegistrations` and `refreshWalletOnLaunch`), so the race is its own.
  *
  * The assertion is on the pragma rather than on a staged collision: forcing two connections to contend
  * deterministically needs one to hold a write transaction open across the other's read, which a unit

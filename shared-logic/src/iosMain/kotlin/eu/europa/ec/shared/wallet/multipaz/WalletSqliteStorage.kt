@@ -40,7 +40,7 @@ import platform.Foundation.NSURLIsExcludedFromBackupKey
  * *connections*, not threads — multipaz pins each storage instance to its own single thread ("Native
  * sqlite crashes when used with Dispatchers.IO"), so a second `MultipazWalletStore.open()` is a second
  * connection and a second contender. The app makes two of them at launch without meaning to:
- * `reconcileDocumentRegistrations()` and `refreshRevocationOnLaunch()` both read the store immediately,
+ * `reconcileDocumentRegistrations()` and `refreshWalletOnLaunch()` both read the store immediately,
  * concurrently, and whichever loses gets nothing.
  *
  * ⚠️ **The consequence is silent.** Registration only prints, and revocation failure is swallowed by

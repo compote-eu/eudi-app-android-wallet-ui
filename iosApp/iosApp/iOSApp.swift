@@ -19,6 +19,7 @@ import class SharedKit.WalletEngineProbeKt
 import class SharedKit.IosAuthorizationRedirects
 import class SharedKit.IosDeepLinks
 import class SharedKit.BackgroundReIssuanceSummary
+import class SharedKit.IosBackgroundReIssuanceKt
 import class SharedKit.IosBackgroundRevocationKt
 import class SharedKit.BackgroundRevocationSummary
 import class SharedKit.IosDocumentSigning
@@ -46,12 +47,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ///
     /// 📌 A `BGProcessingTask` used to be registered here, because iOS requires every task identifier
     /// to be registered before this method returns. It was **removed 2026-09-04** so the wallet
-    /// database can carry `NSFileProtectionComplete` — see [refreshRevocationOnLaunch].
+    /// database can carry `NSFileProtectionComplete` — see [refreshWalletOnLaunch].
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        refreshRevocationOnLaunch()
+        refreshWalletOnLaunch()
 
         // Lets Kotlin tell us when the document set changes, so a deleted document leaves the system
         // credential picker instead of lingering in it. Registered before the first reconciliation
@@ -102,9 +103,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 @MainActor
-/// Refreshes revocation status once per launch, without blocking startup.
+/// Tops credentials up and refreshes revocation status once per launch, without blocking startup.
 ///
-/// **The only revocation trigger on iOS, by decision (2026-09-04).** A `BGProcessingTask` used to sweep
+/// **The only trigger for either sweep on iOS, by decision (2026-09-04).** A `BGProcessingTask` used to sweep
 /// re-issuance and revocation with the app closed. It was removed so the wallet database can carry
 /// `NSFileProtectionComplete`: a file unreadable while the device is locked is incompatible with any
 /// background work, which is exactly why that protection class had been rejected before. The wallet is
@@ -121,12 +122,34 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 ///
 /// Detached and unawaited on purpose: nothing on screen depends on the answer, and the Documents screen
 /// re-reads the store when it appears, so a flag set a second after launch still shows. Failure is
-/// already swallowed and logged inside `runBackgroundRevocation`.
+/// already swallowed and logged inside each sweep.
 ///
 /// Once per process rather than on every foreground, which keeps it free of any "last refreshed"
 /// bookkeeping while still guaranteeing the status is no older than the session the user is looking at.
-private func refreshRevocationOnLaunch() {
+///
+/// **The two sweeps run in sequence, in one task, in the order the removed background handler used**:
+/// top up first, then check revocation, so the status is read on the credential set the user will
+/// actually present. Sequential rather than two detached tasks for a second reason — each
+/// `MultipazWalletStore.open()` is its own SQLite connection, and two of those racing here is exactly
+/// the contention that made a launch fail with `database is locked` before `WalletSqliteStorage` gave
+/// the connection a `busy_timeout`. One reader avoids leaning on that safety net at all.
+///
+/// 📌 Naming: `runBackgroundReIssuance` and `runBackgroundRevocation` keep "background" in their names
+/// though nothing background is left. Not an oversight — revocation has been launch-only since
+/// `38bdb5c4`, long before the task was removed, so the mismatch predates this; renaming both would
+/// churn two files, a summary type, nine tests and the probe for no behavioural gain.
+private func refreshWalletOnLaunch() {
     Task { @MainActor in
+        do {
+            // This was the `BGProcessingTask`'s work until 2026-09-04. It only ever succeeds inside the
+            // issuer's refresh-token window (1800 s at the EUDI dev issuer), which is why running it
+            // when the user opens the wallet is worth more than running it at a moment the system
+            // picks: a launch is at least a moment the user chose.
+            let topUp = try await IosBackgroundReIssuanceKt.runBackgroundReIssuance()
+            print("LAUNCH-REISSUANCE: \(topUp)")
+        } catch {
+            print("LAUNCH-REISSUANCE: failed — \(error)")
+        }
         do {
             let summary = try await IosBackgroundRevocationKt.runBackgroundRevocation()
             print("LAUNCH-REVOCATION: \(summary)")

@@ -88,8 +88,16 @@ internal fun summarize(
 )
 
 /**
- * Tops up the credentials of every document whose policy says it is running out — iOS's counterpart of
- * Android's `ReIssuanceWorkManager`, which `Application` enqueues every 15 minutes through WorkManager.
+ * Tops up the credentials of every document whose policy says it is running out.
+ *
+ * ⚠️ **"Background" is now a name, not a description.** This was iOS's counterpart of Android's
+ * `ReIssuanceWorkManager` — a `BGProcessingTask` running with the app closed — until that task was
+ * removed on 2026-09-04 so the wallet database could carry `NSFileProtectionComplete`. It is now driven
+ * from `refreshWalletOnLaunch()` in `iOSApp.swift`, once per process. Android still enqueues its worker
+ * every 15 minutes; the divergence is deliberate.
+ *
+ * 🚩 So nothing here runs while the device is locked, and nothing should be added that does: the
+ * database is unreadable then, by design.
  *
  * **Where the thresholds come from is the whole point.** Each document carries the policy the issuer
  * advertised in `credential_reuse_policy`, so "is this due?" is answered per document by

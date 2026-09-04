@@ -1037,8 +1037,9 @@ private suspend fun probeBackgroundReIssuance(onResult: (String) -> Unit) {
         return
     }
     onResult(
-        "runBackgroundReIssuance -> $summary. iOS decides when the real task runs, so nothing may " +
-                "depend on it having happened; every foreground path still tops up on its own."
+        "runBackgroundReIssuance -> $summary. Since 2026-09-04 this runs at launch rather than from a " +
+                "`BGProcessingTask` — there is no longer a scheduler deciding when — and every " +
+                "foreground path still tops up on its own."
     )
 }
 
