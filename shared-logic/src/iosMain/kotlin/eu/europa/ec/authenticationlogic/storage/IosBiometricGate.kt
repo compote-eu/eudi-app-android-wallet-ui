@@ -49,6 +49,7 @@ import org.multipaz.util.Logger
 import platform.Security.errSecInteractionNotAllowed
 import platform.Security.errSecSuccess
 import platform.Security.kSecAccessControlBiometryCurrentSet
+import platform.Security.kSecUseAuthenticationContext
 import platform.Security.kSecUseAuthenticationUI
 import platform.Security.kSecUseAuthenticationUIFail
 import platform.Security.kSecAttrAccessControl
@@ -59,7 +60,6 @@ import platform.Security.kSecClass
 import platform.Security.kSecClassGenericPassword
 import platform.Security.kSecReturnAttributes
 import platform.Security.kSecReturnData
-import platform.Security.kSecUseOperationPrompt
 import platform.Security.kSecValueData
 import platform.posix.arc4random_buf
 
@@ -215,6 +215,25 @@ class IosBiometricGate(
      * answer the app could mishandle. [reason] is what iOS shows in the prompt, and is required — an
      * empty one gives a prompt that does not say what it is for.
      *
+     * [reason] travels on an [LAContext] under `kSecUseAuthenticationContext`, **not** on the older
+     * `…OperationPrompt` key, which Apple's own header has deprecated since iOS 14 while naming this
+     * exact replacement:
+     *
+     * > `API_DEPRECATED("Use kSecUseAuthenticationContext and set LAContext.localizedReason
+     * > property", macos(10.10, 11.0), ios(8.0, 14.0))`
+     *
+     * The app runs twelve major versions past that, so the old key was handing the system a string it
+     * is under no obligation to render. Only the *subtitle* was ever ours in the first place: the
+     * title line is composed by iOS as "Touch ID for <`CFBundleDisplayName`>" and localized to the
+     * **device** language, so it shows up translated even where the app ships a single locale.
+     *
+     * 🔒 `touchIDAuthenticationAllowableReuseDuration` is deliberately left at its default of 0. Any
+     * larger value lets a *recent* unlock satisfy a later gate with no new match — convenient, and
+     * precisely the property this class exists to deny. Do not set it.
+     *
+     * The context is released and invalidated as soon as the read returns rather than kept for a later
+     * call, since a retained one is a live authentication session.
+     *
      * Off the main thread deliberately. `SecItemCopyMatching` on a biometry-gated item blocks until the
      * user answers, which on the main thread is a frozen UI behind the system prompt.
      */
@@ -225,11 +244,18 @@ class IosBiometricGate(
             CFDictionarySetValue(query, kSecAttrService, CFBridgingRetain(service))
             CFDictionarySetValue(query, kSecAttrAccount, CFBridgingRetain(account))
             CFDictionarySetValue(query, kSecReturnData, kCFBooleanTrue)
-            CFDictionarySetValue(query, kSecUseOperationPrompt, CFBridgingRetain(reason))
+
+            val authContext = LAContext().apply { localizedReason = reason }
+            val authContextRef = CFBridgingRetain(authContext)
+            CFDictionarySetValue(query, kSecUseAuthenticationContext, authContextRef)
 
             val result = alloc<CFTypeRefVar>()
             val status = SecItemCopyMatching(query, result.ptr)
             result.value?.let { CFBridgingRelease(it) }
+            // The dictionary was created with null callbacks, so it never retained the context: this
+            // release is what balances the retain above, and it must not run before the read.
+            CFBridgingRelease(authContextRef)
+            authContext.invalidate()
 
             when (status) {
                 errSecSuccess -> IosBiometricOutcome.Success
