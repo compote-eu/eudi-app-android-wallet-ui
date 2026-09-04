@@ -121,6 +121,23 @@ internal class IssuerReusePolicyNotice {
 }
 
 /**
+ * Which authorization scope each credential configuration resolves to.
+ *
+ * Written by [OpenID4VciCompatibilityEngine] while it is already reading the metadata JSON — it learns
+ * these anyway, to rewrite `authorization_details` into a `scope` for issuers that want one.
+ *
+ * 🚩 **Exposed because two configurations can share a scope, and then they are indistinguishable to the
+ * authorization server.** The EUDI dev issuer publishes every credential twice, plain and `_deferred`,
+ * under one scope. Authorizing the second costs a browser confirmation and then fails — deferred
+ * issuance is unsupported — and that failure abandons whatever the request still had to issue.
+ * [IosCredentialIssuer.issue] reads this to skip the second round. Nothing else needs it.
+ */
+internal class CredentialScopeNotice {
+    var scopesByConfigurationId: Map<String, String> = emptyMap()
+        internal set
+}
+
+/**
  * Why the authorization server refused a token exchange, in its own words.
  *
  * Written by [OpenID4VciCompatibilityEngine] and read after the attempt has failed, for the same reason
@@ -178,6 +195,8 @@ internal fun openID4VciHttpClient(
     /** Filled in with the issuer's per-claim display names, which multipaz discards. */
     claimDisplayNotice: IssuerClaimDisplayNotice? = null,
     reusePolicyNotice: IssuerReusePolicyNotice? = null,
+    /** Filled in with configuration-id -> scope, so a caller can spot two configurations sharing one. */
+    scopeNotice: CredentialScopeNotice? = null,
     /**
      * Checks the signer of signed issuer metadata against the EU trust lists.
      *
@@ -193,6 +212,7 @@ internal fun openID4VciHttpClient(
             refusalNotice,
             claimDisplayNotice,
             reusePolicyNotice,
+            scopeNotice,
             issuerTrust,
         )
     ) {
@@ -217,6 +237,7 @@ internal class OpenID4VciCompatibilityEngine(
     private val refusalNotice: TokenRefusalNotice? = null,
     private val claimDisplayNotice: IssuerClaimDisplayNotice? = null,
     private val reusePolicyNotice: IssuerReusePolicyNotice? = null,
+    private val scopeNotice: CredentialScopeNotice? = null,
     private val issuerTrust: IssuerTrustSource? = null,
 ) : HttpClientEngineBase("openid4vci-compat") {
 
@@ -386,6 +407,7 @@ internal class OpenID4VciCompatibilityEngine(
                     configuration.jsonObject["scope"]?.jsonPrimitive?.content?.let { id to it }
                 }.toMap()
                 Logger.i(TAG, "learned ${scopesByConfigurationId.size} credential scopes")
+                scopeNotice?.scopesByConfigurationId = scopesByConfigurationId
                 rememberClaimDisplayNames(configurations)
                 rememberReusePolicies(configurations)
             }

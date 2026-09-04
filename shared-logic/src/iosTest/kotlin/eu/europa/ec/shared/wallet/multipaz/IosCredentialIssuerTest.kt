@@ -44,6 +44,7 @@ class IosCredentialIssuerTest {
      */
     private fun issuerWith(
         answers: Map<String, Result<String>>,
+        scopes: Map<String, String> = emptyMap(),
     ) = IosCredentialIssuer(
         walletEngine = IosWalletEngine(),
         issuers = listOf(issuer),
@@ -51,6 +52,7 @@ class IosCredentialIssuerTest {
             attempted += configurationId
             answers[configurationId] ?: Result.failure(IllegalStateException("unscripted"))
         },
+        seededScopes = scopes,
     )
 
     @Test
@@ -134,5 +136,81 @@ class IosCredentialIssuerTest {
         // An empty `Success` would send the screen to the issuance-success list with nothing in it.
         assertIs<IosIssuanceProgress.Failure>(progress)
         assertTrue(attempted.isEmpty())
+    }
+
+    // --- Two configurations sharing one authorization scope -----------------------------------------
+    //
+    // The EUDI dev issuer publishes every credential twice, plain and `_deferred`, under a single scope,
+    // so "PID Combined" expands to four configurations. The authorization request carries the *scope*,
+    // so the second round asks the identical question — and then fails, because deferred issuance is
+    // unsupported. `issue` breaks on failure, so before this guard the flow abandoned `pid_vc_sd_jwt`:
+    // a second browser confirmation bought nothing and "Combined" delivered one document instead of
+    // two. Measured on a device 2026-09-04 — 1 credential issued before, 2 after.
+
+    @Test
+    fun a_configuration_sharing_an_already_issued_scope_is_not_issued_twice() = runTest {
+        val issuing = issuerWith(
+            answers = mapOf(
+                "pid_mso_mdoc" to Result.success("doc-1"),
+                "pid_mso_mdoc_deferred" to Result.success("doc-2"),
+            ),
+            scopes = mapOf(
+                "pid_mso_mdoc" to "eu.europa.ec.eudi.pid_mso_mdoc",
+                "pid_mso_mdoc_deferred" to "eu.europa.ec.eudi.pid_mso_mdoc",
+            ),
+        )
+
+        val progress = issuing.issue(
+            issuerId = issuer.issuerUrl,
+            configurationIds = listOf("pid_mso_mdoc", "pid_mso_mdoc_deferred"),
+        ).first()
+
+        // The second configuration must never be attempted: each attempt is a browser hop, and this one
+        // would fail and take the rest of the request down with it.
+        assertEquals(listOf("pid_mso_mdoc"), attempted)
+        assertEquals(listOf("doc-1"), assertIs<IosIssuanceProgress.Issued>(progress).documentIds)
+    }
+
+    @Test
+    fun different_scopes_are_both_issued() = runTest {
+        // The guard must not swallow a genuine second credential — this is the case that makes "PID
+        // Combined" worth having at an issuer that publishes distinct scopes.
+        val issuing = issuerWith(
+            answers = mapOf(
+                "pid_mso_mdoc" to Result.success("doc-1"),
+                "pid_vc_sd_jwt" to Result.success("doc-2"),
+            ),
+            scopes = mapOf(
+                "pid_mso_mdoc" to "eu.europa.ec.eudi.pid_mso_mdoc",
+                "pid_vc_sd_jwt" to "eu.europa.ec.eudi.pid_vc_sd_jwt",
+            ),
+        )
+
+        val progress = issuing.issue(
+            issuerId = issuer.issuerUrl,
+            configurationIds = listOf("pid_mso_mdoc", "pid_vc_sd_jwt"),
+        ).first()
+
+        assertEquals(listOf("pid_mso_mdoc", "pid_vc_sd_jwt"), attempted)
+        assertEquals(
+            listOf("doc-1", "doc-2"),
+            assertIs<IosIssuanceProgress.Issued>(progress).documentIds,
+        )
+    }
+
+    @Test
+    fun an_unknown_scope_never_blocks_a_configuration() = runTest {
+        // Scopes are learned from metadata during the first round, so the first configuration of a flow
+        // has none. Absent knowledge the guard must stay out of the way.
+        val issuing = issuerWith(
+            answers = mapOf(
+                "a" to Result.success("doc-1"),
+                "b" to Result.success("doc-2"),
+            ),
+        )
+
+        issuing.issue(issuerId = issuer.issuerUrl, configurationIds = listOf("a", "b")).first()
+
+        assertEquals(listOf("a", "b"), attempted)
     }
 }
