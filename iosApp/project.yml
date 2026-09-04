@@ -313,18 +313,14 @@ targets:
         # the wallet advertises, and without the key the app is terminated instead of prompted.
         NSBluetoothAlwaysUsageDescription: >-
           Share documents from your wallet with a nearby reader over Bluetooth.
-        # Background credential top-up — iOS's counterpart of Android's `ReIssuanceWorkManager`, which
-        # `Application` enqueues through WorkManager every 15 minutes.
-        #
-        # Both keys are required and neither is optional: `BGTaskScheduler.register` raises
-        # `NSInternalInconsistencyException` at launch for an identifier missing from the permitted
-        # list, and without the `processing` background mode the task is never run at all. The
-        # identifier is a fixed string rather than `$(PRODUCT_BUNDLE_IDENTIFIER)`-derived, so the dev
-        # and demo builds ask for the same task by the same name — it identifies the work, not the app.
-        BGTaskSchedulerPermittedIdentifiers:
-          - eu.europa.ec.euidi.reissuance
-        UIBackgroundModes:
-          - processing
+        # ⛔ NO BACKGROUND MODES, AND NO `BGTaskSchedulerPermittedIdentifiers` — deliberate, 2026-09-04.
+        # There was a `BGProcessingTask` here for credential top-up, iOS's counterpart of Android's
+        # `ReIssuanceWorkManager`. It was removed so the wallet database can carry
+        # `NSFileProtectionComplete`: that class makes the file unreadable while the device is locked,
+        # which is incompatible with any work running while it is. The official iOS wallet makes the
+        # same trade — no background tasks, documents in the Keychain under a passcode-required class.
+        # Android keeps its two workers; the divergence is intended. See `refreshRevocationOnLaunch`
+        # in `iOSApp.swift` for the measurements behind the decision.
     # ── Digital Credentials API: the provider entitlement ────────────────────────────────────────
     #
     # Registering a document with iOS's credential picker needs this restricted entitlement, and the

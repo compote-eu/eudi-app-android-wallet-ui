@@ -18,6 +18,11 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.platform.IosAppGroup
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.alloc
+import kotlinx.cinterop.memScoped
+import kotlinx.cinterop.ptr
+import kotlinx.cinterop.value
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.multipaz.document.Document
@@ -37,6 +42,9 @@ import org.multipaz.storage.StorageTableSpec
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
+import platform.Foundation.NSError
+import platform.Foundation.NSFileProtectionComplete
+import platform.Foundation.NSFileProtectionKey
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import kotlin.time.Clock
@@ -162,10 +170,60 @@ internal class MultipazWalletStore(
             manager.createDirectoryAtURL(
                 url = directory,
                 withIntermediateDirectories = true,
-                attributes = null,
+                // On the directory so a file created inside it inherits the class — which is the only
+                // protection the database gets on a first run, since multipaz creates the file itself
+                // inside `IosStorage`, after this function has returned.
+                attributes = mapOf(NSFileProtectionKey to NSFileProtectionComplete),
                 error = null,
             )
-            return directory.URLByAppendingPathComponent(STORE_FILE, isDirectory = false)!!
+            // And again unconditionally, because `createDirectoryAtURL` applies `attributes` only to a
+            // directory it actually creates — on an existing install the class would otherwise never
+            // reach the directory at all.
+            //
+            // 🚩 This is not cosmetic. SQLite writes a `-journal` beside the database, and multipaz
+            // creates it, not us: with the directory unprotected that sidecar inherits iOS's *default*
+            // class, leaving recently written rows readable while the device is locked next to a
+            // database that is not. Measured on a device — the first version of this change left
+            // `directory=unset` and only the database file protected.
+            manager.setAttributes(
+                mapOf(NSFileProtectionKey to NSFileProtectionComplete),
+                ofItemAtPath = directory.path!!,
+                error = null,
+            )
+            val file = directory.URLByAppendingPathComponent(STORE_FILE, isDirectory = false)!!
+            // Also set explicitly, because inheritance only applies to files created *after* the
+            // attribute — an install that already has a database predates it. On a first run the file
+            // does not exist yet (multipaz creates it inside `IosStorage`), so this is expected to fail
+            // exactly once, which is why the directory carries the class as well.
+            //
+            // 🚩 The error is read rather than discarded, and the class is read *back*: a protection
+            // class that silently failed to apply looks identical to one that worked, and the whole
+            // point of removing the background task was to be able to rely on this.
+            memScoped {
+                val failure = alloc<ObjCObjectVar<NSError?>>()
+                val applied = manager.setAttributes(
+                    mapOf(NSFileProtectionKey to NSFileProtectionComplete),
+                    ofItemAtPath = file.path!!,
+                    error = failure.ptr,
+                )
+                if (!applied && manager.fileExistsAtPath(file.path!!)) {
+                    Logger.w(
+                        "MultipazWalletStore",
+                        "the wallet database exists but would not take a protection class: " +
+                            (failure.value?.localizedDescription ?: "no reason given"),
+                    )
+                }
+            }
+            Logger.i(
+                "MultipazWalletStore",
+                "wallet database protection: file=" +
+                    (manager.attributesOfItemAtPath(file.path!!, error = null)
+                        ?.get(NSFileProtectionKey) ?: "absent (not created yet)") +
+                    " directory=" +
+                    (manager.attributesOfItemAtPath(directory.path!!, error = null)
+                        ?.get(NSFileProtectionKey) ?: "unset"),
+            )
+            return file
         }
 
         /**
