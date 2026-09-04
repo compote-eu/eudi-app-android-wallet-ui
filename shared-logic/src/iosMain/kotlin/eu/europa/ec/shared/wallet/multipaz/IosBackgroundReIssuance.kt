@@ -33,12 +33,59 @@ data class BackgroundReIssuanceSummary(
     val due: Int,
     val refreshed: Int,
     val failed: Int,
+    val unchanged: Int,
 ) {
     val didWork: Boolean get() = refreshed > 0
 
+    /**
+     * Whether every due document was accounted for — the invariant that makes this summary readable.
+     *
+     * A sweep that leaves due documents in none of the three buckets is under-reporting, which is
+     * exactly the defect [unchanged] was added to close: a failed fetch used to land nowhere and the
+     * summary said `due=1 refreshed=0 failed=0`, which reads as "nothing needed doing".
+     */
+    val accountedFor: Boolean get() = due == refreshed + failed + unchanged
+
     override fun toString(): String =
-        "considered=$considered due=$due refreshed=$refreshed failed=$failed"
+        "considered=$considered due=$due refreshed=$refreshed failed=$failed unchanged=$unchanged"
 }
+
+/** What one due document's refresh attempt amounted to. */
+internal enum class RefreshOutcome { Refreshed, Failed, NothingToFetch }
+
+/**
+ * Which bucket one attempt falls into.
+ *
+ * Extracted from the sweep so the classification can be tested without a store, and so that adding a
+ * variant to [IosIssuanceProgress] forces a decision here rather than falling into an `else` — which is
+ * how the original defect survived: `Failure` was invisible because the call site asked only whether
+ * credentials had been fetched.
+ *
+ * 🚩 **A partial batch counts as [RefreshOutcome.Refreshed].** `Issued.failures` can be non-empty while
+ * credentials still arrived, and its own KDoc leaves the verdict to the caller. Work did happen, so the
+ * sweep should not tell iOS the run failed; the failures are logged instead. Zero fetched *with*
+ * failures is the genuinely bad case and counts as [RefreshOutcome.Failed].
+ */
+internal fun refreshOutcomeOf(progress: IosIssuanceProgress): RefreshOutcome = when (progress) {
+    is IosIssuanceProgress.Failure -> RefreshOutcome.Failed
+    is IosIssuanceProgress.Issued -> when {
+        progress.credentialsFetched > 0 -> RefreshOutcome.Refreshed
+        progress.failures.isNotEmpty() -> RefreshOutcome.Failed
+        else -> RefreshOutcome.NothingToFetch
+    }
+}
+
+/** Counts [outcomes] into a summary, so the arithmetic is testable apart from the sweep that gathers it. */
+internal fun summarize(
+    considered: Int,
+    outcomes: List<RefreshOutcome>,
+): BackgroundReIssuanceSummary = BackgroundReIssuanceSummary(
+    considered = considered,
+    due = outcomes.size,
+    refreshed = outcomes.count { it == RefreshOutcome.Refreshed },
+    failed = outcomes.count { it == RefreshOutcome.Failed },
+    unchanged = outcomes.count { it == RefreshOutcome.NothingToFetch },
+)
 
 /**
  * Tops up the credentials of every document whose policy says it is running out — iOS's counterpart of
@@ -67,43 +114,42 @@ suspend fun runBackgroundReIssuance(): BackgroundReIssuanceSummary {
     // Scoped to our own documents, as everywhere else that reads the store.
     val documents = store.documentStore.listDocuments()
         .filter { it.eudiMetadata?.documentManagerId == store.documentManagerId }
-    var due = 0
-    var refreshed = 0
-    var failed = 0
+    val outcomes = mutableListOf<RefreshOutcome>()
 
     for (document in documents) {
         val stored = document.toStoredDocument() ?: continue
         if (!stored.isDueForReIssuance(now)) continue
-        due++
 
         try {
             val progress = engine.refreshCredentials(document.identifier)
-            if (progress is IosIssuanceProgress.Issued && progress.credentialsFetched > 0) {
-                refreshed++
-                Logger.i(
+            val outcome = refreshOutcomeOf(progress)
+            outcomes += outcome
+            when (outcome) {
+                RefreshOutcome.Refreshed -> Logger.i(
                     TAG,
-                    "re-issued ${progress.credentialsFetched} credential(s) for ${document.identifier}"
+                    "re-issued ${(progress as IosIssuanceProgress.Issued).credentialsFetched} " +
+                        "credential(s) for ${document.identifier}"
                 )
-            } else {
-                Logger.i(TAG, "nothing fetched for ${document.identifier}: $progress")
+                // Logged at warning level because this is the case that used to vanish: a document
+                // that was due, was attempted, and did not get credentials.
+                RefreshOutcome.Failed ->
+                    Logger.w(TAG, "refresh failed for ${document.identifier}: $progress")
+                RefreshOutcome.NothingToFetch ->
+                    Logger.i(TAG, "nothing to fetch for ${document.identifier}: $progress")
             }
         } catch (cancelled: CancellationException) {
             // iOS asked for the time back. Stop where we are rather than burning the expiration
             // handler's grace period on another network round-trip.
-            Logger.i(TAG, "sweep cancelled after $refreshed refresh(es)")
+            Logger.i(TAG, "sweep cancelled after ${outcomes.count { it == RefreshOutcome.Refreshed }} refresh(es)")
             throw cancelled
         } catch (error: Throwable) {
-            failed++
+            outcomes += RefreshOutcome.Failed
             Logger.e(TAG, "re-issuance failed for ${document.identifier}", error)
         }
     }
 
-    return BackgroundReIssuanceSummary(
-        considered = documents.size,
-        due = due,
-        refreshed = refreshed,
-        failed = failed,
-    ).also { Logger.i(TAG, "background re-issuance: $it") }
+    return summarize(considered = documents.size, outcomes = outcomes)
+        .also { Logger.i(TAG, "background re-issuance: $it") }
 }
 
 private const val TAG = "IosBackgroundReIssuance"

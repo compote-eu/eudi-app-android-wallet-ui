@@ -76,6 +76,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             MainActor.assumeIsolated { handleBackgroundReIssuance(task) }
         }
         print("BACKGROUND-REISSUANCE: registered \(reIssuanceTaskIdentifier)")
+
         scheduleBackgroundReIssuance()
         refreshRevocationOnLaunch()
 
@@ -206,7 +207,12 @@ private func handleBackgroundReIssuance(_ task: BGTask) {
             let revocation = try await IosBackgroundRevocationKt.runBackgroundRevocation()
             print("BACKGROUND-REVOCATION: \(revocation)")
 
-            task.setTaskCompleted(success: true)
+            // Derived, not hardcoded: this used to pass `true` unconditionally while the KDoc above
+            // claimed a failed sweep says so. It only did for a *thrown* error — a document that was
+            // due and came back empty reported success, and `BGTaskScheduler` tunes how generously it
+            // schedules this app on that answer. Revocation already carried a `failed` flag nobody read.
+            let clean = summary.failed == 0 && !revocation.failed
+            task.setTaskCompleted(success: clean)
         } catch is CancellationError {
             print("BACKGROUND-REISSUANCE: cancelled by the system")
             task.setTaskCompleted(success: false)
