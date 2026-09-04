@@ -83,7 +83,7 @@ struct RequestAuthorizationView: View {
                 let result = try await bridge.present(
                     protocol: "org-iso-mdoc",
                     data: String(data: rawRequest.requestData, encoding: .utf8) ?? "",
-                    origin: context.requestingWebsiteOrigin?.absoluteString ?? "",
+                    origin: webOrigin(context.requestingWebsiteOrigin),
                     appId: nil,
                     consent: ConsentBridge(
                         show: { box in await MainActor.run { self.request = box.value } },
@@ -208,3 +208,20 @@ fileprivate actor DecisionBox {
         continuation = nil
     }
 }
+
+/// The requesting site's origin, serialized the way RFC 6454 defines it — `scheme://host[:port]`,
+/// with **no trailing slash**.
+///
+/// 🪤 `URL.absoluteString` is the obvious choice and it is wrong. Apple hands the extension a
+/// `URL`, and a URL whose path is empty normalizes to one with a `/`, so a bare origin comes back
+/// as `https://example.test:8443/`. That string is then bound into the ISO 18013-7 session
+/// transcript, which HPKE uses as `info` — so the only symptom is that the verifier cannot decrypt
+/// the response, with no indication of which side disagreed. It cost a device round trip and a
+/// brute-force search over candidate transcripts to find, and it would have made every
+/// spec-compliant verifier fail while a verifier that made the same mistake worked.
+private func webOrigin(_ url: URL?) -> String {
+    guard let url, let scheme = url.scheme, let host = url.host() else { return "" }
+    if let port = url.port { return "\(scheme)://\(host):\(port)" }
+    return "\(scheme)://\(host)"
+}
+

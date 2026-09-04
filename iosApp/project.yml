@@ -117,6 +117,14 @@ targets:
         # both come from the same two properties files the app reads. XcodeGen otherwise writes 1.0/1.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # 🪤 REQUIRED, and its absence is a crash rather than a degradation. This extension renders the
+        # wallet's own Compose consent screen, and Compose Multiplatform's `PlistSanityCheck` throws
+        #   IllegalStateException: `Info.plist` doesn't have a valid CADisableMinimumFrameDurationOnPhone
+        # at startup when the key is missing — aborting the extension process. The app target has
+        # carried this key since the first Compose screen; the extension needed it the moment it began
+        # hosting Compose, and nothing caught that because the extension is only ever launched by iOS
+        # routing a Digital Credentials request, which first happened on a device on 2026-09-04.
+        CADisableMinimumFrameDurationOnPhone: true
         # The shared container, from the same expression the app publishes and both entitlements
         # name. This process must not derive it from its own bundle id — see the app target's copy.
         EUDIAppGroupIdentifier: group.$(APP_BUNDLE_ID)
