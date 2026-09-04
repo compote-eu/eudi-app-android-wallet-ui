@@ -51,10 +51,12 @@ data class BackgroundRevocationSummary(
  *  - **At launch**, once per process, from the app shell. This is the trigger that can be relied on: it
  *    guarantees the status is no older than the current session whenever the user is actually looking at
  *    their documents.
- *  - **From the `BGProcessingTask`** that already tops up credentials. Opportunistic — `BGTaskScheduler`
- *    may leave a task unrun for days — but it is the only path that runs with the app closed, which is
- *    what Android's worker gives. Pairing the two sweeps on one task is also what the official iOS
- *    wallet does, which starts a revocation worker beside its re-issuance one.
+ *  - ⛔ **There used to be a second trigger, a `BGProcessingTask`** that ran with the app closed, the
+ *    way Android's worker does. It was removed on 2026-09-04 so the wallet database could carry
+ *    `NSFileProtectionComplete` — a database unreadable while locked cannot be swept while locked. The
+ *    launch trigger above is now the only one, paired with the credential top-up in
+ *    `refreshWalletOnLaunch()`. **Do not add a background trigger back**; it would silently undo the
+ *    protection class.
  *
  * The earlier reasoning for staying off that task — that every check would "spend a request per document
  * to conclude `Unknown`" until the trust gate opens — **expired with `650e8c1e`**: a status list is now
@@ -66,9 +68,10 @@ data class BackgroundRevocationSummary(
  * store when it appears, so a newly flagged document surfaces on its own. Flagging is all that happens —
  * the flag/clear decision itself is `revocationAction` in commonMain, which both platforms call.
  *
- * Failure is reported rather than thrown: one unreachable status endpoint must not make the whole sweep
- * look like a crash to `BGTaskScheduler`, which weighs completion when deciding whether to grant time
- * again. Cancellation *is* rethrown, because that is iOS asking for its time back.
+ * Failure is reported rather than thrown: one unreachable status endpoint must not sink the whole
+ * sweep, and the caller has no screen to show an error on. (Until 2026-09-04 there was a second reason —
+ * a thrown sweep looked like a crash to `BGTaskScheduler`, which weighed completion when granting time.
+ * That scheduler is gone; the first reason stands on its own.) Cancellation *is* rethrown.
  */
 suspend fun runBackgroundRevocation(): BackgroundRevocationSummary {
     val engine = IosWalletEngine()

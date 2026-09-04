@@ -22,11 +22,14 @@ import org.multipaz.util.Logger
 import kotlin.time.Clock
 
 /**
- * What a background sweep did, in a shape Swift can report to the system.
+ * What a sweep did, in a shape Swift can print.
  *
  * `refreshed` is documents whose credentials were actually topped up; a document that was due and then
- * failed counts as [failed], not as a silent success — `BGTaskScheduler` decides whether to keep giving
- * the app time partly on whether its work completes, so pretending is counterproductive.
+ * failed counts as [failed], not as a silent success. 🪤 The reason given here until 2026-09-04 was that
+ * `BGTaskScheduler` weighs completion when deciding whether to grant time again — true then, void now
+ * that there is no scheduler. The honest-counting rule outlives it: this summary is the **only** place a
+ * failed top-up surfaces, since the caller has no screen to show one on, and it under-reported failures
+ * for exactly that reason until `7485f1cc`.
  */
 data class BackgroundReIssuanceSummary(
     val considered: Int,

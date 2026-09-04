@@ -1024,10 +1024,10 @@ private suspend fun probeQrScan(onResult: (String) -> Unit) {
 private suspend fun probeBackgroundReIssuance(onResult: (String) -> Unit) {
     onResult("--- background re-issuance ---")
 
-    // The sweep `BGTaskScheduler` runs, driven directly. The scheduler itself cannot be exercised here
-    // — the simulator has no scheduler at all (`BGTaskSchedulerErrorDomain` code 1 on every submit), and
-    // firing a task needs the Xcode debugger or a device — so this proves the half that is testable:
-    // that the sweep reads the store, applies each document's own policy, and reports honestly.
+    // The launch sweep, driven directly. Until 2026-09-04 this was a `BGProcessingTask` and the note
+    // here explained that the scheduler could not be exercised from a probe; the task is gone, so the
+    // only trigger is `refreshWalletOnLaunch()` and driving the body directly is the whole of it. What
+    // this shows: the sweep reads the store, applies each document's own policy, and reports honestly.
     //
     // "due=0" is a pass, not a gap: it means every document's issuer-advertised threshold says there is
     // nothing to top up, which is the expected state right after `probeReIssuance` has just refreshed.

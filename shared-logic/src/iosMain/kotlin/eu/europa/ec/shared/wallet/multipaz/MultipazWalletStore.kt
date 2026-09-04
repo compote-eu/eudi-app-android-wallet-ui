@@ -288,12 +288,13 @@ internal class MultipazWalletStore(
          * Android encrypts its own database with SQLCipher and the official iOS wallet keeps documents
          * in the Keychain under `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`; we match neither.
          *
-         * 🪤 **`NSFileProtectionComplete` is not available to us**, which is why it is not set here.
-         * It makes a file unreadable while the device is locked, and the `BGProcessingTask` behind
-         * credential top-up and revocation does network *and key* work in the background, where the
-         * device usually is locked. The official iOS wallet can afford the equivalent Keychain class
-         * precisely because it does no real background work — its "WorkManager" is a foreground polling
-         * loop. Our background top-up is the thing that makes their posture unaffordable here, so this
+         * ✅ **`NSFileProtectionComplete` IS set here as of 2026-09-04** — see [storeFileUrl]. 🪤 This
+         * KDoc said the exact opposite until then ("not available to us, which is why it is not set
+         * here"), and the reason it gave was sound at the time: the class makes a file unreadable while
+         * the device is locked, and the `BGProcessingTask` behind credential top-up did network and key
+         * work while it usually was. **That task was removed to buy this class** (`5cd85c25`), which is
+         * the same trade the official iOS wallet makes — it runs no background work either, which is
+         * precisely what lets it keep documents in the Keychain under a passcode-required class. So
          * is a trade rather than a shortfall. `NSFileProtectionCompleteUnlessOpen` is the one worth
          * revisiting, and needs a locked physical device to test.
          */

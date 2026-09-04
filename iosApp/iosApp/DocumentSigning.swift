@@ -94,7 +94,8 @@ final class WalletDocumentSigner: NSObject, IosDocumentSigner, @unchecked Sendab
     /// `IosDocumentSigner` is a Kotlin protocol and therefore carries no actor isolation, while
     /// everything this does — UIKit presentation, and `EudiRQESUi`, which is `@MainActor` — must run
     /// on the main actor. Kotlin only ever calls this from Compose's main thread, so state that
-    /// rather than hop and lose the ordering: the same `assumeIsolated` the `BGTask` handler uses.
+    /// rather than hop and lose the ordering. (This used to say "the same `assumeIsolated` the
+    /// `BGTask` handler uses"; that handler was removed on 2026-09-04.)
     nonisolated func selectAndSign(onOutcome: @escaping (KotlinBoolean, String?) -> Void) {
         // The callback comes from Kotlin, so Swift cannot see that it is safe to hand to the main
         // actor and refuses to "send" it. Boxing states what the bridge guarantees: Kotlin calls
