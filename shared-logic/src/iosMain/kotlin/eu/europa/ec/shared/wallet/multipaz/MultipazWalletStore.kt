@@ -36,7 +36,6 @@ import org.multipaz.securearea.SecureAreaRepository
 import org.multipaz.securearea.SecureEnclaveSecureArea
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
-import org.multipaz.storage.ios.IosStorage
 import org.multipaz.storage.StorageTable
 import org.multipaz.storage.StorageTableSpec
 import platform.Foundation.NSApplicationSupportDirectory
@@ -171,8 +170,8 @@ internal class MultipazWalletStore(
                 url = directory,
                 withIntermediateDirectories = true,
                 // On the directory so a file created inside it inherits the class — which is the only
-                // protection the database gets on a first run, since multipaz creates the file itself
-                // inside `IosStorage`, after this function has returned.
+                // protection the database gets on a first run, since the file is created by the SQLite
+                // driver when [WalletSqliteStorage] opens its connection, after this function returns.
                 attributes = mapOf(NSFileProtectionKey to NSFileProtectionComplete),
                 error = null,
             )
@@ -193,7 +192,7 @@ internal class MultipazWalletStore(
             val file = directory.URLByAppendingPathComponent(STORE_FILE, isDirectory = false)!!
             // Also set explicitly, because inheritance only applies to files created *after* the
             // attribute — an install that already has a database predates it. On a first run the file
-            // does not exist yet (multipaz creates it inside `IosStorage`), so this is expected to fail
+            // does not exist yet (the driver creates it when the connection opens), so this fails
             // exactly once, which is why the directory carries the class as well.
             //
             // 🚩 The error is read rather than discarded, and the class is read *back*: a protection
@@ -280,7 +279,7 @@ internal class MultipazWalletStore(
          *  - **it excludes the wrong thing from backup.** `Platform`'s helper sets
          *    `NSURLIsExcludedFromBackupKey` on the *directory*, not the file, so asking for
          *    non-backed-up storage silently also excludes `Platform.storage` — the one meant to be
-         *    backed up. Our exclusion worked by accident. [IosStorage] sets the flag on the file.
+         *    backed up. Our exclusion worked by accident. [WalletSqliteStorage] sets it on the file.
          *
          * ⚠️ **This is placement and backup hygiene, not encryption.** The file is still plain SQLite.
          * There is no encrypted `Storage` in multipaz 0.99.0 — `SqliteStorage`, `IosStorage`,
@@ -301,10 +300,10 @@ internal class MultipazWalletStore(
         suspend fun open(
             documentManagerId: String = DEFAULT_DOCUMENT_MANAGER_ID,
         ): MultipazWalletStore {
-            val storage = IosStorage(
-                storageFileUrl = storeFileUrl(),
-                excludeFromBackup = true,
-            )
+            // Not multipaz's `IosStorage`: the same connection, plus the `busy_timeout` it omits. Two
+            // readers race here at every launch and the loser used to fail outright — see
+            // [WalletSqliteStorage].
+            val storage = WalletSqliteStorage(storageFileUrl = storeFileUrl())
             // The real key store. It works on the simulator too — multipaz drops the
             // user-authentication flags there rather than failing.
             val secureEnclave = SecureEnclaveSecureArea.create(storage)
