@@ -16,6 +16,7 @@
 
 import SwiftUI
 import class SharedKit.WalletEngineProbeKt
+import class SharedKit.IosFirstRunWipeKt
 import class SharedKit.IosAuthorizationRedirects
 import class SharedKit.IosDeepLinks
 import class SharedKit.BackgroundReIssuanceSummary
@@ -52,6 +53,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        // FIRST, and synchronously: deleting the app does not delete what it put in the Keychain, so a
+        // reinstall would otherwise find the previous owner's PIN guarding a wallet whose documents
+        // went with the container. Measured 2026-09-05 — the app-group container *is* removed, the
+        // Keychain items are not. Must run before anything reads the PIN, which is why it is here and
+        // not in a Task. The official iOS wallet does the same thing in its startup interactor.
+        if IosFirstRunWipeKt.clearSecretsLeftByAPreviousInstall() {
+            print("FIRST-RUN-WIPE: cleared secrets left by a previous install")
+        }
+
         refreshWalletOnLaunch()
 
         // Lets Kotlin tell us when the document set changes, so a deleted document leaves the system

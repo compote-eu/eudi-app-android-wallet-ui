@@ -275,6 +275,15 @@ class IosBiometricGate(
     }
 
     companion object {
+        /**
+         * The Keychain service this gate's item lives under.
+         *
+         * Named here rather than at the injection site because it is now read twice: once to create the
+         * item, and once by [clearSecretsLeftByAPreviousInstall] to delete it. A wipe that missed this
+         * string would leave biometric login enabled for a wallet that no longer exists.
+         */
+        const val DEFAULT_SERVICE = "eu.europa.ec.eudi.wallet.biometrics"
+
         /** One item, since there is one decision to record. */
         const val DEFAULT_ACCOUNT = "biometric-unlock"
 

@@ -151,7 +151,11 @@ class IosPinStorage(
         return bytes
     }
 
-    private companion object {
+    /**
+     * `internal` rather than private since 2026-09-05: [clearSecretsLeftByAPreviousInstall] deletes
+     * these exact accounts, and it has to name them from here or the two lists drift apart.
+     */
+    internal companion object {
         const val KEYCHAIN_SERVICE = "eu.europa.ec.eudi.wallet.pin"
         const val KEY_SALT = "PinSalt"
         const val KEY_HASH = "PinHash"

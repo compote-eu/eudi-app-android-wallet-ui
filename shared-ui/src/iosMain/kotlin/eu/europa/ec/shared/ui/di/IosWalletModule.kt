@@ -369,7 +369,7 @@ internal fun provideIosQrScanInteractor(): QrScanInteractor = IosQrScanInteracto
 
 @Single
 fun provideIosBiometricGate(): IosBiometricGate =
-    IosBiometricGate(service = "eu.europa.ec.eudi.wallet.biometrics")
+    IosBiometricGate(service = IosBiometricGate.DEFAULT_SERVICE)
 
 /**
  * The real splash routing, replacing the stand-in that always went to the dashboard: no PIN yet sends the
