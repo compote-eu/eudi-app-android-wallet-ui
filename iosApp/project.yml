@@ -128,6 +128,11 @@ targets:
         # The shared container, from the same expression the app publishes and both entitlements
         # name. This process must not derive it from its own bundle id — see the app target's copy.
         EUDIAppGroupIdentifier: group.$(APP_BUNDLE_ID)
+        # The Keychain group the app and the extension share, so the extension can read the documents
+        # the app wrote — since Option D those are Keychain items, not rows in the shared container.
+        # `$(AppIdentifierPrefix)` is the team prefix Xcode expands while building the plist, and the
+        # value is read at runtime rather than derived: see IosKeychainAccessGroup.
+        EUDIKeychainAccessGroup: $(AppIdentifierPrefix)$(APP_BUNDLE_ID)
         # What makes iOS treat this bundle as a document provider. `EXAppExtensionAttributes` is the
         # ExtensionKit form; the older `NSExtension` dictionary is for the previous extension model
         # and is not interchangeable.
@@ -144,6 +149,12 @@ targets:
         # to a reader and not obviously stable.
         com.apple.security.application-groups:
           - group.$(APP_BUNDLE_ID)
+        # The app's own Keychain group, named by the extension so the two can read each other's
+        # items. An extension has its own bundle id and therefore its own default group, which is why
+        # sharing has to be declared rather than inherited — and why the documents were invisible to
+        # this process until it was.
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)$(APP_BUNDLE_ID)
     dependencies:
       # This target answers Digital Credentials requests, and that path consults reader trust — so
       # the extension needs the cinterop's Swift implementation just as the app does. An extension
@@ -242,6 +253,11 @@ targets:
         # Both targets publish this from `$(APP_BUNDLE_ID)`, the same expression both entitlements
         # use, so the app, the extension and the entitlements cannot disagree.
         EUDIAppGroupIdentifier: group.$(APP_BUNDLE_ID)
+        # The Keychain group the app and the extension share, so the extension can read the documents
+        # the app wrote — since Option D those are Keychain items, not rows in the shared container.
+        # `$(AppIdentifierPrefix)` is the team prefix Xcode expands while building the plist, and the
+        # value is read at runtime rather than derived: see IosKeychainAccessGroup.
+        EUDIKeychainAccessGroup: $(AppIdentifierPrefix)$(APP_BUNDLE_ID)
         # The OpenID4VCI authorization redirect. The authorization server will only redirect to the
         # URI registered for our client_id — `eu.europa.ec.euidi://authorization`, the same value
         # Android builds as ISSUE_AUTHORIZATION_DEEPLINK — so iOS has to claim that scheme or the
@@ -386,6 +402,11 @@ targets:
         # holds is a container neither can share.
         com.apple.security.application-groups:
           - group.$(APP_BUNDLE_ID)
+        # The wallet's documents live in the Keychain under this group. Declaring it explicitly rather
+        # than relying on the implicit default is what lets the extension name the same one; without
+        # the pair, a Digital Credentials request finds an empty wallet and nothing reports why.
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)$(APP_BUNDLE_ID)
     dependencies:
       - package: EudiRQESUi
         product: EudiRQESUi

@@ -54,14 +54,17 @@ class IosFirstRunWipeTest {
             IosPinStorage.KEY_ITERATIONS to "210000".encodeToByteArray(),
         )
         var forgotBiometrics = false
+        var documentsDiscarded = 0
 
         val wiped = clearSecretsLeftByAPreviousInstall(
             defaults = defaults,
             pinSecrets = keychain,
             forgetBiometricEnrolment = { forgotBiometrics = true },
+            discardDocuments = { documentsDiscarded++; if (documentsDiscarded == 1) 7 else 0 },
         )
 
         assertTrue(wiped, "the first run after an install has to wipe")
+        assertEquals(2, documentsDiscarded, "once to discard, once to prove it took")
         assertNull(keychain.read(IosPinStorage.KEY_SALT))
         assertNull(keychain.read(IosPinStorage.KEY_HASH))
         assertNull(keychain.read(IosPinStorage.KEY_ITERATIONS))
@@ -71,7 +74,8 @@ class IosFirstRunWipeTest {
     @Test
     fun the_second_launch_leaves_the_users_own_pin_alone() {
         val keychain = InMemoryKeychain()
-        clearSecretsLeftByAPreviousInstall(defaults, keychain) {}
+        var documentsDiscarded = 0
+        clearSecretsLeftByAPreviousInstall(defaults, keychain, {}) { 0 }
 
         // The user sets a PIN, as they would after the wipe above.
         keychain.write(IosPinStorage.KEY_HASH, byteArrayOf(9))
@@ -81,9 +85,11 @@ class IosFirstRunWipeTest {
             defaults = defaults,
             pinSecrets = keychain,
             forgetBiometricEnrolment = { forgotBiometrics = true },
+            discardDocuments = { documentsDiscarded++; 0 },
         )
 
         assertFalse(wiped, "an install that has run before must not wipe again")
+        assertEquals(0, documentsDiscarded, "and must not touch the document store")
         assertEquals(1, keychain.read(IosPinStorage.KEY_HASH)?.size)
         assertFalse(forgotBiometrics, "and must not silently turn biometrics off either")
     }
@@ -97,7 +103,7 @@ class IosFirstRunWipeTest {
         }
 
         assertFalse(
-            clearSecretsLeftByAPreviousInstall(defaults, stubborn) {},
+            clearSecretsLeftByAPreviousInstall(defaults, stubborn, {}) { 0 },
             "a failed wipe must not claim to have succeeded",
         )
         assertFalse(
@@ -107,7 +113,7 @@ class IosFirstRunWipeTest {
 
         stubborn.ignoreDeletes = false
         assertTrue(
-            clearSecretsLeftByAPreviousInstall(defaults, stubborn) {},
+            clearSecretsLeftByAPreviousInstall(defaults, stubborn, {}) { 0 },
             "the next launch gets another go",
         )
     }

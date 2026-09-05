@@ -28,6 +28,7 @@ import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
+import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -75,7 +76,11 @@ class MultipazWalletStoreLocationTest {
         val expected = storePath()
         assertTrue(expected != null, "no Application Support path could be built")
 
-        MultipazWalletStore.open()
+        // Ephemeral rather than the real document store: since Option D put the documents in the
+        // Keychain, `open()`'s default cannot run here at all — a test binary is not an app and every
+        // `SecItem` call returns `errSecNotAvailable`. What this test is about is unaffected: the
+        // *database* still holds the wallet's own tables, and where that file lands is what is asserted.
+        MultipazWalletStore.open(documentStorage = EphemeralStorage())
 
         // Documents is the directory iOS exposes to the Files app the moment an unrelated plist key is
         // set, which is why the wallet's database must not be there.

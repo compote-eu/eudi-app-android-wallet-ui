@@ -49,6 +49,9 @@ class AppIdentityParityTest {
     /** Mirrors `IosAppGroup.INFO_PLIST_KEY`; this module cannot see the iOS source set. */
     private val appGroupKey = "EUDIAppGroupIdentifier"
 
+    /** Mirrors `IosKeychainAccessGroup.INFO_PLIST_KEY`, for the same reason. */
+    private val keychainGroupKey = "EUDIKeychainAccessGroup"
+
     @Test
     fun android_takes_its_version_from_version_properties() {
         // `BuildConfig.APP_VERSION` is what `ConfigLogic.appVersion` shows on the settings screen.
@@ -226,6 +229,29 @@ class AppIdentityParityTest {
             "both application-groups entitlements must name group.\$(APP_BUNDLE_ID)",
             listOf("group.\$(APP_BUNDLE_ID)", "group.\$(APP_BUNDLE_ID)"),
             entitlementGroups,
+        )
+    }
+
+    @Test
+    fun both_targets_share_one_keychain_group_for_the_documents() {
+        // Since the documents became Keychain items, this is the app-group story one layer up and it
+        // fails the same silent way: an extension has its own bundle id, so without a *declared*
+        // shared group it reads its own keychain, finds nothing, and answers a Digital Credentials
+        // request with an empty wallet. Nothing logs a reason.
+        val expected = "\$(AppIdentifierPrefix)\$(APP_BUNDLE_ID)"
+        assertEquals(
+            "both targets must publish $keychainGroupKey from the team prefix and \$(APP_BUNDLE_ID)",
+            listOf(expected, expected),
+            RepoFiles.projectYmlValues(keychainGroupKey),
+        )
+        val entitlementKeychainGroups = RepoFiles.file("iosApp/project.yml").readLines()
+            .map { it.substringBefore('#').trim() }
+            .filter { it.startsWith("- \$(AppIdentifierPrefix)") }
+            .map { it.removePrefix("-").trim() }
+        assertEquals(
+            "both keychain-access-groups entitlements must name $expected",
+            listOf(expected, expected),
+            entitlementKeychainGroups,
         )
     }
 

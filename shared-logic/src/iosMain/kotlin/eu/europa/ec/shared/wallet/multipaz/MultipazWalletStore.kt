@@ -17,6 +17,7 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.platform.IosAppGroup
+import eu.europa.ec.shared.wallet.platform.IosKeychainAccessGroup
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCObjectVar
 import kotlinx.cinterop.alloc
@@ -63,7 +64,15 @@ internal class MultipazWalletStore(
     val documentManagerId: String,
     /** The secure area new document keys are created in — the Secure Enclave on a real wallet. */
     val keySecureArea: SecureArea,
-    private val storage: Storage,
+    /**
+     * Where the wallet's own tables live — bookmarks, revoked flags, and multipaz's transaction log.
+     *
+     * Deliberately **not** the store the documents are in. Under Option D the documents moved to the
+     * Keychain and this did not: app data gains nothing from the move, and the transaction log is the
+     * one caller in all of multipaz that paginates, which is the single thing a Keychain backend has
+     * to fake. Keeping it on SQLite keeps that caller on a backend with a real cursor.
+     */
+    private val appDataStorage: Storage,
 ) {
 
     private val eventLoggerLock = Mutex()
@@ -83,7 +92,7 @@ internal class MultipazWalletStore(
      */
     suspend fun eventLogger(): SimpleEventLogger = eventLoggerLock.withLock {
         cachedEventLogger ?: SimpleEventLogger(
-            storage = storage,
+            storage = appDataStorage,
             partitionId = documentManagerId,
             // multipaz's own default, made explicit because it is a data-retention decision rather
             // than a tuning knob: entries older than this are dropped from the History tab.
@@ -92,7 +101,7 @@ internal class MultipazWalletStore(
     }
 
     /** Bookmarks, keyed by document id, with an empty value — presence *is* the bookmark. */
-    suspend fun bookmarksTable(): StorageTable = storage.getTable(BookmarksTableSpec)
+    suspend fun bookmarksTable(): StorageTable = appDataStorage.getTable(BookmarksTableSpec)
 
     /**
      * Documents found revoked, keyed by document id, with an empty value — presence *is* the flag.
@@ -102,7 +111,8 @@ internal class MultipazWalletStore(
      * cache. Same consequence too — a document stays flagged until a later refresh clears it, which
      * is what makes "revoked" survive going offline.
      */
-    suspend fun revokedDocumentsTable(): StorageTable = storage.getTable(RevokedDocumentsTableSpec)
+    suspend fun revokedDocumentsTable(): StorageTable =
+        appDataStorage.getTable(RevokedDocumentsTableSpec)
 
     companion object {
 
@@ -139,6 +149,43 @@ internal class MultipazWalletStore(
          * code path. **Shipping to real users would make a migration necessary** — it is absent because
          * it is not needed yet, not because it was overlooked.
          */
+        /**
+         * The Keychain service namespace the document store writes under.
+         *
+         * 🪤 **Derived from the app-group identifier, never from the running process.** Both targets
+         * publish that identifier into their Info.plist from one expression, so the app and the
+         * document-provider extension agree on it; `NSBundle.mainBundle.bundleIdentifier` does not —
+         * it is `…dev.provider` inside the extension, which is the defect `fd785674` fixed one layer
+         * down. A build with no app group falls back to a constant, which keeps a single-process
+         * wallet working and only costs flavours the ability to hold separate wallets on one device.
+         */
+        private fun keychainServicePrefix(): String {
+            val group = IosAppGroup.identifier()
+            if (group == null) {
+                Logger.w(
+                    "MultipazWalletStore",
+                    "no app-group identifier; the document Keychain namespace falls back to a " +
+                        "constant, so dev and demo builds would share one wallet on a device",
+                )
+            }
+            return "${group ?: FALLBACK_KEYCHAIN_PREFIX}.documents"
+        }
+
+        /**
+         * Deletes every document and every piece of key metadata this wallet has in the Keychain.
+         *
+         * Exposed here rather than on [KeychainWalletStorage] because the service namespace is this
+         * object's to know — and because the one caller,
+         * `clearSecretsLeftByAPreviousInstall`, must not have to construct a store to empty one.
+         *
+         * @return how many items were removed; a second call returning zero is the proof it took.
+         */
+        @OptIn(ExperimentalForeignApi::class)
+        fun discardEverythingInTheKeychain(): Int = KeychainWalletStorage.deleteEverythingUnder(
+            servicePrefix = keychainServicePrefix(),
+            accessGroup = IosKeychainAccessGroup.identifier(),
+        )
+
         @OptIn(ExperimentalForeignApi::class)
         private fun storeFileUrl(): NSURL {
             val manager = NSFileManager.defaultManager
@@ -251,6 +298,9 @@ internal class MultipazWalletStore(
         /** Our own name: nothing reads the multipaz-chosen `storageNoBackup.db` any more. */
         private const val STORE_FILE = "wallet.db"
 
+        /** Only reached when the Info.plist key is missing, which means a mis-generated project. */
+        private const val FALLBACK_KEYCHAIN_PREFIX = "eu.europa.ec.eudi.wallet"
+
         /** How long a transaction stays in the log. multipaz's default, kept deliberately. */
         val EVENT_RETENTION = 60.days
 
@@ -272,11 +322,18 @@ internal class MultipazWalletStore(
         )
 
         /**
-         * Opens the wallet's persistent store on the device.
+         * Opens the wallet's persistent stores on the device — **two of them since Option D.**
+         *
+         * ⚠️ **The documents are no longer in this database.** They are Keychain items; see
+         * [KeychainWalletStorage]. What the file below holds is the wallet's *app data* — bookmarks,
+         * revoked-document flags and multipaz's transaction log — which is why everything the rest of
+         * this comment says about the file is still true and no longer says anything about where a
+         * credential lives.
          *
          * **Non-backed-up**, matching Android, where the credential database lives in `no_backup/`:
          * credentials are bound to this device's Secure Enclave, so restoring them onto another device
-         * would produce documents that can never be presented.
+         * would produce documents that can never be presented. That reasoning now applies twice over
+         * — a `ThisDeviceOnly` Keychain item cannot be restored onto another device at all.
          *
          * ## Why not `Platform.nonBackedUpStorage`
          *
@@ -296,52 +353,62 @@ internal class MultipazWalletStore(
          *
          * ⚠️ **This is placement and backup hygiene, not encryption.** The file is still plain SQLite.
          * There is no encrypted `Storage` in multipaz 0.99.0 — `SqliteStorage`, `IosStorage`,
-         * `EphemeralStorage` and `WebStorage` are all plaintext — so at-rest protection rests entirely on
-         * the file's data-protection class, which is `NSFileProtectionComplete` as of 2026-09-04 rather
-         * than the `…UntilFirstUserAuthentication` default (see below, and [storeFileUrl]).
-         * 🪤 **"Android encrypts its database with SQLCipher" is true of a *different* database.** Android's
-         * SQLCipher store is `eudi.app.wallet.storage`, the Room database in `storage-logic` holding
-         * bookmarks, the transaction log, revoked documents and failed re-issuances. Its *documents and
-         * keys* live in wallet-core's default store, and this repository configures no storage for it at
-         * all — so they are plaintext SQLite under Android's file-based encryption. The comparison is
-         * therefore split: on documents we are *ahead* of Android (`Complete` beats FBE-after-first-unlock),
-         * and on those auxiliary tables we are *behind* (they share this plaintext file). The official iOS
-         * wallet keeps documents in the Keychain under
-         * `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly`, which we do not match either way.
+         * `EphemeralStorage` and `WebStorage` are all plaintext — so at-rest protection for *app data*
+         * rests entirely on the file's data-protection class, which is `NSFileProtectionComplete` as of
+         * 2026-09-04 rather than the `…UntilFirstUserAuthentication` default (see [storeFileUrl]).
          *
-         * ✅ **`NSFileProtectionComplete` IS set here as of 2026-09-04** — see [storeFileUrl]. 🪤 This
-         * KDoc said the exact opposite until then ("not available to us, which is why it is not set
-         * here"), and the reason it gave was sound at the time: the class makes a file unreadable while
-         * the device is locked, and the `BGProcessingTask` behind credential top-up did network and key
-         * work while it usually was. **That task was removed to buy this class** (`5cd85c25`), which is
-         * the same trade the official iOS wallet makes — it runs no background work either, which is
-         * precisely what lets it keep documents in the Keychain under a passcode-required class. So
-         * giving up unattended work is a trade rather than a shortfall.
+         * 📌 **The documents do better than that now, which is the whole point of Option D.** A
+         * Keychain item at `WhenPasscodeSetThisDeviceOnly` cannot exist on a device with no passcode,
+         * where a file's protection class quietly protects nothing — and it is device-bound by
+         * construction rather than by a per-item backup flag that new siblings do not inherit. On
+         * documents this now matches the official iOS wallet exactly; on these app-data tables we
+         * remain behind Android, which keeps its equivalent in SQLCipher.
          *
          * ⛔ **`NSFileProtectionCompleteUnlessOpen` is MEASURED AND REJECTED — do not re-propose it.**
          * It was tested on a locked iPhone SE (iOS 26.6.1) on 2026-09-04: a *fresh* `open()` while the
-         * device is locked gives `EPERM` under `CompleteUnlessOpen` exactly as it does under `Complete`,
-         * because the class only keeps an *already open* file readable. It would therefore buy nothing
-         * and still break a cold-launch background top-up. The remaining improvement is a SQLCipher-backed
-         * connection keyed from the Keychain ("Option C"), which is real work rather than five lines.
+         * device is locked gives `EPERM` under `CompleteUnlessOpen` exactly as it does under
+         * `Complete`, because the class only keeps an *already open* file readable.
+         *
+         * 📌 **Encrypting this file ("Option C") is still open**, and is now only about the app-data
+         * tables — the argument for it shrank when the documents left. See the storage scoping memo.
          */
+        // [KeychainWalletStorage]'s protection class is a `CFTypeRef` default, so constructing one
+        // asks the caller for the same opt-in the cinterop types carry.
+        @OptIn(ExperimentalForeignApi::class)
         suspend fun open(
             documentManagerId: String = DEFAULT_DOCUMENT_MANAGER_ID,
+            /**
+             * The store the documents go in — a seam, and one Option D forced open.
+             *
+             * 🪤 **A Kotlin/Native test binary is not an app and has no keychain at all**: every
+             * `SecItem` call returns `errSecNotAvailable`. So a test that wants to exercise anything
+             * else about this function — where the *database* file lands, say — has to supply
+             * something else here. That is the standing cost of keeping documents in the Keychain,
+             * and it is the reason this parameter exists rather than a preference for injectability.
+             */
+            documentStorage: Storage = KeychainWalletStorage(
+                servicePrefix = keychainServicePrefix(),
+            ),
         ): MultipazWalletStore {
             // Not multipaz's `IosStorage`: the same connection, plus the `busy_timeout` it omits. Two
             // readers race here at every launch and the loser used to fail outright — see
             // [WalletSqliteStorage].
-            val storage = WalletSqliteStorage(storageFileUrl = storeFileUrl())
+            val appDataStorage = WalletSqliteStorage(storageFileUrl = storeFileUrl())
+
+            // The secure areas persist their key metadata alongside the documents it belongs to,
+            // which is why they are created against the document store and not the one holding
+            // bookmarks.
             // The real key store. It works on the simulator too — multipaz drops the
             // user-authentication flags there rather than failing.
-            val secureEnclave = SecureEnclaveSecureArea.create(storage)
+            val secureEnclave = SecureEnclaveSecureArea.create(documentStorage)
             return build(
-                storage = storage,
+                storage = documentStorage,
+                appDataStorage = appDataStorage,
                 secureAreas = listOf(
                     secureEnclave,
                     // Also registered because a credential records which secure area holds its key;
                     // without this, documents whose keys are software-backed cannot be loaded.
-                    SoftwareSecureArea.create(storage),
+                    SoftwareSecureArea.create(documentStorage),
                 ),
                 keySecureArea = secureEnclave,
                 documentManagerId = documentManagerId,
@@ -357,6 +424,12 @@ internal class MultipazWalletStore(
             secureAreas: List<SecureArea>,
             keySecureArea: SecureArea = secureAreas.first(),
             documentManagerId: String = DEFAULT_DOCUMENT_MANAGER_ID,
+            /**
+             * Defaults to [storage] so that a test supplying one ephemeral store still gets a
+             * coherent wallet — and so that the split introduced by Option D did not have to be
+             * repeated across ten test files that do not care about it.
+             */
+            appDataStorage: Storage = storage,
         ): MultipazWalletStore {
             val secureAreaRepository = SecureAreaRepository.Builder()
                 .apply { secureAreas.forEach { add(it) } }
@@ -373,7 +446,7 @@ internal class MultipazWalletStore(
                 documentStore = documentStore,
                 documentManagerId = documentManagerId,
                 keySecureArea = keySecureArea,
-                storage = storage,
+                appDataStorage = appDataStorage,
             )
         }
     }

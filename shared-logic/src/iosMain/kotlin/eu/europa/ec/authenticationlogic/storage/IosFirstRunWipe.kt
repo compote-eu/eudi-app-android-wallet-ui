@@ -16,6 +16,8 @@
 
 package eu.europa.ec.authenticationlogic.storage
 
+import eu.europa.ec.shared.wallet.multipaz.MultipazWalletStore
+import org.multipaz.util.Logger
 import platform.Foundation.NSUserDefaults
 
 /**
@@ -29,12 +31,18 @@ import platform.Foundation.NSUserDefaults
  *
  * Measured on 2026-09-05 rather than assumed, because the two halves come apart:
  *
- *  - the **app-group container is removed** on uninstall, so `wallet.db` and every document in it go;
+ *  - the **app-group container is removed** on uninstall, so `wallet.db` and the wallet's own tables
+ *    — bookmarks, revoked flags, the transaction log — go with it;
  *  - a **Keychain item survives** — written by one install, still readable by the next.
  *
- * So without this, deleting and reinstalling the wallet leaves the *previous owner's PIN* guarding a
- * wallet with no documents in it: the app finds a stored hash, routes to the unlock screen, and asks a
- * new user for a PIN they never set. Biometric login is the same shape, one item along.
+ * So without this, deleting and reinstalling the wallet leaves the *previous owner's PIN* guarding it:
+ * the app finds a stored hash, routes to the unlock screen, and asks a new user for a PIN they never
+ * set. Biometric login is the same shape, one item along.
+ *
+ * ⛔ **And since Option D, the documents are Keychain items too**, which turns this from a nuisance
+ * into the thing that matters: without this, deleting the wallet would leave the previous owner's
+ * credentials on the device for whoever installs it next. Clearing them is now the first thing this
+ * function does.
  *
  * ## How it knows it is a new install
  *
@@ -47,9 +55,10 @@ import platform.Foundation.NSUserDefaults
  * ## Ordering
  *
  * Called from `application(_:didFinishLaunchingWithOptions:)` **before anything reads the PIN**, and
- * deliberately not from a coroutine: the deletes are three Keychain calls with no I/O worth yielding
- * for, and making them synchronous is what guarantees the splash cannot ask [IosPinStorage.hasPin]
- * first. 🪤 If this is ever made suspending, that race comes back.
+ * deliberately not from a coroutine: these are Keychain deletes with no I/O worth yielding for, and
+ * making them synchronous is what guarantees the splash cannot ask [IosPinStorage.hasPin] first, or
+ * the document store hand out a credential the previous owner left. 🪤 If this is ever made
+ * suspending, that race comes back.
  *
  * @return whether it wiped on this call — false when this install has run before.
  */
@@ -59,6 +68,7 @@ fun clearSecretsLeftByAPreviousInstall(): Boolean = clearSecretsLeftByAPreviousI
     forgetBiometricEnrolment = {
         IosBiometricGate(service = IosBiometricGate.DEFAULT_SERVICE).disable()
     },
+    discardDocuments = { MultipazWalletStore.discardEverythingInTheKeychain() },
 )
 
 /**
@@ -73,9 +83,15 @@ internal fun clearSecretsLeftByAPreviousInstall(
     defaults: NSUserDefaults,
     pinSecrets: IosSecretStore,
     forgetBiometricEnrolment: () -> Unit,
+    discardDocuments: () -> Int,
 ): Boolean {
     if (defaults.boolForKey(RUN_AT_LEAST_ONCE)) return false
 
+    // Documents first: they are the part whose survival would actually harm someone.
+    val documents = discardDocuments()
+    if (documents > 0) {
+        Logger.i(TAG, "discarded $documents document store item(s) left by a previous install")
+    }
     PIN_ACCOUNTS.forEach(pinSecrets::delete)
     // Deleting the item is the whole of turning biometrics off — its presence *is* the enrolment — and
     // deletion does not raise the ACL, so this costs no prompt on a launch the user did not ask for.
@@ -84,7 +100,9 @@ internal fun clearSecretsLeftByAPreviousInstall(
     // Verify rather than assume, and only then record it. A delete that silently failed would leave a
     // PIN no new user can match, so the honest response is to try again next launch instead of marking
     // the install clean. This mirrors the official app, which likewise sets its flag only on success.
-    val cleared = PIN_ACCOUNTS.none { pinSecrets.read(it) != null }
+    // A second pass over the document store has to come back empty, which is what proves the first
+    // one took: the delete is idempotent by construction.
+    val cleared = PIN_ACCOUNTS.none { pinSecrets.read(it) != null } && discardDocuments() == 0
     if (cleared) {
         defaults.setBool(true, forKey = RUN_AT_LEAST_ONCE)
     }
@@ -96,6 +114,8 @@ internal fun clearSecretsLeftByAPreviousInstall(
  * app and its frameworks keep.
  */
 internal const val RUN_AT_LEAST_ONCE = "eu.europa.ec.eudi.wallet.runAtLeastOnce"
+
+private const val TAG = "IosFirstRunWipe"
 
 /** Everything [IosPinStorage] writes. Listed once, so a new secret cannot be forgotten here. */
 private val PIN_ACCOUNTS = listOf(
