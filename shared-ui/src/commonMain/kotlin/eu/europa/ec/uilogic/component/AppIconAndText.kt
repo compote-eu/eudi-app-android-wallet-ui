@@ -37,8 +37,11 @@ import org.jetbrains.compose.resources.painterResource
  * have been stuck at its light-theme value. Tinting it here restores the behaviour and, unlike the XML
  * attribute, works on iOS too.
  *
- * The two assets keep the original 161x52 viewport, so `matchParentSize` aligns them exactly; there is no
- * coordinate maths and the result is pixel-identical to the old single image apart from the themed text.
+thisw * The two assets keep the original 161x52 viewport, so `matchParentSize` aligns them exactly — **as long
+ * as it is matching a box the artwork sized**, which is what the inner box below guarantees. That was the
+ * flaw the split introduced: the caller's modifier used to size the box the wordmark matched, so any
+ * caller passing `fillMaxWidth()` stretched the text away from the mark. Fixed 2026-09-05; the result is
+ * now pixel-identical to the old single image apart from the themed text, on every caller.
  * Only the mark carries a content description — the lockup should be announced once.
  */
 @Composable
@@ -47,13 +50,20 @@ fun AppIconAndText(
     appIconAndTextData: AppIconAndTextDataUi
 ) {
     Box(modifier = modifier) {
-        WrapImage(iconData = appIconAndTextData.appIcon)
-        Icon(
-            painter = painterResource(Res.drawable.ic_logo_lockup_wordmark),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.matchParentSize(),
-        )
+        // 🪤 The inner box is load-bearing: it wraps the mark's own size, so `matchParentSize` below
+        // matches *the artwork*, not whatever the caller's modifier made the outer box. Five of the
+        // six callers pass `fillMaxWidth()`, and without this the wordmark was stretched to the full
+        // screen width — mark stranded at the left, text shoved to the right, the lockup pulled apart.
+        // It looked like a spacing choice rather than a bug, which is why it survived.
+        Box {
+            WrapImage(iconData = appIconAndTextData.appIcon)
+            Icon(
+                painter = painterResource(Res.drawable.ic_logo_lockup_wordmark),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
     }
 }
 
