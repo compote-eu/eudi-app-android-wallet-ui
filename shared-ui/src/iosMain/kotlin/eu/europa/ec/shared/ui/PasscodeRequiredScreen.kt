@@ -19,13 +19,15 @@ package eu.europa.ec.shared.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.passcode_required_description
@@ -33,23 +35,36 @@ import eu.europa.ec.shared.resources.passcode_required_open_settings
 import eu.europa.ec.shared.resources.passcode_required_title
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
+import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
 import eu.europa.ec.uilogic.component.openIosAppSettings
-import eu.europa.ec.uilogic.component.utils.SPACING_EXTRA_LARGE
-import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
+import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
+import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.ButtonConfig
 import eu.europa.ec.uilogic.component.wrap.ButtonType
 import eu.europa.ec.uilogic.component.wrap.WrapButton
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Shown instead of the wallet when iOS reports no device passcode.
+ * Shown instead of the wallet when the Keychain will not store a document and this device has no
+ * passcode.
+ *
+ * ## Why it is built out of the PIN screen's parts
+ *
+ * This is the only screen a user can meet *before* the wallet exists, and the screen they would
+ * otherwise have met first is the PIN one. So it reuses that layout down to the spacing —
+ * [ContentScreen] for the frame, the brand lockup, then title and subtitle in the same styles — and
+ * diverges only where the PIN field would be, which is replaced by the one action available.
+ * Anything else would make the wallet look like it had crashed rather than like it had something to
+ * tell you.
+ *
+ * `ScreenNavigateAction.NONE` because there is nowhere to go back to: the wallet has not started.
  *
  * ## Why this is a dead end rather than a dialog
  *
- * There is nothing to dismiss it to. The wallet's documents are Keychain items in a
- * passcode-required class, so on such a device it cannot store a credential, cannot present one, and
- * cannot even keep the PIN that guards it. Offering the dashboard behind an "OK" would be offering a
- * wallet that silently fails at the first write.
+ * The wallet's documents are Keychain items in a passcode-required class, so on such a device it
+ * cannot store a credential, cannot present one, and cannot even keep the PIN that guards it.
+ * Offering the dashboard behind an "OK" would be offering a wallet that fails at the first write.
  *
  * It resolves itself: setting a passcode in Settings and reopening the app passes the gate.
  *
@@ -65,47 +80,65 @@ import org.jetbrains.compose.resources.stringResource
  * wallet is a poor trade for one saved tap. The official native EUDI iOS wallet lands on the same
  * pane we do, for the same reason.
  *
- * 🪤 **This is iOS-only by nature, not by omission.** Android's equivalent store is encrypted by the
+ * 🪤 **iOS-only by nature, not by omission.** Android's equivalent store is encrypted by the
  * platform's file-based encryption whether or not a lock screen is set, so the same screen there
  * would block users for no reason.
  */
 @Composable
 internal fun PasscodeRequiredScreen() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = SPACING_EXTRA_LARGE.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // The same brand lockup the PIN screen opens with — mark plus wordmark, themed — rather than a
-        // bare logo. This is the one screen a user can meet *before* the wallet exists, so it should
-        // introduce the app the way the first real screen does.
-        AppIconAndText(
-            modifier = Modifier.padding(bottom = SPACING_EXTRA_LARGE.dp),
-            appIconAndTextData = AppIconAndTextDataUi(),
-        )
-        Text(
-            text = stringResource(Res.string.passcode_required_title),
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = stringResource(Res.string.passcode_required_description),
-            modifier = Modifier.padding(top = SPACING_MEDIUM.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        WrapButton(
-            modifier = Modifier.padding(top = SPACING_EXTRA_LARGE.dp),
-            buttonConfig = ButtonConfig(
-                type = ButtonType.PRIMARY,
-                onClick = ::openIosAppSettings,
-            ),
+    ContentScreen(
+        navigatableAction = ScreenNavigateAction.NONE,
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState()),
         ) {
-            Text(text = stringResource(Res.string.passcode_required_open_settings))
+            AppIconAndText(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = SPACING_LARGE.dp),
+                appIconAndTextData = AppIconAndTextDataUi(),
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_LARGE.dp),
+                verticalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp, Alignment.Top),
+            ) {
+                Text(
+                    text = stringResource(Res.string.passcode_required_title),
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                    ),
+                )
+                Text(
+                    text = stringResource(Res.string.passcode_required_description),
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = MaterialTheme.colorScheme.onSurface,
+                    ),
+                )
+            }
+
+            // Where the PIN field sits on the screen this borrows from. Centred rather than
+            // stretched: it is one optional shortcut, not the screen's primary input.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = SPACING_LARGE.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                WrapButton(
+                    buttonConfig = ButtonConfig(
+                        type = ButtonType.PRIMARY,
+                        onClick = ::openIosAppSettings,
+                    ),
+                ) {
+                    Text(text = stringResource(Res.string.passcode_required_open_settings))
+                }
+            }
         }
     }
 }
