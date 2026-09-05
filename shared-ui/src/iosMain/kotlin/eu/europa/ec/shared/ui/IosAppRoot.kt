@@ -44,6 +44,8 @@ import org.koin.core.context.startKoin
 import org.koin.mp.KoinPlatform
 import eu.europa.ec.analyticslogic.controller.IosAnalytics
 import eu.europa.ec.shared.wallet.log.IosLogFile
+import eu.europa.ec.shared.wallet.platform.iosWalletBlockedByMissingPasscode
+import org.multipaz.util.Logger
 import platform.UIKit.UIViewController
 
 /**
@@ -78,9 +80,29 @@ fun WalletViewController(): UIViewController {
                 // host composes. This used to be 21 `entry<Route> { }` blocks written out here; what
                 // is left of iOS's own navigation is `IosNavPlatformActions`, which answers the two
                 // platform hooks those entries need.
-                CompositionLocalProvider(LocalNavPlatformActions provides IosNavPlatformActions) {
-                    IosNavHost(startRoute = SplashRoute) { navigator ->
-                        sharedAppEntries(navigator)
+                // 🚦 One gate before the wallet exists at all. The documents are Keychain items in a
+                // passcode-required class, so on a device with no passcode nothing can be stored —
+                // every write is refused deep inside a storage call, with an OSStatus that means
+                // nothing to the person holding the phone. Asked once, here, and answered with a
+                // screen that says what to do. See [IosDevicePasscode], which fails *open*.
+                // 🪤 The condition is "will the Keychain take a document", NOT "is a passcode set".
+                // The two disagree on the simulator — no passcode, and it stores the item anyway —
+                // so gating on the passcode would block the wallet exactly where it is developed.
+                // The passcode is only consulted to decide whether this is the *explainable* failure.
+                if (iosWalletBlockedByMissingPasscode()) {
+                    Logger.w(
+                        "IosAppRoot",
+                        "the Keychain refuses to store documents and this device has no passcode: " +
+                            "showing the passcode-required screen instead of the nav host",
+                    )
+                    PasscodeRequiredScreen()
+                } else {
+                    CompositionLocalProvider(
+                        LocalNavPlatformActions provides IosNavPlatformActions,
+                    ) {
+                        IosNavHost(startRoute = SplashRoute) { navigator ->
+                            sharedAppEntries(navigator)
+                        }
                     }
                 }
             }

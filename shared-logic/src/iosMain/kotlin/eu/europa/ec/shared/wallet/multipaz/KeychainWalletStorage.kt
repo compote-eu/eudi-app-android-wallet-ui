@@ -26,6 +26,7 @@ import kotlinx.cinterop.usePinned
 import kotlinx.cinterop.value
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import eu.europa.ec.shared.wallet.platform.IosDevicePasscode
 import eu.europa.ec.shared.wallet.platform.IosKeychainAccessGroup
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.storage.KeyExistsStorageException
@@ -33,6 +34,7 @@ import org.multipaz.storage.NoRecordStorageException
 import org.multipaz.storage.StorageTableSpec
 import org.multipaz.storage.base.BaseStorage
 import org.multipaz.storage.base.BaseStorageTable
+import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import platform.CoreFoundation.CFDictionarySetValue
@@ -155,6 +157,52 @@ class KeychainWalletStorage(
         "$servicePrefix.${spec.name.lowercase()}"
 
     companion object {
+
+        /**
+         * Whether this device will actually let the wallet store a document.
+         *
+         * Writes a canary item at the production protection class and deletes it again. 📌 **This
+         * asks the real question rather than a proxy for it**, which matters because the two come
+         * apart in the one place the wallet is developed: **the simulator has no passcode, yet
+         * accepts `WhenPasscodeSetThisDeviceOnly` happily** — measured 2026-09-05, `errSecSuccess`
+         * alongside a passing control — because it enforces no data-protection class at all. Gating
+         * on "is a passcode set" would therefore block the wallet on every simulator, on a device
+         * where it demonstrably works.
+         *
+         * Cheap enough for launch: one `SecItemAdd` and one `SecItemDelete`, no I/O.
+         */
+        @OptIn(BetaInteropApi::class)
+        fun canStoreDocuments(servicePrefix: String, accessGroup: String?): Boolean {
+            val query = CFDictionaryCreateMutable(kCFAllocatorDefault, 6, null, null)
+            val retained = mutableListOf<CFTypeRef>()
+            fun keep(value: Any): CFTypeRef? = CFBridgingRetain(value)?.also { retained.add(it) }
+            try {
+                CFDictionarySetValue(query, kSecClass, kSecClassGenericPassword)
+                CFDictionarySetValue(query, kSecAttrService, keep("$servicePrefix.canary"))
+                CFDictionarySetValue(query, kSecAttrAccount, keep("write-probe"))
+                accessGroup?.let { CFDictionarySetValue(query, kSecAttrAccessGroup, keep(it)) }
+                // Delete first: a canary left by an earlier launch would otherwise answer
+                // errSecDuplicateItem, which is neither success nor the refusal being looked for.
+                SecItemDelete(query)
+                CFDictionarySetValue(query, kSecValueData, keep(byteArrayOf(0).toNSData()))
+                CFDictionarySetValue(
+                    query,
+                    kSecAttrAccessible,
+                    kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly,
+                )
+                val status = SecItemAdd(query, null)
+                if (status == errSecSuccess) {
+                    CFDictionarySetValue(query, kSecValueData, null)
+                    SecItemDelete(query)
+                    return true
+                }
+                Logger.w(TAG, "the Keychain refused a canary write at the production class: $status")
+                return false
+            } finally {
+                retained.forEach { CFRelease(it) }
+                CFRelease(query)
+            }
+        }
 
         /**
          * Deletes every item any table under [servicePrefix] holds, without opening the store.
@@ -427,9 +475,14 @@ internal class KeychainWalletStorageTable(
         accessible?.let { CFDictionarySetValue(query, kSecAttrAccessible, it) }
         val status = SecItemAdd(query, null)
         if (status == errSecSuccess) return@withQuery true
-        // errSecDuplicateItem is the expected "already there"; anything else is a real failure and
-        // is worth surfacing loudly in a spike rather than being folded into "false".
-        check(status == ERR_SEC_DUPLICATE_ITEM) { "SecItemAdd failed: $status" }
+        // errSecDuplicateItem is the expected "already there". Anything else is a real failure, and
+        // the one worth naming is a device with no passcode: this class cannot exist without one, so
+        // every write fails and the raw OSStatus says nothing a user could act on. The gate in
+        // `IosAppRoot` should have caught it before the wallet ever rendered — if this throws, that
+        // gate was bypassed or failed open, and the message has to carry the explanation itself.
+        if (status != ERR_SEC_DUPLICATE_ITEM) {
+            throw KeychainWriteRefused(status, passcodeSet = IosDevicePasscode.isSet())
+        }
         false
     }
 
@@ -602,3 +655,28 @@ private fun NSData.toByteArray(): ByteArray {
     }
     return bytes
 }
+
+/**
+ * The Keychain refused to store a document, with the one cause worth distinguishing already checked.
+ *
+ * 🪤 **The `OSStatus` for "no passcode" is not a documented single value** and could not be measured
+ * here — the simulator enforces no protection class at all, and the test device is managed and will
+ * not give up its passcode. So the cause is not inferred from [status]; it is asked separately, of
+ * `LAContext`, and stated. That is the difference between a message a person can act on and a number
+ * they have to search for.
+ */
+class KeychainWriteRefused(
+    val status: Int,
+    val passcodeSet: Boolean,
+) : IllegalStateException(
+    if (passcodeSet) {
+        "The Keychain refused to store a wallet document (OSStatus $status). A passcode is set, so " +
+            "this is not the passcode-required class being unsatisfiable."
+    } else {
+        "The Keychain refused to store a wallet document (OSStatus $status) because this device has " +
+            "no passcode: the wallet's documents use a protection class that cannot exist without " +
+            "one. Set a device passcode and reopen the wallet."
+    },
+)
+
+private const val TAG = "KeychainWalletStorage"

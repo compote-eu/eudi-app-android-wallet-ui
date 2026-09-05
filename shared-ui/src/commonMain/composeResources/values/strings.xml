@@ -151,6 +151,15 @@
     <string name="biometric_default_mode_text_above_pin_field">PIN</string>
     <!--endregion-->
 
+    <!-- region Passcode Required -->
+    <!-- iOS only. The wallet's documents are Keychain items in a passcode-required class, so a device
+         with no passcode cannot store one at all; this is shown instead of the wallet, and resolves
+         itself once a passcode is set. Android's store is encrypted by the platform either way. -->
+    <string name="passcode_required_title">A device passcode is required</string>
+    <string name="passcode_required_description">This wallet protects your documents with your device passcode, so it cannot store them until you set one.\n\nIn settings, go to Face ID &amp; Passcode to set one, then reopen the wallet.</string>
+    <string name="passcode_required_open_settings">Go to settings</string>
+    <!--endregion-->
+
     <!-- region Document Success -->
     <string name="document_success_header_description">You successfully shared the following information with</string>
     <string name="document_success_header_description_when_error">You successfully shared the information with</string>

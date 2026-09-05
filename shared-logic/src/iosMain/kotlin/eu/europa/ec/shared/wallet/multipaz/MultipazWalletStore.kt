@@ -117,6 +117,56 @@ internal class MultipazWalletStore(
     companion object {
 
         /**
+         * The Keychain service namespace the document store writes under.
+         *
+         * 🪤 **Derived from the app-group identifier, never from the running process.** Both targets
+         * publish that identifier into their Info.plist from one expression, so the app and the
+         * document-provider extension agree on it; `NSBundle.mainBundle.bundleIdentifier` does not —
+         * it is `…dev.provider` inside the extension, which is the defect `fd785674` fixed one layer
+         * down. A build with no app group falls back to a constant, which keeps a single-process
+         * wallet working and only costs flavours the ability to hold separate wallets on one device.
+         */
+        private fun keychainServicePrefix(): String {
+            val group = IosAppGroup.identifier()
+            if (group == null) {
+                Logger.w(
+                    "MultipazWalletStore",
+                    "no app-group identifier; the document Keychain namespace falls back to a " +
+                        "constant, so dev and demo builds would share one wallet on a device",
+                )
+            }
+            return "${group ?: FALLBACK_KEYCHAIN_PREFIX}.documents"
+        }
+
+        /**
+         * Whether this device will let the wallet store a document at all.
+         *
+         * ⛔ **Ask this, not "is a passcode set".** The two come apart on the simulator, which has no
+         * passcode and stores the item anyway — so the proxy would block the wallet exactly where it
+         * is developed. See [KeychainWalletStorage.canStoreDocuments].
+         */
+        @OptIn(ExperimentalForeignApi::class)
+        fun canStoreDocuments(): Boolean = KeychainWalletStorage.canStoreDocuments(
+            servicePrefix = keychainServicePrefix(),
+            accessGroup = IosKeychainAccessGroup.identifier(),
+        )
+
+        /**
+         * Deletes every document and every piece of key metadata this wallet has in the Keychain.
+         *
+         * Exposed here rather than on [KeychainWalletStorage] because the service namespace is this
+         * object's to know — and because the one caller,
+         * `clearSecretsLeftByAPreviousInstall`, must not have to construct a store to empty one.
+         *
+         * @return how many items were removed; a second call returning zero is the proof it took.
+         */
+        @OptIn(ExperimentalForeignApi::class)
+        fun discardEverythingInTheKeychain(): Int = KeychainWalletStorage.deleteEverythingUnder(
+            servicePrefix = keychainServicePrefix(),
+            accessGroup = IosKeychainAccessGroup.identifier(),
+        )
+
+        /**
          * Where the wallet's database lives: `<app group>/wallet/wallet.db`, falling back to
          * `Library/Application Support/wallet/wallet.db`.
          *
@@ -149,43 +199,6 @@ internal class MultipazWalletStore(
          * code path. **Shipping to real users would make a migration necessary** — it is absent because
          * it is not needed yet, not because it was overlooked.
          */
-        /**
-         * The Keychain service namespace the document store writes under.
-         *
-         * 🪤 **Derived from the app-group identifier, never from the running process.** Both targets
-         * publish that identifier into their Info.plist from one expression, so the app and the
-         * document-provider extension agree on it; `NSBundle.mainBundle.bundleIdentifier` does not —
-         * it is `…dev.provider` inside the extension, which is the defect `fd785674` fixed one layer
-         * down. A build with no app group falls back to a constant, which keeps a single-process
-         * wallet working and only costs flavours the ability to hold separate wallets on one device.
-         */
-        private fun keychainServicePrefix(): String {
-            val group = IosAppGroup.identifier()
-            if (group == null) {
-                Logger.w(
-                    "MultipazWalletStore",
-                    "no app-group identifier; the document Keychain namespace falls back to a " +
-                        "constant, so dev and demo builds would share one wallet on a device",
-                )
-            }
-            return "${group ?: FALLBACK_KEYCHAIN_PREFIX}.documents"
-        }
-
-        /**
-         * Deletes every document and every piece of key metadata this wallet has in the Keychain.
-         *
-         * Exposed here rather than on [KeychainWalletStorage] because the service namespace is this
-         * object's to know — and because the one caller,
-         * `clearSecretsLeftByAPreviousInstall`, must not have to construct a store to empty one.
-         *
-         * @return how many items were removed; a second call returning zero is the proof it took.
-         */
-        @OptIn(ExperimentalForeignApi::class)
-        fun discardEverythingInTheKeychain(): Int = KeychainWalletStorage.deleteEverythingUnder(
-            servicePrefix = keychainServicePrefix(),
-            accessGroup = IosKeychainAccessGroup.identifier(),
-        )
-
         @OptIn(ExperimentalForeignApi::class)
         private fun storeFileUrl(): NSURL {
             val manager = NSFileManager.defaultManager
