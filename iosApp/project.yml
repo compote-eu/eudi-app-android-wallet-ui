@@ -443,6 +443,25 @@ targets:
         APP_NAME_SUFFIX_dev: "${APP_NAME_SUFFIX_dev}"
         APP_NAME_SUFFIX_demo: "${APP_NAME_SUFFIX_demo}"
         APP_DISPLAY_NAME: "$(APP_NAME)$(APP_NAME_SUFFIX_$(BUILD_VARIANT))"
+        # ── Launcher icon, taken verbatim from the reference wallet ───────────────────────────────
+        #
+        # `iosApp/Assets.xcassets` is the official iOS wallet's own `Wallet/Assets.xcassets`, copied
+        # unchanged: `AppIcon` (the plain EUDI mark) and `AppIconDev` (the same mark badged DEV), each
+        # a single 1024x1024 universal image, plus its inert `AccentColor` placeholder.
+        #
+        # Selected by the same `BUILD_VARIANT` composition the bundle id and the display name already
+        # use, so one flavour switch moves id, name and icon together. The reference wallet instead
+        # writes `ASSETCATALOG_COMPILER_APPICON_NAME` out literally in its build configurations —
+        # AppIcon for its two Demo ones, AppIconDev for its two Dev ones — which is the same mapping
+        # our dev/demo flavours want, expressed once rather than four times.
+        #
+        # ⚠️ No accent-colour setting on purpose: they ship `AccentColor.colorset` with no colour in
+        # it and never set `ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME`, so naming it here would
+        # be a divergence dressed as parity. The in-app brand lockup is separate and already shared —
+        # `AppIconAndText` draws it from the compose-resources corpus on both platforms.
+        APP_ICON_NAME_dev: AppIconDev
+        APP_ICON_NAME_demo: AppIcon
+        ASSETCATALOG_COMPILER_APPICON_NAME: "$(APP_ICON_NAME_$(BUILD_VARIANT))"
         # Android's versionName and versionCode, from version.properties. `yyyy.mm.v` is upstream's
         # committed CalVer placeholder, replaced at release time — see that file.
 
