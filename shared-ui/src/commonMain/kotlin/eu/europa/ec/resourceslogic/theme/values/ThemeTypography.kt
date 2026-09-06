@@ -17,8 +17,7 @@
 package eu.europa.ec.resourceslogic.theme.values
 
 import eu.europa.ec.shared.resources.Res
-import eu.europa.ec.shared.resources.roboto_medium
-import eu.europa.ec.shared.resources.roboto_regular
+import eu.europa.ec.shared.resources.source_sans_3
 import eu.europa.ec.resourceslogic.theme.templates.ThemeTextStyle
 import eu.europa.ec.resourceslogic.theme.templates.ThemeTypographyTemplate
 import eu.europa.ec.resourceslogic.theme.templates.structures.ThemeFont
@@ -26,114 +25,92 @@ import eu.europa.ec.resourceslogic.theme.templates.structures.ThemeFontStyle
 import eu.europa.ec.resourceslogic.theme.templates.structures.ThemeFontWeight
 import eu.europa.ec.resourceslogic.theme.templates.structures.ThemeTextAlign
 
+/**
+ * `sk` flavor typography — ID SK uses Source Sans 3 (bundled at Res.font.source_sans_3, SIL OFL).
+ *
+ * This is the `sk` source-set override of the default [ThemeTypography]. It keeps the app's
+ * established Material type scale (sizes/line-heights) so layouts are unaffected, and only
+ * swaps the typeface (Roboto -> Source Sans 3), mirroring the default weight distribution
+ * (regular body/headings, semibold for titles/labels).
+ */
 internal class ThemeTypography {
     companion object {
         val typo: ThemeTypographyTemplate
             get() {
                 return ThemeTypographyTemplate(
                     displayLarge = ThemeTextStyle(
-                        fontFamily = listOf(RobotoRegular),
-                        fontSize = 57,
-                        lineHeight = 64,
-                        letterSpacing = -0.25f,
+                        fontFamily = listOf(SourceSansRegular),
+                        fontSize = 57, lineHeight = 64, letterSpacing = -0.25f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     displayMedium = ThemeTextStyle(
-                        fontFamily = listOf(RobotoRegular),
-                        fontSize = 45,
-                        lineHeight = 52,
-                        letterSpacing = 0f,
+                        fontFamily = listOf(SourceSansRegular),
+                        fontSize = 45, lineHeight = 52, letterSpacing = 0f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     displaySmall = ThemeTextStyle(
-                        fontFamily = listOf(RobotoRegular),
-                        fontSize = 36,
-                        lineHeight = 44,
-                        letterSpacing = 0f,
+                        fontFamily = listOf(SourceSansRegular),
+                        fontSize = 36, lineHeight = 44, letterSpacing = 0f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     headlineLarge = ThemeTextStyle(
-                        fontFamily = listOf(RobotoRegular),
-                        fontSize = 32,
-                        lineHeight = 40,
-                        letterSpacing = 0f,
+                        fontFamily = listOf(SourceSansRegular),
+                        fontSize = 32, lineHeight = 40, letterSpacing = 0f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     headlineMedium = ThemeTextStyle(
-                        fontFamily = listOf(RobotoRegular),
-                        fontSize = 28,
-                        lineHeight = 36,
-                        letterSpacing = 0f,
+                        fontFamily = listOf(SourceSansRegular),
+                        fontSize = 28, lineHeight = 36, letterSpacing = 0f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     headlineSmall = ThemeTextStyle(
-                        fontFamily = listOf(RobotoRegular),
-                        fontSize = 24,
-                        lineHeight = 32,
-                        letterSpacing = 0f,
+                        fontFamily = listOf(SourceSansRegular),
+                        fontSize = 24, lineHeight = 32, letterSpacing = 0f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     titleLarge = ThemeTextStyle(
-                        fontFamily = listOf(RobotoRegular),
-                        fontSize = 22,
-                        lineHeight = 28,
-                        letterSpacing = 0f,
+                        fontFamily = listOf(SourceSansRegular),
+                        fontSize = 22, lineHeight = 28, letterSpacing = 0f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     titleMedium = ThemeTextStyle(
-                        fontFamily = listOf(RobotoMedium),
-                        fontSize = 16,
-                        lineHeight = 24,
-                        letterSpacing = 0.15f,
+                        fontFamily = listOf(SourceSansSemiBold),
+                        fontSize = 16, lineHeight = 24, letterSpacing = 0.15f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     titleSmall = ThemeTextStyle(
-                        fontFamily = listOf(RobotoMedium),
-                        fontSize = 14,
-                        lineHeight = 20,
-                        letterSpacing = 0.1f,
+                        fontFamily = listOf(SourceSansSemiBold),
+                        fontSize = 14, lineHeight = 20, letterSpacing = 0.1f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     labelLarge = ThemeTextStyle(
-                        fontFamily = listOf(RobotoMedium),
-                        fontSize = 14,
-                        lineHeight = 20,
-                        letterSpacing = 0.1f,
+                        fontFamily = listOf(SourceSansSemiBold),
+                        fontSize = 14, lineHeight = 20, letterSpacing = 0.1f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     labelMedium = ThemeTextStyle(
-                        fontFamily = listOf(RobotoMedium),
-                        fontSize = 12,
-                        lineHeight = 16,
-                        letterSpacing = 0.5f,
+                        fontFamily = listOf(SourceSansSemiBold),
+                        fontSize = 12, lineHeight = 16, letterSpacing = 0.5f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     labelSmall = ThemeTextStyle(
-                        fontFamily = listOf(RobotoMedium),
-                        fontSize = 11,
-                        lineHeight = 16,
-                        letterSpacing = 0.5f,
+                        fontFamily = listOf(SourceSansSemiBold),
+                        fontSize = 11, lineHeight = 16, letterSpacing = 0.5f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     bodyLarge = ThemeTextStyle(
-                        fontFamily = listOf(RobotoRegular),
-                        fontSize = 16,
-                        lineHeight = 24,
-                        letterSpacing = 0.5f,
+                        fontFamily = listOf(SourceSansRegular),
+                        fontSize = 16, lineHeight = 24, letterSpacing = 0.5f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     bodyMedium = ThemeTextStyle(
-                        fontFamily = listOf(RobotoRegular),
-                        fontSize = 14,
-                        lineHeight = 20,
-                        letterSpacing = 0.25f,
+                        fontFamily = listOf(SourceSansRegular),
+                        fontSize = 14, lineHeight = 20, letterSpacing = 0.25f,
                         textAlign = ThemeTextAlign.Start
                     ),
                     bodySmall = ThemeTextStyle(
-                        fontFamily = listOf(RobotoRegular),
-                        fontSize = 12,
-                        lineHeight = 16,
-                        letterSpacing = 0.4f,
+                        fontFamily = listOf(SourceSansRegular),
+                        fontSize = 12, lineHeight = 16, letterSpacing = 0.4f,
                         textAlign = ThemeTextAlign.Start
                     )
                 )
@@ -141,13 +118,18 @@ internal class ThemeTypography {
     }
 }
 
-internal val RobotoRegular = ThemeFont(
-    res = Res.font.roboto_regular,
+// Source Sans 3 is a variable font shipped as a single file, so both entries point at the one
+// bundled resource and differ only in the weight they request. Android applies that weight via
+// Typeface.create on API 29+; on iOS Compose resolves it through Skia. Either way there is one
+// font file rather than a per-weight pair, which is why this differs in shape from the Roboto
+// declarations it replaces.
+internal val SourceSansRegular = ThemeFont(
+    res = Res.font.source_sans_3,
     weight = ThemeFontWeight.W400,
     style = ThemeFontStyle.Normal,
 )
-internal val RobotoMedium = ThemeFont(
-    res = Res.font.roboto_medium,
-    weight = ThemeFontWeight.W500,
+internal val SourceSansSemiBold = ThemeFont(
+    res = Res.font.source_sans_3,
+    weight = ThemeFontWeight.W600,
     style = ThemeFontStyle.Normal,
 )
