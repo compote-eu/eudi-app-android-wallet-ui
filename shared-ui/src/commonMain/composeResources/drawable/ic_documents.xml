@@ -1,25 +1,15 @@
 <!--
-  ~ Copyright (c) 2026 European Commission
-  ~
-  ~ Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
-  ~ Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
-  ~ except in compliance with the Licence.
-  ~
-  ~ You may obtain a copy of the Licence at:
-  ~ https://joinup.ec.europa.eu/software/page/eupl
-  ~
-  ~ Unless required by applicable law or agreed to in writing, software distributed under
-  ~ the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
-  ~ ANY KIND, either express or implied. See the Licence for the specific language
-  ~ governing permissions and limitations under the Licence.
-  -->
-
+  `sk` flavor icon. Derived from Google Material Icons ('text_snippet', Filled style),
+  licensed under the Apache License 2.0. Overrides the default
+  res/drawable/ic_documents.xml for the sk flavor only; colour comes from the theme
+  tint applied by WrapIcon, so the fillColor here is a neutral placeholder.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="#49454F"
-        android:pathData="M14.17,5L19,9.83V19H5V5H14.17ZM14.17,3H5C3.9,3 3,3.9 3,5V19C3,20.1 3.9,21 5,21H19C20.1,21 21,20.1 21,19V9.83C21,9.3 20.79,8.79 20.41,8.42L15.58,3.59C15.21,3.21 14.7,3 14.17,3ZM7,15H17V17H7V15ZM7,11H17V13H7V11ZM7,7H14V9H7V7Z" />
+        android:fillColor="#FF000000"
+        android:pathData="m20.41 8.41-4.83-4.83c-.37-.37-.88-.58-1.41-.58H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V9.83c0-.53-.21-1.04-.59-1.42zM7 7h7v2H7V7zm10 10H7v-2h10v2zm0-4H7v-2h10v2z" />
 </vector>
