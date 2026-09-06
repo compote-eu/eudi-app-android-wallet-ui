@@ -16,5 +16,8 @@
   -->
 
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Slovak-flag blue: this branch is the SK wallet, so the adaptive launcher icon sits on it
+     rather than on white. Matches the iOS app icons, which bake the same #0B4EA2 in (iOS has no
+     background layer to tint). Upstream/feature-kmp keeps #FFFFFF here. -->
+    <color name="ic_launcher_background">#0B4EA2</color>
 </resources>
