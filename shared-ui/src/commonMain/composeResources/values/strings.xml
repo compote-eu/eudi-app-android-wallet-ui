@@ -154,9 +154,15 @@
     <!-- region Passcode Required -->
     <!-- iOS only. The wallet's documents are Keychain items in a passcode-required class, so a device
          with no passcode cannot store one at all; this is shown instead of the wallet, and resolves
-         itself once a passcode is set. Android's store is encrypted by the platform either way. -->
+         itself once a passcode is set. Android's store is encrypted by the platform either way.
+
+         The description deliberately does NOT name the Settings pane. It is "Face ID & Passcode" on a
+         Face ID device and "Touch ID & Passcode" on a Touch ID one — including the iPhone SE this
+         project tests on — so naming either is wrong on half the fleet. iOS publishes no deep link to
+         that pane (the button below reaches the app's own settings, which is as close as it gets), so
+         this wording is the only instruction the user gets: keep it device-agnostic. -->
     <string name="passcode_required_title">A device passcode is required</string>
-    <string name="passcode_required_description">This wallet protects your documents with your device passcode, so it cannot store them until you set one.\n\nIn settings, go to Face ID &amp; Passcode to set one, then reopen the wallet.</string>
+    <string name="passcode_required_description">This wallet protects your documents with your device passcode, so it cannot store them until you set one.\n\nOpen Settings and set a passcode, then reopen the wallet.</string>
     <string name="passcode_required_open_settings">Go to settings</string>
     <!--endregion-->
 
