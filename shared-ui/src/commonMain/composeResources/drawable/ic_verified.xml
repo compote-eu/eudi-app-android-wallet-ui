@@ -1,25 +1,15 @@
 <!--
-  ~ Copyright (c) 2026 European Commission
-  ~
-  ~ Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
-  ~ Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
-  ~ except in compliance with the Licence.
-  ~
-  ~ You may obtain a copy of the Licence at:
-  ~ https://joinup.ec.europa.eu/software/page/eupl
-  ~
-  ~ Unless required by applicable law or agreed to in writing, software distributed under
-  ~ the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
-  ~ ANY KIND, either express or implied. See the Licence for the specific language
-  ~ governing permissions and limitations under the Licence.
-  -->
-
+  `sk` flavor icon. Derived from Google Material Icons ('verified', Filled style),
+  licensed under the Apache License 2.0. Overrides the default
+  res/drawable/ic_verified.xml for the sk flavor only; colour comes from the theme
+  tint applied by WrapIcon, so the fillColor here is a neutral placeholder.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
     <path
-        android:fillColor="#55953B"
-        android:pathData="M23,12L20.56,9.21L20.9,5.52L17.29,4.7L15.4,1.5L12,2.96L8.6,1.5L6.71,4.69L3.1,5.5L3.44,9.2L1,12L3.44,14.79L3.1,18.49L6.71,19.31L8.6,22.5L12,21.03L15.4,22.49L17.29,19.3L20.9,18.48L20.56,14.79L23,12ZM10.09,16.72L6.29,12.91L7.77,11.43L10.09,13.76L15.94,7.89L17.42,9.37L10.09,16.72Z" />
+        android:fillColor="#FF000000"
+        android:pathData="m23 12-2.44-2.79.34-3.69-3.61-.82-1.89-3.2L12 2.96 8.6 1.5 6.71 4.69 3.1 5.5l.34 3.7L1 12l2.44 2.79-.34 3.7 3.61.82L8.6 22.5l3.4-1.47 3.4 1.46 1.89-3.19 3.61-.82-.34-3.69L23 12zm-12.91 4.72-3.8-3.81 1.48-1.48 2.32 2.33 5.85-5.87 1.48 1.48-7.33 7.35z" />
 </vector>
