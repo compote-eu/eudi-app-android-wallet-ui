@@ -25,13 +25,18 @@ import eu.europa.ec.resourceslogic.theme.templates.ThemeShapesTemplate
 import eu.europa.ec.resourceslogic.theme.values.ThemeShapes.Companion.LARGE
 import eu.europa.ec.resourceslogic.theme.values.ThemeShapes.Companion.SMALL
 
+/**
+ * `sk` flavor shapes — ID SK uses a small control radius (~5px for buttons/inputs, 4px for
+ * text areas); larger surfaces stay modestly rounded. This is the `sk` source-set override of
+ * the default [ThemeShapes].
+ */
 class ThemeShapes {
     companion object {
-        const val EXTRA_SMALL = 16.0
-        const val SMALL = 16.0
-        const val MEDIUM = 16.0
-        const val LARGE = 32.0
-        const val EXTRA_LARGE = 32.0
+        const val EXTRA_SMALL = 4.0
+        const val SMALL = 5.0
+        const val MEDIUM = 8.0
+        const val LARGE = 12.0
+        const val EXTRA_LARGE = 16.0
 
         val shapes = ThemeShapesTemplate(
             extraSmall = EXTRA_SMALL,
