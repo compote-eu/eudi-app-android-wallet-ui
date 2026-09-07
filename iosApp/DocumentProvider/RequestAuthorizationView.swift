@@ -93,15 +93,30 @@ struct RequestAuthorizationView: View {
 
                 guard let json = result.responseJson,
                       let responseData = responseBytes(from: json) else {
-                    // A refusal and a failure both end without a response. `cancel()` is the only way
-                    // to say so — `sendResponse` has no "declined" outcome — so the distinction lives
-                    // in the message, not in the OS call.
-                    throw ProviderError.noResponse(result.declined ? nil : result.errorMessage)
+                    // A refusal and a failure both end without a response, and `sendResponse` has no
+                    // "declined" outcome, so both leave by throwing. They are separate cases rather
+                    // than one case with a nil reason, because the caller has to do genuinely
+                    // different things: a refusal has to reach `context.cancel()`, a failure has to
+                    // reach the screen.
+                    throw result.declined
+                        ? ProviderError.declined
+                        : ProviderError.noResponse(result.errorMessage)
                 }
                 return ISO18013MobileDocumentResponse(responseData: responseData)
             }
+        } catch ProviderError.declined {
+            // ⭐ THE ONLY WAY TO SAY "the user said no": `sendResponse` has no declined outcome, so
+            // without this the OS is never told and — because the consent screen is still what the
+            // body renders — the sheet just sits there. Tapping Cancel appeared to do nothing at all,
+            // while the host chrome's own ✕ worked, which is how this was found.
+            await MainActor.run { context.cancel() }
         } catch {
             await MainActor.run {
+                // Clearing the request is what makes the message reachable. The body renders the
+                // consent screen for as long as there is a request, so a failure that arrives *after*
+                // consent would otherwise set `failed` where nothing can display it — leaving the same
+                // stuck sheet as the refusal above, with no explanation either.
+                request = nil
                 failed = (error as? ProviderError)?.message ?? error.localizedDescription
             }
         }
@@ -130,10 +145,13 @@ private func responseBytes(from json: String) -> Data? {
 }
 
 private enum ProviderError: Error {
+    /// The user said no. Carries nothing, because there is nothing to report and nothing to show.
+    case declined
     case noResponse(String?)
 
     var message: String {
         switch self {
+        case .declined: return "Nothing was shared."
         case .noResponse(let reason): return reason ?? "Nothing was shared."
         }
     }
