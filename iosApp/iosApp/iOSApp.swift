@@ -75,6 +75,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // observable without it. See `DocumentRegistration.swift`.
         reconcileDocumentRegistrations()
 
+        // ...and again whenever the app returns to the front; see `observeActivation`.
+        observeActivation()
+
         // The Swift half of document signing. Kotlin cannot call `EudiRQESUi` itself — it is a Swift
         // package, so none of its API crosses the Kotlin/Native bridge — so the shared screen calls
         // this instead. Without this line signing reports itself unavailable rather than crashing;
@@ -82,6 +85,67 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         IosDocumentSigning.shared.signer = WalletDocumentSigner.shared
         print("DOCUMENT-SIGN: registered the RQES signer")
         return true
+    }
+
+    /// Whether the app has been activated once already. See [observeActivation].
+    private var hasBecomeActiveBefore = false
+
+    /// Brings the OS registry back in line every time the app returns to the front.
+    ///
+    /// ## Why this exists — measured on a device 2026-09-07, not reasoned
+    ///
+    /// **Revoking the wallet as an identity document provider empties the registration store, and
+    /// re-authorizing it does not put anything back.** Watched on an iPhone SE (iOS 26.6.1) through
+    /// Settings ▸ Apps ▸ EUDI Wallet ▸ Identity check ▸ Allow on websites, reading the store either side:
+    ///
+    ///     status=authorized     registrations=ok(5)
+    ///     status=notAuthorized  registrations=THREW notAuthorized
+    ///     status=authorized     registrations=ok(0)     <- empty, after re-authorizing
+    ///
+    /// Without this, the only triggers were launch and a document change, so a wallet that was
+    /// re-authorized while already running stayed **absent from the system credential picker while
+    /// holding perfectly good documents** — until the next launch. That is the mirror image of the bug
+    /// `reconcileDocumentRegistrations()` was written for: a document with no registration, rather than
+    /// a registration with no document.
+    ///
+    /// ## Why foregrounding is the right trigger
+    ///
+    /// There is no API that reports an authorization change — `status` can be read but not observed. The
+    /// user has to leave the app to reach Settings and come back to use the wallet, so activation is
+    /// exactly the edge that follows the change. If they never come back, the app is eventually killed
+    /// and the launch path covers it. Nothing is lost either way.
+    ///
+    /// The first activation is skipped because it fires immediately after
+    /// `didFinishLaunchingWithOptions`, which has already reconciled; without the guard every launch
+    /// would do the work twice. Reconciliation is idempotent, so the guard is about noise and wasted
+    /// calls, not correctness.
+    ///
+    /// 📌 **Not unit-tested, and it cannot be here**: the registration store is an OS service with no
+    /// substitute in a test binary, and this target has no test harness at all. Verified the way the
+    /// measurement above was — by revoking, restoring and watching the registrations come back.
+    /// 🪤 **`applicationDidBecomeActive(_:)` is NOT called in this app, and it looks like it should be.**
+    /// Measured 2026-09-07: written as a delegate method it never ran, while
+    /// `didFinishLaunchingWithOptions` in the same class did. This is a SwiftUI **scene** app
+    /// (`struct iOSApp: App` with `@UIApplicationDelegateAdaptor`), so activation is delivered to the
+    /// scene, not to `UIApplicationDelegate`. This is the **mirror** of the trap recorded on
+    /// `application(_:open:options:)` below, where the SwiftUI hook was the one that did not fire — so
+    /// in this file neither layer can be assumed. Watch the callback run before believing it.
+    ///
+    /// `UIApplication.didBecomeActiveNotification` is posted either way, which is why an observer is
+    /// used in preference to both the delegate method and SwiftUI's `scenePhase`.
+    private func observeActivation() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            guard self.hasBecomeActiveBefore else {
+                self.hasBecomeActiveBefore = true
+                return
+            }
+            reconcileDocumentRegistrations()
+        }
     }
 
     func application(

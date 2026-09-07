@@ -209,14 +209,20 @@ func reconcileDocumentRegistrations() {
         // Read before writing: once the additions have run, every wanted document is present and the
         // difference that identifies a stale registration is gone.
         do {
-            let stale = try await manager.registeredDocumentIdentifiers()
-                .subtracting(wantedIdentifiers)
+            let held = try await manager.registeredDocumentIdentifiers()
+            let stale = held.subtracting(wantedIdentifiers)
 
+            // The count is logged, not just the staleness, because the two are not the same signal and
+            // the difference cost a verification: additions below run unconditionally, so "nothing
+            // stale" reads identically whether the OS held everything already or held *nothing*. That
+            // hid the one case worth seeing — a store emptied by a revocation, which is exactly what
+            // the activation trigger exists to repair.
             if stale.isEmpty {
-                print("DOCUMENT-REGISTRATION: nothing stale to unregister")
+                print("DOCUMENT-REGISTRATION: OS holds \(held.count), nothing stale to unregister")
             } else {
                 try await manager.removeRegistration(documentIdentifiers: Array(stale))
-                print("DOCUMENT-REGISTRATION: unregistered \(stale.count) — \(stale.sorted())")
+                print("DOCUMENT-REGISTRATION: OS holds \(held.count), unregistered \(stale.count)"
+                      + " — \(stale.sorted())")
             }
         } catch {
             print("DOCUMENT-REGISTRATION: could not reconcile removals — \(error)")
