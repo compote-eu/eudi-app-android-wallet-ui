@@ -30,21 +30,21 @@
 complexity:
   # Architectural debt: each of these asks for a refactor, not a reformat.
   CognitiveComplexMethod:
-    active: false # 24
+    active: false # 25
   ComplexCondition:
     active: false # 5
   CyclomaticComplexMethod:
-    active: false # 27
+    active: false # 29
   LargeClass:
     active: false # 10
   LongMethod:
-    active: false # 105
+    active: false # 106
   LongParameterList:
-    active: false # 68
+    active: false # 70
   NestedBlockDepth:
     active: false # 3
   TooManyFunctions:
-    active: false # 40
+    active: false # 41
 
 empty-blocks:
   EmptyDefaultConstructor:
@@ -56,7 +56,10 @@ empty-blocks:
 
 exceptions:
   SwallowedException:
-    active: false # 1 -- DateUtils.toDateFormatted deliberately returns null on any parse failure
+    active: false # 2 -- both deliberate: DateUtils.toDateFormatted returns null on any parse
+    # failure, and IosDcApiPresenter's PresentmentCanceledException branch logs "declined by the
+    # user" without the exception, because a cancellation carries no information. Not chippable:
+    # the DateUtils one is an upstream-tracked file, so suppressing it costs a hand-port conflict.
   ThrowingExceptionsWithoutMessageOrCause:
     active: true
     # The 1 finding is `mockedExceptionWithNoMessage`, a fixture whose whole point is the message-less
@@ -66,7 +69,7 @@ exceptions:
     # one finding into three, which is how this was found.
     excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/TestData.kt']
   TooGenericExceptionCaught:
-    active: false # 26
+    active: false # 27
   TooGenericExceptionThrown:
     active: false # 12
 
@@ -83,8 +86,18 @@ naming:
     ignoreAnnotated: ['Composable', 'Test']
   MatchingDeclarationName:
     active: false # 28
+    # Do not reach for `mustBeFirst: false` -- it reads like a relaxation and is the opposite:
+    # measured 2026-09-07 it takes this rule from 28 findings to 34.
   PackageNaming:
-    active: false # 17
+    active: true
+    # All 17 findings were snake_case package segments -- `document_success`, `qr_scan`,
+    # `document_sign` -- and that is UPSTREAM's own convention for feature packages
+    # (`common-feature/src/main/java/eu/europa/ec/commonfeature/ui/document_success/` exists at
+    # origin/main). Renaming ours would diverge from upstream and break every future hand-port of
+    # those screens, so the default pattern is what is wrong here, not the packages. Allowing `_`
+    # inside a segment takes this rule to 0 with no source change, and it still gates what
+    # matters: an uppercase, camelCase or digit-leading segment is still a finding.
+    packagePattern: '[a-z]+(\.[a-z][A-Za-z0-9_]*)*'
   TopLevelPropertyNaming:
     active: true
     # 64 of the 65 findings are `mockedFoo` fixture constants in TestData.kt files, which read far
@@ -102,17 +115,21 @@ style:
   ForbiddenComment:
     active: false # 2 -- TODOs that track upstream gates, and are meant to stay until those open
   LoopWithTooManyJumpStatements:
-    active: false # 5
+    active: false # 8 -- `maxJumpCount: 2` measures 3, not 0, so it is not a chip
   MagicNumber:
-    active: false # 661 -- overwhelmingly Compose dp/sp literals, where a named constant reads worse
+    active: false # 671 -- overwhelmingly Compose dp/sp literals, where a named constant reads
+    # worse. There is no `ignoreAnnotated` on this rule in detekt 1.23.8 (checked against
+    # default-detekt-config.yml), so the trick that saved FunctionNaming and UnusedPrivateMember
+    # is unavailable here, and `ignoreNamedArgument` is already true by default and misses a
+    # positional `16.dp`, which is most of them.
   MaxLineLength:
     active: false # 297
   NewLineAtEndOfFile:
     active: false # 346 -- upstream's own style; fixing it would touch nearly every file in the tree
   ReturnCount:
-    active: false # 29
+    active: false # 31 -- `excludeGuardClauses: true` measures 17, not 0, so it is not a chip
   ThrowsCount:
-    active: false # 4
+    active: false # 4 -- `excludeGuardClauses: true` measures 3, not 0, so it is not a chip
   UnusedParameter:
     active: true
   UnusedPrivateClass:
@@ -126,8 +143,11 @@ style:
   UnusedPrivateProperty:
     active: true
   UseCheckOrError:
-    active: false # 21
+    active: false # 23
   UseRequire:
     active: true
   UtilityClassWithPublicConstructor:
-    active: false # 3 -- the Theme* objects, which the theme DSL wants as classes
+    active: false # 3 -- the Theme* objects, which the theme DSL wants as classes.
+    # These three files pass the "not tracked upstream" test and are still NOT free: they are
+    # `shared-ui/src/commonMain/.../theme/values/*.kt`, which `feature/kmp-sk` REPLACES
+    # wholesale, so a suppression here costs an sk re-port instead of an upstream one.
