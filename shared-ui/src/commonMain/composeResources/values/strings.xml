@@ -160,10 +160,16 @@
          Face ID device and "Touch ID & Passcode" on a Touch ID one — including the iPhone SE this
          project tests on — so naming either is wrong on half the fleet. iOS publishes no deep link to
          that pane (the button below reaches the app's own settings, which is as close as it gets), so
-         this wording is the only instruction the user gets: keep it device-agnostic. -->
+         this wording is the only instruction the user gets: keep it device-agnostic.
+
+         ⛔ There is no button string, and there was one. Measured on a device 2026-09-07: the button
+         landed on this app's own Settings pane, where a passcode cannot be set — the only public
+         destination there is. `App-Prefs:` does not help: iOS accepts it, reports opened=true, and
+         shows the app's pane anyway, so it fails and cannot even be detected failing. The sentence is
+         therefore the whole instruction. "come back" rather than "reopen the wallet" because the root
+         re-reads the gate on activation, so returning is enough. -->
     <string name="passcode_required_title">A device passcode is required</string>
-    <string name="passcode_required_description">This wallet protects your documents with your device passcode, so it cannot store them until you set one.\n\nOpen Settings and set a passcode, then reopen the wallet.</string>
-    <string name="passcode_required_open_settings">Go to settings</string>
+    <string name="passcode_required_description">This wallet protects your documents with your device passcode, so it cannot store them until you set one.\n\nSet a device passcode in Settings, then come back.</string>
     <!--endregion-->
 
     <!-- region Document Success -->

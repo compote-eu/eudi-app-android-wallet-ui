@@ -31,18 +31,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.passcode_required_description
-import eu.europa.ec.shared.resources.passcode_required_open_settings
 import eu.europa.ec.shared.resources.passcode_required_title
 import eu.europa.ec.uilogic.component.AppIconAndText
 import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
 import eu.europa.ec.uilogic.component.content.ContentScreen
 import eu.europa.ec.uilogic.component.content.ScreenNavigateAction
-import eu.europa.ec.uilogic.component.openIosAppSettings
 import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
 import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
-import eu.europa.ec.uilogic.component.wrap.ButtonConfig
-import eu.europa.ec.uilogic.component.wrap.ButtonType
-import eu.europa.ec.uilogic.component.wrap.WrapButton
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -66,19 +61,25 @@ import org.jetbrains.compose.resources.stringResource
  * cannot store a credential, cannot present one, and cannot even keep the PIN that guards it.
  * Offering the dashboard behind an "OK" would be offering a wallet that fails at the first write.
  *
- * It resolves itself: setting a passcode in Settings and reopening the app passes the gate.
+ * It resolves itself, and now without a relaunch: [IosAppRoot] re-reads the gate when the app returns
+ * to the front, so setting a passcode in Settings and coming back enters the wallet.
  *
- * ## 🪤 Where the button can and cannot take them
+ * ## ⛔ Why there is no button, having had one
  *
- * [openIosAppSettings] uses `UIApplicationOpenSettingsURLString`, which is public API and lands on
- * **this app's own pane** — not on Face ID & Passcode, for which there is no public URL. So the
- * button saves a trip to the home screen and no more, and the description has to name the
- * destination pane itself. That is why the copy says where to go rather than relying on the tap.
+ * It had a "Go to settings" button, and on a device it landed on **this app's own Settings pane** —
+ * where a device passcode cannot be set. `UIApplicationOpenSettingsURLString` is the only public
+ * destination and that is where it goes, so the control promised something the platform cannot do.
  *
- * ⚠️ **`App-Prefs:root=PASSCODE` would land exactly right and must not be used**: it is a private
- * scheme, Apple has broken it repeatedly, and shipping it risks review rejection — which for a
- * wallet is a poor trade for one saved tap. The official native EUDI iOS wallet lands on the same
- * pane we do, for the same reason.
+ * ⛔ **`App-Prefs:` does not rescue it, and this was measured rather than assumed.** On iOS 26.6.1
+ * iOS **accepts** the URL and reports `opened=true`, then shows this app's pane anyway — so it fails
+ * *and* its own success flag cannot detect the failure, which leaves nothing to fall back on. It is
+ * also a private scheme and an App Store rejection risk.
+ *
+ * ⛔ **Nor a button that quits**: `exit()` is against Apple's guidance precisely because it is
+ * indistinguishable from a crash, which is the thing this screen exists to replace.
+ *
+ * So the description carries the whole instruction, and the recovery above removes the need for a
+ * control at all.
  *
  * 🪤 **iOS-only by nature, not by omission.** Android's equivalent store is encrypted by the
  * platform's file-based encryption whether or not a lock screen is set, so the same screen there
@@ -122,23 +123,23 @@ internal fun PasscodeRequiredScreen() {
                 )
             }
 
-            // Where the PIN field sits on the screen this borrows from. Centred rather than
-            // stretched: it is one optional shortcut, not the screen's primary input.
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = SPACING_LARGE.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                WrapButton(
-                    buttonConfig = ButtonConfig(
-                        type = ButtonType.PRIMARY,
-                        onClick = ::openIosAppSettings,
-                    ),
-                ) {
-                    Text(text = stringResource(Res.string.passcode_required_open_settings))
-                }
-            }
+            // ⛔ THERE IS DELIBERATELY NO BUTTON, and it is not an oversight.
+            //
+            // It had one, labelled "Go to settings", and on a device it landed on **this app's own
+            // Settings pane** — where a device passcode cannot be set at all. `openSettingsURLString`
+            // is the only public destination and that is where it goes, so the control read as a
+            // promise the platform cannot keep.
+            // ⛔ `App-Prefs:` does not rescue it. Measured on iOS 26.6.1: iOS **accepts** the URL and
+            // reports `opened=true`, then shows this app's pane anyway — so it fails *and* its own
+            // success flag cannot detect the failure, leaving nothing to fall back on. It is also a
+            // private scheme and an App Store rejection risk.
+            // ⛔ Nor a button that quits the app: `exit()` is against Apple's guidance precisely
+            // because it is indistinguishable from a crash — which is what this screen exists to
+            // replace.
+            //
+            // So the sentence is the whole instruction, and the screen recovers by itself instead:
+            // the gate is re-read when the app returns to the front, so setting a passcode and coming
+            // back enters the wallet with no relaunch. See [IosAppRoot].
         }
     }
 }

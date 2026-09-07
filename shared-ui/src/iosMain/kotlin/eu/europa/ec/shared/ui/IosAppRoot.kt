@@ -35,6 +35,11 @@ import eu.europa.ec.shared.ui.di.SharedUiModule
 import eu.europa.ec.shared.ui.di.module as sharedUiDefinitions
 import eu.europa.ec.shared.resources.StringCatalog
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import eu.europa.ec.shared.navigation.LocalNavPlatformActions
 import eu.europa.ec.shared.navigation.sharedAppEntries
 import eu.europa.ec.shared.ui.navigation.IosNavHost
@@ -46,6 +51,8 @@ import eu.europa.ec.analyticslogic.controller.IosAnalytics
 import eu.europa.ec.shared.wallet.log.IosLogFile
 import eu.europa.ec.shared.wallet.platform.iosWalletBlockedByMissingPasscode
 import org.multipaz.util.Logger
+import platform.Foundation.NSNotificationCenter
+import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.UIKit.UIViewController
 
 /**
@@ -89,7 +96,24 @@ fun WalletViewController(): UIViewController {
                 // The two disagree on the simulator — no passcode, and it stores the item anyway —
                 // so gating on the passcode would block the wallet exactly where it is developed.
                 // The passcode is only consulted to decide whether this is the *explainable* failure.
-                if (iosWalletBlockedByMissingPasscode()) {
+                // 🚦 Re-read on activation, so the screen is not a dead end. Setting a passcode
+                // means leaving for Settings and coming back, and that return is the only signal
+                // available — there is no notification for "a passcode was set". Without this the
+                // user had to relaunch, which the copy had to ask them to do.
+                // 📌 Each re-read costs one Keychain canary write, the same probe the launch does.
+                var blocked by remember { mutableStateOf(iosWalletBlockedByMissingPasscode()) }
+                DisposableEffect(Unit) {
+                    val center = NSNotificationCenter.defaultCenter
+                    val observer = center.addObserverForName(
+                        name = UIApplicationDidBecomeActiveNotification,
+                        `object` = null,
+                        queue = null,
+                    ) { _ ->
+                        blocked = iosWalletBlockedByMissingPasscode()
+                    }
+                    onDispose { center.removeObserver(observer) }
+                }
+                if (blocked) {
                     Logger.w(
                         "IosAppRoot",
                         "the Keychain refuses to store documents and this device has no passcode: " +

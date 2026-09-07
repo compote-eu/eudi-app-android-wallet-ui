@@ -79,9 +79,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // 📌 Measured 2026-09-07 on an iPhone SE with its passcode removed — the state the notes had
         // recorded as unreachable. Before this, the app terminated on launch with signal 6 and the
         // explanation went only to the crash log.
+        // Registered BEFORE the guard below, because it is also how a blocked launch recovers: it
+        // re-checks the gate itself and stays inert until the block clears.
+        observeActivation()
+
         guard !IosDevicePasscodeKt.iosWalletBlockedByMissingPasscode() else {
             print("NO-PASSCODE: the Keychain will not hold documents and no passcode is set — "
-                  + "skipping launch work; the wallet root explains it to the user")
+                  + "skipping launch work; the wallet root explains it, and returning to the app "
+                  + "after setting one recovers without a relaunch")
             return true
         }
 
@@ -97,9 +102,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // ExtensionKit extension that answers a request — does not exist yet, and this is useful and
         // observable without it. See `DocumentRegistration.swift`.
         reconcileDocumentRegistrations()
-
-        // ...and again whenever the app returns to the front; see `observeActivation`.
-        observeActivation()
+        launchDidReconcile = true
 
         // The Swift half of document signing. Kotlin cannot call `EudiRQESUi` itself — it is a Swift
         // package, so none of its API crosses the Kotlin/Native bridge — so the shared screen calls
@@ -110,8 +113,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
-    /// Whether the app has been activated once already. See [observeActivation].
-    private var hasBecomeActiveBefore = false
+    /// Set when the *launch* path reconciled, so the activation that immediately follows it does
+    /// not repeat the work. ⚠️ It is deliberately NOT "have we been activated before": on a
+    /// passcode-blocked launch nothing was reconciled, and that first activation is exactly the one
+    /// that has to be allowed through once the block clears. See [observeActivation].
+    private var launchDidReconcile = false
 
     /// Brings the OS registry back in line every time the app returns to the front.
     ///
@@ -163,10 +169,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             queue: .main
         ) { [weak self] _ in
             guard let self else { return }
-            guard self.hasBecomeActiveBefore else {
-                self.hasBecomeActiveBefore = true
+            if self.launchDidReconcile {
+                self.launchDidReconcile = false
                 return
             }
+            // Still no passcode: every path that opens the store would terminate the process, so do
+            // nothing. `IosAppRoot` re-reads the same gate on this notification and unblocks the UI
+            // by itself, and the next activation after that lands here with the block gone — which is
+            // how a wallet that launched blocked ever gets its registrations.
+            guard !IosDevicePasscodeKt.iosWalletBlockedByMissingPasscode() else { return }
             reconcileDocumentRegistrations()
         }
     }
