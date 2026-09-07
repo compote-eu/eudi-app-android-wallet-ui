@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.ic_logo_lockup_wordmark
@@ -37,11 +38,19 @@ import org.jetbrains.compose.resources.painterResource
  * have been stuck at its light-theme value. Tinting it here restores the behaviour and, unlike the XML
  * attribute, works on iOS too.
  *
-thisw * The two assets keep the original 161x52 viewport, so `matchParentSize` aligns them exactly — **as long
+ * The two assets keep the original 161x52 viewport, so `matchParentSize` aligns them exactly — **as long
  * as it is matching a box the artwork sized**, which is what the inner box below guarantees. That was the
  * flaw the split introduced: the caller's modifier used to size the box the wordmark matched, so any
- * caller passing `fillMaxWidth()` stretched the text away from the mark. Fixed 2026-09-05; the result is
- * now pixel-identical to the old single image apart from the themed text, on every caller.
+ * caller passing `fillMaxWidth()` stretched the text away from the mark. Fixed 2026-09-05.
+ *
+ * ⚠️ **That fix was only half right, and the KDoc here claimed more than it delivered** — it said the
+ * result was "pixel-identical to the old single image on every caller", and on the *horizontal* axis it
+ * was not. A `Box` defaults to `TopStart`, so wrapping the artwork in an inner box stopped the stretch
+ * and left the lockup pinned to the **left edge** on every caller passing `fillMaxWidth()`, while
+ * `HomeScreen` — the one caller that passes `align(Center)` instead — stayed centred. Seen on a device
+ * 2026-09-07: centred on Home, hard left on Document Success. 📌 **Upstream centres it**, with
+ * `Row(horizontalArrangement = spacedBy(..., Alignment.CenterHorizontally))` around a single asset, so
+ * `contentAlignment` below is what restores their behaviour rather than a preference of ours.
  * Only the mark carries a content description — the lockup should be announced once.
  */
 @Composable
@@ -49,7 +58,14 @@ fun AppIconAndText(
     modifier: Modifier = Modifier,
     appIconAndTextData: AppIconAndTextDataUi
 ) {
-    Box(modifier = modifier) {
+    // `TopCenter`, not the `Box` default of `TopStart`: the outer box is whatever the caller made it —
+    // usually the full screen width — while the inner box is artwork-sized, so without an alignment the
+    // lockup sits against the left edge.
+    // 📌 `TopCenter` rather than `Center` because it is the faithful match for upstream's
+    // `Row(horizontalArrangement = spacedBy(..., CenterHorizontally), verticalAlignment = Top)`. The two
+    // are identical while the box wraps its height, which every caller currently lets it do; this one
+    // stays correct if a caller ever gives it a height.
+    Box(modifier = modifier, contentAlignment = Alignment.TopCenter) {
         // 🪤 The inner box is load-bearing: it wraps the mark's own size, so `matchParentSize` below
         // matches *the artwork*, not whatever the caller's modifier made the outer box. Five of the
         // six callers pass `fillMaxWidth()`, and without this the wordmark was stretched to the full
