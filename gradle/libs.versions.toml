@@ -45,7 +45,7 @@ materialIcons = "1.7.8"
 cameraCore = "1.6.2"
 
 # Coil (image loading)
-coil = "3.6.0"
+coil = "3.6.2"
 
 # Ktor (networking)
 ktor = "3.5.2"
@@ -56,7 +56,7 @@ koinPlugin = "1.1.0"
 
 # EUDI wallet SDKs
 eudiWalletCore = "0.30.2"
-rqesUiSDK = "0.3.9"
+rqesUiSDK = "0.4.0"
 eudiLibKmpEtsi1196x2 = "0.4.0-alpha.1"
 # Multipaz — the KMP identity-credential engine underneath eudi-lib-android-wallet-core. Already on
 # the Android classpath transitively at this exact version; declared explicitly because the iOS
@@ -65,16 +65,16 @@ eudiLibKmpEtsi1196x2 = "0.4.0-alpha.1"
 multipaz = "0.99.0"
 
 # Logging
-slf4j = "2.0.18"
+slf4j = "2.0.19"
 timber = "5.0.1"
 
 # Other libraries
 androidDesugarJdkLibs = "2.1.5"
 googlePhoneNumber = "9.0.38"
 gson = "2.14.0"
-lint = "32.3.2"
+lint = "32.4.0"
 material = "1.14.0"
-protobuf = "4.36.0"
+protobuf = "4.36.1"
 sqlcipher = "4.18.0"
 zxing = "3.5.4"
 
@@ -94,7 +94,7 @@ robolectric = "4.16.1"
 turbine = "1.2.1"
 
 # Gradle plugins
-androidGradlePlugin = "9.3.2"
+androidGradlePlugin = "9.4.0"
 baselineprofile = "1.5.0-rc02"
 dependencyGraphPlugin = "0.13.0"
 detekt = "1.23.8"
