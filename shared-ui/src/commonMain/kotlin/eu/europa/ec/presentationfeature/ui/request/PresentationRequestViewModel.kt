@@ -20,6 +20,7 @@ import androidx.lifecycle.viewModelScope
 import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
+import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.ui.request.model.toRegistrationWarningUi
 import eu.europa.ec.commonfeature.ui.request.model.toRelyingPartyHeaderUi
@@ -39,6 +40,7 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.biometric_default_mode_text_above_pin_field
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.loading_biometry_biometrics_enabled_description
 import eu.europa.ec.shared.resources.loading_biometry_biometrics_not_enabled_description
 import eu.europa.ec.shared.resources.request_relying_party_default_name
@@ -83,7 +85,26 @@ class PresentationRequestViewModel(
         )
     }
 
-    override fun init(intentAction: IntentAction?) {
+    override fun init(intentAction: IntentAction?): Boolean {
+        // A DC API request IS the caller's intent: unlike OpenID4VP the config carries no URI, so
+        // without the intent there is nothing to present against. It goes missing on the restore
+        // path — the pending action is held in an activity-scoped ViewModel and read exactly once,
+        // so after process death the back stack still restores a `DcApi` route while the action
+        // itself is gone. `toDomainConfig` throws on that pair, from inside the event collector,
+        // which took the process down. Show the error instead; there is nothing to retry.
+        if (requestUriConfig.mode is PresentationMode.DcApi && intentAction == null) {
+            setState {
+                copy(
+                    isLoading = false,
+                    error = ContentErrorConfig(
+                        errorSubTitle = UiText.Resource(Res.string.generic_error_message),
+                        onCancel = { setEvent(Event.OnBack) },
+                    )
+                )
+            }
+            return false
+        }
+
         setState {
             copy(
                 presentationScopeId = requestUriConfig.presentationScopeId,
@@ -92,6 +113,7 @@ class PresentationRequestViewModel(
         }
 
         interactor.setConfig(requestUriConfig, intentAction)
+        return true
     }
 
     override fun doWork() {

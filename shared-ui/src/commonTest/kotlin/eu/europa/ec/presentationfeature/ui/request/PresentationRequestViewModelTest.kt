@@ -48,6 +48,9 @@ import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractorPartialState
 import eu.europa.ec.shared.navigation.BiometricRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -128,6 +131,12 @@ class PresentationRequestViewModelTest {
             )
         )
 
+        // The shape the restore path leaves behind: the route still says DC API, but the intent
+        // action that WAS the request has already been consumed by the dead process.
+        val DCAPI_CONFIG = RequestUriConfig(
+            mode = PresentationMode.DcApi(initiatorRoute = DashboardRoute)
+        )
+
         fun document(itemId: String, claimId: String, checked: Boolean) = RequestDocumentItemUi(
             domainPayload = DocumentPayloadDomain(
                 docName = "doc-$itemId",
@@ -191,9 +200,14 @@ class PresentationRequestViewModelTest {
     fun tearDown() = Dispatchers.resetMain()
 
     private fun viewModel(vararg states: PresentationRequestInteractorPartialState) =
-        FakePresentationRequestInteractor(states.toList()).let { fake ->
-            fake to PresentationRequestViewModel(fake, OPENID_CONFIG)
-        }
+        viewModel(OPENID_CONFIG, *states)
+
+    private fun viewModel(
+        config: RequestUriConfig,
+        vararg states: PresentationRequestInteractorPartialState,
+    ) = FakePresentationRequestInteractor(states.toList()).let { fake ->
+        fake to PresentationRequestViewModel(fake, config)
+    }
 
     @Test
     fun init_pushes_the_config_to_the_interactor_and_records_the_scope() = runTest(mainDispatcher) {
@@ -225,6 +239,33 @@ class PresentationRequestViewModelTest {
         assertTrue(state.relyingPartyHeader!!.relyingParty.isVerified)
         assertNotNull(fake.disclosed.lastOrNull())
     }
+
+    @Test
+    fun a_dc_api_request_without_its_intent_action_errors_instead_of_configuring() =
+        runTest(mainDispatcher) {
+            val (fake, viewModel) = viewModel(
+                DCAPI_CONFIG,
+                success(document("d1", "c1", checked = true)),
+            )
+
+            viewModel.setEvent(Event.Init(intentAction = null))
+            advanceUntilIdle()
+
+            // Mapping this pair to a domain config throws, so the config must never be pushed.
+            assertNull(fake.configuredWith)
+            // And the work must be skipped, not merely unconfigured: doWork() clears `error`, so
+            // running it would swap the message below for a spinner that never resolves.
+            assertEquals(0, fake.requestCalls)
+
+            val state = viewModel.viewState.value
+            assertFalse(state.isLoading)
+            assertEquals(
+                UiText.Resource(Res.string.generic_error_message),
+                assertNotNull(state.error).errorSubTitle,
+            )
+            // Nothing to retry without the intent: the only way out is back.
+            assertNull(assertNotNull(state.error).onRetry)
+        }
 
     @Test
     fun init_runs_the_work_only_once_per_instance() = runTest(mainDispatcher) {

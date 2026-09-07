@@ -131,7 +131,14 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
     abstract fun getNextRoute(): AppRoute
     abstract fun doWork()
 
-    open fun init(intentAction: IntentAction?) {}
+    /**
+     * Prepares the screen for [doWork]; returns whether it may run.
+     *
+     * A `false` means the arguments cannot produce a request, and the override has already put an
+     * error on screen. [doWork] must then be skipped: its first act is to clear `error` and show a
+     * spinner, so running it anyway would replace that error with an indefinite load.
+     */
+    open fun init(intentAction: IntentAction?): Boolean = true
 
     /**
      * Called during [NavigationType.Pop].
@@ -157,8 +164,7 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
                 // rebuilt; the ViewModel-scoped flag is what makes it once-per-instance.
                 if (hasRunInitialWork) return
                 hasRunInitialWork = true
-                init(event.intentAction)
-                doWork()
+                if (init(event.intentAction)) doWork()
             }
 
             is Event.DoWork -> doWork()
