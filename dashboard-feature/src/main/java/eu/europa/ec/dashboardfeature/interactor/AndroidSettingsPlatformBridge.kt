@@ -89,7 +89,7 @@ class AndroidSettingsPlatformBridge(
         registrationCheckProvider.setEnabled(enabled = enabled)
 
     /**
-     * The rotating Treessence set's absolute paths. Turning them into a share is
+     * The rotating log set's absolute paths. Turning them into a share is
      * `PlatformScreenActions.shareFiles`'s job now — this used to build the `ACTION_SEND_MULTIPLE`
      * intent itself, which no iOS implementation could mirror.
      */

@@ -40,7 +40,7 @@ internal object IosWalletConfigImpl : IosWalletConfig {
     override val credentialBatchSize = 10
 
     // Mirrors Android's `eudi-android-wallet-logs%g.txt`, `%g` being the generation counter that
-    // Treessence substitutes there and `IosLogFile` substitutes here.
+    // `FileLoggerTree` substitutes there and `IosLogFile` substitutes here.
     override val logFileName = "eudi-ios-wallet-logs%g.txt"
 
     // Matches Android's demo flavour, which sets INFORM for the document status resolver.

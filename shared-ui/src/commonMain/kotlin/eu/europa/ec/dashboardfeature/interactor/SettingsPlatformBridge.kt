@@ -109,7 +109,7 @@ interface SettingsPlatformBridge {
      * **Paths rather than an intent, since 2026-08-27.** This used to be `logShareIntent(): PlatformIntent?`,
      * which no iOS implementation could ever satisfy: `PlatformIntent` is uninhabited there, so iOS
      * could only answer `null` and the settings row was omitted. A path is something both platforms
-     * genuinely have — Android's Treessence files, iOS's multipaz log — and turning one into a share
+     * genuinely have — Android's rotating log files, iOS's multipaz log — and turning one into a share
      * sheet is the platform's job, which is what
      * [PlatformScreenActions.shareFiles] is for.
      *

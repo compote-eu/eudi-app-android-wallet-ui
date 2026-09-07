@@ -95,7 +95,8 @@ interface IosWalletConfig : SharedAppConfig, SharedWalletConfig {
      *
      * A pattern, not a plain filename: `%g` is the generation counter, exactly as in Android's
      * `eudi-android-wallet-logs%g.txt`. [IosLogFile] substitutes it and keeps the same 10 files of
-     * 5 MB that Treessence keeps there, because multipaz's own file writer has no rotation and
+     * 5 MB that `LogController`'s rotating tree keeps there, because multipaz's own file writer has
+     * no rotation and
      * truncates on every `startLoggingToFile`.
      */
     val logFileName: String

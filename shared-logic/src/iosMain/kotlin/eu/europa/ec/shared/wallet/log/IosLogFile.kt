@@ -53,7 +53,7 @@ import kotlin.time.Clock
  *    every launch began an empty file and the previous session's log was simply gone.
  *  - **it has no size cap**, so a long-lived session grew one file without bound.
  *
- * Android has neither problem: `LogController` plants a Treessence `FileLoggerTree` with
+ * Android has neither problem: `LogController` plants a `FileLoggerTree` with
  * `withSizeLimit`, `withFileLimit` and `appendToFile(true)`. [FILE_SIZE_LIMIT] and [FILE_LIMIT] are
  * those same numbers, so the two platforms keep a comparable amount of history and share a comparable
  * bundle.

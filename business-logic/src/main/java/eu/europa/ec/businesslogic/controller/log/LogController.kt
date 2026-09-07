@@ -19,7 +19,7 @@ package eu.europa.ec.businesslogic.controller.log
 import android.content.Context
 import android.util.Log
 import eu.europa.ec.businesslogic.config.ConfigLogic
-import fr.bipi.treessence.file.FileLoggerTree
+import eu.europa.ec.businesslogic.util.FileLoggerTree
 import timber.log.Timber
 import java.io.File
 
