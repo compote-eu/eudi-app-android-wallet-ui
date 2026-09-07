@@ -17,6 +17,7 @@
 import SwiftUI
 import class SharedKit.WalletEngineProbeKt
 import class SharedKit.IosFirstRunWipeKt
+import class SharedKit.IosDevicePasscodeKt
 import class SharedKit.IosAuthorizationRedirects
 import class SharedKit.IosDeepLinks
 import class SharedKit.BackgroundReIssuanceSummary
@@ -60,6 +61,28 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // not in a Task. The official iOS wallet does the same thing in its startup interactor.
         if IosFirstRunWipeKt.clearSecretsLeftByAPreviousInstall() {
             print("FIRST-RUN-WIPE: cleared secrets left by a previous install")
+        }
+
+        // ⭐ NOTHING BELOW MAY RUN WITHOUT A DEVICE PASSCODE, and it took a device without one to
+        // find that out. The wallet's documents live in the Keychain at
+        // `WhenPasscodeSetThisDeviceOnly`, so on a passcode-free device *every* path that opens the
+        // store fails at `SecureEnclaveSecureArea.create`, and the three launch tasks below all open
+        // it. `IosAppRoot` already refuses to show the wallet in this state and explains why — but it
+        // is UI, and it cannot stop work that a launch has already started.
+        //
+        // 🪤 **The crash was not catchable in Swift.** `registrableDocuments()` carries no `@Throws`,
+        // so `KeychainWriteRefused` did not arrive as an NSError at all: Kotlin/Native reported
+        // "doesn't match @Throws-specified class list … Program will be terminated" and killed the
+        // process, straight through a `do/catch` that looked like it handled it. So the fix is to not
+        // make the call, rather than to catch it better.
+        //
+        // 📌 Measured 2026-09-07 on an iPhone SE with its passcode removed — the state the notes had
+        // recorded as unreachable. Before this, the app terminated on launch with signal 6 and the
+        // explanation went only to the crash log.
+        guard !IosDevicePasscodeKt.iosWalletBlockedByMissingPasscode() else {
+            print("NO-PASSCODE: the Keychain will not hold documents and no passcode is set — "
+                  + "skipping launch work; the wallet root explains it to the user")
+            return true
         }
 
         refreshWalletOnLaunch()
