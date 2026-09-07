@@ -57,6 +57,14 @@ protocol DocumentRegistrationManager: Sendable {
     ) async throws
 }
 
+/// The comparable part of a registration the OS holds: what a document would have to match for its
+/// registration to be left alone. `mobileDocumentType` is optional because the OS may hand back a
+/// registration that is not a `MobileDocumentRegistration`, and such an entry must never compare equal.
+struct RegisteredDocument: Equatable {
+    let mobileDocumentType: String?
+    let invalidationDate: Date?
+}
+
 @available(iOS 26.0, *)
 final actor DocumentRegistrationManagerImpl: DocumentRegistrationManager {
 
@@ -93,14 +101,31 @@ final actor DocumentRegistrationManagerImpl: DocumentRegistrationManager {
         }
     }
 
-    /// The document identifiers the OS currently holds for this app — **our addition, kept off the protocol.**
+    /// What the OS currently holds for this app, by document identifier — **our addition, kept off the
+    /// protocol.**
     ///
     /// The reference wallet's `DocumentRegistrationManager` has exactly two methods and this is not one
     /// of them, so it lives on the implementation rather than widening the mirrored type. It is what
     /// makes removal possible at all: nothing in the wallet knows what the OS still believes, and a
     /// registration whose document is gone can only be found by asking.
-    func registeredDocumentIdentifiers() async throws -> Set<String> {
-        Set(try await makeStore().registrations.map(\.documentIdentifier))
+    ///
+    /// It returns the comparable fields rather than only the identifiers, so a reconciliation can tell
+    /// an entry that is **already correct** from one that needs rewriting. That matters now that
+    /// reconciliation runs on every activation and not only at launch.
+    ///
+    /// ⚠️ `registrations` is typed `[any IdentityDocumentRegistration]`, and **that protocol exposes
+    /// only `documentIdentifier`** — everything worth comparing lives on the concrete
+    /// `MobileDocumentRegistration`, so the downcast is what makes this possible. An entry that is not
+    /// one is reported with a `nil` type, which can never equal a document's real type, so it is
+    /// rewritten rather than silently treated as matching.
+    func registeredDocuments() async throws -> [String: RegisteredDocument] {
+        try await makeStore().registrations.reduce(into: [:]) { result, registration in
+            let mobile = registration as? MobileDocumentRegistration
+            result[registration.documentIdentifier] = RegisteredDocument(
+                mobileDocumentType: mobile?.mobileDocumentType,
+                invalidationDate: mobile?.invalidationDate
+            )
+        }
     }
 
     /// Whether the OS will accept registrations at all — **our addition, and the diagnostic that matters.**
@@ -208,9 +233,14 @@ func reconcileDocumentRegistrations() {
         //
         // Read before writing: once the additions have run, every wanted document is present and the
         // difference that identifies a stale registration is gone.
+        // Declared outside the `do` because the additions below consult it, and deliberately left
+        // EMPTY if the read throws: not knowing what the OS holds must mean "rewrite everything",
+        // never "everything already matches". That keeps the pre-existing decision below — that a
+        // failed read does not gate the additions — pointing the same way.
+        var held: [String: RegisteredDocument] = [:]
         do {
-            let held = try await manager.registeredDocumentIdentifiers()
-            let stale = held.subtracting(wantedIdentifiers)
+            held = try await manager.registeredDocuments()
+            let stale = Set(held.keys).subtracting(wantedIdentifiers)
 
             // The count is logged, not just the staleness, because the two are not the same signal and
             // the difference cost a verification: additions below run unconditionally, so "nothing
@@ -233,7 +263,21 @@ func reconcileDocumentRegistrations() {
             return
         }
 
+        // Only rewrite what does not already match. Reconciliation runs on every activation now, so
+        // re-adding every document each time meant one call per document per foregrounding for a
+        // registry that was already correct. `invalidationDate` is compared as well as the type,
+        // because a re-issued document keeps its identifier and moves its expiry — the one case where
+        // an existing entry is present *and* wrong.
+        var unchanged = 0
         for document in wanted {
+            let desired = RegisteredDocument(
+                mobileDocumentType: document.mobileDocumentType,
+                invalidationDate: document.invalidationDate
+            )
+            if held[document.documentIdentifier] == desired {
+                unchanged += 1
+                continue
+            }
             do {
                 try await manager.addRegistration(
                     mobileDocumentType: document.mobileDocumentType,
@@ -247,6 +291,9 @@ func reconcileDocumentRegistrations() {
             } catch {
                 print("DOCUMENT-REGISTRATION: \(document) refused — \(error)")
             }
+        }
+        if unchanged > 0 {
+            print("DOCUMENT-REGISTRATION: \(unchanged) already correct, left alone")
         }
     }
 }
