@@ -191,12 +191,32 @@ extension WalletDocumentSigner: UIDocumentPickerDelegate {
             return
         }
 
-        Task { @MainActor in
-            do {
-                try await rqes.initiate(on: controller.presentingViewController ?? controller, fileUrl: local)
-                finish(cancelled: false, error: nil)
-            } catch {
-                finish(cancelled: false, error: error.localizedDescription)
+        // 🪤 `controller.presentingViewController` is ALREADY nil here: iOS dismisses the document
+        // picker itself before calling this delegate, so the picker is detached by the time we run.
+        // The original code read `controller.presentingViewController ?? controller`, which therefore
+        // always fell through to the dismissed picker — a controller with no window — and the SDK
+        // returned without presenting anything, without throwing. That is why picking a document did
+        // nothing at all on device, for as long as this feature has existed (found 2026-09-08, the
+        // first time it was run on an iPhone).
+        //
+        // So resolve the presenter fresh, once the dismissal has settled, rather than deriving it
+        // from the picker: `topViewController()` is the same helper that presented the picker, and
+        // the dismissal's completion is what puts us after it.
+        controller.dismiss(animated: true) { [weak self] in
+            guard let self else { return }
+            let top = Self.topViewController()
+            Task { @MainActor in
+                guard let presenter = top else {
+                    print("DOCUMENT-SIGN: no view controller available to present the signing UI")
+                    self.finish(cancelled: false, error: "Document signing could not be opened.")
+                    return
+                }
+                do {
+                    try await self.rqes.initiate(on: presenter, fileUrl: local)
+                    self.finish(cancelled: false, error: nil)
+                } catch {
+                    self.finish(cancelled: false, error: error.localizedDescription)
+                }
             }
         }
     }
