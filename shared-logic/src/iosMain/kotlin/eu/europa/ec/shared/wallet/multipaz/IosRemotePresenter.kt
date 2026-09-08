@@ -129,6 +129,9 @@ class IosRemotePresenter internal constructor(
     /** What the user agreed to share, remembered so the success state can name it. */
     private var sharedDocuments: List<String> = emptyList()
 
+    /** How many times multipaz has asked for consent in the current exchange; for the log only. */
+    private var consentRequests: Int = 0
+
     /**
      * Starts the exchange the verifier's link describes.
      *
@@ -138,6 +141,11 @@ class IosRemotePresenter internal constructor(
      * also accepts here.
      */
     fun start(uri: String) {
+        // Logged because a second `start` silently cancels the first exchange, and that is invisible
+        // otherwise: the whole send leg used to log nothing at all between multipaz building the
+        // response and the flow ending, which made a stalled exchange indistinguishable from a
+        // completed one. Both were "no further output".
+        Logger.i(TAG, "starting an exchange for ${uri.substringBefore(':')}; cancelling any previous")
         cancel()
         mutableState.value = IosRemotePresentationState.Resolving
 
@@ -153,11 +161,20 @@ class IosRemotePresenter internal constructor(
                     origin = null,
                     httpClientEngineFactory = Darwin,
                 )
+                Logger.i(
+                    TAG,
+                    "response accepted by the verifier; " +
+                            "shared=${sharedDocuments.joinToString()}, " +
+                            "redirect=${redirect?.let { "yes" } ?: "none"}",
+                )
                 mutableState.value = IosRemotePresentationState.Sent(
                     sharedDocuments = sharedDocuments,
                     redirectUri = redirect,
                 )
             } catch (e: CancellationException) {
+                // 🪤 The state is deliberately left alone — whoever cancelled owns it — but say so,
+                // because a cancellation mid-send leaves `Sending` on screen for ever otherwise.
+                Logger.i(TAG, "the exchange was cancelled")
                 throw e
             } catch (t: Throwable) {
                 // Two of multipaz's outcomes are answers rather than errors, and the screens show them
@@ -187,9 +204,23 @@ class IosRemotePresenter internal constructor(
      * rather than an empty response, which is also how multipaz reads a null selection.
      */
     fun accept(disclosures: List<IosPresentmentDisclosure>) {
+        // 🪤 Answered twice, and the second answer used to STRAND THE SCREEN. `pendingConsent` is
+        // nulled by the first answer but `pendingData` was not, so a second call still built a
+        // selection, set `Sending` — *Please wait…* — and then completed nothing: there was no longer a
+        // deferred to hand it to, so nothing was ever sent, and with no timeout on the send the screen
+        // waited for ever. Measured on an iPhone 2026-09-08, twice, in the wallet-centric signing flow.
+        // So take the deferred first and do nothing at all without one.
+        val consent = pendingConsent ?: run {
+            Logger.w(TAG, "consent answered with nothing waiting for it; ignoring")
+            return
+        }
+        pendingConsent = null
+
         val selection = pendingData?.toSelection(disclosures)
+        pendingData = null
         if (selection == null || selection.matches.isEmpty()) {
-            decline()
+            // Releasing nothing is a refusal, and the deferred still has to hear it.
+            consent.complete(null)
             return
         }
 
@@ -197,8 +228,7 @@ class IosRemotePresenter internal constructor(
             match.credential.document.displayName ?: match.credential.document.identifier
         }.distinct()
         mutableState.value = IosRemotePresentationState.Sending
-        pendingConsent?.complete(selection)
-        pendingConsent = null
+        consent.complete(selection)
     }
 
     /** Answers the consent step with a refusal; the verifier is told nothing was shared. */
@@ -216,6 +246,7 @@ class IosRemotePresenter internal constructor(
         presentmentJob?.cancel()
         presentmentJob = null
         sharedDocuments = emptyList()
+        consentRequests = 0
         mutableState.value = IosRemotePresentationState.Idle
     }
 
@@ -253,6 +284,10 @@ class IosRemotePresenter internal constructor(
         data: CredentialPresentmentData,
     ): CredentialPresentmentSelection? {
         val consent = CompletableDeferred<CredentialPresentmentSelection?>()
+        // Counted, because multipaz may ask more than once for one exchange and a repeat looks
+        // identical to the user — it is the same screen a second time.
+        consentRequests += 1
+        Logger.i(TAG, "asking for consent (request $consentRequests of this exchange)")
         pendingConsent = consent
         pendingData = data
         mutableState.value = IosRemotePresentationState.Requesting(
