@@ -54,20 +54,7 @@ actual fun rememberPlatformScreenActions(): PlatformScreenActions = remember {
         override fun openAppSettings() = openIosAppSettings()
         override fun openBluetoothSettings() = log("openBluetoothSettings")
 
-        override fun openUrlExternally(url: String) {
-            // `NSURL.URLWithString` returns null for anything it cannot parse, which is the iOS
-            // counterpart of the Android side swallowing `ActivityNotFoundException`.
-            val nsUrl = NSURL.URLWithString(url)
-            if (nsUrl == null) {
-                println("$TAG: openUrlExternally could not parse '$url' — ignoring.")
-                return
-            }
-            UIApplication.sharedApplication.openURL(
-                url = nsUrl,
-                options = emptyMap<Any?, Any>(),
-                completionHandler = null,
-            )
-        }
+        override fun openUrlExternally(url: String) = openIosUrlExternally(url)
 
         /**
          * A real share sheet, over `UIActivityViewController`.
@@ -131,3 +118,25 @@ actual fun rememberPlatformScreenActions(): PlatformScreenActions = remember {
 }
 
 private const val TAG = "PlatformScreenActions"
+
+/**
+ * Hands [url] to iOS to open — Safari, or whichever app claims the scheme.
+ *
+ * Top level rather than a member for the same reason [openIosAppSettings] is: a second caller outside
+ * composition needs it. That caller is `IosNavPlatformActions.parkAndReturn`, which has to follow the
+ * verifier's post-presentation redirect, and cannot reach a `@Composable` factory's object.
+ */
+internal fun openIosUrlExternally(url: String) {
+    // `NSURL.URLWithString` returns null for anything it cannot parse, which is the iOS counterpart of
+    // the Android side swallowing `ActivityNotFoundException`.
+    val nsUrl = NSURL.URLWithString(url)
+    if (nsUrl == null) {
+        println("$TAG: openUrlExternally could not parse '$url' — ignoring.")
+        return
+    }
+    UIApplication.sharedApplication.openURL(
+        url = nsUrl,
+        options = emptyMap<Any?, Any>(),
+        completionHandler = null,
+    )
+}

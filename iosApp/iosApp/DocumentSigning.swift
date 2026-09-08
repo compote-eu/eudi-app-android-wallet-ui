@@ -124,6 +124,19 @@ final class WalletDocumentSigner: NSObject, IosDocumentSigner, @unchecked Sendab
     ///
     /// Returns false for a URL that is not ours or carries no `code`, so `AppDelegate` can go on to
     /// offer it to the other handlers.
+    ///
+    /// 🪤 The code and the presenter used to be conditions of ONE `guard`, and that dropped the
+    /// authorization on the floor. Arriving from Safari, this runs while the scene is still coming
+    /// forward, so `topViewController()` — which insists on a `.foregroundActive` scene — answers nil.
+    /// The guard then failed on the *presenter* while blaming the *code*, logging "no authorization
+    /// code" for a URL that plainly carried one, and returning false handed our own callback to the
+    /// other handlers, which declined it. Measured on an iPhone 2026-09-08:
+    ///
+    ///     RQES-CALLBACK: no authorization code in rqes://oauth/callback?code=cTDST2Fb…
+    ///     OPEN-URL: ignored rqes
+    ///
+    /// So the two questions are asked separately. A URL carrying a code **is ours**, whatever the scene
+    /// is doing, so claim it and then wait for somewhere to present on.
     @discardableResult
     @MainActor
     func resume(url: URL) -> Bool {
@@ -132,14 +145,17 @@ final class WalletDocumentSigner: NSObject, IosDocumentSigner, @unchecked Sendab
             let code = URLComponents(url: url, resolvingAgainstBaseURL: false)?
                 .queryItems?
                 .first(where: { $0.name == "code" })?
-                .value,
-            let presenter = Self.topViewController()
+                .value
         else {
             print("RQES-CALLBACK: no authorization code in \(url.absoluteString.prefix(60))")
             return false
         }
 
         Task { @MainActor in
+            guard let presenter = await Self.awaitTopViewController() else {
+                print("RQES-CALLBACK: no view controller to continue the signing flow on")
+                return
+            }
             do {
                 try await rqes.resume(on: presenter, authorizationCode: code)
             } catch {
@@ -147,6 +163,24 @@ final class WalletDocumentSigner: NSObject, IosDocumentSigner, @unchecked Sendab
             }
         }
         return true
+    }
+
+    /// [topViewController] once the scene is actually forward, or nil if it never gets there.
+    ///
+    /// A returning app is mid-activation when its URL is delivered, so the first look can legitimately
+    /// find nothing; a short poll is enough, and is the same lesson the document picker taught — resolve
+    /// the presenter at the moment of use, not before. Bounded so a scene that never activates ends in a
+    /// log line rather than a task that waits for ever.
+    @MainActor
+    private static func awaitTopViewController(
+        attempts: Int = 20,
+        every: Duration = .milliseconds(100)
+    ) async -> UIViewController? {
+        for _ in 0..<attempts {
+            if let top = topViewController() { return top }
+            try? await Task.sleep(for: every)
+        }
+        return topViewController()
     }
 
     /// The frontmost view controller, so the picker appears above whatever Compose is showing.

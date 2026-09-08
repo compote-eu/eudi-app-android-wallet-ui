@@ -82,9 +82,6 @@ internal class IosRemotePresentationCoordinator(
     private var verifierName: String? = null
     private var verifierIsTrusted: Boolean = false
 
-    /** Whether the app is sending, which is what makes a return to [IosRemotePresentationState.Idle] a failure. */
-    private var sending: Boolean = false
-
     /** Where the verifier asked the user to be sent afterwards, read by the success screen. */
     var redirectUri: String? = null
         private set
@@ -172,12 +169,25 @@ internal class IosRemotePresentationCoordinator(
      * there is no separate prompt for the app to schedule.
      */
     fun sendEvents(): Flow<PresentationLoadingObserveResponsePartialState> = flow {
+        // 🪤 This flag used to be a field of the coordinator, and `cancel()` cleared it — so a teardown
+        // arriving mid-send made the very next `Idle` **unreportable**, and the loading screen waited on
+        // *Please wait…* for ever. Measured on an iPhone 2026-09-08:
+        //
+        //     loading screen sees Sent (sending=true)
+        //     coordinator.cancel() while sending=true
+        //     loading screen sees Idle (sending=false)   <- swallowed, nothing emitted
+        //
+        // Reordering `cancel()` would not fix it: `presenter.cancel()` assigns the state, but this
+        // collector resumes later, by which time a field would already have been cleared. So the flag
+        // belongs to the collector, where nothing else can reach it — this screen's own view of whether
+        // the send had begun, which is exactly the question the `Idle` branch is asking.
+        var sendHadStarted = false
         presenter.state.collect { state ->
             when (state) {
                 is IosRemotePresentationState.Requesting ->
                     emit(PresentationLoadingObserveResponsePartialState.RequestReadyToBeSent)
 
-                is IosRemotePresentationState.Sending -> sending = true
+                is IosRemotePresentationState.Sending -> sendHadStarted = true
 
                 is IosRemotePresentationState.Sent -> {
                     redirectUri = state.redirectUri
@@ -190,7 +200,7 @@ internal class IosRemotePresentationCoordinator(
                 // Idle mid-send means the exchange ended without a response — the verifier went away, or
                 // a refusal the presenter turned into one. Before the send it is simply not our turn.
                 is IosRemotePresentationState.Idle ->
-                    if (sending) {
+                    if (sendHadStarted) {
                         emit(
                             PresentationLoadingObserveResponsePartialState.Failure(
                                 error = strings[Res.string.generic_error_message],
@@ -269,7 +279,6 @@ internal class IosRemotePresentationCoordinator(
 
     /** Ends the exchange: the back button, the "stop" the request screen offers, and every teardown. */
     fun cancel() {
-        sending = false
         disclosures = emptyList()
         disclosed = emptyList()
         presenter.cancel()
