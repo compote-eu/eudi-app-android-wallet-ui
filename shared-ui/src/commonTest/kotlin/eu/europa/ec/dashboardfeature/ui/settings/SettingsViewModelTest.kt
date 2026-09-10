@@ -65,7 +65,8 @@ internal open class FakeBiometricInteractor(
     private val biometricUserSelection: Boolean = true,
     private val pinValidResult: QuickPinInteractorPinValidPartialState =
         QuickPinInteractorPinValidPartialState.Success,
-    private val lockoutOnEntry: PinLockoutState = PinLockoutState.Idle,
+    /** `var` so a second `Init` can report a different lockout — see the tick-replacement case. */
+    private var lockoutOnEntry: PinLockoutState = PinLockoutState.Idle,
     private val lockoutAfterFailure: PinLockoutState = PinLockoutState.Idle,
     /**
      * Hold the prompt open instead of answering inline. A real system prompt stays up until the
@@ -134,6 +135,11 @@ internal open class FakeBiometricInteractor(
         flow { emit(pinValidResult) }
 
     override suspend fun getPinLockoutState(): PinLockoutState = lockoutOnEntry
+
+    /** Change what the next `Init` finds. */
+    fun setLockoutOnEntry(state: PinLockoutState) {
+        lockoutOnEntry = state
+    }
 
     override suspend fun recordPinFailure(): PinLockoutState = lockoutAfterFailure
 

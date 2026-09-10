@@ -171,6 +171,57 @@ class BiometricViewModelPlatformHandleTest {
         assertEquals(2, fake.authPrompts)
     }
 
+    // ---- ported from upstream's TestBiometricViewModel (a3a11fa1). The first of these was a
+    // ---- MEASURED gap: mutating the success path's `finally { isAuthenticating = false }` failed
+    // ---- no test, because after success the screen navigates away and nothing looked back.
+
+    @Test
+    fun the_button_works_again_after_a_SUCCESSFUL_prompt_too() = runTest(mainDispatcher) {
+        val fake = FakeBiometricInteractor(deferResult = true)
+        val viewModel = BiometricViewModel(fake, config())
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.OnBiometricsClicked(context, shouldThrowErrorIfNotAvailable = true)
+        )
+        advanceUntilIdle()
+        fake.answerPendingPrompt(BiometricsAuthenticate.Success)
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.OnBiometricsClicked(context, shouldThrowErrorIfNotAvailable = true)
+        )
+        advanceUntilIdle()
+
+        // The guard is released in a `finally`, so it must survive the success path too — the
+        // cancelled path was already covered and this one was not.
+        assertEquals(2, fake.authPrompts)
+    }
+
+    @Test
+    fun the_PIN_still_works_while_a_biometric_prompt_is_open() = runTest(mainDispatcher) {
+        val fake = FakeBiometricInteractor(deferResult = true)
+        val viewModel = BiometricViewModel(fake, config())
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.OnBiometricsClicked(context, shouldThrowErrorIfNotAvailable = true)
+        )
+        advanceUntilIdle()
+        assertEquals(1, fake.authPrompts)   // the prompt is up and unanswered
+
+        val effect = async { viewModel.effect.first() }
+        viewModel.setEvent(Event.OnQuickPinEntered(FakeSecurePin("123456")))
+        advanceUntilIdle()
+
+        // The re-entrancy guard exists to stop a SECOND prompt, and it must not reach the PIN: the
+        // PIN is the fallback the whole login screen rests on. Written with the prompt still
+        // pending on purpose — after a cancellation the guard is already clear, so that version of
+        // this test could not fail and was replaced by this one.
+        assertIs<Effect.Navigation.SwitchScreen>(effect.await())
+        assertEquals(1, fake.throttleResets)
+    }
+
     @Test
     fun a_cancelled_prompt_is_inert() = runTest(mainDispatcher) {
         val fake = FakeBiometricInteractor(authResult = BiometricsAuthenticate.Cancelled)
