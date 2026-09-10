@@ -129,6 +129,8 @@
     <!-- region Biometrics -->
     <string name="biometric_no_hardware">Az Ön eszköze nem támogatja a biometrikus azonosítást</string>
     <string name="biometric_unknown_error">Hiba történt a biometrikus azonosítás inicializálása során. Kérjük, próbálja újra</string>
+    <string name="biometric_strong_required">Az Ön jelenlegi biometrikus azonosítási módszere nem felel meg a művelet biztonsági követelményeinek. Állítson be egy támogatott módszert, például ujjlenyomatot, az eszköz beállításaiban</string>
+    <string name="biometric_authentication_error">A biometrikus azonosítás nem sikerült. Kérjük, próbálja újra</string>
     <string name="biometric_default_mode_text_above_pin_field">PIN</string>
     <!--endregion-->
 
