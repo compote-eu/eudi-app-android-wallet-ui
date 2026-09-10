@@ -88,8 +88,8 @@ Optional profiles (`verifier`, `trustedlist`, `rqes`) — see the end of this fi
    app's OpenID4VCI SDK requires.
 6. **Wallet-provider source + DB schema** — clones `eudi-srv-wallet-provider` (pinned to
    `v0.2.1`) and copies `schemas/postgresql` from it.
-7. **Status-list service** — clones the repo, overlays our localized `config_service.py`
-   + a build `Dockerfile`, generates its signing key.
+7. **Status-list service** — clones the repo (pinned to `v0.9.0`), overlays our localized
+   `config_service.py` + a build `Dockerfile`, generates its signing key.
 8. **Native wallet-provider image** — builds `eudi-srv-wallet-provider:local` from the
    step-6 source with Jib, for the **host arch** (`-Djib.from.platforms`). Upstream ships
    only `linux/amd64` (emulated/slow on Apple Silicon); this is native. Skipped if the

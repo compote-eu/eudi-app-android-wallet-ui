@@ -147,8 +147,19 @@ fi
 # ---------------------------------------------------------------------------------------
 step "7/10  Status-list service (clone build-from-source, overlay config, generate key)"
 # ---------------------------------------------------------------------------------------
+# Pinned to a tag for the same reason the wallet-provider is: an unpinned `--depth 1` clone
+# of the default branch silently gives each machine whatever `main` happened to be that day,
+# so two bootstraps can produce different stacks with nothing recording the difference.
+# v0.9.0 == upstream `main` at the time of pinning (2026-09-10).
 SL=repos/eudi-srv-statuslist-py
-[ -d "$SL" ] || git clone --depth 1 https://github.com/eu-digital-identity-wallet/eudi-srv-statuslist-py "$SL"
+SL_TAG=v0.9.0
+if [ -d "$SL/.git" ]; then
+  git -C "$SL" fetch --depth 1 origin "refs/tags/$SL_TAG:refs/tags/$SL_TAG" 2>/dev/null || true
+  git -C "$SL" checkout -q "$SL_TAG"
+else
+  git clone --depth 1 --branch "$SL_TAG" \
+    https://github.com/eu-digital-identity-wallet/eudi-srv-statuslist-py "$SL"
+fi
 # Overlay our localized config (FC country, LOCAL_IP) and a build Dockerfile (none ships upstream).
 render templates/statuslist/config_service.py "$SL/app/config_service.py"
 cat > "$SL/Dockerfile" <<'DOCKER'
