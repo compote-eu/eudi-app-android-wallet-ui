@@ -30,6 +30,7 @@ import eu.europa.ec.commonfeature.ui.biometric.BiometricViewModelTest.Companion.
 import eu.europa.ec.dashboardfeature.ui.settings.FakeBiometricInteractor
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.platform.testPlatformContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -45,6 +46,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -94,6 +96,79 @@ class BiometricViewModelPlatformHandleTest {
         // No navigation, and crucially no throttle reset — a failed prompt must not launder away
         // earlier PIN failures.
         assertEquals(0, fake.throttleResets)
+    }
+
+    @Test
+    fun a_failed_prompt_says_why() = runTest(mainDispatcher) {
+        val fake = FakeBiometricInteractor(
+            authResult = BiometricsAuthenticate.Failed("sensor unavailable")
+        )
+        val viewModel = BiometricViewModel(fake, config())
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.OnBiometricsClicked(context, shouldThrowErrorIfNotAvailable = true)
+        )
+        advanceUntilIdle()
+
+        // The failure used to be swallowed, leaving a screen that had visibly done nothing.
+        val error = assertNotNull(viewModel.viewState.value.error)
+        assertEquals(UiText.Raw("sensor unavailable"), error.errorSubTitle)
+    }
+
+    @Test
+    fun the_screen_does_not_ask_to_hear_about_rejected_scans() = runTest(mainDispatcher) {
+        val fake = FakeBiometricInteractor()
+        val viewModel = BiometricViewModel(fake, config())
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.OnBiometricsClicked(context, shouldThrowErrorIfNotAvailable = true)
+        )
+        advanceUntilIdle()
+
+        // A rejected scan is now reported as a failure and ends the prompt, so asking to hear about
+        // one would close the prompt on the first bad touch instead of letting the user try again.
+        assertFalse(viewModel.viewState.value.notifyOnAuthenticationFailure)
+        assertEquals(false, fake.lastNotifyOnAuthenticationFailure)
+    }
+
+    @Test
+    fun a_second_tap_while_the_prompt_is_open_does_not_raise_another() = runTest(mainDispatcher) {
+        val fake = FakeBiometricInteractor(deferResult = true)
+        val viewModel = BiometricViewModel(fake, config())
+        advanceUntilIdle()
+
+        repeat(3) {
+            viewModel.setEvent(
+                Event.OnBiometricsClicked(context, shouldThrowErrorIfNotAvailable = true)
+            )
+            advanceUntilIdle()
+        }
+
+        assertEquals(1, fake.authPrompts)
+    }
+
+    @Test
+    fun the_button_works_again_once_a_prompt_is_answered() = runTest(mainDispatcher) {
+        val fake = FakeBiometricInteractor(deferResult = true)
+        val viewModel = BiometricViewModel(fake, config())
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.OnBiometricsClicked(context, shouldThrowErrorIfNotAvailable = true)
+        )
+        advanceUntilIdle()
+        fake.answerPendingPrompt(BiometricsAuthenticate.Cancelled)
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.OnBiometricsClicked(context, shouldThrowErrorIfNotAvailable = true)
+        )
+        advanceUntilIdle()
+
+        // The guard must not be a one-way latch: cancelling leaves the screen usable.
+        assertEquals(2, fake.authPrompts)
     }
 
     @Test

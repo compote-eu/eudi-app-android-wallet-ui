@@ -89,6 +89,7 @@ import org.junit.Test
 import org.mockito.Mock
 import org.mockito.Mockito.mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -1209,13 +1210,16 @@ class TestDocumentOfferInteractor {
     // BiometricsAvailability.NonEnrolled
 
     // Case 2 Expected Result:
-    // deviceAuthenticationInteractor.launchBiometricSystemScreen called once.
+    // The pending request is ended before enrollment opens, so the caller is not left waiting for a
+    // callback that a trip to Settings will never produce.
     @Test
     fun `Given Case 2, When handleUserAuthentication is called, Then Case 2 expected result is returned`() {
         // Given
         mockBiometricsAvailabilityResponse(
             response = BiometricsAvailability.NonEnrolled
         )
+        val onError = mock<() -> Unit>()
+        val resultHandler = DeviceAuthenticationResult(onAuthenticationError = onError)
 
         // When
         interactor.handleUserAuthentication(
@@ -1226,8 +1230,10 @@ class TestDocumentOfferInteractor {
         )
 
         // Then
-        verify(deviceAuthenticationInteractor, times(1))
-            .launchBiometricSystemScreen()
+        inOrder(onError, deviceAuthenticationInteractor) {
+            verify(onError).invoke()
+            verify(deviceAuthenticationInteractor).launchBiometricSystemScreen(biometricCrypto)
+        }
     }
 
     // Case 3:
@@ -1235,13 +1241,14 @@ class TestDocumentOfferInteractor {
     // BiometricsAvailability.Failure
 
     // Case 3 Expected Result:
-    // resultHandler.onAuthenticationFailure called once.
+    // resultHandler.onAuthenticationError called once — an unusable sensor is an error, not the
+    // rejected-scan callback, which not every caller supplies.
     @Test
     fun `Given Case 3, When handleUserAuthentication is called, Then Case 3 expected result is returned`() {
         // Given
-        val onFailure = mock<() -> Unit>()
+        val onError = mock<() -> Unit>()
         val resultHandler = DeviceAuthenticationResult(
-            onAuthenticationFailure = onFailure
+            onAuthenticationError = onError
         )
 
         mockBiometricsAvailabilityResponse(
@@ -1259,7 +1266,7 @@ class TestDocumentOfferInteractor {
         )
 
         // Then
-        verify(onFailure).invoke()
+        verify(onError).invoke()
     }
 
     //endregion
@@ -1331,7 +1338,8 @@ class TestDocumentOfferInteractor {
     }
 
     private fun mockBiometricsAvailabilityResponse(response: BiometricsAvailability) {
-        whenever(deviceAuthenticationInteractor.getBiometricsAvailability()).thenReturn(response)
+        whenever(deviceAuthenticationInteractor.getBiometricsAvailability(biometricCrypto))
+            .thenReturn(response)
     }
 
     private fun mockDeferredDocumentsMap(): Map<String, String> {

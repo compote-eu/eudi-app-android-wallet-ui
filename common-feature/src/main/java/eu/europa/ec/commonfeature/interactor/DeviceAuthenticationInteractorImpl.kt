@@ -28,12 +28,12 @@ class DeviceAuthenticationInteractorImpl(
     private val deviceAuthenticationController: DeviceAuthenticationController,
 ) : DeviceAuthenticationInteractor {
 
-    override fun launchBiometricSystemScreen() {
-        deviceAuthenticationController.launchBiometricSystemScreen()
+    override fun launchBiometricSystemScreen(crypto: BiometricCrypto) {
+        deviceAuthenticationController.launchBiometricSystemScreen(crypto)
     }
 
-    override fun getBiometricsAvailability(): BiometricsAvailability {
-        return deviceAuthenticationController.deviceSupportsBiometrics()
+    override fun getBiometricsAvailability(crypto: BiometricCrypto): BiometricsAvailability {
+        return deviceAuthenticationController.deviceSupportsBiometrics(crypto)
     }
 
     override fun authenticateWithBiometrics(

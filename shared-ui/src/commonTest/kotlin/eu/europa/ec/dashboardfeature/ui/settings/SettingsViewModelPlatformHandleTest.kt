@@ -116,6 +116,100 @@ class SettingsViewModelPlatformHandleTest {
     }
 
     @Test
+    fun a_failed_prompt_says_why() = runTest(mainDispatcher) {
+        val fake = FakeSettingsInteractor(
+            authResult = BiometricsAuthenticate.Failed("sensor unavailable")
+        )
+        val viewModel = SettingsViewModel(fake)
+        advanceUntilIdle()
+
+        val effect = async { viewModel.effect.first() }
+        viewModel.setEvent(
+            Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context)
+        )
+        advanceUntilIdle()
+
+        // Distinct from the availability failure above: the prompt was raised and then failed, and
+        // that used to revert the switch with nothing said.
+        val snackbar = assertIs<Effect.ShowSnackbar>(effect.await())
+        assertEquals("sensor unavailable", snackbar.message)
+    }
+
+    @Test
+    fun a_cancelled_prompt_says_nothing() = runTest(mainDispatcher) {
+        val fake = FakeSettingsInteractor(authResult = BiometricsAuthenticate.Cancelled)
+        val viewModel = SettingsViewModel(fake)
+        advanceUntilIdle()
+
+        val effects = mutableListOf<Effect>()
+        val collected = async { effects += viewModel.effect.first() }
+        viewModel.setEvent(
+            Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context)
+        )
+        advanceUntilIdle()
+
+        // The user dismissed it themselves; reverting is the whole answer.
+        assertTrue(effects.isEmpty())
+        collected.cancel()
+    }
+
+    @Test
+    fun the_row_does_not_ask_to_hear_about_rejected_scans() = runTest(mainDispatcher) {
+        val fake = FakeSettingsInteractor()
+        val viewModel = SettingsViewModel(fake)
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context)
+        )
+        advanceUntilIdle()
+
+        // Asking would end the prompt on the first bad touch, which reads as the toggle refusing
+        // to move.
+        assertEquals(false, fake.lastNotifyOnAuthenticationFailure)
+    }
+
+    @Test
+    fun a_second_tap_while_the_prompt_is_open_does_not_raise_another() = runTest(mainDispatcher) {
+        val fake = FakeSettingsInteractor(deferResult = true)
+        val viewModel = SettingsViewModel(fake)
+        advanceUntilIdle()
+
+        repeat(3) {
+            viewModel.setEvent(
+                Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context)
+            )
+            advanceUntilIdle()
+        }
+
+        // One prompt, and one optimistic write — not three of each.
+        assertEquals(1, fake.authPrompts)
+        assertEquals(listOf("set(true)", "prompt"), fake.calls)
+    }
+
+    @Test
+    fun the_row_works_again_once_a_prompt_is_answered() = runTest(mainDispatcher) {
+        val fake = FakeSettingsInteractor(deferResult = true)
+        val viewModel = SettingsViewModel(fake)
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context)
+        )
+        advanceUntilIdle()
+        fake.answerPendingPrompt(BiometricsAuthenticate.Cancelled)
+        advanceUntilIdle()
+
+        viewModel.setEvent(
+            Event.ItemClicked(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, context)
+        )
+        advanceUntilIdle()
+
+        // The guard must not be a one-way latch.
+        assertEquals(2, fake.authPrompts)
+    }
+
+    @Test
     fun a_cancelled_prompt_leaves_biometrics_untouched() = runTest(mainDispatcher) {
         val fake = FakeSettingsInteractor(authResult = BiometricsAuthenticate.Cancelled)
         val viewModel = SettingsViewModel(fake)

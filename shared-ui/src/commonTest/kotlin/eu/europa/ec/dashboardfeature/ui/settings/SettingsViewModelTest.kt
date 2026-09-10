@@ -67,6 +67,11 @@ internal open class FakeBiometricInteractor(
         QuickPinInteractorPinValidPartialState.Success,
     private val lockoutOnEntry: PinLockoutState = PinLockoutState.Idle,
     private val lockoutAfterFailure: PinLockoutState = PinLockoutState.Idle,
+    /**
+     * Hold the prompt open instead of answering inline. A real system prompt stays up until the
+     * user deals with it, and that window is the only place a duplicate prompt can be seen.
+     */
+    private val deferResult: Boolean = false,
 ) : eu.europa.ec.commonfeature.interactor.BiometricInteractor {
 
     var authPrompts: Int = 0
@@ -77,6 +82,12 @@ internal open class FakeBiometricInteractor(
         private set
     var storedDecision: Boolean? = null
         private set
+
+    /** What the screen asked for: `true` ends the prompt on the first rejected scan. */
+    var lastNotifyOnAuthenticationFailure: Boolean? = null
+        private set
+
+    private var pendingListener: ((BiometricsAuthenticate) -> Unit)? = null
 
     /**
      * Every prompt and every biometrics write, in the order they happened. The order is the whole
@@ -100,7 +111,19 @@ internal open class FakeBiometricInteractor(
     ) {
         calls += "prompt"
         authPrompts++
-        listener(authResult)
+        lastNotifyOnAuthenticationFailure = notifyOnAuthenticationFailure
+        if (deferResult) {
+            pendingListener = listener
+        } else {
+            listener(authResult)
+        }
+    }
+
+    /** Answers the prompt raised while [deferResult] was set. */
+    fun answerPendingPrompt(result: BiometricsAuthenticate = authResult) {
+        val listener = requireNotNull(pendingListener) { "no prompt is open" }
+        pendingListener = null
+        listener(result)
     }
 
     override fun launchBiometricSystemScreen() {
@@ -126,9 +149,14 @@ internal class FakeSettingsInteractor(
     availability: BiometricsAvailability = BiometricsAvailability.CanAuthenticate,
     authResult: BiometricsAuthenticate = BiometricsAuthenticate.Success,
     initiallyEnabled: Boolean = false,
+    deferResult: Boolean = false,
     // Android's answer, so the existing tests keep asserting Android's behaviour.
     override val canOpenBiometricEnrolment: Boolean = true,
-) : FakeBiometricInteractor(availability = availability, authResult = authResult),
+) : FakeBiometricInteractor(
+    availability = availability,
+    authResult = authResult,
+    deferResult = deferResult,
+),
     SettingsInteractor {
 
     var itemsBuilds: Int = 0

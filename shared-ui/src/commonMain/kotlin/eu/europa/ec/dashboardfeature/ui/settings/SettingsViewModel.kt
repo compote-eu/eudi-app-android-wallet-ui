@@ -97,6 +97,13 @@ class SettingsViewModel(
     private val settingsInteractor: SettingsInteractor,
 ) : MviViewModel<Event, State, Effect>() {
 
+    /**
+     * One prompt at a time. The row stays tappable while the system prompt is up, and each tap used
+     * to raise another one — on Android the second lands on top of the first, and each answer runs
+     * the toggle again.
+     */
+    private var isBiometricAuthenticating: Boolean = false
+
     init {
         // Tied to the ViewModel's lifetime, not the composition's — see the note on
         // `OneTimeLaunchedEffect`'s saveable guard in HomeViewModel. Without this the settings list
@@ -168,6 +175,7 @@ class SettingsViewModel(
             // alone, and iOS raises the same prompt without one. Gating on it here is what used to
             // leave that visible switch dead on iOS.
             SettingsMenuItemType.BIOMETRICS_AUTHENTICATION -> {
+                if (isBiometricAuthenticating) return
                 when (val availability = settingsInteractor.getBiometricsAvailability()) {
                     is BiometricsAvailability.CanAuthenticate -> viewModelScope.launch {
                         confirmBiometricsChange(context)
@@ -277,31 +285,47 @@ class SettingsViewModel(
      * nobody turns the wallet's biometric login on or off without authenticating.
      */
     private suspend fun confirmBiometricsChange(context: PlatformContext?) {
+        if (isBiometricAuthenticating) return
+        isBiometricAuthenticating = true
+
         val turningOn = !settingsInteractor.isBiometricsEnabled()
         if (turningOn) {
             settingsInteractor.setBiometricsAuthentication(enabled = true)
         }
+        // `false`: a rejected scan is the prompt's own business and it says so on screen. Asking
+        // to hear about it ends the prompt on the first bad touch, which reads as the toggle
+        // refusing to move.
         settingsInteractor.authenticateWithBiometrics(
             context = context,
-            notifyOnAuthenticationFailure = true,
+            notifyOnAuthenticationFailure = false,
         ) { result ->
             viewModelScope.launch {
-                when (result) {
-                    // Switching off is the half that still has work to do here; switching on already
-                    // wrote, and the prompt it just passed is what makes that write final.
-                    is BiometricsAuthenticate.Success ->
-                        if (!turningOn) {
-                            settingsInteractor.setBiometricsAuthentication(enabled = false)
-                        }
+                try {
+                    when (result) {
+                        // Switching off is the half that still has work to do here; switching on
+                        // already wrote, and the prompt it just passed is what makes that write final.
+                        is BiometricsAuthenticate.Success ->
+                            if (!turningOn) {
+                                settingsInteractor.setBiometricsAuthentication(enabled = false)
+                            }
 
-                    // Cancelled or failed: leave the setting as the user found it. Only the "on"
-                    // direction has anything to undo, because only it wrote before prompting.
-                    else ->
-                        if (turningOn) {
-                            settingsInteractor.setBiometricsAuthentication(enabled = false)
+                        // Cancelled or failed: leave the setting as the user found it. Only the "on"
+                        // direction has anything to undo, because only it wrote before prompting.
+                        else -> {
+                            if (turningOn) {
+                                settingsInteractor.setBiometricsAuthentication(enabled = false)
+                            }
+                            // A failure has something to report; a cancellation is the user's own
+                            // doing and reverting silently is the whole answer.
+                            if (result is BiometricsAuthenticate.Failed) {
+                                setEffect { Effect.ShowSnackbar(result.errorMessage) }
+                            }
                         }
+                    }
+                    refreshSettingsItems()
+                } finally {
+                    isBiometricAuthenticating = false
                 }
-                refreshSettingsItems()
             }
         }
     }

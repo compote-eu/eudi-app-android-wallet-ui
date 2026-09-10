@@ -27,7 +27,7 @@ import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.shared.platform.PlatformContext
 
 interface DeviceAuthenticationInteractor {
-    fun getBiometricsAvailability(): BiometricsAvailability
+    fun getBiometricsAvailability(crypto: BiometricCrypto): BiometricsAvailability
     fun authenticateWithBiometrics(
         context: PlatformContext,
         crypto: BiometricCrypto,
@@ -35,5 +35,5 @@ interface DeviceAuthenticationInteractor {
         resultHandler: DeviceAuthenticationResult
     )
 
-    fun launchBiometricSystemScreen()
+    fun launchBiometricSystemScreen(crypto: BiometricCrypto)
 }

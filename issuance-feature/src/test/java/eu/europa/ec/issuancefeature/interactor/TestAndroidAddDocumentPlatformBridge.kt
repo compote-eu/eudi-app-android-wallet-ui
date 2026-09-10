@@ -48,6 +48,7 @@ import org.mockito.Mock
 import org.mockito.Mockito.mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -108,7 +109,7 @@ class TestAndroidAddDocumentPlatformBridge {
     @Test
     fun `Given Case 1, When handleUserAuth is called, Then Case 1 expected result is returned`() {
         // Given
-        whenever(deviceAuthenticationInteractor.getBiometricsAvailability())
+        whenever(deviceAuthenticationInteractor.getBiometricsAvailability(crypto))
             .thenReturn(BiometricsAvailability.CanAuthenticate)
 
         // When
@@ -134,12 +135,15 @@ class TestAndroidAddDocumentPlatformBridge {
     // BiometricsAvailability.NonEnrolled
 
     // Case 2 Expected Result:
-    // deviceAuthenticationInteractor.launchBiometricSystemScreen called once.
+    // The pending request is ended before enrollment opens, so the caller is not left waiting for a
+    // callback that a trip to Settings will never produce.
     @Test
     fun `Given Case 2, When handleUserAuth is called, Then Case 2 expected result is returned`() {
         // Given
-        whenever(deviceAuthenticationInteractor.getBiometricsAvailability())
+        whenever(deviceAuthenticationInteractor.getBiometricsAvailability(crypto))
             .thenReturn(BiometricsAvailability.NonEnrolled)
+        val onError = mock<() -> Unit>()
+        val resultHandler = DeviceAuthenticationResult(onAuthenticationError = onError)
 
         // When
         bridge.handleUserAuth(
@@ -150,8 +154,10 @@ class TestAndroidAddDocumentPlatformBridge {
         )
 
         // Then
-        verify(deviceAuthenticationInteractor, times(1))
-            .launchBiometricSystemScreen()
+        inOrder(onError, deviceAuthenticationInteractor) {
+            verify(onError).invoke()
+            verify(deviceAuthenticationInteractor).launchBiometricSystemScreen(crypto)
+        }
     }
 
     // Case 3:
@@ -159,16 +165,17 @@ class TestAndroidAddDocumentPlatformBridge {
     // BiometricsAvailability.Failure
 
     // Case 3 Expected Result:
-    // resultHandler.onAuthenticationFailure called once.
+    // resultHandler.onAuthenticationError called once — an unusable sensor is an error, not the
+    // rejected-scan callback, which not every caller supplies.
     @Test
     fun `Given Case 3, When handleUserAuth is called, Then Case 3 expected result is returned`() {
         // Given
-        val onFailure = mock<() -> Unit>()
+        val onError = mock<() -> Unit>()
         val resultHandler = DeviceAuthenticationResult(
-            onAuthenticationFailure = onFailure
+            onAuthenticationError = onError
         )
 
-        whenever(deviceAuthenticationInteractor.getBiometricsAvailability())
+        whenever(deviceAuthenticationInteractor.getBiometricsAvailability(crypto))
             .thenReturn(BiometricsAvailability.Failure(errorMessage = mockedPlainFailureMessage))
 
         // When
@@ -180,7 +187,7 @@ class TestAndroidAddDocumentPlatformBridge {
         )
 
         // Then
-        verify(onFailure).invoke()
+        verify(onError).invoke()
     }
     //endregion
 

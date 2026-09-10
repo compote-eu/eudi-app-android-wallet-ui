@@ -80,7 +80,7 @@ data class State(
     val quickPinError: String? = null,
     val userBiometricsAreEnabled: Boolean = false,
     val isBackable: Boolean = false,
-    val notifyOnAuthenticationFailure: Boolean = true,
+    val notifyOnAuthenticationFailure: Boolean = false,
     val quickPinSize: Int = 6,
     val isLockedOut: Boolean = false,
     val lockoutMessage: UiText? = null
@@ -150,6 +150,8 @@ class BiometricViewModel(
 
     private var lockoutTickJob: Job? = null
 
+    private var isAuthenticating: Boolean = false
+
     override fun setInitialState(): State {
         return State(
             config = config,
@@ -163,6 +165,7 @@ class BiometricViewModel(
             is Event.Init -> initializeBiometricState()
 
             is Event.OnBiometricsClicked -> {
+                if (isAuthenticating) return
                 setState { copy(error = null) }
                 when (val availability = biometricInteractor.getBiometricsAvailability()) {
                     is BiometricsAvailability.CanAuthenticate -> authenticate(
@@ -288,6 +291,10 @@ class BiometricViewModel(
     }
 
     private fun authenticate(context: PlatformContext?) {
+
+        if (isAuthenticating) return
+        isAuthenticating = true
+
         biometricInteractor.authenticateWithBiometrics(
             context = context,
             notifyOnAuthenticationFailure = viewState.value.notifyOnAuthenticationFailure
@@ -295,13 +302,31 @@ class BiometricViewModel(
             when (it) {
                 is BiometricsAuthenticate.Success -> {
                     viewModelScope.launch {
-                        biometricInteractor.resetPinThrottle()
-                        stopLockoutTick()
-                        authenticationSuccess()
+                        try {
+                            biometricInteractor.resetPinThrottle()
+                            stopLockoutTick()
+                            authenticationSuccess()
+                        } finally {
+                            isAuthenticating = false
+                        }
                     }
                 }
 
-                else -> {}
+                is BiometricsAuthenticate.Failed -> {
+                    isAuthenticating = false
+                    setState {
+                        copy(
+                            error = ContentErrorConfig(
+                                errorSubTitle = it.errorMessage.asUiText(),
+                                onCancel = { setEvent(Event.OnErrorDismiss) }
+                            )
+                        )
+                    }
+                }
+
+                BiometricsAuthenticate.Cancelled -> {
+                    isAuthenticating = false
+                }
             }
         }
     }
