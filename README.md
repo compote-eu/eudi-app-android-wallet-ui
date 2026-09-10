@@ -197,6 +197,13 @@ To delete a document, navigate to the 'Documents' tab within the 'Dashboard' scr
 11. The Verifier will receive the data you chose to share.
 12. You will return to the "Home" tab of the "Dashboard" screen. The flow is now complete.
 
+## Branches
+
+This fork carries two independent lines of development — this one is Android-only; the other shares
+Kotlin between Android and iOS — maintained by different mechanisms.
+[This document](wiki/BRANCHES.md) says which branch is which, how upstream work is brought in and
+recorded on this line, and which verify set applies.
+
 ## How to build - Quick start guide
 
 [This document](wiki/HOW_TO_BUILD.md) describes how you can build the application and deploy the issuing and verification services locally.
