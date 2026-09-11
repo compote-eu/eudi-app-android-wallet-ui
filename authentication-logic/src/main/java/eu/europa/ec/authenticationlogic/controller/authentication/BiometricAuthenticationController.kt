@@ -45,7 +45,6 @@ import kotlinx.coroutines.withContext
 import java.nio.charset.StandardCharsets
 import javax.crypto.Cipher
 import kotlin.coroutines.resume
-import org.jetbrains.compose.resources.StringResource
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.biometric_authentication_error
 import eu.europa.ec.shared.resources.biometric_no_hardware
@@ -101,39 +100,8 @@ class BiometricAuthenticationControllerImpl(
         return resolveBiometricsAvailability(
             canAuthenticate = canAuthenticate,
             requireStrong = authenticators == BIOMETRIC_STRONG,
-            canAuthenticateWeak = canAuthenticateWeak,
-            stringProvider = { resourceProvider.getString(it) }
+            canAuthenticateWeak = canAuthenticateWeak
         )
-    }
-
-    internal companion object {
-
-        fun resolveBiometricsAvailability(
-            canAuthenticate: Int,
-            requireStrong: Boolean,
-            canAuthenticateWeak: Int,
-            stringProvider: (StringResource) -> String,
-        ): BiometricsAvailability = when (canAuthenticate) {
-            BiometricManager.BIOMETRIC_SUCCESS,
-            BiometricManager.BIOMETRIC_STATUS_UNKNOWN -> BiometricsAvailability.CanAuthenticate
-
-            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
-                if (requireStrong && canAuthenticateWeak == BiometricManager.BIOMETRIC_SUCCESS) {
-                    BiometricsAvailability.Failure(stringProvider(Res.string.biometric_strong_required))
-                } else {
-                    BiometricsAvailability.NonEnrolled
-                }
-
-            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE,
-            BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED,
-                -> if (requireStrong && canAuthenticateWeak == BiometricManager.BIOMETRIC_SUCCESS) {
-                BiometricsAvailability.Failure(stringProvider(Res.string.biometric_strong_required))
-            } else {
-                BiometricsAvailability.Failure(stringProvider(Res.string.biometric_no_hardware))
-            }
-
-            else -> BiometricsAvailability.Failure(stringProvider(Res.string.biometric_unknown_error))
-        }
     }
 
     override fun authenticate(
@@ -165,6 +133,32 @@ class BiometricAuthenticationControllerImpl(
                 listener(BiometricsAuthenticate.Cancelled)
             }
         }
+    }
+
+    private fun resolveBiometricsAvailability(
+        canAuthenticate: Int,
+        requireStrong: Boolean,
+        canAuthenticateWeak: Int,
+    ): BiometricsAvailability = when (canAuthenticate) {
+        BiometricManager.BIOMETRIC_SUCCESS,
+        BiometricManager.BIOMETRIC_STATUS_UNKNOWN -> BiometricsAvailability.CanAuthenticate
+
+        BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
+            if (requireStrong && canAuthenticateWeak == BiometricManager.BIOMETRIC_SUCCESS) {
+                BiometricsAvailability.Failure(resourceProvider.getString(Res.string.biometric_strong_required))
+            } else {
+                BiometricsAvailability.NonEnrolled
+            }
+
+        BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE,
+        BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED ->
+            if (requireStrong && canAuthenticateWeak == BiometricManager.BIOMETRIC_SUCCESS) {
+                BiometricsAvailability.Failure(resourceProvider.getString(Res.string.biometric_strong_required))
+            } else {
+                BiometricsAvailability.Failure(resourceProvider.getString(Res.string.biometric_no_hardware))
+            }
+
+        else -> BiometricsAvailability.Failure(resourceProvider.getString(Res.string.biometric_unknown_error))
     }
 
     private suspend fun authenticateWithCrypto(
