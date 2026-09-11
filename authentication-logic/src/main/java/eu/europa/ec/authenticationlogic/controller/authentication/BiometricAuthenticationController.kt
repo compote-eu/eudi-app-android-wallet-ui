@@ -92,39 +92,8 @@ class BiometricAuthenticationControllerImpl(
         return resolveBiometricsAvailability(
             canAuthenticate = canAuthenticate,
             requireStrong = authenticators == BIOMETRIC_STRONG,
-            canAuthenticateWeak = canAuthenticateWeak,
-            stringProvider = resourceProvider::getString
+            canAuthenticateWeak = canAuthenticateWeak
         )
-    }
-
-    internal companion object {
-
-        fun resolveBiometricsAvailability(
-            canAuthenticate: Int,
-            requireStrong: Boolean,
-            canAuthenticateWeak: Int,
-            stringProvider: (Int) -> String,
-        ): BiometricsAvailability = when (canAuthenticate) {
-            BiometricManager.BIOMETRIC_SUCCESS,
-            BiometricManager.BIOMETRIC_STATUS_UNKNOWN -> BiometricsAvailability.CanAuthenticate
-
-            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
-                if (requireStrong && canAuthenticateWeak == BiometricManager.BIOMETRIC_SUCCESS) {
-                    BiometricsAvailability.Failure(stringProvider(R.string.biometric_strong_required))
-                } else {
-                    BiometricsAvailability.NonEnrolled
-                }
-
-            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE,
-            BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED,
-                -> if (requireStrong && canAuthenticateWeak == BiometricManager.BIOMETRIC_SUCCESS) {
-                BiometricsAvailability.Failure(stringProvider(R.string.biometric_strong_required))
-            } else {
-                BiometricsAvailability.Failure(stringProvider(R.string.biometric_no_hardware))
-            }
-
-            else -> BiometricsAvailability.Failure(stringProvider(R.string.biometric_unknown_error))
-        }
     }
 
     override fun authenticate(
@@ -153,47 +122,6 @@ class BiometricAuthenticationControllerImpl(
             if (cause is CancellationException) {
                 listener(BiometricsAuthenticate.Cancelled)
             }
-        }
-    }
-
-    private suspend fun authenticateWithCrypto(
-        activity: FragmentActivity,
-        notifyOnAuthenticationFailure: Boolean,
-    ): BiometricsAuthenticate {
-        val storedCrypto = retrieveCrypto()
-        val biometricData = storedCrypto.first
-        val cipher = storedCrypto.second ?: return BiometricsAuthenticate.Failed(
-            activity.getString(
-                R.string.biometric_authentication_error
-            )
-        )
-
-        val data = authenticate(
-            activity = activity,
-            biometryCrypto = BiometricCrypto(BiometricPrompt.CryptoObject(cipher)),
-            promptInfo = BiometricPrompt.PromptInfo.Builder()
-                .setTitle(activity.getString(R.string.biometric_prompt_title))
-                .setSubtitle(activity.getString(R.string.biometric_prompt_subtitle))
-                .setAllowedAuthenticators(BIOMETRIC_STRONG)
-                .setNegativeButtonText(activity.getString(R.string.generic_cancel))
-                .build(),
-            notifyOnAuthenticationFailure = notifyOnAuthenticationFailure
-        )
-
-        return if (data.authenticationResult != null) {
-            verifyCrypto(
-                context = activity,
-                result = data.authenticationResult,
-                biometricAuthentication = biometricData
-            )
-        } else if (BiometricsAuthError.entries.any { it.code == data.errorCode }) {
-            BiometricsAuthenticate.Cancelled
-        } else {
-            BiometricsAuthenticate.Failed(
-                data.errorString.toString().ifBlank {
-                    activity.getString(R.string.biometric_authentication_error)
-                }
-            )
         }
     }
 
@@ -262,6 +190,73 @@ class BiometricAuthenticationControllerImpl(
                 it
             )
         } ?: prompt.authenticate(promptInfo)
+    }
+
+    private fun resolveBiometricsAvailability(
+        canAuthenticate: Int,
+        requireStrong: Boolean,
+        canAuthenticateWeak: Int,
+    ): BiometricsAvailability = when (canAuthenticate) {
+        BiometricManager.BIOMETRIC_SUCCESS,
+        BiometricManager.BIOMETRIC_STATUS_UNKNOWN -> BiometricsAvailability.CanAuthenticate
+
+        BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED ->
+            if (requireStrong && canAuthenticateWeak == BiometricManager.BIOMETRIC_SUCCESS) {
+                BiometricsAvailability.Failure(resourceProvider.getString(R.string.biometric_strong_required))
+            } else {
+                BiometricsAvailability.NonEnrolled
+            }
+
+        BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE,
+        BiometricManager.BIOMETRIC_ERROR_UNSUPPORTED ->
+            if (requireStrong && canAuthenticateWeak == BiometricManager.BIOMETRIC_SUCCESS) {
+                BiometricsAvailability.Failure(resourceProvider.getString(R.string.biometric_strong_required))
+            } else {
+                BiometricsAvailability.Failure(resourceProvider.getString(R.string.biometric_no_hardware))
+            }
+
+        else -> BiometricsAvailability.Failure(resourceProvider.getString(R.string.biometric_unknown_error))
+    }
+
+    private suspend fun authenticateWithCrypto(
+        activity: FragmentActivity,
+        notifyOnAuthenticationFailure: Boolean,
+    ): BiometricsAuthenticate {
+        val storedCrypto = retrieveCrypto()
+        val biometricData = storedCrypto.first
+        val cipher = storedCrypto.second ?: return BiometricsAuthenticate.Failed(
+            activity.getString(
+                R.string.biometric_authentication_error
+            )
+        )
+
+        val data = authenticate(
+            activity = activity,
+            biometryCrypto = BiometricCrypto(BiometricPrompt.CryptoObject(cipher)),
+            promptInfo = BiometricPrompt.PromptInfo.Builder()
+                .setTitle(activity.getString(R.string.biometric_prompt_title))
+                .setSubtitle(activity.getString(R.string.biometric_prompt_subtitle))
+                .setAllowedAuthenticators(BIOMETRIC_STRONG)
+                .setNegativeButtonText(activity.getString(R.string.generic_cancel))
+                .build(),
+            notifyOnAuthenticationFailure = notifyOnAuthenticationFailure
+        )
+
+        return if (data.authenticationResult != null) {
+            verifyCrypto(
+                context = activity,
+                result = data.authenticationResult,
+                biometricAuthentication = biometricData
+            )
+        } else if (BiometricsAuthError.entries.any { it.code == data.errorCode }) {
+            BiometricsAuthenticate.Cancelled
+        } else {
+            BiometricsAuthenticate.Failed(
+                data.errorString.toString().ifBlank {
+                    activity.getString(R.string.biometric_authentication_error)
+                }
+            )
+        }
     }
 
     private suspend fun retrieveCrypto(): Pair<BiometricAuthentication?, Cipher?> =
