@@ -79,8 +79,32 @@ kotlin {
     // iOS targets: device (arm64) + Apple-Silicon simulator. No framework binary here — this is a
     // library (klib) consumed by :shared-ui, whose SharedKit framework re-exports it. iosX64
     // (Intel-Mac simulator) is intentionally omitted (Apple ships only Apple Silicon).
-    iosArm64()
-    iosSimulatorArm64()
+    //
+    // Each also declares the NfcHceBridge cinterop: CoreNFC's `CardSession` (the iOS 17.4+ HCE API)
+    // is Swift-only — verified directly against this project's SDK, `CardSession` is declared only in
+    // `CoreNFC.swiftmodule/*.swiftinterface`, never in the Objective-C header cinterop parses — so it
+    // cannot be reached from Kotlin/Native directly. `NfcHceBridge.def` declares the small
+    // Objective-C-visible seam Kotlin calls instead; the real `CardSession` handling is Swift, in the
+    // vendored `iosApp/NfcHceBridge` package (the same shape as `PKIXBridge`, see wiki/IOS_NFC_PLAN.md
+    // §3.1). See [registerNfcHceBridgeBuild] for how a Kotlin/Native test binary links it.
+    iosArm64 {
+        compilations.getByName("main") {
+            cinterops {
+                create("NfcHceBridge") {
+                    defFile(project.file("src/nativeInterop/cinterop/NfcHceBridge.def"))
+                }
+            }
+        }
+    }
+    iosSimulatorArm64 {
+        compilations.getByName("main") {
+            cinterops {
+                create("NfcHceBridge") {
+                    defFile(project.file("src/nativeInterop/cinterop/NfcHceBridge.def"))
+                }
+            }
+        }
+    }
 
     // The *test* binaries link two things the app gets from Xcode instead.
     //
@@ -105,12 +129,23 @@ kotlin {
     //    🪤 And it is invisible until the trust code is *reachable* from a test: Kotlin/Native drops
     //    unreferenced code, so merely adding the dependency and the classes links fine. The first test
     //    that exercises a trust decision is what surfaces it.
+    //
+    // 3. **NfcHceBridge**, the same shape as PKIXBridge, but ours rather than vendored: this repo's
+    //    own `NfcHceBridge.def` (declared above) records the Objective-C-visible seam Kotlin calls to
+    //    drive `CardSession`, which the app target's Xcode build gets from the local SPM package in
+    //    `iosApp/NfcHceBridge` — a Kotlin/Native test binary needs the same swiftc-compiled archive
+    //    trick, see [registerNfcHceBridgeBuild].
     targets.withType(KotlinNativeTarget::class.java).configureEach {
         val pkixBridge = registerPkixBridgeBuild(this)
+        val nfcHceBridge = registerNfcHceBridgeBuild(this)
         binaries.withType(TestExecutable::class.java).configureEach {
             linkerOpts("-lsqlite3")
             linkerOpts("-L${pkixBridgeDirectory(targetName).get().asFile.absolutePath}", "-lPKIXBridge")
-            linkTaskProvider.configure { dependsOn(pkixBridge) }
+            linkerOpts("-L${nfcHceBridgeDirectory(targetName).get().asFile.absolutePath}", "-lNfcHceBridge")
+            linkTaskProvider.configure {
+                dependsOn(pkixBridge)
+                dependsOn(nfcHceBridge)
+            }
         }
     }
 
@@ -250,6 +285,75 @@ fun registerPkixBridgeBuild(target: KotlinNativeTarget): TaskProvider<Exec> {
                     "-sdk", sdk, "swiftc",
                     "-emit-library", "-static",
                     "-module-name", "PKIXBridge",
+                    "-target", triple,
+                    "-o", library.get().asFile.absolutePath,
+                ) + swiftFiles
+            }
+        )
+        doFirst { library.get().asFile.parentFile.mkdirs() }
+    }
+}
+
+/** Where [registerNfcHceBridgeBuild] leaves `libNfcHceBridge.a` for a native target. Same reason as
+ * [pkixBridgeDirectory]: separate from the task so `linkerOpts` can name the directory without
+ * realising it.
+ */
+fun nfcHceBridgeDirectory(targetName: String): Provider<Directory> =
+    layout.buildDirectory.dir("nfc-hce-bridge/$targetName")
+
+/**
+ * Compiles the `iosApp/NfcHceBridge` Swift sources into a static library the Kotlin/Native **test**
+ * linker can consume — the same shape as [registerPkixBridgeBuild], except this package is our own
+ * rather than vendored (see `wiki/IOS_NFC_PLAN.md` §3.1): `NfcHceBridge.def` (declared on the two iOS
+ * targets above) is a hand-written cinterop header, not one carried by a published klib, because
+ * CoreNFC's `CardSession` has no Objective-C surface for Kotlin/Native to cinterop directly.
+ *
+ * The app does not use this: Xcode builds the same sources as an SPM package (see
+ * `iosApp/project.yml`), and an app target can auto-link the framework the cinterop asks for. A test
+ * binary has no Xcode target, so it needs the symbols as a plain archive instead.
+ *
+ * 📌 **The explicit `@objc(NfcHceBridge)` / `@objc(NfcHceBridgeDelegate)` names in the Swift source are
+ * load-bearing**, for the same reason PKIXBridge's module name is: without them Swift exports this
+ * class under its own mangled name instead of the plain one `NfcHceBridge.def`'s hand-written header
+ * describes, and nothing links. See the comment on `NfcHceBridge` in
+ * `iosApp/NfcHceBridge/Sources/NfcHceBridge/NfcHceBridge.swift`.
+ */
+fun registerNfcHceBridgeBuild(target: KotlinNativeTarget): TaskProvider<Exec> {
+    val targetName = target.targetName
+    // Only the two targets this module declares. An unmapped one fails loudly rather than silently
+    // building for the wrong platform, which would surface as a confusing link error much later.
+    val (sdk, triple) = when (targetName) {
+        "iosSimulatorArm64" -> "iphonesimulator" to "arm64-apple-ios17.4-simulator"
+        "iosArm64" -> "iphoneos" to "arm64-apple-ios17.4"
+        else -> error("No NfcHceBridge platform mapping for '$targetName'; add one above.")
+    }
+    val sources = layout.projectDirectory.dir("../iosApp/NfcHceBridge/Sources/NfcHceBridge")
+    val library = nfcHceBridgeDirectory(targetName).map { it.file("libNfcHceBridge.a") }
+
+    return tasks.register<Exec>(
+        "buildNfcHceBridge" + targetName.replaceFirstChar { it.uppercase() }
+    ) {
+        description = "Compiles the NfcHceBridge Swift sources for $targetName."
+        inputs.dir(sources).withPropertyName("swiftSources")
+        outputs.file(library).withPropertyName("staticLibrary")
+        outputs.cacheIf { true }
+        executable = "xcrun"
+        // Resolved at execution time so the file list is not baked into the configuration cache.
+        argumentProviders.add(
+            CommandLineArgumentProvider {
+                val swiftFiles = sources.asFileTree
+                    .matching { include("**/*.swift") }
+                    .files
+                    // Sorted so the archive is reproducible; `FileTree` order is not defined.
+                    .sortedBy { it.absolutePath }
+                    .map { it.absolutePath }
+                check(swiftFiles.isNotEmpty()) {
+                    "No Swift sources under $sources — is iosApp/NfcHceBridge still there?"
+                }
+                listOf(
+                    "-sdk", sdk, "swiftc",
+                    "-emit-library", "-static",
+                    "-module-name", "NfcHceBridge",
                     "-target", triple,
                     "-o", library.get().asFile.absolutePath,
                 ) + swiftFiles

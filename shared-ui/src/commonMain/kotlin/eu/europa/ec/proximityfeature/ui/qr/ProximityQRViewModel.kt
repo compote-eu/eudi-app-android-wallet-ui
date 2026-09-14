@@ -50,7 +50,15 @@ data class State(
     val error: ContentErrorConfig? = null,
 
     val qrCode: String = "",
-    val presentationScopeId: String = ""
+    val presentationScopeId: String = "",
+
+    /** Whether the platform offers NFC data retrieval at all — only iOS does, for now; see
+     * [ProximityQRInteractor.isNfcDataRetrievalAvailable]. The screen offers the switch only when
+     * this is `true`. */
+    val nfcDataRetrievalAvailable: Boolean = false,
+    /** The switch's own value. Starts `false`, matching `IosProximityPresenter`'s own default — see
+     * `wiki/IOS_NFC_PLAN.md`'s phase 3 notes on why that default is deliberate. */
+    val nfcDataRetrievalEnabled: Boolean = false,
 ) : ViewState
 
 sealed class Event : ViewEvent {
@@ -60,6 +68,12 @@ sealed class Event : ViewEvent {
         val componentActivity: PlatformActivity,
         val enable: Boolean
     ) : Event()
+
+    /**
+     * The user flipping the NFC data-retrieval switch — a different feature from [NfcEngagement]
+     * above; see [ProximityQRInteractor.toggleNfcDataRetrieval].
+     */
+    data class NfcDataRetrievalToggled(val enabled: Boolean) : Event()
 }
 
 sealed class Effect : ViewSideEffect {
@@ -70,6 +84,9 @@ sealed class Effect : ViewSideEffect {
 
         data object Pop : Navigation()
     }
+
+    /** See [ProximityQRPartialState.NfcNotice]: NFC specifically failed to start, BLE did not. */
+    data class ShowSnackbar(val message: String) : Effect()
 }
 
 @KoinViewModel
@@ -109,15 +126,47 @@ class ProximityQRViewModel(
                     event.enable
                 )
             }
+
+            is Event.NfcDataRetrievalToggled -> {
+                interactor.toggleNfcDataRetrieval(event.enabled)
+                setState { copy(nfcDataRetrievalEnabled = event.enabled) }
+                restartEngagementForNfcToggle()
+            }
         }
     }
 
     private fun initializeConfig() {
         setState {
-            copy(presentationScopeId = requestUriConfig.presentationScopeId)
+            copy(
+                presentationScopeId = requestUriConfig.presentationScopeId,
+                nfcDataRetrievalAvailable = interactor.isNfcDataRetrievalAvailable(),
+                // Finding E of the current-state audit: read the actual current value back, rather
+                // than leaving the field at its own default — the underlying flag lives on a
+                // platform singleton (iOS's `IosProximityPresenter`) that outlives this view-model,
+                // so a fresh screen visit must not silently show the switch off if it was left on.
+                nfcDataRetrievalEnabled = interactor.isNfcDataRetrievalEnabled(),
+            )
         }
 
         interactor.setConfig(requestUriConfig)
+    }
+
+    /**
+     * Findings A/B/D/E of the current-state audit, part 4: without this, flipping the switch while
+     * this screen's own engagement was already advertising silently did nothing until the *next*
+     * time this screen opened — [ProximityQRInteractor.toggleNfcDataRetrieval] only takes effect on
+     * the next [ProximityQRInteractor.startQrEngagement] call. Restarting here makes the change
+     * visible immediately, on the same QR code the user is looking at (a new QR, since the
+     * connection methods it encodes changed).
+     *
+     * [unsubscribe] first: [generateQrCode] does not cancel a still-running [interactorJob] itself,
+     * and leaving the old one running would mean two collectors racing on the same underlying
+     * platform state — the old one would read the restart's momentary disconnect as
+     * [ProximityQRPartialState.Disconnected] and navigate back.
+     */
+    private fun restartEngagementForNfcToggle() {
+        unsubscribe()
+        generateQrCode()
     }
 
     private fun generateQrCode() {
@@ -168,6 +217,10 @@ class ProximityQRViewModel(
                     is ProximityQRPartialState.Disconnected -> {
                         unsubscribe()
                         setEvent(Event.GoBack)
+                    }
+
+                    is ProximityQRPartialState.NfcNotice -> {
+                        setEffect { Effect.ShowSnackbar(message = response.message) }
                     }
                 }
             }

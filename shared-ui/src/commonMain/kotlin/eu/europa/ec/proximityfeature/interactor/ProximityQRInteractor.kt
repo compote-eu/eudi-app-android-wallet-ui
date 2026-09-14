@@ -34,6 +34,16 @@ sealed class ProximityQRPartialState {
     data class Error(val error: String) : ProximityQRPartialState()
     data object Connected : ProximityQRPartialState()
     data object Disconnected : ProximityQRPartialState()
+
+    /**
+     * A one-shot, non-fatal notice about NFC data retrieval specifically — the switch was on, but
+     * the platform could not actually start it (unsupported device, entitlement not yet granted,
+     * a transient failure, ...). Distinct from [Error]: that one means the whole exchange failed,
+     * this one means only NFC did — the reader can still connect over BLE. Only ever emitted where
+     * [ProximityQRInteractor.isNfcDataRetrievalAvailable] is `true` in the first place; see
+     * `wiki/IOS_NFC_PLAN.md`'s Findings A/B/D/E notes.
+     */
+    data class NfcNotice(val message: String) : ProximityQRPartialState()
 }
 
 interface ProximityQRInteractor : ScopedPresentationInteractor {
@@ -42,6 +52,28 @@ interface ProximityQRInteractor : ScopedPresentationInteractor {
         componentActivity: PlatformActivity,
         toggle: Boolean
     )
+
+    /**
+     * Whether ISO 18013-5 Annex 8 NFC data retrieval — the whole mdoc session over NFC, a sibling
+     * transport to BLE — is offered on this platform. Deliberately a *different* capability from
+     * [toggleNfcEngagement] above, not a rename of it: that one is Android's narrower NFC
+     * engagement/handover (a tap that only hands over BLE connection parameters; see
+     * `wiki/IOS_NFC_PLAN.md` §1). `false` on every platform that doesn't have the full transport yet.
+     */
+    fun isNfcDataRetrievalAvailable(): Boolean
+
+    /**
+     * Turns NFC data retrieval on or off for the *next* [startQrEngagement] — a no-op wherever
+     * [isNfcDataRetrievalAvailable] is `false`.
+     */
+    fun toggleNfcDataRetrieval(enabled: Boolean)
+
+    /**
+     * Whether NFC data retrieval is enabled right now — the switch's actual current position, not
+     * just whether the platform offers the switch at all ([isNfcDataRetrievalAvailable]). `false`
+     * on every platform that doesn't have the feature, same as [isNfcDataRetrievalAvailable].
+     */
+    fun isNfcDataRetrievalEnabled(): Boolean
 
     fun cancelTransfer()
     fun setConfig(config: RequestUriConfig)

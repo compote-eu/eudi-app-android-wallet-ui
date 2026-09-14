@@ -64,6 +64,11 @@ class ProximityQRViewModelTest {
 
     private class FakeProximityQRInteractor(
         private val emissions: List<ProximityQRPartialState> = emptyList(),
+        private val nfcDataRetrievalAvailable: Boolean = false,
+        // Finding E of the current-state audit: this is what a real platform singleton (iOS's
+        // IosProximityPresenter) would already hold before the view-model ever asked — a fresh
+        // view-model must read this back, not assume its own state default.
+        initialNfcDataRetrievalEnabled: Boolean = false,
     ) : ProximityQRInteractor {
         override var presentationScopeId: String = "DefaultPresentationScopeId"
             private set
@@ -74,6 +79,15 @@ class ProximityQRViewModelTest {
             private set
         var nfcToggles: MutableList<Boolean> = mutableListOf()
             private set
+        var nfcDataRetrievalToggles: MutableList<Boolean> = mutableListOf()
+            private set
+
+        /** Incremented on every collection, i.e. every real engagement attempt — see Finding A/B/D/E
+         * part 4's restart-on-toggle test. */
+        var startQrEngagementCalls: Int = 0
+            private set
+
+        private var nfcDataRetrievalEnabled: Boolean = initialNfcDataRetrievalEnabled
 
         override fun setScopeId(scopeId: String) {
             presentationScopeId = scopeId
@@ -85,12 +99,22 @@ class ProximityQRViewModelTest {
         }
 
         override fun startQrEngagement(): Flow<ProximityQRPartialState> = flow {
+            startQrEngagementCalls++
             emissions.forEach { emit(it) }
         }
 
         override fun toggleNfcEngagement(componentActivity: PlatformActivity, toggle: Boolean) {
             nfcToggles.add(toggle)
         }
+
+        override fun isNfcDataRetrievalAvailable(): Boolean = nfcDataRetrievalAvailable
+
+        override fun toggleNfcDataRetrieval(enabled: Boolean) {
+            nfcDataRetrievalToggles.add(enabled)
+            nfcDataRetrievalEnabled = enabled
+        }
+
+        override fun isNfcDataRetrievalEnabled(): Boolean = nfcDataRetrievalEnabled
 
         override fun cancelTransfer() {
             cancelTransferCalls++
@@ -217,4 +241,92 @@ class ProximityQRViewModelTest {
 
         assertEquals(config.presentationScopeId, interactor.presentationScopeId)
     }
+
+    @Test
+    fun nfc_data_retrieval_is_offered_only_when_the_interactor_reports_it_available() =
+        runTest(mainDispatcher) {
+            val available = ProximityQRViewModel(
+                FakeProximityQRInteractor(nfcDataRetrievalAvailable = true),
+                config
+            )
+            val unavailable = ProximityQRViewModel(
+                FakeProximityQRInteractor(nfcDataRetrievalAvailable = false),
+                config
+            )
+            advanceUntilIdle()
+
+            assertTrue(available.viewState.value.nfcDataRetrievalAvailable)
+            assertFalse(unavailable.viewState.value.nfcDataRetrievalAvailable)
+        }
+
+    @Test
+    fun toggling_nfc_data_retrieval_reaches_the_interactor_and_updates_state() =
+        runTest(mainDispatcher) {
+            val interactor = FakeProximityQRInteractor(nfcDataRetrievalAvailable = true)
+            val viewModel = ProximityQRViewModel(interactor, config)
+            advanceUntilIdle()
+            assertFalse(viewModel.viewState.value.nfcDataRetrievalEnabled)
+
+            viewModel.setEvent(Event.NfcDataRetrievalToggled(enabled = true))
+            advanceUntilIdle()
+
+            assertEquals(listOf(true), interactor.nfcDataRetrievalToggles)
+            assertTrue(viewModel.viewState.value.nfcDataRetrievalEnabled)
+
+            viewModel.setEvent(Event.NfcDataRetrievalToggled(enabled = false))
+            advanceUntilIdle()
+
+            assertEquals(listOf(true, false), interactor.nfcDataRetrievalToggles)
+            assertFalse(viewModel.viewState.value.nfcDataRetrievalEnabled)
+        }
+
+    // Finding E of the current-state audit.
+    @Test
+    fun nfc_data_retrieval_enabled_is_read_back_from_the_interactor_on_init() =
+        runTest(mainDispatcher) {
+            val viewModel = ProximityQRViewModel(
+                FakeProximityQRInteractor(
+                    nfcDataRetrievalAvailable = true,
+                    initialNfcDataRetrievalEnabled = true,
+                ),
+                config
+            )
+            advanceUntilIdle()
+
+            assertTrue(viewModel.viewState.value.nfcDataRetrievalEnabled)
+        }
+
+    // Findings A/B/D/E of the current-state audit, part 4: a toggle mid-screen must not be silently
+    // inert until the next visit.
+    @Test
+    fun toggling_nfc_data_retrieval_restarts_the_current_engagement() = runTest(mainDispatcher) {
+        val interactor = FakeProximityQRInteractor(nfcDataRetrievalAvailable = true)
+        ProximityQRViewModel(interactor, config).also { viewModel ->
+            advanceUntilIdle()
+            assertEquals(1, interactor.startQrEngagementCalls)
+
+            viewModel.setEvent(Event.NfcDataRetrievalToggled(enabled = true))
+            advanceUntilIdle()
+
+            assertEquals(2, interactor.startQrEngagementCalls)
+        }
+    }
+
+    // Finding A/B of the current-state audit: a degraded-NFC notice reaches the screen as a
+    // snackbar, without touching `state.error` — BLE is unaffected.
+    @Test
+    fun an_nfc_notice_becomes_a_snackbar_effect_without_touching_error_state() =
+        runTest(mainDispatcher) {
+            val viewModel = ProximityQRViewModel(
+                FakeProximityQRInteractor(
+                    listOf(ProximityQRPartialState.NfcNotice(message = "NFC unavailable"))
+                ),
+                config
+            )
+            val effect = async { viewModel.effect.first() }
+            advanceUntilIdle()
+
+            assertEquals(Effect.ShowSnackbar(message = "NFC unavailable"), effect.await())
+            assertNull(viewModel.viewState.value.error)
+        }
 }

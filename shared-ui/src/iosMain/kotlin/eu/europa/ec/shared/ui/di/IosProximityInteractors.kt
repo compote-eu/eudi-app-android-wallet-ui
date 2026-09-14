@@ -65,11 +65,20 @@ internal class IosProximityQRInteractor(
     override fun startQrEngagement(): Flow<ProximityQRPartialState> = coordinator.qrEvents()
 
     /**
-     * Nothing to toggle. iOS gives no app NFC card emulation, so a phone cannot be the mdoc side of an
-     * NFC engagement; the QR screen already hides the switch, and [PlatformActivity] has no iOS instance
-     * to call this with anyway.
+     * Permanently unreachable on iOS, not merely unused: [PlatformActivity] has no iOS instance, so the
+     * shared `ProximityQRScreen` never constructs the event that would call this — it only does so
+     * inside a `platformActivity?.let { }` guard that is always null here. This is also Android's
+     * narrower, different NFC feature (engagement/handover, not the data-retrieval transport this app
+     * builds for iOS) — see [toggleNfcDataRetrieval] and `wiki/IOS_NFC_PLAN.md` §1.
      */
     override fun toggleNfcEngagement(componentActivity: PlatformActivity, toggle: Boolean) = Unit
+
+    override fun isNfcDataRetrievalAvailable(): Boolean = coordinator.isNfcDataRetrievalAvailable()
+
+    override fun toggleNfcDataRetrieval(enabled: Boolean) =
+        coordinator.toggleNfcDataRetrieval(enabled)
+
+    override fun isNfcDataRetrievalEnabled(): Boolean = coordinator.isNfcDataRetrievalEnabled()
 
     override fun cancelTransfer() = coordinator.cancel()
 }

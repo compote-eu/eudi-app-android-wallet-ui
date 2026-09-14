@@ -1,0 +1,53 @@
+language = Objective-C
+package = eu.europa.ec.shared.wallet.nfc
+
+---
+#import <Foundation/Foundation.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+/**
+ * Implemented in Kotlin. Answers one ISO 7816 command APDU; `completion` must be called exactly
+ * once, with the response APDU bytes to send back over NFC.
+ */
+@protocol NfcHceBridgeDelegate <NSObject>
+- (void)processCommandApdu:(NSData *)commandApdu
+                 completion:(void (^)(NSData *responseApdu))completion;
+@end
+
+/**
+ * Implemented in Swift — see iosApp/NfcHceBridge. Owns a CoreNFC `CardSession` (a Swift-only API
+ * with no Objective-C surface, so Kotlin/Native cannot cinterop it directly) and feeds every APDU
+ * the reader sends to `NfcHceBridgeDelegate`.
+ */
+@interface NfcHceBridge : NSObject
+
+- (instancetype)initWithDelegate:(id<NfcHceBridgeDelegate>)delegate;
+
+/**
+ * `result` is one of the plain integer codes below, not a shared enum type: an Objective-C-visible
+ * enum would need the same explicit `@objc(Name)` treatment this class and `NfcHceBridgeDelegate`
+ * already need for their own names (see the doc comments in `iosApp/NfcHceBridge/.../NfcHceBridge.swift`),
+ * and a bare `NSInteger` has no symbol name to get wrong at the ABI boundary. Both sides — this
+ * header's Swift implementation and Kotlin's `IosNfcHceTransport.NfcStartResult.fromCode` — must
+ * agree on these values:
+ *   0 = started
+ *   1 = not supported (unsupported hardware/OS, or the entitlement isn't present in this build)
+ *   2 = not eligible (Apple's own region/hardware eligibility gate, `CardSession.isEligible`)
+ *   3 = access not accepted (the entitlement is present but not yet granted/approved)
+ *   4 = transient failure (any other `CardSession` start failure)
+ */
+- (void)startWithCompletion:(void (^)(NSInteger result))completion;
+
+/**
+ * The synchronous subset of `startWithCompletion:`'s own checks — device/OS support only, not
+ * Apple's async `CardSession.isEligible` region gate. See the doc comment on the Swift
+ * implementation for why the split.
+ */
++ (BOOL)isSupported;
+
+- (void)stop;
+
+@end
+
+NS_ASSUME_NONNULL_END

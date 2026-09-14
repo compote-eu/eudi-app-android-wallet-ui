@@ -48,6 +48,7 @@ import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
 import java.net.URI
 
@@ -388,6 +389,32 @@ class TestProximityQRInteractor {
                 componentActivity = componentActivity,
                 toggle = false
             )
+    }
+    //endregion
+
+    //region toggleNfcDataRetrieval
+    // Android has no NFC data-retrieval transport yet (see wiki/IOS_NFC_PLAN.md §1/phase 4) —
+    // isNfcDataRetrievalAvailable is always false, and toggling is a genuine no-op: it must not
+    // reach walletCorePresentationController at all, unlike toggleNfcEngagement above.
+    @Test
+    fun `isNfcDataRetrievalAvailable is always false on Android`() {
+        assertEquals(false, interactor.isNfcDataRetrievalAvailable())
+    }
+
+    @Test
+    fun `toggleNfcDataRetrieval does not call walletCorePresentationController`() {
+        interactor.toggleNfcDataRetrieval(enabled = true)
+
+        verifyNoInteractions(walletCorePresentationController)
+    }
+
+    @Test
+    fun `isNfcDataRetrievalEnabled is always false on Android`() {
+        assertEquals(false, interactor.isNfcDataRetrievalEnabled())
+
+        interactor.toggleNfcDataRetrieval(enabled = true)
+
+        assertEquals(false, interactor.isNfcDataRetrievalEnabled())
     }
     //endregion
 

@@ -37,6 +37,7 @@ import org.multipaz.util.fromBase64Url
 import org.multipaz.crypto.EcCurve
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.mdoc.request.DeviceRequestGenerator
@@ -350,7 +351,7 @@ class IosProximityPresentmentTest {
         val key = Crypto.createEcPrivateKey(EcCurve.P256)
         val connectionMethod = presenter.bleConnectionMethod()
 
-        val qr = presenter.deviceEngagement(key.publicKey, connectionMethod).toQrPayload()
+        val qr = presenter.deviceEngagement(key.publicKey, listOf(connectionMethod)).toQrPayload()
 
         // ISO 18013-5 §8.2.2.3: base64url device engagement behind an `mdoc:` scheme. A reader that
         // cannot parse this never connects, and nothing else in the flow would explain why.
@@ -364,5 +365,51 @@ class IosProximityPresentmentTest {
         assertTrue(advertised.supportsPeripheralServerMode)
         assertTrue(!advertised.supportsCentralClientMode)
         assertEquals(connectionMethod.peripheralServerModeUuid, advertised.peripheralServerModeUuid)
+    }
+
+    @Test
+    fun the_engagement_qr_advertises_both_ble_and_nfc() = runTest {
+        // What startQrEngagement() itself builds is not reachable from a test (it also starts the real
+        // NFC bridge, which needs a device) — but the engagement CBOR both transports get listed in is
+        // the same connectionMethods list startQrEngagement() passes here, so this is the real check
+        // that NFC is actually advertised alongside BLE, not just that the two connectionMethod()
+        // builders individually return something well-formed.
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val ble = presenter.bleConnectionMethod()
+        val nfc = presenter.nfcConnectionMethod()
+
+        val qr = presenter.deviceEngagement(key.publicKey, listOf(ble, nfc)).toQrPayload()
+
+        val engagement = EngagementParser(qr.removePrefix("mdoc:").fromBase64Url()).parse()
+        assertEquals(ble, engagement.connectionMethods.filterIsInstance<MdocConnectionMethodBle>().single())
+        val advertisedNfc = engagement.connectionMethods.filterIsInstance<MdocConnectionMethodNfc>().single()
+        assertEquals(nfc.commandDataFieldMaxLength, advertisedNfc.commandDataFieldMaxLength)
+        assertEquals(nfc.responseDataFieldMaxLength, advertisedNfc.responseDataFieldMaxLength)
+    }
+
+    // Finding E of the current-state audit: setNfcEngagementEnabled had no reader.
+    @Test
+    fun isNfcEngagementEnabled_reflects_the_last_call_to_setNfcEngagementEnabled() {
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+
+        // The documented default (see the field's own KDoc): inert until something opts in.
+        assertEquals(false, presenter.isNfcEngagementEnabled())
+
+        presenter.setNfcEngagementEnabled(true)
+        assertEquals(true, presenter.isNfcEngagementEnabled())
+
+        presenter.setNfcEngagementEnabled(false)
+        assertEquals(false, presenter.isNfcEngagementEnabled())
+    }
+
+    // Finding D of the current-state audit: the Simulator has no NFC radio, so this is the same real
+    // CoreNFC gate `start()` itself would hit — not a mocked substitute for it. See
+    // `IosNfcHceTransportTest`'s own `isSupported` test for the lower-level claim this rests on.
+    @Test
+    fun isNfcDataRetrievalSupported_reports_false_on_a_device_with_no_nfc_hardware() {
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+
+        assertEquals(false, presenter.isNfcDataRetrievalSupported())
     }
 }

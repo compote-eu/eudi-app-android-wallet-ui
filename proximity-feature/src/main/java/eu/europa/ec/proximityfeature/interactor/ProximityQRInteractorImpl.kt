@@ -83,6 +83,15 @@ class ProximityQRInteractorImpl(
         walletCorePresentationController.toggleNfcEngagement(componentActivity, toggle)
     }
 
+    /** Android has no NFC data-retrieval transport yet — only [toggleNfcEngagement] above. */
+    override fun isNfcDataRetrievalAvailable(): Boolean = false
+
+    /** No-op: see [isNfcDataRetrievalAvailable]. */
+    override fun toggleNfcDataRetrieval(enabled: Boolean) = Unit
+
+    /** Never enabled: see [isNfcDataRetrievalAvailable]. */
+    override fun isNfcDataRetrievalEnabled(): Boolean = false
+
     override fun cancelTransfer() {
         walletCorePresentationController.stopPresentation()
     }

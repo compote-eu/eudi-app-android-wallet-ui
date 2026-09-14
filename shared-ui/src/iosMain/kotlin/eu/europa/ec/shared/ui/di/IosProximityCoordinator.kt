@@ -51,7 +51,9 @@ import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.merge
 
 /**
  * The single object the four proximity screens on iOS talk to.
@@ -88,36 +90,64 @@ internal class IosProximityCoordinator(
     //region The QR screen
 
     /**
+     * Whether NFC data retrieval is offered alongside BLE the next time [qrEvents] starts engagement.
+     * Named to match [IosProximityQRInteractor.toggleNfcDataRetrieval], the seam that actually calls
+     * this — deliberately not `toggleNfcEngagement`, Android's narrower, different feature; see
+     * `wiki/IOS_NFC_PLAN.md` §1.
+     */
+    fun toggleNfcDataRetrieval(enabled: Boolean) {
+        presenter.setNfcEngagementEnabled(enabled)
+    }
+
+    /** See [IosProximityPresenter.isNfcDataRetrievalSupported]. */
+    fun isNfcDataRetrievalAvailable(): Boolean = presenter.isNfcDataRetrievalSupported()
+
+    /** See [IosProximityPresenter.isNfcEngagementEnabled]. */
+    fun isNfcDataRetrievalEnabled(): Boolean = presenter.isNfcEngagementEnabled()
+
+    /**
      * Starts advertising, then reports what happens to it.
      *
      * Engagement runs *before* the state is collected on purpose. The presenter publishes a StateFlow, so
      * subscribing afterwards still sees where things got to — while subscribing first would replay the
      * previous attempt's outcome, and a retry would flash the old error before the new QR appeared.
+     *
+     * [IosProximityPresenter.nfcNotice] is merged in rather than folded into the `when` below on
+     * purpose, and subscribed to as part of the same cold flow rather than after
+     * [IosProximityPresenter.startQrEngagement] returns: unlike `state`, it is not something a late
+     * subscriber should be replayed (see its own doc comment), so this flow needs to be listening
+     * for it from the moment collection starts, same as [IosProximityPresenter.startQrEngagement]
+     * itself is called from inside this builder rather than before it.
      */
-    fun qrEvents(): Flow<ProximityQRPartialState> = flow {
-        presenter.startQrEngagement()
+    fun qrEvents(): Flow<ProximityQRPartialState> = merge(
+        presenter.nfcNotice.map<String, ProximityQRPartialState> { message ->
+            ProximityQRPartialState.NfcNotice(message = message)
+        },
+        flow {
+            presenter.startQrEngagement()
 
-        presenter.state.collect { state ->
-            when (state) {
-                is IosProximityState.Engaging ->
-                    emit(ProximityQRPartialState.QrReady(qrCode = state.qrPayload))
+            presenter.state.collect { state ->
+                when (state) {
+                    is IosProximityState.Engaging ->
+                        emit(ProximityQRPartialState.QrReady(qrCode = state.qrPayload))
 
-                is IosProximityState.Requesting ->
-                    emit(ProximityQRPartialState.Connected)
+                    is IosProximityState.Requesting ->
+                        emit(ProximityQRPartialState.Connected)
 
-                is IosProximityState.Failed ->
-                    emit(ProximityQRPartialState.Error(error = state.message))
+                    is IosProximityState.Failed ->
+                        emit(ProximityQRPartialState.Error(error = state.message))
 
-                // Engagement has already been started, so this is the end of it: the reader went away,
-                // or something cancelled the exchange.
-                is IosProximityState.Idle ->
-                    emit(ProximityQRPartialState.Disconnected)
+                    // Engagement has already been started, so this is the end of it: the reader went
+                    // away, or something cancelled the exchange.
+                    is IosProximityState.Idle ->
+                        emit(ProximityQRPartialState.Disconnected)
 
-                // Both belong to the loading screen, which is collecting by then.
-                is IosProximityState.Sending, is IosProximityState.Sent -> Unit
+                    // Both belong to the loading screen, which is collecting by then.
+                    is IosProximityState.Sending, is IosProximityState.Sent -> Unit
+                }
             }
-        }
-    }
+        },
+    )
 
     //endregion
 

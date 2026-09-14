@@ -16,7 +16,7 @@ name: iosApp
 options:
   bundleIdPrefix: ${APP_ID}
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "17.4"
   createIntermediateGroups: true
 
 # Swift package dependencies. RQES (remote document signing) is the iOS mirror of Android's
@@ -69,6 +69,21 @@ packages:
   # `PKIXBridge`. Compiling them into a target directly would not match.
   PKIXBridge:
     path: PKIXBridge
+  # A *local* path package, the same shape as PKIXBridge above — but ours, not vendored. See
+  # wiki/IOS_NFC_PLAN.md §3.1.
+  #
+  # CoreNFC's `CardSession` (the iOS 17.4+ Host Card Emulation API) is Swift-only — verified directly
+  # against this project's SDK, it is declared only in `CoreNFC.swiftmodule`'s swiftinterface files,
+  # never in the Objective-C header Kotlin/Native's cinterop parses — so Kotlin cannot own it
+  # directly. This package is the Swift half: it owns the real `CardSession` and its event loop, and
+  # calls into Kotlin (`shared-logic`'s `NfcHceBridge.def` cinterop) for the actual APDU handling.
+  #
+  # The module name is load-bearing, the same way PKIXBridge's is: the cinterop `.def` declares a
+  # plain Objective-C header, so the Swift source has to export under that plain name explicitly
+  # (`@objc(NfcHceBridge)` / `@objc(NfcHceBridgeDelegate)`) rather than Swift's own mangled default —
+  # see the comment on `NfcHceBridge` in `NfcHceBridge/Sources/NfcHceBridge/NfcHceBridge.swift`.
+  NfcHceBridge:
+    path: NfcHceBridge
 
 # Settings both targets need identical values for. A setting group is expanded into each target at
 # generate time, which is the only way two Xcode targets can share a value — build settings do not
@@ -105,7 +120,7 @@ targets:
     type: com.apple.product-type.extensionkit-extension
     platform: iOS
     # The registration API is iOS 26.0; the reference wallet's own extension target is 26.2, and this
-    # matches it rather than the app's 17.0 — an extension cannot be loaded below its own floor, and
+    # matches it rather than the app's 17.4 — an extension cannot be loaded below its own floor, and
     # the entitlement that makes any of this work is iOS 26+ regardless.
     deploymentTarget: "26.2"
     sources:
@@ -160,6 +175,13 @@ targets:
       # the extension needs the cinterop's Swift implementation just as the app does. An extension
       # is a separate binary and inherits nothing from its container.
       - package: PKIXBridge
+      # Not because this extension does anything with NFC — it doesn't. Both targets embed the same
+      # SharedKit framework, and Kotlin/Native's framework export does not strip a public class from
+      # the compiled binary just because *this* consumer never calls it: `IosNfcHceTransport` being
+      # public anywhere in shared-logic is enough to make `_OBJC_CLASS_$_NfcHceBridge` an undefined
+      # symbol at *every* SharedKit consumer's link time, this one included. Verified directly: this
+      # target failed to link with exactly that undefined symbol before this line was added.
+      - package: NfcHceBridge
     preBuildScripts:
       # The extension links SharedKit, and the app's own copy of this phase cannot serve it: the app
       # now *depends* on the extension, so Xcode builds the extension first and would otherwise
@@ -407,11 +429,33 @@ targets:
         # the pair, a Digital Credentials request finds an empty wallet and nothing reports why.
         keychain-access-groups:
           - $(AppIdentifierPrefix)$(APP_BUNDLE_ID)
+        # ISO 18013-5 Annex 8 NFC data-retrieval (HCE), added in wiki/IOS_NFC_PLAN.md phase 1. This is
+        # a restricted capability — Xcode's own signing error refuses a device build until Apple
+        # approves the Host Card Emulation capability request for this App ID; that approval has since
+        # landed for this Team ID/Bundle ID.
+        #
+        # Only the mdoc AID is listed, deliberately — the NDEF AID (D2760000850101, the NFC Forum
+        # Type 4 Tag AID) was removed after a real-device crash traced to it: this app is QR-engagement
+        # -only and never implements NFC engagement (no `MdocNfcEngagementHelper` anywhere in this
+        # codebase, on either platform), so registering it served no functional purpose — Multipaz's
+        # `NfcTransportMdoc` (the only NFC class this app actually constructs) only ever recognizes the
+        # mdoc AID by design, and rejects anything else through an internal error path that a separate,
+        # still-latent Multipaz bug turns into a process crash rather than a graceful rejection. See
+        # `wiki/IOS_NFC_PLAN.md` §3.4 for the full trace — this AID removal narrows the crash's trigger
+        # surface, it does not fix the underlying Multipaz bug.
+        com.apple.developer.nfc.hce: true
+        com.apple.developer.nfc.hce.iso7816.select-identifier-prefixes:
+          - A0000002480400
     dependencies:
       - package: EudiRQESUi
         product: EudiRQESUi
       # Satisfies the ETSI consultation klib's cinterop symbols; see the `packages:` note above.
       - package: PKIXBridge
+      # Satisfies NfcHceBridge.def's cinterop symbols; see the `packages:` note above. Also required
+      # on the document-provider extension target below, even though NFC is unrelated to what that
+      # target does — both embed the same SharedKit framework, so both need every cinterop symbol
+      # anything public in shared-logic references.
+      - package: NfcHceBridge
       # The app carries the extension: an ExtensionKit extension ships inside its containing app and
       # is launched from there by the OS. Without this the target builds and is never installed.
       - target: EudiWalletDocumentProvider

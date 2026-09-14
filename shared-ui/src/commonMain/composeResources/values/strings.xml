@@ -435,6 +435,7 @@
     <string name="proximity_qr_subtitle">Show this QR code to an interacting party within close proximity to authenticate your identity.</string>
     <string name="proximity_qr_use_nfc">Connect via NFC</string>
     <string name="proximity_qr_hold_near_reader">Hold your phone near reader to scan.</string>
+    <string name="proximity_qr_enable_nfc_data_retrieval">Share over NFC</string>
     <!--endregion-->
 
     <!-- region Presentation Qr Scan -->
