@@ -118,6 +118,43 @@ class BiometricViewModelTest {
     @AfterTest
     fun tearDown() = Dispatchers.resetMain()
 
+    // ---- ported from upstream's TestBiometricViewModel (a3a11fa1), re-expressed for commonTest so
+    // ---- they run on both targets. Only the cases whose subject exists here; see the sync-6 record.
+
+    @Test
+    fun a_second_lockout_replaces_the_countdown_already_running() = runTest(mainDispatcher) {
+        val fake = FakeBiometricInteractor(
+            lockoutOnEntry = PinLockoutState.Active(remaining = 30.seconds, total = 30.seconds),
+        )
+        val viewModel = BiometricViewModel(fake, config())
+        advanceTimeBy(100)   // as elsewhere here: never let the countdown finish
+        assertTrue(viewModel.viewState.value.isLockedOut)
+        val first = assertNotNull(viewModel.viewState.value.lockoutMessage)
+
+        fake.setLockoutOnEntry(
+            PinLockoutState.Active(remaining = 90.seconds, total = 90.seconds),
+        )
+        viewModel.setEvent(Event.Init)
+        advanceTimeBy(100)
+
+        // The new tick must REPLACE the old one rather than run beside it: two live jobs would both
+        // write `lockoutMessage` every second and the countdown would jump between 30s and 90s.
+        val second = assertNotNull(viewModel.viewState.value.lockoutMessage)
+        assertTrue(first != second, "the second lockout must be the one on screen")
+
+        // The discriminator: run past the FIRST lockout's expiry. With one tick the 90s lockout is
+        // still holding the screen; with the old tick left alive beside it, that job reaches its end
+        // and calls `stopLockoutTick()`, which UNLOCKS the screen while the real lockout has a
+        // minute left. Asserting only "the message changed" cannot tell those apart — it was tried,
+        // and it survived the mutation that drops `lockoutTickJob?.cancel()`.
+        advanceTimeBy(31_000)
+        assertTrue(
+            viewModel.viewState.value.isLockedOut,
+            "the expiry of a replaced tick must not unlock a lockout that is still running",
+        )
+        assertNotNull(viewModel.viewState.value.lockoutMessage)
+    }
+
     @Test
     fun the_users_biometric_preference_is_read_on_construction() = runTest(mainDispatcher) {
         val viewModel = BiometricViewModel(

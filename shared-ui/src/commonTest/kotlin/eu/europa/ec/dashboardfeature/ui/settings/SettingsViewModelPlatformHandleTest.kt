@@ -331,6 +331,31 @@ class SettingsViewModelPlatformHandleTest {
         assertEquals("hardware unavailable", snackbar.message)
     }
 
+    // ---- ported from upstream's TestSettingsViewModel (a3a11fa1): the registration-check row had
+    // ---- no test at all here, and it is the one row whose effect the user must be told about.
+
+    @Test
+    fun toggling_the_registration_check_rebuilds_the_list_and_asks_for_a_restart() =
+        runTest(mainDispatcher) {
+            val fake = FakeSettingsInteractor()
+            val viewModel = SettingsViewModel(fake)
+            advanceUntilIdle()
+            val buildsBefore = fake.itemsBuilds
+
+            val effect = async { viewModel.effect.first() }
+            viewModel.setEvent(
+                Event.ItemClicked(SettingsMenuItemType.REGISTRATION_CHECK, context)
+            )
+            advanceUntilIdle()
+
+            assertEquals(1, fake.registrationCheckToggles)
+            assertEquals(buildsBefore + 1, fake.itemsBuilds)
+            // Wallet Core reads the policy when it builds its managers, so the flip does not take
+            // effect until the next launch — saying nothing would leave the user thinking it had.
+            val snackbar = assertIs<Effect.ShowSnackbar>(effect.await())
+            assertEquals(fake.registrationCheckRestartMessage, snackbar.message)
+        }
+
     @Test
     fun toggling_the_batch_issuance_counter_rebuilds_the_list() = runTest(mainDispatcher) {
         val fake = FakeSettingsInteractor()
