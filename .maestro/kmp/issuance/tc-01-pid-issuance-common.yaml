@@ -1,0 +1,49 @@
+# TC-01-equivalent (PID-equivalent issuance) — the in-app portion, common to both platforms.
+#
+# Status as of 2026-09-15: PORTED AND VERIFIED WORKING, unmodified, on both a fresh iOS
+# Simulator and a fresh Android emulator, from a clean install through to the document-type
+# catalog list. This is genuinely built and run against THIS app's real live screens — not
+# copied from `eudi-app-ios-wallet-ui`'s tc-01-pid-issuance.yaml (that file lives under
+# `.maestro/issuance/` as unverified reference material; this one replaces it for the steps
+# it actually covers).
+#
+# Does NOT complete TC-01 end to end: continuing past this point (tapping a document type)
+# leads into a live client-attestation bug that currently blocks issuance on both platforms —
+# see `.maestro/PORTING_STATUS.md` and `tc-01-pid-issuance-android-continuation.yaml`'s own
+# header for the two platforms' different failure symptoms of that same root cause.
+#
+# Real divergences found from the native app's reference flow (verified via live
+# `maestro hierarchy` dumps, not assumed):
+# - No `success_screen_title` tag exists on the PIN-success screen; only plain text
+#   "Wallet secured" — asserted by text below instead.
+# - The Documents bottom-nav tab's real id is `dashboard_screen_bottom_navigation_item_documents`
+#   (an enum-driven tag with three tabs: Home/Documents/History), not `documents_tab`.
+# - There is no dedicated "choose from list" screen/button. Tapping "+" opens a bottom sheet
+#   with two generic, position-indexed buttons (`documents_tab_bottom_sheet_button_0`/`_1`);
+#   index 0 is "Choose from list".
+#
+# Bundle id / applicationId is the same string on both platforms for the dev flavor
+# (confirmed in `app.properties` — no Android debug-suffix applied): eu.compote.euidi.dev
+
+appId: eu.compote.euidi.dev
+---
+# --- First run: PIN setup ---
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- assertVisible: "Wallet secured"
+- tapOn:
+    id: "success_screen_primary_button"
+
+# --- Dashboard -> Documents tab -> Add -> Choose from list ---
+- tapOn:
+    id: "dashboard_screen_bottom_navigation_item_documents"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "documents_tab_bottom_sheet_button_0"
+- assertVisible:
+    id: "add_document_screen_subtitle"
