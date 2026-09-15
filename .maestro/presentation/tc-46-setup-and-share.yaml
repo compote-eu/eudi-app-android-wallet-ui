@@ -1,0 +1,93 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-46 (part 1/2) — remote/OpenID4VP presentation: trigger + Share +
+# first 5 of 6 PIN digits, deliberately incomplete.
+#
+# This is one half of a two-part flow, orchestrated by
+# tc-46-network-loss-during-share.sh, NOT runnable meaningfully on its
+# own - see that script for the full rationale. In short: the actual
+# thing under test (does the app correctly fail closed when the network
+# genuinely drops mid-send, matching TC-13's BLE false-positive check but
+# for the HTTPS/OpenID4VP transport instead of BLE) requires the host
+# machine to go offline at a precise moment - something no Maestro flow
+# can do itself (runScript's JS engine has no shell/process access,
+# confirmed during TC-32's development). Splitting into two `maestro
+# test` invocations against the same persistent simulator session (app
+# state carries over between separate invocations, same pattern
+# tc-32-reinstall-wipe.sh already relies on) lets the orchestrating shell
+# script sit in between them and take the host offline before the second
+# half runs.
+#
+# Precondition: app already unlocked, with TC-01 already run in the same
+#   simulator session (PID already issued - same precondition as TC-22,
+#   since this requests the same PID family_name claim via the same
+#   DCQL query shape).
+#
+# PRESENTATION_URL is passed in via `-e` by the orchestrating shell
+# script (`maestro test tc-46-setup-and-share.yaml -e
+# PRESENTATION_URL=...`), fetched fresh from POST /ui/presentations/v2
+# beforehand - NOT via tc-22-setup-presentation.js's runScript approach,
+# because the shell script also needs the transaction_id afterward (for
+# its own server-side verification via curl), and Maestro's `output.*`
+# does not persist across separate `maestro test` invocations (confirmed
+# during tc-22's own development, documented in that script's header) -
+# it has to be fetched host-side either way, so it's fetched once,
+# host-side, and handed to both this flow and the shell script's own
+# later curl calls from the same source.
+#
+# `openLink` does NOT interpolate a `-e`-supplied `${PRESENTATION_URL}`
+# directly - confirmed live (Maestro CLI 2.8.0): the literal,
+# unsubstituted string is passed through and nothing ever opens. Only
+# `${output.x}`-style values work for `openLink`. The one-line bridge
+# script below exists solely to route the CLI variable through
+# `output.*` so `openLink` can actually use it - see that script's own
+# comments for the full finding (also: `-e` variables are bare global
+# identifiers inside runScript, not nested under an `env` object).
+- runScript: tc-46-bridge-presentation-url.js
+
+# --- Trigger the presentation request via deep link ---
+- openLink: "${output.presentationUrl}"
+
+# --- One-time "Open in EUDI Wallet?" system dialog (see TC-22's own
+#     comments for the full one-time-per-erase story) ---
+- extendedWaitUntil:
+    visible:
+      text: "Open"
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+
+# --- Consent screen: confirm it rendered, then Share.
+#
+#     Uses `request_screen_requested_document_0`, NOT
+#     `request_screen_description` (what TC-22's own flow asserts on) -
+#     confirmed live that `request_screen_description` no longer exists
+#     anywhere in this screen's current accessibility hierarchy at all
+#     (dumped and grepped the actual JSON snapshot from a failed run,
+#     not guessed), while `request_screen_requested_document_0` and
+#     `request_screen_share_button` both do. This looks like UI drift
+#     since TC-22 was written - if TC-22 itself is re-run fresh today it
+#     would likely hit the exact same failure - but re-verifying/fixing
+#     TC-22 is out of scope here; this flow just uses whichever
+#     identifier is actually present now.
+- assertVisible:
+    id: "request_screen_requested_document_0"
+- tapOn:
+    id: "request_screen_share_button"
+
+# --- PIN entry: deliberately only 5 of 6 digits. The orchestrating
+#     shell script takes the host offline immediately after this flow
+#     exits, then runs tc-46-finish-pin-offline.yaml to submit the final
+#     digit - guaranteeing the network is already down for the whole
+#     send attempt, not just grazed (same "strictly harder failure case"
+#     timing reasoning as TC-13's BLE disconnect). ---
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "12345"

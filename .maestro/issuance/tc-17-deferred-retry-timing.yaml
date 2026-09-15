@@ -1,0 +1,115 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-17 — deferred issuance retry-interval violation (red test, confirms a
+# known bug — this flow is NOT expected to result in "correct" behavior).
+#
+# THE BUG (confirmed both by code reading and live observation with a real
+# dev-issuer response):
+#   DocumentTabViewModel.onDocumentsRetrievedPostActions()
+#   (Modules/feature-dashboard/Sources/UI/Dashboard/Tab/Document/
+#   DocumentTabViewModel.swift) retries a pending deferred document with a
+#   hardcoded `try? await Task.sleep(seconds: 5)`, with no reference
+#   anywhere to any server-provided polling interval and no limit on the
+#   number of retries. Live testing against the real dev-issuer
+#   (dev.issuer-backend.eudiw.dev) showed it explicitly requesting a
+#   60-second interval (see the app's own WalletKit log,
+#   "Credential issuance deferred with transactionId: ..., interval: 60.0
+#   seconds") while the app polled again after ~14 seconds — about 12x
+#   faster than requested. The root cause goes one layer deeper too: at the
+#   pinned tag v0.37.6, EudiWalletKit's own
+#   Sources/EudiWalletKit/Models/InternalIssuanceModels.swift
+#   `DeferredIssuanceModel` has no `interval` field at all — the value is
+#   logged by OpenId4VciService.swift and then discarded before the app
+#   layer ever gets a chance to use or ignore it. Fixing this needs changes
+#   in both this app and the pinned WalletKit library.
+#
+# This flow only DRIVES the UI: trigger a deferred document, then land back
+# on Documents (which is what actually starts the retry loop — confirmed
+# live that DocumentTabViewModel's deferredTask only starts once this tab's
+# own fetch() cycle runs at least once, not from any background service).
+# The actual interval-violation assertion lives in the companion script
+# tc-17-verify-interval-violation.sh, NOT in this file: Maestro's runScript
+# JS engine has no filesystem access at all (confirmed by decompiling
+# maestro-client.jar's GraalJsEngine during TC-32's development — only
+# `http`/`output`/`env`/an internal maestro binding are exposed), so reading
+# the app's own log file structurally cannot happen inside a Maestro flow.
+#
+# Precondition: app already unlocked (PIN done via a prior TC-01 run in the
+#   same simulator session). Chained after TC-50 in this suite's session,
+#   though this flow does not depend on TC-50's own mDL — it issues its own,
+#   separate, deferred one.
+#
+# Auth note: unlike TC-50's mDL (issued via the FormEU mock identity-
+#   proofing form on ec.dev.issuer.eudiw.dev), this deferred variant is
+#   issued via dev.issuer-backend.eudiw.dev, which requires real Keycloak
+#   username/password sign-in (PID-ISSUER-REALM realm on
+#   dev.authenticate.eudiw.dev) rather than a mock form. The credentials
+#   below are a disposable, dev-only test-fixture account for this public
+#   EUDI test environment — same category as this suite's other hardcoded
+#   test fixtures (e.g. TC-01/TC-50's "Testerova" / "123456789"), not a
+#   real personal or production credential.
+
+- tapOn:
+    id: "documents_tab"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "options_screen_from_list_button"
+
+# The deferred mDL row is far down the list. A few explicit scrolls first
+# cut down how much implicit scroll-search Maestro's own text-tap retry has
+# to do (observed live: it can time out a short manual test harness's own
+# wait, though it has no issue given this suite's normal multi-minute CI
+# step timeouts).
+- scroll
+- scroll
+- scroll
+- scroll
+- tapOn: "Mobile Driving Licence (MSO MDoc) (deferred)"
+
+# ASWebAuthenticationSession system consent
+- tapOn: "Continue"
+
+# Keycloak sign-in (dev.authenticate.eudiw.dev, PID-ISSUER-REALM) — see the
+# auth note above. Point-based taps, not `below:`, because `below: "Password"`
+# was observed live to sometimes mis-resolve to the still-focused Username
+# field once the keyboard was up, corrupting both fields into one. These
+# exact points were confirmed live against this exact form.
+- tapOn:
+    point: "39%, 42%"
+- eraseText: 30
+- inputText: "wallettester"
+- tapOn:
+    point: "39%, 53%"
+- inputText: "test"
+# This mock backend's auth round-trip can complete fast enough that the
+# sign-in form is already gone by the time this step runs (observed live: a
+# run where the authorization code was already exchanged before this step
+# executed, with no "Sign In" button left to find). A plain
+# `tapOn: {optional: true}` still burns ~15-25s of Maestro's own
+# not-found retry-search before giving up (confirmed live - this Maestro
+# CLI version rejects an inline `timeout:` override on tapOn, "Unknown
+# Property: timeout"), and that dead time would otherwise leak into
+# tc-17-verify-interval-violation.sh's timing measurement. `runFlow: when:`
+# checks visibility as a one-shot condition instead of a retry-search, so
+# it costs no meaningful wall-clock either way.
+- runFlow:
+    when:
+      visible: "Sign In"
+    commands:
+      - tapOn: "Sign In"
+
+# Native "Add Document" in-progress screen
+- assertVisible: "In progress"
+- tapOn: "OK"
+
+# Back to Documents tab — this is what starts the retry loop (see header
+# comment). The companion shell script waits after this flow returns, then
+# reads the app's own log file to check the actual retry timing.
+- tapOn:
+    id: "documents_tab"

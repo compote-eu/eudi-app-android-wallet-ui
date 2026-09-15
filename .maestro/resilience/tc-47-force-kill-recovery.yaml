@@ -1,0 +1,42 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-47 (part 1 of 3) — force-kill mid-flow recovery.
+#
+# Drives the UI up to a genuine mid-flow interruption point: inside the
+# mDL identity-proofing form's ASWebAuthenticationSession, with "FormEU"
+# selected as country of origin but the form not yet submitted. The
+# orchestrating shell script (tc-47-force-kill-recovery.sh) takes over
+# from here — it force-kills the app via `xcrun simctl terminate` (not a
+# graceful background, an actual kill, simulating a crash or OS-initiated
+# termination), relaunches it, then runs tc-47-verify-recovery.yaml to
+# confirm recovery. A pure Maestro flow structurally cannot do the
+# terminate/launch cycle itself: Maestro's runScript JS engine has no
+# process/exec capability at all (confirmed by decompiling
+# maestro-client.jar's GraalJsEngine during TC-32's development), so this
+# hand-off to a shell orchestrator is the same pattern TC-32 already
+# established for the same reason.
+#
+# Precondition: chained directly after TC-01 in the same simulator
+# session — PIN already set up, PID already issued, no real mDL yet.
+# tc-47-verify-recovery.yaml's own final assertion (no "mDL (MSO Mdoc)"
+# exists) depends on that precondition, so if wired into this suite's
+# full chain, TC-47 must run BEFORE TC-50 (which does issue a real one).
+
+- tapOn:
+    id: "documents_tab"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "options_screen_from_list_button"
+- extendedWaitUntil:
+    visible: "Certificate of Residence (MSO Mdoc)"
+    timeout: 15000
+- scroll
+- tapOn: "mDL (MSO Mdoc)"
+- tapOn: "Continue"
+- tapOn: "FormEU"

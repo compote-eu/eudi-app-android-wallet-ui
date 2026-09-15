@@ -1,0 +1,45 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-32 (part 2 of 2) — UI-level confirmation that a fresh reinstall looks
+# like a genuine first run, not just an app that happens to have no
+# documents.
+#
+# This is invoked by tc-32-reinstall-wipe.sh AFTER it has already:
+#   1. confirmed the Keychain had documents before anything happened,
+#   2. uninstalled the app and confirmed the Keychain STILL had those same
+#      documents (the stale-data condition TC-30 already found),
+#   3. reinstalled and launched the app fresh, and
+#   4. confirmed the Keychain now has ZERO rows for this app's access group.
+# This flow only covers the remaining, UI-observable half of that: that the
+# app's own UI matches what the storage-level check already proved, rather
+# than e.g. showing a "Welcome back!" re-auth screen (which would mean the
+# app still recognizes this as an existing, previously-set-up wallet despite
+# the Keychain being empty underneath - a genuinely different, worse bug).
+#
+# "Welcome to your wallet" (first-run PIN setup), not "Welcome back!"
+# (re-auth) is the specific text asserted below - see tc-01-pid-issuance.yaml
+# and this same distinction observed directly during TC-26's exploration,
+# where an app relaunch after backgrounding showed "Welcome back!" instead.
+
+- assertVisible: "Welcome to your wallet"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- assertVisible:
+    id: "success_screen_title"
+- tapOn:
+    id: "success_screen_primary_button"
+
+# --- Verify: Documents list is genuinely empty, not just freshly loading ---
+- tapOn:
+    id: "documents_tab"
+- assertVisible: "No results"
+- assertVisible: "No documents found. Try changing your search or filters."

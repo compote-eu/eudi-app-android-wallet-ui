@@ -1,0 +1,156 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-50 — mDL issuance (no existing PID required)
+#
+# Precondition: app already unlocked (PIN done in a prior TC-01 run in
+#   the same simulator session — this flow does NOT re-do PIN setup).
+# Steps: Documents tab -> "+" -> choose from list -> mDL (MSO Mdoc) ->
+#   mock identity-proofing form (FormEU test issuer) -> Authorize
+# Expected: mDL is issued and visible in Documents list.
+
+# --- Dashboard -> Documents -> Add -> Choose from list ---
+- tapOn:
+    id: "documents_tab"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "options_screen_from_list_button"
+
+# --- Select mDL (matched by stable visible text, not the row's own id —
+#     same reasoning as TC-01: the row id includes a volatile per-document
+#     suffix, so text is the stable selector here) ---
+- scroll
+- tapOn: "mDL (MSO Mdoc)"
+
+# --- ASWebAuthenticationSession system consent (one-time per app/device
+#     pairing per TC-01's notes — expected to already be granted here) ---
+- tapOn: "Continue"
+
+# --- Mock identity-proofing form (ec.dev.issuer.eudiw.dev, FormEU test
+#     issuer) — same external test-issuer pattern as TC-01, not part of
+#     this app, rendered inside the ASWebAuthenticationSession ---
+- tapOn: "FormEU"
+- scroll
+- tapOn: "Submit"
+
+# --- Birth Date field: opens a native UIDatePicker; today's date is
+#     accepted by this test-only issuer, so no manual date-wheel
+#     scrolling is needed ---
+- tapOn:
+    point: 14%,60%
+- tapOn: "August 2026"
+- tapOn: "Done"
+
+# --- Document/ID number field ---
+- tapOn:
+    point: 14%,71%
+- inputText: "123456789"
+- tapOn: "Done"
+
+# --- Issuing country field ---
+- tapOn:
+    point: 32%,61%
+- inputText: "SK"
+- tapOn: "Done"
+
+# --- Family name / Given name ---
+# NOT CONFIRMED RELIABLE YET. Anchored by label text (`below:`), not
+# fixed percentage points: this form's scroll distance isn't perfectly
+# reproducible run-to-run (a single `scroll` here was observed landing
+# at a wildly different post-scroll position across two otherwise-
+# identical fresh runs — confirmed via a debug hierarchy dump showing
+# Family Name at 56.8% and Given Name at 67.0% down the screen in one
+# run, versus the ~38-42% this block used to assume). `below:` fixed
+# that specific symptom in isolation, but investigation afterward found
+# a deeper, still-unresolved issue: the mock issuer's Driving
+# Privileges/Codes section renders a DIFFERENT field structure between
+# sessions (sometimes a pre-filled "Vehicle Category Code: AM" dropdown
+# needing no input, sometimes empty "Code"/"Sign"/"Value" text fields
+# requiring manual entry) — confirmed by direct screenshot comparison
+# across runs. No fixed selector approach (point-based or `below:`) can
+# be reliable against a form whose shape isn't consistent, and this
+# hasn't been fixed yet. Family Name is filled before Given Name here
+# since it's the field that appears first/higher on screen, matching
+# visual order — the previous version did Given Name first despite
+# Family Name being above it. Dismissing the keyboard ("Done") before
+# moving to the next field keeps each `below:` lookup working against a
+# settled, keyboard-down layout rather than one still shifting from the
+# prior field's focus.
+- scroll
+- tapOn:
+    below: "Family Name"
+- inputText: "Hrasko"
+- tapOn: "Done"
+- tapOn:
+    below: "Given Name"
+- inputText: "Janko"
+- tapOn: "Done"
+
+# --- Submit form, then authorize the wallet to receive the credential ---
+- scroll
+- tapOn: "Confirm"
+- scroll
+- scroll
+- tapOn: "Authorize"
+
+# --- System identity-verification permission (first grant for THIS
+#     document type; optional) ---
+# "Allow 'EUDI Wallet' for Identity Verification?" — same dialog family
+# as TC-01's own "Allow" (identity-document-services) and TC-22's "Open
+# in EUDI Wallet?" (deep link), same defensive/optional treatment. This
+# is NOT simply "one dialog per app, already satisfied by TC-01" — it
+# recurred here even though TC-01 (PID) already ran earlier in the same
+# chain and already dismissed its own copy of this dialog. Cross-checked
+# against EudiWallet.entitlements:
+# com.apple.developer.identity-document-services.document-provider.mobile-document-types
+# declares FIVE separate document types (org.iso.18013.5.1.mDL,
+# eu.europa.ec.eudi.pid.1, eu.europa.ec.av.1, org.iso.23220.photoid.1,
+# org.iso.23220.1.jp.mnc) — the OS appears to register/prompt for this
+# permission per distinct mobile-document-type, not once globally per
+# bundle ID, so PID's grant (TC-01) does not cover mDL's (here). Any
+# future flow issuing one of the three still-unused declared types (AV,
+# photoid, jp.mnc) for the first time should expect this same one-time
+# prompt and needs the same handling.
+#
+# Same erase-vs-reinstall distinction already established for the
+# related Keychain rows (see CLAUDE.md's "fresh reinstall always leaves
+# exactly 2 Keychain rows" pitfall, which is this same OS-level
+# document-provider registration bookkeeping): a genuine `simctl erase`
+# wipes that registration state back to 0, so this prompt is expected to
+# reappear after an erase; a plain uninstall/reinstall without erase
+# does not reset it (matches TC-01's own note for its copy of this
+# dialog), so it should stay granted for the remainder of a long-lived
+# simulator session like this one.
+- extendedWaitUntil:
+    visible:
+      text: "Allow"
+    timeout: 20000
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
+
+# --- Native "Add Document" success screen -> Done ---
+- assertVisible: "mDL (MSO Mdoc)"
+- tapOn: "Done"
+
+# --- Verify: mDL appears in Documents list with a validity date ---
+# extendedWaitUntil (not a plain assertVisible) because the Documents list
+# takes a moment to refresh right after "Done" — same observed flake as
+# TC-01, not a real failure.
+- extendedWaitUntil:
+    visible: "mDL (MSO Mdoc)"
+    timeout: 10000
+# Maestro's text selectors are a FULL-STRING regex match (Pattern.matches),
+# not a substring search — "Valid until" alone only matches a node whose
+# entire accessible text equals exactly that. The real node text is
+# "Valid until 09 Nov 2026" (confirmed via the screenshot showing both mDL
+# and PID cards with matching validity dates), so the pattern needs an
+# explicit date-shaped suffix rather than relying on implicit substring
+# matching — same fix already proven to work in TC-01.
+- assertVisible: "Valid until \\d{2} \\w{3} \\d{4}"

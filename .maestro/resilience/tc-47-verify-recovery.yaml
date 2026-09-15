@@ -1,0 +1,35 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-47 (part 2 of 3) — force-kill mid-flow recovery.
+#
+# Runs after the orchestrating script (tc-47-force-kill-recovery.sh) has
+# already force-killed the app mid-flow (via `xcrun simctl terminate`,
+# not a graceful background) and relaunched it. Confirmed live during
+# this test's development: a fresh launch after a force-kill always lands
+# on the PIN re-auth screen ("Welcome back!"), identical to what a
+# graceful background/relaunch shows — the app doesn't distinguish
+# "backgrounded" from "killed," it just re-requires the PIN on any fresh
+# process start. This is the CONSISTENT recovery state being verified
+# here: not a resumed mDL flow (there is none to resume — the app has no
+# record of the abandoned attempt once its process is gone), and not a
+# stuck/crashed/corrupted UI either.
+- assertVisible: "Welcome back!"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- tapOn:
+    id: "documents_tab"
+
+# Confirm the interrupted mDL attempt left no partial/corrupted document
+# behind: per this test's own precondition (chained directly after
+# TC-01), only the PID documents should exist, and no real "mDL (MSO
+# Mdoc)" should have been created from the abandoned, never-submitted
+# identity-proofing form.
+- assertVisible: "PID (MSO Mdoc)"
+- assertVisible: "PID (SD-JWT VC)"
+- assertNotVisible: "mDL (MSO Mdoc)"

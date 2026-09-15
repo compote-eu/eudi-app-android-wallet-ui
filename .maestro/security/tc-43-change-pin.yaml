@@ -1,0 +1,118 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-43 — change PIN code.
+#
+# Verifies a user can change their PIN via the side menu, the new PIN
+# works after a relaunch, and the old PIN no longer does.
+#
+# Precondition: app already unlocked with a known PIN (123456). Does NOT
+# depend on any document existing — chained to run LAST in this suite's
+# job, immediately after TC-32 (see chain-position note below), whose own
+# flow leaves the app in exactly this state (fresh PIN setup, 123456,
+# empty Documents list) after its reinstall-wipe verification.
+#
+# Entry point (captured live, not assumed): the hamburger/menu icon
+# top-left (no stable id — tapped by point, same as this suite's other
+# menu-icon taps) opens a side menu with two items: "Change pin" and
+# "Settings". "Change pin" is directly there, no separate Settings
+# screen needed. Neither item has a resource-id/accessibilityIdentifier
+# (confirmed via a live hierarchy dump), so both are matched by text.
+#
+# The change-PIN screen reuses the exact same pin_text_field_0..5 ids as
+# TC-01's initial PIN setup (confirmed via hierarchy dump), in this exact
+# sequence: current PIN -> new PIN ("Set a pin for future login") ->
+# confirm new PIN ("Confirm PIN", re-enter) -> success screen (reuses
+# TC-01's own "success_screen_title" id) with a "Back to home" button
+# (text only, no id).
+#
+# ⚠️ CHAIN-POSITION — runs AFTER TC-32, not before it:
+#   Originally wired between TC-30 and TC-32. Moved after live testing
+#   showed TC-32's post-reinstall Keychain count landing on 2 instead of
+#   0 when TC-43 ran immediately before it. That was initially suspected
+#   to be TC-43's own doing (its single deliberate wrong-PIN attempt
+#   writes a KeychainPinThrottleProvider entry), but was later DISPROVEN
+#   by an isolated TC-01->TC-32 run with TC-43 never in the chain at
+#   all, which showed the identical 2-row leftover. The actual root
+#   cause (confirmed via a live entitlement-removal experiment — see
+#   tc-32-reinstall-wipe.sh's own comments and CLAUDE.md's pitfalls
+#   section) is OS-managed IdentityDocumentServices/ExtensionKit
+#   registration bookkeeping for EudiReferenceWalletIDProvider, entirely
+#   unrelated to TC-43 or TC-47. tc-32-reinstall-wipe.sh's assertion now
+#   correctly allows up to 2 known-benign rows, so TC-43 could in
+#   principle move back to its original position without causing a
+#   false TC-32 failure. It stays here for now since this position is
+#   still correct and harmless — TC-43 doesn't depend on any document
+#   existing, so running last (after TC-32 wipes everything) costs it
+#   nothing, and TC-32's own flow already leaves the app unlocked with a
+#   freshly-set PIN (123456) and no documents, which is exactly this
+#   flow's own precondition.
+#
+# Safety note on testing the old PIN (investigated before attempting
+# this live, not guessed): KeychainPinThrottleProvider only starts a
+# timed lockout after 3 CONSECUTIVE wrong attempts (maxFailedPinAttempts
+# = 3, escalating 30s/90s/300s delays — Modules/logic-authentication/
+# Sources/Config/AuthenticationConfig.swift) — there is no attempt cap
+# that wipes or resets wallet data anywhere in this app's code. A single
+# wrong attempt just shows an inline "Invalid pin" error with zero side
+# effects beyond incrementing a counter that a subsequent correct entry
+# resets to zero. This flow deliberately enters the old PIN exactly
+# ONCE, then immediately recovers with the correct new PIN — never a
+# 2nd or 3rd consecutive wrong attempt, avoiding the lockout entirely.
+
+# --- Change PIN via the side menu ---
+- tapOn:
+    point: "9%, 8%"
+- tapOn: "Change pin"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "654321"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "654321"
+- assertVisible:
+    id: "success_screen_title"
+- tapOn: "Back to home"
+
+# --- Verify the NEW PIN works after a relaunch ---
+# Asserts by id (home_tab_screen_username_text, confirmed via hierarchy
+# dump), not text: Home's greeting reads "Welcome" alone here, not
+# "Welcome, <name>", since this flow runs after TC-32, which wipes all
+# documents including the PID, leaving no name to greet with (confirmed
+# live - the original "Welcome, Maestro" text assertion, written when
+# this test chained directly after TC-01 with a PID present, failed here
+# for exactly this reason). The id is stable either way, regardless of
+# what text/name ends up in it.
+- stopApp
+- launchApp
+- assertVisible: "Welcome back!"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "654321"
+- assertVisible:
+    id: "home_tab_screen_username_text"
+
+# --- Verify the OLD PIN no longer works (single attempt only - see
+# safety note above) ---
+- stopApp
+- launchApp
+- assertVisible: "Welcome back!"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- assertVisible: "Invalid pin"
+
+# --- Recover with the correct new PIN, leaving the app unlocked and the
+# failure counter reset for anything that runs after this flow ---
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "654321"
+- assertVisible:
+    id: "home_tab_screen_username_text"
