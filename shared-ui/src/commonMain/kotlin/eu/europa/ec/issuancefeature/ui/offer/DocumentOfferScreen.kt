@@ -136,7 +136,8 @@ fun DocumentOfferScreen(
             ConsentStickyBottomSection(
                 modifier = Modifier.fillMaxWidth(),
                 paddingValues = paddingValues,
-                buttonsTestTag = TestTag.DocumentOfferScreen.BUTTON,
+                primaryButtonTestTag = TestTag.DocumentOfferScreen.PRIMARY_BUTTON,
+                cancelButtonTestTag = TestTag.DocumentOfferScreen.SECONDARY_BUTTON,
                 // Issuance has no registration warning: an offer whose registration is refused
                 // never reaches this screen — the resolve gate turns it into IssuerNotTrusted.
                 warningSection = null,

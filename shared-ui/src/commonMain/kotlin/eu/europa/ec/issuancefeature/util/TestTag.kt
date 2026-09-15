@@ -25,6 +25,7 @@ object TestTag {
     }
 
     object DocumentOfferScreen {
-        const val BUTTON = "document_offer_screen_button"
+        const val PRIMARY_BUTTON = "document_offer_screen_primary_button"
+        const val SECONDARY_BUTTON = "document_offer_screen_secondary_button"
     }
 }

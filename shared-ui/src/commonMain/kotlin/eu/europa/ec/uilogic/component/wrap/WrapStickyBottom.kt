@@ -38,6 +38,13 @@ sealed interface StickyBottomType {
         val primaryButtonConfig: ButtonConfig,
         val secondaryButtonConfig: ButtonConfig,
         val secondaryButtonContent: @Composable RowScope.() -> Unit,
+        /**
+         * Applied on top of the `Modifier.weight(1f)` each button already gets below — a test tag
+         * on the outer [WrapStickyBottomContent] `modifier` param only reaches the row containing
+         * *both* buttons, with no way to select one of the two individually.
+         */
+        val primaryButtonModifier: Modifier = Modifier,
+        val secondaryButtonModifier: Modifier = Modifier,
     ) : StickyBottomType
 
     data object Generic : StickyBottomType
@@ -102,13 +109,13 @@ fun WrapStickyBottomContent(
                     horizontalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp)
                 ) {
                     WrapButton(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).then(stickyBottomType.secondaryButtonModifier),
                         buttonConfig = stickyBottomType.secondaryButtonConfig
                     ) {
                         stickyBottomType.secondaryButtonContent(this)
                     }
                     WrapButton(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).then(stickyBottomType.primaryButtonModifier),
                         buttonConfig = stickyBottomType.primaryButtonConfig
                     ) {
                         content()

@@ -66,7 +66,8 @@ data class ConsentWarningSection(
 fun ConsentStickyBottomSection(
     modifier: Modifier,
     paddingValues: PaddingValues,
-    buttonsTestTag: String,
+    primaryButtonTestTag: String,
+    cancelButtonTestTag: String,
     warningSection: ConsentWarningSection?,
     primaryButtonText: String,
     cancelButtonText: String,
@@ -108,7 +109,6 @@ fun ConsentStickyBottomSection(
 
             WrapStickyBottomContent(
                 modifier = Modifier
-                    .applyTestTag(buttonsTestTag)
                     .fillMaxWidth()
                     .padding(top = SPACING_LARGE.dp),
                 stickyBottomConfig = StickyBottomConfig(
@@ -126,6 +126,10 @@ fun ConsentStickyBottomSection(
                         secondaryButtonContent = {
                             Text(text = cancelButtonText)
                         },
+                        // Two distinct tags, not one on the row containing both: a test needs to
+                        // select Accept/Share without also matching Cancel, and vice versa.
+                        primaryButtonModifier = Modifier.applyTestTag(primaryButtonTestTag),
+                        secondaryButtonModifier = Modifier.applyTestTag(cancelButtonTestTag),
                     ),
                     showDivider = false,
                 )
@@ -147,7 +151,8 @@ private fun ConsentStickyBottomSectionWithWarningPreview() {
         ConsentStickyBottomSection(
             modifier = Modifier.fillMaxWidth(),
             paddingValues = PaddingValues(SPACING_MEDIUM.dp),
-            buttonsTestTag = "buttons",
+            primaryButtonTestTag = "primary_button",
+            cancelButtonTestTag = "cancel_button",
             warningSection = ConsentWarningSection(
                 registrationWarning = RegistrationWarningUi(
                     variant = RegistrationWarningVariantUi.NOT_VERIFIED,
@@ -176,7 +181,8 @@ private fun ConsentStickyBottomSectionWithoutWarningPreview() {
         ConsentStickyBottomSection(
             modifier = Modifier.fillMaxWidth(),
             paddingValues = PaddingValues(SPACING_MEDIUM.dp),
-            buttonsTestTag = "buttons",
+            primaryButtonTestTag = "primary_button",
+            cancelButtonTestTag = "cancel_button",
             warningSection = null,
             primaryButtonText = "Share",
             cancelButtonText = "Cancel",
