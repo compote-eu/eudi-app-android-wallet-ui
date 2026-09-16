@@ -49,6 +49,14 @@ sealed class PresentationRequestInteractorPartialState {
 interface PresentationRequestInteractor : ScopedPresentationInteractor {
     fun getRequestDocuments(): Flow<PresentationRequestInteractorPartialState>
     fun stopPresentation()
+
+    /**
+     * Tells the verifier the user declined.
+     *
+     * Separate from [stopPresentation], which is teardown and runs on every exit — including after a
+     * successful share, where sending a rejection would be wrong.
+     */
+    fun rejectPresentation()
     fun updateRequestedDocuments(selectedCombination: RequestCombinationUi?)
     fun setConfig(config: RequestUriConfig, intentAction: IntentAction?)
 }

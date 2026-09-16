@@ -80,6 +80,22 @@ internal class IosPresentationRequestInteractor(
         coordinator.updateSelection(selectedCombination)
 
     override fun stopPresentation() = coordinator.cancel()
+
+    /**
+     * Tears the exchange down **without telling the verifier**, which is not yet parity with Android.
+     *
+     * multipaz has no rejection mechanism at all: `OpenID4VP.generateResponse` throws
+     * `PresentmentCanceledException` when consent comes back null, and `access_denied` does not appear
+     * anywhere in its sources — so nothing is posted and the verifier's transaction simply waits.
+     * Measured against the dev verifier on 2026-09-16, and Android sends the rejection as of this
+     * change.
+     *
+     * ⛔ Deliberately a plain cancel rather than a silent no-op: the local teardown still has to
+     * happen, and pretending the verifier was told would be worse than the gap itself. Closing it
+     * needs no multipaz fork — the request object carries `response_uri` and `state`, which is all a
+     * `POST error=access_denied` requires.
+     */
+    override fun rejectPresentation() = coordinator.cancel()
 }
 
 internal class IosPresentationLoadingInteractor(
