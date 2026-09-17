@@ -10,6 +10,9 @@
 // `--wallet-probe`; an ordinary launch touches none of this.
 package eu.europa.ec.shared.ui.harness
 
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.shared.ui.di.IosPreferences
+import eu.europa.ec.shared.ui.di.checkIssuerRegistration
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosTransactionKind
@@ -866,19 +869,31 @@ private suspend fun probeCredentialOffer(onResult: (String) -> Unit) {
     IosDeepLinks.deliver(offerUri)
     onResult("--- credential offer: pending=${IosDeepLinks.takePending() != null} ---")
 
+    // End-to-end means with the check ON: off is the default, and a run that left it off would prove
+    // only that the gate can be skipped. Restored below so the probe leaves no state behind.
+    val registrationCheckWasEnabled = IosPreferences.checkIssuerRegistration()
+    IosPreferences.setCheckIssuerRegistration(true)
+    onResult("registration check: on (was $registrationCheckWasEnabled)")
+
     val bridge = IosDocumentOfferPlatformBridge(
         offers = KoinPlatform.getKoin().get<IosCredentialOfferReader>(),
         credentialIssuer = IosCredentialIssuer(
             walletEngine = KoinPlatform.getKoin().get<IosWalletEngine>(),
             openAuthorizationUrl = { url -> onResult("AUTHORIZE-HERE $url") },
         ),
+        // ⛔ The SAME function the DI module supplies, not a stand-in: this run is the only place the
+        // registration gate is exercised against a live issuer through the production bridge.
+        checkRegistration = ::checkIssuerRegistration,
     )
 
     when (val resolution = bridge.resolveOffer(offerUri, bridge.localeTag())) {
-        is PlatformOfferResolution.Success -> onResult(
-            "offer resolved: ${resolution.documentNames} from '${resolution.issuerName}' " +
-                    "pid=${resolution.containsPid} txCode=${resolution.txCodeLength}"
-        )
+        is PlatformOfferResolution.Success -> {
+            onResult(
+                "offer resolved: ${resolution.documentNames} from '${resolution.issuerName}' " +
+                        "pid=${resolution.containsPid} txCode=${resolution.txCodeLength}"
+            )
+            onResult("issuer registration -> ${resolution.issuerRegistration.describe()}")
+        }
 
         is PlatformOfferResolution.NoDocuments -> onResult("offer resolved with no documents")
         is PlatformOfferResolution.IssuerNotTrusted -> onResult("offer issuer not trusted")
@@ -894,6 +909,17 @@ private suspend fun probeCredentialOffer(onResult: (String) -> Unit) {
         redirects.cancel()
         onResult("offer issuance -> $state")
     }
+    IosPreferences.setCheckIssuerRegistration(registrationCheckWasEnabled)
+}
+
+/** One line per outcome, so a console run says which branch the gate took. */
+private fun IssuerRegistrationDomain.describe(): String = when (this) {
+    is IssuerRegistrationDomain.Verified ->
+        "VERIFIED '${details.tradeName}' (${details.uniqueId}) use='${details.intendedUse}'"
+
+    is IssuerRegistrationDomain.Blocked -> "BLOCKED $reason ('${details.tradeName}')"
+    is IssuerRegistrationDomain.NotVerified -> "NOT VERIFIED $reason"
+    is IssuerRegistrationDomain.NotEvaluated -> "not evaluated"
 }
 
 /** Percent-encodes a query-parameter value; the offer travels inside one. */

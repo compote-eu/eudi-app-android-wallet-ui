@@ -16,6 +16,11 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOffer
+import eu.europa.ec.shared.wallet.multipaz.IosIssuerRegistrationChecker
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.darwin.Darwin
 import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.businesslogic.validator.FilterValidatorImpl
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
@@ -293,7 +298,28 @@ fun provideIosDocumentOfferPlatformBridge(
 ): DocumentOfferPlatformBridge = IosDocumentOfferPlatformBridge(
     offers = offers,
     credentialIssuer = credentialIssuer,
+    checkRegistration = ::checkIssuerRegistration,
 )
+
+/**
+ * Checks an issuer's registration certificate: fetch its metadata, verify the certificate against the
+ * EU lists, and say whether it covers what this offer contains.
+ *
+ * 🚨 **This lives in the DI module on purpose, not as a default on the bridge.** It reaches
+ * `IosEtsiTrust`, and the trust stack reaches the `PKIXBridge` cinterop whose Swift half only an Xcode
+ * target supplies. A reference from the bridge would make that reachable from every test binary in this
+ * module and none of them would link. Here, nothing a test constructs pulls it in.
+ */
+internal suspend fun checkIssuerRegistration(
+    offer: IosCredentialOffer,
+    locale: String,
+): IssuerRegistrationDomain = HttpClient(Darwin).use { client ->
+    IosIssuerRegistrationChecker(client)
+        // Only what this offer contains: an issuer may publish more than it is offering, and judging
+        // it on the rest would refuse it for something the user was never shown.
+        .check(issuerUrl = offer.issuerUrl, configurationIds = offer.configurationIds.toSet())
+        .toDomain(locale)
+}
 
 @Factory
 fun provideIosDocumentOfferInteractor(

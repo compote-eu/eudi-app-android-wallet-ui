@@ -18,6 +18,7 @@ import SwiftUI
 #if DEBUG
 // Probe entry points exist only in non-Release framework builds — see the `iosProbeMain` source sets.
 import class SharedKit.DeferredDPoPProbeKt
+import class SharedKit.IssuerRegistrationProbeKt
 import class SharedKit.DeferredIssuanceProbeKt
 import class SharedKit.WalletEngineProbeKt
 #endif
@@ -63,6 +64,16 @@ private let dpopProbeArgument = "--dpop-probe"
 ///
 ///     xcrun simctl launch --console-pty <device> <bundle-id> --deferred-probe
 private let deferredProbeArgument = "--deferred-probe"
+
+/// Launch argument that checks an issuer's ETSI registration certificate, and nothing else.
+///
+/// Answers the two questions a unit test structurally cannot: whether the live certificate's signer is
+/// trusted by the EU WRPRC list, and whether its status list — on a *different host* from the issuer —
+/// can be read at all. Both failures are closed ones, so an unreadable status list refuses a
+/// correctly-registered issuer.
+///
+///     xcrun simctl launch --console-pty <device> <bundle-id> --registration-probe [issuer-url]
+private let registrationProbeArgument = "--registration-probe"
 
 /// Sweeps parked deferred documents through the app's own Koin graph, bridge and interactor.
 private let deferredSweepArgument = "--deferred-sweep"
@@ -322,6 +333,16 @@ struct iOSApp: App {
                 sdJwt: arguments.contains("sdjwt")
             ) { line in
                 print("DEFERRED-PROBE: \(line)")
+            }
+            return
+        }
+
+        if let flag = arguments.firstIndex(of: registrationProbeArgument) {
+            let issuer = arguments.count > flag + 1 && !arguments[flag + 1].hasPrefix("-")
+                ? arguments[flag + 1]
+                : "https://dev.issuer-backend.eudiw.dev"
+            IssuerRegistrationProbeKt.probeIssuerRegistration(issuerUrl: issuer) { line in
+                print("REGISTRATION-PROBE: \(line)")
             }
             return
         }
