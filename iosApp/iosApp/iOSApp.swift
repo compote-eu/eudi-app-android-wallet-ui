@@ -19,6 +19,7 @@ import SwiftUI
 // Probe entry points exist only in non-Release framework builds — see the `iosProbeMain` source sets.
 import class SharedKit.DeferredDPoPProbeKt
 import class SharedKit.IssuerRegistrationProbeKt
+import class SharedKit.X5ChainProbeKt
 import class SharedKit.DeferredIssuanceProbeKt
 import class SharedKit.WalletEngineProbeKt
 #endif
@@ -333,6 +334,13 @@ struct iOSApp: App {
                 sdJwt: arguments.contains("sdjwt")
             ) { line in
                 print("DEFERRED-PROBE: \(line)")
+            }
+            return
+        }
+
+        if arguments.contains("--x5chain-probe") {
+            X5ChainProbeKt.probeIssuerChains { line in
+                print("X5CHAIN-PROBE: \(line)")
             }
             return
         }
