@@ -820,9 +820,14 @@ private suspend fun probeIssuance(onResult: (String) -> Unit) {
     }
 }
 
-/** The harness half: a host script writes the redirect here, and this hands it to the issuer. */
+/**
+ * The harness half: a host script writes the redirect here, and this hands it to the issuer.
+ *
+ * `internal` so the deferred-issuance probe can reuse it rather than keeping a second copy of the
+ * file-polling contract `keycloak-login-script.py` writes against.
+ */
 @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
-private suspend fun deliverRedirectFromFile(onResult: (String) -> Unit) {
+internal suspend fun deliverRedirectFromFile(onResult: (String) -> Unit) {
     val path = NSHomeDirectory() + "/Documents/authorization-redirect.txt"
     val manager = NSFileManager.defaultManager
     // A file left from a previous run holds a spent authorization code.

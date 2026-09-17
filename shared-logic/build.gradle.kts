@@ -126,6 +126,16 @@ kotlin {
         // this module, so the flavour is decided in one place.
         iosMain {
             kotlin.srcDir("src/ios${appFlavor.directorySuffix}Main/kotlin")
+        // Probes are DEVELOPER TOOLING and must not reach a shipped binary: they drive real issuance
+        // against real issuers, seed fixtures and print diagnostics. They compile for every build
+        // EXCEPT a Release one, which is the only kind a user ever receives. Xcode passes
+        // `CONFIGURATION` to the framework build, so the decision is made where the app is actually
+        // assembled; a plain Gradle run (tests, CI) has no such variable and keeps them, which is what
+        // a developer wants. ⛔ Do not move probe code back into `iosMain`.
+        val isReleaseBuild = providers.environmentVariable("CONFIGURATION").orNull == "Release"
+        if (!isReleaseBuild) {
+            kotlin.srcDir("src/iosProbeMain/kotlin")
+        }
         }
         // Tests get a flavour directory too, and for a reason that is not symmetry for its own sake:
         // a test that branched on `iosWalletConfig.appFlavor` to decide what to expect would pass

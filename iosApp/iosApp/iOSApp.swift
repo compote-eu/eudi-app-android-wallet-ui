@@ -15,7 +15,12 @@
  */
 
 import SwiftUI
+#if DEBUG
+// Probe entry points exist only in non-Release framework builds — see the `iosProbeMain` source sets.
+import class SharedKit.DeferredDPoPProbeKt
+import class SharedKit.DeferredIssuanceProbeKt
 import class SharedKit.WalletEngineProbeKt
+#endif
 import class SharedKit.IosFirstRunWipeKt
 import class SharedKit.IosDevicePasscodeKt
 import class SharedKit.IosAuthorizationRedirects
@@ -36,6 +41,31 @@ import class SharedKit.IosDocumentRegistration
 ///
 ///     xcrun simctl launch --console-pty <device> <bundle-id> --wallet-probe
 private let walletProbeArgument = "--wallet-probe"
+
+/// Launch argument that runs the deferred-issuance DPoP probe, and nothing else.
+///
+/// Separate from `--wallet-probe` because it answers one narrow question — does a live EU issuer
+/// accept a DPoP proof signed by a key in the **Secure Enclave**? — and needs no fixtures, no PIN and
+/// no interactive authorization. It takes the dev realm's test account as the next two arguments, so
+/// no credentials are written into the binary:
+///
+///     xcrun simctl launch --console-pty <device> <bundle-id> --dpop-probe <username> <password>
+///
+/// The question can only be asked here: a bare Kotlin/Native test binary is unsigned, so the Secure
+/// Enclave refuses to create a key at all.
+private let dpopProbeArgument = "--dpop-probe"
+
+/// Launch argument that runs the deferred-issuance journey end to end against the live dev issuer.
+///
+/// Issues a real document with a `*_deferred` configuration, checks it parks, then collects it. Needs
+/// `keycloak-login-script.py` running alongside to answer the `AUTHORIZE-HERE` line, exactly as
+/// `--wallet-probe` does.
+///
+///     xcrun simctl launch --console-pty <device> <bundle-id> --deferred-probe
+private let deferredProbeArgument = "--deferred-probe"
+
+/// Sweeps parked deferred documents through the app's own Koin graph, bridge and interactor.
+private let deferredSweepArgument = "--deferred-sweep"
 
 /// Receives URLs opened on the app: the OpenID4VCI authorization redirect, credential offers, and a
 /// verifier's OpenID4VP presentation request.
@@ -274,11 +304,44 @@ struct iOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
-        guard ProcessInfo.processInfo.arguments.contains(walletProbeArgument) else { return }
+        // Probes are developer tooling and are compiled out of Release builds entirely, along with the
+        // Kotlin that backs them. A shipped wallet therefore cannot be asked to run one, whatever
+        // arguments it is launched with.
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains(deferredSweepArgument) {
+            DeferredIssuanceProbeKt.probeDeferredSweep { line in
+                print("DEFERRED-SWEEP: \(line)")
+            }
+            return
+        }
+
+        if arguments.contains(deferredProbeArgument) {
+            // `--deferred-probe sdjwt` exercises the SD-JWT encoding branch instead of the mdoc one.
+            DeferredIssuanceProbeKt.probeDeferredIssuance(
+                sdJwt: arguments.contains("sdjwt")
+            ) { line in
+                print("DEFERRED-PROBE: \(line)")
+            }
+            return
+        }
+
+        if let flag = arguments.firstIndex(of: dpopProbeArgument), arguments.count > flag + 2 {
+            DeferredDPoPProbeKt.probeDeferredDPoP(
+                username: arguments[flag + 1],
+                password: arguments[flag + 2]
+            ) { line in
+                print("DPOP-PROBE: \(line)")
+            }
+            return
+        }
+
+        guard arguments.contains(walletProbeArgument) else { return }
 
         WalletEngineProbeKt.probeMultipazWalletEngine { line in
             print("MULTIPAZ-ENGINE: \(line)")
         }
+        #endif
     }
 
     var body: some Scene {

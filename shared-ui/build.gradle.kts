@@ -188,6 +188,17 @@ kotlin {
             // Kotlin side there cannot depend on it, so neither platform carries the other's.
             implementation(libs.rqes.ui.sdk)
         }
+        iosMain {
+            // Probes are DEVELOPER TOOLING and must not reach a shipped binary: they drive real
+            // issuance against real issuers, seed fixtures and print diagnostics. They compile for
+            // every build EXCEPT a Release one, which is the only kind a user receives. Xcode passes
+            // `CONFIGURATION` to the framework build, so the decision is made where the app is
+            // actually assembled; a plain Gradle run (tests, CI) has no such variable and keeps them,
+            // which is what a developer wants. ⛔ Do not move probe code back into `iosMain`.
+            if (providers.environmentVariable("CONFIGURATION").orNull != "Release") {
+                kotlin.srcDir("src/iosProbeMain/kotlin")
+            }
+        }
         // No iosMain.dependencies block: iOS adds nothing of its own any more. The Compose UI
         // artifacts moved to commonMain with the first shared screen, and the navigation host's
         // pieces followed when `AppNavDisplay` became shared.
