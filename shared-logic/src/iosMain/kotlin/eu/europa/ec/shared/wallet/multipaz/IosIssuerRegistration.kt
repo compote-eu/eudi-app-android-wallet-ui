@@ -69,6 +69,14 @@ data class IssuerRegistration(
     /** `srv_description`, same shape as [purpose]. */
     val serviceDescription: List<LocalizedText>,
     val providedAttestations: List<RegisteredAttestation>,
+    /**
+     * `credentials` — what the subject is registered to handle, **with the claim paths**.
+     *
+     * Distinct from [providedAttestations] (`provides_attestations`), which an issuer certificate also
+     * carries and which names attestations without claims. A *verifier's* certificate has only this
+     * one, and its claim paths are what an over-asking check compares against.
+     */
+    val registeredCredentials: List<RegisteredAttestation>,
     val status: StatusReference?,
     val expiresAt: Instant?,
     /** Present when the certificate is held by an intermediary presenting on the issuer's behalf. */
@@ -89,6 +97,8 @@ data class RegisteredAttestation(
     val format: String,
     val doctype: String? = null,
     val vctValues: List<String> = emptyList(),
+    /** Registered claim paths: `[namespace, element]` for mdoc, `[key, …]` for SD-JWT VC. */
+    val claimPaths: List<List<String>> = emptyList(),
 )
 
 /** An attestation the issuer is actually offering in this exchange. */
@@ -204,6 +214,9 @@ internal fun issuerRegistrationFrom(payload: JsonObject): IssuerRegistration {
         serviceDescription = payload["srv_description"].toLocalizedText(),
         providedAttestations = payload["provides_attestations"]?.jsonArray
             ?.mapNotNull { it.jsonObject.toRegisteredAttestation() }.orEmpty(),
+        registeredCredentials = payload["credentials"]?.jsonArray
+            ?.mapNotNull { runCatching { it.jsonObject }.getOrNull()?.toRegisteredAttestation() }
+            .orEmpty(),
         status = payload["status"]?.jsonObject?.get("status_list")?.jsonObject?.let { list ->
             val uri = list["uri"]?.jsonPrimitive?.contentOrNull
             val idx = list["idx"]?.jsonPrimitive?.intOrNull
@@ -234,5 +247,13 @@ private fun JsonObject.toRegisteredAttestation(): RegisteredAttestation? {
         doctype = meta?.get("doctype_value")?.jsonPrimitive?.contentOrNull,
         vctValues = meta?.get("vct_values")?.jsonArray
             ?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty(),
+        // 🪤 `claim`, singular, holding a list — the spelling the live certificates use.
+        claimPaths = this["claim"]?.jsonArray
+            ?.mapNotNull { entry ->
+                runCatching {
+                    entry.jsonObject["path"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }
+                }.getOrNull()?.takeIf { it.isNotEmpty() }
+            }
+            .orEmpty(),
     )
 }

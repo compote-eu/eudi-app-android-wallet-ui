@@ -16,10 +16,12 @@
 
 package eu.europa.ec.shared.ui.di
 
+import platform.Foundation.languageCode
+import platform.Foundation.currentLocale
+import platform.Foundation.NSLocale
 import eu.europa.ec.shared.resources.document_success_banner_text
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.corelogic.model.RelyingPartyDomain
-import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
@@ -306,11 +308,11 @@ internal class IosRemotePresentationCoordinator(
 
         return if (combinationsUi.isEmpty()) {
             PresentationRequestInteractorPartialState.NoData(
-                relyingParty = relyingPartyDomain(),
+                relyingParty = relyingPartyDomain(NSLocale.currentLocale.languageCode),
             )
         } else {
             PresentationRequestInteractorPartialState.Success(
-                relyingParty = relyingPartyDomain(),
+                relyingParty = relyingPartyDomain(NSLocale.currentLocale.languageCode),
                 combinationsUi = combinationsUi,
                 // multipaz builds the response from the claims the selection carries, so unticking a
                 // row really does keep it out of the response — see `CredentialPresentmentData.toSelection`.
@@ -323,16 +325,21 @@ internal class IosRemotePresentationCoordinator(
 }
 
 /**
- * The requester as iOS knows it. [RegistrationStatusDomain.NotEvaluated] is the honest value, not a
- * placeholder: the issuer and relying-party registration policies live in
+ * The requester as iOS knows it.
+ *
+ * ⚠️ This comment used to read: *"the issuer and relying-party registration policies live in
  * `eudi-lib-android-wallet-core`, which has no iOS counterpart and no multipaz equivalent, so no
- * registration certificate is ever evaluated here. `hasTrustedAccessCertificate` follows what
- * multipaz reports, which is false today because `resolveTrustFn` is never supplied.
+ * registration certificate is ever evaluated here"*, and *"`hasTrustedAccessCertificate` … is false
+ * today because `resolveTrustFn` is never supplied"*. **Both halves have since become false** — the
+ * trust function is supplied (see `WalletPresentmentSource`), and the registration certificate is read
+ * from the request object's `verifier_info` and judged against the same ETSI lists. Neither library is
+ * needed for it; `rc-wrp+jwt` is the relying-party format and multipaz's own JWT, X.509 and
+ * status-list primitives do the work.
  */
-private fun IosPresentmentRequest.relyingPartyDomain(): RelyingPartyDomain = RelyingPartyDomain(
+private fun IosPresentmentRequest.relyingPartyDomain(locale: String): RelyingPartyDomain = RelyingPartyDomain(
     name = requesterName,
     uniqueId = null,
     hasTrustedAccessCertificate = requesterIsTrusted,
     logoUri = null,
-    registration = RegistrationStatusDomain.NotEvaluated,
+    registration = relyingPartyRegistration.toDomain(locale),
 )

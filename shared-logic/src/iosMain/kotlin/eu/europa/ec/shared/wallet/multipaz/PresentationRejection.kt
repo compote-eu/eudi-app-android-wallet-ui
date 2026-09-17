@@ -35,9 +35,11 @@ import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.readRemaining
 import kotlinx.io.readByteArray
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.crypto.X509Cert
 import org.multipaz.util.Logger
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -56,6 +58,20 @@ internal class PresentationRequestNotice {
     var state: String? = null
         private set
 
+    /**
+     * The whole request object, kept because more than the rejection needs it.
+     *
+     * `verifier_info` — the verifier's registration certificate — is another claim multipaz does not
+     * parse, and this is already the one place the signed request object is opened. Fetching it again
+     * to read one more claim would risk the single-use `request_uri` for nothing.
+     */
+    var requestObject: JsonObject? = null
+        private set
+
+    /** The certificate that signed the request object; the registration must be bound to it. */
+    var requestSigner: X509Cert? = null
+        private set
+
     /** True once a request object has been seen and it named somewhere to answer. */
     val canReject: Boolean get() = responseUri != null
 
@@ -63,6 +79,11 @@ internal class PresentationRequestNotice {
         if (responseUri.isNullOrBlank()) return
         this.responseUri = responseUri
         this.state = state
+    }
+
+    fun remember(requestObject: JsonObject, signer: X509Cert?) {
+        this.requestObject = requestObject
+        this.requestSigner = signer
     }
 }
 
@@ -125,6 +146,11 @@ private fun String.rememberRequestObject(notice: PresentationRequestNotice) {
     notice.remember(
         responseUri = claims["response_uri"]?.jsonPrimitive?.contentOrNull,
         state = claims["state"]?.jsonPrimitive?.contentOrNull,
+    )
+    notice.remember(
+        requestObject = claims,
+        signer = runCatching { jwsCertificateChain(this) }.getOrNull()
+            ?.certificates?.firstOrNull(),
     )
 }
 

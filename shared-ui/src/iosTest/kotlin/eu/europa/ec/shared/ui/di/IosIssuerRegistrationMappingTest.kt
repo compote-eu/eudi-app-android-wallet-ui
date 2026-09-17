@@ -53,6 +53,7 @@ class IosIssuerRegistrationMappingTest {
         purpose = listOf(LocalizedText("en", "Identity verification"), LocalizedText("sk", "Overenie")),
         serviceDescription = listOf(LocalizedText("en", "PID issuer")),
         providedAttestations = emptyList(),
+        registeredCredentials = emptyList(),
         status = null,
         expiresAt = null,
         intermediaryIdentifier = null,

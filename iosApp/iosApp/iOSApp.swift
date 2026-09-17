@@ -339,10 +339,20 @@ struct iOSApp: App {
 
         if let flag = arguments.firstIndex(of: registrationProbeArgument) {
             let issuer = arguments.count > flag + 1 && !arguments[flag + 1].hasPrefix("-")
+                && arguments[flag + 1] != "verifier"
                 ? arguments[flag + 1]
                 : "https://dev.issuer-backend.eudiw.dev"
-            IssuerRegistrationProbeKt.probeIssuerRegistration(issuerUrl: issuer) { line in
-                print("REGISTRATION-PROBE: \(line)")
+            // `--registration-probe verifier` asks the relying-party half instead: it creates a real
+            // transaction against the dev verifier, because `verifier_info` lives only in a request
+            // object and never in any metadata document.
+            if arguments.contains("verifier") {
+                IssuerRegistrationProbeKt.probeRelyingPartyRegistration { line in
+                    print("REGISTRATION-PROBE: \(line)")
+                }
+            } else {
+                IssuerRegistrationProbeKt.probeIssuerRegistration(issuerUrl: issuer) { line in
+                    print("REGISTRATION-PROBE: \(line)")
+                }
             }
             return
         }

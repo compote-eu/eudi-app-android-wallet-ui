@@ -97,30 +97,8 @@ class IosIssuerRegistrationChecker internal constructor(
                 false
             }
 
-    private suspend fun currentStatusOf(reference: StatusReference): RevocationOutcome = runCatching {
-        val token = httpClient.get(reference.uri).bodyAsText().trim()
-
-        // 🪤 `StatusList.fromJwt(token)` on its own throws `IllegalArgumentException: Failed
-        // requirement.` — multipaz's `validateJwt` demands `publicKey != null || caValidated`, and its
-        // basic chain validator cannot anchor a self-contained `x5c`. So the signer is checked here,
-        // against the EU list meant for exactly this, and its key is handed in. wallet-core's status
-        // verifier does the same thing for the same reason.
-        val signer = jwsCertificateChain(token)?.certificates?.firstOrNull()
-            ?: return RevocationOutcome.Unknown("status list token carries no x5c")
-        val signerTrust = if (X509CertChain(listOf(signer)).isTrustedFor(STATUS_CONTEXT)) {
-            StatusSignerTrustDomain.Trusted
-        } else {
-            StatusSignerTrustDomain.NotTrusted
-        }
-
-        when (StatusList.fromJwt(token, publicKey = signer.ecPublicKey)[reference.index]) {
-            STATUS_VALID -> RevocationOutcome.Valid(signerTrust)
-            else -> RevocationOutcome.Invalid(signerTrust)
-        }
-    }.getOrElse {
-        Logger.w(TAG, "registration certificate status could not be read: ${it.message}")
-        RevocationOutcome.Unknown(it.message ?: "status list could not be read")
-    }
+    private suspend fun currentStatusOf(reference: StatusReference): RevocationOutcome =
+        registrationStatusOf(reference, httpClient) { chain -> chain.isTrustedFor(STATUS_CONTEXT) }
 
     private companion object {
         const val TAG = "IssuerRegistrationChecker"
@@ -175,3 +153,38 @@ fun offeredAttestationsIn(
             }
         }
         .orEmpty()
+
+
+/**
+ * The current status of a registration certificate, whichever side issued it.
+ *
+ * 🪤 `StatusList.fromJwt(token)` on its own throws `IllegalArgumentException: Failed requirement.` —
+ * multipaz's `validateJwt` demands `publicKey != null || caValidated`, and its basic chain validator
+ * cannot anchor a self-contained `x5c`. So the signer is checked by the caller, against the EU list
+ * meant for exactly this, and its key is handed in. wallet-core's status verifier does the same thing
+ * for the same reason.
+ *
+ * Shared by the issuer and relying-party validators because the mechanism is identical and the trap
+ * above is worth having in one place rather than two.
+ */
+internal suspend fun registrationStatusOf(
+    reference: StatusReference,
+    httpClient: HttpClient,
+    isSignerTrusted: suspend (X509CertChain) -> Boolean,
+): RevocationOutcome = runCatching {
+    val token = httpClient.get(reference.uri).bodyAsText().trim()
+    val signer = jwsCertificateChain(token)?.certificates?.firstOrNull()
+        ?: return RevocationOutcome.Unknown("status list token carries no x5c")
+    val signerTrust = if (isSignerTrusted(X509CertChain(listOf(signer)))) {
+        StatusSignerTrustDomain.Trusted
+    } else {
+        StatusSignerTrustDomain.NotTrusted
+    }
+    when (StatusList.fromJwt(token, publicKey = signer.ecPublicKey)[reference.index]) {
+        0 -> RevocationOutcome.Valid(signerTrust)
+        else -> RevocationOutcome.Invalid(signerTrust)
+    }
+}.getOrElse {
+    Logger.w("RegistrationStatus", "registration certificate status could not be read: ${it.message}")
+    RevocationOutcome.Unknown(it.message ?: "status list could not be read")
+}

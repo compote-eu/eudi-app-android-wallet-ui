@@ -16,12 +16,18 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.corelogic.model.ClaimPathDomain
+import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.corelogic.model.OveraskedClaimDomain
+import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import eu.europa.ec.corelogic.model.RegistrationDetailsDomain
 import eu.europa.ec.corelogic.model.RegistrationFailureReasonDomain
 import eu.europa.ec.shared.wallet.multipaz.IssuerRegistration
 import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationFailure
 import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationOutcome
+import eu.europa.ec.shared.wallet.multipaz.OverAskedClaim
+import eu.europa.ec.shared.wallet.multipaz.RelyingPartyRegistrationOutcome
 import eu.europa.ec.shared.wallet.multipaz.forLocale
 
 /**
@@ -94,4 +100,58 @@ private fun IssuerRegistrationFailure.toDomain(): RegistrationFailureReasonDomai
 
     IssuerRegistrationFailure.ENTITLEMENT_MISSING ->
         RegistrationFailureReasonDomain.ENTITLEMENT_MISSING
+}
+
+
+/**
+ * The verifier's registration outcome in the shape the shared consent screen reads.
+ *
+ * ⚠️ Unlike the issuer mapping there is **no Blocked state**: Android displays this and refuses no
+ * presentation on it. Over-asking is carried on the verified outcome instead, so the screen can mark
+ * the claims the verifier is asking for beyond its registration.
+ */
+internal fun RelyingPartyRegistrationOutcome.toDomain(locale: String): RegistrationStatusDomain =
+    when (this) {
+        is RelyingPartyRegistrationOutcome.NotOffered -> RegistrationStatusDomain.NotEvaluated
+
+        is RelyingPartyRegistrationOutcome.Verified -> RegistrationStatusDomain.Verified(
+            details = registration.toDetails(locale),
+            overaskedClaims = overAsked.mapNotNull { it.toDomainOrNull() },
+        )
+
+        is RelyingPartyRegistrationOutcome.Failed -> RegistrationStatusDomain.NotVerified(
+            reason = reason.toDomain(),
+            details = registration?.toDetails(locale),
+        )
+    }
+
+/**
+ * ⚠️ Mirrors Android's `toOveraskedClaimDomainOrNull`, including that an mdoc path which is not
+ * exactly `[namespace, element]` yields **nothing rather than a guess** — a half-understood path shown
+ * as over-asked would be worse than one not shown.
+ */
+private fun OverAskedClaim.toDomainOrNull(): OveraskedClaimDomain? {
+    val claimPath = when (format) {
+        "mso_mdoc" -> {
+            if (path.size != 2) return null
+            ClaimPathDomain.ofPlainKeys(
+                names = listOf(path.last()),
+                type = ClaimType.MsoMdoc(namespace = path.first()),
+            )
+        }
+
+        "dc+sd-jwt" -> {
+            if (path.isEmpty()) return null
+            ClaimPathDomain.ofPlainKeys(names = path, type = ClaimType.SdJwtVc)
+        }
+
+        else -> return null
+    }
+    return OveraskedClaimDomain(
+        path = claimPath,
+        attestationTypes = buildSet {
+            doctype?.let { add(it) }
+            addAll(vctValues)
+        },
+    )
 }

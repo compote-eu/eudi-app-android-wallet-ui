@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.trust.toTrustChain
+import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import io.ktor.client.HttpClient
@@ -119,6 +121,46 @@ class IosRemotePresenter internal constructor(
 
     /** Filled in by the observing engine while multipaz fetches the request object. */
     private var requestNotice = PresentationRequestNotice()
+
+    /**
+     * What the verifier's registration certificate says, or [RelyingPartyRegistrationOutcome.NotOffered]
+     * when it publishes none — which is most of them today.
+     *
+     * Never throws and never blocks the consent screen: a verifier whose registration cannot be judged
+     * is still one the user may want to answer, and Android refuses nothing on this either.
+     */
+    private suspend fun evaluateRelyingPartyRegistration(): RelyingPartyRegistrationOutcome {
+        val requestObject = requestNotice.requestObject
+            ?: return RelyingPartyRegistrationOutcome.NotOffered
+        // The concrete ETSI source, because the trust *lists* are what a registration certificate is
+        // judged against and `ReaderTrustSource` deliberately exposes only the verifier-metadata
+        // question. A test supplying a different source gets NotOffered, which is the honest answer.
+        val etsi = readerTrust as? IosEtsiTrust ?: return RelyingPartyRegistrationOutcome.NotOffered
+
+        return runCatching {
+            HttpClient(Darwin).use { client ->
+                IosRelyingPartyRegistrationValidator(
+                    isChainTrusted = { chain ->
+                        etsi.isTrusted(
+                            chain.certificates.toTrustChain(),
+                            VerificationContext.WalletRelyingPartyRegistrationCertificate,
+                        )
+                    },
+                    checkRevocation = { reference ->
+                        registrationStatusOf(reference, client) { chain ->
+                            etsi.isTrusted(
+                                chain.certificates.toTrustChain(),
+                                VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
+                            )
+                        }
+                    },
+                ).evaluate(requestObject, requestNotice.requestSigner)
+            }
+        }.getOrElse {
+            Logger.w(TAG, "relying party registration could not be evaluated: ${it.message}")
+            RelyingPartyRegistrationOutcome.NotOffered
+        }
+    }
 
     private val mutableState =
         MutableStateFlow<IosRemotePresentationState>(IosRemotePresentationState.Idle)
@@ -333,6 +375,10 @@ class IosRemotePresenter internal constructor(
                 // the verifier's certificate is present even when nothing vouches for it.
                 requesterName = trustMetadata?.displayName ?: requester.certificateCommonName(),
                 requesterIsTrusted = trustMetadata != null,
+                // Read from the request object the observing engine already kept — `verifier_info` is
+                // another claim multipaz does not parse, and re-fetching a single-use `request_uri`
+                // to get it would risk the exchange.
+                relyingPartyRegistration = evaluateRelyingPartyRegistration(),
             ),
         )
 

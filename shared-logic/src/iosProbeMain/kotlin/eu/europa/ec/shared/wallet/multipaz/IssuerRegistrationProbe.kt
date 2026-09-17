@@ -16,6 +16,24 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import kotlinx.serialization.json.jsonObject
+import kotlin.random.Random
+import org.multipaz.util.toBase64Url
+import eu.europa.ec.shared.wallet.trust.toTrustChain
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
+import kotlinx.serialization.json.putJsonObject
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.Json
+import io.ktor.http.contentType
+import io.ktor.http.ContentType
+import io.ktor.client.request.setBody
+import io.ktor.client.request.post
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.coroutines.CoroutineScope
@@ -120,3 +138,124 @@ private suspend fun runIssuerRegistrationProbe(issuerUrl: String, onResult: (Str
     }
 }
 
+
+
+/**
+ * Does the **live EU dev verifier's** registration certificate verify, and does its request over-ask?
+ *
+ * The relying-party twin of [probeIssuerRegistration], and the same two questions no unit test can
+ * answer: whether a real chain lands against the ETSI WRPRC list, and whether the status list on a
+ * different host can be read. It creates a real transaction so the request object is a real one —
+ * `verifier_info` only appears there, never in any metadata document.
+ */
+fun probeRelyingPartyRegistration(onResult: (String) -> Unit) {
+    CoroutineScope(Dispatchers.Main).launch { runRelyingPartyProbe(onResult) }
+}
+
+private suspend fun runRelyingPartyProbe(onResult: (String) -> Unit) {
+    val client = HttpClient(Darwin)
+    fun say(line: String) = onResult(line)
+    say("== relying party registration certificate: $VERIFIER")
+
+    val certificate = runCatching {
+        Json.parseToJsonElement(client.get("$VERIFIER/ui/intended-uses").bodyAsText())
+            .jsonObject["intended_uses"]!!.jsonArray
+            .first { it.jsonObject["intended_use_id"]?.jsonPrimitive?.contentOrNull == "TEST-01" }
+            .jsonObject["registration_certificate"]!!.jsonPrimitive.content
+    }.getOrElse {
+        say("FAILED to read the verifier's intended uses: ${it.message}")
+        return
+    }
+
+    val requestUri = runCatching {
+        val body = buildJsonObject {
+            put("type", "vp_token")
+            put("nonce", "probe-rp-" + Random.nextBytes(6).toBase64Url())
+            put("registration_certificate", certificate)
+            putJsonObject("dcql_query") {
+                putJsonArray("credentials") {
+                    add(
+                        buildJsonObject {
+                            put("id", "pid")
+                            put("format", "mso_mdoc")
+                            putJsonObject("meta") { put("doctype_value", "eu.europa.ec.eudi.pid.1") }
+                            putJsonArray("claims") {
+                                add(
+                                    buildJsonObject {
+                                        putJsonArray("path") {
+                                            add("eu.europa.ec.eudi.pid.1")
+                                            add("family_name")
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        val created = client.post("$VERIFIER/ui/presentations/v2") {
+            contentType(ContentType.Application.Json)
+            setBody(Json.encodeToString(JsonObject.serializer(), body))
+        }.bodyAsText()
+        Json.parseToJsonElement(created).jsonObject["request_uri"]!!.jsonPrimitive.content
+    }.getOrElse {
+        say("FAILED to create a transaction: ${it.message}")
+        return
+    }
+
+    val requestObjectJws = runCatching { client.get(requestUri).bodyAsText().trim() }
+        .getOrElse {
+            say("FAILED to fetch the request object: ${it.message}")
+            return
+        }
+    val requestObject = jwsPayload(requestObjectJws)
+    if (requestObject == null) {
+        say("FAILED: the request object could not be decoded")
+        return
+    }
+    val signer = jwsCertificateChain(requestObjectJws)?.certificates?.firstOrNull()
+    say("request object signer: ${signer?.subject?.name ?: "none"}")
+    say("  organizationIdentifier: ${signer?.registrationIdentifier() ?: "absent"}")
+    say("verifier_info present: ${relyingPartyCertificateIn(requestObject) != null}")
+    say("requested claims: ${requestedClaimsIn(requestObject).size}")
+
+    val trust = IosEtsiTrust()
+    val outcome = runCatching {
+        IosRelyingPartyRegistrationValidator(
+            isChainTrusted = { chain ->
+                trust.isTrusted(
+                    chain.certificates.toTrustChain(),
+                    VerificationContext.WalletRelyingPartyRegistrationCertificate,
+                ).also { say("  signer trusted by the WRPRC list: $it") }
+            },
+            checkRevocation = { reference ->
+                say("  status list: ${reference.uri} idx=${reference.index}")
+                registrationStatusOf(reference, client) { chain ->
+                    trust.isTrusted(
+                        chain.certificates.toTrustChain(),
+                        VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
+                    )
+                }.also { say("  status -> $it") }
+            },
+        ).evaluate(requestObject, signer)
+    }.getOrElse {
+        say("evaluate THREW: ${it::class.simpleName}: ${it.message}")
+        return
+    }
+
+    when (outcome) {
+        is RelyingPartyRegistrationOutcome.NotOffered -> say("RESULT: no certificate offered")
+        is RelyingPartyRegistrationOutcome.Failed ->
+            say("RESULT: FAILED ${outcome.reason}${outcome.detail?.let { " ($it)" } ?: ""}")
+
+        is RelyingPartyRegistrationOutcome.Verified -> {
+            say("RESULT: VERIFIED — '${outcome.registration.name}' (${outcome.registration.country})")
+            say("  entitlements: ${outcome.registration.entitlements.joinToString()}")
+            say("  over-asked: ${outcome.overAsked.size}")
+            outcome.overAsked.forEach { say("    ${it.format}:${it.path.joinToString(".")}") }
+        }
+    }
+}
+
+private const val VERIFIER = "https://dev.verifier-backend.eudiw.dev"
