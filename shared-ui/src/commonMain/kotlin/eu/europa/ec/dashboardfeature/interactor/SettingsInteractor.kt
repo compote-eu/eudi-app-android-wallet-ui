@@ -75,7 +75,8 @@ interface SettingsInteractor {
      * It lives here rather than in the view-model for the same reason the other strings do: shared
      * view-models have no resource access of their own.
      */
-    val registrationCheckRestartMessage: String
+    /** The restart warning, or null where the platform applies the change immediately. */
+    val registrationCheckRestartMessage: String?
 
     // Previously inherited from BiometricInteractor; see the note above.
     fun getBiometricsAvailability(): BiometricsAvailability

@@ -191,8 +191,12 @@ class SettingsInteractorImpl(
         platform.setRegistrationCheckEnabled(enabled = !platform.isRegistrationCheckEnabled())
     }
 
-    override val registrationCheckRestartMessage: String
-        get() = strings[Res.string.settings_screen_option_registration_check_restart]
+    override val registrationCheckRestartMessage: String?
+        get() = if (platform.registrationCheckNeedsRestart) {
+            strings[Res.string.settings_screen_option_registration_check_restart]
+        } else {
+            null
+        }
 
     private fun deviceSupportsBiometrics(): Boolean {
         return when (platform.biometricsAvailability()) {

@@ -60,6 +60,18 @@ interface SettingsPlatformBridge {
      */
     val canCheckRegistrations: Boolean
 
+    /**
+     * Whether flipping [setRegistrationCheckEnabled] takes effect only after a restart.
+     *
+     * True on Android, where Wallet Core reads both registration policies once, when it builds its
+     * managers — so the flip does not reach the engine until the next app start, and the user has to
+     * be told. False on iOS, which reads the preference on every offer.
+     *
+     * ⚠️ A property rather than a constant because the honest answer differs per engine, and telling
+     * a user to restart when they need not is its own small breach of trust.
+     */
+    val registrationCheckNeedsRestart: Boolean
+
     /** The stored registration-check decision — the switch position for that row. */
     suspend fun isRegistrationCheckEnabled(): Boolean
 

@@ -33,6 +33,7 @@ import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
 import eu.europa.ec.shared.resources.settings_screen_option_changelog
 import eu.europa.ec.shared.resources.settings_screen_option_registration_check
+import eu.europa.ec.shared.resources.settings_screen_option_registration_check_restart
 import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
 import eu.europa.ec.shared.resources.settings_screen_option_show_batch_issuance_counter
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -43,6 +44,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 private class FakeSettingsPlatformBridge(
@@ -51,6 +54,7 @@ private class FakeSettingsPlatformBridge(
     override val canRetrieveLogs: Boolean = true,
     private val logFilePaths: List<String> = emptyList(),
     override val canCheckRegistrations: Boolean = true,
+    override val registrationCheckNeedsRestart: Boolean = true,
     override val canOpenBiometricEnrolment: Boolean = true,
     private val availability: BiometricsAvailability = BiometricsAvailability.CanAuthenticate,
     private val biometricsEnabled: Boolean = false,
@@ -109,6 +113,7 @@ private val strings = FakeStringCatalog(
         Res.string.settings_screen_option_retrieve_logs to "Retrieve logs",
         Res.string.settings_screen_option_changelog to "Changelog",
         Res.string.settings_screen_option_registration_check to "Registration check",
+        Res.string.settings_screen_option_registration_check_restart to "Restart to apply",
     )
 )
 
@@ -231,4 +236,30 @@ class SettingsInteractorTest {
         assertEquals(1, platform.batchCounterWrites)
         assertEquals(false, platform.lastBatchCounterWrite)
     }
+
+    //region registrationCheckRestartMessage
+
+    @Test
+    fun a_platform_whose_engine_captures_the_flag_warns_about_restarting() {
+        val interactor = SettingsInteractorImpl(
+            platform = FakeSettingsPlatformBridge(registrationCheckNeedsRestart = true),
+            strings = strings,
+        )
+
+        assertNotNull(interactor.registrationCheckRestartMessage)
+    }
+
+    @Test
+    fun a_platform_that_applies_the_flag_at_once_says_nothing() {
+        val interactor = SettingsInteractorImpl(
+            platform = FakeSettingsPlatformBridge(registrationCheckNeedsRestart = false),
+            strings = strings,
+        )
+
+        // iOS reads the preference on every offer, so telling the user to restart would be false
+        // advice — and a wallet that asks for pointless restarts is harder to believe elsewhere.
+        assertNull(interactor.registrationCheckRestartMessage)
+    }
+
+    //endregion
 }
