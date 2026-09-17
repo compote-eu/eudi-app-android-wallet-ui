@@ -81,6 +81,15 @@ class DeferredIssuanceNotice {
     var retryAfterSeconds: Int? = null
         internal set
 
+    /**
+     * The document the handler parked rather than deleted, written by `IosDocumentProvisioningHandler`.
+     *
+     * The engine sees the `202` and the handler sees the document; neither sees both, so the notice
+     * that already crosses that gap carries this too.
+     */
+    var parkedDocumentId: String? = null
+        internal set
+
     /** True once the issuer has deferred this attempt. */
     val wasDeferred: Boolean get() = transactionId != null
 }

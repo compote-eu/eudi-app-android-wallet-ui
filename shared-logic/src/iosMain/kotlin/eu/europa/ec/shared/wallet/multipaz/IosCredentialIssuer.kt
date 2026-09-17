@@ -230,7 +230,8 @@ class IosCredentialIssuer(
         )
 
         val model = ProvisioningModel(
-            documentProvisioningHandler = IosDocumentProvisioningHandler(store),
+            // With the notice, so a deferred refresh parks the handle instead of only failing.
+            documentProvisioningHandler = IosDocumentProvisioningHandler(store, deferred = deferred),
             httpClient = httpClient,
             promptModel = Platform.promptModel,
             authorizationSecureArea = store.keySecureArea,
@@ -262,7 +263,14 @@ class IosCredentialIssuer(
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
-            IosIssuanceProgress.Failure(message = refreshFailureMessage(refusal, deferred, t))
+            // A deferred refresh is not a failure either: the document keeps the credentials it
+            // already had, and the handle now on it lets the sweep claim the new ones later.
+            if (deferred.parkedDocumentId != null) {
+                Logger.i(TAG, "the issuer deferred the refresh of $documentId; it will be collected later")
+                IosIssuanceProgress.Issued(documentIds = listOf(documentId), credentialsFetched = 0)
+            } else {
+                IosIssuanceProgress.Failure(message = refreshFailureMessage(refusal, deferred, t))
+            }
         } finally {
             model.cancel()
             httpClient.close()
@@ -391,6 +399,8 @@ class IosCredentialIssuer(
                 walletStore,
                 claimDisplay = claimDisplay,
                 reusePolicy = reusePolicy,
+                // So a `202 Accepted` parks the document instead of deleting it.
+                deferred = deferred,
             ),
             httpClient = httpClient,
             promptModel = Platform.promptModel,
@@ -421,7 +431,10 @@ class IosCredentialIssuer(
                 try {
                     document.await().identifier
                 } catch (t: Throwable) {
-                    throw deferred.asFailureOr(t)
+                    // A deferred issuance is not a failure: the handler kept the document and stamped
+                    // the issuer's handle on it, so the id of that parked document IS the result. It
+                    // reads as `Pending` until `IosDeferredDocumentCompleter` finishes it.
+                    deferred.parkedDocumentId ?: throw deferred.asFailureOr(t)
                 } finally {
                     authorizing.cancel()
                 }
@@ -458,6 +471,8 @@ class IosCredentialIssuer(
                 walletStore,
                 claimDisplay = claimDisplay,
                 reusePolicy = reusePolicy,
+                // So a `202 Accepted` parks the document instead of deleting it.
+                deferred = deferred,
             ),
             httpClient = httpClient,
             promptModel = Platform.promptModel,
@@ -485,7 +500,10 @@ class IosCredentialIssuer(
                 try {
                     document.await().identifier
                 } catch (t: Throwable) {
-                    throw deferred.asFailureOr(t)
+                    // A deferred issuance is not a failure: the handler kept the document and stamped
+                    // the issuer's handle on it, so the id of that parked document IS the result. It
+                    // reads as `Pending` until `IosDeferredDocumentCompleter` finishes it.
+                    deferred.parkedDocumentId ?: throw deferred.asFailureOr(t)
                 } finally {
                     authorizing.cancel()
                 }
@@ -556,12 +574,15 @@ class IosCredentialIssuer(
      * Turns "multipaz could not read the credential response" into "the issuer is issuing this later",
      * when that is what happened.
      *
-     * **Deliberately still a failure, not a deferred success.** Android reports `DeferredSuccess` here and
-     * keeps a pending document that its wallet-core later collects from the issuer's
-     * `deferred_credential_endpoint`. iOS has nothing that can collect it — multipaz neither parses that
-     * endpoint nor exposes the token and DPoP key needed to call it — so a document parked as "pending"
-     * would stay pending forever. Saying so is the honest answer until multipaz supports the flow; see the
-     * upstream note in the KDoc of this class.
+     * ⚠️ **This is now the fallback, not the main path.** A deferred issuance normally parks a document:
+     * `IosDocumentProvisioningHandler.cleanupDocumentOnError` keeps it and stamps the issuer's handle,
+     * and the caller returns that document's id as the result. This message is what remains for the
+     * cases where parking could not happen — a document with no wallet metadata, or a **refresh** that
+     * was deferred, where multipaz keeps the document but nothing has yet stamped a handle on it.
+     *
+     * 📌 The old claim here — that iOS "has nothing that can collect it" — was true until
+     * [IosDeferredCredentialCollector] existed. multipaz still never parses
+     * `deferred_credential_endpoint`; the wallet now does it instead.
      */
     private fun DeferredIssuanceNotice.asFailureOr(cause: Throwable): Throwable =
         if (wasDeferred) IllegalStateException(DEFERRED_NOT_SUPPORTED) else cause

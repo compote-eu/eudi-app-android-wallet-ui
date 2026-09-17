@@ -21,7 +21,9 @@ import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.credential.Credential
 import org.multipaz.document.Document
+import org.multipaz.util.Logger
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.CredentialMetadata
 import org.multipaz.provisioning.Display
@@ -77,6 +79,12 @@ internal class IosDocumentProvisioningHandler(
      * null falls back to [credentialPolicyFor], which decides by format.
      */
     private val reusePolicy: IssuerReusePolicyNotice? = null,
+    /**
+     * Whether the issuer deferred this issuance, filled in by [OpenID4VciCompatibilityEngine] when it
+     * sees the `202 Accepted`. It is what turns the failure path into a parked document — see
+     * [cleanupDocumentOnError].
+     */
+    private val deferred: DeferredIssuanceNotice? = null,
 ) : DocumentProvisioningHandler(
     secureArea = store.keySecureArea,
     documentStore = store.documentStore,
@@ -117,6 +125,66 @@ internal class IosDocumentProvisioningHandler(
                 issuerMetadata = issuerMetadataFrom(credentialMetadata, issuerMetadata),
             ),
         )
+    }
+
+    /**
+     * Keeps the document when the issuer deferred it, instead of deleting it.
+     *
+     * multipaz deletes a document whose initial provisioning threw, which is right for a real failure
+     * and wrong for the one failure that is not one: the issuer answering `202 Accepted` with a
+     * `transaction_id`. It throws there only because multipaz cannot complete a deferred issuance at
+     * all — so the document, and crucially **the pending credentials whose keys the issuer minted
+     * against**, are exactly what a later collection needs. Deleting them would end the flow.
+     *
+     * The handle is stamped onto our own metadata, which is what
+     * [IosDeferredDocumentCompleter] later polls on.
+     */
+    override suspend fun cleanupDocumentOnError(document: Document, err: Throwable) {
+        val transactionId = deferred?.transactionId
+        if (transactionId == null) {
+            super.cleanupDocumentOnError(document, err)
+            return
+        }
+        val metadata = document.eudiMetadata
+        if (metadata == null) {
+            // Nothing to park it with; deleting is still better than a document nothing can finish.
+            super.cleanupDocumentOnError(document, err)
+            return
+        }
+        metadata.park(transactionId)
+        document.edit { this.metadata = metadata }
+        deferred.parkedDocumentId = document.identifier
+        Logger.i(
+            TAG,
+            "the issuer deferred ${document.identifier}; parked it with transaction $transactionId"
+        )
+    }
+
+    /**
+     * Parks a deferred **refresh**, which reaches a different hook from a deferred first issuance.
+     *
+     * multipaz calls this instead of [cleanupDocumentOnError] when the document already existed, and
+     * its own implementation is a deliberate no-op — the pending credentials are kept to be reused. So
+     * nothing needs rescuing here; what is missing is the issuer's handle, without which the credentials
+     * it is minting could never be claimed.
+     *
+     * ⚠️ The document stays `Issued`, deliberately: a refresh tops up an already-usable document, and
+     * showing it as pending because *more* credentials are coming would be a lie. That is exactly why
+     * the sweep cannot find it by issuance state, and why `IosDocumentsPlatformBridge` asks the engine
+     * which documents carry a handle instead.
+     */
+    override suspend fun cleanupCredentialsOnError(
+        pendingCredentials: List<Credential>,
+        err: Throwable,
+    ) {
+        super.cleanupCredentialsOnError(pendingCredentials, err)
+        val transactionId = deferred?.transactionId ?: return
+        val document = pendingCredentials.firstOrNull()?.document ?: return
+        val metadata = document.eudiMetadata ?: return
+        metadata.park(transactionId)
+        document.edit { this.metadata = metadata }
+        deferred.parkedDocumentId = document.identifier
+        Logger.i(TAG, "a refresh of ${document.identifier} was deferred; parked transaction $transactionId")
     }
 
     /**
@@ -206,6 +274,8 @@ internal class IosDocumentProvisioningHandler(
             ?: defaultDocumentProvisioningSettings
 
     companion object {
+
+        private const val TAG = "IosProvisioningHandler"
         /**
          * Per build flavour, mirroring Android's `numberOfCredentials` — 60 for `dev`, 10 for `demo`.
          *

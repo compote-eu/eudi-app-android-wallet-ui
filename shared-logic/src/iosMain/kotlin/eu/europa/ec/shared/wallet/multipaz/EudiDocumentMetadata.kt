@@ -60,11 +60,34 @@ internal class EudiDocumentMetadata private constructor(
     val issuedAt: Instant? get() = data.issuedAt
 
     /**
+     * The issuer's `transaction_id` for a deferred issuance, when this document is parked waiting for
+     * one. Null on every ordinary document, and cleared by [completeDeferred] once the credential has
+     * been collected — so "has a transaction id" is exactly the set a deferred retry should poll.
+     */
+    val deferredTransactionId: String? get() = data.deferredTransactionId
+
+    /**
      * Marks the document issued, stamping [issuedAt]. Mirrors `ApplicationMetadata.issue`, including
      * its contract: the caller is responsible for persisting the change via `Document.edit`.
      */
     fun issue(at: Instant = Clock.System.now()) {
         data = data.copy(issuedAt = at)
+    }
+
+    /**
+     * Records the handle an issuer gave when it deferred this document, so a later sweep knows what to
+     * ask it for. Same contract as [issue]: the caller persists the change with `Document.edit`.
+     */
+    fun park(transactionId: String) {
+        data = data.copy(deferredTransactionId = transactionId)
+    }
+
+    /**
+     * Drops the deferred handle once the issuer has finally handed the credential over. Same contract
+     * as [issue]: the caller persists the change with `Document.edit`.
+     */
+    fun completeDeferred() {
+        data = data.copy(deferredTransactionId = null)
     }
 
     internal data class Data(
@@ -73,6 +96,7 @@ internal class EudiDocumentMetadata private constructor(
         val credentialPolicy: WalletCredentialPolicy,
         val issuerMetadata: IssuerMetadata? = null,
         val issuedAt: Instant? = null,
+        val deferredTransactionId: String? = null,
     ) {
 
         fun toCbor(): ByteString = ByteString(
@@ -86,6 +110,7 @@ internal class EudiDocumentMetadata private constructor(
                     // string: it round-trips without a formatter, and whole seconds are all an
                     // issuance date is ever displayed at.
                     issuedAt?.let { put("issuedAtEpochSeconds", it.epochSeconds) }
+                    deferredTransactionId?.let { put("deferredTransactionId", it) }
                 },
             ),
         )
@@ -104,6 +129,7 @@ internal class EudiDocumentMetadata private constructor(
                     issuedAt = item.optional("issuedAtEpochSeconds") {
                         Instant.fromEpochSeconds(it.asNumber)
                     },
+                    deferredTransactionId = item.optional("deferredTransactionId") { it.asTstr },
                 )
             }
         }
@@ -120,12 +146,14 @@ internal class EudiDocumentMetadata private constructor(
             format: StoredDocumentFormat,
             credentialPolicy: WalletCredentialPolicy,
             issuerMetadata: IssuerMetadata? = null,
+            deferredTransactionId: String? = null,
         ): EudiDocumentMetadata = EudiDocumentMetadata(
             Data(
                 documentManagerId = documentManagerId,
                 format = format,
                 credentialPolicy = credentialPolicy,
                 issuerMetadata = issuerMetadata,
+                deferredTransactionId = deferredTransactionId,
             ),
         )
 

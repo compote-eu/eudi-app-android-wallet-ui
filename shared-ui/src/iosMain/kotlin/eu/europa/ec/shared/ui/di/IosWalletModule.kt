@@ -48,6 +48,8 @@ import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorImpl
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.startupfeature.interactor.SplashInteractorImpl
+import eu.europa.ec.shared.wallet.multipaz.collectDeferredDocument
+import eu.europa.ec.shared.wallet.multipaz.documentsAwaitingDeferredIssuance
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
 import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
@@ -110,6 +112,9 @@ fun provideIosDocumentsPlatformBridge(engine: IosWalletEngine): DocumentsPlatfor
     IosDocumentsPlatformBridge(
         deleteDocument = { documentId -> engine.deleteDocument(documentId) },
         hasAnyDocument = { engine.hasAnyDocument() },
+        collectDeferred = { documentId -> engine.collectDeferredDocument(documentId) },
+        documentNames = { locale -> engine.getAllDocumentsWithDetails(locale).associate { it.id to it.name } },
+        awaitingDeferred = { engine.documentsAwaitingDeferredIssuance() },
     )
 
 @Single
