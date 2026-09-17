@@ -243,6 +243,58 @@ class DocumentsViewModelTest {
     //region init / filter-state collection
 
     @Test
+    fun the_deferred_sweep_waits_as_long_as_the_issuer_asked_for() = runTest(mainDispatcher) {
+        val interactor = FakeDocumentsInteractor(
+            deferredResult = DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result(
+                successfullyIssuedDeferredDocuments = emptyList(),
+                failedIssuedDeferredDocuments = emptyList(),
+                retryAfterSeconds = 48,
+            ),
+        )
+        val viewModel = DocumentsViewModel(interactor)
+        val deferred = mapOf("doc-1" to "eu.europa.ec.eudi.pid.1")
+
+        viewModel.setEvent(Event.TryIssuingDeferredDocuments(deferred))
+        advanceUntilIdle()
+        val firstSweep = testScheduler.currentTime
+
+        viewModel.setEvent(Event.TryIssuingDeferredDocuments(deferred))
+        advanceUntilIdle()
+        val secondSweep = testScheduler.currentTime
+
+        // The first poll cannot know an interval — it learns one from the answer. The second must
+        // honour it: this is a polling loop, so a fixed delay asks an issuer that requested 48s about
+        // ten times too often, which is the defect `.maestro/issuance/tc-17` records in the reference
+        // iOS app.
+        assertEquals(5_000L, firstSweep, "the first sweep uses the default")
+        assertEquals(48_000L, secondSweep - firstSweep, "the second sweep uses the issuer's interval")
+        assertEquals(2, interactor.deferredRetryCalls.size)
+    }
+
+    @Test
+    fun a_sweep_with_no_interval_keeps_the_default() = runTest(mainDispatcher) {
+        // Android's case: wallet-core discards the issuer's `interval`, so the bridge reports none and
+        // the loop must keep working rather than waiting forever or not at all.
+        val interactor = FakeDocumentsInteractor(
+            deferredResult = DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result(
+                successfullyIssuedDeferredDocuments = emptyList(),
+                failedIssuedDeferredDocuments = emptyList(),
+            ),
+        )
+        val viewModel = DocumentsViewModel(interactor)
+        val deferred = mapOf("doc-1" to "eu.europa.ec.eudi.pid.1")
+
+        viewModel.setEvent(Event.TryIssuingDeferredDocuments(deferred))
+        advanceUntilIdle()
+        val firstSweep = testScheduler.currentTime
+        viewModel.setEvent(Event.TryIssuingDeferredDocuments(deferred))
+        advanceUntilIdle()
+
+        assertEquals(5_000L, firstSweep)
+        assertEquals(5_000L, testScheduler.currentTime - firstSweep)
+    }
+
+    @Test
     fun the_filter_collector_runs_from_init_not_from_an_event() = runTest(mainDispatcher) {
         val filterStates = MutableSharedFlow<DocumentInteractorFilterPartialState>()
         val viewModel = DocumentsViewModel(FakeDocumentsInteractor(filterStates = filterStates))
