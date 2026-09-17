@@ -277,6 +277,18 @@ internal class IosRemotePresentationCoordinator(
 
     //endregion
 
+    /**
+     * The user declined: the verifier is told, then the exchange is torn down.
+     *
+     * Separate from [cancel] deliberately — that one also runs on ordinary teardown, including after a
+     * successful send, where claiming the user denied the request would be false.
+     */
+    fun reject() {
+        disclosures = emptyList()
+        disclosed = emptyList()
+        presenter.reject()
+    }
+
     /** Ends the exchange: the back button, the "stop" the request screen offers, and every teardown. */
     fun cancel() {
         disclosures = emptyList()

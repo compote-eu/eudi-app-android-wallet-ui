@@ -82,20 +82,14 @@ internal class IosPresentationRequestInteractor(
     override fun stopPresentation() = coordinator.cancel()
 
     /**
-     * Tears the exchange down **without telling the verifier**, which is not yet parity with Android.
+     * Tells the verifier the user declined, then tears the exchange down.
      *
-     * multipaz has no rejection mechanism at all: `OpenID4VP.generateResponse` throws
-     * `PresentmentCanceledException` when consent comes back null, and `access_denied` does not appear
-     * anywhere in its sources — so nothing is posted and the verifier's transaction simply waits.
-     * Measured against the dev verifier on 2026-09-16, and Android sends the rejection as of this
-     * change.
-     *
-     * ⛔ Deliberately a plain cancel rather than a silent no-op: the local teardown still has to
-     * happen, and pretending the verifier was told would be worse than the gap itself. Closing it
-     * needs no multipaz fork — the request object carries `response_uri` and `state`, which is all a
-     * `POST error=access_denied` requires.
+     * multipaz cannot do this: `OpenID4VP.generateResponse` throws `PresentmentCanceledException` when
+     * consent comes back null and `access_denied` appears nowhere in its sources, so before this the
+     * verifier heard nothing at all and its transaction waited until it timed out. The wallet walks
+     * that one step of the protocol itself — see `sendPresentationRejection`.
      */
-    override fun rejectPresentation() = coordinator.cancel()
+    override fun rejectPresentation() = coordinator.reject()
 }
 
 internal class IosPresentationLoadingInteractor(

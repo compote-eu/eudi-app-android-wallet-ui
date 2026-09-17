@@ -18,6 +18,7 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
+import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -116,6 +117,9 @@ class IosRemotePresenter internal constructor(
         scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust())
 
+    /** Filled in by the observing engine while multipaz fetches the request object. */
+    private var requestNotice = PresentationRequestNotice()
+
     private val mutableState =
         MutableStateFlow<IosRemotePresentationState>(IosRemotePresentationState.Idle)
     val state: StateFlow<IosRemotePresentationState> = mutableState.asStateFlow()
@@ -147,6 +151,9 @@ class IosRemotePresenter internal constructor(
         // completed one. Both were "no further output".
         Logger.i(TAG, "starting an exchange for ${uri.substringBefore(':')}; cancelling any previous")
         cancel()
+        // A fresh one per exchange: answering with the previous verifier's `response_uri` would tell
+        // the wrong party, and telling nobody is better than telling the wrong one.
+        requestNotice = PresentationRequestNotice()
         mutableState.value = IosRemotePresentationState.Resolving
 
         presentmentJob = scope.launch {
@@ -159,7 +166,10 @@ class IosRemotePresenter internal constructor(
                     // request as one to be judged on its signature alone.
                     appId = null,
                     origin = null,
-                    httpClientEngineFactory = Darwin,
+                    // Wrapped so the request object's `response_uri` and `state` are seen in
+                    // passing; they are what a rejection has to be addressed to, and multipaz keeps
+                    // its parsed request to itself.
+                    httpClientEngineFactory = PresentationObservingEngineFactory(requestNotice),
                 )
                 Logger.i(
                     TAG,
@@ -239,6 +249,32 @@ class IosRemotePresenter internal constructor(
     }
 
     /** Abandons the exchange — the back button, and every teardown. */
+    /**
+     * The user declined: tell the verifier before tearing down.
+     *
+     * Distinct from [cancel] on purpose, and for the same reason Android's
+     * `rejectPresentation`/`stopPresentation` are distinct — [cancel] also runs on ordinary teardown,
+     * including after a successful send, where an `access_denied` would be a lie.
+     *
+     * The verifier is told on a best-effort basis and the teardown happens regardless: a user who has
+     * declined is finished either way, and multipaz never sent anything at all before this.
+     */
+    fun reject() {
+        val notice = requestNotice
+        if (notice.canReject) {
+            // Its own scope: `cancel()` kills `presentmentJob`, and the POST must outlive that.
+            scope.launch {
+                val client = HttpClient(Darwin)
+                try {
+                    sendPresentationRejection(notice, client)
+                } finally {
+                    client.close()
+                }
+            }
+        }
+        cancel()
+    }
+
     fun cancel() {
         pendingConsent?.complete(null)
         pendingConsent = null
