@@ -69,6 +69,18 @@ sealed interface IosRemotePresentationState {
     ) : IosRemotePresentationState
 
     data class Failed(val message: String) : IosRemotePresentationState
+
+    /**
+     * The verifier asked for something this wallet does not hold.
+     *
+     * ⚠️ **Not a [Failed].** Nothing went wrong: the request was understood, answered as far as it
+     * could be, and the honest reply is that there is nothing to show. The shared screens already model
+     * this — `PresentationRequestInteractorPartialState.NoData` renders a proper screen with the
+     * requester's header and no error — and Android reaches it from two branches of its own. Routing it
+     * through `Failed` instead put a *"something went wrong"* heading and a Retry button over an
+     * ordinary outcome, which is what a colleague saw on a simulator on 2026-09-17.
+     */
+    data object NothingToShare : IosRemotePresentationState
 }
 
 /**
@@ -238,9 +250,8 @@ class IosRemotePresenter internal constructor(
                     }
 
                     is PresentmentCannotSatisfyRequestException -> {
-                        mutableState.value = IosRemotePresentationState.Failed(
-                            message = NOTHING_TO_SHARE
-                        )
+                        // An answer, not an error — see [IosRemotePresentationState.NothingToShare].
+                        mutableState.value = IosRemotePresentationState.NothingToShare
                     }
 
                     else -> fail(t)
@@ -412,8 +423,6 @@ class IosRemotePresenter internal constructor(
         const val TAG = "IosRemotePresenter"
 
         val CONSENT_TIMEOUT = 2.minutes
-
-        const val NOTHING_TO_SHARE = "This wallet holds nothing the verifier asked for."
 
         const val SHARING_FAILED =
             "Sharing failed. The verifier did not accept the response from this wallet."

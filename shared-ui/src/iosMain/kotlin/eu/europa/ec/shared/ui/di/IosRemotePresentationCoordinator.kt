@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import org.multipaz.util.Logger
 import platform.Foundation.languageCode
 import platform.Foundation.currentLocale
@@ -137,6 +138,15 @@ internal class IosRemotePresentationCoordinator(
                 is IosRemotePresentationState.Failed ->
                     PresentationRequestInteractorPartialState.Failure(error = state.message)
 
+                // ⚠️ `NoData`, not `Failure`. The request was understood and answered; there is simply
+                // nothing to show. `Failure` puts a "something went wrong" heading and a Retry over an
+                // ordinary outcome — Android reaches `NoData` from two branches of its own for exactly
+                // this, and the shared screen renders it with `error = null`.
+                is IosRemotePresentationState.NothingToShare ->
+                    PresentationRequestInteractorPartialState.NoData(
+                        relyingParty = knownRelyingParty(),
+                    )
+
                 // The user backed out, or the exchange was abandoned before anything was asked.
                 is IosRemotePresentationState.Idle ->
                     PresentationRequestInteractorPartialState.Disconnect
@@ -223,7 +233,12 @@ internal class IosRemotePresentationCoordinator(
                         )
                     }
 
-                is IosRemotePresentationState.Resolving -> Unit
+                // The loading screen is only reached once there is something to send, so nothing can
+                // have matched by then. Ignored rather than reported: the request screen is where that
+                // answer belongs, and it has already given it.
+                is IosRemotePresentationState.NothingToShare,
+                is IosRemotePresentationState.Resolving,
+                    -> Unit
             }
         }
     }
@@ -326,6 +341,21 @@ internal class IosRemotePresentationCoordinator(
         disclosed = emptyList()
         presenter.cancel()
     }
+
+    /**
+     * The requester as far as it is known when nothing matched.
+     *
+     * Consent was never asked for on that path, so multipaz's request never arrived and there is no
+     * name to take from it. The screen falls back to its own default, which is the honest rendering:
+     * saying nothing is better than naming the wrong party.
+     */
+    private fun knownRelyingParty(): RelyingPartyDomain = RelyingPartyDomain(
+        name = verifierName,
+        uniqueId = null,
+        hasTrustedAccessCertificate = verifierIsTrusted,
+        logoUri = null,
+        registration = RegistrationStatusDomain.NotEvaluated,
+    )
 
     //region multipaz's request -> the shared consent model
 
