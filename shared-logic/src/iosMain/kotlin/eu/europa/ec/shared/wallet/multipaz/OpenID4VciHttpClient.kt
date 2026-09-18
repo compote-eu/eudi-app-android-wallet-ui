@@ -273,7 +273,8 @@ internal class OpenID4VciCompatibilityEngine(
 
         return when {
             isWellKnown(data) -> rememberEndpoints(data, response)
-            isPushedAuthorizationRequest(data) -> injectFreshAttestationChallenge(response)
+            isPushedAuthorizationRequest(data) ->
+                injectFreshAttestationChallenge(acceptCreatedOrOk(response))
             isRefreshExchange && response.statusCode != HttpStatusCode.OK ->
                 noteAndMaybeArm(response)
 
@@ -507,6 +508,47 @@ internal class OpenID4VciCompatibilityEngine(
 
         Logger.i(TAG, "injected a fresh attestation challenge into the PAR response")
         return response.withExtraHeaders { append(ATTESTATION_CHALLENGE_HEADER, challenge) }
+    }
+
+    /**
+     * Reports a successful pushed authorization request as `201`, whatever the server called it.
+     *
+     * 🩹 **Working around multipaz.** `performPushedAuthorizationRequest` accepts exactly one status:
+     *
+     * ```kotlin
+     * if (response.status == HttpStatusCode.Created) { break }
+     * …
+     * throw IllegalStateException("Error establishing authenticated channel with issuer")
+     * ```
+     *
+     * RFC 9126 does say 201, so multipaz is not wrong — but an authorization server answering `200 OK`
+     * with a valid `request_uri` is answering successfully, and issuance then fails with a message that
+     * names neither the status nor the server. Observed against a live EU authorization server, which
+     * returns `200 {"expires_in": 3600, "request_uri": "urn:uuid:…"}`.
+     *
+     * ⛔ **Only a body that actually carries `request_uri` is rewritten.** A `200` without one is not a
+     * successful PAR, and turning it into a `201` would convert a real failure into a confusing one
+     * further along — the opposite of what this shim is for.
+     */
+    private suspend fun acceptCreatedOrOk(response: HttpResponseData): HttpResponseData {
+        if (response.statusCode != HttpStatusCode.OK) return response
+
+        val (bytes, replayable) = replayableBody(response)
+        val hasRequestUri = runCatching {
+            Json.parseToJsonElement(bytes.decodeToString())
+                .jsonObject["request_uri"]?.jsonPrimitive?.contentOrNull
+        }.getOrNull() != null
+        if (!hasRequestUri) return replayable
+
+        Logger.i(TAG, "the authorization server answered PAR with 200; reporting it as 201")
+        return HttpResponseData(
+            statusCode = HttpStatusCode.Created,
+            requestTime = replayable.requestTime,
+            headers = replayable.headers,
+            version = replayable.version,
+            body = replayable.body,
+            callContext = replayable.callContext,
+        )
     }
 
     /**
