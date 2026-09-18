@@ -81,23 +81,27 @@ sealed interface IosIssuanceProgress {
  * request instead (multiple scopes), which is nicer but is wallet-core's doing, not something this can
  * imitate without forking multipaz.
  *
+ * 📌 **Read in multipaz's own source, 0.99.0 and `main` alike (2026-09-18):** `CredentialOffer`
+ * declares `abstract val configurationId: String`, the pushed authorization request appends a single
+ * `scope` — or a single `authorization_details` entry naming one `credential_configuration_id` — and
+ * `ProvisioningModel.launch` resolves to one `Deferred<Document>`. There is no list anywhere on the
+ * path, so this is structural rather than a setting somebody forgot to expose.
+ *
  * ⚠️ **Each authorization costs the user a tap even when no login is needed.** The authorization server
  * still holds its session cookie, so the browser comes back in a few seconds without asking for
  * credentials — but iOS asks *"open in EUDI Wallet?"* on every hand-back. An earlier version of this
  * comment called the second round "silent"; it is silent as to *login* only. Verified on a device
  * 2026-09-04.
  *
- * **Deferred issuance is not supported.** multipaz has no `transaction_id` handling, so an issuer's
- * `*_deferred` configuration fails here with whatever the issuer says — visibly, and with a message
- * worth reading: *"This issuer provides this document later, which this app cannot collect yet."* The
- * catalogue still lists those configurations, because filtering them would be a second, hidden policy.
+ * 🚩 **What that costs today: "PID Combined" asks for FOUR browser confirmations here against ONE on
+ * Android.** The EUDI dev issuer publishes every credential twice — plain and `_deferred` — **under one
+ * scope**, so "Combined" expands to four configurations and each one authorizes separately. Watched on a
+ * device 2026-09-18: four confirmations, four documents. ⚖️ Kept deliberately — see [issue], below.
  *
- * 🚩 **But a failed deferred round used to cost the rest of the flow.** The EUDI dev issuer publishes
- * every credential twice — plain and `_deferred` — **under one scope**. So "PID Combined" expands to
- * four configurations, the second authorizes identically to the first, fails as above, and the `break`
- * on failure below then abandons `pid_vc_sd_jwt` entirely: the user paid a second browser confirmation
- * and got **one** document where "Combined" promises two. Measured on a device 2026-09-04 — one
- * credential issued before the de-duplication below, two after it.
+ * 🔄 **Deferred issuance IS supported**, since `1261ce22`. A `*_deferred` configuration parks with the
+ * issuer's handle and is collected later by `IosDeferredDocumentCompleter`, on the issuer's own
+ * `interval`. ⛔ An earlier version of this comment said the opposite and described a de-duplication
+ * guard that skipped the `_deferred` twins; both the guard and the limitation are gone (`a44126d1`).
  */
 class IosCredentialIssuer(
     /**
@@ -323,9 +327,25 @@ class IosCredentialIssuer(
     /**
      * Issues the documents a credential offer names.
      *
-     * One flow for the whole offer, unlike [issue]: an offer *is* one credential offer as far as
-     * OpenID4VCI is concerned, so multipaz drives it in one go — and the wallet gets one document out of
-     * it, since the offer's configurations belong to a single provisioning session.
+     * One flow for the whole offer, unlike [issue] — but it yields at most **one** document, and the
+     * reason is not the one an earlier version of this comment gave.
+     *
+     * 🚩 **multipaz reads only the first configuration an offer names.**
+     * `CredentialOffer.parseJson` does `credentialConfigurationIds[0]`, under its own comment
+     * *"Right now only use the first configuration id"* — unchanged in 0.99.0 and on `main`
+     * (read 2026-09-18). So an offer naming several credentials is silently truncated to its first:
+     * no error, nothing logged.
+     *
+     * ⚠️ **[IosCredentialOfferReader] parses the whole list**, so the offer screen names every
+     * configuration the offer carries. An offer of several therefore *promises* N and delivers 1.
+     * Android hands the whole `Offer` to wallet-core, which issues all of them.
+     *
+     * ✅ **Measured, not inferred** — `MultipazOfferTruncationTest` drives multipaz's real client with an
+     * offer naming `pid_mdoc` and `loyalty_mdoc` under two different scopes: the pushed authorization
+     * request that comes out carries `scope=pid_scope` and mentions `loyalty` nowhere. The second
+     * credential is never authorized, so it can never be issued.
+     * ⛔ What is still only inferred is the end-to-end document count against a live issuer; the dev
+     * issuer's own offers name one configuration, so nothing has exercised it in the field.
      *
      * @param txCode the transaction code the issuer asked for, already collected by the offer-code screen.
      *   Null when the offer wanted none; a pre-authorized offer that wants one and does not get it fails.
