@@ -36,6 +36,7 @@ import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Tstr
 import org.multipaz.crypto.Algorithm
 import org.multipaz.provisioning.AuthorizationChallenge
+import org.multipaz.provisioning.AuthorizationResponse
 import org.multipaz.provisioning.KeyBindingInfo
 import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
 import org.multipaz.securearea.software.SoftwareSecureArea
@@ -51,6 +52,7 @@ import kotlin.test.assertTrue
 class IosOpenID4VciProvisioningClientTest {
 
     private val issuerUrl = "https://issuer.test"
+    private val walletProviderUrl = "https://wallet-provider.test"
     private val parEndpoint = "$issuerUrl/par"
     private val tokenEndpoint = "$issuerUrl/token"
     private val credentialEndpoint = "$issuerUrl/credential"
@@ -65,7 +67,9 @@ class IosOpenID4VciProvisioningClientTest {
            "loyalty_mdoc":{"format":"mso_mdoc","doctype":"org.example.loyalty","scope":"loyalty_scope",
              "display":[{"name":"Loyalty","locale":"en"}]},
            "unscoped_mdoc":{"format":"mso_mdoc","doctype":"org.example.unscoped",
-             "display":[{"name":"Unscoped","locale":"en"}]}}}
+             "display":[{"name":"Unscoped","locale":"en"}]},
+           "pid_mdoc_deferred":{"format":"mso_mdoc","doctype":"eu.europa.ec.eudi.pid.1","scope":"pid_scope",
+             "display":[{"name":"PID (later)","locale":"en"}]}}}
     """.trimIndent()
 
     private val asMetadata = """
@@ -78,7 +82,10 @@ class IosOpenID4VciProvisioningClientTest {
          "token_endpoint_auth_methods_supported":["none"]}
     """.trimIndent()
 
+    private val attestationResponse = """{"walletInstanceAttestation":"wia-jwt"}"""
+
     private var parBody: String = ""
+    private var parHeaders: Map<String, String> = emptyMap()
     private var tokenBody: String = ""
     private var credentialBodies = mutableListOf<String>()
 
@@ -90,6 +97,7 @@ class IosOpenID4VciProvisioningClientTest {
 
             parEndpoint -> {
                 parBody = request.body.toByteArray().decodeToString()
+                parHeaders = request.headers.entries().associate { it.key to it.value.first() }
                 respond("""{"request_uri":"urn:req:1"}""", HttpStatusCode.Created, json)
             }
 
@@ -107,6 +115,9 @@ class IosOpenID4VciProvisioningClientTest {
                 respond("""{"credentials":[{"credential":"${"cred".encodeToByteArray().toBase64Url()}"}]}""", HttpStatusCode.OK, json)
             }
 
+            "$walletProviderUrl/wallet-instance-attestation/jwk" ->
+                respond(attestationResponse, HttpStatusCode.OK, json)
+
             else -> respond("{}", HttpStatusCode.OK, json)
         }
     }
@@ -118,20 +129,25 @@ class IosOpenID4VciProvisioningClientTest {
         signingAlgorithms = listOf(Algorithm.ESP256),
     )
 
-    private var openedUrls = mutableListOf<String>()
+    private val httpClient by lazy { HttpClient(engine()) }
 
     private suspend fun session(
         configurationIds: List<String>,
-        redirect: String? = "eu.europa.ec.euidi://authorization?code=auth-code-1&state=s",
     ) = IosVciAuthorizationSession(
         issuerUrl = issuerUrl,
         configurationIds = configurationIds,
         clientPreferences = clientPreferences,
-        httpClient = HttpClient(engine()),
+        httpClient = httpClient,
         secureArea = SoftwareSecureArea.create(EphemeralStorage()),
         backend = StubOpenID4VciBackend(clientPreferences.clientId),
-        openAuthorizationUrl = { openedUrls += it },
-        awaitRedirect = { redirect },
+        walletProviderBaseUrl = walletProviderUrl,
+        clientId = clientPreferences.clientId,
+    )
+
+    /** What the provisioning model hands back after the browser round trip. */
+    private fun redirectResponse(challenge: AuthorizationChallenge.OAuth) = AuthorizationResponse.OAuth(
+        id = challenge.id,
+        parameterizedRedirectUrl = "eu.europa.ec.euidi://authorization?code=auth-code-1&state=s",
     )
 
     /** A proof JWT is only read for its `kid` here, which is what names the credential to certify. */
@@ -157,6 +173,21 @@ class IosOpenID4VciProvisioningClientTest {
     }
 
     @Test
+    fun the_authorization_request_carries_a_wallet_attestation() = runTest {
+        // ⛔ DPoP alone is not enough. Measured against the dev issuer 2026-09-18: without these two
+        // headers the authorization server answers
+        // `401 {"error":"invalid_request","error_description":"Authentication failed."}`, and the whole
+        // issuance fails before the browser ever opens. This is that defect, pinned.
+        val session = session(listOf("pid_mdoc", "loyalty_mdoc"))
+
+        session.challenge()
+
+        assertEquals("wia-jwt", parHeaders["OAuth-Client-Attestation"])
+        assertNotNull(parHeaders["OAuth-Client-Attestation-PoP"])
+        assertNotNull(parHeaders["DPoP"])
+    }
+
+    @Test
     fun a_configuration_without_a_scope_falls_back_to_authorization_details() = runTest {
         // An issuer need not publish a scope. Dropping such a configuration from the request would
         // authorize less than was asked for, so the request switches form instead.
@@ -174,18 +205,35 @@ class IosOpenID4VciProvisioningClientTest {
     }
 
     @Test
+    fun configurations_sharing_one_scope_are_named_explicitly_instead() = runTest {
+        // This is the real "PID Combined" shape: the EU dev issuer publishes each `_deferred` twin under
+        // its plain twin's scope, so scopes do not name the four configurations one for one. Asking by
+        // scope would authorize two credentials and let the issuer pick which twin each one meant.
+        val session = session(listOf("pid_mdoc", "pid_mdoc_deferred"))
+
+        session.challenge()
+
+        val sent = parBody.parseUrlEncodedParameters()
+        assertNull(sent["scope"])
+        assertEquals(
+            listOf("pid_mdoc", "pid_mdoc_deferred"),
+            Json.parseToJsonElement(sent["authorization_details"]!!).jsonArrayOfConfigurationIds(),
+        )
+    }
+
+    @Test
     fun the_second_credential_raises_no_challenge_so_the_browser_never_reopens() = runTest {
         val session = session(listOf("pid_mdoc", "loyalty_mdoc"))
-        val first = IosOpenID4VciProvisioningClient(session, "pid_mdoc")
-        val second = IosOpenID4VciProvisioningClient(session, "loyalty_mdoc")
+        val first = IosOpenID4VciProvisioningClient(session, "pid_mdoc", httpClient)
+        val second = IosOpenID4VciProvisioningClient(session, "loyalty_mdoc", httpClient)
 
         val challenges = first.getAuthorizationChallenges()
         assertEquals(1, challenges.size)
-        first.authorize(session.completeInBrowser(challenges.single() as AuthorizationChallenge.OAuth))
+        first.authorize(redirectResponse(challenges.single() as AuthorizationChallenge.OAuth))
 
-        // This is the saving: multipaz's launch loop only opens a browser while challenges remain.
+        // This is the saving: multipaz's launch loop only opens a browser while challenges remain, and
+        // the second credential presents none.
         assertTrue(second.getAuthorizationChallenges().isEmpty())
-        assertEquals(1, openedUrls.size)
     }
 
     @Test
@@ -193,7 +241,7 @@ class IosOpenID4VciProvisioningClientTest {
         val session = session(listOf("pid_mdoc"))
         val challenge = session.challenge() as AuthorizationChallenge.OAuth
 
-        session.authorize(session.completeInBrowser(challenge))
+        session.authorize(redirectResponse(challenge))
 
         val sent = tokenBody.parseUrlEncodedParameters()
         assertEquals("authorization_code", sent["grant_type"])
@@ -205,10 +253,10 @@ class IosOpenID4VciProvisioningClientTest {
     @Test
     fun each_credential_is_requested_for_its_own_configuration() = runTest {
         val session = session(listOf("pid_mdoc", "loyalty_mdoc"))
-        session.authorize(session.completeInBrowser(session.challenge() as AuthorizationChallenge.OAuth))
+        session.authorize(redirectResponse(session.challenge() as AuthorizationChallenge.OAuth))
 
-        val first = IosOpenID4VciProvisioningClient(session, "pid_mdoc")
-        val second = IosOpenID4VciProvisioningClient(session, "loyalty_mdoc")
+        val first = IosOpenID4VciProvisioningClient(session, "pid_mdoc", httpClient)
+        val second = IosOpenID4VciProvisioningClient(session, "loyalty_mdoc", httpClient)
         first.obtainCredentials(KeyBindingInfo.OpenidProofOfPossession(listOf(proofJwt("cred-a"))))
         second.obtainCredentials(KeyBindingInfo.OpenidProofOfPossession(listOf(proofJwt("cred-b"))))
 
@@ -226,9 +274,9 @@ class IosOpenID4VciProvisioningClientTest {
     @Test
     fun an_issued_credential_is_paired_with_the_pending_credential_its_proof_names() = runTest {
         val session = session(listOf("pid_mdoc"))
-        session.authorize(session.completeInBrowser(session.challenge() as AuthorizationChallenge.OAuth))
+        session.authorize(redirectResponse(session.challenge() as AuthorizationChallenge.OAuth))
 
-        val credentials = IosOpenID4VciProvisioningClient(session, "pid_mdoc")
+        val credentials = IosOpenID4VciProvisioningClient(session, "pid_mdoc", httpClient)
             .obtainCredentials(KeyBindingInfo.OpenidProofOfPossession(listOf(proofJwt("cred-a"))))
 
         // Certifying the right bytes onto the wrong key is silent and permanent, so the pairing is
@@ -237,12 +285,25 @@ class IosOpenID4VciProvisioningClientTest {
     }
 
     @Test
+    fun a_client_reports_only_its_own_configuration_in_the_metadata() = runTest {
+        // ⛔ ProvisioningModel builds the document from `credentials.values.first()`. Reporting the whole
+        // catalogue makes every document out of whichever entry comes first — measured against the dev
+        // issuer, an SD-JWT credential was certified onto an mdoc credential and threw
+        // "-39517 bytes leftover after decoding".
+        val session = session(listOf("pid_mdoc", "loyalty_mdoc"))
+
+        val metadata = IosOpenID4VciProvisioningClient(session, "loyalty_mdoc", httpClient).getMetadata()
+
+        assertEquals(setOf("loyalty_mdoc"), metadata.credentials.keys)
+    }
+
+    @Test
     fun the_authorization_data_carries_what_a_later_refresh_needs() = runTest {
         // ⚠️ This is multipaz's own `OpenID4VCIAuthorizationData` shape, which is internal to it. If a
         // multipaz upgrade changes the schema, this is the test that should fail rather than the
         // deferred collection quietly stopping.
         val session = session(listOf("pid_mdoc"))
-        session.authorize(session.completeInBrowser(session.challenge() as AuthorizationChallenge.OAuth))
+        session.authorize(redirectResponse(session.challenge() as AuthorizationChallenge.OAuth))
 
         val data = assertNotNull(session.authorizationData("pid_mdoc"))
         val map = Cbor.decode(data.toByteArray()) as CborMap

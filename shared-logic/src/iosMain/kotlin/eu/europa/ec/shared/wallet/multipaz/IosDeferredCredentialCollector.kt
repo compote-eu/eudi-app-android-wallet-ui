@@ -346,7 +346,7 @@ sealed interface DeferredCollection {
  * them is then contacted over TLS with a DPoP-bound token. Trust in the *issuer* is established by
  * [MultipazRevocationChecker] and the trust wiring, not here.
  */
-private fun String.asJsonObjectOrJwtPayload(): JsonObject {
+internal fun String.asJsonObjectOrJwtPayload(): JsonObject {
     val trimmed = trim()
     if (trimmed.startsWith("{")) return trimmed.asJsonObject()
     // Three dot-separated base64url segments is a JWS; take the payload.
@@ -355,7 +355,7 @@ private fun String.asJsonObjectOrJwtPayload(): JsonObject {
     return parts[1].decodeBase64UrlToString().asJsonObject()
 }
 
-private fun String.asJsonObject(): JsonObject =
+internal fun String.asJsonObject(): JsonObject =
     LenientDeferredJson.parseToJsonElement(this).jsonObject
 
 @OptIn(ExperimentalEncodingApi::class)

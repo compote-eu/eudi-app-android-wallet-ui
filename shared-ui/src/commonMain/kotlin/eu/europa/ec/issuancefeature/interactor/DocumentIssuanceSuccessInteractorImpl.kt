@@ -81,6 +81,13 @@ class DocumentIssuanceSuccessInteractorImpl(
                 null
             } ?: return@forEach
 
+            // A document the issuer has not delivered yet does not belong on a screen that says it was
+            // issued. Android drops these too, though by accident rather than by choice: a deferred
+            // document there is not an `IssuedDocument`, so its bridge returns null and the `catch`
+            // above swallows it. iOS keeps parked documents readable, so it has to say so and be
+            // skipped here — same screen, stated rather than inferred.
+            if (details.isPendingIssuance) return@forEach
+
             // Last one wins, as before. Every document in one issuance comes from a single issuer, so
             // this only looks like a choice.
             details.issuerName?.let { issuerName = it }

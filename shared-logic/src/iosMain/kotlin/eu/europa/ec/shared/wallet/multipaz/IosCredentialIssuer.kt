@@ -35,6 +35,7 @@ import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
 import org.multipaz.provisioning.ProvisioningModel
 import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
+import org.multipaz.rpc.handler.RpcAuthClientSession
 import org.multipaz.util.Logger
 import org.multipaz.util.Platform
 import platform.Foundation.NSURL
@@ -298,12 +299,36 @@ class IosCredentialIssuer(
         // issuance was unsupported — and the failure abandoned the rest of the request, so "PID
         // Combined" delivered one document instead of two.
         //
-        // Deferred issuance now works, so the twin parks and completes like any other document. The
-        // remaining cost is the extra browser confirmation, which is multipaz's doing — it authorizes
-        // once per configuration where wallet-core authorizes once for several scopes (see the note on
-        // this class). ⚖️ Kept anyway, deliberately: the twins only exist on the *test* issuers, which
-        // is exactly where the deferred path needs exercising, and Android issues all four. Matching it
-        // is worth one more confirmation on an issuer nobody ships against.
+        // Deferred issuance now works, so the twin parks and completes like any other document.
+        //
+        // ✅ And the confirmations they used to cost are gone: more than one configuration is authorized
+        // ONCE, by [IosVciAuthorizationSession], instead of once per configuration as multipaz does
+        // (multipaz#2026). "PID Combined" is four configurations and one browser confirmation.
+        if (issueConfiguration == null && configurationIds.size > 1) {
+            val together = runCatching { provisionTogether(issuer, configurationIds) }
+            together
+                .onSuccess { (issued, failed) ->
+                    documentIds += issued
+                    failures += failed
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    Logger.w(TAG, "issuing ${configurationIds.size} configurations failed: ${error.message}")
+                    failures[configurationIds.first()] =
+                        error.message ?: error::class.simpleName ?: "Issuance failed."
+                }
+
+            emit(
+                when {
+                    documentIds.isNotEmpty() -> IosIssuanceProgress.Issued(documentIds, failures)
+                    else -> IosIssuanceProgress.Failure(
+                        failures.values.firstOrNull() ?: "Nothing was issued."
+                    )
+                }
+            )
+            return@flow
+        }
+
         for (configurationId in configurationIds) {
             val outcome = issueConfiguration?.invoke(issuer, configurationId)
                 ?: runCatching { provision(issuer, configurationId) }
@@ -412,6 +437,143 @@ class IosCredentialIssuer(
                 )
             }
         )
+    }
+
+    /**
+     * Issues several configurations behind **one** authorization.
+     *
+     * multipaz authorizes per configuration, so its own client would open the browser once per
+     * credential (multipaz#2026). [IosVciAuthorizationSession] performs a single pushed authorization
+     * request naming all of them and every per-configuration client then reports no challenge, so
+     * `ProvisioningModel.launch`'s loop opens the browser exactly once.
+     *
+     * ⛔ **Each configuration still gets its own HTTP client and its own notices.** The deferral notice
+     * is per document — it is what turns a `202 Accepted` into a parked document — so sharing one client
+     * across configurations would let one document's deferral be read as another's.
+     *
+     * 📌 The coroutine context is built here rather than by multipaz, whose own builder is private.
+     * Every part of it is public API: `BackendEnvironment` is an interface, and the four things it vends
+     * are the same four objects passed to [ProvisioningModel].
+     *
+     * @return the documents issued, and the configurations that failed with why.
+     */
+    private suspend fun provisionTogether(
+        issuer: IosVciIssuer,
+        configurationIds: List<String>,
+        issuerUrl: String = issuer.issuerUrl,
+    ): Pair<List<String>, Map<String, String>> {
+        val walletStore = walletEngine.store()
+        IosAuthorizationRedirects.clear()
+
+        val clientPreferences = issuer.clientPreferences()
+
+        // ⛔ The claim-display and reuse-policy notices are filled in by the shim **while it reads the
+        // issuer's metadata**, and in this path the metadata is read once, by the session. So they are
+        // created once for the whole batch and given to every client, including the authorization one —
+        // otherwise nothing ever sees the metadata response and the issuer's `credential_reuse_policy` is
+        // lost, which showed up as a "7/20" credential counter where Android reads 7/7.
+        // ⚖️ Sharing them is right rather than merely convenient: both are keyed by doctype or vct, which
+        // is an issuer-level fact, not a per-document one. The deferral notice is the opposite and stays
+        // per document.
+        val claimDisplay = IssuerClaimDisplayNotice()
+        val reusePolicy = IssuerReusePolicyNotice()
+        val authorizationHttpClient = openID4VciHttpClient(
+            engine = httpEngine ?: Darwin.create(),
+            claimDisplayNotice = claimDisplay,
+            reusePolicyNotice = reusePolicy,
+        )
+        val session = IosVciAuthorizationSession(
+            issuerUrl = issuerUrl,
+            configurationIds = configurationIds,
+            clientPreferences = clientPreferences,
+            httpClient = authorizationHttpClient,
+            secureArea = walletStore.keySecureArea,
+            backend = IosOpenID4VciBackend(
+                walletProviderBaseUrl = walletProviderBaseUrl,
+                clientId = issuer.clientId,
+                httpClient = authorizationHttpClient,
+            ),
+            walletProviderBaseUrl = walletProviderBaseUrl,
+            clientId = issuer.clientId,
+        )
+
+        val documentIds = mutableListOf<String>()
+        val failures = mutableMapOf<String, String>()
+
+        try {
+            for (configurationId in configurationIds) {
+                val deferred = DeferredIssuanceNotice()
+                val httpClient = openID4VciHttpClient(
+                    engine = httpEngine ?: Darwin.create(),
+                    deferredNotice = deferred,
+                    claimDisplayNotice = claimDisplay,
+                    reusePolicyNotice = reusePolicy,
+                )
+                val model = ProvisioningModel(
+                    documentProvisioningHandler = IosDocumentProvisioningHandler(
+                        walletStore,
+                        claimDisplay = claimDisplay,
+                        reusePolicy = reusePolicy,
+                        deferred = deferred,
+                    ),
+                    httpClient = httpClient,
+                    promptModel = Platform.promptModel,
+                    authorizationSecureArea = walletStore.keySecureArea,
+                    eventLogger = walletStore.eventLogger(),
+                )
+
+                val environment = IosProvisioningEnvironment(
+                    httpClient = httpClient,
+                    secureArea = walletStore.keySecureArea,
+                    clientPreferences = clientPreferences,
+                    backend = IosOpenID4VciBackend(
+                        walletProviderBaseUrl = walletProviderBaseUrl,
+                        clientId = issuer.clientId,
+                        httpClient = httpClient,
+                    ),
+                )
+
+                try {
+                    val document = model.launch(
+                        coroutineContext = Dispatchers.Default + Platform.promptModel +
+                            RpcAuthClientSession() + environment,
+                        document = null,
+                    ) {
+                        IosOpenID4VciProvisioningClient(session, configurationId, httpClient)
+                    }
+
+                    coroutineScope {
+                        val authorizing = launch { answerAuthorizationChallenges(model) }
+                        try {
+                            documentIds += document.await().identifier
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (t: Throwable) {
+                            // Same rule as the single-configuration path: a parked document IS the result.
+                            val parked = deferred.parkedDocumentId
+                            if (parked != null) {
+                                documentIds += parked
+                            } else {
+                                Logger.w(TAG, "issuing '$configurationId' failed: ${t.message}")
+                                failures[configurationId] = deferred.asFailureOr(t).message
+                                    ?: t::class.simpleName ?: "Issuance failed."
+                            }
+                        } finally {
+                            authorizing.cancel()
+                        }
+                    }
+                } finally {
+                    model.cancel()
+                    httpClient.close()
+                }
+
+                if (failures.isNotEmpty()) break
+            }
+        } finally {
+            authorizationHttpClient.close()
+        }
+
+        return documentIds to failures
     }
 
     /** Drives one OpenID4VCI flow to a document, or throws with what went wrong. */

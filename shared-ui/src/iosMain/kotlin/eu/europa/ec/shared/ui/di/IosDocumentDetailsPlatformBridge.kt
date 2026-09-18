@@ -43,6 +43,7 @@ import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsDo
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.wallet.WalletDocument
+import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.StoredMdocClaim
@@ -117,6 +118,7 @@ internal class IosDocumentDetailsPlatformBridge(
             issuerLogoUri = document.issuerLogoUri,
             isExpired = document.isExpired,
             credentialsInfo = document.credentialsInfo(),
+            isPendingIssuance = document.issuanceState == WalletDocumentIssuanceState.Pending,
         )
     }
 

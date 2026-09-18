@@ -56,13 +56,17 @@ import org.multipaz.provisioning.ProvisioningMetadata
 import org.multipaz.provisioning.openid4vci.OpenID4VCI
 import org.multipaz.provisioning.openid4vci.OpenID4VCIBackend
 import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
+import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.securearea.SecureArea
+import org.multipaz.securearea.SecureAreaProvider
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import org.multipaz.webtoken.buildJwt
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.minutes
+import kotlin.reflect.KClass
 
 /**
  * One OpenID4VCI authorization, shared by every credential a single user action asks for.
@@ -100,10 +104,9 @@ internal class IosVciAuthorizationSession(
     private val httpClient: HttpClient,
     private val secureArea: SecureArea,
     private val backend: OpenID4VCIBackend,
-    /** Opens the issuer's authorization URL; the app delegate delivers the redirect. */
-    private val openAuthorizationUrl: suspend (String) -> Unit,
-    /** Waits for that redirect, or null when the user never came back. */
-    private val awaitRedirect: suspend () -> String?,
+    /** Where the wallet instance attestation comes from; the authorization server demands one. */
+    private val walletProviderBaseUrl: String,
+    private val clientId: String,
 ) {
     private val lock = Mutex()
 
@@ -114,6 +117,7 @@ internal class IosVciAuthorizationSession(
     private var dpopKeyAlias: String? = null
     private var dpopKey: AsymmetricKey? = null
     private var dpopNonce: String? = null
+    private var attestationKey: AsymmetricKey? = null
 
     private var pkceVerifier: String? = null
     private var redirectState: String? = null
@@ -202,7 +206,19 @@ internal class IosVciAuthorizationSession(
     }
 
     /** Asks the credential endpoint for one configuration, with proofs multipaz has already signed. */
-    suspend fun obtainCredentials(configurationId: String, keyInfo: KeyBindingInfo): Credentials {
+    suspend fun obtainCredentials(
+        configurationId: String,
+        keyInfo: KeyBindingInfo,
+        /**
+         * The client to ask on — the *caller's*, not this session's.
+         *
+         * ⛔ This is not interchangeable with the session's own. [openID4VciHttpClient] carries a
+         * [DeferredIssuanceNotice] per document, and that notice is how a `202 Accepted` becomes a parked
+         * document rather than a failure. Sharing one client across configurations would let one
+         * document's deferral be read as another's.
+         */
+        credentialHttpClient: HttpClient,
+    ): Credentials {
         val metadata = metadata()
         val credentialMetadata = metadata.credentials[configurationId]
             ?: throw IllegalStateException("The issuer does not offer $configurationId.")
@@ -226,7 +242,7 @@ internal class IosVciAuthorizationSession(
             }
         }
 
-        val response = postJson(endpoints.credentialEndpoint, request.toString(), token)
+        val response = postJson(credentialHttpClient, endpoints.credentialEndpoint, request.toString(), token)
         if (response.status != HttpStatusCode.OK) {
             throw IllegalStateException(
                 "Credential request failed: ${response.status} ${response.bodyAsText()}"
@@ -279,16 +295,20 @@ internal class IosVciAuthorizationSession(
         codeChallenge: String,
         state: String,
     ): String {
-        // The whole point: every requested configuration in ONE request. Scopes when the issuer
-        // published them and they are unambiguous, `authorization_details` otherwise.
-        val scopes = configurationIds.mapNotNull { scopesByConfigurationId[it] }.distinct()
-        val useScopes = scopes.size == configurationIds.map { scopesByConfigurationId[it] }.distinct().size &&
-            scopes.isNotEmpty() &&
-            configurationIds.all { scopesByConfigurationId[it] != null }
+        // The whole point: every requested configuration in ONE request.
+        //
+        // ⛔ Scopes are usable only when they name the requested configurations **one for one**. The EU
+        // dev issuer publishes each `_deferred` twin under its plain twin's scope, so "PID Combined" is
+        // four configurations under two scopes — asking by scope would authorize two credentials and
+        // leave the issuer to choose which twin each one meant. `authorization_details` names every
+        // configuration explicitly, so that is what a request like this uses. (multipaz reaches the same
+        // conclusion for the same reason, per configuration rather than per request.)
+        val scopes = configurationIds.map { scopesByConfigurationId[it] }
+        val useScopes = scopes.none { it == null } && scopes.distinct().size == configurationIds.size
 
         val form = buildList {
             if (useScopes) {
-                add("scope" to scopes.joinToString(" "))
+                add("scope" to scopes.filterNotNull().joinToString(" "))
             } else {
                 add(
                     "authorization_details" to buildJsonArray {
@@ -327,16 +347,13 @@ internal class IosVciAuthorizationSession(
             ?: throw IllegalStateException("The authorization server returned no request_uri.")
     }
 
-    /** Awaits the browser hand-back for the challenge this session raised. */
-    suspend fun completeInBrowser(challenge: AuthorizationChallenge.OAuth): AuthorizationResponse {
-        openAuthorizationUrl(challenge.url)
-        val redirect = awaitRedirect()
-            ?: throw IllegalStateException("Authorization was not completed.")
-        return AuthorizationResponse.OAuth(id = challenge.id, parameterizedRedirectUrl = redirect)
-    }
-
     private suspend fun postForm(url: String, form: List<Pair<String, String>>): HttpResponse {
+        // ⛔ DPoP alone is not enough: this ecosystem's authorization server answers
+        // `401 {"error":"invalid_request","error_description":"Authentication failed."}` without a
+        // wallet instance attestation. Measured against the dev issuer, 2026-09-18.
+        val attestation = attestationHeaders(resolveEndpoints())
         suspend fun attempt(nonce: String?) = httpClient.post(url) {
+            attestation.forEach { (name, value) -> header(name, value) }
             header(DPOP_HEADER, dpopKey().dpopProof(url, nonce = nonce))
             contentType(ContentType.Application.FormUrlEncoded)
             setBody(form.formUrlEncoded())
@@ -354,9 +371,14 @@ internal class IosVciAuthorizationSession(
         }
     }
 
-    private suspend fun postJson(url: String, body: String, token: String): HttpResponse {
+    private suspend fun postJson(
+        client: HttpClient,
+        url: String,
+        body: String,
+        token: String,
+    ): HttpResponse {
         val ath = Crypto.digest(Algorithm.SHA256, token.encodeToByteArray()).toBase64Url()
-        suspend fun attempt(nonce: String?) = httpClient.post(url) {
+        suspend fun attempt(nonce: String?) = client.post(url) {
             header("Authorization", "$DPOP_SCHEME $token")
             header(DPOP_HEADER, dpopKey().dpopProof(url, ath = ath, nonce = nonce))
             contentType(ContentType.Application.Json)
@@ -372,6 +394,53 @@ internal class IosVciAuthorizationSession(
         } else {
             first
         }
+    }
+
+
+    /**
+     * The client-attestation pair the authorization server requires, minted the way the deferred
+     * collector already does it: an attestation from the wallet provider over a key of ours, and a proof
+     * of possession of that key addressed to the authorization server.
+     */
+    private suspend fun attestationHeaders(endpoints: VciEndpoints): Map<String, String> {
+        val key = attestationKey ?: createKey(ATTESTATION_KEY_PREFIX).also { attestationKey = it }
+
+        val attestation = httpClient.post("$walletProviderBaseUrl$WALLET_INSTANCE_ATTESTATION_PATH") {
+            contentType(ContentType.Application.Json)
+            setBody(buildJsonObject { put("jwk", key.publicKey.toJwk()) }.toString())
+        }.bodyAsText().asJsonObject()["walletInstanceAttestation"]!!.jsonPrimitive.content
+
+        val challenge = endpoints.challengeEndpoint?.let { endpoint ->
+            runCatching {
+                httpClient.post(endpoint) {
+                    contentType(ContentType.Application.FormUrlEncoded)
+                    setBody("")
+                }.bodyAsText().asJsonObject()["attestation_challenge"]?.jsonPrimitive?.content
+            }.getOrNull()
+        }
+
+        val pop = buildJwt(
+            type = CLIENT_ATTESTATION_POP_TYPE,
+            key = key,
+            expiresIn = ATTESTATION_POP_VALIDITY,
+        ) {
+            put("iss", clientId)
+            put("aud", endpoints.authorizationServerId)
+            put("jti", Random.nextBytes(JTI_BYTES).toBase64Url())
+            // `challenge`, NOT `nonce` — multipaz's own spelling, and the one Keycloak accepts.
+            challenge?.let { put("challenge", it) }
+        }
+
+        return mapOf(
+            CLIENT_ATTESTATION_HEADER to attestation,
+            CLIENT_ATTESTATION_POP_HEADER to pop,
+        )
+    }
+
+    private suspend fun createKey(prefix: String): AsymmetricKey {
+        val alias = "$prefix${Random.nextBytes(ALIAS_BYTES).toBase64Url()}"
+        secureArea.createKey(alias, CreateKeySettings())
+        return AsymmetricKey.anonymous(secureArea, alias)
     }
 
     private suspend fun dpopKey(): AsymmetricKey = dpopKey ?: run {
@@ -418,8 +487,10 @@ internal class IosVciAuthorizationSession(
 
     /** Reads the endpoints and the scope of every configuration straight from the issuer's metadata. */
     private suspend fun resolveEndpoints(): VciEndpoints = endpoints ?: run {
+        // ⛔ Not `asJsonObject`: one of the EU dev issuers serves its metadata as a SIGNED JWT, and a
+        // reader that assumes JSON fails on it. Same helper the deferred collector uses.
         val issuerMetadata = httpClient.get("${issuerUrl.trimEnd('/')}/$ISSUER_METADATA_PATH")
-            .bodyAsText().asJsonObject()
+            .bodyAsText().asJsonObjectOrJwtPayload()
 
         scopesByConfigurationId = issuerMetadata["credential_configurations_supported"]
             ?.jsonObject.orEmpty()
@@ -434,6 +505,8 @@ internal class IosVciAuthorizationSession(
 
         VciEndpoints(
             authorizationServer = authorizationServer,
+            authorizationServerId = asMetadata["issuer"]?.jsonPrimitive?.content ?: authorizationServer,
+            challengeEndpoint = asMetadata["challenge_endpoint"]?.jsonPrimitive?.content,
             parEndpoint = asMetadata.required("pushed_authorization_request_endpoint"),
             authorizationEndpoint = asMetadata.required("authorization_endpoint"),
             tokenEndpoint = asMetadata.required("token_endpoint"),
@@ -451,7 +524,8 @@ internal class IosVciAuthorizationSession(
         for (path in listOf(AS_METADATA_PATH, OPENID_CONFIGURATION_PATH)) {
             val response = runCatching { httpClient.get("$base/$path") }.getOrNull() ?: continue
             if (response.status == HttpStatusCode.OK) {
-                runCatching { response.bodyAsText().asJsonObject() }.getOrNull()?.let { return it }
+                runCatching { response.bodyAsText().asJsonObjectOrJwtPayload() }
+                    .getOrNull()?.let { return it }
             }
         }
         throw IllegalStateException("No authorization server metadata at $base.")
@@ -468,11 +542,17 @@ internal class IosVciAuthorizationSession(
         const val DPOP_SCHEME = "DPoP"
         const val DPOP_JWT_TYPE = "dpop+jwt"
         const val DPOP_KEY_PREFIX = "vci-dpop-"
+        const val ATTESTATION_KEY_PREFIX = "vci-attestation-"
+        const val WALLET_INSTANCE_ATTESTATION_PATH = "/wallet-instance-attestation/jwk"
+        const val CLIENT_ATTESTATION_HEADER = "OAuth-Client-Attestation"
+        const val CLIENT_ATTESTATION_POP_HEADER = "OAuth-Client-Attestation-PoP"
+        const val CLIENT_ATTESTATION_POP_TYPE = "oauth-client-attestation-pop+jwt"
         const val HTTP_BAD_REQUEST = 400
         const val PKCE_BYTES = 32
         const val STATE_BYTES = 15
         const val JTI_BYTES = 15
         const val ALIAS_BYTES = 9
+        val ATTESTATION_POP_VALIDITY = 2.minutes
     }
 }
 
@@ -486,9 +566,27 @@ internal class IosVciAuthorizationSession(
 internal class IosOpenID4VciProvisioningClient(
     private val session: IosVciAuthorizationSession,
     private val configurationId: String,
+    /** This document's own shimmed client, so its deferral notice is its own. */
+    private val credentialHttpClient: HttpClient,
 ) : ProvisioningClient {
 
-    override suspend fun getMetadata(): ProvisioningMetadata = session.metadata()
+    /**
+     * The issuer's metadata **narrowed to this client's one configuration**.
+     *
+     * ⛔ Not the whole map. `ProvisioningModel.requestCredentials` builds the document from
+     * `issuerMetadata.credentials.values.first()`, so handing it every configuration makes every document
+     * — whatever was asked for — out of whichever entry happens to come first. Measured against the dev
+     * issuer 2026-09-18: an SD-JWT credential certified onto the mdoc credential that produced, and threw
+     * `-39517 bytes leftover after decoding`. multipaz's own client documents the same contract: "when
+     * [ProvisioningClient] is configured to issue a particular kind of credential, only that credential
+     * will be present in the map".
+     */
+    override suspend fun getMetadata(): ProvisioningMetadata {
+        val full = session.metadata()
+        val mine = full.credentials[configurationId]
+            ?: throw IllegalStateException("The issuer does not offer $configurationId.")
+        return full.copy(credentials = mapOf(configurationId to mine))
+    }
 
     override suspend fun getAuthorizationChallenges(): List<AuthorizationChallenge> =
         listOfNotNull(session.challenge())
@@ -500,12 +598,15 @@ internal class IosOpenID4VciProvisioningClient(
     override suspend fun getKeyBindingChallenge(): String = session.keyBindingChallenge()
 
     override suspend fun obtainCredentials(keyInfo: KeyBindingInfo): Credentials =
-        session.obtainCredentials(configurationId, keyInfo)
+        session.obtainCredentials(configurationId, keyInfo, credentialHttpClient)
 }
 
 /** The endpoints one issuance needs, read once per session. */
 private data class VciEndpoints(
     val authorizationServer: String,
+    /** The `issuer` the AS calls itself, which is what a client-attestation PoP must be addressed to. */
+    val authorizationServerId: String,
+    val challengeEndpoint: String?,
     val parEndpoint: String,
     val authorizationEndpoint: String,
     val tokenEndpoint: String,
@@ -536,8 +637,6 @@ private fun KeyBindingInfo.credentialIds(): List<String> = when (this) {
 private fun JsonObject.required(name: String): String =
     this[name]?.jsonPrimitive?.content
         ?: throw IllegalStateException("The issuer's metadata has no $name.")
-
-private fun String.asJsonObject(): JsonObject = Json.parseToJsonElement(this).jsonObject
 
 /** The value of one query parameter of a redirect URL, without parsing the whole URL. */
 private fun String.queryParameter(name: String): String? = substringAfter('?', "")
@@ -576,4 +675,33 @@ private fun String.formUrlEncode(): String = buildString {
             append('%').append(byte.toInt().and(0xFF).toString(16).uppercase().padStart(2, '0'))
         }
     }
+}
+
+/**
+ * What multipaz reads its collaborators out of, when the caller supplies the provisioning client.
+ *
+ * `ProvisioningModel.launch` takes a `CoroutineContext`, and multipaz's own builder for it is private
+ * along with the environment it puts inside (`ProvisioningEnvironment` is `internal`). None of that is
+ * needed: [BackendEnvironment] is a public interface whose single method vends four public types, and
+ * they are the same four objects [ProvisioningModel] is constructed with. So the context is built here.
+ */
+internal class IosProvisioningEnvironment(
+    private val httpClient: HttpClient,
+    secureArea: SecureArea,
+    private val clientPreferences: OpenID4VCIClientPreferences,
+    private val backend: OpenID4VCIBackend,
+) : BackendEnvironment {
+
+    // ⚠️ Dispatchers.Main by default, matching multipaz's own environment: the app pumps a main run
+    // loop, so the lazy key creation runs. ⛔ A test binary does not — see MultipazOfferTruncationTest.
+    private val secureAreaProvider = SecureAreaProvider { secureArea }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : Any> getInterface(clazz: KClass<T>): T? = when (clazz) {
+        HttpClient::class -> httpClient
+        SecureAreaProvider::class -> secureAreaProvider
+        OpenID4VCIClientPreferences::class -> clientPreferences
+        OpenID4VCIBackend::class -> backend
+        else -> null
+    } as T?
 }
