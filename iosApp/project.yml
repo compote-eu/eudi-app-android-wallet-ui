@@ -24,7 +24,7 @@ options:
 packages:
   EudiRQESUi:
     url: https://github.com/eu-digital-identity-wallet/eudi-lib-ios-rqes-ui.git
-    exactVersion: 0.4.3
+    exactVersion: 0.4.4
   # ⚠️ NOT a dependency we use — a *version override*, and it must stay declared even though no
   # Swift file imports `Copyable`.
   #

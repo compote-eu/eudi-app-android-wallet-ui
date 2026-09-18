@@ -81,6 +81,15 @@ class DeferredIssuanceNotice {
     var retryAfterSeconds: Int? = null
         internal set
 
+    /**
+     * The document the handler parked rather than deleted, written by `IosDocumentProvisioningHandler`.
+     *
+     * The engine sees the `202` and the handler sees the document; neither sees both, so the notice
+     * that already crosses that gap carries this too.
+     */
+    var parkedDocumentId: String? = null
+        internal set
+
     /** True once the issuer has deferred this attempt. */
     val wasDeferred: Boolean get() = transactionId != null
 }
@@ -117,23 +126,6 @@ internal class IssuerClaimDisplayNotice {
  */
 internal class IssuerReusePolicyNotice {
     var policiesByDocumentType: Map<String, SelectedReusePolicy> = emptyMap()
-        internal set
-}
-
-/**
- * Which authorization scope each credential configuration resolves to.
- *
- * Written by [OpenID4VciCompatibilityEngine] while it is already reading the metadata JSON — it learns
- * these anyway, to rewrite `authorization_details` into a `scope` for issuers that want one.
- *
- * 🚩 **Exposed because two configurations can share a scope, and then they are indistinguishable to the
- * authorization server.** The EUDI dev issuer publishes every credential twice, plain and `_deferred`,
- * under one scope. Authorizing the second costs a browser confirmation and then fails — deferred
- * issuance is unsupported — and that failure abandons whatever the request still had to issue.
- * [IosCredentialIssuer.issue] reads this to skip the second round. Nothing else needs it.
- */
-internal class CredentialScopeNotice {
-    var scopesByConfigurationId: Map<String, String> = emptyMap()
         internal set
 }
 
@@ -195,8 +187,6 @@ internal fun openID4VciHttpClient(
     /** Filled in with the issuer's per-claim display names, which multipaz discards. */
     claimDisplayNotice: IssuerClaimDisplayNotice? = null,
     reusePolicyNotice: IssuerReusePolicyNotice? = null,
-    /** Filled in with configuration-id -> scope, so a caller can spot two configurations sharing one. */
-    scopeNotice: CredentialScopeNotice? = null,
     /**
      * Checks the signer of signed issuer metadata against the EU trust lists.
      *
@@ -212,7 +202,6 @@ internal fun openID4VciHttpClient(
             refusalNotice,
             claimDisplayNotice,
             reusePolicyNotice,
-            scopeNotice,
             issuerTrust,
         )
     ) {
@@ -237,7 +226,6 @@ internal class OpenID4VciCompatibilityEngine(
     private val refusalNotice: TokenRefusalNotice? = null,
     private val claimDisplayNotice: IssuerClaimDisplayNotice? = null,
     private val reusePolicyNotice: IssuerReusePolicyNotice? = null,
-    private val scopeNotice: CredentialScopeNotice? = null,
     private val issuerTrust: IssuerTrustSource? = null,
 ) : HttpClientEngineBase("openid4vci-compat") {
 
@@ -407,7 +395,6 @@ internal class OpenID4VciCompatibilityEngine(
                     configuration.jsonObject["scope"]?.jsonPrimitive?.content?.let { id to it }
                 }.toMap()
                 Logger.i(TAG, "learned ${scopesByConfigurationId.size} credential scopes")
-                scopeNotice?.scopesByConfigurationId = scopesByConfigurationId
                 rememberClaimDisplayNames(configurations)
                 rememberReusePolicies(configurations)
             }

@@ -1,0 +1,149 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-51 — duplicate PID issuance (mirrors TC-20's mDL-duplicate pattern)
+#
+# NOT wired into maestro-simulator.yml's main chain - same treatment as
+# TC-49 (documented finding with a working, verified flow file, but not
+# part of the automated gate run on every push). This exists as
+# available tooling for anyone who wants to re-run it directly, not as
+# a continuously-run regression gate: it confirms the same
+# silent-duplicate pattern TC-20 already gates on, so its incremental
+# CI value over TC-20's existing coverage is low relative to the extra
+# runtime/flakiness-surface it would add to every run. Verified via two
+# standalone runs (see below), not via `maestro-simulator.yml`.
+#
+# Precondition: app already unlocked (PIN done in a prior TC-01 run in
+#   the same simulator session — this flow does NOT re-do PIN setup),
+#   AND tc-01-pid-issuance.yaml already run once in the same simulator
+#   session (one PID already exists: 1 MSO Mdoc + 1 SD-JWT VC). This
+#   flow specifically exercises issuing PID a SECOND time on top of an
+#   existing one - it does not stand alone. To run it: erase/boot a
+#   simulator, install the app, `maestro test tc-01-pid-issuance.yaml`,
+#   then `maestro test tc-51-pid-duplicate.yaml`.
+#
+# Not implemented as `runFlow: tc-01-pid-issuance.yaml` (the way TC-20
+# reuses tc-50-mdl-issuance.yaml): TC-01 bundles first-run PIN setup
+# together with the PID-issuance steps in one file, and there is no
+# existing "PID issuance body only, already-unlocked" flow to reference
+# the way TC-50 already is for mDL. This flow's body below is the same
+# Choose-from-list -> PID Combined -> FormEU -> Review & Send ->
+# Authorize sequence as TC-01's own, with the PIN-setup steps omitted -
+# matching how TC-50 itself was independently written as a standalone,
+# already-unlocked flow rather than factored out of TC-01.
+#
+# Ground truth this flow exists to re-verify, not assume: earlier manual
+# testing of duplicate PID issuance was inconsistent - once failed with
+# a live HTTP 400 `attestation_dataset_not_found` from the issuer, once
+# succeeded cleanly - unlike TC-20's mDL-duplicate result, which was
+# consistently silent-success. Re-verified live, twice, on separate
+# freshly-erased simulators (TC-01 -> this flow, each time): both runs
+# succeeded cleanly with no error of any kind - duplicate PID issuance
+# now matches TC-20's consistently-silent pattern rather than the
+# earlier flakiness. See .maestro/issuance/README.md for the fuller
+# write-up.
+#
+# Expected: 4 total PID entries after this flow completes - the 2 from
+# TC-01's own earlier run (1 MSO Mdoc + 1 SD-JWT VC) plus 2 more from
+# this second issuance (each PID issuance produces both formats). No
+# warning, no merge, no blocking dialog - same "doesn't choke on it"
+# expectation as TC-20, not something this test is checking for
+# correctness of.
+
+# --- Dashboard -> Documents -> Add -> Choose from list ---
+- tapOn:
+    id: "documents_tab"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "options_screen_from_list_button"
+
+# Same shimmer/placeholder timing guard as TC-01's own copy of this wait
+# - see that flow's own comment for the full rationale.
+- extendedWaitUntil:
+    visible: "Certificate of Residence (MSO Mdoc)"
+    timeout: 15000
+
+# --- Select PID Combined (matched by stable text, not the volatile id) ---
+- scroll
+- scroll
+- tapOn: "PID Combined"
+
+# --- ASWebAuthenticationSession system consent (one-time per app/device
+#     pairing per TC-01's notes - expected to already be granted here) ---
+- tapOn: "Continue"
+
+# --- Mock identity-proofing form (ec.dev.issuer.eudiw.dev, FormEU test issuer) ---
+- tapOn: "FormEU"
+- scroll
+- tapOn: "Submit"
+
+# Birth Date: open the native date picker and accept the default (today).
+- tapOn:
+    point: "50%, 63%"
+- tapOn:
+    point: "85%, 55%"
+- assertVisible: "Family Name"
+
+# Family Name / Given Name
+- tapOn:
+    below: "Family Name"
+- inputText: "Testerova"
+- tapOn:
+    point: "50%, 44%"
+- inputText: "Maestro"
+
+# Nationality > Country Code
+- tapOn:
+    point: "50%, 52%"
+- inputText: "CZ"
+
+# Place Of Birth > Country
+- tapOn:
+    point: "24%, 58%"
+- inputText: "Czechia"
+
+# Dismiss keyboard via the accessory bar's checkmark, then submit.
+- tapOn:
+    point: "90%, 58%"
+- scroll
+- scroll
+- tapOn: "Confirm"
+
+# --- Review & Send ---
+- assertVisible: "Review & Send"
+- scroll
+- scroll
+- tapOn: "Authorize"
+
+# --- System identity-verification permission (already granted by TC-01
+#     for this same document type earlier in the session; optional) ---
+- extendedWaitUntil:
+    visible:
+      text: "Allow"
+    timeout: 20000
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
+
+# --- Native "Add Document" success screen -> Done ---
+- assertVisible: "You have successfully added the following to your wallet"
+- tapOn: "Done"
+
+# --- Verify: a second PID entry pair is visible with a validity date.
+#     Not asserting an exact count of "4" - same reasoning as TC-20:
+#     Maestro's selector vocabulary doesn't give a reliable way to count
+#     matching elements, and a single visibility check per format is
+#     sufficient here since duplication happens silently with nothing to
+#     assert against in between (no dialog, no merge behavior to
+#     distinguish first vs second pair). ---
+- extendedWaitUntil:
+    visible: "PID (MSO Mdoc)"
+    timeout: 10000
+- assertVisible: "PID (SD-JWT VC)"
+- assertVisible: "Valid until \\d{2} \\w{3} \\d{4}"

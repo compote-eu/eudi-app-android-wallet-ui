@@ -10,6 +10,9 @@
 // `--wallet-probe`; an ordinary launch touches none of this.
 package eu.europa.ec.shared.ui.harness
 
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.shared.ui.di.IosPreferences
+import eu.europa.ec.shared.ui.di.checkIssuerRegistration
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IosTransactionKind
@@ -379,30 +382,6 @@ private fun WalletDocument.describe(locale: String): String =
             "issued=$issuedAt expires=$expiresAt expired=$isExpired revoked=$isRevoked " +
             "issuer=$issuerName logo=$issuerLogoUri"
 
-/**
- * How far proximity gets on a machine with no Bluetooth radio.
- *
- * Two things are worth seeing here and nowhere else. First, that the four interactors resolve — Koin
- * fails at the first `get()`, and the screens are three taps deep behind a card `simctl` cannot press,
- * so a missing definition would otherwise surface as a crash on a device. Second, what the QR screen
- * shows when advertising cannot start: the simulator has no radio, so this *should* report an error
- * rather than hang on a QR that never appears. On a device the same call publishes an `mdoc:` payload.
- */
-/**
- * The document-provider extension's whole chain, against the real store, without iOS.
- *
- * This is the closest thing to a device run that exists today, and it is closer than it sounds: the
- * extension does exactly three things — take a raw ISO 18013-7 request, ask the user, hand back a
- * response — and only the first is Apple's. So driving [IosDocumentProviderBridge] with a request we
- * build ourselves exercises everything the extension owns, on documents a real issuer issued.
- *
- * ⚠️ What it cannot show is that iOS *routes* a request here, and nothing on the simulator can: the
- * provider entitlement is never authorised there, and `addRegistration` does not even refuse — it
- * hangs. That gap needs hardware and an `org-iso-mdoc` verifier, in that order.
- *
- * The consent step keeps **one** of the two requested claims, so the printed plaintext distinguishes a
- * wallet that honours the selection from one that sends everything and hides the rest.
- */
 /** What the host script left for us: the verifier's request, and the origin it will bind. */
 private class SuppliedDcApiRequest(val json: String, val origin: String)
 
@@ -425,6 +404,21 @@ private fun writeDcApiResponse(responseJson: String) {
     (responseJson as NSString).writeToFile(path, true, NSUTF8StringEncoding, null)
 }
 
+/**
+ * The document-provider extension's whole chain, against the real store, without iOS.
+ *
+ * This is the closest thing to a device run that exists today, and it is closer than it sounds: the
+ * extension does exactly three things — take a raw ISO 18013-7 request, ask the user, hand back a
+ * response — and only the first is Apple's. So driving [IosDocumentProviderBridge] with a request we
+ * build ourselves exercises everything the extension owns, on documents a real issuer issued.
+ *
+ * ⚠️ What it cannot show is that iOS *routes* a request here, and nothing on the simulator can: the
+ * provider entitlement is never authorised there, and `addRegistration` does not even refuse — it
+ * hangs. That gap needs hardware and an `org-iso-mdoc` verifier, in that order.
+ *
+ * The consent step keeps **one** of the two requested claims, so the printed plaintext distinguishes a
+ * wallet that honours the selection from one that sends everything and hides the rest.
+ */
 private suspend fun probeDcApi(onResult: (String) -> Unit) {
     onResult("--- DC API: the provider extension's chain, on real documents ---")
 
@@ -513,6 +507,15 @@ private const val DC_API_PROBE_ORIGIN = "https://verifier.example"
 /** What [buildDcApiProbeRequest] asks for by default, in the order consent will see them. */
 private val DC_API_PROBE_ELEMENTS = listOf("family_name", "given_name")
 
+/**
+ * How far proximity gets on a machine with no Bluetooth radio.
+ *
+ * Two things are worth seeing here and nowhere else. First, that the four interactors resolve — Koin
+ * fails at the first `get()`, and the screens are three taps deep behind a card `simctl` cannot press,
+ * so a missing definition would otherwise surface as a crash on a device. Second, what the QR screen
+ * shows when advertising cannot start: the simulator has no radio, so this *should* report an error
+ * rather than hang on a QR that never appears. On a device the same call publishes an `mdoc:` payload.
+ */
 private suspend fun probeProximity(onResult: (String) -> Unit) {
     onResult("--- proximity: interactors and engagement ---")
     val koin = KoinPlatform.getKoin()
@@ -821,9 +824,14 @@ private suspend fun probeIssuance(onResult: (String) -> Unit) {
     }
 }
 
-/** The harness half: a host script writes the redirect here, and this hands it to the issuer. */
+/**
+ * The harness half: a host script writes the redirect here, and this hands it to the issuer.
+ *
+ * `internal` so the deferred-issuance probe can reuse it rather than keeping a second copy of the
+ * file-polling contract `keycloak-login-script.py` writes against.
+ */
 @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
-private suspend fun deliverRedirectFromFile(onResult: (String) -> Unit) {
+internal suspend fun deliverRedirectFromFile(onResult: (String) -> Unit) {
     val path = NSHomeDirectory() + "/Documents/authorization-redirect.txt"
     val manager = NSFileManager.defaultManager
     // A file left from a previous run holds a spent authorization code.
@@ -862,19 +870,31 @@ private suspend fun probeCredentialOffer(onResult: (String) -> Unit) {
     IosDeepLinks.deliver(offerUri)
     onResult("--- credential offer: pending=${IosDeepLinks.takePending() != null} ---")
 
+    // End-to-end means with the check ON: off is the default, and a run that left it off would prove
+    // only that the gate can be skipped. Restored below so the probe leaves no state behind.
+    val registrationCheckWasEnabled = IosPreferences.checkIssuerRegistration()
+    IosPreferences.setCheckIssuerRegistration(true)
+    onResult("registration check: on (was $registrationCheckWasEnabled)")
+
     val bridge = IosDocumentOfferPlatformBridge(
         offers = KoinPlatform.getKoin().get<IosCredentialOfferReader>(),
         credentialIssuer = IosCredentialIssuer(
             walletEngine = KoinPlatform.getKoin().get<IosWalletEngine>(),
             openAuthorizationUrl = { url -> onResult("AUTHORIZE-HERE $url") },
         ),
+        // ⛔ The SAME function the DI module supplies, not a stand-in: this run is the only place the
+        // registration gate is exercised against a live issuer through the production bridge.
+        checkRegistration = ::checkIssuerRegistration,
     )
 
     when (val resolution = bridge.resolveOffer(offerUri, bridge.localeTag())) {
-        is PlatformOfferResolution.Success -> onResult(
-            "offer resolved: ${resolution.documentNames} from '${resolution.issuerName}' " +
-                    "pid=${resolution.containsPid} txCode=${resolution.txCodeLength}"
-        )
+        is PlatformOfferResolution.Success -> {
+            onResult(
+                "offer resolved: ${resolution.documentNames} from '${resolution.issuerName}' " +
+                        "pid=${resolution.containsPid} txCode=${resolution.txCodeLength}"
+            )
+            onResult("issuer registration -> ${resolution.issuerRegistration.describe()}")
+        }
 
         is PlatformOfferResolution.NoDocuments -> onResult("offer resolved with no documents")
         is PlatformOfferResolution.IssuerNotTrusted -> onResult("offer issuer not trusted")
@@ -890,6 +910,17 @@ private suspend fun probeCredentialOffer(onResult: (String) -> Unit) {
         redirects.cancel()
         onResult("offer issuance -> $state")
     }
+    IosPreferences.setCheckIssuerRegistration(registrationCheckWasEnabled)
+}
+
+/** One line per outcome, so a console run says which branch the gate took. */
+private fun IssuerRegistrationDomain.describe(): String = when (this) {
+    is IssuerRegistrationDomain.Verified ->
+        "VERIFIED '${details.tradeName}' (${details.uniqueId}) use='${details.intendedUse}'"
+
+    is IssuerRegistrationDomain.Blocked -> "BLOCKED $reason ('${details.tradeName}')"
+    is IssuerRegistrationDomain.NotVerified -> "NOT VERIFIED $reason"
+    is IssuerRegistrationDomain.NotEvaluated -> "not evaluated"
 }
 
 /** Percent-encodes a query-parameter value; the offer travels inside one. */

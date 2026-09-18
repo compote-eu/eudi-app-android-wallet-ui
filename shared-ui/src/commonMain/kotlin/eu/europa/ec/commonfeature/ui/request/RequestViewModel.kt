@@ -251,7 +251,18 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
         }
     }
 
+    /**
+     * Hook for a flow that owes the other side an answer when the user declines.
+     *
+     * Defaults to nothing, because most flows owe nobody one: proximity is a transport that simply
+     * stops, and a DC API request is answered through the calling app. Only the remote OpenID4VP flow
+     * has a verifier sitting on an HTTP request, and it overrides this.
+     */
+    protected open fun onUserDeclined() = Unit
+
     private fun handleOnBack() {
+        // Before the navigation, so the answer is dispatched while the scope this runs in is alive.
+        onUserDeclined()
         setState {
             copy(error = null)
         }

@@ -95,6 +95,8 @@ class PresentationRequestViewModelTest {
             private set
         var stopCount: Int = 0
             private set
+        var rejectCount: Int = 0
+            private set
         val disclosed: MutableList<RequestCombinationUi?> = mutableListOf()
         var requestCalls: Int = 0
             private set
@@ -116,6 +118,10 @@ class PresentationRequestViewModelTest {
 
         override fun stopPresentation() {
             stopCount++
+        }
+
+        override fun rejectPresentation() {
+            rejectCount++
         }
 
         override fun updateRequestedDocuments(selectedCombination: RequestCombinationUi?) {

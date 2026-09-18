@@ -48,6 +48,7 @@ import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.config.ConfigNavigation
 import eu.europa.ec.uilogic.config.NavigationType
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
+import eu.europa.ec.uilogic.navigation.helper.IntentType
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
@@ -206,6 +207,20 @@ class PresentationRequestViewModel(
         interactor.updateRequestedDocuments(
             selectedCombination = viewState.value.requestDataUi.selectedCombination,
         )
+    }
+
+    /**
+     * Tells the verifier the user said no.
+     *
+     * Gated on the request NOT having arrived through the DC API: that flow answers the calling app
+     * directly and has no verifier waiting on an HTTP request, so a rejection there would be sent into
+     * a session that does not exist.
+     *
+     * [cleanUp] cannot carry this — it also runs after a successful share.
+     */
+    override fun onUserDeclined() {
+        if (viewState.value.intentAction?.type == IntentType.DC_API) return
+        interactor.rejectPresentation()
     }
 
     override fun cleanUp() {

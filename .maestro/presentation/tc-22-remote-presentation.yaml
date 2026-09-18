@@ -1,0 +1,145 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-22 — remote presentation via deep link (OpenID4VP, cross-device flow)
+#
+# Precondition: app already unlocked, with TC-01 already run in the same
+#   simulator session (PID already issued - this flow requests and shares
+#   the PID's family_name claim, so it needs the PID to exist first). Does
+#   NOT depend on TC-50/TC-20/TC-30 - mDL presence/absence doesn't affect
+#   this flow either way.
+# Steps: fetch a fresh presentation request from the live EUDI reference
+#   verifier backend -> open it as a deep link -> consent screen -> share
+#   -> re-enter PIN to authorize -> success screen -> verify the verifier
+#   backend actually received the shared data.
+# Expected: the app's OpenID4VP presentation flow completes, and the
+#   verifier backend's own transaction record shows a non-empty vp_token
+#   for the requested credential.
+#
+# Notes on why this looks different from the issuance flows:
+#
+# - No QR scanning, and no camera workaround needed: unlike issuance's
+#   credential-offer deep link (which supports both scanning AND direct
+#   deep-link open, confirmed via DocumentOfferView handling both), this
+#   is the ONLY way to trigger a remote OpenID4VP presentation request on
+#   a simulator (no camera hardware). The mechanism was confirmed to exist
+#   during TC-22's exploration by reading DeepLinkController/
+#   UrlSchemaController/Application.swift: the `haip-vp`/`openid4vp`
+#   schemes (registered in Wallet.plist) route to the exact same
+#   .onOpenURL -> DeepLinkController path issuance's credential-offer
+#   links use, just a different DeepLink.Action case.
+#
+# - `openLink:`, not a `runScript:` calling `xcrun simctl openurl`: Maestro
+#   has a first-class command for this (confirmed via decompiling
+#   maestro-orchestra-models.jar's OpenLinkCommand/YamlOpenLink - takes a
+#   plain string or {link, browser, autoVerify, optional, label}). Using
+#   Maestro's own command keeps this in the flow's own dependency graph
+#   rather than shelling out.
+#
+# - The "Open in EUDI Wallet?" system dialog IS still in play here, and
+#   IS handled below (optional tapOn "Open"): initial testing against an
+#   already-warmed-up simulator (one that had already granted this scheme
+#   once, earlier in the same session, via a manual `xcrun simctl
+#   openurl` call) never saw the dialog reappear and wrongly concluded
+#   `openLink:` bypasses it categorically. Running the full chain fresh
+#   after a genuine `simctl erase` disproved that: the dialog appeared
+#   exactly like it does for `xcrun simctl openurl`, and the very next
+#   assertion failed because of it. This is a one-time-per-erase system
+#   grant, same pattern as TC-01's "Allow ... for Identity Verification"
+#   dialog (see that flow's own comments) - not something specific to how
+#   the URL is triggered. Since CI erases the simulator fresh on every
+#   run (see maestro-simulator.yml's "Erase and boot simulator" step),
+#   this dialog WILL appear on every CI run of this flow, not just
+#   occasionally.
+#
+# - The presentation request URL is fetched fresh via a setup script, not
+#   hardcoded: the verifier backend issues a single-use transaction_id/
+#   request_uri pair per call (see tc-22-setup-presentation.js for the
+#   full rationale, including why /ui/presentations/v2 with an
+#   intended_use_id is required over the simpler-looking v1 endpoint).
+#   Maestro's JS engine has a built-in `http` binding (confirmed via
+#   decompiling GraalJsHttp - http.get/post/put/delete, each taking
+#   {headers, body, params}, returning {ok, status, body, headers}) used
+#   here instead of a wrapper shell script, since pure-Maestro keeps this
+#   runnable the same way in CI as any other flow file.
+#
+# - PIN re-entry is a single "Confirm request" screen, not the two-screen
+#   Create->Confirm sequence TC-01's PIN setup goes through - the dropped-
+#   first-keystroke bug that motivated TC-01's re-focus-before-typing
+#   pattern was specifically about a screen TRANSITION between two PIN
+#   entries; there's only one PIN screen here, so a single tap-then-type
+#   is sufficient (verified working as-is, no dropped characters observed
+#   across repeated runs).
+
+# --- Setup: fetch a fresh presentation request from the live verifier ---
+- runScript: tc-22-setup-presentation.js
+
+# --- Trigger it via deep link (no camera, no QR needed) ---
+- openLink: "${output.presentationUrl}"
+
+# --- System "Open in EUDI Wallet?" confirmation - one-time-per-erase
+#     grant, same pattern as TC-01's "Allow" dialog. Optional + extended
+#     wait: appears on every CI run (simulator erased fresh each time,
+#     see maestro-simulator.yml) but harmless to also tolerate it being
+#     already-granted in a persistent local session. ---
+- extendedWaitUntil:
+    visible:
+      text: "Open"
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+
+# --- Consent screen ---
+#
+# Uses `request_screen_requested_document_0`, NOT
+# `request_screen_description` (this flow's own original selector here) -
+# confirmed live (fresh TC-01 -> TC-22 run on a just-erased simulator,
+# 2026-08-31) that `request_screen_description` no longer exists
+# anywhere in this screen's accessibility hierarchy at all (dumped and
+# grepped the actual JSON snapshot from the failing run, not guessed) -
+# this flow was silently broken since whatever UI change dropped that
+# identifier. `request_screen_requested_document_0` and
+# `request_screen_share_button` are both still present and used
+# immediately below anyway, so asserting on the former first is a
+# like-for-like replacement, not a weaker check.
+- assertVisible:
+    id: "request_screen_requested_document_0"
+
+# Expand the requested-document card and confirm the actual claim value
+# shown matches what TC-01 issued ("Testerova" is TC-01's hardcoded
+# Family Name form input) - this checks the DCQL claim-level display, not
+# just that some consent screen rendered.
+- tapOn:
+    id: "request_screen_requested_document_0"
+- assertVisible: "Testerova"
+
+- tapOn:
+    id: "request_screen_share_button"
+
+# --- Re-authenticate to authorize the share ---
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+
+# --- Success screen ---
+- extendedWaitUntil:
+    visible: "You successfully shared the following information with"
+    timeout: 15000
+- assertVisible:
+    id: "document_success_screen_done_button"
+
+# --- Verify the verifier backend actually received the data (not just a
+#     UI success screen - see tc-22-verify-server-receipt.js for why) ---
+- runScript: tc-22-verify-server-receipt.js
+
+- tapOn:
+    id: "document_success_screen_done_button"
+
+# --- Verify: back to Documents, PID untouched by sharing it ---
+- assertVisible: "PID (MSO Mdoc)"

@@ -1,0 +1,107 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-25 — RP requests an attribute/document the wallet doesn't have
+#
+# Precondition: app already unlocked, with TC-01 already run in the same
+#   simulator session. Does NOT actually require the PID to satisfy
+#   anything here (the whole point is the request can't be satisfied),
+#   but PID being present is what makes this a genuine "wallet has other
+#   documents, just not this one" case rather than an empty wallet -
+#   matching a real-world scenario more closely. Runs chained after
+#   TC-24 in CI, which is also what makes the "one-time per erase"
+#   system dialog already granted (see below).
+# Steps: fetch a fresh presentation request for a document type this
+#   wallet holds zero of (Photo ID, org.iso.23220.photoid.1) -> open it
+#   as a deep link -> confirm the app shows a distinct pre-consent error
+#   screen rather than the normal consent/Share screen -> tap Back ->
+#   confirm a clean return to Documents -> verify server-side that
+#   nothing was received.
+# Expected: "Required credential_set cannot be satisfied" error screen,
+#   no Share button ever offered, clean return to Documents on Back, and
+#   the verifier's own transaction record shows no successful share.
+#
+# Notes:
+#
+# - This is NOT a variant of TC-24's consent screen with a greyed-out
+#   attribute - it's architecturally different, confirmed directly by
+#   triggering it live: the app never reaches request_screen_share_button
+#   or request_screen_requested_document_0 at all. Instead of the normal
+#   consent screen, it shows a distinct error state with an
+#   exclamationmark.circle icon and the text below - the app evidently
+#   parses the DCQL query and checks against its own held documents
+#   BEFORE ever presenting a consent/Share UI, and refuses outright when
+#   nothing it holds can satisfy the credential_set.
+#
+# - "Required credential_set cannot be satisfied" has no dedicated
+#   accessibility id (confirmed via a full hierarchy dump - it's the only
+#   text on this screen without a resource-id, unlike
+#   request_screen_description above it), hence the plain text-based
+#   assertion below rather than an id: selector.
+#
+# - Only back_button is present on this screen - no retry/OK/dismiss
+#   control, same single-exit-path pattern as TC-24's consent screen.
+#
+# - Reuses the same setup-script structure as TC-22/TC-24
+#   (tc-25-setup-photoid-request.js) - see that file for why the
+#   photoid-cred DCQL query is a well-formed, backend-accepted request
+#   (confirmed live: 200, not a validation error) for something this
+#   wallet simply doesn't hold, not a malformed one.
+#
+# - The one-time "Open in EUDI Wallet?" system dialog (see TC-22's own
+#   comments for the full one-time-per-erase story) is handled here
+#   defensively with the same optional wait+tap, but is NOT expected to
+#   actually appear when this flow runs chained after TC-22/TC-24 in the
+#   same simulator session - already granted earlier in that session.
+#   Kept optional for the same standalone-local-run reason as TC-24.
+#
+# - Verification (tc-25-verify-no-receipt.js) is intentionally the SAME
+#   shape as TC-24's: confirmed live that the verifier's event log is
+#   byte-for-byte identical between a rejected transaction and an
+#   unsatisfiable-request one (both: Transaction initialized -> Request
+#   object retrieved -> Verifier failed to get wallet, both 400 on the
+#   main endpoint). The verifier has no visibility into WHY the wallet
+#   never submitted a response - declined vs. unsatisfiable both look
+#   like silence from its side. The client-side assertions below (the
+#   error text + absence of a Share button) are the ONLY signal that
+#   distinguishes this scenario from TC-24 at all; the server-side check
+#   only ever proves "nothing was received," same as TC-24.
+
+# --- Setup: fetch a fresh presentation request for a document type this
+#     wallet holds zero of ---
+- runScript: tc-25-setup-photoid-request.js
+
+# --- Trigger it via deep link ---
+- openLink: "${output.presentationUrl}"
+
+# --- One-time system dialog, not expected to appear when chained after
+#     TC-22/TC-24 in the same session (see notes above) ---
+- extendedWaitUntil:
+    visible:
+      text: "Open"
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+
+# --- Pre-consent error screen: confirm the distinct error state, not
+#     the normal consent/Share screen ---
+- assertVisible: "Required credential_set cannot be satisfied"
+- assertNotVisible:
+    id: "request_screen_share_button"
+- tapOn:
+    id: "back_button"
+
+# --- Verify: clean return to Documents, no error/stuck state ---
+- assertVisible:
+    id: "documents_tab"
+
+# --- Verify the verifier backend received nothing (see
+#     tc-25-verify-no-receipt.js for why this check is the same shape as
+#     TC-24's, and why that's expected rather than a shortcut) ---
+- runScript: tc-25-verify-no-receipt.js

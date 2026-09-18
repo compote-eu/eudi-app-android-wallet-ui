@@ -16,6 +16,11 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOffer
+import eu.europa.ec.shared.wallet.multipaz.IosIssuerRegistrationChecker
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.darwin.Darwin
 import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.businesslogic.validator.FilterValidatorImpl
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
@@ -48,6 +53,8 @@ import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorImpl
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.startupfeature.interactor.SplashInteractorImpl
+import eu.europa.ec.shared.wallet.multipaz.collectDeferredDocument
+import eu.europa.ec.shared.wallet.multipaz.documentsAwaitingDeferredIssuance
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
 import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
@@ -110,6 +117,9 @@ fun provideIosDocumentsPlatformBridge(engine: IosWalletEngine): DocumentsPlatfor
     IosDocumentsPlatformBridge(
         deleteDocument = { documentId -> engine.deleteDocument(documentId) },
         hasAnyDocument = { engine.hasAnyDocument() },
+        collectDeferred = { documentId -> engine.collectDeferredDocument(documentId) },
+        documentNames = { locale -> engine.getAllDocumentsWithDetails(locale).associate { it.id to it.name } },
+        awaitingDeferred = { engine.documentsAwaitingDeferredIssuance() },
     )
 
 @Single
@@ -288,7 +298,28 @@ fun provideIosDocumentOfferPlatformBridge(
 ): DocumentOfferPlatformBridge = IosDocumentOfferPlatformBridge(
     offers = offers,
     credentialIssuer = credentialIssuer,
+    checkRegistration = ::checkIssuerRegistration,
 )
+
+/**
+ * Checks an issuer's registration certificate: fetch its metadata, verify the certificate against the
+ * EU lists, and say whether it covers what this offer contains.
+ *
+ * 🚨 **This lives in the DI module on purpose, not as a default on the bridge.** It reaches
+ * `IosEtsiTrust`, and the trust stack reaches the `PKIXBridge` cinterop whose Swift half only an Xcode
+ * target supplies. A reference from the bridge would make that reachable from every test binary in this
+ * module and none of them would link. Here, nothing a test constructs pulls it in.
+ */
+internal suspend fun checkIssuerRegistration(
+    offer: IosCredentialOffer,
+    locale: String,
+): IssuerRegistrationDomain = HttpClient(Darwin).use { client ->
+    IosIssuerRegistrationChecker(client)
+        // Only what this offer contains: an issuer may publish more than it is offering, and judging
+        // it on the rest would refuse it for something the user was never shown.
+        .check(issuerUrl = offer.issuerUrl, configurationIds = offer.configurationIds.toSet())
+        .toDomain(locale)
+}
 
 @Factory
 fun provideIosDocumentOfferInteractor(
@@ -303,10 +334,6 @@ fun provideIosDocumentOfferInteractor(
     appConfig = appConfig,
 )
 
-/**
- * The login gate. The PIN policy is shared; what iOS brings is where the verifier lives (the Keychain) and
- * how long a wrong PIN costs (`NSUserDefaults`, since a lockout is not a secret).
- */
 /**
  * iOS's analytics, under the platform-neutral supertype the navigation host asks for.
  *
@@ -328,6 +355,10 @@ fun provideIosSharedAppConfig(): SharedAppConfig = iosWalletConfig
 @Single
 fun provideIosAuthenticationConfig(): AuthenticationConfig = WalletAuthenticationConfig
 
+/**
+ * The login gate. The PIN policy is shared; what iOS brings is where the verifier lives (the Keychain) and
+ * how long a wrong PIN costs (`NSUserDefaults`, since a lockout is not a secret).
+ */
 @Single
 fun provideIosPinStorage(): PinStorageController = IosPinStorage()
 

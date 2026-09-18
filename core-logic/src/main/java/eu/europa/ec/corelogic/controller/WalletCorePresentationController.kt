@@ -188,6 +188,23 @@ interface WalletCorePresentationController {
     fun stopPresentation()
 
     /**
+     * Tells the verifier the user declined, then terminates the presentation.
+     *
+     * Distinct from [stopPresentation] on purpose: that one is teardown and runs on **every** exit,
+     * including straight after a successful share, so it must never send anything. This is the answer
+     * to an explicit "no" — the Cancel button or a back gesture on the request screen.
+     *
+     * Without it the verifier hears nothing at all and its transaction simply waits. Measured against
+     * the dev verifier on 2026-09-16: approving logs `Wallet response posted`, and a hand-sent
+     * `access_denied` is accepted and logged the same way, while cancelling in the wallet left the
+     * event log stopped at `Request object retrieved` for as long as it was watched.
+     *
+     * Remote (OpenID4VP) only. Proximity has its own teardown, and a DC API request is answered
+     * through the calling app rather than over HTTP, so neither routes here.
+     */
+    fun rejectPresentation()
+
+    /**
      * Starts QR engagement. This will trigger [events] emission.
      *
      * [TransferEventPartialState.QrEngagementReady] -> QR String to show QR
@@ -576,6 +593,16 @@ class WalletCorePresentationControllerImpl(
         coroutineScope.cancel()
         CoroutineScope(dispatcher).launch {
             eudiWallet.stopProximityPresentation()
+        }
+    }
+
+    override fun rejectPresentation() {
+        // On its own scope, and BEFORE the teardown: `stopPresentation()` cancels `coroutineScope`,
+        // and the SDK's rejection is asynchronous, so dispatching it there would race its own
+        // cancellation. The SDK holds the resolved request object itself, so nothing has to be
+        // passed back in.
+        CoroutineScope(dispatcher).launch {
+            eudiWallet.rejectRemotePresentation()
         }
     }
 

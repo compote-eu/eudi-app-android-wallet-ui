@@ -87,6 +87,23 @@ sealed class DocumentInteractorRetryIssuingDeferredDocumentsPartialState {
     data class Result(
         val successfullyIssuedDeferredDocuments: List<DeferredDocumentDataDomain>,
         val failedIssuedDeferredDocuments: List<String>,
+        /**
+         * The soonest the issuer is willing to be asked again, in seconds — OpenID4VCI's `interval`.
+         *
+         * Null when nothing supplied one, which today means **all of Android** — but not because the
+         * issuer stayed silent. ⚠️ The value exists one layer down:
+         * `eudi-lib-jvm-openid4vci-kt`'s `DeferredCredentialQueryOutcome.IssuancePending` carries
+         * `interval: Duration`, and **wallet-core discards it** when it maps that to
+         * `DeferredIssueResult.DocumentNotReady(document)` (`ProcessDeferredOutcome.kt`). So Android is
+         * behind here by a few lines of someone else's code, not by a missing capability — worth
+         * knowing before anyone concludes it cannot be done. The caller falls back to its own default.
+         *
+         * 🚨 It exists because a wallet that ignores it hammers the issuer. The reference iOS app polls
+         * on a hardcoded 5s sleep against an issuer asking for 60 — the colleague's `.maestro`
+         * TC-17 documents that as a red test — and this app had the same hardcoded 5s until the value
+         * had somewhere to go.
+         */
+        val retryAfterSeconds: Int? = null,
     ) : DocumentInteractorRetryIssuingDeferredDocumentsPartialState()
 
     data class Failure(

@@ -1,0 +1,133 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-26 — present multiple documents at once (PID + mDL)
+#
+# Precondition: app already unlocked, with TC-01 -> TC-50 already run in
+#   the same simulator session (both PID and mDL must exist - this is
+#   the one presentation flow so far that actually needs both). Runs
+#   chained after TC-25 in CI, which is also what makes the "one-time
+#   per erase" system dialog already granted (see below).
+# Steps: fetch a fresh presentation request asking for BOTH PID
+#   (family_name) and mDL (document_number) in one transaction -> open
+#   it as a deep link -> confirm the consent screen shows two separate
+#   document cards -> share both via the single shared Share button ->
+#   re-enter PIN -> confirm the success screen shows both cards ->
+#   verify server-side that both documents' claims genuinely arrived.
+# Expected: two independent, expandable document cards on both the
+#   consent and success screens, a single Share button and single PIN
+#   re-entry authorizes both at once, and the verifier's own transaction
+#   record contains both claims as genuine disclosed elements.
+#
+# Notes:
+#
+# - Multi-document requests are a real, intended verifier feature, not
+#   something forced into working for this test: confirmed via the
+#   verifier frontend's own DCQL model (DCQL.ts) - a credential_set's
+#   "options" accepts multi-id combinations, and the frontend ships
+#   predefined attestation definitions for PID/mDL/Photo ID/EHIC/PDA1
+#   specifically so a request can combine several of them. See
+#   tc-26-setup-multi-document-request.js for the exact DCQL shape used
+#   (one credential_sets entry listing both credential ids in a single
+#   option, which requires both rather than either/or).
+#
+# - Two separate cards, not a merged claim list: confirmed directly by
+#   triggering this live - the consent screen shows
+#   request_screen_requested_document_0 and _1 as two independent,
+#   independently-expandable cards (mDL first, then PID, in this
+#   specific run - order isn't asserted here since it isn't guaranteed),
+#   each showing only its own claim when expanded ("Licence number" for
+#   mDL, "Family Name(s)" for PID). A single request_screen_share_button
+#   and a single PIN re-entry authorizes both together - there is no
+#   per-document approval step.
+#
+# - The one-time "Open in EUDI Wallet?" system dialog (see TC-22's own
+#   comments for the full one-time-per-erase story) is handled here
+#   defensively with the same optional wait+tap, but is NOT expected to
+#   actually appear when this flow runs chained after TC-22/TC-24/TC-25
+#   in the same simulator session - already granted earlier in that
+#   session. Kept optional for the same standalone-local-run reason as
+#   the other presentation flows.
+#
+# - Verification (tc-26-verify-both-received.js) deliberately does NOT
+#   use a raw substring search on the decoded CBOR bytes - see that
+#   file's own comments for why: mDL's document_number value
+#   ("123456789") was found, during this flow's own exploration, to
+#   ALSO appear inside pid-cred's raw bytes as an incidental match
+#   against X.509 certificate metadata (a shared test-PKI Legal Entity
+#   Identifier field), which a naive substring check would have wrongly
+#   treated as PID disclosing mDL data. The verify script instead
+#   reconstructs the exact CBOR elementIdentifier/elementValue byte
+#   adjacency for each claim, which cannot occur by coincidence in
+#   unrelated certificate bytes.
+
+# --- Setup: fetch a fresh multi-document presentation request ---
+- runScript: tc-26-setup-multi-document-request.js
+
+# --- Trigger it via deep link ---
+- openLink: "${output.presentationUrl}"
+
+# --- One-time system dialog, not expected to appear when chained after
+#     TC-22/TC-24/TC-25 in the same session (see notes above) ---
+- extendedWaitUntil:
+    visible:
+      text: "Open"
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+
+# --- Consent screen: confirm both document cards are present ---
+#
+# No longer asserts `request_screen_description` here - confirmed live
+# (fresh TC-01 -> ... -> TC-26 run on a just-erased simulator,
+# 2026-08-31) that it no longer exists anywhere in this screen's
+# accessibility hierarchy (see tc-22-remote-presentation.yaml's own
+# comment for the full finding). The two assertions below already fully
+# cover this comment's stated intent (both document cards present), so
+# the fix here is a removal, not a like-for-like id swap.
+- assertVisible:
+    id: "request_screen_requested_document_0"
+- assertVisible:
+    id: "request_screen_requested_document_1"
+
+# --- Share both via the single shared button + PIN re-entry ---
+- tapOn:
+    id: "request_screen_share_button"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+
+# --- Success screen: confirm both document cards are shown here too ---
+- extendedWaitUntil:
+    visible: "You successfully shared the following information with"
+    timeout: 15000
+- assertVisible: "mDL (MSO Mdoc)"
+- assertVisible: "PID (MSO Mdoc)"
+- assertVisible:
+    id: "document_success_screen_done_button"
+
+# --- Verify the verifier backend actually received BOTH documents'
+#     claims (not just that the transaction succeeded overall - see
+#     tc-26-verify-both-received.js for why this can't be a plain
+#     substring check) ---
+- runScript: tc-26-verify-both-received.js
+
+- tapOn:
+    id: "document_success_screen_done_button"
+
+# --- Verify: nothing removed by sharing. "Done" returns to whichever
+#     tab was active before the deep link was triggered (confirmed
+#     directly - not always Documents, depends on prior navigation
+#     state), so navigate to Documents explicitly rather than assuming
+#     it's already showing. ---
+- tapOn:
+    id: "documents_tab"
+- assertVisible: "mDL (MSO Mdoc)"
+- assertVisible: "PID (MSO Mdoc)"
+- assertVisible: "PID (SD-JWT VC)"

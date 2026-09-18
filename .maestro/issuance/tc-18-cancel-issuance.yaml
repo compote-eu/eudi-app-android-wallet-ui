@@ -1,0 +1,135 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-18 — cancel an in-progress issuance via the identity-proofing web
+# session's own system Cancel.
+#
+# The spreadsheet's manual note flagged this as a likely UX dead-end: "no
+# option found to cancel/go back during ongoing issuance." Investigated
+# against the actual code and UI before accepting that at face value (see
+# AddDocumentViewModel.swift/AddDocumentView.swift/ContentScreenView.swift):
+# every issuance screen this app has (the type picker, the loading/shimmer
+# state, the identity-proofing web view) disables its own back/close
+# button via `.disabled(isLoading)` while a fetch or the
+# ASWebAuthenticationSession is in flight - there is genuinely no app-level
+# "Cancel" button anywhere in this screen's own UI once issuance has
+# started. The ONE real cancel affordance is the SYSTEM-level control
+# that ASWebAuthenticationSession itself provides before the actual web
+# content ever loads: the "'EudiWallet' Wants to Use '<issuer host>' to
+# Sign In" consent alert (Cancel/Continue), which iOS shows regardless of
+# what the app's own UI does. Tapping its Cancel triggers
+# ASWebAuthenticationSessionError.canceledLogin, mapped by
+# OpenId4VciService.swift (the EudiWalletKit dependency) to
+# WalletError(code: .userCancelledLogin) - this flow exercises exactly
+# that path, the only one that exists.
+#
+# FINDING — CONFIRMED UX BUG, same treatment as TC-20's
+# silent-duplicate-issuance result: data integrity is intact, but
+# user-facing behavior is wrong. IMPORTANT: this flow's steps all
+# COMPLETING (no Maestro assertion failure) does NOT mean cancelling
+# behaves correctly - it means this flow successfully reproduces and
+# pins down the current, confirmed-broken behavior as a regression
+# baseline. The assertions on "login_cancelled" and
+# content_error_screen_title below are asserting the BUG, not a
+# passing/healthy state. Do not read a green run of this flow as "cancel
+# works fine" - if this is ever fixed, those two assertions should start
+# failing, and this flow should be updated to assert the FIXED (clean,
+# silent) behavior instead.
+#
+# The confirmed bug: cancelling here does NOT return silently/cleanly to
+# the document picker. It surfaces the app's generic error screen with
+# the raw, untranslated error code as body text - "Houston we have a
+# problem!" / "login_cancelled" - which means a normal, deliberate user
+# action (backing out of identity proofing) is presented to the user as
+# if something had gone wrong. Closing that error screen (the "Close"/X
+# button) returns to "Choose from list", not all the way back to
+# Documents - two more back-navigations are needed to reach the
+# Documents tab, instead of one clean return. This is a real,
+# reproducible UX bug: the only cancel path in the entire issuance flow
+# looks like a crash report to the end user and dumps them two screens
+# further back than where they started.
+#
+# Confirmed clean at the data layer despite that UX bug: after
+# cancelling and navigating back out, Documents is unchanged (still "No
+# results" here, since this runs against an already-empty wallet) - no
+# partial/orphaned document is created just from backing out at this
+# system-dialog stage. See TC-54 (.maestro/issuance/README.md) for a
+# separate, more severe finding about what happens if the flow is
+# interrupted LATER, after WalletKit has already written a `.pending`
+# record - that scenario needs precise timing to hit and isn't
+# reproducible via this same Cancel tap, which fires before any request
+# is sent to the issuer.
+#
+# Driver-stability note: reaching "PID Combined" means interacting with
+# the "Choose from list" screen while some rows may still be showing
+# their per-item shimmer placeholder. This has been observed to crash
+# the Maestro/XCTest driver outright (EXC_BAD_ACCESS in Apple's own
+# XCTAutomationSupport, not this app's code) - see the dedicated "Driver
+# crash" entry in .maestro/issuance/README.md for the full writeup,
+# root cause, and reproduction history. The `extendedWaitUntil` calls
+# below (waiting on real list text, not this app's own loading
+# indicators) are a mitigation against that, not a fix - if this flow
+# ever becomes flaky or crashes the driver in CI, read that entry first.
+#
+# Chain position: must run with 0 pre-existing documents so the final
+# "No results" assertion is meaningful - placed after TC-32 (which wipes
+# all documents and leaves the app unlocked with a freshly-set PIN,
+# 123456) and before TC-42/TC-43, matching TC-42's own precondition and
+# not disturbing either. Does not touch PIN or throttle state at all.
+
+- tapOn:
+    id: "documents_tab"
+- assertVisible: "No results"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "options_screen_from_list_button"
+
+# Real content loaded (not the per-item shimmer placeholder state) -
+# "Health ID (SD-JWT VC)" is simply the last alphabetical entry visible
+# in the first screen of this particular issuer's list before scrolling;
+# its presence is only being used here as a proxy for "the list has
+# genuinely finished its initial fetch", not because of anything specific
+# to that document type.
+- extendedWaitUntil:
+    visible: "Health ID (SD-JWT VC)"
+    timeout: 15000
+- scroll
+- scroll
+- extendedWaitUntil:
+    visible: "PID Combined"
+    timeout: 10000
+- tapOn: "PID Combined"
+
+# The system-level ASWebAuthenticationSession consent alert - the one
+# genuine cancel affordance in this entire flow (see header comment).
+- extendedWaitUntil:
+    visible: "Cancel"
+    timeout: 15000
+- tapOn: "Cancel"
+
+# THE FINDING: cancelling surfaces the app's generic error screen with a
+# raw error code, not a silent/clean return (see header comment).
+- assertVisible:
+    id: "content_error_screen_title"
+- assertVisible: "login_cancelled"
+- tapOn: "Close"
+
+# "Close" only returns to the document-type picker, not to Documents -
+# two more explicit back-navigations are required (see header comment).
+- assertVisible: "Choose from list"
+- tapOn:
+    id: "back_button"
+- assertVisible: "Add document"
+- tapOn:
+    id: "back_button"
+
+# Confirm no orphaned/partial document was created just from cancelling
+# at this stage - Documents is exactly as it was before this flow started.
+- tapOn:
+    id: "documents_tab"
+- assertVisible: "No results"

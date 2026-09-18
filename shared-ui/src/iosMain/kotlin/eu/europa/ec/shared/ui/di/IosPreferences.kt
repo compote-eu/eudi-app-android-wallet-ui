@@ -39,6 +39,7 @@ internal object IosPreferences {
 
     /** Same key string as Android's, so the two platforms' stores read alike even though they are separate. */
     private const val SHOW_BATCH_ISSUANCE_COUNTER = "ShowBatchIssuanceCounter"
+    private const val CHECK_ISSUER_REGISTRATION = "CheckIssuerRegistration"
 
     fun showBatchIssuanceCounter(): Boolean {
         val defaults = NSUserDefaults.standardUserDefaults
@@ -48,5 +49,19 @@ internal object IosPreferences {
 
     fun setShowBatchIssuanceCounter(value: Boolean) {
         NSUserDefaults.standardUserDefaults.setBool(value, SHOW_BATCH_ISSUANCE_COUNTER)
+    }
+
+    /**
+     * Whether to check an issuer's registration certificate before issuing.
+     *
+     * ⚠️ Defaults to **off**, matching Android, and for a reason worth keeping: almost no issuer
+     * publishes `issuer_info` yet, and the checks fail closed — so a default of on would refuse most of
+     * the ecosystem for something the user did not ask for.
+     */
+    fun checkIssuerRegistration(): Boolean =
+        NSUserDefaults.standardUserDefaults.boolForKey(CHECK_ISSUER_REGISTRATION)
+
+    fun setCheckIssuerRegistration(value: Boolean) {
+        NSUserDefaults.standardUserDefaults.setBool(value, CHECK_ISSUER_REGISTRATION)
     }
 }

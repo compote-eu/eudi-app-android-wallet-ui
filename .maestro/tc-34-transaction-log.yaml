@@ -1,0 +1,50 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-34 — transaction log completeness (History tab)
+#
+# Precondition: app already unlocked, with history from prior flows in
+#   the same simulator session — TC-01 (1 PID issuance), TC-50 (1 mDL
+#   issuance), TC-20 (2 more mDL issuances via TC-50 x2) must already
+#   have run. This flow does NOT issue anything itself.
+# Steps: Documents/wherever the prior flow left off -> History tab ->
+#   verify issuance entries are present.
+# Expected (per audit Topic 19, flagged ⚠️ needing verification): all
+#   issuance actions are recorded in History, no missing entries,
+#   correct chronological order.
+#
+# THIS TEST IS EXPECTED TO FAIL RIGHT NOW. Confirmed via live
+# exploration (screenshot) and a codebase investigation: History shows
+# "No results" / "No transactions found" after real PID + mDL issuance
+# in this exact session, despite the SDK layer (EudiWalletKit's
+# OpenId4VciService.logIssuanceTransaction) correctly persisting
+# issuance transactions to storage. The gap is in feature-dashboard:
+# both TransactionTabUIModel.transformToTransactionUI() and
+# TransactionTabInteractor.fetchFilteredTransactions() only convert
+# `.presentation` transactions to a displayable row and return nil for
+# `.issuance`/`.signing`/`.deletion` — silently dropping them before
+# they ever reach this screen. (One of those two functions has a
+# comment claiming that arm is "unreachable in practice," which is
+# incorrect — it's reachable and simply discarded.) This flow is a
+# deliberate red test documenting that confirmed bug, not a flake.
+# Do not wire this into a CI job expected to pass until
+# transformToTransactionUI()/fetchFilteredTransactions() are fixed to
+# handle .issuance.
+#
+# Assertion is scoped to PRESENCE only, not per-entry content or
+# ordering: since no issuance entry has ever actually rendered (the bug
+# drops them before reaching any view), there's no live example to
+# confirm what a fixed row's text would say, so a text-anchored
+# per-entry assertion would be guessing. "No results" is the one piece
+# of UI text directly confirmed via screenshot for the current (empty)
+# state — asserting it's gone is the most defensible check available
+# right now. Chronological-order verification is a follow-up once
+# presence itself is fixed; it can't be meaningfully tested against a
+# screen that never shows anything.
+- tapOn:
+    id: "history_tab"
+- assertNotVisible: "No results"

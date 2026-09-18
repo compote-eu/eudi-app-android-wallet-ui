@@ -1,0 +1,82 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.verifier.dev
+---
+# TC-02 — BLE proximity presentation, custom attribute selection (PID).
+#
+# Physical prerequisite (NOT a script step): this flow assumes a one-time
+# physical rig already exists - this Android device's camera fixed in a
+# position aimed at the paired iPhone's screen location, focus/distance
+# already verified. See README.md in this directory. Engagement (QR scan)
+# is fully passive once the rig is aligned - confirmed live via a
+# hierarchy dump of the "Device Engagement" camera screen: the only
+# clickable element on it is "Go Back" - continuous per-frame ZXing
+# decoding, no capture button, no per-run camera interaction needed.
+#
+# Cross-device orchestration: the iOS half (triggering the QR display,
+# tapping Share, confirming PIN) is driven by a separate Appium script
+# (tc-02-ios-share.py), run by tc-02-ble-custom-attributes.sh, which
+# starts this flow in the background before running the iOS script.
+# Android's own screen naturally progresses through Device Engagement ->
+# Transfer Status (Connecting) -> Show documents with ZERO further
+# Android-side taps needed once the scanner is open - confirmed via a
+# full live run whose logs showed exactly one engagement decode, one GATT
+# connection (status=0, first try), and zero retries/reconnects for the
+# entire session (a ~7 minute idle gap mid-session, while the human/iOS
+# side caught up, did not disturb the open connection).
+#
+# Custom attribute choice: deselects "Portrait" specifically (kept simple
+# and deterministic) - every other PID field stays selected. Toggling
+# requires a POINT tap on the checkbox itself, not a text tap on the
+# label: confirmed via a live hierarchy dump that "Portrait" (like every
+# other field label on this screen) is a non-clickable android.widget.
+# TextView, with its checkbox a SEPARATE clickable android.widget.
+# CheckBox sibling at x 890-1010 (of a 1080-wide screen). A text-based
+# `tapOn: "Portrait"` reports COMPLETED (the text element exists and gets
+# tapped) but does NOT toggle the checkbox - confirmed by re-dumping the
+# hierarchy afterward and seeing it still checked. The point coordinate
+# below was read directly off that same hierarchy dump, not guessed.
+#
+# The wallet holds multiple stored PID (MSO Mdoc) instances (this
+# project's one-time-use PID batch design) - a "Custom PID" request
+# matches ALL of them, sharing every stored instance in one presentation.
+# This is expected app behavior, not a bug (the consent screen shows one
+# card per instance, so the user/wallet is never hiding it) -
+# tc-02-verify-attributes.py asserts "at least one document, each
+# matching the expected attribute subset", not an exact document count.
+
+- launchApp:
+    clearState: true
+- tapOn: "Tap to create request"
+- tapOn: "Custom PID"
+
+# Deselect "Portrait" - point tap on its own checkbox, not the label
+# (see header comment for why a text tap silently does nothing here).
+- tapOn:
+    point: "88%, 62%"
+
+# First "Done" closes the checkbox screen, landing back on the
+# intermediate "Documents to request" screen (Full/Custom chips per
+# document type) - NOT the home screen yet. A second "Done" here closes
+# that screen too. Confirmed live: the first attempt at this flow only
+# included one "Done" and failed the next step ("Scan QR Code" not
+# found) because it was still one screen away from home.
+- tapOn: "Done"
+- tapOn: "Done"
+
+- tapOn: "Scan QR Code"
+
+# Engagement + BLE connection + the full attribute transfer all happen
+# here with no further Android-side interaction (confirmed live), while
+# the iOS script runs concurrently. The generous timeout covers however
+# long the iOS side takes to reach and act on its own consent/PIN
+# screens - the BLE transfer itself, once triggered, takes ~1-2s
+# (confirmed live: request sent to full response received in under 1.5s).
+- extendedWaitUntil:
+    visible: "Show documents"
+    timeout: 120000
+
+- tapOn: "OK"

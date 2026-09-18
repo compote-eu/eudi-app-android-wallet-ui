@@ -139,7 +139,8 @@ fun RequestScreen(
             ConsentStickyBottomSection(
                 modifier = Modifier.fillMaxWidth(),
                 paddingValues = paddingValues,
-                buttonsTestTag = TestTag.RequestScreen.BUTTON,
+                primaryButtonTestTag = TestTag.RequestScreen.PRIMARY_BUTTON,
+                cancelButtonTestTag = TestTag.RequestScreen.SECONDARY_BUTTON,
                 warningSection = ConsentWarningSection(
                     registrationWarning = state.registrationWarning,
                     notVerifiedWarningText = stringResource(Res.string.request_registration_not_verified_warning_text),

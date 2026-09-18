@@ -1,0 +1,48 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.verifier.dev
+---
+# TC-13 — BLE connection interrupted mid-transfer.
+#
+# Physical prerequisite (NOT a script step): same one-time camera rig as
+# TC-02/03/04 - see README.md in this directory.
+#
+# Android's half is byte-for-byte the same request-creation + QR scan
+# steps as TC-03 (tc-03-ble-full-pid.yaml) - full PID, no exclusions.
+# What's different: the interruption is triggered from the iOS-driving
+# script (tc-13-ios-interrupt-share.py), which disables THIS Android
+# device's own Bluetooth via adb right after tapping Share on iOS - well
+# before iOS's SDK actually attempts to write the response. See that
+# script's docstring for the live-measured timing this relies on: the
+# actual GATT write burst is a ~55ms window many seconds after Share is
+# tapped, far too tight to time reactively, so the interruption fires
+# early on the Android radio itself and holds, guaranteeing the write
+# fails rather than trying to snipe a sub-100ms window.
+#
+# Because of that, THIS flow's own final assertion is expected to FAIL
+# (this device's Bluetooth is off, so it can never receive a response).
+# A timeout on "Show documents" here is the CORRECT/expected outcome for
+# this test, not a rig bug - the orchestrator script
+# (tc-13-ble-mid-transfer-disconnect.sh) does not treat this flow's
+# non-zero exit as fatal, unlike TC-02/03/04.
+
+- launchApp:
+    clearState: true
+- tapOn: "Tap to create request"
+- tapOn: "Full PID"
+- tapOn: "Done"
+
+- tapOn: "Scan QR Code"
+
+# Engagement + BLE connection + the request send happen here exactly as
+# in TC-03. The response transfer is expected to NEVER arrive, since
+# the iOS script disables this device's Bluetooth shortly after this
+# point - a 45s bound (vs TC-03's 120s) is deliberately generous enough
+# to rule out "was just slow" but short enough not to waste rig time on
+# an outcome that is not expected to change by waiting longer.
+- extendedWaitUntil:
+    visible: "Show documents"
+    timeout: 45000

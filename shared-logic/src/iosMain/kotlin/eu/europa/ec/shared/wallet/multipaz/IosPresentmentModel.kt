@@ -57,6 +57,15 @@ data class IosPresentmentRequest(
     /** The verifier's name if its certificate is trusted, null when it is unknown. */
     val requesterName: String?,
     val requesterIsTrusted: Boolean,
+    /**
+     * What the verifier's ETSI registration certificate says, when it publishes one.
+     *
+     * ⚠️ Display only. Android shows this on the consent screen and blocks no presentation on it, and
+     * a wallet that silently dropped requests would be worse than one that names who is asking and
+     * lets the user decide.
+     */
+    val relyingPartyRegistration: RelyingPartyRegistrationOutcome =
+        RelyingPartyRegistrationOutcome.NotOffered,
     val combinations: List<Combination>,
 ) {
     data class Combination(val documents: List<RequestedDocument>)
@@ -114,9 +123,12 @@ data class IosPresentmentDisclosure(
 internal fun CredentialPresentmentData.toPresentmentRequest(
     requesterName: String?,
     requesterIsTrusted: Boolean,
+    relyingPartyRegistration: RelyingPartyRegistrationOutcome =
+        RelyingPartyRegistrationOutcome.NotOffered,
 ): IosPresentmentRequest = IosPresentmentRequest(
     requesterName = requesterName,
     requesterIsTrusted = requesterIsTrusted,
+    relyingPartyRegistration = relyingPartyRegistration,
     combinations = combinationsOfMatches().map { matches ->
         IosPresentmentRequest.Combination(documents = matches.map { it.toRequestedDocument() })
     },

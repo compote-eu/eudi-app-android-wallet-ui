@@ -90,5 +90,53 @@ class PresentationRequestViewModelPlatformHandleTest {
 
             // Finish, NOT Pop: there is no in-app back stack to return to when the browser invoked us.
             assertIs<Effect.Navigation.Finish>(effect.await())
+
+            // And nothing is sent to a verifier: a DC API request is answered through the calling app,
+            // so there is no OpenID4VP session for an `access_denied` to belong to.
+            assertEquals(0, fake.rejectCount)
+        }
+
+    @Test
+    fun back_tells_the_verifier_the_user_declined_on_an_ordinary_remote_request() =
+        runTest(mainDispatcher) {
+            val fake = FakePresentationRequestInteractor(
+                listOf(success(document("d1", "c1", checked = true)))
+            )
+            val viewModel = PresentationRequestViewModel(fake, OPENID_CONFIG)
+
+            viewModel.setEvent(Event.Init(intentAction = null))
+            advanceUntilIdle()
+
+            val effect = async { viewModel.effect.first() }
+            viewModel.setEvent(Event.OnBack)
+            advanceUntilIdle()
+
+            assertIs<Effect.Navigation.Pop>(effect.await())
+            // The point of the change: the verifier is waiting on an HTTP request and is owed an
+            // answer. Measured against the dev verifier on 2026-09-16 — before this, cancelling left
+            // its event log stopped at "Request object retrieved" indefinitely.
+            assertEquals(1, fake.rejectCount)
+        }
+
+    @Test
+    fun a_successful_share_never_sends_a_rejection() =
+        runTest(mainDispatcher) {
+            val fake = FakePresentationRequestInteractor(
+                listOf(success(document("d1", "c1", checked = true)))
+            )
+            val viewModel = PresentationRequestViewModel(fake, OPENID_CONFIG)
+
+            viewModel.setEvent(Event.Init(intentAction = null))
+            advanceUntilIdle()
+
+            // Share, not back — the one path that must never apologise to the verifier.
+            viewModel.setEvent(Event.StickyButtonPressed)
+            advanceUntilIdle()
+
+            assertEquals(0, fake.rejectCount)
+            // 🪤 `cleanUp()` is deliberately NOT exercised here: it closes a Koin scope and a unit test
+            // has no Koin. It cannot reject anyway — it calls `stopPresentation()`, a different method —
+            // and the whole share-then-exit path was watched end to end against the dev verifier on
+            // 2026-09-16, which posted a vp_token and no `access_denied`.
         }
 }

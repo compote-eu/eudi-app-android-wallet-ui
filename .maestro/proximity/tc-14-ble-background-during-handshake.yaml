@@ -1,0 +1,56 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.verifier.dev
+---
+# TC-14 — app backgrounded during BLE engagement/handshake, before the
+# consent screen appears (before transfer completes).
+#
+# Physical prerequisite (NOT a script step): same one-time camera rig as
+# TC-02/03/04/13 - see README.md in this directory.
+#
+# Android's half is the same request-creation + QR scan steps as
+# TC-03/13 - full PID, no exclusions. What's different: the interruption
+# is triggered from the iOS-driving script
+# (tc-14-ios-background-during-handshake.py), which backgrounds the iOS
+# app (via Appium's `mobile: backgroundApp`, NOT a force-kill - TC-47
+# already covers that) almost immediately after the QR is displayed,
+# i.e. during Android's engagement/GATT-connect/request-send sequence,
+# well before iOS would normally reach its consent screen.
+#
+# Code-grounded reason this matters (see
+# Modules/feature-proximity/Sources/UI/Connectivity/ProximityConnectionViewModel.swift):
+# the QR image is generated exactly once, on `.prepareQr`, with no
+# re-generation logic tied to the app returning to foreground - if
+# Android completes engagement while iOS is backgrounded, there is no
+# code path here that would refresh what's on screen when iOS returns.
+# Also confirmed live: this app declares no `UIBackgroundModes`
+# (bluetooth-central/bluetooth-peripheral) anywhere - backgrounding
+# should genuinely suspend the BLE session, not be a no-op.
+#
+# Because of that, THIS flow's own final assertion may or may not see
+# "Show documents" depending on whether the app recovers cleanly after
+# being foregrounded again - both outcomes are informative, so the
+# orchestrator (tc-14-ble-background-during-handshake.sh) does not
+# treat this flow's non-zero exit as fatal, same as TC-13.
+
+- launchApp:
+    clearState: true
+- tapOn: "Tap to create request"
+- tapOn: "Full PID"
+- tapOn: "Done"
+
+- tapOn: "Scan QR Code"
+
+# The iOS script backgrounds its app almost immediately after this
+# point, holds for several seconds (covering Android's engagement +
+# GATT connect + request-send sequence, per TC-13's live-measured
+# baseline showing that whole sequence completes in ~2s), then
+# foregrounds again. This bound is generous enough to distinguish
+# "recovered, just slow" from "never recovered" without wasting rig
+# time either way.
+- extendedWaitUntil:
+    visible: "Show documents"
+    timeout: 45000

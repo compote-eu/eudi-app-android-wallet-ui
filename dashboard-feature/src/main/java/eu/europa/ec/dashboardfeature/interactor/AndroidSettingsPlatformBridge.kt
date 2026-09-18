@@ -82,6 +82,13 @@ class AndroidSettingsPlatformBridge(
     /** Wallet Core performs the check, so the row is offered. */
     override val canCheckRegistrations: Boolean get() = true
 
+    /**
+     * True: `WalletCoreConfigImpl` reads the flag once, when it builds the `EudiWalletConfig`, and
+     * `EudiWallet` is created from that config inside a Koin scope nothing closes — so the engine keeps
+     * the value it was built with until the process restarts.
+     */
+    override val registrationCheckNeedsRestart: Boolean get() = true
+
     override suspend fun isRegistrationCheckEnabled(): Boolean =
         registrationCheckProvider.isEnabled()
 

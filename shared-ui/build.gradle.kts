@@ -73,6 +73,31 @@ kotlin {
             // back to the bundle *name* ("SharedKit").
             binaryOption("bundleId", "eu.europa.ec.shared.ui")
         }
+
+        // 🚨 The test binaries need the same two libraries :shared-logic's do, and for the same
+        // reason — see the long note in that build file. The app gets both from Xcode; a
+        // Kotlin/Native test binary has no Xcode target, so it links them itself.
+        //
+        // 🪤 This was invisible until a test in THIS module reached the trust code. Kotlin/Native
+        // drops unreferenced code, so every test here linked happily while nothing touched it;
+        // `IosIssuerRegistrationGateTest` drives a real `IosCredentialOfferReader`, whose HTTP client
+        // defaults to `IosEtsiTrust`, and the whole module stopped linking with
+        // `Undefined symbols … _TtC10PKIXBridge13PKIXValidator`.
+        //
+        // The archive is the one :shared-logic already builds from the vendored Swift sources: the
+        // module name is load-bearing (`PKIXBridge`), so a second copy under another name would
+        // satisfy nothing, and a second copy under the same name would be pure duplication.
+        val pkixTask = ":shared-logic:buildPkixBridge" +
+                iosTarget.targetName.replaceFirstChar { it.uppercase() }
+        val pkixDirectory = project(":shared-logic").layout.buildDirectory
+            .dir("pkix-bridge/${iosTarget.targetName}")
+        iosTarget.binaries.withType(
+            org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable::class.java
+        ).configureEach {
+            linkerOpts("-lsqlite3")
+            linkerOpts("-L${pkixDirectory.get().asFile.absolutePath}", "-lPKIXBridge")
+            linkTaskProvider.configure { dependsOn(pkixTask) }
+        }
     }
 
     sourceSets {
@@ -188,12 +213,29 @@ kotlin {
             // Kotlin side there cannot depend on it, so neither platform carries the other's.
             implementation(libs.rqes.ui.sdk)
         }
+        iosMain {
+            // Probes are DEVELOPER TOOLING and must not reach a shipped binary: they drive real
+            // issuance against real issuers, seed fixtures and print diagnostics. They compile for
+            // every build EXCEPT a Release one, which is the only kind a user receives. Xcode passes
+            // `CONFIGURATION` to the framework build, so the decision is made where the app is
+            // actually assembled; a plain Gradle run (tests, CI) has no such variable and keeps them,
+            // which is what a developer wants. ⛔ Do not move probe code back into `iosMain`.
+            if (providers.environmentVariable("CONFIGURATION").orNull != "Release") {
+                kotlin.srcDir("src/iosProbeMain/kotlin")
+            }
+        }
         // No iosMain.dependencies block: iOS adds nothing of its own any more. The Compose UI
         // artifacts moved to commonMain with the first shared screen, and the navigation host's
         // pieces followed when `AppNavDisplay` became shared.
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
+        }
+        // The mock HTTP engine, for the iOS bridges that drive a real reader rather than a stub —
+        // `IosIssuerRegistrationGateTest` resolves an actual offer so the issuance gate is exercised
+        // through production code rather than around it.
+        iosTest.dependencies {
+            implementation(libs.ktor.client.mock)
         }
         // Holds the Android half of `testPlatformContext()` / `testPlatformIntent()` — the test-only
         // factories that let commonTest reach view-model paths whose events carry a `PlatformContext`

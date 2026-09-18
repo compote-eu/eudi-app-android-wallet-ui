@@ -16,10 +16,14 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.corelogic.model.RegistrationStatusDomain
+import org.multipaz.util.Logger
+import platform.Foundation.languageCode
+import platform.Foundation.currentLocale
+import platform.Foundation.NSLocale
 import eu.europa.ec.shared.resources.document_success_banner_text
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.corelogic.model.RelyingPartyDomain
-import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
@@ -100,6 +104,25 @@ internal class IosRemotePresentationCoordinator(
     //region The request screen
 
     /**
+     * Which exchange is running, counted up on every [start].
+     *
+     * 🚨 The presenter and this coordinator are `@Single` — three screens are views onto one exchange —
+     * so a screen tearing down would otherwise cancel whatever is current rather than what it owned.
+     *
+     * ⚠️ **Android shares its instance in the same way**, and an earlier version of this note claimed
+     * otherwise. `getOrCreateKoinScope<WalletPresentationScope>(presentationScopeId)` is keyed by a
+     * *constant* — `"vp_presentation_scope_id"` — so a second presentation gets the same controller
+     * there too. What Android lacks is the second ingredient: its `stopPresentation()` is
+     * `coroutineScope.cancel()` and sends nothing, so a stale teardown is merely wasteful. Ours
+     * completes the pending consent with null, multipaz raises `PresentmentCanceledException`, and the
+     * rejection path posts `access_denied` — so the same stale teardown told a verifier the user had
+     * refused a request they were never shown. Measured on an emulator 2026-09-18: the newcomer
+     * survived on Android and completed, with no `access_denied` on either transaction.
+     */
+    var exchangeId: Long = 0
+        private set
+
+    /**
      * Starts the exchange the link describes, then reports what happens to it.
      *
      * The URI is taken from the config rather than from a field of this class, because the config is
@@ -111,6 +134,7 @@ internal class IosRemotePresentationCoordinator(
         if (mode !is PresentationMode.OpenId4Vp) return
         redirectUri = null
         initiatorRoute = AppRouteCodec.encode(mode.initiatorRoute)
+        exchangeId += 1
         presenter.start(mode.uri)
     }
 
@@ -121,6 +145,15 @@ internal class IosRemotePresentationCoordinator(
 
                 is IosRemotePresentationState.Failed ->
                     PresentationRequestInteractorPartialState.Failure(error = state.message)
+
+                // ⚠️ `NoData`, not `Failure`. The request was understood and answered; there is simply
+                // nothing to show. `Failure` puts a "something went wrong" heading and a Retry over an
+                // ordinary outcome — Android reaches `NoData` from two branches of its own for exactly
+                // this, and the shared screen renders it with `error = null`.
+                is IosRemotePresentationState.NothingToShare ->
+                    PresentationRequestInteractorPartialState.NoData(
+                        relyingParty = knownRelyingParty(),
+                    )
 
                 // The user backed out, or the exchange was abandoned before anything was asked.
                 is IosRemotePresentationState.Idle ->
@@ -208,7 +241,12 @@ internal class IosRemotePresentationCoordinator(
                         )
                     }
 
-                is IosRemotePresentationState.Resolving -> Unit
+                // The loading screen is only reached once there is something to send, so nothing can
+                // have matched by then. Ignored rather than reported: the request screen is where that
+                // answer belongs, and it has already given it.
+                is IosRemotePresentationState.NothingToShare,
+                is IosRemotePresentationState.Resolving,
+                    -> Unit
             }
         }
     }
@@ -277,12 +315,55 @@ internal class IosRemotePresentationCoordinator(
 
     //endregion
 
-    /** Ends the exchange: the back button, the "stop" the request screen offers, and every teardown. */
-    fun cancel() {
+    /**
+     * The user declined: the verifier is told, then the exchange is torn down.
+     *
+     * Separate from [cancel] deliberately — that one also runs on ordinary teardown, including after a
+     * successful send, where claiming the user denied the request would be false.
+     */
+    fun reject() {
+        disclosures = emptyList()
+        disclosed = emptyList()
+        presenter.reject()
+    }
+
+    /**
+     * Ends the exchange: the back button, the "stop" the request screen offers, and every teardown.
+     *
+     * @param ownedExchangeId the exchange the caller is tearing down, or null to end whatever is
+     *   current. ⛔ **Screens must pass theirs.** The shared `onCleared()` calls `stopPresentation()`
+     *   as an *outgoing* screen is replaced — and when a second presentation arrives while the first
+     *   screen is still up, that teardown ran ~265 ms after the new exchange had already asked for
+     *   consent and killed it, after which the decline path correctly told the verifier the user had
+     *   refused a request they were never shown. Watched twice on a simulator, 2026-09-17.
+     */
+    fun cancel(ownedExchangeId: Long? = null) {
+        if (ownedExchangeId != null && ownedExchangeId != exchangeId) {
+            Logger.i(
+                TAG,
+                "ignoring a teardown from exchange $ownedExchangeId; $exchangeId is running",
+            )
+            return
+        }
         disclosures = emptyList()
         disclosed = emptyList()
         presenter.cancel()
     }
+
+    /**
+     * The requester as far as it is known when nothing matched.
+     *
+     * Consent was never asked for on that path, so multipaz's request never arrived and there is no
+     * name to take from it. The screen falls back to its own default, which is the honest rendering:
+     * saying nothing is better than naming the wrong party.
+     */
+    private fun knownRelyingParty(): RelyingPartyDomain = RelyingPartyDomain(
+        name = verifierName,
+        uniqueId = null,
+        hasTrustedAccessCertificate = verifierIsTrusted,
+        logoUri = null,
+        registration = RegistrationStatusDomain.NotEvaluated,
+    )
 
     //region multipaz's request -> the shared consent model
 
@@ -294,11 +375,11 @@ internal class IosRemotePresentationCoordinator(
 
         return if (combinationsUi.isEmpty()) {
             PresentationRequestInteractorPartialState.NoData(
-                relyingParty = relyingPartyDomain(),
+                relyingParty = relyingPartyDomain(NSLocale.currentLocale.languageCode),
             )
         } else {
             PresentationRequestInteractorPartialState.Success(
-                relyingParty = relyingPartyDomain(),
+                relyingParty = relyingPartyDomain(NSLocale.currentLocale.languageCode),
                 combinationsUi = combinationsUi,
                 // multipaz builds the response from the claims the selection carries, so unticking a
                 // row really does keep it out of the response — see `CredentialPresentmentData.toSelection`.
@@ -311,16 +392,23 @@ internal class IosRemotePresentationCoordinator(
 }
 
 /**
- * The requester as iOS knows it. [RegistrationStatusDomain.NotEvaluated] is the honest value, not a
- * placeholder: the issuer and relying-party registration policies live in
+ * The requester as iOS knows it.
+ *
+ * ⚠️ This comment used to read: *"the issuer and relying-party registration policies live in
  * `eudi-lib-android-wallet-core`, which has no iOS counterpart and no multipaz equivalent, so no
- * registration certificate is ever evaluated here. `hasTrustedAccessCertificate` follows what
- * multipaz reports, which is false today because `resolveTrustFn` is never supplied.
+ * registration certificate is ever evaluated here"*, and *"`hasTrustedAccessCertificate` … is false
+ * today because `resolveTrustFn` is never supplied"*. **Both halves have since become false** — the
+ * trust function is supplied (see `WalletPresentmentSource`), and the registration certificate is read
+ * from the request object's `verifier_info` and judged against the same ETSI lists. Neither library is
+ * needed for it; `rc-wrp+jwt` is the relying-party format and multipaz's own JWT, X.509 and
+ * status-list primitives do the work.
  */
-private fun IosPresentmentRequest.relyingPartyDomain(): RelyingPartyDomain = RelyingPartyDomain(
+private fun IosPresentmentRequest.relyingPartyDomain(locale: String): RelyingPartyDomain = RelyingPartyDomain(
     name = requesterName,
     uniqueId = null,
     hasTrustedAccessCertificate = requesterIsTrusted,
     logoUri = null,
-    registration = RegistrationStatusDomain.NotEvaluated,
+    registration = relyingPartyRegistration.toDomain(locale),
 )
+
+private const val TAG = "IosRemotePresentationCoordinator"

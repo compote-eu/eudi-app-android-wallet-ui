@@ -136,6 +136,10 @@ class PresentationRequestInteractorImpl(
         walletCorePresentationController.stopPresentation()
     }
 
+    override fun rejectPresentation() {
+        walletCorePresentationController.rejectPresentation()
+    }
+
     override fun updateRequestedDocuments(selectedCombination: RequestCombinationUi?) {
         val selections = selectedCombination?.let { safeSelectedCombinationUi ->
             RequestTransformer.createSelectionsDomain(

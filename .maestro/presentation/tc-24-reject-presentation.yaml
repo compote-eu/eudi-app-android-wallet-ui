@@ -1,0 +1,96 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-24 — user rejects a remote presentation request
+#
+# Precondition: app already unlocked, with TC-01 already run in the same
+#   simulator session (PID already issued - same precondition as TC-22,
+#   since this reuses TC-22's setup script and requests the same PID
+#   family_name claim). Does not depend on TC-22 having actually
+#   completed a share - just reuses its setup mechanism - but in
+#   practice runs chained after it in CI, which is also what makes the
+#   "one-time per erase" system dialog already granted (see below).
+# Steps: fetch a fresh presentation request (same mechanism as TC-22) ->
+#   open it as a deep link -> on the consent screen, tap Back instead of
+#   Share -> confirm a clean return to Documents -> verify server-side
+#   that the verifier backend received nothing.
+# Expected: the app returns to Documents with no error/stuck state, and
+#   the verifier's own transaction record shows no successful share ever
+#   happened.
+#
+# Notes:
+#
+# - Reuses tc-22-setup-presentation.js as-is (runScript path resolves
+#   relative to this flow file's own directory, same directory as
+#   TC-22's files) - fetching a fresh transaction rather than a
+#   hardcoded URL for the same single-use-transaction reasons documented
+#   there.
+#
+# - The one-time "Open in EUDI Wallet?" system dialog (see TC-22's own
+#   comments for the full one-time-per-erase story) is still handled
+#   here defensively with the same optional wait+tap, but is NOT
+#   expected to actually appear when this flow runs chained after TC-22
+#   in the same simulator session - TC-22 already granted it earlier in
+#   that same session, and per the confirmed one-time-per-erase
+#   behavior it doesn't reappear until the next `simctl erase`. Kept
+#   optional rather than removed: this file is also runnable standalone
+#   against a freshly-erased simulator (e.g. local exploration), where
+#   the dialog WOULD appear on this flow's own first trigger.
+#
+# - No confirmation dialog on rejection: tapping "Back" on the consent
+#   screen (id `back_button`) returns immediately to Documents with no
+#   "Are you sure?" prompt - confirmed directly, not assumed. There is
+#   no dedicated "Cancel"/"Reject" button on this screen; "Back" is the
+#   only rejection-adjacent control that exists.
+#
+# - Verification distinguishes "nothing received" from "successfully
+#   shared" (see tc-24-verify-no-receipt.js), NOT "explicit reject" from
+#   "request abandoned/never touched" - the verifier's event log is
+#   identical for both of those. That distinction doesn't matter for
+#   what this test checks: confirming nothing leaked is the actual goal
+#   here (same TC-13/TC-14-derived lesson tc-22-verify-server-receipt.js
+#   is built on), and both are the correct, safe outcome.
+
+# --- Setup: fetch a fresh presentation request (same as TC-22) ---
+- runScript: tc-22-setup-presentation.js
+
+# --- Trigger it via deep link ---
+- openLink: "${output.presentationUrl}"
+
+# --- One-time system dialog, not expected to appear when chained after
+#     TC-22 in the same session (see notes above) ---
+- extendedWaitUntil:
+    visible:
+      text: "Open"
+    timeout: 10000
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+
+# --- Consent screen: confirm it rendered, then reject via Back instead
+#     of Share ---
+#
+# Uses `request_screen_requested_document_0`, NOT
+# `request_screen_description` (this flow's own original selector) -
+# confirmed live (fresh TC-01 -> TC-22 -> TC-24 run on a just-erased
+# simulator, 2026-08-31) that `request_screen_description` no longer
+# exists anywhere in this screen's accessibility hierarchy - see
+# tc-22-remote-presentation.yaml's own comment on the same fix for the
+# full finding.
+- assertVisible:
+    id: "request_screen_requested_document_0"
+- tapOn:
+    id: "back_button"
+
+# --- Verify: clean return to Documents, no error/stuck state ---
+- assertVisible:
+    id: "documents_tab"
+
+# --- Verify the verifier backend received nothing (not just that the
+#     app looks fine - see tc-24-verify-no-receipt.js for why) ---
+- runScript: tc-24-verify-no-receipt.js

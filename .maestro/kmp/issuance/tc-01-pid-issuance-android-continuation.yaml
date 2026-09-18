@@ -1,0 +1,75 @@
+# TC-01-equivalent, Android continuation: identity-proofing form through Authorize.
+#
+# Status as of 2026-09-15: PORTED, PARTIALLY VERIFIED, BLOCKED BY AN APP/BACKEND BUG.
+# Run as a second step after `tc-01-pid-issuance-common.yaml` gets to the catalog list, on
+# Android only — this file was never gotten passing on iOS (see the blocker note below).
+#
+# What actually happened when this ran: scrolled to and tapped "PID Combined", which handed
+# off to a live browser-hosted identity-proofing form (FormEU test issuer) — the same shape as
+# the native app's own ASWebAuthenticationSession flow. Reached "Review & Send" and "Authorize"
+# with correctly filled data, then a real OAuth redirect back into the app, then:
+#   "Something went wrong issuing your document(s)"
+# with this in logcat, from the final token exchange:
+#   REQUEST: https://backend.dev.issuer.eudiw.dev/oidc/token
+#   {"error": "invalid_request", "error_description": "Client Attestation has expired
+#   (expired time is before current time minus skew)."}
+#
+# iOS's blocker is earlier and different in symptom, same root cause family: tapping into the
+# catalog list hangs for ~30s trying to reach dev.wallet-provider.eudiw.dev, then fails with
+# "Error establishing authenticated channel with issuer" — no HTTP response ever arrives,
+# though a plain `curl` to the same endpoint from the same machine answers in under half a
+# second. Reproduced 3x. Not yet investigated further; flag to the app team, see
+# `.maestro/PORTING_STATUS.md`.
+#
+# KNOWN FRAGILITY, not yet hardened: the `point:` taps below are raw screen-percentage
+# coordinates against this specific external WebView form, captured against one specific
+# screenshot state on one specific emulator/resolution. They are NOT accessibility-id-based
+# (the form's `<input>` fields have no stable id, same limitation the native app's own
+# reference flow already documented) and will need re-verification, and likely
+# re-coordinates, on a different device size or if the form's layout changes upstream. A
+# real flakiness was hit and fixed while building this: a coordinate computed from a
+# screenshot taken right after the keyboard closed does not account for the WebView's own
+# scroll-into-view-on-focus behavior shifting layout again on the very next tap — re-screenshot
+# before every single field tap, do not batch coordinate taps from one screenshot.
+#
+# Never re-verified against the just-split DocumentOfferScreen PRIMARY_BUTTON/SECONDARY_BUTTON
+# tags (added earlier the same day) — this flow never reaches that screen; the catalog tap
+# goes straight into the identity-proofing redirect instead, same as the native reference flow.
+
+appId: eu.compote.euidi.dev
+---
+- scroll
+- scroll
+- tapOn: "PID Combined"
+- tapOn: "FormEU"
+- tapOn: "Submit"
+- tapOn:
+    point: "50%,56%"    # Birth Date -- opens native date picker, defaults to today
+- tapOn: "SET"
+- tapOn:
+    point: "50%,65%"    # Family Name
+- inputText: "Doe"
+- hideKeyboard
+- tapOn:
+    point: "50%,75%"    # Given Name
+- inputText: "John"
+- hideKeyboard
+- tapOn:
+    point: "50%,30%"    # Country Code (Nationality) -- after prior scroll position
+- inputText: "FR"
+- hideKeyboard
+- scroll
+- tapOn:
+    point: "50%,42%"    # Place Of Birth > Country -- form requires at least one PoB field
+- inputText: "FR"
+- hideKeyboard
+- scroll
+- tapOn: "Confirm"
+- scroll
+- scroll
+- scroll
+- scroll
+- tapOn: "Authorize"
+# --- Beyond this point is currently unreachable: the token exchange fails with the
+#     client-attestation error described above before any success/document-list screen
+#     renders. Nothing past "Authorize" has been verified.

@@ -16,8 +16,11 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.trust.toTrustChain
+import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
+import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -66,6 +69,18 @@ sealed interface IosRemotePresentationState {
     ) : IosRemotePresentationState
 
     data class Failed(val message: String) : IosRemotePresentationState
+
+    /**
+     * The verifier asked for something this wallet does not hold.
+     *
+     * ⚠️ **Not a [Failed].** Nothing went wrong: the request was understood, answered as far as it
+     * could be, and the honest reply is that there is nothing to show. The shared screens already model
+     * this — `PresentationRequestInteractorPartialState.NoData` renders a proper screen with the
+     * requester's header and no error — and Android reaches it from two branches of its own. Routing it
+     * through `Failed` instead put a *"something went wrong"* heading and a Retry button over an
+     * ordinary outcome, which is what a colleague saw on a simulator on 2026-09-17.
+     */
+    data object NothingToShare : IosRemotePresentationState
 }
 
 /**
@@ -116,6 +131,49 @@ class IosRemotePresenter internal constructor(
         scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust())
 
+    /** Filled in by the observing engine while multipaz fetches the request object. */
+    private var requestNotice = PresentationRequestNotice()
+
+    /**
+     * What the verifier's registration certificate says, or [RelyingPartyRegistrationOutcome.NotOffered]
+     * when it publishes none — which is most of them today.
+     *
+     * Never throws and never blocks the consent screen: a verifier whose registration cannot be judged
+     * is still one the user may want to answer, and Android refuses nothing on this either.
+     */
+    private suspend fun evaluateRelyingPartyRegistration(): RelyingPartyRegistrationOutcome {
+        val requestObject = requestNotice.requestObject
+            ?: return RelyingPartyRegistrationOutcome.NotOffered
+        // The concrete ETSI source, because the trust *lists* are what a registration certificate is
+        // judged against and `ReaderTrustSource` deliberately exposes only the verifier-metadata
+        // question. A test supplying a different source gets NotOffered, which is the honest answer.
+        val etsi = readerTrust as? IosEtsiTrust ?: return RelyingPartyRegistrationOutcome.NotOffered
+
+        return runCatching {
+            HttpClient(Darwin).use { client ->
+                IosRelyingPartyRegistrationValidator(
+                    isChainTrusted = { chain ->
+                        etsi.isTrusted(
+                            chain.certificates.toTrustChain(),
+                            VerificationContext.WalletRelyingPartyRegistrationCertificate,
+                        )
+                    },
+                    checkRevocation = { reference ->
+                        registrationStatusOf(reference, client) { chain ->
+                            etsi.isTrusted(
+                                chain.certificates.toTrustChain(),
+                                VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
+                            )
+                        }
+                    },
+                ).evaluate(requestObject, requestNotice.requestSigner)
+            }
+        }.getOrElse {
+            Logger.w(TAG, "relying party registration could not be evaluated: ${it.message}")
+            RelyingPartyRegistrationOutcome.NotOffered
+        }
+    }
+
     private val mutableState =
         MutableStateFlow<IosRemotePresentationState>(IosRemotePresentationState.Idle)
     val state: StateFlow<IosRemotePresentationState> = mutableState.asStateFlow()
@@ -147,6 +205,9 @@ class IosRemotePresenter internal constructor(
         // completed one. Both were "no further output".
         Logger.i(TAG, "starting an exchange for ${uri.substringBefore(':')}; cancelling any previous")
         cancel()
+        // A fresh one per exchange: answering with the previous verifier's `response_uri` would tell
+        // the wrong party, and telling nobody is better than telling the wrong one.
+        requestNotice = PresentationRequestNotice()
         mutableState.value = IosRemotePresentationState.Resolving
 
         presentmentJob = scope.launch {
@@ -159,7 +220,10 @@ class IosRemotePresenter internal constructor(
                     // request as one to be judged on its signature alone.
                     appId = null,
                     origin = null,
-                    httpClientEngineFactory = Darwin,
+                    // Wrapped so the request object's `response_uri` and `state` are seen in
+                    // passing; they are what a rejection has to be addressed to, and multipaz keeps
+                    // its parsed request to itself.
+                    httpClientEngineFactory = PresentationObservingEngineFactory(requestNotice),
                 )
                 Logger.i(
                     TAG,
@@ -186,9 +250,8 @@ class IosRemotePresenter internal constructor(
                     }
 
                     is PresentmentCannotSatisfyRequestException -> {
-                        mutableState.value = IosRemotePresentationState.Failed(
-                            message = NOTHING_TO_SHARE
-                        )
+                        // An answer, not an error — see [IosRemotePresentationState.NothingToShare].
+                        mutableState.value = IosRemotePresentationState.NothingToShare
                     }
 
                     else -> fail(t)
@@ -236,6 +299,32 @@ class IosRemotePresenter internal constructor(
         pendingConsent?.complete(null)
         pendingConsent = null
         pendingData = null
+    }
+
+    /**
+     * The user declined: tell the verifier before tearing down.
+     *
+     * Distinct from [cancel] on purpose, and for the same reason Android's
+     * `rejectPresentation`/`stopPresentation` are distinct — [cancel] also runs on ordinary teardown,
+     * including after a successful send, where an `access_denied` would be a lie.
+     *
+     * The verifier is told on a best-effort basis and the teardown happens regardless: a user who has
+     * declined is finished either way, and multipaz never sent anything at all before this.
+     */
+    fun reject() {
+        val notice = requestNotice
+        if (notice.canReject) {
+            // Its own scope: `cancel()` kills `presentmentJob`, and the POST must outlive that.
+            scope.launch {
+                val client = HttpClient(Darwin)
+                try {
+                    sendPresentationRejection(notice, client)
+                } finally {
+                    client.close()
+                }
+            }
+        }
+        cancel()
     }
 
     /** Abandons the exchange — the back button, and every teardown. */
@@ -297,6 +386,10 @@ class IosRemotePresenter internal constructor(
                 // the verifier's certificate is present even when nothing vouches for it.
                 requesterName = trustMetadata?.displayName ?: requester.certificateCommonName(),
                 requesterIsTrusted = trustMetadata != null,
+                // Read from the request object the observing engine already kept — `verifier_info` is
+                // another claim multipaz does not parse, and re-fetching a single-use `request_uri`
+                // to get it would risk the exchange.
+                relyingPartyRegistration = evaluateRelyingPartyRegistration(),
             ),
         )
 
@@ -330,8 +423,6 @@ class IosRemotePresenter internal constructor(
         const val TAG = "IosRemotePresenter"
 
         val CONSENT_TIMEOUT = 2.minutes
-
-        const val NOTHING_TO_SHARE = "This wallet holds nothing the verifier asked for."
 
         const val SHARING_FAILED =
             "Sharing failed. The verifier did not accept the response from this wallet."

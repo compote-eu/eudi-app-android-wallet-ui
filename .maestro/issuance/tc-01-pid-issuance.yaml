@@ -1,0 +1,147 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+# TC-01 — PID issuance happy path
+#
+# Precondition: app installed, internet available.
+# Steps: launch -> PIN setup (first run) -> Dashboard -> Documents tab -> "+"
+#   -> Choose from list -> PID Combined -> mock identity-proofing form
+#   (FormEU test issuer) -> Review & Send -> Authorize -> Documents list.
+# Expected: PID (both MSO Mdoc and SD-JWT VC) is issued and visible in the
+#   Documents list with the correct validity date.
+#
+# Notes on selector choices (see accompanying investigation notes):
+# - Native app screens use accessibilityIdentifier (`id:`) selectors — stable.
+# - The "PID Combined" row's own id is NOT stable across runs (observed both
+#   "..._sdJwtPid" and "..._mDocPid" suffixes for the same visible row), so
+#   it is matched by its stable visible text instead.
+# - The identity-proofing form is external web content (ec.dev.issuer.eudiw.dev,
+#   not part of this app) rendered inside an ASWebAuthenticationSession. Its
+#   `<input>` fields have no stable accessibility id, so those steps use
+#   percentage-of-screen point taps, verified against a live hierarchy dump.
+#   "FormEU" is used deliberately instead of a real country (e.g. "Czechia")
+#   because real-country options proxy through live national eIDAS test nodes
+#   — one such attempt failed with invalid_request during investigation.
+#   FormEU is EU-hosted and self-contained, avoiding that external dependency.
+# - The Birth Date field opens a native UIDatePicker; today's date is accepted
+#   by this test-only issuer, so no manual date-wheel scrolling is attempted.
+# - The system "Allow ... for Identity Verification" dialog only appears the
+#   first time this app has issued a document of THIS SPECIFIC mobile-document-
+#   type on a given simulator/device — NOT once globally per bundle ID (later
+#   confirmed by TC-50 hitting its own separate copy of this dialog for mDL,
+#   despite this flow having already granted it for PID earlier in the same
+#   chain). Cross-checked against EudiWallet.entitlements's
+#   com.apple.developer.identity-document-services.document-provider.mobile-document-types,
+#   which declares five distinct types (mDL, PID, AV, photoid, jp.mnc) — the
+#   grant appears to be tracked per type. It does NOT reappear after a plain
+#   app reinstall on the same simulator (same OS-level registration state
+#   documented in CLAUDE.md's "2 Keychain rows" pitfall), but IS expected to
+#   reappear after a genuine `simctl erase`, which wipes that state. It is
+#   therefore marked optional — see tc-50-mdl-issuance.yaml's own copy of this
+#   handling for the fuller writeup.
+
+appId: eu.europa.ec.euidi.dev
+---
+# --- First run: PIN setup ---
+# Explicitly focus the first PIN box before typing: on a fresh launch the
+# field is not always already focused/keyboard-up by the time this flow's
+# first action fires (observed both ways across runs).
+#
+# inputText, not tapOn digit keys: the system numeric keypad's visibility
+# depends on the simulator's "Connect Hardware Keyboard" passthrough setting
+# (com.apple.iphonesimulator ConnectHardwareKeyboard). When that's on, iOS's
+# on-screen keyboard never renders at all, and tapOn: "1" fails outright with
+# "element not found" — this happened locally, mid test-development, with no
+# app or flow change involved. CI disables that setting defensively as well
+# (see ci.yml), but inputText works via direct accessibility text injection
+# regardless of whether any on-screen keyboard is actually rendered, so it
+# doesn't depend on that setting being correct in the first place.
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+# Re-focus before the Confirm PIN entry, same reasoning as above: the
+# Create -> Confirm screen transition isn't instant, and firing this
+# inputText immediately after the first one let its opening keystroke
+# land mid-transition and get dropped — confirmed via a debug hierarchy
+# dump showing the field's value as "23456" (missing the leading "1")
+# while the screenshot showed 5 of 6 PIN boxes filled. tapOn retries
+# until the element is visible, so this also acts as a wait for the
+# Confirm PIN screen to be ready.
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- assertVisible:
+    id: "success_screen_title"
+- tapOn:
+    id: "success_screen_primary_button"
+
+# --- Dashboard -> Documents -> Add -> Choose from list ---
+- tapOn:
+    id: "documents_tab"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "options_screen_from_list_button"
+
+# This screen has no dedicated skeleton/loading accessibility id to wait
+# on: AddDocumentViewModel.initialize() seeds the list with hardcoded fake
+# placeholder rows ("Document name 1..4" under a fake "Issuer" header,
+# AddDocumentUIModel.mocks) rendered under the SAME cell identifiers as the
+# real data, with a generic shimmer view modifier - real and fake rows are
+# visually/structurally indistinguishable to a selector, only the actual
+# text differs. Waiting on "PID Combined" itself doesn't work here either:
+# confirmed live that it sits well down the list (behind Certificate of
+# Residence/Diploma/EHIC/Employee ID/Health ID, all alphabetically before
+# it within the same first issuer bucket - ec.dev.issuer.eudiw.dev sorts
+# first since it's the only issuer of a PID doc, see
+# AddDocumentInteractor.swift's bucket-then-alphabetical sort), so it's
+# never visible before the scroll steps below regardless of load state.
+# "Certificate of Residence (MSO Mdoc)" is the actual first real item,
+# confirmed live to render at the very top of this screen with no
+# scrolling needed - waiting for it here confirms the real issuer fetch
+# has replaced the fake placeholder rows before scrolling/tapping races
+# against it. This addresses a real, diagnosed timing gap (TC-01 failed
+# with "Tap on 'PID Combined'" landing on a screenshot showing
+# skeleton/shimmer placeholder bars, not a real regression) - NOT YET
+# reverified locally across multiple runs as of this commit, so treat
+# this as a diagnosed fix pending that confirmation, not a proven one.
+- extendedWaitUntil:
+    visible: "Certificate of Residence (MSO Mdoc)"
+    timeout: 15000
+
+# --- Select PID Combined (matched by stable text, not the volatile id) ---
+- scroll
+- scroll
+- tapOn: "PID Combined"
+
+# --- ASWebAuthenticationSession consent -> FormEU identity-proofing form ->
+#     Review & Send -> Authorize -> success screen -> Done ---
+# Extracted into a shared sub-flow (formeu-identity-proofing-flow.yaml) since
+# TC-57's credential-offer entry point converges on this exact same
+# ASWebAuthenticationSession session once its own "Issue" tap completes -
+# see that file's own header comment for the full rationale. Its individual
+# steps (FormEU vs. a real country, the Birth Date picker's default-today
+# behavior, the "next field" accessory-button tap for the hidden Place Of
+# Birth field, the Allow-dialog's generous optional timeout for a
+# fresh-erased device's slower key generation, etc.) are documented there,
+# not repeated here, to avoid the two files drifting out of sync.
+- runFlow: formeu-identity-proofing-flow.yaml
+
+# --- Verify: PID appears in Documents list with a validity date ---
+# extendedWaitUntil (not a plain assertVisible) because the Documents list
+# takes a moment to refresh right after "Done" — an immediate assertion here
+# is a real observed flake, not a real failure (confirmed by re-checking the
+# screen a couple seconds later during investigation).
+- extendedWaitUntil:
+    visible: "PID (MSO Mdoc)"
+    timeout: 10000
+- assertVisible: "PID (SD-JWT VC)"
+# Maestro's text selectors are a FULL-STRING regex match (Pattern.matches),
+# not a substring search — "Valid until" alone only matches a node whose
+# entire accessible text equals exactly that. The real node text is
+# "Valid until 08 Nov 2026" (confirmed via a saved screen-hierarchy dump at
+# the point of failure), so the pattern needs an explicit date-shaped
+# suffix rather than relying on implicit substring matching.
+- assertVisible: "Valid until \\d{2} \\w{3} \\d{4}"

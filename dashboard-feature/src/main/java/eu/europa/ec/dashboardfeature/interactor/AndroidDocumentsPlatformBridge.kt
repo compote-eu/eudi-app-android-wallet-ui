@@ -91,6 +91,11 @@ class AndroidDocumentsPlatformBridge(
                         successResults.add(result.deferredDocumentData)
                     }
 
+                    // No interval to report, though the issuer sent one: wallet-core's
+                    // `ProcessDeferredOutcome` maps `DeferredCredentialQueryOutcome.IssuancePending`
+                    // — which DOES carry `interval: Duration` — to a `DocumentNotReady` that does not.
+                    // So this keeps the caller's default and Android polls faster than asked. iOS
+                    // walks the protocol itself and reports the real value.
                     is DocumentInteractorRetryIssuingDeferredDocumentPartialState.NotReady -> {}
 
                     is DocumentInteractorRetryIssuingDeferredDocumentPartialState.Expired -> {

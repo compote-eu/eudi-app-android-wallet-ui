@@ -234,12 +234,12 @@ class SettingsViewModel(
                         )
                     }
 
-                    // Wallet Core reads both registration policies when it builds its managers, so
-                    // the flip does not reach it until the next app start.
-                    setEffect {
-                        Effect.ShowSnackbar(
-                            message = settingsInteractor.registrationCheckRestartMessage
-                        )
+                    // Android's Wallet Core reads both registration policies once, when it builds its
+                    // managers, so there the flip does not reach the engine until the next app start
+                    // and the user must be told. iOS reads the preference on every offer and needs no
+                    // restart, so it is told nothing — the platform decides, not this screen.
+                    settingsInteractor.registrationCheckRestartMessage?.let { message ->
+                        setEffect { Effect.ShowSnackbar(message = message) }
                     }
                 }
             }

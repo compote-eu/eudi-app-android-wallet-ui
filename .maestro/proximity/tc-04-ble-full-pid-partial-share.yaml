@@ -1,0 +1,42 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.verifier.dev
+---
+# TC-04 — BLE proximity presentation, FULL PID requested but iOS shares
+# only a PARTIAL subset (the original manual-testing freeze repro).
+#
+# Physical prerequisite (NOT a script step): same one-time camera rig as
+# TC-02/TC-03 - see README.md in this directory.
+#
+# Android's half is byte-for-byte identical to TC-03's
+# (tc-03-ble-full-pid.yaml): request the Full PID, scan, wait for
+# transfer, dismiss. TC-04's distinguishing behavior is entirely on the
+# iOS side - Android has no way to know, or need to know, that the
+# consent screen it's about to see a response from had some of its
+# requested fields deselected before Share was tapped. Kept as a
+# separate file rather than reusing tc-03-ble-full-pid.yaml directly,
+# matching this project's existing tc-02/tc-03 convention of one
+# self-contained set of files per TC.
+
+- launchApp:
+    clearState: true
+- tapOn: "Tap to create request"
+- tapOn: "Full PID"
+- tapOn: "Done"
+
+- tapOn: "Scan QR Code"
+
+# Engagement + BLE connection happen passively (see TC-02/TC-03). The
+# response Android receives here is expected to be SMALLER than what it
+# asked for - that's the point of this test, not a failure signal by
+# itself. tc-04-verify-attributes.py is what actually distinguishes
+# "correctly handled partial share" from "froze" or "sent the wrong
+# thing" - this flow only needs the transfer to complete.
+- extendedWaitUntil:
+    visible: "Show documents"
+    timeout: 120000
+
+- tapOn: "OK"

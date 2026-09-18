@@ -56,6 +56,8 @@ import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import kotlinx.coroutines.Job
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
@@ -160,6 +162,12 @@ class DocumentsViewModel(
 ) : MviViewModel<Event, State, Effect>() {
 
     private var retryDeferredDocsJob: Job? = null
+
+    /**
+     * How long to wait before the next deferred sweep. Replaced by the issuer's own `interval` as soon
+     * as one is heard; Android never hears one, because wallet-core does not surface it.
+     */
+    private var deferredRetryDelay: Duration = DEFAULT_DEFERRED_RETRY
     private var fetchDocumentsJob: Job? = null
 
     init {
@@ -427,7 +435,11 @@ class DocumentsViewModel(
                 return@launch
             }
 
-            delay(5000L)
+            // The issuer's own `interval` once one has been heard, and only 5 seconds until then.
+            // This is a POLLING loop — each Result leads to `getDocuments`, which re-fires this event —
+            // so a fixed delay here means asking an issuer that requested 48s roughly ten times too
+            // often. Measured against dev.issuer-backend.eudiw.dev on 2026-09-16.
+            delay(deferredRetryDelay)
 
             interactor.tryIssuingDeferredDocumentsFlow(deferredDocs).collect { response ->
                 when (response) {
@@ -447,6 +459,11 @@ class DocumentsViewModel(
                     }
 
                     is DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result -> {
+                        // Remembered across sweeps: the interval arrives with the answer to a poll, so
+                        // the first one can only ever use the default.
+                        response.retryAfterSeconds
+                            ?.coerceIn(MIN_DEFERRED_RETRY_SECONDS, MAX_DEFERRED_RETRY_SECONDS)
+                            ?.let { deferredRetryDelay = it.seconds }
                         val successDocs = response.successfullyIssuedDeferredDocuments
                         if (successDocs.isNotEmpty()
                             && (!viewState.value.isBottomSheetOpen
@@ -653,6 +670,21 @@ class DocumentsViewModel(
         setState {
             copy(isBottomSheetOpen = isOpening)
         }
+    }
+
+    private companion object {
+        /** Until an issuer says otherwise. Unchanged from the value this loop always used. */
+        val DEFAULT_DEFERRED_RETRY = 5.seconds
+
+        /** An issuer asking for less than this would be asking to be hammered; ignore it politely. */
+        const val MIN_DEFERRED_RETRY_SECONDS = 5
+
+        /**
+         * A ceiling, because this job lives only while the screen does: honouring a pathological
+         * `interval` of hours would keep a coroutine parked for no benefit, and the sweep re-runs when
+         * the user comes back anyway.
+         */
+        const val MAX_DEFERRED_RETRY_SECONDS = 300
     }
 
     private fun stopDeferredIssuing() {

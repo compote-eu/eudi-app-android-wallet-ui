@@ -1,0 +1,81 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-30 — delete a document
+#
+# Precondition: app already unlocked, with TC-01 -> TC-50 -> TC-20 already
+#   run in the same simulator session — state is 1 PID (2 entries: MSO
+#   Mdoc + SD-JWT VC) + 2 mDL entries (the original from TC-50, and the
+#   duplicate from TC-20).
+# Steps: delete one of the two mDL entries; verify exactly the expected
+#   state remains (1 mDL, both PID entries untouched).
+# Expected: deletion succeeds via the document detail screen's overflow
+#   menu -> Remove -> confirm; the app returns to Documents automatically.
+#
+# IMPORTANT — which mDL actually gets deleted here is NOT reliably
+# "the one TC-20 added," despite that being this test's original intent.
+# Investigated directly (live simulator + hierarchy dumps, plus a code
+# investigation of feature-dashboard's DocumentTabInteractor):
+#   - No per-card accessibility identifier exists — both mDL cards are
+#     structurally identical in the hierarchy, only distinguishable by
+#     list position.
+#   - The Documents tab's "Filter by" sheet (documents_screen_filters_button)
+#     has NO working "Sort by date issued" control reachable in this
+#     build, despite that sort logic existing in the interactor's code
+#     (DocumentTabInteractor's FILTER_SORT_DATE_ISSUED) — confirmed absent
+#     from a live hierarchy dump of the actual sheet (Expiry Period /
+#     Issuer / Category / State groups only). Same "code exists, UI path
+#     doesn't reach it" pattern as the History/transaction-log bug
+#     (audit Topic 19) — not something this test can route around.
+#   - The document detail screen's own "Date of issue" field is
+#     day-granularity only (e.g. "13 Aug 2026") and is IDENTICAL for both
+#     entries when, as here, TC-50 and TC-20 run in the same session on
+#     the same calendar day — no help distinguishing them.
+# So "second mDL card in the default (alphabetical, ties broken by
+# underlying storage/insertion order) Documents list" is the closest
+# achievable approximation, not a guarantee — it relies on an
+# undocumented stable-sort-preserves-insertion-order behavior of a
+# third-party library, confirmed by direct code reading but not a
+# contract this codebase promises to keep. If that ever changes, this
+# flow would end up deleting the TC-50 original instead of the TC-20
+# duplicate — functionally harmless for what this test actually checks
+# (count/state afterward), but worth knowing if this comment needs
+# revisiting.
+- tapOn:
+    id: "documents_tab"
+
+# Point tap, not a text/id selector: verified live that mDL's second
+# card sits at this position when the two mDL entries are followed by
+# the two PID entries (matching the default sort). A text selector
+# here would be ambiguous (`tapOn: "mDL (MSO Mdoc)"` can't distinguish
+# which of the two identical matches to hit) and no per-card id exists.
+- tapOn:
+    point: "50%, 32%"
+
+# Overflow menu -> Remove (verified: "Remove" is unambiguous here since
+# the confirmation dialog isn't showing yet).
+- tapOn:
+    point: "90%, 8%"
+- tapOn: "Remove"
+
+# Confirmation dialog. Point tap (verified working), not text: the
+# dialog's "Remove" button and its own duplicate accessibility node
+# share identical bounds, and a plain text selector was untested here
+# under that duplication — the point coordinate below is directly
+# confirmed against the dialog's actual button bounds via a hierarchy
+# dump, not guessed.
+- tapOn:
+    point: "68%, 57%"
+
+# --- Verify: back to the post-TC-50 state (1 mDL, both PID entries
+#     untouched). Not asserting an exact document COUNT — same Maestro
+#     selector-vocabulary limitation already noted in
+#     tc-20-mdl-duplicate.yaml; visibility checks on all three expected
+#     entries is what's achievable. ---
+- assertVisible: "mDL (MSO Mdoc)"
+- assertVisible: "PID (MSO Mdoc)"
+- assertVisible: "PID (SD-JWT VC)"

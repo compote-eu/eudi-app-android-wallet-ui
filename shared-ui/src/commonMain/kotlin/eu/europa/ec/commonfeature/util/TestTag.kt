@@ -35,7 +35,8 @@ object TestTag {
     }
 
     object RequestScreen {
-        const val BUTTON = "request_screen_button"
+        const val PRIMARY_BUTTON = "request_screen_primary_button"
+        const val SECONDARY_BUTTON = "request_screen_secondary_button"
 
         fun requestedDocument(index: Int) = "request_screen_requested_document_$index"
     }

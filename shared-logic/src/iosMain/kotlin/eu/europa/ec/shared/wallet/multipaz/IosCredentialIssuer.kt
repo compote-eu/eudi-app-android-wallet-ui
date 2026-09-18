@@ -124,28 +124,12 @@ class IosCredentialIssuer(
      */
     private val issueConfiguration: (suspend (IosVciIssuer, String) -> Result<String>)? = null,
     /**
-     * Pre-known configuration-id -> authorization scope, **for tests only**.
-     *
-     * Production learns these from the issuer's metadata during the first round of a flow; but
-     * [issueConfiguration] bypasses the real client, so a test would never learn one and the
-     * de-duplication in [issue] would be the single untested part of this class. A plain map rather
-     * than the notice itself, because `CredentialScopeNotice` is internal and this constructor is not.
-     */
-    internal val seededScopes: Map<String, String> = emptyMap(),
-    /**
      * Where documents live. Defaults to the engine's own store, which is what production wants — a
      * second `MultipazWalletStore.open()` would be a second cache over the same storage. Injectable
      * because [refreshCredentials] decides three of its four outcomes from the store's *contents*, and
      * those are the outcomes a user actually meets.
      */
 ) {
-
-    /**
-     * Filled in by the compatibility engine on every metadata read, and read back by [issue] on the
-     * next round of the same flow — which is how a configuration sharing an already-issued scope gets
-     * skipped. One instance per issuer object, so it carries across the rounds of one flow.
-     */
-    private val scopeNotice = CredentialScopeNotice()
 
     /**
      * Where documents live. Defaults to the engine's own store, which is what production wants — a
@@ -230,7 +214,8 @@ class IosCredentialIssuer(
         )
 
         val model = ProvisioningModel(
-            documentProvisioningHandler = IosDocumentProvisioningHandler(store),
+            // With the notice, so a deferred refresh parks the handle instead of only failing.
+            documentProvisioningHandler = IosDocumentProvisioningHandler(store, deferred = deferred),
             httpClient = httpClient,
             promptModel = Platform.promptModel,
             authorizationSecureArea = store.keySecureArea,
@@ -262,7 +247,14 @@ class IosCredentialIssuer(
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
-            IosIssuanceProgress.Failure(message = refreshFailureMessage(refusal, deferred, t))
+            // A deferred refresh is not a failure either: the document keeps the credentials it
+            // already had, and the handle now on it lets the sweep claim the new ones later.
+            if (deferred.parkedDocumentId != null) {
+                Logger.i(TAG, "the issuer deferred the refresh of $documentId; it will be collected later")
+                IosIssuanceProgress.Issued(documentIds = listOf(documentId), credentialsFetched = 0)
+            } else {
+                IosIssuanceProgress.Failure(message = refreshFailureMessage(refusal, deferred, t))
+            }
         } finally {
             model.cancel()
             httpClient.close()
@@ -289,39 +281,25 @@ class IosCredentialIssuer(
 
         val documentIds = mutableListOf<String>()
         val failures = mutableMapOf<String, String>()
-        val issuedScopes = mutableSetOf<String>()
 
+        // ⛔ Every offered configuration is attempted, including a `_deferred` twin sharing the plain
+        // one's authorization scope. There used to be a guard skipping those, and it was right when it
+        // was written: the twin cost a second browser confirmation and then *failed*, because deferred
+        // issuance was unsupported — and the failure abandoned the rest of the request, so "PID
+        // Combined" delivered one document instead of two.
+        //
+        // Deferred issuance now works, so the twin parks and completes like any other document. The
+        // remaining cost is the extra browser confirmation, which is multipaz's doing — it authorizes
+        // once per configuration where wallet-core authorizes once for several scopes (see the note on
+        // this class). ⚖️ Kept anyway, deliberately: the twins only exist on the *test* issuers, which
+        // is exactly where the deferred path needs exercising, and Android issues all four. Matching it
+        // is worth one more confirmation on an issuer nobody ships against.
         for (configurationId in configurationIds) {
-            // Two configurations can share a scope, and the authorization request carries the scope — so
-            // the second asks the issuer the identical question, costs the user another browser
-            // confirmation, and at this issuer then fails (it is the `_deferred` twin), which the
-            // `break` below turns into "the rest of the request is abandoned". Scopes are known only
-            // after the first metadata read, which is why this cannot be a filter up front.
-            val scope = scopeNotice.scopesByConfigurationId[configurationId]
-                ?: seededScopes[configurationId]
-            if (scope != null && scope in issuedScopes) {
-                Logger.i(
-                    TAG,
-                    "skipping '$configurationId': scope '$scope' was already issued in this flow, " +
-                        "so it would re-issue the same credential"
-                )
-                continue
-            }
-
             val outcome = issueConfiguration?.invoke(issuer, configurationId)
                 ?: runCatching { provision(issuer, configurationId) }
 
             outcome
-                .onSuccess {
-                    documentIds += it
-                    // Recorded on success rather than before the attempt: a configuration that failed
-                    // has issued nothing and must not disqualify a sibling sharing its scope. Defensive
-                    // only for now, and deliberately untested — the loop below stops at the first
-                    // failure, so no sibling ever gets that far. It would start to matter the moment
-                    // this loop is made to continue past a failure.
-                    (scopeNotice.scopesByConfigurationId[configurationId]
-                        ?: seededScopes[configurationId])?.let(issuedScopes::add)
-                }
+                .onSuccess { documentIds += it }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     Logger.w(TAG, "issuing '$configurationId' failed: ${error.message}")
@@ -378,9 +356,6 @@ class IosCredentialIssuer(
             deferredNotice = deferred,
             claimDisplayNotice = claimDisplay,
             reusePolicyNotice = reusePolicy,
-            // Learned on this round's metadata read and read back by `issue` on the next round, which
-            // is how a second configuration sharing this one's scope gets skipped.
-            scopeNotice = scopeNotice,
         )
         val walletStore = walletEngine.store()
         // A redirect left over from an earlier attempt carries a spent authorization code.
@@ -391,6 +366,8 @@ class IosCredentialIssuer(
                 walletStore,
                 claimDisplay = claimDisplay,
                 reusePolicy = reusePolicy,
+                // So a `202 Accepted` parks the document instead of deleting it.
+                deferred = deferred,
             ),
             httpClient = httpClient,
             promptModel = Platform.promptModel,
@@ -421,7 +398,10 @@ class IosCredentialIssuer(
                 try {
                     document.await().identifier
                 } catch (t: Throwable) {
-                    throw deferred.asFailureOr(t)
+                    // A deferred issuance is not a failure: the handler kept the document and stamped
+                    // the issuer's handle on it, so the id of that parked document IS the result. It
+                    // reads as `Pending` until `IosDeferredDocumentCompleter` finishes it.
+                    deferred.parkedDocumentId ?: throw deferred.asFailureOr(t)
                 } finally {
                     authorizing.cancel()
                 }
@@ -458,6 +438,8 @@ class IosCredentialIssuer(
                 walletStore,
                 claimDisplay = claimDisplay,
                 reusePolicy = reusePolicy,
+                // So a `202 Accepted` parks the document instead of deleting it.
+                deferred = deferred,
             ),
             httpClient = httpClient,
             promptModel = Platform.promptModel,
@@ -485,7 +467,10 @@ class IosCredentialIssuer(
                 try {
                     document.await().identifier
                 } catch (t: Throwable) {
-                    throw deferred.asFailureOr(t)
+                    // A deferred issuance is not a failure: the handler kept the document and stamped
+                    // the issuer's handle on it, so the id of that parked document IS the result. It
+                    // reads as `Pending` until `IosDeferredDocumentCompleter` finishes it.
+                    deferred.parkedDocumentId ?: throw deferred.asFailureOr(t)
                 } finally {
                     authorizing.cancel()
                 }
@@ -556,12 +541,15 @@ class IosCredentialIssuer(
      * Turns "multipaz could not read the credential response" into "the issuer is issuing this later",
      * when that is what happened.
      *
-     * **Deliberately still a failure, not a deferred success.** Android reports `DeferredSuccess` here and
-     * keeps a pending document that its wallet-core later collects from the issuer's
-     * `deferred_credential_endpoint`. iOS has nothing that can collect it — multipaz neither parses that
-     * endpoint nor exposes the token and DPoP key needed to call it — so a document parked as "pending"
-     * would stay pending forever. Saying so is the honest answer until multipaz supports the flow; see the
-     * upstream note in the KDoc of this class.
+     * ⚠️ **This is now the fallback, not the main path.** A deferred issuance normally parks a document:
+     * `IosDocumentProvisioningHandler.cleanupDocumentOnError` keeps it and stamps the issuer's handle,
+     * and the caller returns that document's id as the result. This message is what remains for the
+     * cases where parking could not happen — a document with no wallet metadata, or a **refresh** that
+     * was deferred, where multipaz keeps the document but nothing has yet stamped a handle on it.
+     *
+     * 📌 The old claim here — that iOS "has nothing that can collect it" — was true until
+     * [IosDeferredCredentialCollector] existed. multipaz still never parses
+     * `deferred_credential_endpoint`; the wallet now does it instead.
      */
     private fun DeferredIssuanceNotice.asFailureOr(cause: Throwable): Throwable =
         if (wasDeferred) IllegalStateException(DEFERRED_NOT_SUPPORTED) else cause

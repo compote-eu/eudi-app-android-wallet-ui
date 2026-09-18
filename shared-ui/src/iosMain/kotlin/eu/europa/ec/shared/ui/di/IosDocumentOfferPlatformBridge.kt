@@ -17,6 +17,8 @@
 package eu.europa.ec.shared.ui.di
 
 import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
+import eu.europa.ec.corelogic.model.isBlockedForIssuance
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
@@ -36,6 +38,17 @@ import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
 
 /**
+ * Whether a registration outcome refuses this issuance.
+ *
+ * 🚨 The `NotEvaluated` guard is the whole subtlety and belongs in one place. `isBlockedForIssuance`
+ * answers true for it — correctly, for a wallet with the check on — but `NotEvaluated` is also exactly
+ * what a wallet with the check *off* produces, and off is the default. Consulting the shared rule
+ * alone would refuse every issuance in a stock build.
+ */
+private fun IssuerRegistrationDomain.refusesIssuance(): Boolean =
+    this !is IssuerRegistrationDomain.NotEvaluated && isBlockedForIssuance
+
+/**
  * iOS's [DocumentOfferPlatformBridge]: offers are read and issued through multipaz.
  *
  * **It holds the resolved offers**, as the contract requires, though for a different reason than Android:
@@ -47,9 +60,34 @@ import platform.Foundation.languageCode
 internal class IosDocumentOfferPlatformBridge(
     private val offers: IosCredentialOfferReader,
     private val credentialIssuer: IosCredentialIssuer,
+    /**
+     * Whether the user asked for issuer registration certificates to be checked. Off by default on
+     * both platforms — see [IosPreferences.checkIssuerRegistration].
+     */
+    private val isRegistrationCheckEnabled: suspend () -> Boolean = {
+        IosPreferences.checkIssuerRegistration()
+    },
+    /**
+     * The check itself, supplied by the DI module rather than defaulted here.
+     *
+     * 🚨 **Not a default, and the reason is the linker.** Referencing the real checker from this file
+     * — even as an unused default — makes `IosEtsiTrust` reachable from **every test binary in this
+     * module**, and the trust stack reaches the `PKIXBridge` cinterop whose Swift half only an Xcode
+     * target can supply. The whole module then fails to link with
+     * `Undefined symbols … _TtC10PKIXBridge13PKIXValidator`, and no test in it runs. Kotlin/Native
+     * drops unreferenced code, so keeping the reference in the DI module keeps the tests linkable.
+     */
+    private val checkRegistration: suspend (IosCredentialOffer, String) -> IssuerRegistrationDomain,
 ) : DocumentOfferPlatformBridge {
 
     private val resolvedOffers: MutableMap<String, IosCredentialOffer> = mutableMapOf()
+
+    /**
+     * What the last resolve concluded about each offer's issuer, so issuance can refuse what the
+     * screen refused. Keyed by offer, because a second offer from the same issuer may name different
+     * configurations and so reach a different answer.
+     */
+    private val registrationOutcomes: MutableMap<String, IssuerRegistrationDomain> = mutableMapOf()
 
     override fun localeTag(): String = NSLocale.currentLocale.languageCode
 
@@ -61,11 +99,29 @@ internal class IosDocumentOfferPlatformBridge(
             is IosOfferResolution.Resolved -> {
                 resolvedOffers[offerUri] = resolution.offer
 
+                val registration = if (isRegistrationCheckEnabled()) {
+                    checkRegistration(resolution.offer, locale)
+                } else {
+                    // Not "we looked and found nothing" — "we did not look". The shared rule reads
+                    // this together with the settings flag, never on its own.
+                    IssuerRegistrationDomain.NotEvaluated
+                }
+                registrationOutcomes[offerUri] = registration
+
+                if (registration.refusesIssuance()) {
+                    // Android refuses here rather than on the offer screen, and the shared UI already
+                    // has the screen for it — the user is told the issuer could not be placed instead
+                    // of being shown an offer they cannot accept.
+                    return PlatformOfferResolution.IssuerNotTrusted(
+                        reason = UntrustedIssuerReasonDomain.REGISTRATION_CERTIFICATE,
+                    )
+                }
+
                 if (resolution.documentNames.isEmpty()) {
                     PlatformOfferResolution.NoDocuments(
                         issuerName = resolution.issuerName,
                         issuerLogoUri = resolution.issuerLogoUri,
-                        issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                        issuerRegistration = registration,
                     )
                 } else {
                     PlatformOfferResolution.Success(
@@ -75,8 +131,7 @@ internal class IosDocumentOfferPlatformBridge(
                         containsPid = resolution.containsPid,
                         txCodeLength = resolution.offer.txCodeLength,
                         txCodeIsNumeric = resolution.offer.txCodeIsNumeric,
-                        // multipaz evaluates no registration certificate; see RelyingPartyDomain.
-                        issuerRegistration = IssuerRegistrationDomain.NotEvaluated,
+                        issuerRegistration = registration,
                     )
                 }
             }
@@ -90,6 +145,19 @@ internal class IosDocumentOfferPlatformBridge(
             ?: return flow {
                 emit(IssueDocumentsPartialState.Failure(errorMessage = OFFER_NOT_RESOLVED))
             }
+
+        // The screen already refused to offer this, but the screen is not the gate: a deep link or a
+        // resumed flow can reach here without one. Android gates in its controller for the same reason.
+        val registration = registrationOutcomes[offerUri] ?: IssuerRegistrationDomain.NotEvaluated
+        if (registration.refusesIssuance()) {
+            return flow {
+                emit(
+                    IssueDocumentsPartialState.IssuerNotTrusted(
+                        reason = UntrustedIssuerReasonDomain.REGISTRATION_CERTIFICATE,
+                    )
+                )
+            }
+        }
 
         return credentialIssuer.issueOffer(offerUri = offer.offerUri, txCode = txCode).map { progress ->
             when (progress) {
@@ -121,7 +189,9 @@ internal class IosDocumentOfferPlatformBridge(
      */
     override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
 
-    private companion object {
+    // `internal`, matching the class's own visibility rather than widening anything: these two
+    // strings are the bridge's failure vocabulary, and the gate tests assert on which one came back.
+    internal companion object {
         const val OFFER_NOT_RESOLVED = "This offer was not read; open it again."
     }
 }

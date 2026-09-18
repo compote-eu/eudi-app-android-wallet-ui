@@ -1,0 +1,106 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-42 — app backgrounded, requires PIN on return.
+#
+# FINDING (not a test limitation - a real security-posture gap worth
+# documenting): the app relies ENTIRELY on OS-level backgrounding
+# behavior for re-lock. There is no explicit, deliberate session-timeout
+# security control anywhere in this codebase for the "user backgrounds
+# the app, then returns" scenario. TC-47 already covers the OTHER case
+# (a genuine process kill, e.g. `simctl terminate` / iOS jetsam,
+# force-relaunch) - it always re-requires the PIN, because
+# StartupInteractor.initialize() re-runs on a fresh process. This flow
+# is about the DIFFERENT, more common scenario: Home button / App
+# Switcher, process stays alive, user returns.
+#
+# Investigation (two full-codebase searches, not guessed): NO app-level
+# idle/background timeout exists anywhere. Confirmed via full-file reads
+# of BiometryViewModel.swift and BiometryInteractor.swift (Modules/
+# feature-common/Sources/UI/Biometry/) - the only "tick" logic in either
+# file is startLockoutTick/stopLockoutTick, which is exclusively the
+# wrong-PIN throttle (TC-40's subject), not a session/idle timer.
+# RouterHost.swift's only lifecycle-adjacent constant is `lockInterval =
+# 500` (milliseconds - a tap-debounce, unrelated). SystemBiometryController's
+# LAContext usage never re-checks staleness on `.active`. Every
+# `onChange(of: scenePhase)` handler in Dashboard/Home/Document/
+# Transaction view models only toggles a `isPaused` flag (gates an
+# unrelated "revoked documents" modal) or a cosmetic App-Switcher privacy
+# blur (Wallet/Application.swift) - none of them make a lock/unlock
+# decision.
+#
+# Live testing confirmed a real, but NON-deterministic and OS-driven
+# (not app-driven) side effect: backgrounding briefly (seconds) and
+# returning never re-locks, but backgrounding for an extended period
+# (~2 minutes, observed once during manual investigation) sometimes DID
+# show the PIN screen again - with the exact same process PID before and
+# after in both cases (confirmed via `launchctl list`), i.e. the process
+# was never killed either time. This is consistent with iOS/the
+# Simulator discarding and reconstructing SwiftUI scene state under
+# memory pressure after extended backgrounding (which would re-run
+# StartupInteractor as a side effect of view reconstruction, not
+# deliberate security logic), NOT a fixed app-level duration constant.
+# There is no reliable, reproducible threshold to assert against - it
+# depends on system memory pressure, not a config value - so this flow
+# deliberately does NOT attempt to test or pin that boundary. See
+# CLAUDE.md's "Security observations" section for the write-up framing
+# this as a real gap: a security-sensitive wallet app with no enforced
+# re-authentication window after backgrounding, unlike common practice
+# in banking/health apps.
+#
+# Maestro command choice: `launchApp` alone (no `stopApp:` argument)
+# does NOT simulate a real "return to a backgrounded app" - confirmed
+# live via `launchctl list` that it silently restarts the process (a
+# NEW pid every time), making it functionally identical to TC-47's kill
+# scenario, not backgrounding. `launchApp: {stopApp: false}` is the
+# correct command here - confirmed via decompiling maestro-client.jar's
+# LaunchAppCommand that this is a real, supported parameter, and
+# confirmed live that it preserves the exact same process pid
+# throughout (genuine background/foreground, never killed).
+#
+# Precondition: app already unlocked with a known PIN (123456). Must
+# run before TC-43 (which changes the PIN to 654321). Independent of
+# TC-40's throttle state - this flow never enters a wrong PIN, so it
+# doesn't interact with KeychainPinThrottleProvider at all.
+
+# Explicitly navigate to Home before backgrounding, not assumed: a full
+# local chain run caught this flow failing when chained right after
+# TC-32, because TC-32's own tc-32-verify-empty-state.yaml flow's last
+# action is tapping into the Documents tab - so without this step,
+# whatever tab was active before TC-42 stays active through the
+# background/resume cycle (same "resumes wherever it was left, not a
+# fixed default" behavior already documented in tc-26-multi-document.yaml).
+# The app WAS genuinely still unlocked in that failure (visibly on
+# Documents, "No results" - not a PIN screen), so the actual finding
+# held; only the assertion's specific tab assumption was wrong. Pinning
+# the starting tab here makes the final assertion deterministic
+# regardless of chain position.
+- tapOn:
+    id: "home_tab"
+- pressKey: Home
+
+# Backgrounded for ~12s - well under any duration where the OS-level
+# scene-reconstruction side effect noted above has ever been observed
+# (that took ~2 minutes of backgrounding to reproduce once). No native
+# fixed-duration wait command in this Maestro version (confirmed via
+# `maestro check-syntax` rejecting a bare `wait:` step) -
+# `extendedWaitUntil` on a condition guaranteed never to occur, marked
+# optional, is the portable way to get an unconditional delay.
+- extendedWaitUntil:
+    visible: "this text deliberately never appears - used as a fixed-duration wait, see header comment"
+    timeout: 12000
+    optional: true
+
+# Resume WITHOUT killing/restarting the process (see header comment for
+# why `stopApp: false` specifically, not plain `launchApp`).
+- launchApp:
+    stopApp: false
+
+# THE ACTUAL FINDING: no PIN prompt after a brief background - the app
+# goes straight back to exactly where it was (Home tab, still unlocked).
+- assertVisible:
+    id: "home_tab_screen_username_text"

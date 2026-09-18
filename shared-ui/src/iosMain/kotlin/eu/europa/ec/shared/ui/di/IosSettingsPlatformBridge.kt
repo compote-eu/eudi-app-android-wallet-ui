@@ -135,16 +135,31 @@ internal class IosSettingsPlatformBridge(
         IosPreferences.setShowBatchIssuanceCounter(shown)
 
     /**
-     * False, and the row is omitted. The issuer and relying-party registration policies live in
-     * `eudi-lib-android-wallet-core`, which has no iOS counterpart, and multipaz has no equivalent —
-     * so nothing here would evaluate a registration certificate. A switch would promise enforcement
-     * that does not happen, which is worse than no switch.
+     * True, and the row is offered.
+     *
+     * This used to read *"the registration policies live in `eudi-lib-android-wallet-core`, which has no
+     * iOS counterpart, and multipaz has no equivalent — a switch would promise enforcement that does not
+     * happen"*. The first half was true and the conclusion did not follow: neither library is needed.
+     * The checks run here, over multipaz's own JWT and status-list primitives and the same ETSI trust
+     * lists the wallet already consults. See `IosIssuerRegistrationChecker`.
+     *
+     * ⚠️ The switch now promises enforcement that **does** happen, which is why the issuance gate went
+     * in with it rather than after it.
      */
-    override val canCheckRegistrations: Boolean get() = false
+    override val canCheckRegistrations: Boolean get() = true
 
-    override suspend fun isRegistrationCheckEnabled(): Boolean = false
+    /**
+     * False: the flag is read on every offer resolution, not captured when anything was built, so a
+     * flip is live from the next offer onwards. Watched on a simulator — the toggle was turned on and
+     * the very next offer was checked against it.
+     */
+    override val registrationCheckNeedsRestart: Boolean get() = false
 
-    override suspend fun setRegistrationCheckEnabled(enabled: Boolean) = Unit
+    override suspend fun isRegistrationCheckEnabled(): Boolean =
+        IosPreferences.checkIssuerRegistration()
+
+    override suspend fun setRegistrationCheckEnabled(enabled: Boolean) =
+        IosPreferences.setCheckIssuerRegistration(enabled)
 
     /**
      * multipaz's log file, when it has anything in it.
