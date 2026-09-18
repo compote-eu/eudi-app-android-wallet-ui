@@ -124,28 +124,12 @@ class IosCredentialIssuer(
      */
     private val issueConfiguration: (suspend (IosVciIssuer, String) -> Result<String>)? = null,
     /**
-     * Pre-known configuration-id -> authorization scope, **for tests only**.
-     *
-     * Production learns these from the issuer's metadata during the first round of a flow; but
-     * [issueConfiguration] bypasses the real client, so a test would never learn one and the
-     * de-duplication in [issue] would be the single untested part of this class. A plain map rather
-     * than the notice itself, because `CredentialScopeNotice` is internal and this constructor is not.
-     */
-    internal val seededScopes: Map<String, String> = emptyMap(),
-    /**
      * Where documents live. Defaults to the engine's own store, which is what production wants — a
      * second `MultipazWalletStore.open()` would be a second cache over the same storage. Injectable
      * because [refreshCredentials] decides three of its four outcomes from the store's *contents*, and
      * those are the outcomes a user actually meets.
      */
 ) {
-
-    /**
-     * Filled in by the compatibility engine on every metadata read, and read back by [issue] on the
-     * next round of the same flow — which is how a configuration sharing an already-issued scope gets
-     * skipped. One instance per issuer object, so it carries across the rounds of one flow.
-     */
-    private val scopeNotice = CredentialScopeNotice()
 
     /**
      * Where documents live. Defaults to the engine's own store, which is what production wants — a
@@ -297,39 +281,25 @@ class IosCredentialIssuer(
 
         val documentIds = mutableListOf<String>()
         val failures = mutableMapOf<String, String>()
-        val issuedScopes = mutableSetOf<String>()
 
+        // ⛔ Every offered configuration is attempted, including a `_deferred` twin sharing the plain
+        // one's authorization scope. There used to be a guard skipping those, and it was right when it
+        // was written: the twin cost a second browser confirmation and then *failed*, because deferred
+        // issuance was unsupported — and the failure abandoned the rest of the request, so "PID
+        // Combined" delivered one document instead of two.
+        //
+        // Deferred issuance now works, so the twin parks and completes like any other document. The
+        // remaining cost is the extra browser confirmation, which is multipaz's doing — it authorizes
+        // once per configuration where wallet-core authorizes once for several scopes (see the note on
+        // this class). ⚖️ Kept anyway, deliberately: the twins only exist on the *test* issuers, which
+        // is exactly where the deferred path needs exercising, and Android issues all four. Matching it
+        // is worth one more confirmation on an issuer nobody ships against.
         for (configurationId in configurationIds) {
-            // Two configurations can share a scope, and the authorization request carries the scope — so
-            // the second asks the issuer the identical question, costs the user another browser
-            // confirmation, and at this issuer then fails (it is the `_deferred` twin), which the
-            // `break` below turns into "the rest of the request is abandoned". Scopes are known only
-            // after the first metadata read, which is why this cannot be a filter up front.
-            val scope = scopeNotice.scopesByConfigurationId[configurationId]
-                ?: seededScopes[configurationId]
-            if (scope != null && scope in issuedScopes) {
-                Logger.i(
-                    TAG,
-                    "skipping '$configurationId': scope '$scope' was already issued in this flow, " +
-                        "so it would re-issue the same credential"
-                )
-                continue
-            }
-
             val outcome = issueConfiguration?.invoke(issuer, configurationId)
                 ?: runCatching { provision(issuer, configurationId) }
 
             outcome
-                .onSuccess {
-                    documentIds += it
-                    // Recorded on success rather than before the attempt: a configuration that failed
-                    // has issued nothing and must not disqualify a sibling sharing its scope. Defensive
-                    // only for now, and deliberately untested — the loop below stops at the first
-                    // failure, so no sibling ever gets that far. It would start to matter the moment
-                    // this loop is made to continue past a failure.
-                    (scopeNotice.scopesByConfigurationId[configurationId]
-                        ?: seededScopes[configurationId])?.let(issuedScopes::add)
-                }
+                .onSuccess { documentIds += it }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     Logger.w(TAG, "issuing '$configurationId' failed: ${error.message}")
@@ -386,9 +356,6 @@ class IosCredentialIssuer(
             deferredNotice = deferred,
             claimDisplayNotice = claimDisplay,
             reusePolicyNotice = reusePolicy,
-            // Learned on this round's metadata read and read back by `issue` on the next round, which
-            // is how a second configuration sharing this one's scope gets skipped.
-            scopeNotice = scopeNotice,
         )
         val walletStore = walletEngine.store()
         // A redirect left over from an earlier attempt carries a spent authorization code.
