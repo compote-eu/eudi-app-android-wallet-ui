@@ -714,11 +714,24 @@ internal class OpenID4VciCompatibilityEngine(
     }
 
     /**
-     * Rejects signed metadata whose signer the EU trust lists say is **not** a PID provider.
+     * Rejects signed metadata whose signer the EU trust lists do **not** recognise.
      *
      * Android's equivalent is
      * `configureIssuerTrust { policy { default(ENFORCE) }; requireSignedMetadata() }`, so a definite
      * "not trusted" is a hard failure here too.
+     *
+     * ⛔ **The context is `WalletRelyingPartyAccessCertificate`, not `PID`** — metadata signing
+     * certificates belong to the WRPAC list; the PID list is for the certificates that sign PID
+     * *credentials*. wallet-core says the same in code and in words: `EtsiCertificateChainTrust`
+     * passes `WalletRelyingPartyAccessCertificate`, "which is the correct context for metadata signing
+     * certificates per the EUDI specification".
+     *
+     * 🪤 This was `VerificationContext.PID` until 2026-09-18, which is a real difference and not a
+     * naming detail: the PID context carries `pidSigningCertificateProfile()`, whose
+     * `mandatoryQcType(ID_ETSI_QCT_PID)` rejects these certificates for having no `qcStatements` at
+     * all. The WRPAC profile asks for QC statements only under the QCP policies, and the EU dev
+     * issuers' metadata signers carry `0.4.0.194118.1.2` (NCP-l-eudiwrp, non-qualified), which is
+     * exempt. So the wrong context is what made the end-entity profiles look unusable here.
      *
      * ⚠️ **An *undetermined* verdict is allowed through, and that is a deliberate divergence.** The
      * check cannot tell "this issuer is not on the list" from "the list was unreachable", and treating
@@ -740,12 +753,12 @@ internal class OpenID4VciCompatibilityEngine(
             Logger.w(TAG, "signed metadata for $issuer carries no x5c; cannot check its signer")
             return
         }
-        when (trust.verdict(chain, VerificationContext.PID)) {
+        when (trust.verdict(chain, VerificationContext.WalletRelyingPartyAccessCertificate)) {
             TrustVerdict.TRUSTED ->
-                Logger.i(TAG, "the signer of $issuer's metadata is a trusted PID provider")
+                Logger.i(TAG, "the signer of $issuer's metadata is on the EU access-certificate list")
 
             TrustVerdict.NOT_TRUSTED -> throw IllegalStateException(
-                "the signer of $issuer's signed metadata is not a trusted PID provider"
+                "the signer of $issuer's signed metadata is not a recognised access certificate"
             )
 
             TrustVerdict.UNDETERMINED -> Logger.w(

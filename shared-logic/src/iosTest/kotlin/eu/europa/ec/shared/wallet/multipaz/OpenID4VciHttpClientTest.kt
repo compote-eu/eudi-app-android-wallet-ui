@@ -108,7 +108,7 @@ class OpenID4VciHttpClientTest {
 
         val failure = assertFailsWith<IllegalStateException> { client.get(metadataUrl) }
         assertTrue(
-            "not a trusted PID provider" in failure.message.orEmpty(),
+            "not a recognised access certificate" in failure.message.orEmpty(),
             "unexpected: ${failure.message}",
         )
     }
@@ -157,7 +157,12 @@ class OpenID4VciHttpClientTest {
 
         assertEquals(metadata, client.get(metadataUrl).readRawBytes().decodeToString())
         assertEquals(2, seenChainSize)
-        assertEquals(VerificationContext.PID, seenContext)
+        // ⛔ WRPAC, not PID. Metadata signing certificates are access certificates; the PID list is for
+        // the certificates that sign PID *credentials*. wallet-core's `EtsiCertificateChainTrust` uses
+        // the same context and calls it "the correct context for metadata signing certificates per the
+        // EUDI specification". Getting this wrong applies `pidSigningCertificateProfile()`, whose
+        // `mandatoryQcType` rejects every EU dev metadata signer for carrying no `qcStatements`.
+        assertEquals(VerificationContext.WalletRelyingPartyAccessCertificate, seenContext)
     }
 
     @Test

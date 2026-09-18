@@ -21,7 +21,6 @@ import eu.europa.ec.eudi.etsi119602.consultation.IosLoTEHttpClient
 import eu.europa.ec.eudi.etsi119602.consultation.LoadLoTE
 import eu.europa.ec.eudi.etsi119602.consultation.LoadLoTEAndPointers
 import eu.europa.ec.eudi.etsi119602.consultation.LoadSingleLoTEWithFileCache
-import eu.europa.ec.eudi.etsi119602.consultation.LotEMeta
 import eu.europa.ec.eudi.etsi119602.consultation.ProvisionTrustAnchorsFromLoTEs
 import eu.europa.ec.eudi.etsi119602.consultation.VerifyJwtSignature
 import eu.europa.ec.eudi.etsi119602.consultation.eu
@@ -56,9 +55,22 @@ import kotlin.time.Duration.Companion.hours
  * - The **same four list URLs**, in both flavours. Android's `dev` and `demo` name identical values,
  *   so this is not per-variant configuration and does not belong in
  *   [eu.europa.ec.shared.wallet.config.IosWalletConfig].
- * - **`relaxCertificateProfiles()`** → [relaxedEndEntityProfiles]. Without it the EU dev PID issuer
- *   is rejected with *"Certificate does not contain any QCStatement"*, which is exactly the case that
- *   call exists for.
+ * - ⛔ **`relaxCertificateProfiles()` is NOT copied — the ETSI end-entity profiles are applied.** This
+ *   wallet did relax them, because the EU dev issuer was rejected with *"Certificate does not contain
+ *   any QCStatement"*. That rejection was self-inflicted: the metadata signer was being checked in
+ *   `VerificationContext.PID`, which applies `pidSigningCertificateProfile()` and its
+ *   `mandatoryQcType`. A metadata signer is a **WRP access certificate**. With the context corrected
+ *   (2026-09-18) both WRPAC certificates this wallet actually checks pass with the profiles applied,
+ *   measured live against the dev environment:
+ *   ```
+ *   issuer metadata signer:      profiles APPLIED → TRUSTED
+ *   verifier access certificate: profiles APPLIED → TRUSTED
+ *   ```
+ *   ⚠️ This is a **deliberate divergence from Android**, which still calls `relaxCertificateProfiles()`.
+ *   It makes this side stricter, not looser, and WRPAC is the only profiled context reached here —
+ *   `PID` and `WalletProviderAttestation` carry profiles but nothing validates in them. If a future
+ *   issuer or verifier is rejected on profile grounds, this is the decision to revisit, and
+ *   [probeLoteTrustLists] is what measures it.
  * - **`relaxPkixRevocation()`** → free here: `ValidateCertificateChainUsingPKIXIos` already runs with
  *   revocation checking disabled, so there is nothing to switch off.
  * - **`DoNotLoadOtherPointers`**, so a list can only introduce the entities it names, never redirect
@@ -125,7 +137,8 @@ internal class IosEtsiTrust(
                     verifyJwtSignature = verifier,
                     loadLoTE = loader(),
                 ),
-                svcTypePerCtx = SupportedLists.eu().relaxedEndEntityProfiles(),
+                // ⛔ `SupportedLists.eu()` as published — end-entity profiles included. See the class note.
+                svcTypePerCtx = SupportedLists.eu(),
             )
             // `nonCached` refers to the *anchor* set, not the lists: the caching that matters is
             // [loader]'s, which is on disk and survives process death. The in-memory `cached(...)`
@@ -274,33 +287,6 @@ internal class IosEtsiTrust(
             return directory.path?.let { Path(it) }
         }
     }
-}
-
-/**
- * The same lists with every end-entity certificate profile dropped — Android's
- * `relaxCertificateProfiles()`.
- *
- * A null `endEntityProfile` is how this library expresses "do not apply an ETSI end-entity profile";
- * the mDL context upstream is configured exactly that way, with the comment that the advertised lists
- * do not satisfy the strict profiles. The same is true of the EU dev PID issuer, which is why Android
- * relaxes them too. The service-type identifiers and the anchors themselves are untouched, so *which*
- * entities are trusted does not change — only whether their leaf certificate must additionally match
- * a qualified-certificate profile.
- */
-private fun SupportedLists<LotEMeta<VerificationContext>>.relaxedEndEntityProfiles():
-    SupportedLists<LotEMeta<VerificationContext>> {
-    fun LotEMeta<VerificationContext>.relaxed() = copy(
-        svcTypePerCtx = svcTypePerCtx.mapValues { (_, svc) -> svc.copy(endEntityProfile = null) },
-    )
-    return SupportedLists(
-        pidProviders = pidProviders?.relaxed(),
-        walletProviders = walletProviders?.relaxed(),
-        wrpacProviders = wrpacProviders?.relaxed(),
-        wrprcProviders = wrprcProviders?.relaxed(),
-        pubEaaProviders = pubEaaProviders?.relaxed(),
-        qeaProviders = qeaProviders?.relaxed(),
-        eaaProviders = eaaProviders.mapValues { (_, meta) -> meta.relaxed() },
-    )
 }
 
 /**
