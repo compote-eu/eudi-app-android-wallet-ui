@@ -198,6 +198,43 @@ class IosCredentialOfferReaderTest {
 
         assertIs<IosOfferResolution.Failure>(resolution)
     }
+
+    // ---- the grant facts that decide how an offer is issued -----------------------------------
+
+    @Test
+    fun an_offer_with_no_grants_is_neither_pre_authorized_nor_stateful() = runTest {
+        val resolution = reader(engine()).resolve(offerLink(), locale = "en")
+
+        val offer = assertIs<IosOfferResolution.Resolved>(resolution).offer
+        // Both false is what lets such an offer be issued one configuration at a time.
+        assertFalse(offer.isPreAuthorized)
+        assertNull(offer.issuerState)
+    }
+
+    @Test
+    fun a_pre_authorized_grant_is_reported_even_without_a_transaction_code() = runTest {
+        // The tx code is optional; the grant is what decides, and reading only the code would have
+        // sent a pre-authorized offer down the per-configuration path.
+        val grants =
+            """{"urn:ietf:params:oauth:grant-type:pre-authorized_code":{"pre-authorized_code":"abc"}}"""
+
+        val resolution = reader(engine()).resolve(offerLink(grants = grants), locale = "en")
+
+        val offer = assertIs<IosOfferResolution.Resolved>(resolution).offer
+        assertTrue(offer.isPreAuthorized)
+        assertNull(offer.txCodeLength)
+    }
+
+    @Test
+    fun issuer_state_is_carried_off_the_authorization_code_grant() = runTest {
+        val grants = """{"authorization_code":{"issuer_state":"state-from-issuer"}}"""
+
+        val resolution = reader(engine()).resolve(offerLink(grants = grants), locale = "en")
+
+        val offer = assertIs<IosOfferResolution.Resolved>(resolution).offer
+        assertEquals("state-from-issuer", offer.issuerState)
+        assertFalse(offer.isPreAuthorized)
+    }
 }
 
 /** Percent-encodes a query-parameter value; the offer travels inside one. */

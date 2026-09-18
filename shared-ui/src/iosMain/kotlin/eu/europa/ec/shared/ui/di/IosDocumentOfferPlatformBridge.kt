@@ -159,7 +159,7 @@ internal class IosDocumentOfferPlatformBridge(
             }
         }
 
-        return credentialIssuer.issueOffer(offerUri = offer.offerUri, txCode = txCode).map { progress ->
+        return credentialIssuer.issueOffer(offer = offer, txCode = txCode).map { progress ->
             when (progress) {
                 is IosIssuanceProgress.Failure ->
                     IssueDocumentsPartialState.Failure(errorMessage = progress.message)

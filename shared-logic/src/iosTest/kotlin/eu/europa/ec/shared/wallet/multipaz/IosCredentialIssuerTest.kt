@@ -42,6 +42,8 @@ class IosCredentialIssuerTest {
      * An issuer whose per-configuration step is scripted. [walletEngine] is never touched: the fake
      * replaces the only path that would open a store.
      */
+    private val offersTakenWhole = mutableListOf<String>()
+
     private fun issuerWith(
         answers: Map<String, Result<String>>,
     ) = IosCredentialIssuer(
@@ -51,6 +53,24 @@ class IosCredentialIssuerTest {
             attempted += configurationId
             answers[configurationId] ?: Result.failure(IllegalStateException("unscripted"))
         },
+        issueWholeOffer = { offer, _ ->
+            offersTakenWhole += offer.offerUri
+            Result.success("doc-whole-offer")
+        },
+    )
+
+    private fun offer(
+        configurationIds: List<String>,
+        isPreAuthorized: Boolean = false,
+        issuerState: String? = null,
+    ) = IosCredentialOffer(
+        offerUri = "openid-credential-offer://?credential_offer=%7B%7D",
+        issuerUrl = issuer.issuerUrl,
+        configurationIds = configurationIds,
+        txCodeLength = null,
+        txCodeIsNumeric = true,
+        isPreAuthorized = isPreAuthorized,
+        issuerState = issuerState,
     )
 
     @Test
@@ -195,4 +215,93 @@ class IosCredentialIssuerTest {
         )
     }
 
+    // ---- offers naming several credentials ---------------------------------------------------
+
+    @Test
+    fun an_offer_naming_several_credentials_issues_every_one_of_them() = runTest {
+        // multipaz would keep only the first (multipaz#2026), so the offer is driven per
+        // configuration instead. This is the case that used to promise two and deliver one.
+        val issuing = issuerWith(
+            answers = mapOf(
+                "pid_mdoc" to Result.success("doc-mdoc"),
+                "loyalty_mdoc" to Result.success("doc-loyalty"),
+            ),
+        )
+
+        val progress = issuing.issueOffer(
+            offer = offer(listOf("pid_mdoc", "loyalty_mdoc")),
+            txCode = null,
+        ).first()
+
+        assertEquals(listOf("pid_mdoc", "loyalty_mdoc"), attempted)
+        assertEquals(
+            listOf("doc-mdoc", "doc-loyalty"),
+            assertIs<IosIssuanceProgress.Issued>(progress).documentIds,
+        )
+        assertTrue(offersTakenWhole.isEmpty())
+    }
+
+    @Test
+    fun a_pre_authorized_offer_stays_on_multipazs_own_flow() = runTest {
+        // Only multipaz's offer client holds the pre-authorized code; asking per configuration would
+        // silently turn this into an authorization_code request the issuer never offered.
+        val issuing = issuerWith(answers = emptyMap())
+
+        val progress = issuing.issueOffer(
+            offer = offer(listOf("pid_mdoc", "loyalty_mdoc"), isPreAuthorized = true),
+            txCode = "1234",
+        ).first()
+
+        assertEquals(1, offersTakenWhole.size)
+        assertTrue(attempted.isEmpty())
+        assertEquals(
+            listOf("doc-whole-offer"),
+            assertIs<IosIssuanceProgress.Issued>(progress).documentIds,
+        )
+    }
+
+    @Test
+    fun an_offer_carrying_issuer_state_stays_on_multipazs_own_flow() = runTest {
+        // `issuer_state` ties the authorization request back to this offer. Dropping it to ask per
+        // configuration would lose what the issuer uses to recognise the request.
+        val issuing = issuerWith(answers = emptyMap())
+
+        issuing.issueOffer(
+            offer = offer(listOf("pid_mdoc", "loyalty_mdoc"), issuerState = "state-from-issuer"),
+            txCode = null,
+        ).first()
+
+        assertEquals(1, offersTakenWhole.size)
+        assertTrue(attempted.isEmpty())
+    }
+
+    @Test
+    fun a_single_credential_offer_is_unchanged() = runTest {
+        // Nothing about the common case moves: one configuration is still one offer flow.
+        val issuing = issuerWith(answers = emptyMap())
+
+        issuing.issueOffer(offer = offer(listOf("pid_mdoc")), txCode = null).first()
+
+        assertEquals(1, offersTakenWhole.size)
+        assertTrue(attempted.isEmpty())
+    }
+
+    @Test
+    fun an_offer_whose_second_credential_fails_is_a_partial_result() = runTest {
+        val issuing = issuerWith(
+            answers = mapOf(
+                "pid_mdoc" to Result.success("doc-mdoc"),
+                "loyalty_mdoc" to Result.failure(IllegalStateException("issuer said no")),
+            ),
+        )
+
+        val progress = issuing.issueOffer(
+            offer = offer(listOf("pid_mdoc", "loyalty_mdoc")),
+            txCode = null,
+        ).first()
+
+        val issued = assertIs<IosIssuanceProgress.Issued>(progress)
+        assertEquals(listOf("doc-mdoc"), issued.documentIds)
+        assertEquals(setOf("loyalty_mdoc"), issued.failures.keys)
+    }
 }

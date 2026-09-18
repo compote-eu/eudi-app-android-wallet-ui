@@ -128,6 +128,12 @@ class IosCredentialIssuer(
      */
     private val issueConfiguration: (suspend (IosVciIssuer, String) -> Result<String>)? = null,
     /**
+     * The same seam for the offer shapes that must stay on multipaz's own flow — pre-authorized, or
+     * carrying `issuer_state`. Separate from [issueConfiguration] because the point of the cases that
+     * use it is precisely that they do *not* go per configuration.
+     */
+    private val issueWholeOffer: (suspend (IosCredentialOffer, String?) -> Result<String>)? = null,
+    /**
      * Where documents live. Defaults to the engine's own store, which is what production wants — a
      * second `MultipazWalletStore.open()` would be a second cache over the same storage. Injectable
      * because [refreshCredentials] decides three of its four outcomes from the store's *contents*, and
@@ -327,47 +333,94 @@ class IosCredentialIssuer(
     /**
      * Issues the documents a credential offer names.
      *
-     * One flow for the whole offer, unlike [issue] — but it yields at most **one** document, and the
-     * reason is not the one an earlier version of this comment gave.
+     * Issues every credential the offer names, not just the first.
      *
      * 🚩 **multipaz reads only the first configuration an offer names.**
      * `CredentialOffer.parseJson` does `credentialConfigurationIds[0]`, under its own comment
      * *"Right now only use the first configuration id"* — unchanged in 0.99.0 and on `main`
-     * (read 2026-09-18). So an offer naming several credentials is silently truncated to its first:
-     * no error, nothing logged.
+     * (read 2026-09-18), and reported as multipaz#2026. Nothing is logged, so an offer naming several
+     * credentials would quietly yield one where the screen promised several.
+     * ✅ Measured by `MultipazOfferTruncationTest`, which drives multipaz's real client: the pushed
+     * authorization request for a two-credential offer names only the first.
      *
-     * ⚠️ **[IosCredentialOfferReader] parses the whole list**, so the offer screen names every
-     * configuration the offer carries. An offer of several therefore *promises* N and delivers 1.
-     * Android hands the whole `Offer` to wallet-core, which issues all of them.
+     * So the offer is read by [IosCredentialOfferReader] instead, and each configuration is issued
+     * through the same per-configuration flow [issue] uses. That costs one browser confirmation per
+     * credential — multipaz authorizes per configuration — which is the price of getting all of them.
      *
-     * ✅ **Measured, not inferred** — `MultipazOfferTruncationTest` drives multipaz's real client with an
-     * offer naming `pid_mdoc` and `loyalty_mdoc` under two different scopes: the pushed authorization
-     * request that comes out carries `scope=pid_scope` and mentions `loyalty` nowhere. The second
-     * credential is never authorized, so it can never be issued.
-     * ⛔ What is still only inferred is the end-to-end document count against a live issuer; the dev
-     * issuer's own offers name one configuration, so nothing has exercised it in the field.
+     * ⛔ **Two offer shapes keep multipaz's own flow**, because re-expressing them per configuration
+     * would drop something the issuer relies on:
+     * - a **pre-authorized** offer, whose code only multipaz's offer client holds;
+     * - an offer carrying **`issuer_state`**, which ties the authorization request back to this offer.
      *
+     * Both are single-document today, exactly as before. [IosOpenID4VciProvisioningClient] is what lifts
+     * that restriction; until then this is deliberately the conservative half.
+     *
+     * @param offer the offer as the screen resolved it — already parsed, so it is not read twice.
      * @param txCode the transaction code the issuer asked for, already collected by the offer-code screen.
      *   Null when the offer wanted none; a pre-authorized offer that wants one and does not get it fails.
      */
-    fun issueOffer(offerUri: String, txCode: String?): Flow<IosIssuanceProgress> = flow {
-        val outcome = runCatching { provision(offerUri = offerUri, txCode = txCode) }
-        emit(
-            outcome.fold(
-                onSuccess = { IosIssuanceProgress.Issued(documentIds = listOf(it)) },
-                onFailure = { error ->
-                    if (error is CancellationException) throw error
-                    Logger.w(TAG, "issuing the offer failed: ${error.message}")
-                    IosIssuanceProgress.Failure(
-                        error.message ?: error::class.simpleName ?: "Issuance failed."
-                    )
-                },
+    fun issueOffer(offer: IosCredentialOffer, txCode: String?): Flow<IosIssuanceProgress> = flow {
+        val configurationIds = offer.configurationIds
+        val mustUseOfferFlow = offer.isPreAuthorized || offer.issuerState != null
+        if (mustUseOfferFlow || configurationIds.size <= 1) {
+            val outcome = issueWholeOffer?.invoke(offer, txCode)
+                ?: runCatching { provision(offerUri = offer.offerUri, txCode = txCode) }
+            emit(
+                outcome.fold(
+                    onSuccess = { IosIssuanceProgress.Issued(documentIds = listOf(it)) },
+                    onFailure = { error ->
+                        if (error is CancellationException) throw error
+                        Logger.w(TAG, "issuing the offer failed: ${error.message}")
+                        IosIssuanceProgress.Failure(
+                            error.message ?: error::class.simpleName ?: "Issuance failed."
+                        )
+                    },
+                )
             )
+            return@flow
+        }
+
+        // The offering issuer may be one this build does not know; the client identity is the wallet's
+        // own either way, which is the rule the offer flow already follows.
+        val issuer = issuers.firstOrNull { it.issuerUrl == offer.issuerUrl } ?: issuers.first()
+        val documentIds = mutableListOf<String>()
+        val failures = mutableMapOf<String, String>()
+
+        for (configurationId in configurationIds) {
+            val outcome = issueConfiguration?.invoke(issuer, configurationId)
+                ?: runCatching {
+                    provision(issuer, configurationId, issuerUrl = offer.issuerUrl)
+                }
+
+            outcome
+                .onSuccess { documentIds += it }
+                .onFailure { error ->
+                    if (error is CancellationException) throw error
+                    Logger.w(TAG, "issuing '$configurationId' from the offer failed: ${error.message}")
+                    failures[configurationId] =
+                        error.message ?: error::class.simpleName ?: "Issuance failed."
+                }
+
+            if (failures.isNotEmpty()) break
+        }
+
+        emit(
+            when {
+                documentIds.isNotEmpty() -> IosIssuanceProgress.Issued(documentIds, failures)
+                else -> IosIssuanceProgress.Failure(
+                    failures.values.firstOrNull() ?: "Nothing was issued."
+                )
+            }
         )
     }
 
     /** Drives one OpenID4VCI flow to a document, or throws with what went wrong. */
-    private suspend fun provision(issuer: IosVciIssuer, configurationId: String): String {
+    private suspend fun provision(
+        issuer: IosVciIssuer,
+        configurationId: String,
+        /** The issuer to talk to, which for an offer is the offering issuer rather than the catalogue's. */
+        issuerUrl: String = issuer.issuerUrl,
+    ): String {
         val deferred = DeferredIssuanceNotice()
         val claimDisplay = IssuerClaimDisplayNotice()
         val reusePolicy = IssuerReusePolicyNotice()
@@ -400,7 +453,7 @@ class IosCredentialIssuer(
 
         try {
             val document = model.launchOpenID4VCIProvisioning(
-                issuerUrl = issuer.issuerUrl,
+                issuerUrl = issuerUrl,
                 credentialId = configurationId,
                 clientPreferences = issuer.clientPreferences(),
                 backend = IosOpenID4VciBackend(
