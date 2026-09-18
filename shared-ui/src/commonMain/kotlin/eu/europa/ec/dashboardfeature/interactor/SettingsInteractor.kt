@@ -70,12 +70,16 @@ interface SettingsInteractor {
     suspend fun toggleRegistrationCheck()
 
     /**
-     * Told to the user after [toggleRegistrationCheck], because Wallet Core reads both registration
-     * policies when it builds its managers, so the flip only takes effect on the next app start.
+     * What to tell the user after [toggleRegistrationCheck] — or **null where there is nothing to
+     * tell them**, because the platform applies the change at once.
+     *
+     * Android needs the warning: Wallet Core reads both registration policies when it builds its
+     * managers, so the flip only takes effect on the next app start. iOS reads the preference on every
+     * offer and needs no restart, which is why this is nullable rather than a constant string.
+     *
      * It lives here rather than in the view-model for the same reason the other strings do: shared
      * view-models have no resource access of their own.
      */
-    /** The restart warning, or null where the platform applies the change immediately. */
     val registrationCheckRestartMessage: String?
 
     // Previously inherited from BiometricInteractor; see the note above.

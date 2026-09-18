@@ -38,15 +38,6 @@ import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
 
 /**
- * iOS's [DocumentOfferPlatformBridge]: offers are read and issued through multipaz.
- *
- * **It holds the resolved offers**, as the contract requires, though for a different reason than Android:
- * there the cached object is wallet-core's `Offer`, which cannot cross into shared code, while here the
- * offer link alone would be enough to issue from. Keeping the map anyway is what makes
- * [issueResolvedOffer]'s promise true — an offer nobody resolved is refused rather than quietly fetched a
- * second time, which would risk issuing something other than what the user was shown.
- */
-/**
  * Whether a registration outcome refuses this issuance.
  *
  * 🚨 The `NotEvaluated` guard is the whole subtlety and belongs in one place. `isBlockedForIssuance`
@@ -57,6 +48,15 @@ import platform.Foundation.languageCode
 private fun IssuerRegistrationDomain.refusesIssuance(): Boolean =
     this !is IssuerRegistrationDomain.NotEvaluated && isBlockedForIssuance
 
+/**
+ * iOS's [DocumentOfferPlatformBridge]: offers are read and issued through multipaz.
+ *
+ * **It holds the resolved offers**, as the contract requires, though for a different reason than Android:
+ * there the cached object is wallet-core's `Offer`, which cannot cross into shared code, while here the
+ * offer link alone would be enough to issue from. Keeping the map anyway is what makes
+ * [issueResolvedOffer]'s promise true — an offer nobody resolved is refused rather than quietly fetched a
+ * second time, which would risk issuing something other than what the user was shown.
+ */
 internal class IosDocumentOfferPlatformBridge(
     private val offers: IosCredentialOfferReader,
     private val credentialIssuer: IosCredentialIssuer,

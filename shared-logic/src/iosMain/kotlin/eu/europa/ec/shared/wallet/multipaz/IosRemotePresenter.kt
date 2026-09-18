@@ -290,7 +290,6 @@ class IosRemotePresenter internal constructor(
         pendingData = null
     }
 
-    /** Abandons the exchange — the back button, and every teardown. */
     /**
      * The user declined: tell the verifier before tearing down.
      *
@@ -317,6 +316,7 @@ class IosRemotePresenter internal constructor(
         cancel()
     }
 
+    /** Abandons the exchange — the back button, and every teardown. */
     fun cancel() {
         pendingConsent?.complete(null)
         pendingConsent = null

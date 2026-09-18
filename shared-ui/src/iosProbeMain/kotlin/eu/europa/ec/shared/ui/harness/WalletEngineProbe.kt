@@ -382,30 +382,6 @@ private fun WalletDocument.describe(locale: String): String =
             "issued=$issuedAt expires=$expiresAt expired=$isExpired revoked=$isRevoked " +
             "issuer=$issuerName logo=$issuerLogoUri"
 
-/**
- * How far proximity gets on a machine with no Bluetooth radio.
- *
- * Two things are worth seeing here and nowhere else. First, that the four interactors resolve — Koin
- * fails at the first `get()`, and the screens are three taps deep behind a card `simctl` cannot press,
- * so a missing definition would otherwise surface as a crash on a device. Second, what the QR screen
- * shows when advertising cannot start: the simulator has no radio, so this *should* report an error
- * rather than hang on a QR that never appears. On a device the same call publishes an `mdoc:` payload.
- */
-/**
- * The document-provider extension's whole chain, against the real store, without iOS.
- *
- * This is the closest thing to a device run that exists today, and it is closer than it sounds: the
- * extension does exactly three things — take a raw ISO 18013-7 request, ask the user, hand back a
- * response — and only the first is Apple's. So driving [IosDocumentProviderBridge] with a request we
- * build ourselves exercises everything the extension owns, on documents a real issuer issued.
- *
- * ⚠️ What it cannot show is that iOS *routes* a request here, and nothing on the simulator can: the
- * provider entitlement is never authorised there, and `addRegistration` does not even refuse — it
- * hangs. That gap needs hardware and an `org-iso-mdoc` verifier, in that order.
- *
- * The consent step keeps **one** of the two requested claims, so the printed plaintext distinguishes a
- * wallet that honours the selection from one that sends everything and hides the rest.
- */
 /** What the host script left for us: the verifier's request, and the origin it will bind. */
 private class SuppliedDcApiRequest(val json: String, val origin: String)
 
@@ -428,6 +404,21 @@ private fun writeDcApiResponse(responseJson: String) {
     (responseJson as NSString).writeToFile(path, true, NSUTF8StringEncoding, null)
 }
 
+/**
+ * The document-provider extension's whole chain, against the real store, without iOS.
+ *
+ * This is the closest thing to a device run that exists today, and it is closer than it sounds: the
+ * extension does exactly three things — take a raw ISO 18013-7 request, ask the user, hand back a
+ * response — and only the first is Apple's. So driving [IosDocumentProviderBridge] with a request we
+ * build ourselves exercises everything the extension owns, on documents a real issuer issued.
+ *
+ * ⚠️ What it cannot show is that iOS *routes* a request here, and nothing on the simulator can: the
+ * provider entitlement is never authorised there, and `addRegistration` does not even refuse — it
+ * hangs. That gap needs hardware and an `org-iso-mdoc` verifier, in that order.
+ *
+ * The consent step keeps **one** of the two requested claims, so the printed plaintext distinguishes a
+ * wallet that honours the selection from one that sends everything and hides the rest.
+ */
 private suspend fun probeDcApi(onResult: (String) -> Unit) {
     onResult("--- DC API: the provider extension's chain, on real documents ---")
 
@@ -516,6 +507,15 @@ private const val DC_API_PROBE_ORIGIN = "https://verifier.example"
 /** What [buildDcApiProbeRequest] asks for by default, in the order consent will see them. */
 private val DC_API_PROBE_ELEMENTS = listOf("family_name", "given_name")
 
+/**
+ * How far proximity gets on a machine with no Bluetooth radio.
+ *
+ * Two things are worth seeing here and nowhere else. First, that the four interactors resolve — Koin
+ * fails at the first `get()`, and the screens are three taps deep behind a card `simctl` cannot press,
+ * so a missing definition would otherwise surface as a crash on a device. Second, what the QR screen
+ * shows when advertising cannot start: the simulator has no radio, so this *should* report an error
+ * rather than hang on a QR that never appears. On a device the same call publishes an `mdoc:` payload.
+ */
 private suspend fun probeProximity(onResult: (String) -> Unit) {
     onResult("--- proximity: interactors and engagement ---")
     val koin = KoinPlatform.getKoin()

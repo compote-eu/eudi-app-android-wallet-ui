@@ -335,10 +335,6 @@ fun provideIosDocumentOfferInteractor(
 )
 
 /**
- * The login gate. The PIN policy is shared; what iOS brings is where the verifier lives (the Keychain) and
- * how long a wrong PIN costs (`NSUserDefaults`, since a lockout is not a secret).
- */
-/**
  * iOS's analytics, under the platform-neutral supertype the navigation host asks for.
  *
  * The object rather than a new instance: registration happens once at startup and the providers are
@@ -359,6 +355,10 @@ fun provideIosSharedAppConfig(): SharedAppConfig = iosWalletConfig
 @Single
 fun provideIosAuthenticationConfig(): AuthenticationConfig = WalletAuthenticationConfig
 
+/**
+ * The login gate. The PIN policy is shared; what iOS brings is where the verifier lives (the Keychain) and
+ * how long a wrong PIN costs (`NSUserDefaults`, since a lockout is not a secret).
+ */
 @Single
 fun provideIosPinStorage(): PinStorageController = IosPinStorage()
 
