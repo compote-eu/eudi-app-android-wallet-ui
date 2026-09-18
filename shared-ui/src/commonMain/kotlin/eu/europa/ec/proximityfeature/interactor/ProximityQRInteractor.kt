@@ -54,22 +54,25 @@ interface ProximityQRInteractor : ScopedPresentationInteractor {
     )
 
     /**
-     * Whether ISO 18013-5 Annex 8 NFC data retrieval — the whole mdoc session over NFC, a sibling
-     * transport to BLE — is offered on this platform. Deliberately a *different* capability from
-     * [toggleNfcEngagement] above, not a rename of it: that one is Android's narrower NFC
-     * engagement/handover (a tap that only hands over BLE connection parameters; see
-     * `wiki/IOS_NFC_PLAN.md` §1). `false` on every platform that doesn't have the full transport yet.
+     * Whether ISO 18013-5 Annex C cold-tap NFC engagement — tapping the phone against a reader's
+     * device as an alternative to scanning the QR, not a transport choice within it — is offered on
+     * this platform. Deliberately a *different* capability from [toggleNfcEngagement] above, not a
+     * rename of it: that one is Android's narrower NFC engagement/handover (a tap that only hands
+     * over BLE connection parameters; see `wiki/IOS_NFC_PLAN.md` §1). `false` on every platform that
+     * doesn't have cold-tap engagement yet; see `wiki/IOS_NFC_PLAN.md` §9.
      */
     fun isNfcDataRetrievalAvailable(): Boolean
 
     /**
-     * Turns NFC data retrieval on or off for the *next* [startQrEngagement] — a no-op wherever
-     * [isNfcDataRetrievalAvailable] is `false`.
+     * Arms or disarms cold-tap (Annex C) NFC engagement for as long as the proximity screen is open —
+     * a no-op wherever [isNfcDataRetrievalAvailable] is `false`. Takes effect immediately, not only on
+     * the next [startQrEngagement]: the current engagement is reconciled with the new value right
+     * away; see `wiki/IOS_NFC_PLAN.md` §9.
      */
     fun toggleNfcDataRetrieval(enabled: Boolean)
 
     /**
-     * Whether NFC data retrieval is enabled right now — the switch's actual current position, not
+     * Whether cold-tap NFC engagement is enabled right now — the switch's actual current position, not
      * just whether the platform offers the switch at all ([isNfcDataRetrievalAvailable]). `false`
      * on every platform that doesn't have the feature, same as [isNfcDataRetrievalAvailable].
      */

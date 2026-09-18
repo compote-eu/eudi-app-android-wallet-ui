@@ -30,6 +30,10 @@ import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
+import org.multipaz.mdoc.nfc.MdocNfcEngagementHelper
 import org.multipaz.nfc.CommandApdu
 import org.multipaz.nfc.Nfc
 import org.multipaz.nfc.ResponseApdu
@@ -88,46 +92,53 @@ class IosNfcHceTransportTest {
     // rejected/unexpected APDU, including a wrong-AID SELECT (NfcError, caught by processApdu's own
     // catch-all, which then calls failTransport without holding its required lock). This is the
     // fix's actual assertion: NfcTransportMdoc.processCommandApdu — the one place that bug lives —
-    // must never run at all for a non-mdoc AID, not just "the response happens to be right."
-    // forwardToMultipaz is the seam that makes this observable without a mocking framework: it's the
-    // real NfcTransportMdoc.processCommandApdu by default, and only a test ever substitutes it.
+    // must never run at all for an AID this app doesn't serve, not just "the response happens to be
+    // right." A genuinely unsupported AID is used here (neither the mdoc AID nor the NDEF AID, both
+    // of which are legitimately routed — see the tests below), so this test isn't accidentally
+    // re-testing AID routing instead of AID rejection.
     @Test
-    fun `a SELECT for a non-mdoc AID is rejected before multipaz ever sees it`() {
+    fun `a SELECT for an unsupported AID is rejected before either helper ever sees it`() {
         var multipazWasCalled = false
+        var engagementHelperWasCalled = false
         val delegate = IosNfcHceTransport.ApduDelegate(
             forwardToMultipaz = { _, _ -> multipazWasCalled = true },
+            forwardToEngagementHelper = { _, _ -> engagementHelperWasCalled = true },
         )
-        val selectForNdefAid = CommandApdu(
+        val selectForUnsupportedAid = CommandApdu(
             cla = 0x00,
             ins = Nfc.INS_SELECT,
             p1 = Nfc.INS_SELECT_P1_APPLICATION,
             p2 = 0x00,
-            payload = ByteString("D2760000850101".fromHex()),
+            payload = ByteString("A0000000000000".fromHex()),
             le = 0,
         ).encode()
         val response = CompletableDeferred<ByteArray>()
 
-        delegate.processCommandApdu(selectForNdefAid.toNSData()) { responseApdu ->
+        delegate.processCommandApdu(selectForUnsupportedAid.toNSData()) { responseApdu ->
             assertNotNull(responseApdu, "a rejection, not silence, is the fix")
             response.complete(responseApdu.toByteArray())
         }
 
-        assertFalse(multipazWasCalled, "multipaz's own NfcTransportMdoc must never see a non-mdoc AID SELECT")
+        assertFalse(multipazWasCalled, "multipaz's own NfcTransportMdoc must never see an unsupported AID SELECT")
+        assertFalse(engagementHelperWasCalled, "the engagement helper must never see an unsupported AID SELECT")
         val decoded = ResponseApdu.decode(response.getCompleted())
         assertEquals(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND, decoded.status)
     }
 
-    // The necessary counterpart to the test above: confirms the filter targets the wrong-AID case
-    // specifically, not `SELECT` in general — a legitimate mdoc-AID `SELECT` must still reach
-    // multipaz, or this fix would silently break real presentation instead of just closing a crash.
+    // The necessary counterpart to the test above: confirms the filter targets the unsupported-AID
+    // case specifically, not `SELECT` in general — a legitimate mdoc-AID `SELECT` must still reach
+    // multipaz, and only multipaz, or this fix would silently break real presentation instead of just
+    // closing a crash.
     @Test
-    fun `a SELECT for the mdoc AID is still forwarded to multipaz`() {
+    fun `a SELECT for the mdoc AID is forwarded to multipaz and never to the engagement helper`() {
         var multipazWasCalled = false
+        var engagementHelperWasCalled = false
         val delegate = IosNfcHceTransport.ApduDelegate(
             forwardToMultipaz = { _, sendResponse ->
                 multipazWasCalled = true
                 sendResponse(ResponseApdu(status = Nfc.RESPONSE_STATUS_SUCCESS).encode())
             },
+            forwardToEngagementHelper = { _, _ -> engagementHelperWasCalled = true },
         )
         val selectForMdocAid = CommandApdu(
             cla = 0x00,
@@ -145,6 +156,255 @@ class IosNfcHceTransportTest {
         }
 
         assertTrue(multipazWasCalled, "the real mdoc AID must still reach multipaz")
+        assertFalse(engagementHelperWasCalled, "the mdoc AID must never reach the engagement helper")
+        val decoded = ResponseApdu.decode(response.getCompleted())
+        assertEquals(Nfc.RESPONSE_STATUS_SUCCESS, decoded.status)
+    }
+
+    // wiki/IOS_NFC_PLAN.md §9 Stage 2: the mirror image of the mdoc-AID test above — a SELECT for the
+    // NDEF AID (Annex C cold-tap engagement) must reach the engagement helper, and only the engagement
+    // helper, never NfcTransportMdoc. This is the routing this stage adds; the AID itself used to be
+    // rejected outright (§3.4) before any engagement logic existed to serve it.
+    @Test
+    fun `a SELECT for the NDEF AID is forwarded to the engagement helper and never to multipaz`() {
+        var multipazWasCalled = false
+        var engagementHelperWasCalled = false
+        val delegate = IosNfcHceTransport.ApduDelegate(
+            forwardToMultipaz = { _, _ -> multipazWasCalled = true },
+            forwardToEngagementHelper = { _, sendResponse ->
+                engagementHelperWasCalled = true
+                sendResponse(ResponseApdu(status = Nfc.RESPONSE_STATUS_SUCCESS))
+            },
+        )
+        val selectForNdefAid = CommandApdu(
+            cla = 0x00,
+            ins = Nfc.INS_SELECT,
+            p1 = Nfc.INS_SELECT_P1_APPLICATION,
+            p2 = 0x00,
+            payload = Nfc.NDEF_APPLICATION_ID,
+            le = 0,
+        ).encode()
+        val response = CompletableDeferred<ByteArray>()
+
+        delegate.processCommandApdu(selectForNdefAid.toNSData()) { responseApdu ->
+            assertNotNull(responseApdu)
+            response.complete(responseApdu.toByteArray())
+        }
+
+        assertTrue(engagementHelperWasCalled, "the NDEF AID must reach the engagement helper")
+        assertFalse(multipazWasCalled, "the NDEF AID must never reach NfcTransportMdoc")
+        val decoded = ResponseApdu.decode(response.getCompleted())
+        assertEquals(Nfc.RESPONSE_STATUS_SUCCESS, decoded.status)
+    }
+
+    // Confirms the routing is sticky for the rest of the session, not just the SELECT itself: a
+    // READ_BINARY that follows a NDEF-AID SELECT carries no AID of its own (ISO 7816-4 has no such
+    // field on it), so if selectedApplication weren't tracked across calls this would have nowhere
+    // correct to go.
+    @Test
+    fun `a READ_BINARY following a NDEF-AID SELECT still routes to the engagement helper`() {
+        var engagementHelperCallCount = 0
+        val delegate = IosNfcHceTransport.ApduDelegate(
+            forwardToMultipaz = { _, _ -> error("must not be called") },
+            forwardToEngagementHelper = { _, sendResponse ->
+                engagementHelperCallCount++
+                sendResponse(ResponseApdu(status = Nfc.RESPONSE_STATUS_SUCCESS))
+            },
+        )
+        val selectForNdefAid = CommandApdu(
+            cla = 0x00,
+            ins = Nfc.INS_SELECT,
+            p1 = Nfc.INS_SELECT_P1_APPLICATION,
+            p2 = 0x00,
+            payload = Nfc.NDEF_APPLICATION_ID,
+            le = 0,
+        ).encode()
+        val readBinary = CommandApdu(
+            cla = 0x00,
+            ins = Nfc.INS_READ_BINARY,
+            p1 = 0x00,
+            p2 = 0x00,
+            payload = ByteString(),
+            le = 15,
+        ).encode()
+
+        delegate.processCommandApdu(selectForNdefAid.toNSData()) { }
+        val response = CompletableDeferred<ByteArray>()
+        delegate.processCommandApdu(readBinary.toNSData()) { responseApdu ->
+            response.complete(responseApdu!!.toByteArray())
+        }
+
+        assertEquals(2, engagementHelperCallCount, "both the SELECT and the READ_BINARY must reach it")
+        val decoded = ResponseApdu.decode(response.getCompleted())
+        assertEquals(Nfc.RESPONSE_STATUS_SUCCESS, decoded.status)
+    }
+
+    // The other side of "sticky routing": an APDU that arrives before any SELECT APPLICATION at all
+    // (no AID chosen yet) must be rejected gracefully, reaching neither helper — there is nothing to
+    // route it to.
+    @Test
+    fun `an APDU before any application is selected reaches neither helper`() {
+        var multipazWasCalled = false
+        var engagementHelperWasCalled = false
+        val delegate = IosNfcHceTransport.ApduDelegate(
+            forwardToMultipaz = { _, _ -> multipazWasCalled = true },
+            forwardToEngagementHelper = { _, _ -> engagementHelperWasCalled = true },
+        )
+        val readBinary = CommandApdu(
+            cla = 0x00,
+            ins = Nfc.INS_READ_BINARY,
+            p1 = 0x00,
+            p2 = 0x00,
+            payload = ByteString(),
+            le = 15,
+        ).encode()
+        val response = CompletableDeferred<ByteArray>()
+
+        delegate.processCommandApdu(readBinary.toNSData()) { responseApdu ->
+            response.complete(responseApdu!!.toByteArray())
+        }
+
+        assertFalse(multipazWasCalled)
+        assertFalse(engagementHelperWasCalled)
+        val decoded = ResponseApdu.decode(response.getCompleted())
+        assertEquals(Nfc.RESPONSE_STATUS_ERROR_INSTRUCTION_NOT_SUPPORTED_OR_INVALID, decoded.status)
+    }
+
+    // wiki/IOS_NFC_PLAN.md §9: real-device finding, revised twice. First finding: MdocNfcEngagementHelper
+    // has no protection against being called again after it has already completed a handover — nothing
+    // in its own state machine remembers "onHandoverComplete already fired" — so a reader that re-SELECTs
+    // the NDEF file again (observed on real hardware) re-runs its construction logic and crashes on an
+    // assumption that only held the first time. The first fix cleared IosNfcHceTransport.engagementHelper
+    // entirely the moment onHandoverComplete fired — but a SECOND real-device test showed that was too
+    // broad: a real reader legitimately sends a trailing READ_BINARY on the NDEF file after handover
+    // completes, before it notices engagement is done and switches AIDs itself, and clearing the whole
+    // helper rejected that harmless request too, aborting the whole tap. MdocNfcEngagementHelper's own
+    // processReadBinary is a pure, side-effect-free read of already-built state — safe to keep answering
+    // regardless of how many times it's called — so the corrected fix (ndefHandoverCompleted) keeps the
+    // real helper wired for exactly that, and only blocks a repeat SELECT — the actual crash trigger.
+    //
+    // Uses a REAL MdocNfcEngagementHelper (not a spy) end to end, proving both halves of the corrected
+    // fix against the actual crash-prone Multipaz class, not just ApduDelegate's own routing logic.
+    @Test
+    fun `after handover completes a trailing READ_BINARY still succeeds but a repeat SELECT FILE is rejected`() =
+        runTest {
+            var engagementHelper: MdocNfcEngagementHelper? = null
+            var ndefHandoverCompleted = false
+            val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
+            engagementHelper = MdocNfcEngagementHelper(
+                eDeviceKey = eDeviceKey.publicKey,
+                staticHandoverMethods = listOf(
+                    MdocConnectionMethodNfc(
+                        commandDataFieldMaxLength = 0xffff,
+                        responseDataFieldMaxLength = 0x10000,
+                    ),
+                ),
+                onHandoverComplete = { _, _, _ ->
+                    // Mirrors IosProximityPresenter.onColdTapHandoverComplete's corrected fix: keep the
+                    // helper wired (don't null it out) and only gate future SELECTs against it.
+                    ndefHandoverCompleted = true
+                },
+                onError = { },
+            )
+            val delegate = IosNfcHceTransport.ApduDelegate(
+                engagementHelperProvider = { engagementHelper },
+                ndefHandoverCompletedProvider = { ndefHandoverCompleted },
+            )
+
+            suspend fun send(command: CommandApdu): ByteArray {
+                val response = CompletableDeferred<ByteArray>()
+                delegate.processCommandApdu(command.encode().toNSData()) { responseApdu ->
+                    response.complete(responseApdu!!.toByteArray())
+                }
+                return response.await()
+            }
+
+            fun selectFile(fileId: Int) = CommandApdu(
+                cla = 0x00,
+                ins = Nfc.INS_SELECT,
+                p1 = Nfc.INS_SELECT_P1_FILE,
+                p2 = Nfc.INS_SELECT_P2_FILE,
+                payload = ByteString((fileId shr 8).toByte(), (fileId and 0xff).toByte()),
+                le = 0,
+            )
+
+            // The same sequence a real Type 4 Tag read performs once: select the NDEF application, the
+            // capability container, then the NDEF file itself — the last one is where static handover
+            // completes and onHandoverComplete fires (MdocNfcEngagementHelper.processSelectFile's 0xe104
+            // branch; that literal is Multipaz's own magic number, not yet a named constant there either).
+            send(
+                CommandApdu(
+                    cla = 0x00,
+                    ins = Nfc.INS_SELECT,
+                    p1 = Nfc.INS_SELECT_P1_APPLICATION,
+                    p2 = 0x00,
+                    payload = Nfc.NDEF_APPLICATION_ID,
+                    le = 0,
+                ),
+            )
+            send(selectFile(Nfc.NDEF_CAPABILITY_CONTAINER_FILE_ID))
+            send(selectFile(0xe104))
+
+            assertEquals(true, ndefHandoverCompleted)
+            assertNotNull(engagementHelper, "unlike the earlier, over-broad fix, the helper stays wired")
+
+            // The real-device regression this fix resolves: a reader's trailing READ_BINARY, sent after
+            // handover completes but before it switches AIDs itself, must still be answered correctly —
+            // not rejected — since MdocNfcEngagementHelper's own read logic is safe to keep serving.
+            val readBinary = CommandApdu(
+                cla = 0x00,
+                ins = Nfc.INS_READ_BINARY,
+                p1 = 0x00,
+                p2 = 0x00,
+                payload = ByteString(),
+                le = 15,
+            )
+            val trailingRead = ResponseApdu.decode(send(readBinary))
+            assertEquals(
+                Nfc.RESPONSE_STATUS_SUCCESS,
+                trailingRead.status,
+                "a harmless trailing read must not be rejected",
+            )
+
+            // This morning's original crash protection must still hold: a repeat SELECT FILE is rejected
+            // before ever reaching the (still-wired, but now gated) helper again — not throwing here is
+            // itself part of the assertion, same as the malformed-APDU test above.
+            val secondSelect = ResponseApdu.decode(send(selectFile(0xe104)))
+            assertEquals(Nfc.RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND, secondSelect.status)
+        }
+
+    // The necessary counterpart: ndefHandoverCompleted is NDEF-specific state, read only inside the
+    // SelectedApplication.NDEF sticky-routing branch — a SELECT for the mdoc AID must be completely
+    // unaffected by it, still routing to multipaz exactly as it always has.
+    @Test
+    fun `a SELECT for the mdoc AID still routes to multipaz even when ndefHandoverCompleted is true`() {
+        var multipazWasCalled = false
+        var engagementHelperWasCalled = false
+        val delegate = IosNfcHceTransport.ApduDelegate(
+            forwardToMultipaz = { _, sendResponse ->
+                multipazWasCalled = true
+                sendResponse(ResponseApdu(status = Nfc.RESPONSE_STATUS_SUCCESS).encode())
+            },
+            forwardToEngagementHelper = { _, _ -> engagementHelperWasCalled = true },
+            ndefHandoverCompletedProvider = { true },
+        )
+        val selectForMdocAid = CommandApdu(
+            cla = 0x00,
+            ins = Nfc.INS_SELECT,
+            p1 = Nfc.INS_SELECT_P1_APPLICATION,
+            p2 = 0x00,
+            payload = Nfc.ISO_MDOC_NFC_DATA_TRANSFER_APPLICATION_ID,
+            le = 0,
+        ).encode()
+        val response = CompletableDeferred<ByteArray>()
+
+        delegate.processCommandApdu(selectForMdocAid.toNSData()) { responseApdu ->
+            assertNotNull(responseApdu)
+            response.complete(responseApdu.toByteArray())
+        }
+
+        assertTrue(multipazWasCalled, "the mdoc AID must reach multipaz regardless of ndefHandoverCompleted")
+        assertFalse(engagementHelperWasCalled)
         val decoded = ResponseApdu.decode(response.getCompleted())
         assertEquals(Nfc.RESPONSE_STATUS_SUCCESS, decoded.status)
     }

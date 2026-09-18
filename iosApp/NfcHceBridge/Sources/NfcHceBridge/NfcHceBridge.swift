@@ -25,6 +25,10 @@
 //  delay (in `stop()`) below are ALSO adapted from that file — see the comments at each — this is
 //  phase 5's scope; see wiki/IOS_NFC_PLAN.md's phase 5 notes for what was adapted and why.
 //
+//  `NFCPresentmentIntentAssertion.acquire()` in `startCardSession()` is NOT adapted from pagopa —
+//  checked directly against that repo's `NFCCardEmulator.swift` and it never actually calls it either
+//  (see that method's own doc comment). It's applied straight from Apple's own CoreNFC documentation.
+//
 
 import CoreNFC
 import Foundation
@@ -87,10 +91,33 @@ import Foundation
         case transientFailure = 4
     }
 
+    /// Real-device correlation logging (`wiki/IOS_NFC_PLAN.md` §9): matches this codebase's existing
+    /// Swift `print("TAG: message")` convention (see `iosApp/iosApp/iOSApp.swift`,
+    /// `DocumentRegistration.swift`) — this file had no logging of its own before, so there was no
+    /// established convention specifically here to match. The embedded ISO 8601 timestamp (with
+    /// fractional seconds) is deliberately explicit rather than relying on the console's own capture
+    /// time alone: it lines up directly, by literal string, against multipaz's `Logger` timestamps on
+    /// the Kotlin side (`IosProximityPresenter.kt`/`IosNfcHceTransport.kt`), which format the same way
+    /// — letting a device console log be read as one single timeline across the Swift/Kotlin boundary,
+    /// which is the whole point when testing the `NFCPresentmentIntentAssertion` 15-second-expiry
+    /// hypothesis against exactly when a physical tap happened.
+    private static let logTimestampFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private func log(_ message: String) {
+        print("NFC-HCE: \(Self.logTimestampFormatter.string(from: Date())): \(message)")
+    }
+
     private let delegate: NfcHceBridgeDelegate
     /// Type-erased: `CardSession` itself is `@available(iOS 17.4, *)`, and a stored property of an
     /// always-constructible class cannot be typed with an availability-gated type directly.
     private var cardSession: Any?
+    /// Same type-erasure reason as `cardSession`. See `startCardSession()`'s own doc comment for why
+    /// this exists and what it does and doesn't cover.
+    private var presentmentIntentAssertion: Any?
 
     @objc(initWithDelegate:)
     public init(delegate: NfcHceBridgeDelegate) {
@@ -130,6 +157,11 @@ import Foundation
 
     @objc(stop)
     public func stop() {
+        log("stop: called")
+        // Releasing the reference (rather than waiting for its own 15-second expiry, see
+        // startCardSession()'s doc comment) is deliberate: we no longer want to suppress the
+        // system's default contactless app once we've stopped listening ourselves.
+        presentmentIntentAssertion = nil
         guard #available(iOS 17.4, *), let session = cardSession as? CardSession else {
             cardSession = nil
             return
@@ -143,22 +175,76 @@ import Foundation
         }
     }
 
+    /// Real-device finding, not anticipated by Phase 1-6 or `wiki/IOS_NFC_PLAN.md` §9's Stage 1-4:
+    /// tapping this app's HCE surface against a reader showed iOS's own system Wallet/contactless
+    /// card picker instead of this `CardSession` ever answering. Traced against Apple's own
+    /// documentation, not assumed: `NFCPresentmentIntentAssertion` is exactly the piece missing here.
+    /// Apple's own documented sequence is "acquire the presentment intent assertion first using
+    /// `acquire()`, then create a `CardSession`" — without it, the system has no signal that this
+    /// foreground app wants exclusive use of the NFC field the moment a tap is detected, so its own
+    /// default-contactless-app routing decides instead, before this `CardSession` is ever consulted.
+    ///
+    /// **Not adapted from pagopa/iso18013-ios.** Checked directly against that repo's own
+    /// `NFCCardEmulator.swift` as a sanity check: it declares a `presentmentIntent:
+    /// NFCPresentmentIntentAssertion?` stored property and a comment referencing "failure to acquire
+    /// NFC presentment intent assertion," but never actually calls `.acquire()` anywhere — the
+    /// property is only ever assigned `nil`. That file is not a working reference for this piece; it
+    /// has the same gap this app did. This is standard Apple platform API usage, applied directly
+    /// from Apple's own `NFCPresentmentIntentAssertion` documentation.
+    ///
+    /// **Known limitation, not solved here — flagged rather than silently accepted.** Per Apple's own
+    /// documentation, an acquired assertion is hard-capped at 15 seconds (it also expires early if
+    /// this object deinitializes or the app backgrounds), followed by a mandatory 15-second cool-down
+    /// before a new one can be acquired — so one acquisition, done here right before constructing
+    /// `CardSession`, covers only the window immediately around arming and a reader's first
+    /// encounter, not an entire multi-minute screen visit (`IosProximityPresenter`'s cold-tap
+    /// engagement can stay armed far longer than 15 seconds, per `onScreenEntered`/`onScreenExited`).
+    /// Apple's API gives no way to hold this continuously — even reacquiring immediately on expiry
+    /// still has an unavoidable 15-second gap where suppression lapses. Whether that gap matters in
+    /// practice (most taps likely happen well within the first 15 seconds of arming) is unverified;
+    /// see `wiki/IOS_NFC_PLAN.md` §9 for this as an open, undecided item alongside Stage 3's other two.
     @available(iOS 17.4, *)
     private func startCardSession() async -> StartResult {
         guard NFCReaderSession.readingAvailable, CardSession.isSupported else {
+            log("startCardSession: not supported")
             return .notSupported
         }
         guard await CardSession.isEligible else {
+            log("startCardSession: not eligible (CardSession.isEligible)")
             return .notEligible
         }
 
+        log("startCardSession: acquiring NFCPresentmentIntentAssertion")
+        let intentAssertion: NFCPresentmentIntentAssertion
+        do {
+            intentAssertion = try await NFCPresentmentIntentAssertion.acquire()
+            log("startCardSession: NFCPresentmentIntentAssertion acquired")
+        } catch NFCPresentmentIntentAssertion.Error.systemEligibilityFailed {
+            log("startCardSession: NFCPresentmentIntentAssertion.acquire() failed: systemEligibilityFailed")
+            return .notEligible
+        } catch NFCPresentmentIntentAssertion.Error.systemNotAvailable {
+            log("startCardSession: NFCPresentmentIntentAssertion.acquire() failed: systemNotAvailable (cool-down)")
+            return .transientFailure
+        } catch {
+            log("startCardSession: NFCPresentmentIntentAssertion.acquire() failed: \(error)")
+            return .transientFailure
+        }
+        presentmentIntentAssertion = intentAssertion
+
+        log("startCardSession: constructing CardSession")
         let session: CardSession
         do {
             session = try await CardSession()
+            log("startCardSession: CardSession constructed, starting emulation")
             try await session.startEmulation()
+            log("startCardSession: CardSession.startEmulation() succeeded")
         } catch CardSession.Error.accessNotAccepted {
+            log("startCardSession: CardSession construction/startEmulation failed: accessNotAccepted")
+            presentmentIntentAssertion = nil
             return .accessNotAccepted
         } catch {
+            log("startCardSession: CardSession construction/startEmulation failed: \(error)")
+            presentmentIntentAssertion = nil
             return .transientFailure
         }
         cardSession = session
@@ -167,11 +253,13 @@ import Foundation
             for try await event in session.eventStream {
                 switch event {
                 case .readerDetected:
+                    log("eventStream: readerDetected")
                     if await !session.isEmulationInProgress {
                         try? await session.startEmulation()
                     }
 
                 case .received(let cardAPDU):
+                    log("eventStream: received APDU (\(cardAPDU.payload.count) bytes)")
                     delegate.processCommandApdu(cardAPDU.payload) { response in
                         guard let response else { return }
                         Task {
@@ -180,14 +268,17 @@ import Foundation
                     }
 
                 case .sessionInvalidated:
+                    log("eventStream: sessionInvalidated")
                     await session.stopEmulation(status: .success)
 
                 default:
                     break
                 }
             }
+            log("eventStream: loop ended")
         }
 
+        log("startCardSession: started")
         return .started
     }
 

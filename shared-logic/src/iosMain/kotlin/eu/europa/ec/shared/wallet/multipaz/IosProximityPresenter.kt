@@ -40,6 +40,7 @@ import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.engagement.EngagementGenerator
+import org.multipaz.mdoc.nfc.MdocNfcEngagementHelper
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.transport.MdocTransportFactory
@@ -81,8 +82,8 @@ sealed interface IosProximityState {
 }
 
 /**
- * ISO 18013-5 proximity presentation on iOS: QR engagement, BLE and NFC data retrieval, and the
- * mdoc response.
+ * ISO 18013-5 proximity presentation on iOS: QR engagement, cold-tap NFC engagement (Annex C), BLE
+ * and NFC data retrieval, and the mdoc response.
  *
  * multipaz owns the protocol — `Iso18013Presentment` runs the exchange and `SimplePresentmentSource`
  * matches the reader's request against the wallet's documents. What this adds is the two things multipaz
@@ -90,25 +91,29 @@ sealed interface IosProximityState {
  * *person* rather than answering itself. [state] is what a screen renders; [accept] and [decline] are what
  * a screen calls back.
  *
- * Both connection methods end up in the same engagement CBOR and the same [waitForConnection] call
- * (multipaz's own, connection-method-agnostic — it takes whichever transport the reader actually
- * connects over), but [startQrEngagement] gets each transport there differently. BLE goes through
- * multipaz's [advertise] extension against `MdocTransportFactory.Default`, same as before. NFC does
- * not: that factory's iOS actual throws for [MdocConnectionMethodNfc] + [MdocRole.MDOC] — the wallet
- * role is simply never implemented there, only [MdocRole.MDOC_READER] is — so this class constructs
- * multipaz's own [NfcTransportMdoc] directly instead of going through the factory at all; see
- * `wiki/IOS_NFC_PLAN.md` §3.3. Kept as a separate step (and a separate try/catch, see
- * [createNfcTransport]) specifically so a construction failure there can never take the already-
- * succeeded BLE transport down with it — the two used to share one [advertise] call and one
- * `try`/`catch`, which is exactly what let NFC's exception abort BLE mid-flight on a real device.
- * NFC additionally needs [nfcTransport] started, since answering a tap is not something constructing
- * a transport does by itself; see `wiki/IOS_NFC_PLAN.md` §3.1 for why that half is a separate
- * Swift-owned piece rather than more multipaz plumbing.
+ * There are two independent ways an exchange can start, each with its own `eDeviceKey`/`DeviceEngagement`
+ * (never shared — see `wiki/IOS_NFC_PLAN.md` §9), both ending up in the same [runPresentment] since
+ * multipaz's [waitForConnection] is connection-method-agnostic — it takes whichever transport the reader
+ * actually connects over:
+ *
+ * - **QR** ([startQrEngagement]): builds `DeviceEngagement` up front and advertises BLE only, through
+ *   multipaz's [advertise] extension against `MdocTransportFactory.Default`. No NFC connection method is
+ *   offered here any more — see [armColdTapEngagement] for where that moved and why.
+ * - **Cold NFC tap** ([onScreenEntered]/[armColdTapEngagement], ISO 18013-5 Annex C): armed for as long as
+ *   the "Share over NFC" switch ([nfcEngagementEnabled]) is on and the proximity screen is open,
+ *   independent of whether QR engagement has started, restarted, or is even showing. A tap selects the
+ *   NDEF AID first; `MdocNfcEngagementHelper` (routed there by `IosNfcHceTransport.ApduDelegate`) builds
+ *   its own `DeviceEngagement`/handover, and the *same physical tap* then continues straight into the
+ *   mdoc AID for data transfer — [onColdTapHandoverComplete] wires that continuation into
+ *   [runPresentment]. multipaz's own [NfcTransportMdoc] is constructed fresh only once a tap actually
+ *   completes handover, never pre-armed the way an earlier version of this class did for QR: at most one
+ *   instance is ever registered at a time, which matters because Multipaz's own `NfcTransportMdoc`
+ *   dispatch (`instances`) has no way to arbitrate between two.
  *
  * **The BLE half is written but unproven, and so is NFC's.** multipaz ships `BlePeripheralManagerIos`,
  * so the transport is there, but the iOS Simulator has no Bluetooth radio (nor NFC), and multipaz has
- * no other mdoc transport — so nothing between [startQrEngagement] and a connected reader can be
- * exercised without a device and a verifier. What *is* covered by tests is everything after the request
+ * no other mdoc transport — so nothing between engagement and a connected reader can be exercised
+ * without a device and a verifier. What *is* covered by tests is everything after the request
  * arrives: matching, consent and the response, which `mdocPresentment` performs with no transport
  * involved. When a device is available, the thing to watch is the connection, not the CBOR.
  */
@@ -140,15 +145,17 @@ class IosProximityPresenter internal constructor(
         scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust())
 
-    private val mutableState = MutableStateFlow<IosProximityState>(IosProximityState.Idle)
+    /** `internal` so a test can drive [isPresentmentActuallyInProgress] without a real connection. */
+    internal val mutableState = MutableStateFlow<IosProximityState>(IosProximityState.Idle)
     val state: StateFlow<IosProximityState> = mutableState.asStateFlow()
 
     /**
      * One-shot, human-readable notices about NFC specifically — not modeled as an [IosProximityState]
-     * because a failed NFC start is not a failed *presentation*: BLE was advertised in the same
-     * [startQrEngagement] call and keeps working, so there is nothing here for [state] itself to fail
-     * on. Finding A/B of the current-state audit: before this, a failed [nfcTransport] start reached
-     * only [org.multipaz.util.Logger.w] — nothing surfaced to a screen at all.
+     * because a failed NFC start is not a failed *presentation*: QR/BLE engagement is independent of
+     * cold-tap arming (see [armColdTapEngagement]) and keeps working regardless, so there is nothing
+     * here for [state] itself to fail on. Finding A/B of the current-state audit: before this, a failed
+     * [nfcTransport] start reached only [org.multipaz.util.Logger.w] — nothing surfaced to a screen at
+     * all.
      *
      * `extraBufferCapacity = 1` rather than `replay`: a subscriber that starts collecting after a
      * notice fires should not see it (it is stale by then), but a slow one should not lose it either
@@ -159,22 +166,29 @@ class IosProximityPresenter internal constructor(
     val nfcNotice: SharedFlow<String> = mutableNfcNotice.asSharedFlow()
 
     /**
-     * Owns CoreNFC's `CardSession` for as long as engagement is advertised. Separate from
-     * [transport]: advertising the NFC connection method only tells multipaz to accept a connection
-     * if one arrives, it does not itself answer a tap — started late, from [runPresentment], not from
-     * [startQrEngagement] where the connection method itself is declared; see the comment there.
+     * Owns CoreNFC's `CardSession` for as long as cold-tap (Annex C) engagement is armed — entirely
+     * independent of QR engagement. Started/stopped from [armColdTapEngagement]/[disarmColdTapEngagement],
+     * themselves called from [onScreenEntered]/[onScreenExited] — not tied to [startQrEngagement], which
+     * no longer offers NFC as a connection method at all; see this class's own doc comment and
+     * `wiki/IOS_NFC_PLAN.md` §9.
      */
     private val nfcTransport = IosNfcHceTransport()
 
     /**
-     * Whether the next [startQrEngagement] offers NFC data retrieval alongside BLE. Defaults to
-     * `false` — deliberately: nothing on iOS calls [setNfcEngagementEnabled] yet (that is phase 4's
-     * job, see `wiki/IOS_NFC_PLAN.md`), so a `true` default would mean CoreNFC's `CardSession` starts
-     * unconditionally on every real device the moment this screen opens, with no way to turn it off.
-     * `false` keeps NFC inert until something real opts it in.
+     * Whether [nfcTransport] currently has a successfully-started [MdocNfcEngagementHelper] armed.
+     * Deliberately not inferred from `nfcTransport.engagementHelper != null` alone — see
+     * [armColdTapEngagement]'s own doc comment for why that would break retrying after a failed start.
      */
-    // False until phase 4 wires a real user-facing toggle: flipping this to `true` makes CoreNFC's
-    // CardSession start automatically and unconditionally on real hardware, with no way to disable it.
+    private var engagementHelperArmed = false
+
+    /**
+     * Whether cold-tap (Annex C) NFC engagement is armed for as long as the proximity screen is open —
+     * the "Share over NFC" switch. Defaults to `false` — deliberately: flipping it to `true` makes
+     * CoreNFC's `CardSession` start, so it stays inert until something real opts it in. See
+     * [onScreenEntered]/[armColdTapEngagement] for how this is reconciled on every engagement (re)start,
+     * and `wiki/IOS_NFC_PLAN.md` §9 for why this used to gate a different feature — NFC as a transport
+     * alongside QR-established BLE, retired in favor of this one.
+     */
     private var nfcEngagementEnabled = false
 
     private var presentmentJob: Job? = null
@@ -188,7 +202,7 @@ class IosProximityPresenter internal constructor(
     private var sharedDocuments: List<String> = emptyList()
 
     /**
-     * Advertises this wallet over BLE and NFC and publishes the QR the reader scans.
+     * Advertises this wallet over BLE and publishes the QR the reader scans.
      *
      * Returns as soon as the QR is available; the exchange continues in the background and shows up in
      * [state].
@@ -221,18 +235,9 @@ class IosProximityPresenter internal constructor(
                 return
             }
 
-            // NFC's own transport.advertise() call is a no-op (see NfcTransportMdoc's own doc comment:
-            // the platform is expected to call it when APDUs actually arrive), so — unlike BLE's radio
-            // setup — it can never contribute to a hang; no timeout needed here. Starting the actual NFC
-            // radio is [runPresentment]'s job now, not this method's; see the comment there for why.
-            val transports = bleTransports + listOfNotNull(
-                if (nfcEngagementEnabled) createNfcTransport() else null,
-            )
-
-            // Built from the transports that actually exist, not from what was merely requested: a
-            // [createNfcTransport] failure means NFC is quietly dropped from both [transports] and the
-            // engagement CBOR together, so a reader is never told a connection method is available that
-            // nothing here can actually answer.
+            // BLE only — NFC is no longer offered as a connection method here at all; see this class's
+            // own doc comment for where NFC engagement/transport now lives (cold-tap, Annex C).
+            val transports = bleTransports
             val connectionMethods = transports.map { it.connectionMethod }
             val engagement = deviceEngagement(eDeviceKey.publicKey, connectionMethods)
 
@@ -246,34 +251,6 @@ class IosProximityPresenter internal constructor(
         } catch (t: Throwable) {
             fail(t)
         }
-    }
-
-    /**
-     * Constructs multipaz's own wallet-role NFC transport directly, bypassing
-     * `MdocTransportFactory.Default` entirely — see this class's own doc comment and
-     * `wiki/IOS_NFC_PLAN.md` §3.3 for why: multipaz's iOS platform factory throws for
-     * [MdocConnectionMethodNfc] + [MdocRole.MDOC], so nothing routes through it here. [NfcTransportMdoc]
-     * is the same public class that factory would have returned had it been implemented — this doesn't
-     * reimplement any protocol logic, it just does the one construction step the factory was supposed
-     * to do.
-     *
-     * Returns `null`, never throws, and reports failure through [nfcNotice] instead — the same
-     * "NFC-specific, BLE keeps working" channel [runPresentment]'s NFC-start failures already use (see
-     * this class's own doc comment on [mutableNfcNotice]). [startQrEngagement]'s BLE transport is
-     * already live by the time this runs; nothing here may fail that call.
-     */
-    private suspend fun createNfcTransport(): MdocTransport? = try {
-        NfcTransportMdoc(
-            role = MdocRole.MDOC,
-            options = MdocTransportOptions(),
-            connectionMethod = nfcConnectionMethod(),
-        ).also { it.advertise() }
-    } catch (e: CancellationException) {
-        throw e
-    } catch (t: Throwable) {
-        Logger.w(TAG, "Could not create NFC transport: ${t.message}")
-        mutableNfcNotice.tryEmit(NFC_TRANSPORT_UNAVAILABLE)
-        null
     }
 
     /**
@@ -312,9 +289,11 @@ class IosProximityPresenter internal constructor(
     ).addConnectionMethods(connectionMethods).generate()
 
     /**
-     * Whether the *next* [startQrEngagement] offers NFC data retrieval alongside BLE. Takes effect on
-     * the next call, not the current exchange — there is no live toggle mid-engagement, only a decision
-     * made the next time engagement starts.
+     * Whether cold-tap engagement is armed the next time engagement (re)starts. That is sooner than it
+     * sounds: [IosProximityCoordinator.qrEvents] calls [onScreenEntered] on every restart within the
+     * current screen visit too, including the one `ProximityQRViewModel.restartEngagementForNfcToggle`
+     * triggers right after this is called — so flipping the switch reconciles immediately, not only on
+     * the next screen visit.
      */
     fun setNfcEngagementEnabled(enabled: Boolean) {
         nfcEngagementEnabled = enabled
@@ -375,55 +354,244 @@ class IosProximityPresenter internal constructor(
         presentmentJob = null
         scope.launch { runCatching { transport?.close() } }
         transport = null
-        nfcTransport.stop()
         mutableState.value = IosProximityState.Idle
+    }
+
+    /**
+     * Reconciles cold-tap (Annex C) engagement with the current "Share over NFC" switch
+     * ([nfcEngagementEnabled]). Idempotent and safe to call every time engagement (re)starts within one
+     * screen visit — not just once — since [IosProximityCoordinator.qrEvents] calls this on every
+     * [startQrEngagement] (re)start, including the one `ProximityQRViewModel.restartEngagementForNfcToggle`
+     * triggers when the switch itself changes mid-visit. `wiki/IOS_NFC_PLAN.md` §9 Stage 3.
+     */
+    suspend fun onScreenEntered() {
+        Logger.i(TAG, "onScreenEntered: nfcEngagementEnabled=$nfcEngagementEnabled")
+        if (nfcEngagementEnabled) armColdTapEngagement() else disarmColdTapEngagement()
+    }
+
+    /**
+     * Unconditional teardown of cold-tap engagement — the whole proximity exchange for this screen visit
+     * is over. Called from [IosProximityCoordinator.cancel] alongside [cancel] itself, but deliberately
+     * kept out of [cancel]: that one also runs on every [startQrEngagement] retry within the same visit,
+     * and cold-tap listening must survive a QR retry, not just a screen exit.
+     */
+    fun onScreenExited() {
+        Logger.i(TAG, "onScreenExited")
+        disarmColdTapEngagement()
+    }
+
+    /**
+     * Whether a real mdoc exchange — a reader actually connected, a request received or a response
+     * being prepared — is genuinely underway right now, regardless of which origin (QR or cold-tap)
+     * started it. Deliberately narrower than "[presentmentJob] exists and hasn't finished": that job is
+     * assigned the instant [startQrEngagement] launches it and stays active for the entire time QR is
+     * displayed with no reader connected yet (`waitForConnection` has no timeout), which is not a real
+     * exchange to protect against racing — only [IosProximityState.Requesting]/[IosProximityState.Sending]
+     * are. A real device log confirmed the coarser, job-liveness check blocked cold-tap arming on
+     * essentially every attempt, not just the actual race case; see `wiki/IOS_NFC_PLAN.md` §9.
+     *
+     * `internal`, not `private`: driving [armColdTapEngagement]/[onColdTapHandoverComplete] end to end
+     * on the Simulator can't distinguish "skipped here" from "proceeded, then stopped at the next guard
+     * down" (no NFC hardware either way) — this is the actual piece of logic the fix changed, and a
+     * test needs to reach it directly, with [mutableState] set without a real connection.
+     */
+    internal fun isPresentmentActuallyInProgress(): Boolean =
+        mutableState.value is IosProximityState.Requesting || mutableState.value is IosProximityState.Sending
+
+    /**
+     * Arms cold-tap (Annex C) engagement: constructs a fresh [MdocNfcEngagementHelper] — a new
+     * `eDeviceKey`, independent of any QR engagement's own — wires it into [nfcTransport], and starts
+     * CoreNFC card emulation. A no-op if already armed, so repeated [onScreenEntered] calls within one
+     * visit don't reconstruct the helper or restart `CardSession` needlessly.
+     *
+     * [engagementHelperArmed] guards this, not `nfcTransport.engagementHelper != null`: a failed
+     * [IosNfcHceTransport.start] clears both back out (see the `else` branch below) specifically so a
+     * later [onScreenEntered] call — the next retry, or the switch toggled off and back on — gets to try
+     * again, rather than being silently stuck believing it's already armed.
+     *
+     * Also skipped while a presentment is actually in progress ([isPresentmentActuallyInProgress]),
+     * same guard as [onColdTapHandoverComplete] uses and for the same reason: restarting `CardSession`
+     * while it's already carrying an active mdoc conversation — QR-originated or cold-tap's own — would
+     * disrupt it. Found during real-device testing of the fix below: clearing [engagementHelperArmed]
+     * there means a later [onScreenEntered] (e.g. a QR retry) would otherwise try to re-arm mid-conversation.
+     *
+     * **Real-device finding, corrected**: this guard originally checked `presentmentJob?.isActive`
+     * instead — coroutine liveness, not actual exchange progress. [presentmentJob] is assigned the
+     * instant [startQrEngagement] launches it, and `waitForConnection` inside it has no timeout, so it
+     * stays "active" for the entire time QR is on screen with nothing connected yet — which is most of
+     * a typical cold-tap visit. A real device log confirmed this blocked NFC arming on essentially
+     * every attempt, not just the intended race case; see `wiki/IOS_NFC_PLAN.md` §9.
+     *
+     * Static handover, not negotiated: cold-tap only ever has one connection method to offer (the NFC
+     * link the tap itself is), and negotiated handover exists to let the reader choose among several —
+     * doesn't apply here. See `wiki/IOS_NFC_PLAN.md` §9 for the full comparison.
+     */
+    private suspend fun armColdTapEngagement() {
+        if (engagementHelperArmed) {
+            Logger.i(TAG, "armColdTapEngagement: already armed, no-op")
+            return
+        }
+        if (isPresentmentActuallyInProgress()) {
+            Logger.i(TAG, "armColdTapEngagement: a presentment is already in progress, skipping")
+            return
+        }
+        if (!IosNfcHceTransport.isSupported()) {
+            Logger.i(TAG, "armColdTapEngagement: NFC HCE not supported on this device, skipping")
+            return
+        }
+
+        val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        nfcTransport.engagementHelper = MdocNfcEngagementHelper(
+            eDeviceKey = eDeviceKey.publicKey,
+            staticHandoverMethods = listOf(nfcConnectionMethod()),
+            onHandoverComplete = { connectionMethods, encodedDeviceEngagement, handover ->
+                Logger.i(
+                    TAG,
+                    "onHandoverComplete: cold-tap handover completed with " +
+                        "${connectionMethods.size} connection method(s)",
+                )
+                onColdTapHandoverComplete(eDeviceKey, connectionMethods, encodedDeviceEngagement, handover)
+            },
+            onError = { error -> Logger.w(TAG, "onError: cold-tap engagement failed: ${error.message}") },
+        )
+        // Critical timing marker: this is what triggers NfcHceBridge.swift's startCardSession(), which
+        // logs the exact moment it calls NFCPresentmentIntentAssertion.acquire() — see that method's
+        // own doc comment. Compare this line's (Logger-supplied) timestamp against the physical tap's
+        // wall-clock time to check whether the assertion's 15-second window had already expired.
+        Logger.i(TAG, "armColdTapEngagement: requesting CoreNFC start (NFCPresentmentIntentAssertion + CardSession)")
+        nfcTransport.start { result ->
+            if (result == NfcStartResult.Started) {
+                engagementHelperArmed = true
+                Logger.i(TAG, "armColdTapEngagement: CoreNFC started, cold-tap engagement armed")
+            } else {
+                nfcTransport.engagementHelper = null
+                nfcTransport.ndefHandoverCompleted = false
+                Logger.w(TAG, "armColdTapEngagement: NFC card emulation did not start: $result")
+                mutableNfcNotice.tryEmit(nfcStartFailureMessage(result))
+            }
+        }
+    }
+
+    /**
+     * Stops routing NDEF-AID APDUs to the current engagement helper entirely, without touching
+     * `CardSession` itself — safe to call whether or not a mdoc-AID continuation over the same physical
+     * tap is about to follow. Full teardown: [disarmColdTapEngagement] (screen exit / switch off) is the
+     * only caller — [onColdTapHandoverComplete] no longer calls this on a successful handover; see its
+     * own doc comment for why a full clear there was too broad and what replaced it.
+     */
+    private fun clearEngagementHelper() {
+        Logger.i(TAG, "clearEngagementHelper: no longer routing NDEF-AID APDUs to the engagement helper")
+        engagementHelperArmed = false
+        nfcTransport.engagementHelper = null
+        nfcTransport.ndefHandoverCompleted = false
+    }
+
+    /** Reverses [armColdTapEngagement]; safe to call whether or not anything was ever armed. */
+    private fun disarmColdTapEngagement() {
+        clearEngagementHelper()
+        Logger.i(TAG, "disarmColdTapEngagement: stopping CoreNFC")
+        nfcTransport.stop()
+    }
+
+    /**
+     * Cold-tap engagement completed: the reader now has `DeviceEngagement`/handover for a connection
+     * method this same physical tap continues into. Builds the one [NfcTransportMdoc] this exchange uses
+     * — [connectionMethods] holds exactly one entry, since [armColdTapEngagement] only ever offers one via
+     * static handover — and feeds it into the same [runPresentment] QR already uses, just with cold-tap's
+     * own key and a real `handover` CBOR instead of QR's [Simple.NULL].
+     *
+     * **`nfcTransport.ndefHandoverCompleted = true` first, unconditionally, before anything else** —
+     * found via real-device testing, not anticipated at design time, and revised once more after a
+     * *second* round of real-device testing. [MdocNfcEngagementHelper] has no protection against being
+     * called again via a repeat `SELECT` (application or file) after it has already completed a
+     * handover: nothing in its own state machine remembers "`onHandoverComplete` already fired," so a
+     * reader that re-selects the NDEF file again (observed on real hardware) re-runs its handover
+     * construction logic from scratch and crashes on an assumption that only held the first time. This
+     * is not a bug in that class so much as an assumption baked into its design: on Android,
+     * `MdocNfcEngagementHelper` is only ever reached from `MdocNdefService`, a `HostApduService` bound
+     * to the NDEF AID alone — the OS's own AID-based routing between separate services is what
+     * guarantees a reader that moves on to the mdoc AID never reaches this instance again, for free.
+     * iOS has no such OS-level router: `ApduDelegate` does that routing itself
+     * (`wiki/IOS_NFC_PLAN.md` §9 Stage 2), so *we* are the ones who have to provide the guarantee
+     * Android gets from its platform.
+     *
+     * **This used to call [clearEngagementHelper] here instead — found to be too broad, via a second
+     * real-device test.** A real reader legitimately sends one or more trailing `READ_BINARY`s on the
+     * NDEF file after handover completes, before it notices engagement is done and switches AIDs itself
+     * (plausibly Android's own `NfcAdapter.enableReaderMode()` performing its own OS-level NDEF check
+     * before invoking the app's callback — not something to "fix" on the reader's side, since serving
+     * valid content for a still-selected file is the correct Type 4 Tag behavior regardless of why the
+     * read happened). [MdocNfcEngagementHelper]'s own `processReadBinary` is a pure, side-effect-free
+     * function of already-built state — safe to keep answering no matter how many times it's called —
+     * so clearing the whole helper rejected a request it would have answered correctly. Setting
+     * [IosNfcHceTransport.ndefHandoverCompleted] instead keeps the helper wired for exactly those safe
+     * reads, while `ApduDelegate`'s own gate (see its doc comment on `ndefHandoverCompletedProvider`)
+     * blocks only the dangerous repeat-`SELECT` case — the actual crash trigger, not the whole AID.
+     * Nothing needs to explicitly stop routing to this helper once the reader *does* move on: a `SELECT`
+     * for the mdoc AID is checked unconditionally by `ApduDelegate`, regardless of `selectedApplication`'s
+     * current value, so it reaches `NfcTransportMdoc` and this helper simply stops being reachable.
+     *
+     * Guards against a real race rather than assuming it away: QR and cold-tap engagement are
+     * simultaneously armed by design (`wiki/IOS_NFC_PLAN.md` §9), so a tap can complete while a QR-
+     * originated exchange is already actually in progress ([isPresentmentActuallyInProgress]). Without
+     * this check, [presentmentJob] would be silently overwritten — leaking the first coroutine and
+     * racing two [runPresentment] calls over the same single-instance state ([transport],
+     * [pendingConsent], [pendingData], [sharedDocuments]). First engagement to actually reach here wins;
+     * the loser is dropped, not cancelled — multipaz's own `NfcTransportMdoc` was already built by the
+     * time this runs, so there is nothing to un-build.
+     *
+     * **Real-device finding, corrected** — see [armColdTapEngagement]'s own doc comment for the same
+     * fix and why `presentmentJob?.isActive` was the wrong check here too: QR merely advertising and
+     * waiting for a connection (`IosProximityState.Engaging`) is not a real exchange to protect against
+     * racing, only `Requesting`/`Sending` are.
+     */
+    private fun onColdTapHandoverComplete(
+        eDeviceKey: EcPrivateKey,
+        connectionMethods: List<MdocConnectionMethod>,
+        encodedDeviceEngagement: ByteString,
+        handover: DataItem,
+    ) {
+        Logger.i(TAG, "onColdTapHandoverComplete: handover done, NDEF AID stays answerable for trailing reads")
+        nfcTransport.ndefHandoverCompleted = true
+
+        if (isPresentmentActuallyInProgress()) {
+            Logger.w(TAG, "onColdTapHandoverComplete: a presentment is already in progress; ignoring")
+            return
+        }
+
+        Logger.i(TAG, "onColdTapHandoverComplete: accepted, starting presentment over the mdoc AID")
+        val transport = NfcTransportMdoc(
+            role = MdocRole.MDOC,
+            options = MdocTransportOptions(),
+            connectionMethod = connectionMethods.first(),
+        )
+        presentmentJob = scope.launch {
+            runPresentment(
+                transports = listOf(transport),
+                eDeviceKey = eDeviceKey,
+                engagement = encodedDeviceEngagement.toByteArray(),
+                handover = handover,
+            )
+        }
     }
 
     private suspend fun runPresentment(
         transports: List<MdocTransport>,
         eDeviceKey: EcPrivateKey,
         engagement: ByteArray,
+        handover: DataItem = Simple.NULL,
     ) {
-        // Late NFC initialization, adapted from pagopa/iso18013-ios (MIT-licensed;
-        // IOWalletProximity/ISO18013.swift's `isNfcLateEngagement` flag / `lateNfcInitialization()`
-        // method — see wiki/IOS_NFC_PLAN.md's phase 5 notes). Their shape: declare NFC as an available
-        // retrieval method immediately (already true here — it went into [engagement]'s CBOR back in
-        // [startQrEngagement]), but defer actually starting the radio to a later, separate call. Their
-        // own trigger point for that later call is caller-decided and not part of the ported API
-        // surface, so the trigger here is this app's own choice, not pagopa's: once the QR is genuinely
-        // on screen and BLE has started advertising ([startQrEngagement] only reaches this point after
-        // both), not the instant the screen opens. Saves battery and an idle radio during the QR
-        // screen's own setup work (key generation, engagement CBOR, BLE radio bring-up).
-        //
-        // Gated on an actual NfcTransportMdoc being in [transports], not on [nfcEngagementEnabled]
-        // directly: [createNfcTransport] can fail (rare — see its own doc comment) and drop NFC from
-        // both [transports] and the engagement CBOR together. Starting CardSession anyway in that case
-        // would recreate this fix's own original bug from the other direction — a real tap arriving
-        // with no NfcTransportMdoc instance registered to answer it (`NfcTransportMdoc.instances` only
-        // ever gains an entry from [MdocTransport.open], called below on whatever is in [transports]).
-        if (transports.any { it is NfcTransportMdoc }) {
-            nfcTransport.start { result ->
-                if (result != NfcStartResult.Started) {
-                    Logger.w(TAG, "NFC card emulation did not start: $result")
-                    mutableNfcNotice.tryEmit(nfcStartFailureMessage(result))
-                }
-            }
-        }
-
         try {
-            // [nfcTransport.start] above only kicks off CardSession activation — a real Swift/CoreNFC
-            // round trip that only resolves, asynchronously, via its own completion callback — it does
-            // not suspend until CardSession is actually ready to receive a tap. [waitForConnection]
-            // below calls [MdocTransport.open] on every transport in [transports], including the NFC
-            // one: a synchronous, mutex-guarded `instances.add(this)` (see NfcTransportMdoc.open's own
-            // source) with no real I/O, scheduled the moment control reaches this line — i.e.
-            // immediately after the call above returns, not after CardSession finishes activating. So
-            // NfcTransportMdoc's registration into its own static `instances` list — what
-            // IosNfcHceTransport's processCommandApdu/onDeactivated calls dispatch against — is
-            // guaranteed to finish well before CardSession can plausibly finish becoming ready for a
-            // physical tap, let alone before an actual tap can happen. This is what makes
-            // `NfcTransportMdoc.processCommandApdu` finding a live, open instance possible at all on
-            // this platform for the first time; see wiki/IOS_NFC_PLAN.md §3.3.
+            // [waitForConnection] calls [MdocTransport.open] on every transport in [transports] — for the
+            // [NfcTransportMdoc] case (only ever reached via [onColdTapHandoverComplete] now, never from
+            // QR's own call site), a synchronous, mutex-guarded `instances.add(this)` (see
+            // NfcTransportMdoc.open's own source) with no real I/O. CoreNFC's CardSession is trivially
+            // already active whenever this runs for the cold-tap case — the reader's own tap is what
+            // triggered [onColdTapHandoverComplete] in the first place — so this registration into
+            // NfcTransportMdoc's static `instances` list (what IosNfcHceTransport's
+            // processCommandApdu/onDeactivated calls dispatch against) is guaranteed to finish before the
+            // reader's next APDU (the mdoc-AID SELECT continuing the same tap) can arrive; see
+            // wiki/IOS_NFC_PLAN.md §3.3/§9.
             val connected = transports.waitForConnection(eSenderKey = eDeviceKey.publicKey)
             transport = connected
 
@@ -431,7 +599,7 @@ class IosProximityPresenter internal constructor(
                 transport = connected,
                 eDeviceKey = eDeviceKey,
                 deviceEngagement = ByteString(engagement).toDataItem(),
-                handover = Simple.NULL,
+                handover = handover,
                 source = presentmentSource(),
                 keyAgreementPossible = listOf(EcCurve.P256),
                 timeout = ENGAGEMENT_TIMEOUT,
@@ -556,10 +724,6 @@ class IosProximityPresenter internal constructor(
             "NFC data retrieval isn't enabled for this app yet. Sharing continues over Bluetooth."
         const val NFC_TRANSIENT_FAILURE =
             "Could not start NFC data retrieval. Sharing continues over Bluetooth."
-
-        /** See [createNfcTransport]. */
-        const val NFC_TRANSPORT_UNAVAILABLE =
-            "Could not prepare NFC data retrieval for this session. Sharing continues over Bluetooth."
     }
 }
 

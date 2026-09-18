@@ -434,18 +434,42 @@ targets:
         # approves the Host Card Emulation capability request for this App ID; that approval has since
         # landed for this Team ID/Bundle ID.
         #
-        # Only the mdoc AID is listed, deliberately — the NDEF AID (D2760000850101, the NFC Forum
-        # Type 4 Tag AID) was removed after a real-device crash traced to it: this app is QR-engagement
-        # -only and never implements NFC engagement (no `MdocNfcEngagementHelper` anywhere in this
-        # codebase, on either platform), so registering it served no functional purpose — Multipaz's
-        # `NfcTransportMdoc` (the only NFC class this app actually constructs) only ever recognizes the
-        # mdoc AID by design, and rejects anything else through an internal error path that a separate,
-        # still-latent Multipaz bug turns into a process crash rather than a graceful rejection. See
-        # `wiki/IOS_NFC_PLAN.md` §3.4 for the full trace — this AID removal narrows the crash's trigger
-        # surface, it does not fix the underlying Multipaz bug.
+        # Both AIDs are listed. The NDEF AID (D2760000850101, the NFC Forum Type 4 Tag AID) was removed
+        # this morning after a real-device crash traced to it, back when this app was QR-engagement-only
+        # and never implemented NFC engagement (no `MdocNfcEngagementHelper` anywhere in this codebase,
+        # on either platform) — registering it served no functional purpose then, and
+        # `IosNfcHceTransport.ApduDelegate` rejected any SELECT against it outright.
+        #
+        # It is back now for a real purpose: Annex C standalone ("cold") NFC-tap engagement, which needs
+        # this AID selected to serve the Handover Select NDEF message via `MdocNfcEngagementHelper`. This
+        # is not a regression of this morning's fix — the crash that removal worked around was
+        # `ApduDelegate` forwarding a SELECT for an AID it has no handler for straight into
+        # `NfcTransportMdoc`, which only recognizes the mdoc AID and hits a still-latent Multipaz locking
+        # bug (`NfcTransportMdoc.failTransport` asserting a lock two of its call sites never acquire) on
+        # anything else. `ApduDelegate` today still only recognizes the mdoc AID, so re-enabling this AID
+        # alone changes nothing observable yet: a NDEF-AID SELECT now reaches `ApduDelegate` (instead of
+        # being blocked by the entitlement itself) but is still rejected gracefully with SW 6A82 by its
+        # existing single-AID guard, before ever reaching `NfcTransportMdoc` — the crash's trigger path
+        # stays closed. Real NDEF-AID handling (routing it to `MdocNfcEngagementHelper` instead of
+        # rejecting it) is the next stage of this work, not yet landed. See `wiki/IOS_NFC_PLAN.md` §3.4
+        # and §9 for the full trace and current stage.
         com.apple.developer.nfc.hce: true
         com.apple.developer.nfc.hce.iso7816.select-identifier-prefixes:
           - A0000002480400
+          - D2760000850101
+        # com.apple.developer.nfc.hce.default-contactless-app was tried here and reverted — do not
+        # re-add without first confirming Apple has actually granted it for this App ID. Verified
+        # directly, not assumed: a real-device signed build with it present fails outright —
+        #   error: Provisioning profile "iOS Team Provisioning Profile: eu.compote.euidi.dev" doesn't
+        #   include the Default Host Card Emulation (HCE) App capability. ... needs to be assigned to
+        #   your team and bundle identifier by Apple in order to be included in a profile.
+        #   error: Entitlement com.apple.developer.nfc.hce.default-contactless-app requires approval
+        #   from Apple to include in a profile. ... To continue building for device during request
+        #   processing, remove entitlement and add upon approval.
+        # This is a separate, not-yet-requested approval from the `com.apple.developer.nfc.hce` grant
+        # this App ID already has — see `wiki/IOS_NFC_PLAN.md` §9 for the full trace and the filed
+        # follow-up. Only re-add once that request is submitted and granted; a simulator-only build
+        # (no signing/entitlement validation) will not catch this the way a real-device build does.
     dependencies:
       - package: EudiRQESUi
         product: EudiRQESUi

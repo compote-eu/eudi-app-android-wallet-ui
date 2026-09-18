@@ -369,11 +369,14 @@ class IosProximityPresentmentTest {
 
     @Test
     fun the_engagement_qr_advertises_both_ble_and_nfc() = runTest {
-        // What startQrEngagement() itself builds is not reachable from a test (it also starts the real
-        // NFC bridge, which needs a device) — but the engagement CBOR both transports get listed in is
-        // the same connectionMethods list startQrEngagement() passes here, so this is the real check
-        // that NFC is actually advertised alongside BLE, not just that the two connectionMethod()
-        // builders individually return something well-formed.
+        // Not a claim about what startQrEngagement() itself advertises today — since wiki/IOS_NFC_PLAN.md
+        // §9 Stage 3, QR engagement is BLE-only; NFC only ever arrives through cold-tap (Annex C)
+        // engagement, which builds its own DeviceEngagement independently and isn't reachable from a test
+        // either (it needs a real device). What this does check for real: deviceEngagement() — the same
+        // builder both origins ultimately rely on — correctly encodes more than one connection method
+        // type in a single engagement CBOR, using the same bleConnectionMethod()/nfcConnectionMethod()
+        // builders both origins actually use, not just that each individually returns something
+        // well-formed.
         val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
         val key = Crypto.createEcPrivateKey(EcCurve.P256)
         val ble = presenter.bleConnectionMethod()
@@ -411,5 +414,47 @@ class IosProximityPresentmentTest {
         val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
 
         assertEquals(false, presenter.isNfcDataRetrievalSupported())
+    }
+
+    // wiki/IOS_NFC_PLAN.md §9: real-device finding. isPresentmentActuallyInProgress() replaced
+    // presentmentJob?.isActive as the guard in armColdTapEngagement()/onColdTapHandoverComplete() —
+    // that job is assigned the instant startQrEngagement() launches it and stays "active" for the
+    // entire time QR is displayed with nothing connected yet (waitForConnection has no timeout), which
+    // a real device log showed blocking cold-tap arming on essentially every attempt. Testing this
+    // function directly, not armColdTapEngagement()/onScreenEntered() end to end: on the Simulator,
+    // "skipped by this guard" and "proceeded, then stopped at the next guard down" (no NFC hardware
+    // either way) are indistinguishable from the outside — this is the actual piece of logic the fix
+    // changed, and mutableState (internal for exactly this) lets a test drive it without a real
+    // connection.
+    @Test
+    fun isPresentmentActuallyInProgress_is_false_while_merely_engaging() {
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+        presenter.mutableState.value = IosProximityState.Engaging(qrPayload = "mdoc:test")
+
+        assertEquals(
+            false,
+            presenter.isPresentmentActuallyInProgress(),
+            "QR merely advertising and waiting for a connection is not a real exchange to guard against",
+        )
+    }
+
+    // The necessary counterpart: the guard must still correctly fire once a real exchange is
+    // underway, or this fix would silently reopen the exact race it was protecting against (two
+    // concurrent runPresentment() calls racing over transport/pendingConsent/pendingData/sharedDocuments).
+    @Test
+    fun isPresentmentActuallyInProgress_is_true_while_requesting_or_sending() {
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+
+        presenter.mutableState.value = IosProximityState.Requesting(
+            request = IosPresentmentRequest(
+                requesterName = "Reader",
+                requesterIsTrusted = false,
+                combinations = emptyList(),
+            ),
+        )
+        assertEquals(true, presenter.isPresentmentActuallyInProgress())
+
+        presenter.mutableState.value = IosProximityState.Sending
+        assertEquals(true, presenter.isPresentmentActuallyInProgress())
     }
 }

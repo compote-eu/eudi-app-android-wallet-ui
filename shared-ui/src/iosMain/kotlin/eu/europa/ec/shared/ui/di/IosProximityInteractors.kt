@@ -68,8 +68,8 @@ internal class IosProximityQRInteractor(
      * Permanently unreachable on iOS, not merely unused: [PlatformActivity] has no iOS instance, so the
      * shared `ProximityQRScreen` never constructs the event that would call this — it only does so
      * inside a `platformActivity?.let { }` guard that is always null here. This is also Android's
-     * narrower, different NFC feature (engagement/handover, not the data-retrieval transport this app
-     * builds for iOS) — see [toggleNfcDataRetrieval] and `wiki/IOS_NFC_PLAN.md` §1.
+     * narrower, different NFC feature (engagement/handover, not the cold-tap Annex C engagement this
+     * app builds for iOS) — see [toggleNfcDataRetrieval] and `wiki/IOS_NFC_PLAN.md` §1/§9.
      */
     override fun toggleNfcEngagement(componentActivity: PlatformActivity, toggle: Boolean) = Unit
 

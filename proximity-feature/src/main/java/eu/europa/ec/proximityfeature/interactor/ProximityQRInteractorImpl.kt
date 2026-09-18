@@ -83,7 +83,7 @@ class ProximityQRInteractorImpl(
         walletCorePresentationController.toggleNfcEngagement(componentActivity, toggle)
     }
 
-    /** Android has no NFC data-retrieval transport yet — only [toggleNfcEngagement] above. */
+    /** Android has no cold-tap (Annex C) NFC engagement yet — only [toggleNfcEngagement] above. */
     override fun isNfcDataRetrievalAvailable(): Boolean = false
 
     /** No-op: see [isNfcDataRetrievalAvailable]. */

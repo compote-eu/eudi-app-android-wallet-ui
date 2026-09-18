@@ -738,3 +738,600 @@ wiring is unfinished, or because of the BLE-always-wins transport-selection mism
 6's "done when" and §7's closure criteria should be read with that caveat until a verifier capable of
 actually selecting NFC as the transport (or one that races/falls back between advertised transports
 the way this app's own `waitForConnection` does) is available to test against.
+
+## 9. Annex C standalone ("cold") NFC-tap engagement — in progress
+
+§8 traced why the reference verifier can't reach this app's NFC-as-*transport* path at all today: its
+own tap-to-engage flow (`VerificationHelper.startNfcHandover()`) does full NDEF handover, never the
+mdoc-AID-direct path this app's QR-then-NFC-transport model expects. This section covers a second,
+independent feature that closes that gap from the wallet's side: implementing real NFC *engagement*
+(ISO 18013-5 Annex C — a tap that starts a session with no QR shown at all), so a verifier's ordinary
+tap-to-engage flow has something to engage with, instead of relying on the verifier ever adopting the
+wallet's engagement-first model.
+
+**Investigated first, before any implementation** (see that investigation's own findings for the full
+trace): Multipaz's `MdocNfcEngagementHelper` (`org.multipaz.mdoc.nfc`, commonMain) already implements
+Annex C engagement in a shape functionally equivalent to `pagopa/iso18013-ios`'s hand-rolled virtual
+NDEF filesystem (`NFCNDEFCardFileSystem`/`NFCDataTransfer.swift`, credited here for the *pattern* —
+one dispatcher, AID-based selected-application state — even though no pagopa code is used; Multipaz's
+own API is what's actually called) — a single `processApdu(CommandApdu): ResponseApdu` entry point
+that internally tracks a virtual NDEF file pointer and builds the Handover Select message itself from
+a supplied `eDeviceKey` and connection methods. Multipaz's own Android binding
+(`multipaz-compose/.../MdocNdefService.kt`) proves the intended integration burden is exactly one
+method call per APDU, nothing more — confirming option (a), using it as designed, over hand-rolling a
+pagopa-style filesystem directly. Decision: **use `MdocNfcEngagementHelper` as designed.**
+
+**Assumption confirmed before implementing** (stated explicitly, per this repo's own working
+convention): the wallet listens for QR-based and cold-NFC-tap engagement simultaneously, no explicit
+mode switch, mirroring the "scan QR OR tap NFC" model verifiers commonly offer. Two corollaries this
+implies, carried into the stages below rather than decided quietly: (1) QR and cold-tap engagement are
+independently-keyed — each generates its own `eDeviceKey`/`DeviceEngagement` at its own time (QR
+eagerly on screen-open, cold-tap lazily at first NDEF-AID `SELECT`, matching how Multipaz's own
+`MdocNdefService.startEngagement()` generates a fresh key per tap) — they are not one engagement shared
+two ways; (2) CardSession must be armed before a QR even exists, not "late" the way Phase 6's
+NFC-as-transport deliberately starts it (§5's Phase 5 notes) — cold-tap has no QR to wait for.
+
+**Pre-Stage-2 clarification: two live engagement attempts is fine; two live `NfcTransportMdoc`
+instances is not.** QR-keyed and cold-tap-keyed engagement listening for their own AID never conflict —
+`MdocNfcEngagementHelper` (NDEF AID) and BLE-advertise-for-QR are separate objects. The real constraint
+is one layer down: `NfcTransportMdoc`'s own companion `processCommandApdu`/`onDeactivated`
+(`multipaz/.../mdoc/transport/NfcTransportMdoc.kt:34-56`) logs `"expected just one"` if `instances.size
+> 1` and then **broadcasts every APDU to all of them anyway**, with no disambiguation — confirmed
+directly in that source, not assumed. Phase 6's `nfcEngagementEnabled` toggle pre-arms an
+`NfcTransportMdoc` immediately alongside QR (well before any tap); if Annex C cold-tap engagement also
+completed a handover on the same tap and needed its own `NfcTransportMdoc`, two instances would be
+live at once — a real bug (double `sendResponse` into iOS's single-shot completion callback, both
+instances independently decrypting the same bytes under different session keys), not a theoretical one.
+
+**Decision: fold Phase 6's NFC-as-transport into Annex C, don't run both.** `nfcEngagementEnabled`/
+`createNfcTransport()`'s specific wiring (QR advertising `MdocConnectionMethodNfc`, pre-arming a second
+`NfcTransportMdoc`) is retired — Stage 2/3 will not build it alongside Annex C. Once Annex C exists, a
+reader wanting NFC transport just taps, same as any cold tap; QR's own engagement CBOR no longer needs
+to advertise `MdocConnectionMethodNfc` at all. This makes the "at most one live `NfcTransportMdoc`"
+constraint structurally true rather than something to arbitrate at runtime.
+
+**The existing "Share over NFC" switch survives this, repurposed, not removed.** Its old job — letting
+a QR-engaged reader continue over NFC instead of BLE — is gone with the wiring above. But the switch was
+never really a mode picker; its own doc comment says its job is gating whether CoreNFC's `CardSession`
+starts *at all* ("with no way to disable it" otherwise) — a battery/privacy opt-in, not a transport
+preference. That concern is at least as strong under Annex C, which needs `CardSession` armed before
+any QR exists rather than started late — so the switch keeps its name, default-off, and "is NFC
+engagement armed" meaning; only what enabling it constructs underneath changes (cold-tap listening
+instead of a pre-armed transport). This doesn't conflict with "simultaneous, no explicit mode switch"
+above — that assumption was about not making the user pick *between* QR and NFC once NFC is enabled, not
+about removing a persistent enable/disable preference for whether NFC participates at all. Exact UI
+copy/flow is Stage 4's job once Stage 3 lands, not decided here.
+
+**Pre-Stage-3 clarification: cold-tap arming is screen-scoped, not QR-attempt-scoped.** When the switch
+is on, cold-tap listening must be armed for the entire time the proximity screen is open — a tap can
+happen before, during, or independent of any QR interaction — and torn down only on screen-exit or the
+switch turning off, never as a side effect of a QR attempt starting or restarting. Today's code cannot
+support this as written: `nfcTransport.start()` only runs inside `runPresentment()`, reached solely via
+`startQrEngagement()`, which itself opens with `cancel()` (`IosProximityPresenter.kt:197`) — and
+`cancel()` calls `nfcTransport.stop()` (line 378). Unchanged, that would tear down and re-arm cold-tap
+listening on every `startQrEngagement()` call, not just once per screen visit. `cancel()` is doing two
+jobs today (QR-attempt-scoped reset — BLE transport, presentment job, consent state — and full NFC
+teardown) that Stage 3 needs to split: cold-tap arm/disarm needs its own entry points driven by
+screen-level lifecycle (screen appears / screen closes), not `startQrEngagement()`/`cancel()` — and since
+`IosProximityPresenter` is already a Koin `@Single` outliving any one screen visit (Finding E), that
+lifecycle pair has no existing hook to piggyback on and needs to be added explicitly (e.g.
+`onScreenEntered()`/`onScreenExited()`), with `cancel()` narrowed back to only the QR-attempt-scoped
+cleanup it should have had all along.
+
+### Stage 1 — done: the NDEF AID is back, for a real purpose
+
+`iosApp/project.yml`'s `com.apple.developer.nfc.hce.iso7816.select-identifier-prefixes` now lists both
+AIDs again (`A0000002480400`, `D2760000850101`). This is **not** a regression of §3.4's removal: that
+removal worked around `ApduDelegate` forwarding any accepted AID straight into `NfcTransportMdoc`, which
+crashes (via the still-latent `failTransport` locking bug) on anything but the mdoc AID. Until Stage 2
+lands, `ApduDelegate`'s existing single-AID guard still rejects a NDEF-AID `SELECT` gracefully with SW
+`6A82` before it can reach `NfcTransportMdoc` — re-enabling the entitlement alone changes nothing
+observable yet, it only lets the AID reach this app's own code instead of being blocked by the
+entitlement filter itself. `generateIosProject` was re-run and a full `xcodebuild` (scheme `EudiWallet`,
+iOS Simulator, since the pinned `iPhone 17` simulator isn't installed on this machine, `iPhone 17 Pro`
+was used instead) passed clean (`** BUILD SUCCEEDED **`, no `error:` in the log).
+
+### Stage 2 — done: dual-AID routing in `ApduDelegate`
+
+Simplified per the decision above: since Phase 6's parallel `NfcTransportMdoc` pre-arm is retired
+rather than kept alongside Annex C, `ApduDelegate` only ever needs to route between the mdoc AID and
+the NDEF AID, never arbitrate two live `NfcTransportMdoc` instances.
+
+`ApduDelegate` (`IosNfcHceTransport.kt`) now tracks `SelectedApplication { NONE, MDOC, NDEF }`, set only
+by a successful `SELECT APPLICATION` and read by every subsequent APDU (`READ_BINARY`, `UPDATE_BINARY`,
+`ENVELOPE`, `GET_RESPONSE` — none of which carry an AID of their own). A `SELECT` for anything other
+than the mdoc or NDEF AID is still rejected with SW `6A82` before either helper sees it, unchanged in
+spirit from §3.4's fix, just widened from a single-AID match to a two-AID allow-list. The mdoc-AID
+branch is byte-for-byte the same call into `forwardToMultipaz`/`NfcTransportMdoc.processCommandApdu` as
+before — Finding C's crash-avoidance is untouched. The NDEF-AID branch is new: it routes to
+`forwardToEngagementHelper`, whose default implementation bridges `MdocNfcEngagementHelper.processApdu`
+(`suspend`, unlike `NfcTransportMdoc`'s callback shape) onto a `CoroutineScope` constructor parameter —
+matching this codebase's existing convention for launching a suspend call from a synchronous,
+Swift-facing entry point (`IosProximityPresenter`'s/`IosRemotePresenter`'s own
+`scope: CoroutineScope = CoroutineScope(Dispatchers.Default)` parameter), not
+`IosDocumentProviderBridge.kt`'s convention — that one exports a suspend method to Swift directly, a
+different problem from bridging into an already-synchronous callback here.
+
+`IosNfcHceTransport` gained one new piece of public surface: `var engagementHelper:
+MdocNfcEngagementHelper? = null`. `null` means no cold-tap engagement is currently offered — a NDEF-AID
+`SELECT` is answered exactly as if that AID weren't registered at all. Nothing in this stage constructs
+a real `MdocNfcEngagementHelper` (no `eDeviceKey`, no `onHandoverComplete` wiring) — that lifecycle is
+entirely Stage 3's job (`IosProximityPresenter`, armed for as long as the "Share over NFC" switch is on
+and the screen is open).
+
+Verified: `IosNfcHceTransportTest.kt`'s existing spy pattern was generalized with a second seam
+(`forwardToEngagementHelper`), mirroring every existing AID-filter test with its NDEF-AID counterpart —
+an unsupported AID reaches neither helper; the mdoc AID reaches multipaz and never the engagement
+helper; the NDEF AID reaches the engagement helper and never multipaz; a non-`SELECT` APDU keeps
+routing to whichever helper was already selected (checked with a `READ_BINARY` following a NDEF-AID
+`SELECT`); and an APDU with nothing selected yet reaches neither. `./gradlew :shared-logic:iosSimulatorArm64Test
+:shared-logic:testAndroidHostTest` and `./gradlew detekt ktlintCheck` both passed clean. No `project.yml`/Xcode
+project changes this stage, so `generateIosProject`/`xcodebuild` weren't re-run — nothing Xcode-visible changed.
+
+### Stage 3 — done: `IosProximityPresenter` gets a second, independent engagement entry point
+
+Design reviewed and approved before implementation (see that design's own write-up for the full
+`onScreenEntered`/`onScreenExited`/`armColdTapEngagement` rationale); this records what was actually
+built and what changed relative to the approved design.
+
+**`IosProximityPresenter`**: added `suspend fun onScreenEntered()` (reconciles cold-tap engagement with
+the "Share over NFC" switch — arms or disarms — idempotently, safe on every engagement restart within a
+visit) and `fun onScreenExited()` (unconditional teardown). `armColdTapEngagement()`/
+`disarmColdTapEngagement()` are the private implementation, guarded by a new `engagementHelperArmed`
+flag rather than `nfcTransport.engagementHelper != null` — the corrected version from the design review,
+since a null-check alone would leave a later retry believing NFC was already armed after a failed
+`CardSession` start. `onColdTapHandoverComplete()` builds the one `NfcTransportMdoc` a completed cold
+tap uses and feeds it into the existing `runPresentment()`, which gained one new parameter
+(`handover: DataItem = Simple.NULL`, default preserving QR's existing call site) rather than being
+duplicated. Phase 6's `createNfcTransport()` and its call site in `startQrEngagement()` are deleted —
+QR engagement is BLE-only now; `nfcConnectionMethod()` is reused, not removed, by cold-tap's static
+handover. `cancel()` no longer calls `nfcTransport.stop()` — that responsibility moved to
+`onScreenExited()`/`disarmColdTapEngagement()`, so a QR retry mid-visit no longer collaterally
+disarms an already-listening cold tap.
+
+**One addition beyond the literal approved design, found while implementing, not silently shipped:**
+`onColdTapHandoverComplete()` guards against `presentmentJob?.isActive == true` before launching a new
+presentment. QR and cold-tap engagement are simultaneously armed by design, so a physical tap can
+complete while a QR-originated presentment is already running (a real race, not theoretical, given
+"both available at once, whichever happens first wins" — see the assumption confirmed before Stage 1).
+Without this guard, `presentmentJob` would be silently overwritten — leaking the first coroutine and
+racing two `runPresentment` invocations over the same single-instance state (`transport`,
+`pendingConsent`, `pendingData`, `sharedDocuments`). The guard is a minimal one: first engagement to
+actually reach `onColdTapHandoverComplete`/`runPresentment` wins, the loser is dropped (logged, not
+cancelled — nothing needs un-building on that side). It does not address the narrower, still-open
+question of whether the *reverse* direction needs handling too (see the second flagged limitation
+below).
+
+**`IosProximityCoordinator`**: `qrEvents()` now calls `presenter.onScreenEntered()` before
+`presenter.startQrEngagement()`, inside the same flow builder — reached on the initial screen visit,
+`Event.Init` retries, and `restartEngagementForNfcToggle()`'s restart, confirmed directly against
+`ProximityQRViewModel.kt`. `cancel()` now calls `presenter.onScreenExited()` alongside `presenter.cancel()`
+— reached from the QR screen's `GoBack`/`cleanUp()` and both the request and success screens'
+`stopPresentation()`. No new `ProximityQRInteractor` contract method, no Android no-op stub, no new
+expect/actual — confirmed, not assumed, by tracing every call site before writing to this file.
+
+**Two limitations flagged during design review, still open, not addressed by this stage:**
+
+1. A second physical tap within the same screen visit, after one already completed a handover, reuses
+   the same `MdocNfcEngagementHelper`/`eDeviceKey` for the rest of the visit — nothing re-arms with a
+   fresh key mid-visit unless the switch is toggled off and back on. Harmless (a stale-but-valid helper
+   answers), but diverges from Android's own per-tap key regeneration (`MdocNdefService.startEngagement()`
+   generates fresh each time). Undecided; not blocking.
+2. The switch flipped off exactly while a physical NDEF handover is mid-flight: `disarmColdTapEngagement()`
+   would null out `engagementHelper` out from under an in-progress conversation, answering the reader's
+   next APDU as if the AID weren't registered at all. A narrow race, not defended against.
+
+**Verified**: `./gradlew :shared-logic:testAndroidHostTest :shared-logic:iosSimulatorArm64Test` (12/12
+`IosProximityPresentmentTest` cases and 8/8 `IosNfcHceTransportTest` cases pass, confirmed from the
+generated `TEST-*.xml` result files, not just `BUILD SUCCESSFUL`) and `./gradlew detekt ktlintCheck`
+both passed clean. `generateIosProject` regenerated the Xcode project, and a full `xcodebuild` (scheme
+`EudiWallet`, `iPhone 17 Pro` simulator — `iPhone 17` isn't installed on this machine) produced
+`** BUILD SUCCEEDED **` with no `error:` in the log, per `CLAUDE.md`'s `NfcHceBridge` rule.
+
+### Stage 4 — done: UI/interactor copy corrected for the repurposed switch
+
+Per the decision recorded above, the "Share over NFC" switch keeps its name, its default-off state, and
+its `ProximityQRInteractor` contract (`isNfcDataRetrievalAvailable`/`toggleNfcDataRetrieval`/
+`isNfcDataRetrievalEnabled`, unchanged signatures) — only what enabling it constructs underneath moved,
+and only its *copy* needed correcting to stop describing the retired meaning.
+
+**Checked, not assumed, before touching anything**: whether the switch's own visible label
+(`proximity_qr_enable_nfc_data_retrieval`, "Share over NFC") was itself stale. It isn't — "share over
+NFC" is generic enough to be accurate under either model, old or new, so it needed no change. What
+*was* stale, found by tracing every doc comment and code comment touching this feature end to end, not
+just the label: the composable's own KDoc ("offered as a sibling transport to BLE"), the shared
+`ProximityQRInteractor` contract's three doc comments (`isNfcDataRetrievalAvailable`'s "Annex 8... a
+sibling transport to BLE", `toggleNfcDataRetrieval`'s "for the *next* `startQrEngagement`"), and smaller
+comments in `IosProximityCoordinator.kt`, `IosProximityInteractors.kt`, `ProximityQRInteractorImpl.kt`
+(Android's no-op), and its test. All corrected to describe cold-tap (Annex C) engagement as an
+independent alternative to scanning the QR, not a transport choice within it.
+
+**One real gap, not just stale prose**: nothing on screen told the user what the switch now actually
+does differently — before, its effect was an invisible transport-selection detail; now, enabling it
+means "you can share by tapping your phone instead of scanning the QR at all," a materially more
+significant, user-visible capability. Added a new string,
+`proximity_qr_nfc_data_retrieval_description` ("Tap your phone against the reader device to share
+instead of scanning the QR code."), rendered as a supporting line under the switch in
+`NfcDataRetrievalSection` — mirroring the exact label-plus-supporting-text pattern the sibling
+`NFCSection` composable in the same file already uses for Android's own NFC copy, not a new UI pattern.
+
+**Verified**: `./gradlew :shared-ui:testAndroidHostTest :shared-ui:iosSimulatorArm64Test
+:proximity-feature:test` — `ProximityQRViewModelTest` 12/12 on both Android-host and iOS-simulator
+targets, `TestProximityQRInteractor` 17/17 on both `dev`/`demo` flavors, confirmed from the generated
+`TEST-*.xml` files. `./gradlew detekt ktlintCheck` passed clean. `./gradlew :androidApp:assembleDevDebug`
+built and packaged successfully (not just `UP-TO-DATE`: `mergeLibDexDevDebug`/`packageDevDebug`/
+`assembleDevDebug` all actually executed), confirming the new composable and string resource compile
+and package correctly for Android. No `iosApp/project.yml`, `NfcHceBridge`, or other Xcode-project-level
+change this stage — pure Kotlin/Compose-resource work reached entirely through the same `SharedKit`
+build step `:shared-ui:iosSimulatorArm64Test` already exercises — so `generateIosProject`/`xcodebuild`
+were not re-run; nothing Xcode-visible changed.
+
+**Annex C cold-tap NFC engagement is feature-complete across Stages 1–4**, with two known, undecided
+limitations carried from Stage 3 (§9, not resolved by this stage): a second same-visit tap reuses the
+first tap's engagement key rather than regenerating one; and toggling the switch off while a physical
+NDEF handover is mid-flight can pull the engagement helper out from under it. Both remain open questions
+for a future pass, not blockers.
+
+### Real-device crash found after Stage 3: `MdocNfcEngagementHelper` has no reentry protection
+
+Not a design oversight Stage 3's review missed — the double-presentment guard it added
+(`onColdTapHandoverComplete`'s `presentmentJob?.isActive` check) worked exactly as designed and is what
+surfaced this. First real-device test of Annex C hit: cold-tap engagement completed via a physical tap
+while a QR/BLE presentment was already active; the guard correctly logged and ignored the duplicate
+handover; shortly after, the app crashed with an uncaught `kotlin.IllegalStateException: "Check failed."`
+inside `MdocNfcEngagementHelper.raiseError`, called from `processApdu`, on a later APDU.
+
+**Root cause, traced before touching anything.** `MdocNfcEngagementHelper`'s entire public surface is
+its constructor plus `processApdu` — no `close()`, `dispose()`, or "handover already completed" flag
+anywhere in its own state (`negotiatedHandoverState`, `selectedFileId`, `selectedFilePayload`,
+`ndefApplicationSelected`, `inError`). Nothing stops `processSelectFile`'s static-handover branch for
+file `0xe104` (the NDEF file) from re-running its whole construction — rebuild `DeviceEngagement`,
+rebuild the Handover Select message, call `onHandoverComplete` again — if that file is selected a second
+time, which real hardware evidently does. **This is not a bug in that class so much as an assumption
+baked into its design, and the assumption is specifically about who does AID-level routing:** on
+Android, `MdocNfcEngagementHelper` is only ever reached from `MdocNdefService`, a `HostApduService`
+bound to the NDEF AID alone — the OS's own AID-based routing between separate `HostApduService`
+instances is what guarantees a reader that moves on to the mdoc AID never reaches this instance again,
+for free, without the class needing to defend itself. iOS has no OS-level router of that kind:
+`ApduDelegate` does AID routing itself (§9 Stage 2), so the guarantee Android gets from its platform has
+to be provided by this app instead — and until this fix, nothing did. Confirmed directly in code, not
+assumed: `onColdTapHandoverComplete`'s guard returned before touching `nfcTransport.engagementHelper` or
+`engagementHelperArmed` at all, so the same helper instance — done, from the app's perspective — kept
+receiving every subsequent NDEF-AID APDU for the rest of the physical tap.
+
+The literal `"Check failed."` text doesn't come from any of `MdocNfcEngagementHelper`'s own `check()`
+calls (all of them carry custom messages) — it matches Kotlin's default message for a bare
+`check(condition)` with no lambda, and several exist one level down in code `processApdu` reaches into
+(`CommandApdu.kt`, `MdocConnectionMethodNfc.kt`, `MdocConnectionMethodBle.kt`, `NdefRecord.kt`). Which
+exact one fired wasn't pinned down without a symbolicated device crash log — not needed to fix this: the
+mechanism (a stale helper instance reachable at all) is confirmed independent of which internal
+assumption it tripped.
+
+**Fix**: `disarmColdTapEngagement()` used to conflate two responsibilities — stop routing to the helper,
+*and* tear down `CardSession` — which can't both happen on a successful handover, since `CardSession`
+must stay alive for the mdoc-AID data transfer that continues on the same physical tap. Split:
+
+```kotlin
+private fun clearEngagementHelper() {
+    engagementHelperArmed = false
+    nfcTransport.engagementHelper = null
+}
+
+private fun disarmColdTapEngagement() {
+    clearEngagementHelper()
+    nfcTransport.stop()
+}
+
+private fun onColdTapHandoverComplete(...) {
+    clearEngagementHelper()   // unconditional, before the presentmentJob check — handover is done
+                              // either way, acted on or ignored
+    if (presentmentJob?.isActive == true) { ...; return }
+    ...
+}
+```
+
+Once `nfcTransport.engagementHelper` is `null`, `ApduDelegate`'s existing "no helper armed" fallback
+(Stage 2, unchanged) answers any further NDEF-AID APDU with
+`RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND` — the same clean answer a reader gets if cold-tap
+were never armed at all. No `ApduDelegate` change was needed.
+
+One new, narrower edge case this fix itself surfaces: clearing `engagementHelperArmed` unconditionally
+means a later `onScreenEntered()` (e.g. a QR retry firing while a cold-tap-originated presentment is
+still active) would otherwise try to re-arm — restarting `CardSession` mid-conversation. Closed with the
+same guard `onColdTapHandoverComplete` already uses: `armColdTapEngagement()` now also skips arming
+while `presentmentJob?.isActive == true`.
+
+**Verified**: a new test in `IosNfcHceTransportTest.kt` uses a real `MdocNfcEngagementHelper` (not a
+spy) and the default `forwardToEngagementHelper` wiring (not overridden) to drive the actual sequence —
+select NDEF AID, select the capability container, select the NDEF file (handover completes) — then
+confirms `engagementHelper` is `null` afterwards and that a second `SELECT FILE` on the NDEF file is
+answered with SW `6A82` rather than reaching the stale helper again. `./gradlew
+:shared-logic:testAndroidHostTest :shared-logic:iosSimulatorArm64Test` (9/9 `IosNfcHceTransportTest`
+cases pass, confirmed from the generated `TEST-*.xml`) and `./gradlew detekt ktlintCheck` both passed
+clean. `generateIosProject` + a full `xcodebuild` (`EudiWallet`, `iPhone 17 Pro` simulator) produced
+`** BUILD SUCCEEDED **` with no `error:` in the log.
+
+Ready for another real-device test.
+
+### Second real-device finding: iOS showed its own Wallet/contactless picker instead of routing to this app
+
+Next real-device test surfaced a different symptom, unrelated to the crash above: tapping the phone
+against the reader immediately showed iOS's own system Wallet/contactless card picker — this app's
+`CardSession` never got asked at all.
+
+**Root cause, researched against Apple's own documentation before touching anything** (not the AID
+content — no evidence anywhere in Apple's docs that the NDEF AID is reserved or special-cased; ruled
+out). iOS decides which app's `CardSession` answers an NFC field-detect event through exactly two
+documented mechanisms, and this app implemented neither:
+
+- **Default contactless app** (background/passive case) — a user-chosen Settings preference, gated by
+  the `com.apple.developer.nfc.hce.default-contactless-app` entitlement.
+- **`NFCPresentmentIntentAssertion`** (foreground/active case — this app's actual scenario, since
+  cold-tap only ever arms while the proximity screen is open): "Eligible apps running in the foreground
+  can prevent the system default contactless app from launching... acquire a presentment intent
+  assertion when the user expresses an active intent to perform an NFC transaction." Apple's documented
+  required sequence: **acquire the assertion first, then construct `CardSession`.** `NfcHceBridge.swift`
+  went straight to `CardSession()` with no prior assertion at all — confirmed by grep, zero references
+  anywhere in this codebase before this fix. This matches the reported timing exactly: the routing
+  decision happens before any app's `CardSession` is consulted, so its absence explains an *immediate*
+  system picker precisely.
+
+**Fix**, in `NfcHceBridge.swift`'s `startCardSession()`: acquire `NFCPresentmentIntentAssertion` before
+constructing `CardSession`, per Apple's documented sequence:
+
+```swift
+let intentAssertion: NFCPresentmentIntentAssertion
+do {
+    intentAssertion = try await NFCPresentmentIntentAssertion.acquire()
+} catch NFCPresentmentIntentAssertion.Error.systemEligibilityFailed {
+    return .notEligible
+} catch NFCPresentmentIntentAssertion.Error.systemNotAvailable {
+    return .transientFailure
+} catch {
+    return .transientFailure
+}
+presentmentIntentAssertion = intentAssertion
+// ... then CardSession() as before, clearing presentmentIntentAssertion on any failure path too
+```
+
+No new `StartResult` case needed — checked first, per usual practice here, rather than assumed:
+`NFCPresentmentIntentAssertion.Error` has exactly two documented cases, both of which fit an existing
+`StartResult` cleanly. `.systemEligibilityFailed` maps to `.notEligible` (a distinct eligibility gate
+from `CardSession.isEligible`, but the same user-facing "NFC unavailable right now" outcome).
+`.systemNotAvailable` (the mandatory cool-down between assertions) maps to `.transientFailure` (it's
+inherently transient — will resolve after the cool-down). Reusing `.accessNotAccepted` was considered
+and rejected: that case's existing message is specifically about the HCE entitlement's own approval,
+a genuinely different permission system from the presentment intent's separate, first-use system
+prompt — conflating the two would mislead future debugging. `NfcHceBridge.def`'s code-meaning table
+(codes 2 and 4) was updated to document both sources for each, not just the original `CardSession` one.
+`presentmentIntentAssertion` is released (set to `nil`) in `stop()` and on any `CardSession` construction
+failure, rather than left to expire on its own.
+
+**Lifecycle, researched precisely rather than assumed** (via Apple's own DocC JSON, since the rendered
+page returns only a title to a plain fetch): an acquired assertion is hard-capped at **15 seconds**
+(also expires early if the object deinitializes or the app backgrounds), followed by a **mandatory
+15-second cool-down** before a new one can be acquired. **One acquisition does not cover the whole
+armed period** — `IosProximityPresenter`'s cold-tap engagement can stay armed for a whole multi-minute
+screen visit (`onScreenEntered`/`onScreenExited`), far longer than 15 seconds, and Apple's API gives no
+way to hold continuous coverage across that: even reacquiring immediately on expiry still leaves an
+unavoidable 15-second gap (the cool-down) where suppression lapses. This fix covers the window right
+around arming and a reader's first encounter — the realistic case this bug report actually described —
+not indefinite coverage for the rest of a long-idle screen visit. **Flagged as a third open, undecided
+limitation, alongside Stage 3's other two** (stale key on a same-visit second tap; switch-off mid-
+handover race): whether the 15-second gap matters in practice for later taps in a long visit is
+unverified, and Apple's API doesn't offer a way to close it even if it does.
+
+**Sanity-checked against pagopa/iso18013-ios, per this project's usual practice of citing what's
+adapted from there — this piece is not.** Fetched that repo's actual `NFCCardEmulator.swift` directly:
+it declares a `presentmentIntent: NFCPresentmentIntentAssertion?` stored property and a comment
+referencing "failure to acquire NFC presentment intent assertion," but **never actually calls
+`.acquire()` anywhere** — the property is only ever assigned `nil`. That file has the same gap this
+app did; it is not a working reference for this piece. This fix is standard Apple platform API usage,
+applied directly from Apple's own `NFCPresentmentIntentAssertion` documentation, not adapted from
+pagopa — documented as such in both the file-level and method-level comments in `NfcHceBridge.swift`.
+
+**`com.apple.developer.nfc.hce.default-contactless-app`, tried and reverted.** Added to `project.yml`
+for the secondary, background/passive case per the investigation's recommendation, then verified —
+empirically, via a real signed device build (`Martin's iPhone`, `-allowProvisioningUpdates`), not a
+simulator build, since simulator builds don't validate entitlements against Apple's granted capabilities
+the way device signing does — and it fails outright:
+
+```
+error: Provisioning profile "iOS Team Provisioning Profile: eu.compote.euidi.dev" doesn't include the
+Default Host Card Emulation (HCE) App capability. ... needs to be assigned to your team and bundle
+identifier by Apple in order to be included in a profile.
+error: Entitlement com.apple.developer.nfc.hce.default-contactless-app requires approval from Apple to
+include in a profile. ... To continue building for device during request processing, remove entitlement
+and add upon approval.
+```
+
+This confirms what Apple's own entitlement documentation says directly: this key needs its own,
+separate Apple approval — distinct from, and not covered by, the `com.apple.developer.nfc.hce` grant
+this App ID already has — and Apple's docs frame it as "primarily designed for banking and payment apps
+in specific regions [EEA]," not identity/mdoc use cases. **Reverted, per Apple's own suggested
+workaround** ("remove entitlement and add upon approval") — leaving it in would have broken every
+real-device build until that separate approval is requested and granted. **Action item, not done**:
+file the request for this capability if the background/passive default-app case is still wanted; until
+then, only `NFCPresentmentIntentAssertion` (the foreground fix above, which needed no new approval and
+is what this app's actual cold-tap flow uses) is in place.
+
+**Verified**: `./gradlew :shared-logic:testAndroidHostTest :shared-logic:iosSimulatorArm64Test` and
+`detekt ktlintCheck` both passed clean (no Kotlin production/test source changed this pass — only
+`NfcHceBridge.swift`, `NfcHceBridge.def`'s doc comment, and `project.yml`). `generateIosProject` +
+`xcodebuild` succeeded on both `iPhone 17 Pro` (simulator) and `Martin's iPhone` (real device,
+`-allowProvisioningUpdates`) for the final, reverted-entitlement state — the device build is what
+actually exercises Swift's real `CoreNFC`/`NFCPresentmentIntentAssertion` compilation and signing
+resolution, stronger evidence than the simulator-only check alone.
+
+Ready for another real-device test.
+
+### Diagnostic logging added ahead of the next real-device test
+
+Logging-only, no protocol/transport logic changed. Covers the whole cold-tap path so its timing can be
+correlated against the verifier side: `onScreenEntered`/`onScreenExited`, every `armColdTapEngagement`
+guard (already armed / presentment active / unsupported), `MdocNfcEngagementHelper`'s
+`onHandoverComplete`/`onError` callbacks, `onColdTapHandoverComplete`/`clearEngagementHelper`,
+`ApduDelegate.processCommandApdu`'s AID routing state per incoming APDU (`none`/`mdoc`/`ndef`) — so a
+missing log line there directly shows whether the wallet ever received any APDU at all, distinguishing
+"system picker intercepted before us" from "we got the APDU and did something else" — and, on the Swift
+side, `NfcHceBridge.swift`'s `NFCPresentmentIntentAssertion.acquire()`/`CardSession` construction/
+`startEmulation()` and every `eventStream` case, none of which had any logging before this. Uses
+multipaz's own `Logger.i`/`Logger.w` (Kotlin, auto-timestamped) and this repo's existing Swift
+`print("TAG: message")` convention (`iOSApp.swift`/`DocumentRegistration.swift`) with a new `NFC-HCE:`
+tag — `NfcHceBridge.swift` itself had no prior logging convention to match. The Swift side's timestamp
+is explicit (ISO 8601 with fractional seconds) rather than left to the console's own capture time, so
+it lines up by literal string against Kotlin's own `Logger` timestamps — the point being to read a
+device console as one timeline across the Swift/Kotlin boundary when checking the
+`NFCPresentmentIntentAssertion` 15-second-expiry hypothesis against exactly when a physical tap
+happened.
+
+Capture from the device with either: Xcode's own console (Window > Devices and Simulators > select the
+device > Open Console, filtered to process `EudiWallet`, then a text filter for `NFC-HCE` or
+`IosProximityPresenter`/`IosNfcHceTransport` to isolate the cold-tap path from everything else the app
+logs) — or, for a saved transcript to diff against the verifier's own logs afterward,
+`idevicesyslog -p EudiWallet | grep -E "NFC-HCE|IosProximityPresenter|IosNfcHceTransport"` (or
+unfiltered `idevicesyslog` piped through the same `grep -E` if `-p` doesn't match reliably), redirected
+to a timestamped file.
+
+Verified: `:shared-logic:testAndroidHostTest :shared-logic:iosSimulatorArm64Test` (9/9
+`IosNfcHceTransportTest`, 12/12 `IosProximityPresentmentTest`, unaffected) and `detekt`/`ktlintCheck`
+clean. `generateIosProject` + `xcodebuild` (`EudiWallet`, `iPhone 17 Pro` simulator) succeeded — required
+since `NfcHceBridge.swift` changed, per `CLAUDE.md`'s rule.
+
+### Third real-device finding: the presentment-in-progress guard was too coarse, blocking every arm attempt
+
+The new logging above did its job immediately: the very next real-device test log showed
+`onScreenEntered: nfcEngagementEnabled=true` followed immediately by `armColdTapEngagement: a
+presentment is already active, skipping` — the `presentmentJob?.isActive` guard added earlier today
+(alongside the `clearEngagementHelper()` crash fix, as a "narrowing-only improvement") firing on the
+first arm attempt, before any cold-tap had ever happened. `NFCPresentmentIntentAssertion.acquire()`/
+`CardSession` were never even called — the system picker symptom from the previous finding had a second,
+compounding cause: nothing was armed to intercept the tap in the first place.
+
+**Root cause, confirmed by tracing the exact assignment, not assumed.** `presentmentJob` is set inside
+`startQrEngagement()` the instant `scope.launch { runPresentment(...) }` runs — right as the QR becomes
+visible — and `runPresentment()`'s first real step, `transports.waitForConnection(...)`, has no timeout
+in multipaz's own implementation. So `presentmentJob.isActive` is `true` continuously from "QR just
+appeared" through "a reader eventually connects," which is most of a typical screen visit — it reflects
+coroutine liveness, not whether an actual document exchange is underway. The guard's *intended* scope,
+per its own doc comment, was narrower: protect against racing two `runPresentment()` calls once a real
+exchange (`transport`/`pendingConsent`/`pendingData`/`sharedDocuments` genuinely in play) is underway —
+not "QR is merely displayed, waiting for any connection."
+
+**Fix**: replaced the check in both `armColdTapEngagement()` and `onColdTapHandoverComplete()` with a
+new `isPresentmentActuallyInProgress()`:
+
+```kotlin
+internal fun isPresentmentActuallyInProgress(): Boolean =
+    mutableState.value is IosProximityState.Requesting || mutableState.value is IosProximityState.Sending
+```
+
+`Engaging` (QR shown, nothing connected) no longer counts; only `Requesting`/`Sending` — the states
+where a reader has actually connected and the shared mutable state the original guard cared about is
+genuinely in flight — do. This still catches the original race (if QR's own exchange has reached
+`Requesting`/`Sending` when a cold tap completes, the guard still fires exactly as before) while no
+longer blocking the common case the bug actually hit.
+
+**A known, pre-existing, separate asymmetry, flagged here rather than fixed**: there is no equivalent
+guard on the *other* direction. If a cold-tap exchange is genuinely `Requesting`/`Sending` and QR's own
+`waitForConnection()` *then* succeeds, QR's side has nothing stopping it from proceeding into its own
+`Iso18013Presentment(...)` call and racing the same shared state from the opposite direction. This gap
+predates today's guard entirely (the guard was only ever on the cold-tap side) and is out of scope for
+this fix — recorded here so it isn't lost, not proposed to be solved now.
+
+`mutableState` was widened from `private` to `internal` (matching this file's existing "internal so a
+test can..." convention, e.g. `deviceEngagement()`) specifically so a test can drive
+`isPresentmentActuallyInProgress()` without a real connection — the Simulator has no NFC hardware and no
+BLE radio, so driving `armColdTapEngagement()`/`onScreenEntered()` fully end to end can't distinguish
+"skipped by this guard" from "proceeded, then stopped at the next guard down" from the outside; testing
+the actual changed logic directly was the more honest option than a misleading pseudo-integration test.
+
+**Verified**: `:shared-logic:testAndroidHostTest :shared-logic:iosSimulatorArm64Test` — 14/14
+`IosProximityPresentmentTest` cases pass (12 previous + 2 new:
+`isPresentmentActuallyInProgress_is_false_while_merely_engaging` and
+`isPresentmentActuallyInProgress_is_true_while_requesting_or_sending`), confirmed via the generated
+`TEST-*.xml`. `detekt`/`ktlintCheck` clean. `generateIosProject` + `xcodebuild` (`EudiWallet`,
+`iPhone 17 Pro` simulator) succeeded, no errors.
+
+Ready for another real-device test.
+
+### Fourth real-device finding: engagement, handover, and CardSession all worked — this morning's own crash fix over-corrected
+
+First real end-to-end progress: `NFCPresentmentIntentAssertion` + `CardSession` + handover all
+succeeded. The very next thing failed instead, confirmed from both device logs together: `on
+HandoverComplete` fired (wallet log), the wallet immediately cleared the engagement helper and started
+mdoc-AID presentment, and 14ms later a trailing `READ_BINARY` arrived on the NDEF AID — a real reader
+legitimately reading the NDEF file once more before it notices engagement is done and switches AIDs
+itself. The wallet correctly rejected it with SW `6A82` (no crash, per this morning's fix) — but the
+reader's own `NfcIsoTag.readBinary` treats *any* non-success status as fatal and aborted the whole tap,
+never reaching the mdoc-AID `SELECT` that should have followed.
+
+**Root cause: this morning's `clearEngagementHelper()` fix (the one that closed the repeat-`SELECT`
+crash) was broader than the crash it was closing.** Traced directly against Multipaz's own reader-side
+source (`NfcIsoTag.kt`, `mdocReaderNfcHandover.kt`, `scanMdocReader.kt`) and `MdocNfcEngagementHelper`'s
+own `processReadBinary`:
+
+- Multipaz's reader-side `mdocReaderNfcHandover()` does exactly two reads on the NDEF file (length,
+  then content) and returns — no trailing read is part of its own documented sequence. The extra read
+  is most plausibly Android's own `NfcAdapter.enableReaderMode()` performing its own OS-level NDEF check
+  before invoking the app's callback (a well-documented mechanism, suppressed only by
+  `FLAG_READER_SKIP_NDEF_CHECK`) — noted here as context for *why* it happens, not as something to
+  chase down or "fix": the correct wallet-side behavior is to answer it correctly regardless of why it
+  was sent.
+- `NfcIsoTag.readBinary()` throws on any non-success status unconditionally — no tolerance for `6A82`
+  as "no more data" anywhere. Not a library bug to petition upstream: relying on a reader tolerating an
+  error response would be relying on non-obvious behavior, when serving valid content for a still-
+  selected file is simply the correct Type 4 Tag behavior to have in the first place.
+- `MdocNfcEngagementHelper.processReadBinary` is a pure, side-effect-free function of already-built
+  state (`selectedFilePayload`) — it has no "handover already completed" check of its own and answers
+  correctly no matter how many times it's called. The *only* reason the wallet answered `6A82` was its
+  own `clearEngagementHelper()` call inside `onColdTapHandoverComplete`, which nulled the entire helper
+  reference the instant handover completed — rejecting a request the helper itself would have handled
+  fine. The actual crash risk this morning's fix was closing is narrower: re-entering
+  `processSelectFile`'s handover-construction logic via a *repeat* `SELECT` (application or file), not
+  a plain `READ_BINARY`.
+
+**Fix**: added `IosNfcHceTransport.ndefHandoverCompleted: Boolean`, reset alongside `engagementHelper =
+null` everywhere that already happens (`clearEngagementHelper()`, the failed-start branch in
+`armColdTapEngagement()`). `ApduDelegate` gained a matching `ndefHandoverCompletedProvider`, checked
+only inside the `SelectedApplication.NDEF` sticky-routing branch:
+
+```kotlin
+SelectedApplication.NDEF -> {
+    if (ndefHandoverCompletedProvider() && command.ins == Nfc.INS_SELECT) {
+        // reject with SW 6A82 — never reaches the engagement helper
+    } else {
+        forwardToEngagementHelper(command) { ... }   // READ_BINARY/UPDATE_BINARY, or any SELECT
+                                                       // before completion — unchanged
+    }
+}
+```
+
+`onColdTapHandoverComplete()` now sets `nfcTransport.ndefHandoverCompleted = true` instead of calling
+`clearEngagementHelper()` — the helper instance stays wired and keeps answering reads correctly. Nothing
+needs to explicitly detach it once the reader *does* move on: a `SELECT` for the mdoc AID is checked
+unconditionally by `ApduDelegate`, before `selectedApplication`'s current value is even read, so it
+reaches `NfcTransportMdoc` and the NDEF helper simply stops being reachable — no new code needed there.
+`disarmColdTapEngagement()` (screen exit / switch off) is unaffected and still does a full reset via
+`clearEngagementHelper()`.
+
+One clarification on scope, found while implementing rather than assumed from the design: the top-level
+AID-select branch (which chooses `MDOC` vs `NDEF` vs "unsupported") was deliberately left untouched, so
+a *repeat* `SELECT APPLICATION(NDEF)` still always reaches the helper regardless of
+`ndefHandoverCompleted` — this is safe, not a gap, since `MdocNfcEngagementHelper.processSelectApplication`
+is itself idempotent (just re-sets a flag, no reconstruction). Only a repeat `SELECT FILE` — the actual
+crash trigger, reached via the sticky-routing branch since it isn't a `SELECT APPLICATION` — is what
+the new gate blocks.
+
+**Verified**: `IosNfcHceTransportTest.kt`'s real-`MdocNfcEngagementHelper` test (the one proving the
+original crash fix) was rewritten to prove both halves of the corrected fix against the actual
+crash-prone class: a trailing `READ_BINARY` after handover now succeeds, and a repeat `SELECT FILE`
+is still rejected — plus a new test confirming the mdoc-AID path is completely unaffected by
+`ndefHandoverCompleted`. `:shared-logic:testAndroidHostTest :shared-logic:iosSimulatorArm64Test` — 10/10
+`IosNfcHceTransportTest` cases pass, confirmed via `TEST-*.xml`. `detekt`/`ktlintCheck` clean.
+`generateIosProject` + `xcodebuild` (`EudiWallet`, `iPhone 17 Pro` simulator) succeeded, no errors.
+
+By this point every piece of the cold-tap path has been individually confirmed working on real hardware:
+`NFCPresentmentIntentAssertion` acquisition, `CardSession` construction/start, handover completion, and
+now the trailing-read/repeat-select distinction immediately after it. Ready for another real-device
+test — this should be the last fix before a fully successful end-to-end tap.

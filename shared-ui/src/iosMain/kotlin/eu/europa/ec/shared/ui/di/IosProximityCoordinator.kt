@@ -90,10 +90,12 @@ internal class IosProximityCoordinator(
     //region The QR screen
 
     /**
-     * Whether NFC data retrieval is offered alongside BLE the next time [qrEvents] starts engagement.
-     * Named to match [IosProximityQRInteractor.toggleNfcDataRetrieval], the seam that actually calls
-     * this — deliberately not `toggleNfcEngagement`, Android's narrower, different feature; see
-     * `wiki/IOS_NFC_PLAN.md` §1.
+     * Whether cold-tap (Annex C) NFC engagement is armed for as long as the proximity screen is open —
+     * an alternative to scanning the QR, not a transport choice within it; see
+     * [eu.europa.ec.shared.wallet.multipaz.IosProximityPresenter.onScreenEntered] and
+     * `wiki/IOS_NFC_PLAN.md` §9. Named to match [IosProximityQRInteractor.toggleNfcDataRetrieval], the
+     * seam that actually calls this — deliberately not `toggleNfcEngagement`, Android's narrower,
+     * different feature; see `wiki/IOS_NFC_PLAN.md` §1.
      */
     fun toggleNfcDataRetrieval(enabled: Boolean) {
         presenter.setNfcEngagementEnabled(enabled)
@@ -124,6 +126,11 @@ internal class IosProximityCoordinator(
             ProximityQRPartialState.NfcNotice(message = message)
         },
         flow {
+            // Reconciles cold-tap (Annex C) engagement with the current switch value before QR even
+            // starts — idempotent, so this also covers restartEngagementForNfcToggle()'s restart, which
+            // is what makes flipping the switch mid-visit take effect immediately rather than only on
+            // the next screen visit. See IosProximityPresenter.onScreenEntered's own doc comment.
+            presenter.onScreenEntered()
             presenter.startQrEngagement()
 
             presenter.state.collect { state ->
@@ -304,6 +311,7 @@ internal class IosProximityCoordinator(
         disclosures = emptyList()
         disclosed = emptyList()
         presenter.cancel()
+        presenter.onScreenExited()
     }
 
     //region multipaz's request -> the shared consent model

@@ -33,9 +33,14 @@ NS_ASSUME_NONNULL_BEGIN
  * agree on these values:
  *   0 = started
  *   1 = not supported (unsupported hardware/OS, or the entitlement isn't present in this build)
- *   2 = not eligible (Apple's own region/hardware eligibility gate, `CardSession.isEligible`)
+ *   2 = not eligible — either Apple's own region/hardware eligibility gate (`CardSession.isEligible`),
+ *       or `NFCPresentmentIntentAssertion.Error.systemEligibilityFailed` (a *separate* eligibility
+ *       check `NFCPresentmentIntentAssertion.acquire()` must pass first, per Apple's documented
+ *       required sequence — see the doc comment on `startCardSession()` in the Swift implementation)
  *   3 = access not accepted (the entitlement is present but not yet granted/approved)
- *   4 = transient failure (any other `CardSession` start failure)
+ *   4 = transient failure — any other `CardSession` start failure, or
+ *       `NFCPresentmentIntentAssertion.Error.systemNotAvailable` (the 15-second cool-down between
+ *       assertions; see the same doc comment)
  */
 - (void)startWithCompletion:(void (^)(NSInteger result))completion;
 

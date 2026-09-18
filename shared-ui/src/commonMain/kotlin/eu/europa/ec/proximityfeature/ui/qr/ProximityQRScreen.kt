@@ -72,6 +72,7 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.content_description_qr_code_icon
 import eu.europa.ec.shared.resources.proximity_qr_enable_nfc_data_retrieval
 import eu.europa.ec.shared.resources.proximity_qr_hold_near_reader
+import eu.europa.ec.shared.resources.proximity_qr_nfc_data_retrieval_description
 import eu.europa.ec.shared.resources.proximity_qr_subtitle
 import eu.europa.ec.shared.resources.proximity_qr_title
 import eu.europa.ec.shared.resources.proximity_qr_use_nfc
@@ -181,7 +182,7 @@ private fun Content(
         Column {
             HorizontalDivider()
             NFCSection(paddingValues)
-            // Only where the platform actually has the transport — see
+            // Only where the platform actually has cold-tap engagement — see
             // ProximityQRInteractor.isNfcDataRetrievalAvailable. Android's existing NFCSection above
             // is unaffected: it describes Android's own, separate, always-on NFC engagement, not this.
             if (state.nfcDataRetrievalAvailable) {
@@ -248,10 +249,12 @@ private fun NFCSection(paddingValues: PaddingValues) {
 }
 
 /**
- * The one real, user-facing control this screen has: ISO 18013-5 Annex 8 NFC data retrieval,
- * offered as a sibling transport to BLE (see `wiki/IOS_NFC_PLAN.md`). Only rendered by the caller
- * when [State.nfcDataRetrievalAvailable] — today that means iOS only; Android keeps its own,
- * separate, always-on NFC engagement in [NFCSection] above, unaffected by this switch.
+ * The one real, user-facing control this screen has: ISO 18013-5 Annex C cold-tap NFC engagement,
+ * offered as an alternative to scanning the QR code — tapping the phone against a reader's device
+ * starts its own, independent engagement, it does not merely switch which transport an already-
+ * scanned QR continues over (see `wiki/IOS_NFC_PLAN.md` §9). Only rendered by the caller when
+ * [State.nfcDataRetrievalAvailable] — today that means iOS only; Android keeps its own, separate,
+ * always-on NFC engagement in [NFCSection] above, unaffected by this switch.
  */
 @Composable
 private fun NfcDataRetrievalSection(
@@ -260,7 +263,7 @@ private fun NfcDataRetrievalSection(
     onToggle: (Boolean) -> Unit,
     paddingValues: PaddingValues,
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
@@ -269,17 +272,27 @@ private fun NfcDataRetrievalSection(
                 top = SPACING_SMALL.dp,
                 bottom = paddingValues.calculateBottomPadding()
             ),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.proximity_qr_enable_nfc_data_retrieval),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            WrapSwitch(
+                switchData = SwitchDataUi(isChecked = checked, enabled = switchEnabled),
+                onCheckedChange = onToggle,
+            )
+        }
         Text(
-            text = stringResource(Res.string.proximity_qr_enable_nfc_data_retrieval),
-            style = MaterialTheme.typography.bodyMedium,
+            text = stringResource(Res.string.proximity_qr_nfc_data_retrieval_description),
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface
-        )
-        WrapSwitch(
-            switchData = SwitchDataUi(isChecked = checked, enabled = switchEnabled),
-            onCheckedChange = onToggle,
         )
     }
 }

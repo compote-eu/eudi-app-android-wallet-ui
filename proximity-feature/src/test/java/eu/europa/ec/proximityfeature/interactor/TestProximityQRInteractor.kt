@@ -393,7 +393,7 @@ class TestProximityQRInteractor {
     //endregion
 
     //region toggleNfcDataRetrieval
-    // Android has no NFC data-retrieval transport yet (see wiki/IOS_NFC_PLAN.md §1/phase 4) —
+    // Android has no cold-tap (Annex C) NFC engagement yet (see wiki/IOS_NFC_PLAN.md §1/§9) —
     // isNfcDataRetrievalAvailable is always false, and toggling is a genuine no-op: it must not
     // reach walletCorePresentationController at all, unlike toggleNfcEngagement above.
     @Test

@@ -436,6 +436,7 @@
     <string name="proximity_qr_use_nfc">Connect via NFC</string>
     <string name="proximity_qr_hold_near_reader">Hold your phone near reader to scan.</string>
     <string name="proximity_qr_enable_nfc_data_retrieval">Share over NFC</string>
+    <string name="proximity_qr_nfc_data_retrieval_description">Tap your phone against the reader device to share instead of scanning the QR code.</string>
     <!--endregion-->
 
     <!-- region Presentation Qr Scan -->
