@@ -60,6 +60,9 @@ internal class IosPresentationRequestInteractor(
     private val coordinator: IosRemotePresentationCoordinator,
 ) : IosScopedRemotePresentationInteractor(), PresentationRequestInteractor {
 
+    /** The exchange this screen started, so its teardown cannot end somebody else's. */
+    private var ownedExchangeId: Long? = null
+
     /**
      * Where the exchange begins: the config carries the verifier's link, so this is what turns a deep
      * link into a request on the wire.
@@ -71,6 +74,9 @@ internal class IosPresentationRequestInteractor(
     override fun setConfig(config: RequestUriConfig, intentAction: IntentAction?) {
         setScopeId(config.presentationScopeId)
         coordinator.start(config)
+        // Read *after* starting: this interactor is the caller, so before the call the id still
+        // belongs to the previous exchange.
+        ownedExchangeId = coordinator.exchangeId
     }
 
     override fun getRequestDocuments(): Flow<PresentationRequestInteractorPartialState> =
@@ -79,7 +85,7 @@ internal class IosPresentationRequestInteractor(
     override fun updateRequestedDocuments(selectedCombination: RequestCombinationUi?) =
         coordinator.updateSelection(selectedCombination)
 
-    override fun stopPresentation() = coordinator.cancel()
+    override fun stopPresentation() = coordinator.cancel(ownedExchangeId)
 
     /**
      * Tells the verifier the user declined, then tears the exchange down.
@@ -119,6 +125,9 @@ internal class IosPresentationSuccessInteractor(
     private val coordinator: IosRemotePresentationCoordinator,
 ) : IosScopedRemotePresentationInteractor(), PresentationSuccessInteractor {
 
+    // Read at construction: this screen appears mid-exchange, so the current id is already its own.
+    private val ownedExchangeId: Long = coordinator.exchangeId
+
     /** Where the flow returns when it completes — see the coordinator, which encodes it. */
     override val initiatorRoute: String get() = coordinator.initiatorRoute
 
@@ -136,5 +145,5 @@ internal class IosPresentationSuccessInteractor(
         emit(coordinator.successItems())
     }
 
-    override fun stopPresentation() = coordinator.cancel()
+    override fun stopPresentation() = coordinator.cancel(ownedExchangeId)
 }

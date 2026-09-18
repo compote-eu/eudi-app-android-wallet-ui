@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.ui.di
 
+import org.multipaz.util.Logger
 import platform.Foundation.languageCode
 import platform.Foundation.currentLocale
 import platform.Foundation.NSLocale
@@ -102,6 +103,17 @@ internal class IosRemotePresentationCoordinator(
     //region The request screen
 
     /**
+     * Which exchange is running, counted up on every [start].
+     *
+     * 🚨 The presenter and this coordinator are `@Single` — three screens are views onto one exchange —
+     * so a screen tearing down would otherwise cancel whatever is current rather than what it owned.
+     * Android has no such hazard: its controller lives in a per-presentation Koin scope, so
+     * `onCleared()` can only reach its own. Here the identity has to be explicit.
+     */
+    var exchangeId: Long = 0
+        private set
+
+    /**
      * Starts the exchange the link describes, then reports what happens to it.
      *
      * The URI is taken from the config rather than from a field of this class, because the config is
@@ -113,6 +125,7 @@ internal class IosRemotePresentationCoordinator(
         if (mode !is PresentationMode.OpenId4Vp) return
         redirectUri = null
         initiatorRoute = AppRouteCodec.encode(mode.initiatorRoute)
+        exchangeId += 1
         presenter.start(mode.uri)
     }
 
@@ -291,8 +304,24 @@ internal class IosRemotePresentationCoordinator(
         presenter.reject()
     }
 
-    /** Ends the exchange: the back button, the "stop" the request screen offers, and every teardown. */
-    fun cancel() {
+    /**
+     * Ends the exchange: the back button, the "stop" the request screen offers, and every teardown.
+     *
+     * @param ownedExchangeId the exchange the caller is tearing down, or null to end whatever is
+     *   current. ⛔ **Screens must pass theirs.** The shared `onCleared()` calls `stopPresentation()`
+     *   as an *outgoing* screen is replaced — and when a second presentation arrives while the first
+     *   screen is still up, that teardown ran ~265 ms after the new exchange had already asked for
+     *   consent and killed it, after which the decline path correctly told the verifier the user had
+     *   refused a request they were never shown. Watched twice on a simulator, 2026-09-17.
+     */
+    fun cancel(ownedExchangeId: Long? = null) {
+        if (ownedExchangeId != null && ownedExchangeId != exchangeId) {
+            Logger.i(
+                TAG,
+                "ignoring a teardown from exchange $ownedExchangeId; $exchangeId is running",
+            )
+            return
+        }
         disclosures = emptyList()
         disclosed = emptyList()
         presenter.cancel()
@@ -343,3 +372,5 @@ private fun IosPresentmentRequest.relyingPartyDomain(locale: String): RelyingPar
     logoUri = null,
     registration = relyingPartyRegistration.toDomain(locale),
 )
+
+private const val TAG = "IosRemotePresentationCoordinator"
