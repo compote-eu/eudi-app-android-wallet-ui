@@ -569,11 +569,53 @@ class IosCredentialIssuer(
 
                 if (failures.isNotEmpty()) break
             }
+            // ⛔ Every document after the first is moved onto a DPoP key of its own. They were all
+            // issued from ONE authorization, so without this they name the same key — and
+            // `DocumentStore.deleteDocument` deletes the key its authorization data names, which would
+            // take it from the siblings that still need it to refresh or to collect a deferred
+            // credential. Giving each its own restores multipaz's one-key-per-document assumption, and
+            // deletion becomes correct again.
+            //
+            // The first document keeps the session's key, so nothing is orphaned.
+            giveTheRestTheirOwnDpopKeys(session, walletStore, documentIds.drop(1))
         } finally {
             authorizationHttpClient.close()
         }
 
         return documentIds to failures
+    }
+
+    /**
+     * Moves each document onto its own DPoP key, leaving it alone if the server will not re-bind.
+     *
+     * ⚠️ Best-effort by design. A server that refuses re-binding (RFC 9449 §5 requires a public client's
+     * refresh token to stay bound to its original key) leaves the document on the shared key, which is
+     * exactly where it is today — so a refusal costs nothing that was not already the case. Failing the
+     * issuance over it would be far worse: the documents are already issued and usable.
+     */
+    private suspend fun giveTheRestTheirOwnDpopKeys(
+        session: IosVciAuthorizationSession,
+        walletStore: MultipazWalletStore,
+        documentIds: List<String>,
+    ) {
+        for (documentId in documentIds) {
+            val document = walletStore.documentStore.lookupDocument(documentId) ?: continue
+            val existing = document.authorizationData ?: continue
+
+            val rebound = runCatching { session.rebindToFreshDpopKey() }.getOrNull()
+            if (rebound == null) {
+                Logger.w(TAG, "$documentId keeps the shared DPoP key; the server would not re-bind")
+                continue
+            }
+
+            val updated = existing.withDpopBinding(rebound)
+            if (updated == null) {
+                Logger.w(TAG, "$documentId has authorization data this build cannot rewrite")
+                continue
+            }
+            document.edit { authorizationData = updated }
+            Logger.i(TAG, "$documentId now has its own DPoP key ${rebound.dpopKeyAlias}")
+        }
     }
 
     /** Drives one OpenID4VCI flow to a document, or throws with what went wrong. */

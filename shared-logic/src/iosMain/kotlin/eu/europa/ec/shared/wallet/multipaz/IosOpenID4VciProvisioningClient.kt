@@ -37,6 +37,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
@@ -265,6 +266,71 @@ internal class IosVciAuthorizationSession(
             certifications = issued.zip(credentialIds) { data, id -> CredentialCertification(id, data) },
             display = null,
         )
+    }
+
+    /**
+     * Trades this session's refresh token for one bound to a **fresh** DPoP key.
+     *
+     * ### Why
+     *
+     * One authorization issues several documents, so without this they all name the same
+     * `dpopKeyAlias`. multipaz's `DocumentStore.deleteDocument` deletes the key its authorization data
+     * names, so deleting any one of them would take the key its siblings need to refresh or to collect a
+     * deferred credential. multipaz is not wrong — it assumes one authorization per document, which is
+     * the assumption we traded away to stop asking the user four times.
+     *
+     * Giving each document its own key restores that assumption, and then deletion is correct again.
+     *
+     * ✅ **Measured against the dev authorization server before this was written**: the same refresh
+     * token presented with a brand-new DPoP key is accepted, and the access token that comes back
+     * carries the **new** key's thumbprint in `cnf.jkt` — so the binding really moves. The original key
+     * still worked afterwards, so the token is not consumed by the exchange.
+     *
+     * ⚠️ That is this deployment's behaviour, not a guarantee. RFC 9449 §5 requires a refresh token
+     * issued to a *public* client to stay bound to its original key; ours authenticates with a wallet
+     * attestation, which is why re-binding is accepted here. A stricter server would refuse — hence the
+     * null return rather than an exception, and the caller leaving the document on the shared key.
+     *
+     * @return the new key's alias and the refresh token to store with it, or null if the server refused.
+     */
+    suspend fun rebindToFreshDpopKey(): RebindResult? {
+        val refresh = refreshToken ?: return null
+        val endpoints = lock.withLock { resolveEndpoints() }
+
+        val alias = "$DPOP_KEY_PREFIX${Random.nextBytes(ALIAS_BYTES).toBase64Url()}"
+        secureArea.createKey(alias, CreateKeySettings())
+        val key = AsymmetricKey.anonymous(secureArea, alias)
+
+        val form = listOf(
+            "grant_type" to "refresh_token",
+            "refresh_token" to refresh,
+            "client_id" to clientId,
+        )
+        val attestation = attestationHeaders(endpoints)
+
+        suspend fun attempt(nonce: String?) = httpClient.post(endpoints.tokenEndpoint) {
+            attestation.forEach { (name, value) -> header(name, value) }
+            header(DPOP_HEADER, key.dpopProof(endpoints.tokenEndpoint, nonce = nonce))
+            contentType(ContentType.Application.FormUrlEncoded)
+            setBody(form.formUrlEncoded())
+        }
+
+        var response = attempt(dpopNonce)
+        response.headers[DPOP_NONCE_HEADER]?.let { dpopNonce = it }
+        if (response.status != HttpStatusCode.OK && dpopNonce != null) {
+            response = attempt(dpopNonce)
+        }
+        if (response.status != HttpStatusCode.OK) {
+            Logger.w(TAG, "the server would not re-bind the refresh token: ${response.status}")
+            runCatching { secureArea.deleteKey(alias) }
+            return null
+        }
+
+        val body = response.bodyAsText().asJsonObject()
+        // A server that rotates hands back a new one; this one returns the same token, which stays
+        // usable — either way what the document must store is whatever came back.
+        val rotated = body["refresh_token"]?.jsonPrimitive?.contentOrNull ?: refresh
+        return RebindResult(dpopKeyAlias = alias, refreshToken = rotated)
     }
 
     /**
@@ -600,6 +666,9 @@ internal class IosOpenID4VciProvisioningClient(
     override suspend fun obtainCredentials(keyInfo: KeyBindingInfo): Credentials =
         session.obtainCredentials(configurationId, keyInfo, credentialHttpClient)
 }
+
+/** A refresh token and the DPoP key it is now bound to, for one document to keep as its own. */
+internal data class RebindResult(val dpopKeyAlias: String, val refreshToken: String)
 
 /** The endpoints one issuance needs, read once per session. */
 private data class VciEndpoints(

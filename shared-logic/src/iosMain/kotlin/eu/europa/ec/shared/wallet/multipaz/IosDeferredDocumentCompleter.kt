@@ -240,3 +240,26 @@ suspend fun IosWalletEngine.documentsAwaitingDeferredIssuance(): Map<String, Str
         document.identifier to metadata.format.identifier
     }.toMap()
 }
+
+/**
+ * The same authorization data with a different DPoP key and refresh token, and everything else kept.
+ *
+ * ⛔ Rebuilt field by field rather than by re-encoding a parsed object: this is multipaz's own
+ * `OpenID4VCIAuthorizationData`, which is `internal` to it and carries a schema hash, so a copy that
+ * dropped a member this build does not know about would quietly break a refresh. Returns null if the
+ * value is not the CBOR map this expects, which is the honest answer for data written by a version
+ * that changed the schema.
+ */
+internal fun ByteString.withDpopBinding(rebound: RebindResult): ByteString? {
+    val map = runCatching { Cbor.decode(toByteArray()) }.getOrNull() as? CborMap ?: return null
+    val builder = CborMap.builder()
+    for ((key, value) in map.items) {
+        val name = (key as? Tstr)?.value ?: return null
+        when (name) {
+            DPOP_KEY_ALIAS_KEY -> builder.put(name, rebound.dpopKeyAlias)
+            REFRESH_TOKEN_KEY -> builder.put(name, rebound.refreshToken)
+            else -> builder.put(key, value)
+        }
+    }
+    return ByteString(Cbor.encode(builder.end().build()))
+}
