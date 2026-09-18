@@ -108,8 +108,16 @@ internal class IosRemotePresentationCoordinator(
      *
      * 🚨 The presenter and this coordinator are `@Single` — three screens are views onto one exchange —
      * so a screen tearing down would otherwise cancel whatever is current rather than what it owned.
-     * Android has no such hazard: its controller lives in a per-presentation Koin scope, so
-     * `onCleared()` can only reach its own. Here the identity has to be explicit.
+     *
+     * ⚠️ **Android shares its instance in the same way**, and an earlier version of this note claimed
+     * otherwise. `getOrCreateKoinScope<WalletPresentationScope>(presentationScopeId)` is keyed by a
+     * *constant* — `"vp_presentation_scope_id"` — so a second presentation gets the same controller
+     * there too. What Android lacks is the second ingredient: its `stopPresentation()` is
+     * `coroutineScope.cancel()` and sends nothing, so a stale teardown is merely wasteful. Ours
+     * completes the pending consent with null, multipaz raises `PresentmentCanceledException`, and the
+     * rejection path posts `access_denied` — so the same stale teardown told a verifier the user had
+     * refused a request they were never shown. Measured on an emulator 2026-09-18: the newcomer
+     * survived on Android and completed, with no `access_denied` on either transaction.
      */
     var exchangeId: Long = 0
         private set
