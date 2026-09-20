@@ -273,7 +273,8 @@ internal class OpenID4VciCompatibilityEngine(
 
         return when {
             isWellKnown(data) -> rememberEndpoints(data, response)
-            isPushedAuthorizationRequest(data) -> injectFreshAttestationChallenge(response)
+            isPushedAuthorizationRequest(data) ->
+                injectFreshAttestationChallenge(acceptCreatedOrOk(response))
             isRefreshExchange && response.statusCode != HttpStatusCode.OK ->
                 noteAndMaybeArm(response)
 
@@ -510,6 +511,47 @@ internal class OpenID4VciCompatibilityEngine(
     }
 
     /**
+     * Reports a successful pushed authorization request as `201`, whatever the server called it.
+     *
+     * 🩹 **Working around multipaz.** `performPushedAuthorizationRequest` accepts exactly one status:
+     *
+     * ```kotlin
+     * if (response.status == HttpStatusCode.Created) { break }
+     * …
+     * throw IllegalStateException("Error establishing authenticated channel with issuer")
+     * ```
+     *
+     * RFC 9126 does say 201, so multipaz is not wrong — but an authorization server answering `200 OK`
+     * with a valid `request_uri` is answering successfully, and issuance then fails with a message that
+     * names neither the status nor the server. Observed against a live EU authorization server, which
+     * returns `200 {"expires_in": 3600, "request_uri": "urn:uuid:…"}`.
+     *
+     * ⛔ **Only a body that actually carries `request_uri` is rewritten.** A `200` without one is not a
+     * successful PAR, and turning it into a `201` would convert a real failure into a confusing one
+     * further along — the opposite of what this shim is for.
+     */
+    private suspend fun acceptCreatedOrOk(response: HttpResponseData): HttpResponseData {
+        if (response.statusCode != HttpStatusCode.OK) return response
+
+        val (bytes, replayable) = replayableBody(response)
+        val hasRequestUri = runCatching {
+            Json.parseToJsonElement(bytes.decodeToString())
+                .jsonObject["request_uri"]?.jsonPrimitive?.contentOrNull
+        }.getOrNull() != null
+        if (!hasRequestUri) return replayable
+
+        Logger.i(TAG, "the authorization server answered PAR with 200; reporting it as 201")
+        return HttpResponseData(
+            statusCode = HttpStatusCode.Created,
+            requestTime = replayable.requestTime,
+            headers = replayable.headers,
+            version = replayable.version,
+            body = replayable.body,
+            callContext = replayable.callContext,
+        )
+    }
+
+    /**
      * Records why a refresh was refused, and arms the retry if the refusal is one a retry can fix.
      *
      * Both halves need the body, and a response body can be read once, so they share one read. Only a
@@ -714,11 +756,24 @@ internal class OpenID4VciCompatibilityEngine(
     }
 
     /**
-     * Rejects signed metadata whose signer the EU trust lists say is **not** a PID provider.
+     * Rejects signed metadata whose signer the EU trust lists do **not** recognise.
      *
      * Android's equivalent is
      * `configureIssuerTrust { policy { default(ENFORCE) }; requireSignedMetadata() }`, so a definite
      * "not trusted" is a hard failure here too.
+     *
+     * ⛔ **The context is `WalletRelyingPartyAccessCertificate`, not `PID`** — metadata signing
+     * certificates belong to the WRPAC list; the PID list is for the certificates that sign PID
+     * *credentials*. wallet-core says the same in code and in words: `EtsiCertificateChainTrust`
+     * passes `WalletRelyingPartyAccessCertificate`, "which is the correct context for metadata signing
+     * certificates per the EUDI specification".
+     *
+     * 🪤 This was `VerificationContext.PID` until 2026-09-18, which is a real difference and not a
+     * naming detail: the PID context carries `pidSigningCertificateProfile()`, whose
+     * `mandatoryQcType(ID_ETSI_QCT_PID)` rejects these certificates for having no `qcStatements` at
+     * all. The WRPAC profile asks for QC statements only under the QCP policies, and the EU dev
+     * issuers' metadata signers carry `0.4.0.194118.1.2` (NCP-l-eudiwrp, non-qualified), which is
+     * exempt. So the wrong context is what made the end-entity profiles look unusable here.
      *
      * ⚠️ **An *undetermined* verdict is allowed through, and that is a deliberate divergence.** The
      * check cannot tell "this issuer is not on the list" from "the list was unreachable", and treating
@@ -740,12 +795,12 @@ internal class OpenID4VciCompatibilityEngine(
             Logger.w(TAG, "signed metadata for $issuer carries no x5c; cannot check its signer")
             return
         }
-        when (trust.verdict(chain, VerificationContext.PID)) {
+        when (trust.verdict(chain, VerificationContext.WalletRelyingPartyAccessCertificate)) {
             TrustVerdict.TRUSTED ->
-                Logger.i(TAG, "the signer of $issuer's metadata is a trusted PID provider")
+                Logger.i(TAG, "the signer of $issuer's metadata is on the EU access-certificate list")
 
             TrustVerdict.NOT_TRUSTED -> throw IllegalStateException(
-                "the signer of $issuer's signed metadata is not a trusted PID provider"
+                "the signer of $issuer's signed metadata is not a recognised access certificate"
             )
 
             TrustVerdict.UNDETERMINED -> Logger.w(

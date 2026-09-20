@@ -105,4 +105,16 @@ data class PlatformDocumentDetails(
     val isExpired: Boolean,
     /** Null when the credential counter is switched off by preference. */
     val credentialsInfo: DocumentCredentialsInfoUi?,
+    /**
+     * True for a document the issuer has not delivered yet — a deferred issuance parked awaiting
+     * collection. It still has a name and metadata, which is why it can be read at all, but no
+     * credentials.
+     *
+     * 📌 Android never reports it. There, a deferred document is a `DeferredDocument` rather than an
+     * `IssuedDocument`, so its bridge returns null and the document silently vanishes from anything
+     * built out of document details. iOS keeps parked documents readable on purpose — that is what
+     * shows them as Pending in the list and lets the details screen open them — so it needs to say so
+     * instead, and callers that only want delivered documents check this.
+     */
+    val isPendingIssuance: Boolean = false,
 )

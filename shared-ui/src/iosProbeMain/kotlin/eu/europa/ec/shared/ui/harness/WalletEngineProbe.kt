@@ -44,6 +44,7 @@ import eu.europa.ec.commonfeature.interactor.QrScanInteractor
 import eu.europa.ec.authenticationlogic.storage.IosBiometricGate
 import eu.europa.ec.authenticationlogic.storage.IosBiometricOutcome
 import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
+import eu.europa.ec.shared.wallet.multipaz.probeDpopRebinding
 import eu.europa.ec.shared.wallet.trust.probeLoteTrustLists
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.shared.resources.StringCatalog
@@ -366,6 +367,9 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
             probeReIssuance(onResult)
             probeBackgroundReIssuance(onResult)
             probeIssuance(onResult)
+            // ⛔ AFTER issuance, and it has to be: a refresh token lives about 1800s, so the
+            // re-binding question can only be asked of one that was just minted.
+            probeDpopRebinding(onResult)
             probeCredentialOffer(onResult)
             probeDcApi(onResult)
 

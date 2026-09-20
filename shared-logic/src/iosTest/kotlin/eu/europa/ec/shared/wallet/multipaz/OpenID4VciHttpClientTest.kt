@@ -108,7 +108,7 @@ class OpenID4VciHttpClientTest {
 
         val failure = assertFailsWith<IllegalStateException> { client.get(metadataUrl) }
         assertTrue(
-            "not a trusted PID provider" in failure.message.orEmpty(),
+            "not a recognised access certificate" in failure.message.orEmpty(),
             "unexpected: ${failure.message}",
         )
     }
@@ -157,7 +157,12 @@ class OpenID4VciHttpClientTest {
 
         assertEquals(metadata, client.get(metadataUrl).readRawBytes().decodeToString())
         assertEquals(2, seenChainSize)
-        assertEquals(VerificationContext.PID, seenContext)
+        // ⛔ WRPAC, not PID. Metadata signing certificates are access certificates; the PID list is for
+        // the certificates that sign PID *credentials*. wallet-core's `EtsiCertificateChainTrust` uses
+        // the same context and calls it "the correct context for metadata signing certificates per the
+        // EUDI specification". Getting this wrong applies `pidSigningCertificateProfile()`, whose
+        // `mandatoryQcType` rejects every EU dev metadata signer for carrying no `qcStatements`.
+        assertEquals(VerificationContext.WalletRelyingPartyAccessCertificate, seenContext)
     }
 
     @Test
@@ -789,5 +794,53 @@ class OpenID4VciHttpClientTest {
             HttpStatusCode.NotFound,
             client.get("https://examplestate.com/public/cor.png").status,
         )
+    }
+
+    /** Serves both metadata documents, and answers the PAR endpoint `200` with [body]. */
+    private fun parAnswering(body: String) = MockEngine { request ->
+        val json = headersOf("Content-Type", "application/json")
+        when (request.url.toString()) {
+            issuerMetadataUrl -> respond(issuerMetadata, headers = json)
+            asMetadataUrl -> respond(asMetadata, headers = json)
+            challengeEndpoint -> respond("""{"attestation_challenge":"c"}""", headers = json)
+            else -> respond(body, HttpStatusCode.OK, json)
+        }
+    }
+
+    // ---- a PAR answered 200 instead of 201 -----------------------------------------------------
+
+    @Test
+    fun a_successful_par_answered_200_is_reported_as_201() = runTest {
+        // 🩹 multipaz's PAR loop breaks only on 201 and throws
+        // "Error establishing authenticated channel with issuer" on anything else. A live EU
+        // authorization server answers 200 with a valid `request_uri`, which is a success.
+        val client = openID4VciHttpClient(parAnswering("""{"expires_in":3600,"request_uri":"urn:req:1"}"""))
+        client.get(issuerMetadataUrl).readRawBytes()
+        client.get(asMetadataUrl).readRawBytes()
+
+        val response = client.submitForm(
+            url = parEndpoint,
+            formParameters = parametersOf("scope" to listOf("pid_scope")),
+        )
+
+        assertEquals(HttpStatusCode.Created, response.status)
+        // The body must survive the rewrite: multipaz reads `request_uri` out of it next.
+        assertTrue("urn:req" in response.bodyAsText())
+    }
+
+    @Test
+    fun a_200_without_a_request_uri_is_left_alone() = runTest {
+        // ⛔ Not every 200 is a successful PAR. Rewriting one that carries no `request_uri` would turn a
+        // real failure into a confusing one further along, which is the opposite of the point.
+        val client = openID4VciHttpClient(parAnswering("""{"error":"invalid_request"}"""))
+        client.get(issuerMetadataUrl).readRawBytes()
+        client.get(asMetadataUrl).readRawBytes()
+
+        val response = client.submitForm(
+            url = parEndpoint,
+            formParameters = parametersOf("scope" to listOf("pid_scope")),
+        )
+
+        assertEquals(HttpStatusCode.OK, response.status)
     }
 }

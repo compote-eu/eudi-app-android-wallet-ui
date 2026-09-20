@@ -133,6 +133,7 @@ private fun details(
     issuerName: String? = "Digital Credentials Issuer",
     issuerLogoUri: String? = "https://issuer.test/logo.png",
     claims: List<ClaimDomain> = listOf(claim("given_name", "Tester")),
+    isPendingIssuance: Boolean = false,
 ) = PlatformDocumentDetails(
     documentDetailsDomain = DocumentDetailsDomain(
         docName = name,
@@ -148,6 +149,7 @@ private fun details(
     issuerLogoUri = issuerLogoUri,
     isExpired = false,
     credentialsInfo = null,
+    isPendingIssuance = isPendingIssuance,
 )
 
 class DocumentIssuanceSuccessInteractorTest {
@@ -305,5 +307,24 @@ class DocumentIssuanceSuccessInteractorTest {
         interactor(bridge).getUiItems(listOf("doc-1", "doc-2")).first()
 
         assertEquals(1, bridge.localeRequests)
+    }
+
+    @Test
+    fun a_document_the_issuer_has_not_delivered_yet_is_left_off_the_success_screen() = runTest {
+        // A deferred issuance is parked, not issued, so it does not belong on a screen announcing that
+        // it was. ⛔ Android drops these by accident — a deferred document is not an `IssuedDocument`
+        // there, so its bridge returns null — while iOS keeps parked documents readable on purpose and
+        // reports them instead. Same screen either way, and this is the case that pins it.
+        val bridge = FakeDetailsBridge(
+            answers = mapOf(
+                "doc-1" to details("doc-1", "PID"),
+                "doc-2" to details("doc-2", "PID (later)", isPendingIssuance = true),
+            ),
+        )
+
+        val state = interactor(bridge).getUiItems(listOf("doc-1", "doc-2")).first()
+
+        val success = assertIs<DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success>(state)
+        assertEquals(listOf("doc-1"), success.documentsUi.map { it.header.itemId })
     }
 }
