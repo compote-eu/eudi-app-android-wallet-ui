@@ -31,6 +31,7 @@ import org.multipaz.eventlogger.Event
 import org.multipaz.eventlogger.EventPresentment
 import org.multipaz.eventlogger.EventProvisioning
 import org.multipaz.eventlogger.EventSimple
+import org.multipaz.eventlogger.EventVerification
 
 /**
  * One thing the wallet did, in the app's own vocabulary.
@@ -178,5 +179,10 @@ private fun Event.toTransaction(): IosTransaction? {
         )
 
         is EventSimple -> null
+
+        // 0.101.0: new verifier/reader-role event subtypes (EventVerificationDefault,
+        // EventVerificationDigitalCredentials, EventVerificationIso18013Proximity) — this wallet only
+        // ever presents, never verifies, so it never writes one of these; dropped like EventSimple.
+        is EventVerification -> null
     }
 }

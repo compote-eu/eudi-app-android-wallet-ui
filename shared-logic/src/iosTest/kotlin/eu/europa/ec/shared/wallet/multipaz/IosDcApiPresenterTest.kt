@@ -37,7 +37,7 @@ import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.Hpke
 import org.multipaz.crypto.EcCurve
 import org.multipaz.mdoc.request.DeviceRequestGenerator
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
@@ -103,9 +103,9 @@ class IosDcApiPresenterTest {
     /** Fails the test if consent is reached; every case here should end before it. */
     private val refuseToBeAsked: suspend (
         org.multipaz.request.Requester,
-        org.multipaz.trustmanagement.TrustMetadata?,
-        org.multipaz.presentment.CredentialPresentmentData,
-    ) -> org.multipaz.presentment.CredentialPresentmentSelection? = { _, _, _ ->
+        org.multipaz.request.TrustedRequesterIdentity?,
+        org.multipaz.presentment.ConsentData,
+    ) -> CredentialSelection? = { _, _, _ ->
         error("consent must not be reached for a request that cannot be answered")
     }
 
@@ -279,11 +279,11 @@ class IosDcApiPresenterTest {
     /** Everything the request matched — what a user who unchecks nothing agrees to. */
     private val acceptEverything: suspend (
         org.multipaz.request.Requester,
-        org.multipaz.trustmanagement.TrustMetadata?,
-        org.multipaz.presentment.CredentialPresentmentData,
-    ) -> CredentialPresentmentSelection? = { _, _, data ->
-        CredentialPresentmentSelection(
-            matches = data.credentialSets
+        org.multipaz.request.TrustedRequesterIdentity?,
+        org.multipaz.presentment.ConsentData,
+    ) -> CredentialSelection? = { _, _, data ->
+        CredentialSelection(
+            matches = data.credentialQueryResult.credentialSets
                 .flatMap { it.options }
                 .flatMap { it.members }
                 .mapNotNull { it.matches.firstOrNull() },
@@ -413,8 +413,8 @@ class IosDcApiPresenterTest {
             data = request.json,
             origin = verifierOrigin,
             onConsent = { _, _, data ->
-                CredentialPresentmentSelection(
-                    matches = data.credentialSets
+                CredentialSelection(
+                    matches = data.credentialQueryResult.credentialSets
                         .flatMap { it.options }
                         .flatMap { it.members }
                         .mapNotNull { member ->

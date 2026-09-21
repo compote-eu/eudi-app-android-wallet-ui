@@ -19,13 +19,13 @@ package eu.europa.ec.shared.wallet.multipaz
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import kotlinx.coroutines.CancellationException
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.ConsentData
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.presentment.digitalCredentialsPresentment
 import org.multipaz.request.Requester
-import org.multipaz.trustmanagement.TrustMetadata
+import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.util.Logger
 
 /**
@@ -120,9 +120,9 @@ internal class IosDcApiPresenter(
         appId: String? = null,
         onConsent: suspend (
             requester: Requester,
-            trustMetadata: TrustMetadata?,
-            data: CredentialPresentmentData,
-        ) -> CredentialPresentmentSelection?,
+            trustedRequesterIdentity: TrustedRequesterIdentity?,
+            data: ConsentData,
+        ) -> CredentialSelection?,
     ): IosDcApiOutcome {
         var shared: List<String> = emptyList()
 
@@ -135,8 +135,8 @@ internal class IosDcApiPresenter(
                 // Empty: iOS's picker preselects nothing that reaches us here. Android's Credential
                 // Manager can, which is why the parameter exists at all.
                 preselectedDocuments = emptyList(),
-                source = presentmentSource { requester, trustMetadata, presentmentData ->
-                    onConsent(requester, trustMetadata, presentmentData)?.also { selection ->
+                source = presentmentSource { requester, trustedRequesterIdentity, presentmentData ->
+                    onConsent(requester, trustedRequesterIdentity, presentmentData)?.also { selection ->
                         shared = selection.matches
                             .map { it.credential.document.displayName ?: it.credential.document.identifier }
                             .distinct()
@@ -174,9 +174,9 @@ internal class IosDcApiPresenter(
     private suspend fun presentmentSource(
         showConsent: suspend (
             requester: Requester,
-            trustMetadata: TrustMetadata?,
-            data: CredentialPresentmentData,
-        ) -> CredentialPresentmentSelection?,
+            trustedRequesterIdentity: TrustedRequesterIdentity?,
+            data: ConsentData,
+        ) -> CredentialSelection?,
     ) = walletPresentmentSource(
         store = store,
         credentialDomain = credentialDomain,

@@ -39,6 +39,7 @@ import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
+import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.engagement.EngagementGenerator
 import org.multipaz.mdoc.nfc.MdocNfcEngagementHelper
 import org.multipaz.mdoc.transport.MdocTransport
@@ -48,13 +49,15 @@ import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.mdoc.transport.NfcTransportMdoc
 import org.multipaz.mdoc.transport.advertise
 import org.multipaz.mdoc.transport.waitForConnection
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.ConsentData
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.Iso18013Presentment
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
+import org.multipaz.presentment.SimplePresentmentSource
 import org.multipaz.request.Requester
-import org.multipaz.trustmanagement.TrustMetadata
+import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
 import org.multipaz.util.toBase64Url
@@ -193,10 +196,10 @@ class IosProximityPresenter internal constructor(
 
     private var presentmentJob: Job? = null
     private var transport: MdocTransport? = null
-    private var pendingConsent: CompletableDeferred<CredentialPresentmentSelection?>? = null
+    private var pendingConsent: CompletableDeferred<CredentialSelection?>? = null
 
     /** The request being consented to, kept so [accept] can turn the app's answer back into matches. */
-    private var pendingData: CredentialPresentmentData? = null
+    private var pendingData: CredentialQueryResult? = null
 
     /** What the user agreed to share, remembered so the success state can name it. */
     private var sharedDocuments: List<String> = emptyList()
@@ -614,35 +617,93 @@ class IosProximityPresenter internal constructor(
             when (t) {
                 is PresentmentCanceledException -> {
                     // The user declined. Nothing was shared and nothing went wrong.
+                    Logger.i(TAG, "runPresentment: PresentmentCanceledException — consent was reached, user declined")
                     mutableState.value = IosProximityState.Idle
                 }
 
                 is PresentmentCannotSatisfyRequestException -> {
+                    // Diagnostic for the BLE-vs-cold-tap investigation: this fires from inside
+                    // mdocPresentment, BEFORE showConsentPrompt is ever called — so seeing this line
+                    // without a preceding "awaitConsent: entered" means matching failed, not consent.
+                    // `t.message` is always the same generic wrapper ("Error satisfying the request");
+                    // `t.cause?.message` is the real Iso18015ResponseException underneath it, which
+                    // names the actual reason (e.g. "No matching credentials for first DocRequest").
+                    Logger.w(
+                        TAG,
+                        "runPresentment: PresentmentCannotSatisfyRequestException (auto-reject, " +
+                            "consent never reached) — cause=${t.cause?.let { it::class.simpleName }}: " +
+                            "${t.cause?.message}",
+                    )
                     mutableState.value = IosProximityState.Failed(
                         message = "This wallet holds nothing the reader asked for."
                     )
                 }
 
-                else -> fail(t)
+                else -> {
+                    Logger.w(TAG, "runPresentment: unhandled ${t::class.simpleName} — ${t.message}")
+                    fail(t)
+                }
             }
         }
     }
 
     /** See [walletPresentmentSource], which holds every decision this shares with the other paths. */
-    private suspend fun presentmentSource() = walletPresentmentSource(
-        store = walletEngine.store(),
-        credentialDomain = credentialDomain,
-        readerTrust = readerTrust,
-        // ISO 18013-5 has no SD-JWT, so there is nothing to offer.
-        offersSdJwt = false,
-        showConsent = { requester, trustMetadata, data ->
-            awaitConsent(
-                requester = requester,
-                trustMetadata = trustMetadata,
-                data = data,
-            )
-        },
-    )
+    private suspend fun presentmentSource(): SimplePresentmentSource {
+        val store = walletEngine.store()
+        // Diagnostic for the "No matching credentials for first DocRequest" investigation: this is
+        // the exact store instance findMatchesForDocRequest will run getCertifiedCredentials() against
+        // for this presentment attempt — logged here, not in a separate registrableDocuments() call,
+        // so it can be compared directly against that function's own log line for the same moment
+        // rather than inferred from two time-shifted ones.
+        logDocumentStoreState(store)
+        return walletPresentmentSource(
+            store = store,
+            credentialDomain = credentialDomain,
+            readerTrust = readerTrust,
+            // ISO 18013-5 has no SD-JWT, so there is nothing to offer.
+            offersSdJwt = false,
+            showConsent = { requester, trustedRequesterIdentity, data ->
+                awaitConsent(
+                    requester = requester,
+                    trustedRequesterIdentity = trustedRequesterIdentity,
+                    data = data,
+                )
+            },
+        )
+    }
+
+    private suspend fun logDocumentStoreState(store: MultipazWalletStore) {
+        val documentIds = store.documentStore.listDocumentIds()
+        Logger.i(TAG, "presentmentSource: documentStore has ${documentIds.size} document(s): $documentIds")
+        for (id in documentIds) {
+            val document = store.documentStore.lookupDocument(id) ?: continue
+            val credentials = document.getCredentials()
+            val summary = credentials.joinToString {
+                val docType = (it as? MdocCredential)?.docType ?: "n/a"
+                "${it::class.simpleName}(domain=${it.domain}, docType=$docType, " +
+                    "isCertified=${it.isCertified}, usageCount=${it.usageCount})"
+            }
+            Logger.i(TAG, "  document $id: ${credentials.size} credential(s): $summary")
+
+            // Diagnostic for the namespace/claim-name mismatch hypothesis: findBestMatchingClaims
+            // rejects a candidate credential if ANY requested (namespace, dataElement) pair can't be
+            // found via claimsInCredential.findMatchingClaim(...) — a same-docType-different-namespace
+            // credential would fail matching with the exact same "No matching credentials" message the
+            // candidate-search failure does, even though the docType check above already passed.
+            // documentTypeRepository is null here on purpose: it only affects each claim's displayName,
+            // never its namespaceName/dataElementName, which come straight off the stored issuerSigned
+            // CBOR regardless.
+            val firstMdoc = credentials.filterIsInstance<MdocCredential>().firstOrNull()
+            if (firstMdoc != null) {
+                val claims = firstMdoc.getClaims(documentTypeRepository = null)
+                Logger.i(
+                    TAG,
+                    "  document $id: first MdocCredential's own claims (${claims.size}): " +
+                        claims.joinToString { "${it.namespaceName}/${it.dataElementName}" },
+                )
+            }
+        }
+    }
 
     /**
      * Publishes the request and suspends until a screen answers.
@@ -652,20 +713,35 @@ class IosProximityPresenter internal constructor(
      */
     private suspend fun awaitConsent(
         requester: Requester,
-        trustMetadata: TrustMetadata?,
-        data: CredentialPresentmentData,
-    ): CredentialPresentmentSelection? {
-        val consent = CompletableDeferred<CredentialPresentmentSelection?>()
+        trustedRequesterIdentity: TrustedRequesterIdentity?,
+        data: ConsentData,
+    ): CredentialSelection? {
+        // Diagnostic for the BLE-vs-cold-tap investigation: this is the one function multipaz calls to
+        // ask the user, for both transports — this line firing at all proves showConsentPromptFn (and
+        // therefore the shared wiring) was reached, regardless of which transport requested it.
+        Logger.i(TAG, "awaitConsent: entered, requester=${requester.appId}")
+        val consent = CompletableDeferred<CredentialSelection?>()
         pendingConsent = consent
-        pendingData = data
-        mutableState.value = IosProximityState.Requesting(
-            request = data.toPresentmentRequest(
-                // A name without trust behind it is still worth showing — but only the trust decision
-                // marks it verified, and over BLE there is usually neither.
-                requesterName = trustMetadata?.displayName ?: requester.appId,
-                requesterIsTrusted = trustMetadata != null,
-            ),
+        // 0.101.0: the consent callback now hands over ConsentData, a wrapper one layer above the old
+        // CredentialPresentmentData — .credentialQueryResult is the direct equivalent (same shape
+        // multipaz's own promptModelSilentConsent reaches through), so everything below is unchanged.
+        pendingData = data.credentialQueryResult
+        val request = data.credentialQueryResult.toPresentmentRequest(
+            // A name without trust behind it is still worth showing — but only the trust decision
+            // marks it verified, and over BLE there is usually neither.
+            requesterName = trustedRequesterIdentity?.trustMetadata?.displayName ?: requester.appId,
+            requesterIsTrusted = trustedRequesterIdentity != null,
         )
+        val claimCount = request.combinations.sumOf { combination ->
+            combination.documents.sumOf { it.claims.size }
+        }
+        Logger.i(
+            TAG,
+            "awaitConsent: -> IosProximityState.Requesting, " +
+                "combinations=${request.combinations.size}, claims=$claimCount, " +
+                "docTypes=${request.combinations.flatMap { it.documents }.map { it.docType }.distinct()}",
+        )
+        mutableState.value = IosProximityState.Requesting(request = request)
 
         // Bounded: a reader that is handed nothing eventually times out anyway, and leaving the BLE
         // connection open forever is worse than telling it no.

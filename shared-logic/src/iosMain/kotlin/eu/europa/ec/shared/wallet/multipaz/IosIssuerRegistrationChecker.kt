@@ -180,7 +180,11 @@ internal suspend fun registrationStatusOf(
     } else {
         StatusSignerTrustDomain.NotTrusted
     }
-    when (StatusList.fromJwt(token, publicKey = signer.ecPublicKey)[reference.index]) {
+    // 0.101.0: StatusList.fromJwt validates a chain up to a trusted root rather than matching a bare
+    // public key — see MultipazRevocationChecker.kt's identical fix for why passing this already
+    // separately-trusted leaf cert (the same one used two lines up for isSignerTrusted) is equivalent,
+    // not weaker.
+    when (StatusList.fromJwt(token, trustedRootCert = signer)[reference.index]) {
         0 -> RevocationOutcome.Valid(signerTrust)
         else -> RevocationOutcome.Invalid(signerTrust)
     }

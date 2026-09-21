@@ -241,7 +241,10 @@ internal class IosEtsiTrust(
      * opens, it simply does not vouch for who is asking.
      */
     override suspend fun trustMetadataFor(requester: Requester): TrustMetadata? {
-        val chain = requester.certChain?.certificates.toTrustChain()
+        // 0.101.0: Requester.certChain (single, optional) became requester.requesterIdentities (each
+        // with its own certChain) — ISO 18013-5/OpenID4VP requests normally carry exactly one, so the
+        // first is the direct equivalent of the old single field.
+        val chain = requester.requesterIdentities.firstOrNull()?.certChain?.certificates.toTrustChain()
 
         if (chain.isEmpty()) {
             // A URI-scheme presentation can arrive with no chain at all; "unknown" is the honest

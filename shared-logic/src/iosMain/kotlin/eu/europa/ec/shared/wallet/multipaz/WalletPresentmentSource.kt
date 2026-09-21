@@ -18,11 +18,11 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.ConsentData
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.SimplePresentmentSource
 import org.multipaz.request.Requester
-import org.multipaz.trustmanagement.TrustMetadata
+import org.multipaz.request.TrustedRequesterIdentity
 
 /**
  * The wallet's answer to *"what may be presented, does the user agree, and who is asking"* — one
@@ -66,9 +66,9 @@ internal suspend fun walletPresentmentSource(
     offersSdJwt: Boolean,
     showConsent: suspend (
         requester: Requester,
-        trustMetadata: TrustMetadata?,
-        data: CredentialPresentmentData,
-    ) -> CredentialPresentmentSelection?,
+        trustedRequesterIdentity: TrustedRequesterIdentity?,
+        data: ConsentData,
+    ) -> CredentialSelection?,
 ): SimplePresentmentSource = SimplePresentmentSource(
     documentStore = store.documentStore,
     documentTypeRepository = documentTypeRepository,
@@ -77,11 +77,26 @@ internal suspend fun walletPresentmentSource(
     eventLogger = store.eventLogger(),
     // Reader trust, matching Android's `readerAuthPolicy(EnforceIfPresent)`. multipaz's default is
     // `{ null }`, which reads as "not trusted" for every verifier that ever asks.
-    resolveTrustFn = { requester -> readerTrust?.trustMetadataFor(requester) },
+    //
+    // 0.101.0: resolveTrustFn now returns TrustedRequesterIdentity (trustMetadata + a RequesterIdentity),
+    // not bare TrustMetadata — ReaderTrustSource itself still only carries TrustMetadata (it never
+    // threaded the cert chain into its return value; see IosEtsiTrust.kt), so the identity has to come
+    // from requester.requesterIdentities separately. `firstOrNull()` is safe, not arbitrary:
+    // IosEtsiTrust.trustMetadataFor only returns non-null when a chain was present, which means
+    // requesterIdentities is non-empty whenever this branch is reached. Nothing downstream reads
+    // `.identity` — the consent UI only reads `.trustMetadata.displayName` — so this changes no data
+    // shown to the user, only what's needed to satisfy the new wrapper type.
+    resolveTrustFn = { requester ->
+        readerTrust?.trustMetadataFor(requester)?.let { trustMetadata ->
+            requester.requesterIdentities.firstOrNull()?.let { identity ->
+                TrustedRequesterIdentity(identity = identity, trustMetadata = trustMetadata)
+            }
+        }
+    },
     domainsMdocSignature = listOf(credentialDomain),
     domainsKeyBoundSdJwt = if (offersSdJwt) listOf(credentialDomain) else emptyList(),
-    showConsentPromptFn = { requester, trustMetadata, data, _, _ ->
-        showConsent(requester, trustMetadata, data)
+    showConsentPromptFn = { requester, trustedRequesterIdentity, data, _, _ ->
+        showConsent(requester, trustedRequesterIdentity, data)
     },
 )
 

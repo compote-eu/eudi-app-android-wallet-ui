@@ -19,7 +19,7 @@
 //
 // This started as the proximity presenter's private half. It is shared now because remote
 // presentation needs exactly the same translation: multipaz reduces both ISO 18013-5 and OpenID4VP to
-// the *same* `CredentialPresentmentData` before asking for consent, so a consent step written against
+// the *same* `CredentialQueryResult` before asking for consent, so a consent step written against
 // that data is protocol-neutral for free. Duplicating it per protocol would have meant two copies of
 // the cross product and two copies of the claim round trip — and a claim whose ref no longer matches
 // its path is a claim the user ticks and the wallet never sends.
@@ -35,8 +35,8 @@ import kotlinx.serialization.json.intOrNull
 import org.multipaz.claim.Claim
 import org.multipaz.claim.MdocClaim
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.CredentialPresentmentSetOption
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.request.JsonRequestedClaim
@@ -120,7 +120,7 @@ data class IosPresentmentDisclosure(
 // about presentment gets tested on this platform.
 
 /** multipaz's view of a request, as a consent screen needs to see it. */
-internal fun CredentialPresentmentData.toPresentmentRequest(
+internal fun CredentialQueryResult.toPresentmentRequest(
     requesterName: String?,
     requesterIsTrusted: Boolean,
     relyingPartyRegistration: RelyingPartyRegistrationOutcome =
@@ -141,9 +141,9 @@ internal fun CredentialPresentmentData.toPresentmentRequest(
  * disclosure real rather than cosmetic. A credential nobody chose, or one whose every claim was
  * unchecked, is left out entirely.
  */
-internal fun CredentialPresentmentData.toSelection(
+internal fun CredentialQueryResult.toSelection(
     disclosures: List<IosPresentmentDisclosure>,
-): CredentialPresentmentSelection {
+): CredentialSelection {
     val wanted = disclosures.associateBy { it.documentId to it.credentialId }
 
     val matches = combinationsOfMatches().flatten()
@@ -159,7 +159,7 @@ internal fun CredentialPresentmentData.toSelection(
             if (keptClaims.isEmpty()) null else match.copy(claims = keptClaims)
         }
 
-    return CredentialPresentmentSelection(matches = matches)
+    return CredentialSelection(matches = matches)
 }
 
 private fun MemberMatch.toRequestedDocument(): IosPresentmentRequest.RequestedDocument {
@@ -206,7 +206,7 @@ internal fun Claim.readableValue(): String =
  * in the wallet make two, which is the case worth getting right, because picking one for the user
  * would silently share the wrong document.
  */
-private fun CredentialPresentmentData.combinationsOfMatches(): List<List<MemberMatch>> {
+private fun CredentialQueryResult.combinationsOfMatches(): List<List<MemberMatch>> {
     var combinations = listOf(emptyList<MemberMatch>())
 
     for (credentialSet in credentialSets) {

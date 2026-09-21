@@ -1335,3 +1335,182 @@ By this point every piece of the cold-tap path has been individually confirmed w
 `NFCPresentmentIntentAssertion` acquisition, `CardSession` construction/start, handover completion, and
 now the trailing-read/repeat-select distinction immediately after it. Ready for another real-device
 test — this should be the last fix before a fully successful end-to-end tap.
+
+### Fifth finding: iOS's own "Hold Near Reader" system modal sits over this app's consent screen during cold-tap — a transparency stopgap was tried and reverted; the real fix is an upstream Multipaz version bump
+
+**The problem, confirmed real via real-device testing, not a wallet bug.** During cold-tap, once a
+`DeviceRequest` arrives and `awaitConsent` publishes `IosProximityState.Requesting`, CoreNFC's own
+"Hold Near Reader" system modal (driven by the active `CardSession`, not this app) stays on top of this
+app's own consent screen — the user cannot see or reach accept/decline underneath it. Confirmed against
+Apple's own documentation (`CardSession` DocC page): "emulation triggers the system modal UI to display
+over the app," with a customizable `alertMessage: String` property but no documented way to dismiss or
+hide the modal short of ending the session (`stopEmulation(status:)`/`invalidate()`), which this app
+obviously can't do mid-consent without abandoning the exchange.
+
+**Two-tap-same-session feasibility, re-verified from the pinned `0.99.0` sources jar directly (not the
+earlier extraction, and not carried forward from an earlier restated summary):**
+
+```kotlin
+class SessionEncryption(
+    val role: MdocRole,
+    private val eSelfKey: EcPrivateKey,
+    private val remotePublicKey: EcPublicKey,
+    private val encodedSessionTranscript: ByteArray,
+)
+```
+
+`org.multipaz.mdoc.sessionencryption.SessionEncryption`, pinned `0.99.0` sources, lines 48-53. No
+transport reference in the constructor — it's keyed purely on the ECDH pair and the session transcript.
+This supports **transport-agnostic**, which is as far as this was ever actually verified — not
+"cryptographically impossible," a characterization that surfaced in this conversation but was never
+the finding and doesn't match what's in the source. Whether a second NFC tap can resume the *same*
+session in practice depends on whether `Iso18013Presentment`/the engagement helpers keep that
+`SessionEncryption` instance alive across a transport handoff — not traced here, and not a crypto-layer
+blocker either way.
+
+**GitHub search against `openwallet-foundation/multipaz`'s own issues/PRs — one real, on-topic result,
+and an honest "nothing found" for the rest.** Issue #1875 ("NFCv2: Support double taps for NFC-only
+readers", closed) describes exactly the two-tap pattern this section is about, tied explicitly to ISO
+18013-5 Second Edition's NFCv2 recommendation; its implementing PR #1876 ("Nfcv2 multiple taps") merged
+`2026-08-06T18:21:42Z`. **Confirmed via GitHub's compare API (commit ancestry, not date comparison) that
+this is NOT in the pinned `0.99.0` artifact**: the `0.99.0` tag's target commit (`7486ddb...`) is an
+ancestor of PR #1876's merge commit (`acd6bcb...`), 94 commits earlier — so NFCv2 double-tap support
+would require bumping the Multipaz dependency, not just app-side changes. Beyond that one issue, a
+broad search (`CardSession consent`, `CardSession UI`, `"Hold Near Reader"`, `iOS HCE consent`,
+`alertMessage`, `iOS system modal`, `CardSession`, `HCE emulation dialog`, `consent screen iOS`,
+`two-tap`, `double tap`) turned up nothing else on-topic: issue #1494 ("iOS NFC Double Engagement Bug")
+is a different bug (a second NFC tag-detection race during an in-progress BLE transfer, not a consent-UI
+problem); issue #368 ("Tag was lost... static Handover") is an Android reader-app bug about two holder
+apps on one device. **No established Multipaz-community pattern exists for the iOS
+`CardSession`-obscures-consent problem** — this is unresolved territory for the library, not a
+known/solved issue elsewhere.
+
+**A `CardSession.alertMessage` transparency stopgap was tried, then reverted — tracked here for the
+record, not because it's in the tree.** `alertMessage` — the same read-only text property Apple
+documents for `NFCTagReaderSession` and exposes identically on `CardSession` — was briefly wired end to
+end (`NfcHceBridge.swift`/`NfcHceBridge.def`/`IosNfcHceTransport.kt`/`IosProximityPresenter.kt`) to show
+a one-line summary of the requested claims (e.g. "Sharing: family_name, given_name") from `awaitConsent`
+right before publishing `IosProximityState.Requesting`. Confirmed via a real-device log that the call
+was genuinely reached with the correct string (`setAlertMessage: bridge=present, message=Sharing:
+family_name, given_name`) — but whether the text actually rendered on the system sheet was never
+determined; that check was still in progress when the decision was made to abandon this direction.
+**The deciding factor either way**: `alertMessage` is read-only text with no button or callback of its
+own — it cannot collect a decision, only display a line, and can never let the user decline through it.
+Even a confirmed-working version would still leave the actual problem (the user can't reach
+accept/decline underneath the modal) unsolved, so it was reverted rather than carried as a permanent
+stopgap. `git diff` confirmed the revert restored `NfcHceBridge.swift`, `NfcHceBridge.def`, and
+`IosNfcHceTransport.kt` to byte-identical `HEAD`, and removed only the `alertMessage`-specific additions
+from `IosProximityPresenter.kt`, leaving this section's earlier diagnostic logging (`awaitConsent:
+entered`, `PresentmentCannotSatisfyRequestException` cause-unwrapping, `logDocumentStoreState`) intact.
+
+**The real fix under consideration: upgrade the pinned Multipaz dependency from `0.99.0` to `0.101.0`.**
+Verified directly against GitHub's release for that tag (published `2026-09-10T19:15:49Z`) — this is a
+real, verbatim release note, not a paraphrase:
+
+> **Presentment lifecycle and multi-tap NFCv2**: Factored presentment into three discrete phases
+> (consent, authentication/key unlocking, response generation) with `SecureArea.unlockKey()` and
+> `PreloadedKeyUnlockDataProvider` to support pre-unlocking keys before tapping. Added wallet-side and
+> reader-side support for NFCv2 multi-tap presentment and continuous scanning on NFC-only engagements.
+
+This is exactly the upstream-supported shape this section has been looking for: consent as its own
+phase, decoupled from the tap/key-unlock step, is what would let this app show and resolve its own
+consent screen *before* `CardSession` ever needs to be active for that tap — closing the "Hold Near
+Reader"-obscures-consent problem structurally instead of working around it. This also supersedes the
+earlier NFCv2 double-tap finding above (PR #1876, confirmed absent from `0.99.0`): `0.101.0` is a later
+release than that PR merged into, so it very likely (not yet independently re-confirmed for `0.101.0`
+specifically) includes it.
+
+**Decision: pursue the `0.99.0` → `0.101.0` bump as the real fix, in place of the reverted stopgap.**
+`gradle/libs.versions.toml` is now pinned to `0.101.0` and staying there — this is a deliberate,
+in-progress migration, not an accident to revert. Confirmed via a full `:shared-logic:compileAndroidMain`
+run that this is a real, coherent API migration, not scattered breakage: every current compile failure
+(12 files, all under `shared-logic/src/iosMain` — zero in `commonMain`, confirmed by filtering error
+paths to their source-set prefix) traces to the same presentment-model rework described above —
+`CredentialPresentmentData`/`CredentialPresentmentSelection` no longer resolving, `TrustMetadata` renamed
+to `TrustedRequesterIdentity` (evidenced directly by an exact-match type-mismatch error in
+`WalletPresentmentSource.kt`), plus a few smaller signature changes (`SecureArea`/cert-chain parameter
+renames, a new `EventVerification` sealed subtype needing an exhaustive `when`). Android's own build
+genuinely succeeds against `0.101.0` right now (`:androidApp:assembleDevDebug`, confirmed via real
+compiler output on `:shared-logic:compileAndroidMain`/`:shared-ui:compileAndroidMain`, not just
+`BUILD SUCCESSFUL`) — expected, not reassuring: Android's build never touches `iosMain` at all, so it was
+never exposed to the changed API surface in the first place. Migrating the 12 broken files to 0.101.0's
+API is now its own separate, tracked task.
+
+**Verified for the alertMessage revert itself** (independent of the 0.101.0 migration above — the two
+are tracked separately): `git diff` confirms `NfcHceBridge.swift`, `NfcHceBridge.def`, and
+`IosNfcHceTransport.kt` are byte-identical to `HEAD` again, and a case-insensitive grep for
+`alertmessage` across all four touched files (those three plus `IosProximityPresenter.kt`) returns zero
+matches — only this section's earlier diagnostic logging remains in `IosProximityPresenter.kt`.
+`IosProximityPresenter.kt` is among the 12 files currently broken by the 0.101.0 migration, but none of
+its compile errors (lines 52-53, 198, 201, 330, 335-336, 664, 716-717, 722, 744 — all
+`CredentialPresentmentData`/`CredentialPresentmentSelection`/type-inference errors from the pre-existing
+presentment-model API) trace to anything alertMessage-related; that code no longer exists in the file.
+Full `:shared-logic:testAndroidHostTest`/`iosSimulatorArm64Test`/`detekt`/`ktlintCheck`/`xcodebuild`
+verification for `shared-logic` as a whole is deferred until the 0.101.0 migration itself completes —
+that dependency, not the alertMessage revert, is what's currently blocking a green build.
+
+### 0.101.0 migration — done
+
+All 12 production files (the ones the compile-error scan found) plus 4 test files it didn't cover
+(`WalletPresentmentSourceTest.kt`, `IosRemotePresentmentTest.kt`, `IosProximityPresentmentTest.kt`,
+`IosDcApiPresenterTest.kt` — exercising the same production API, only surfaced once tests were
+compiled) are adapted to 0.101.0's API shapes. Fixed in the planned order — mechanical trust/revocation
+files first (`IosEtsiTrust.kt`, `MultipazRevocationChecker.kt`, `IosIssuerRegistrationChecker.kt`,
+`harness/RevocationFixture.kt`), then the presentment-model files with `WalletPresentmentSource.kt` and
+`IosProximityPresenter.kt` (the two NFC-critical ones) done first among those, then the rest
+(`IosPresentmentModel.kt`, `IosRemotePresenter.kt`, `IosDcApiPresenter.kt`, `IosDocumentProviderBridge.kt`,
+`IosDocumentProvisioningHandler.kt`, `IosTransactionLog.kt`) — compile-checked incrementally after each
+file, per-error-count dropping to zero one file at a time rather than fixed all at once.
+
+**Confirmed no genuine behavior change was required for the two NFC-critical files, only shape
+adaptation**: `awaitConsent()`'s state machine (`Idle → Requesting → Sending → Sent/Failed`,
+`CompletableDeferred`/`withTimeoutOrNull` suspend pattern) is untouched — only 3 renamed types
+(`TrustMetadata?`→`TrustedRequesterIdentity?`, `CredentialPresentmentData`→`ConsentData` at the callback
+boundary, unwrapped via `.credentialQueryResult` to reach the `CredentialQueryResult` the rest of the
+translation layer already expected, `CredentialPresentmentSelection`→`CredentialSelection`) and one
+extra field hop. `Iso18013Presentment`'s call site in `IosProximityPresenter.kt` needed **zero** changes
+— 0.101.0 kept a backward-compatible overload matching this app's exact parameter names, confirmed by
+reading the actual source rather than assumed. The new three-phase presentment lifecycle and
+`engagementParams`/`NfcHybridTransportMdoc` (the NFCv2 multi-tap machinery) were deliberately **not**
+adopted — out of scope for this migration, and still the separate future redesign this section already
+flagged for the CoreNFC-system-sheet-blocks-consent problem.
+
+**One real bug found during verification, not a pre-existing assumption confirmed** — worth recording
+because it's non-obvious and could resurface if this code is touched again: `CompressedStatusList.fromJwt`'s
+`trustedRootCert` parameter cannot substitute for the old `publicKey` parameter when a status-list JWT
+carries no `x5c` of its own (this app's actual production/fixture shape — "[n]either EU dev issuer
+populates" the credential-embeds-signer field, and `harness/RevocationFixture.kt`'s tokens are signed
+anonymously, no `x5c`) — `validateJwt` only ever invokes `certificateChainValidator` when the JWT's own
+header already has one; with none, it always fails "could not check signature, no public key found"
+regardless of what's passed. A second, subtler difference surfaced fixing that first bug:  when a JWT
+*does* carry its own `x5c` and `publicKey` is also supplied, 0.101.0's `validateJwt` now verifies
+`publicKey` anchors the chain's *root* (last entry) and then signs against the chain's *leaf* (first
+entry) instead of using `publicKey` directly — 0.99.0 just used `publicKey` outright, ignoring any
+embedded chain. `MultipazRevocationChecker.kt`'s `checkStatusList` now peeks at whether the token's own
+header carries an `x5c` (mirroring the exact check `validateJwt` itself does internally) and picks
+`publicKey` or a `certificateChainValidator` comparing the chain's leaf key against the already-trusted
+signer accordingly — both paths verify the token was actually signed by the exact key/cert already
+established as trusted, neither weaker than 0.99.0's behavior. Found via `MultipazRevocationCheckerTest`
+regressions (`Expected <Valid...>, actual <Unknown(...no public key found)>`, then `...Signature
+verification failed` after the first fix), not by inspection — confirms why this migration's own scoped
+test run mattered, not just a clean compile.
+
+**Verified**: `:shared-logic:testAndroidHostTest` 115/115, `:shared-logic:iosSimulatorArm64Test` 454/454
+(both counted from the actual `TEST-*.xml` result files, not `BUILD SUCCESSFUL` alone — the tests
+genuinely ran; the two revocation-checker test classes specifically went from 8 failures to 0 across the
+two fix iterations above), `detekt`/`ktlintCheck` clean, `:androidApp:assembleDevDebug` succeeded
+(confirmed via real, non-cached `:shared-logic:compileAndroidMain`/`:shared-ui:compileAndroidMain`
+compiler output earlier in this same investigation — Android's build graph never touches `iosMain`, so
+nothing in this migration could have invalidated that result), `generateIosProject` + full `xcodebuild`
+(`EudiWallet` + `EudiWalletDocumentProvider`, real connected device) succeeded, "Compile Kotlin Framework
+(SharedKit)" confirmed to run unconditionally every build so the migrated Kotlin was genuinely compiled
+in, not stale.
+
+**Still open, unchanged by this migration**: the CoreNFC "Hold Near Reader" system-sheet-blocks-consent
+problem itself (this section's whole subject) remains unsolved. What this migration confirms is now
+concretely available for that redesign, should it be pursued: `Iso18013Presentment`'s new
+`engagementParams: StateFlow<EngagementParams>` overload and `NfcHybridTransportMdoc`'s
+`isNfcConnected`/`isNfcOnly` (traced in the investigation above this section) — plus a new
+`onDeviceRequest` callback firing before consent is requested, which is exactly the hook a redesign would
+need to proactively end `CardSession` before showing this app's own consent screen. None of that is
+implemented; adopting it is its own dedicated task, not a byproduct of this one.

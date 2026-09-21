@@ -62,7 +62,7 @@ eudiLibKmpEtsi1196x2 = "0.4.0-alpha.1"
 # the Android classpath transitively at this exact version; declared explicitly because the iOS
 # document layer reads its DocumentStore directly (there is no KMP wallet-core / document manager).
 # Keep in step with whatever eudiWalletCore resolves, or Gradle reconciles two requests on Android.
-multipaz = "0.99.0"
+multipaz = "0.101.0"
 
 # Logging
 slf4j = "2.0.19"

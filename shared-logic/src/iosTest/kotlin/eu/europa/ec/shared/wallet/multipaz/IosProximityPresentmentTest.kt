@@ -41,9 +41,9 @@ import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.mdoc.request.DeviceRequestGenerator
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
-import org.multipaz.presentment.MdocResponse
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
+import org.multipaz.presentment.Iso18013Response
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.presentment.SimplePresentmentSource
@@ -61,7 +61,7 @@ private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
 private fun ClaimPathDomain.leafName(): String = segments.last().toString()
 
 /** A stand-in for the user's answer: what the wallet may release, given what the reader matched. */
-private typealias Consent = (CredentialPresentmentData) -> CredentialPresentmentSelection?
+private typealias Consent = (CredentialQueryResult) -> CredentialSelection?
 
 class IosProximityPresentmentTest {
 
@@ -107,7 +107,7 @@ class IosProximityPresentmentTest {
 
     /** Everything the request matched, which is what a user who unchecks nothing agrees to. */
     private val acceptEverything: Consent = { data ->
-        CredentialPresentmentSelection(
+        CredentialSelection(
             matches = data.credentialSets
                 .flatMap { it.options }
                 .flatMap { it.members }
@@ -121,7 +121,7 @@ class IosProximityPresentmentTest {
         documentStore = store.documentStore,
         documentTypeRepository = DocumentTypeRepository(),
         domainsMdocSignature = listOf(store.documentManagerId),
-        showConsentPromptFn = { _, _, data, _, _ -> consent(data) },
+        showConsentPromptFn = { _, _, data, _, _ -> consent(data.credentialQueryResult) },
     )
 
     private suspend fun present(
@@ -139,11 +139,11 @@ class IosProximityPresentmentTest {
         onDocumentsInFocus = {},
     )
 
-    private fun MdocResponse.releasedClaims(): Set<String> =
+    private fun Iso18013Response.releasedClaims(): Set<String> =
         eventData.requestedDocuments.single().claims.values.map { it.displayName }.toSet()
 
     /** What the screens see, built by the same translation the presenter uses. */
-    private fun CredentialPresentmentData.asConsentView() =
+    private fun CredentialQueryResult.asConsentView() =
         toPresentmentRequest(requesterName = null, requesterIsTrusted = false)
 
     @Test
@@ -207,8 +207,8 @@ class IosProximityPresentmentTest {
             documentTypeRepository = DocumentTypeRepository(),
             domainsMdocSignature = listOf("some-other-component"),
             showConsentPromptFn = { _, _, data, _, _ ->
-                CredentialPresentmentSelection(
-                    matches = data.credentialSets.flatMap { it.options }
+                CredentialSelection(
+                    matches = data.credentialQueryResult.credentialSets.flatMap { it.options }
                         .flatMap { it.members }.mapNotNull { it.matches.firstOrNull() },
                 )
             },
@@ -289,7 +289,7 @@ class IosProximityPresentmentTest {
     @Test
     fun keeping_nothing_selects_nothing_to_send() = runTest {
         val store = walletWithPid()
-        lateinit var selection: CredentialPresentmentSelection
+        lateinit var selection: CredentialSelection
 
         assertFailsWith<PresentmentCanceledException> {
             present(

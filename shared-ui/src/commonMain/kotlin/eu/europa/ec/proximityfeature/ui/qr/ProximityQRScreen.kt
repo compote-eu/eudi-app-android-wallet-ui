@@ -153,7 +153,7 @@ private fun Content(
     paddingValues: PaddingValues,
 ) {
 
-    val qrSize = screenWidthInDp(true) / 1.4f
+    val qrSize = screenWidthInDp(true) / 1.1f
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
