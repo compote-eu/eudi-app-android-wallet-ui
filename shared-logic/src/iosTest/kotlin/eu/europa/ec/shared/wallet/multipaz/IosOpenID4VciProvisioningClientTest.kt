@@ -265,10 +265,20 @@ class IosOpenID4VciProvisioningClientTest {
             Json.parseToJsonElement(it).jsonObject["credential_configuration_id"]!!.jsonPrimitive.content
         }
         assertEquals(listOf("pid_mdoc", "loyalty_mdoc"), requested)
-        // The format fields travel with it; an issuer that gets neither answers 400.
+
+        // The configuration id is the ONLY thing that names the credential. OpenID4VCI 1.0 §8.2 defines
+        // four Credential Request parameters and `format` is not among them; `doctype`/`vct` belong to
+        // the issuer's `credential_configurations_supported` metadata, which the id already points at.
+        //
+        // ⛔ These assertions are inverted on purpose — they used to pin `format`/`doctype` as present,
+        // under a comment claiming "an issuer that gets neither answers 400". That claim was never
+        // measured: this is a MockEngine that answers 200 to anything, and the commit that introduced
+        // it (`a3c66358`) never mentions a 400. See multipaz#2027.
         val firstRequest = Json.parseToJsonElement(credentialBodies.first()).jsonObject
-        assertEquals("mso_mdoc", firstRequest["format"]!!.jsonPrimitive.content)
-        assertEquals("eu.europa.ec.eudi.pid.1", firstRequest["doctype"]!!.jsonPrimitive.content)
+        assertEquals(setOf("credential_configuration_id", "proofs"), firstRequest.keys)
+        assertNull(firstRequest["format"])
+        assertNull(firstRequest["doctype"])
+        assertNull(firstRequest["vct"])
     }
 
     @Test

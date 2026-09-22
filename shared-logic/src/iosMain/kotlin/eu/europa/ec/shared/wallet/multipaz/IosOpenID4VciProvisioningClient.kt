@@ -227,20 +227,18 @@ internal class IosVciAuthorizationSession(
         val token = accessToken ?: throw IllegalStateException("Not authorized.")
 
         val proofs = keyProofs(keyInfo)
+        // OpenID4VCI 1.0 §8.2 defines exactly four Credential Request parameters:
+        // `credential_identifier`, `credential_configuration_id`, `proofs` and
+        // `credential_response_encryption`.
+        //
+        // ⛔ Do not add `format`, `doctype` or `vct` back. They were sent here until 2026-09-22 and are
+        // NOT 1.0 parameters — the format was removed from the request, and `doctype`/`vct` belong to
+        // the issuer's `credential_configurations_supported` metadata, which the configuration id
+        // already names. A server that ignores unknown parameters accepted them, which is why this
+        // went unnoticed; a strict 1.0 issuer may refuse them.
         val request = buildJsonObject {
             put("credential_configuration_id", configurationId)
             proofs?.let { put("proofs", it) }
-            when (val format = credentialMetadata.format) {
-                is CredentialFormat.Mdoc -> {
-                    put("format", "mso_mdoc")
-                    put("doctype", format.docType)
-                }
-
-                is CredentialFormat.SdJwt -> {
-                    put("format", "dc+sd-jwt")
-                    put("vct", format.vct)
-                }
-            }
         }
 
         val response = postJson(credentialHttpClient, endpoints.credentialEndpoint, request.toString(), token)
