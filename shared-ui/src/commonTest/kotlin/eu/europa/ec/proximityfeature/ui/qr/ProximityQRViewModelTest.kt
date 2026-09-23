@@ -166,6 +166,28 @@ class ProximityQRViewModelTest {
         assertNull(state.error)
     }
 
+    // Option 4 (wiki/IOS_NFC_PLAN.md §9), iOS-only: cold-tap handover completed and the wallet is
+    // waiting for the reader's BLE connection. Emitted after QrReady, not instead of it, so this also
+    // proves Connecting genuinely re-enables the spinner QrReady had already turned off — not just that
+    // it starts out true by default.
+    @Test
+    fun a_connecting_notice_shows_the_spinner_again_after_the_qr_was_ready() = runTest(mainDispatcher) {
+        val viewModel = ProximityQRViewModel(
+            FakeProximityQRInteractor(
+                listOf(
+                    ProximityQRPartialState.QrReady(qrCode = "mdoc:engagement-payload"),
+                    ProximityQRPartialState.Connecting,
+                )
+            ),
+            config
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.viewState.value
+        assertTrue(state.isLoading)
+        assertNull(state.error)
+    }
+
     @Test
     fun an_engagement_failure_becomes_a_retryable_error() = runTest(mainDispatcher) {
         val viewModel = ProximityQRViewModel(

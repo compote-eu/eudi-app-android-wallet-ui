@@ -138,6 +138,12 @@ internal class IosProximityCoordinator(
                     is IosProximityState.Engaging ->
                         emit(ProximityQRPartialState.QrReady(qrCode = state.qrPayload))
 
+                    // Option 4 (wiki/IOS_NFC_PLAN.md §9): cold-tap handover just completed, waiting for
+                    // the reader's BLE connection — see ProximityQRPartialState.Connecting's own doc
+                    // comment for why this isn't Connected.
+                    is IosProximityState.Connecting ->
+                        emit(ProximityQRPartialState.Connecting)
+
                     is IosProximityState.Requesting ->
                         emit(ProximityQRPartialState.Connected)
 
@@ -172,6 +178,7 @@ internal class IosProximityCoordinator(
                 is IosProximityState.Idle -> ProximityRequestInteractorPartialState.Disconnect
 
                 is IosProximityState.Engaging,
+                is IosProximityState.Connecting,
                 is IosProximityState.Sending,
                 is IosProximityState.Sent,
                     -> null
@@ -236,7 +243,7 @@ internal class IosProximityCoordinator(
                         )
                     }
 
-                is IosProximityState.Engaging -> Unit
+                is IosProximityState.Engaging, is IosProximityState.Connecting -> Unit
             }
         }
     }

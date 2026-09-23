@@ -28,19 +28,35 @@ import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
+import kotlinx.cinterop.BetaInteropApi
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Simple
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcPublicKey
 import org.multipaz.util.fromBase64Url
 import org.multipaz.crypto.EcCurve
 import org.multipaz.documenttype.DocumentTypeRepository
+import org.multipaz.mdoc.connectionmethod.MdocConnectionMethod
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodNfc
 import org.multipaz.mdoc.engagement.EngagementParser
+import org.multipaz.mdoc.nfc.MdocNfcEngagementHelper
 import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.mdoc.request.DeviceRequestGenerator
+import org.multipaz.mdoc.role.MdocRole
+import org.multipaz.mdoc.transport.MdocTransport
+import org.multipaz.nfc.CommandApdu
+import org.multipaz.nfc.Nfc
+import org.multipaz.nfc.ResponseApdu
 import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.Iso18013Response
@@ -50,10 +66,14 @@ import org.multipaz.presentment.SimplePresentmentSource
 import org.multipaz.presentment.mdocPresentment
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import platform.Foundation.NSData
+import platform.Foundation.create
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration
 
 private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
 
@@ -457,4 +477,167 @@ class IosProximityPresentmentTest {
         presenter.mutableState.value = IosProximityState.Sending
         assertEquals(true, presenter.isPresentmentActuallyInProgress())
     }
+
+    // Option 4 (wiki/IOS_NFC_PLAN.md §9): cold-tap handover just completed and CardSession is being
+    // torn down while the wallet waits for the reader's BLE connection — a presentment attempt already
+    // owns presentmentJob/transport/pendingConsent/pendingData/sharedDocuments at this point, exactly as
+    // much as it does once Requesting/Sending is reached. Omitting Connecting from the guard above would
+    // reopen the same race isPresentmentActuallyInProgress_is_true_while_requesting_or_sending guards
+    // against, just during a different window.
+    //
+    // Real hardware is still what proves the reader actually connects over BLE rather than NFC — that
+    // remains untestable on the Simulator, same pre-existing limitation this class's own doc comment
+    // states for the rest of the transport layer. This test covers the one piece of Option 4's own logic
+    // that is reachable without hardware: the guard's inclusion of the new state.
+    @Test
+    fun isPresentmentActuallyInProgress_is_true_while_connecting() {
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+
+        presenter.mutableState.value = IosProximityState.Connecting
+
+        assertEquals(true, presenter.isPresentmentActuallyInProgress())
+    }
+
+    // Real-device finding (wiki/IOS_NFC_PLAN.md §9, Option 4): onColdTapHandoverComplete used to call
+    // disarmColdTapEngagement() immediately on a successful handover, nulling
+    // IosNfcHceTransport.engagementHelper synchronously — before the reader's own trailing READ_BINARY
+    // (fetching the Handover Select content the same tap's SELECT FILE had only just announced was
+    // ready) could arrive. A real tap showed that READ_BINARY rejected with SW 6A82 ("no engagement
+    // helper is armed"), ~29ms after the null, well before CoreNFC's own session would have stopped
+    // responding anyway (confirmed separately, from NfcHceBridge.swift's own source: its stop() only
+    // clears its own reference synchronously — the actual stopEmulation()/invalidate() calls that end the
+    // session's ability to answer APDUs are deferred behind its existing ~3-second delay). Fixed to call
+    // nfcTransport.stop() alone, mirroring the exact ndefHandoverCompleted pattern
+    // IosNfcHceTransportTest's own `after handover completes a trailing READ_BINARY still succeeds...`
+    // test already proves at the ApduDelegate level — this test proves it end to end through
+    // IosProximityPresenter's own real onColdTapHandoverComplete, the actual site of the bug, using a
+    // real MdocNfcEngagementHelper driven through the exact NFC Type-4-Tag APDU sequence a real tap
+    // produces (not a spy standing in for it).
+    @Test
+    fun onColdTapHandoverComplete_keeps_the_engagement_helper_reachable_for_a_trailing_read() = runTest {
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+        val bleConnectionMethod = presenter.bleConnectionMethod()
+        presenter.coldTapBleTransport = FakeMdocTransport(bleConnectionMethod)
+
+        val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        presenter.nfcTransport.engagementHelper = MdocNfcEngagementHelper(
+            eDeviceKey = eDeviceKey.publicKey,
+            staticHandoverMethods = listOf(bleConnectionMethod),
+            onHandoverComplete = { _, encodedDeviceEngagement, handover ->
+                presenter.onColdTapHandoverComplete(eDeviceKey, encodedDeviceEngagement, handover)
+            },
+            onError = { error -> error("unexpected engagement error: ${error.message}") },
+        )
+        // Mirrors the routing IosNfcHceTransport builds internally (its own copy is private, so this
+        // reads presenter.nfcTransport's live state the same way that one would) — not a spy standing in
+        // for it, the actual ApduDelegate class production APDUs are routed through.
+        val delegate = IosNfcHceTransport.ApduDelegate(
+            engagementHelperProvider = { presenter.nfcTransport.engagementHelper },
+            ndefHandoverCompletedProvider = { presenter.nfcTransport.ndefHandoverCompleted },
+        )
+
+        suspend fun send(command: CommandApdu): ByteArray {
+            val response = CompletableDeferred<ByteArray>()
+            delegate.processCommandApdu(command.encode().toNSData()) { responseApdu ->
+                response.complete(responseApdu!!.toByteArray())
+            }
+            return response.await()
+        }
+
+        fun selectFile(fileId: Int) = CommandApdu(
+            cla = 0x00,
+            ins = Nfc.INS_SELECT,
+            p1 = Nfc.INS_SELECT_P1_FILE,
+            p2 = Nfc.INS_SELECT_P2_FILE,
+            payload = ByteString((fileId shr 8).toByte(), (fileId and 0xff).toByte()),
+            le = 0,
+        )
+
+        // The same sequence a real Type 4 Tag read performs once, and the same sequence tonight's real
+        // tap produced: SELECT the NDEF application, the capability container, then the NDEF file itself
+        // — the last one is where static handover completes and onColdTapHandoverComplete runs
+        // (synchronously, from inside this same SELECT's own processing).
+        send(
+            CommandApdu(
+                cla = 0x00,
+                ins = Nfc.INS_SELECT,
+                p1 = Nfc.INS_SELECT_P1_APPLICATION,
+                p2 = 0x00,
+                payload = Nfc.NDEF_APPLICATION_ID,
+                le = 0,
+            ),
+        )
+        send(selectFile(Nfc.NDEF_CAPABILITY_CONTAINER_FILE_ID))
+        send(selectFile(0xe104))
+
+        assertEquals(IosProximityState.Connecting, presenter.state.value)
+        assertNotNull(
+            presenter.nfcTransport.engagementHelper,
+            "the fix: onColdTapHandoverComplete must not null this out on a successful handover",
+        )
+
+        // Tonight's real-device failure, reproduced: the reader's trailing READ_BINARY — fetching the
+        // Handover Select content the SELECT FILE above only announced was ready — must still be
+        // answered correctly, not rejected with 6A82, even though CardSession teardown has already been
+        // requested.
+        val trailingRead = ResponseApdu.decode(
+            send(
+                CommandApdu(
+                    cla = 0x00,
+                    ins = Nfc.INS_READ_BINARY,
+                    p1 = 0x00,
+                    p2 = 0x00,
+                    payload = ByteString(),
+                    le = 15,
+                ),
+            ),
+        )
+        assertEquals(
+            Nfc.RESPONSE_STATUS_SUCCESS,
+            trailingRead.status,
+            "tonight's real-device regression: this used to come back 6A82",
+        )
+    }
+}
+
+/**
+ * A minimal [MdocTransport] stub — only what [IosProximityPresenter.onColdTapHandoverComplete]'s own
+ * synchronous logic needs to proceed past its "no BLE transport was armed" guard. The presentment job
+ * it gets handed into is never awaited by the test above, so nothing here needs to behave realistically
+ * beyond not throwing; [waitForMessage] deliberately never returns rather than fabricate bytes that
+ * could be mistaken for something real.
+ */
+private class FakeMdocTransport(
+    override val connectionMethod: MdocConnectionMethod,
+) : MdocTransport() {
+    private val mutableState = MutableStateFlow(State.IDLE)
+    override val state: StateFlow<State> = mutableState
+    override val role: MdocRole = MdocRole.MDOC
+    override val scanningTime: Duration? = null
+    override suspend fun advertise() = Unit
+    override suspend fun open(eSenderKey: EcPublicKey) = Unit
+    override suspend fun sendMessage(message: ByteArray) = Unit
+    override suspend fun waitForMessage(): ByteArray = kotlinx.coroutines.awaitCancellation()
+    override suspend fun close() = Unit
+}
+
+// A file-private copy of the same NSData<->ByteArray idiom IosNfcHceTransportTest.kt itself uses —
+// deliberately not reused from there: that file's own copies are `private` (file-scoped) on purpose,
+// for the exact reason its own comment gives (an unrelated same-shaped private extension collision in
+// KeychainWalletStorage.kt, in this same package) — this file needs its own copy for the same reason.
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+private fun ByteArray.toNSData(): NSData = usePinned { pinned ->
+    NSData.create(bytes = pinned.addressOf(0), length = size.toULong())
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun NSData.toByteArray(): ByteArray {
+    val size = length.toInt()
+    val bytes = ByteArray(size)
+    if (size > 0) {
+        bytes.usePinned { pinned ->
+            platform.posix.memcpy(pinned.addressOf(0), this.bytes, length)
+        }
+    }
+    return bytes
 }

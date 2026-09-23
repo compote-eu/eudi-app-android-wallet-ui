@@ -36,6 +36,15 @@ sealed class ProximityQRPartialState {
     data object Disconnected : ProximityQRPartialState()
 
     /**
+     * iOS-only, Option 4 (`wiki/IOS_NFC_PLAN.md` §9): cold-tap NFC engagement just completed and the
+     * wallet is waiting for the reader's BLE connection — mirrors
+     * [eu.europa.ec.shared.wallet.multipaz.IosProximityState.Connecting]. Not [Connected]: no request
+     * has arrived yet, so there is nothing for the request screen to show. Android never emits this —
+     * it has no cold-tap engagement — so it is a no-op there, same as [NfcNotice] already is.
+     */
+    data object Connecting : ProximityQRPartialState()
+
+    /**
      * A one-shot, non-fatal notice about NFC data retrieval specifically — the switch was on, but
      * the platform could not actually start it (unsupported device, entitlement not yet granted,
      * a transient failure, ...). Distinct from [Error]: that one means the whole exchange failed,

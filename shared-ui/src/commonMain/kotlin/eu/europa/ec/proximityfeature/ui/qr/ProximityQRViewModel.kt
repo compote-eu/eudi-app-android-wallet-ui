@@ -203,6 +203,18 @@ class ProximityQRViewModel(
                         }
                     }
 
+                    is ProximityQRPartialState.Connecting -> {
+                        // iOS-only, Option 4 (wiki/IOS_NFC_PLAN.md §9): cold-tap handover done, waiting
+                        // for the reader's BLE connection. Reuses the same loading indicator the screen
+                        // already shows before QrReady arrives — no new UI needed.
+                        setState {
+                            copy(
+                                isLoading = true,
+                                error = null,
+                            )
+                        }
+                    }
+
                     is ProximityQRPartialState.Connected -> {
                         unsubscribe()
                         setEffect {
