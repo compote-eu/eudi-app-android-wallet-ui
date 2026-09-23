@@ -90,7 +90,7 @@ androidxUiAutomator = "2.4.0"
 junit4 = "4.13.2"
 mockito = "5.23.0"
 mockitoKotlin = "6.3.0"
-robolectric = "4.16.1"
+robolectric = "4.17"
 turbine = "1.2.1"
 
 # Gradle plugins
