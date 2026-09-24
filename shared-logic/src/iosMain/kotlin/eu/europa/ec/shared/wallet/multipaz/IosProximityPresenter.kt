@@ -16,8 +16,10 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.nfc.BleDiagnosticsLogger
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -141,6 +143,7 @@ sealed interface IosProximityState {
  * arrives: matching, consent and the response, which `mdocPresentment` performs with no transport
  * involved. When a device is available, the thing to watch is the connection, not the CBOR.
  */
+@OptIn(ExperimentalForeignApi::class) // BleDiagnosticsLogger, a cinterop-generated ObjC type
 class IosProximityPresenter internal constructor(
     private val walletEngine: IosWalletEngine,
     /** Where the wallet's own credentials live; anything else in the store is not offered. */
@@ -217,6 +220,15 @@ class IosProximityPresenter internal constructor(
      * was silently ignored.
      */
     internal val nfcTransport = IosNfcHceTransport(onSessionEndedUnexpectedly = ::onCardSessionEndedUnexpectedly)
+
+    /**
+     * Purely diagnostic (`wiki/IOS_NFC_PLAN.md` §9) — logs `UIApplication` lifecycle state and the
+     * system Bluetooth radio's own state around Option 4's cold-tap-only BLE advertising/connection
+     * window, so a real-device test can show exactly what state the app/radio were in when BLE
+     * discovery succeeds or fails, rather than inferring it after the fact. No behavior change; see
+     * the Swift implementation's own doc comment for exactly what this can and cannot observe.
+     */
+    private val bleDiagnostics = BleDiagnosticsLogger()
 
     /**
      * Whether [nfcTransport] currently has a successfully-started [MdocNfcEngagementHelper] armed.
@@ -543,6 +555,11 @@ class IosProximityPresenter internal constructor(
         }
         val bleTransport = bleTransports.first()
         coldTapBleTransport = bleTransport
+        // Diagnostic only (wiki/IOS_NFC_PLAN.md §9) — the moment this method's own call to advertise()
+        // returned, i.e. arm time, per Stage 2's pre-advertise design. Not literally multipaz's own
+        // internal startAdvertising() call (that class's source isn't in this repo); the closest
+        // observable proxy this app has, from its own side of that boundary.
+        bleDiagnostics.logSnapshot("armColdTapEngagement: BLE advertising arm time")
 
         val eDeviceKey = Crypto.createEcPrivateKey(EcCurve.P256)
         nfcTransport.engagementHelper = MdocNfcEngagementHelper(
@@ -750,6 +767,9 @@ class IosProximityPresenter internal constructor(
     ) {
         Logger.i(TAG, "onColdTapHandoverComplete: handover done, NDEF AID stays answerable for trailing reads")
         nfcTransport.ndefHandoverCompleted = true
+        // Diagnostic only (wiki/IOS_NFC_PLAN.md §9) — starts ~20s of app-lifecycle/Bluetooth-radio
+        // sampling covering the BLE connection-wait window right as it begins.
+        bleDiagnostics.start()
 
         if (isPresentmentActuallyInProgress()) {
             Logger.w(TAG, "onColdTapHandoverComplete: a presentment is already in progress; ignoring")

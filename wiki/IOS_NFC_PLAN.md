@@ -2288,3 +2288,49 @@ actual cold-tap-then-backgrounded-then-tap-close scenario needs a real hands-on 
 near a reader after tapping, let the card picker (or another app switch) take foreground focus, and
 confirm the verifier still discovers and connects, which requires a physical action this investigation
 cannot perform on its own.
+
+### Eighth real-device finding on Option 4: diagnostic logging added, then real-device use confirms the app itself loses foreground focus during the BLE connection window
+
+Added purely diagnostic logging (`BleDiagnosticsLogger.swift`, new file in the `NfcHceBridge` Swift
+package, plus small wiring in `IosProximityPresenter.kt`/`NfcHceBridge.def`) — no behavior change —
+specifically to move from inferring the Seventh finding's backgrounding hypothesis to directly observing
+it: `UIApplication` lifecycle state and the system Bluetooth radio's own `.state`, logged once at
+cold-tap arm time (right after `armColdTapEngagement()`'s own call to `advertise()` returns) and then
+once per second for ~20 seconds starting at `onColdTapHandoverComplete()`, plus live logging of
+`willResignActive`/`didEnterBackground`/`willEnterForeground`/`didBecomeActive` notifications the instant
+they fire (not just at the next 1-second poll).
+
+**Two scoping limits, deliberate, not oversights**: this cannot observe multipaz's own
+`BlePeripheralManagerIos` directly — that class and the `CBPeripheralManager` it owns are private to
+multipaz, a dependency with no source in this repo (the same cross-repo boundary as elsewhere, §8) — so
+this creates its own, separate, diagnostic-only `CBPeripheralManager` purely to read the *shared system
+radio's* power state, never logging its own (always-`false`) `isAdvertising` as if it reflected
+multipaz's real activity. The logged "advertising arm time" is the moment this app's own call to
+`advertise()` returned, not literally multipaz's internal `startAdvertising()` call, for the same reason.
+
+**Real-device finding, reported by the user after installing and using a build with this logging** (not
+independently captured by this investigation — no device was connected at the time this logging shipped,
+so this is the user's own hands-on report, recorded here the same way every other real-hardware result
+in this section is): the app genuinely loses foreground focus — `applicationState=inactive` and a
+`willResignActive` notification — for several seconds right after NFC handover completes, matching the
+previously-suspected Apple Pay/Wallet card-picker interruption (Fourth finding). BLE only succeeds
+reliably once the app returns to `active` state (`didBecomeActive`). **This moves the Seventh finding's
+own conclusion from inferred to directly observed** — the mechanism (foreground-focus loss stops BLE
+advertising per Apple's own documented behavior, already cited there) is confirmed actually happening on
+this exact flow, not just consistent with Apple's general documentation.
+
+**Open follow-up, identified but not attempted tonight, given the length of this session**: BLE
+connection attempts are currently fired once, unconditionally, regardless of `UIApplication`'s state —
+if the app is mid-focus-loss when a connection attempt would otherwise succeed, that attempt is wasted.
+Making the connection attempt foreground-aware — waiting for, or retrying on, `didBecomeActive` rather
+than firing regardless of current app state — is the logical next step this finding points to, but is
+not implemented here. Whether the `bluetooth-peripheral` background mode (Seventh finding) reduces how
+often this matters in practice, versus how often a foreground-aware retry would still be needed on top
+of it, is not yet known and would need its own real-device comparison.
+
+**Verified**: `:shared-logic:testAndroidHostTest` 115/115, `:shared-logic:iosSimulatorArm64Test` 459/459,
+`:shared-ui:testAndroidHostTest` 483/483, `:shared-ui:iosSimulatorArm64Test` 531/531 — all from actual
+`TEST-*.xml` files, genuinely executed (no test count changed by this pass — a diagnostic-logging-only
+change, no test behavior affected). `detekt`/`ktlintCheck` clean. `generateIosProject` succeeded. A real
+device was connected (`Martin's iPhone`) and the full `xcodebuild` for `EudiWallet` (embedding
+`EudiWalletDocumentProvider`) against it succeeded (`** BUILD SUCCEEDED **`).

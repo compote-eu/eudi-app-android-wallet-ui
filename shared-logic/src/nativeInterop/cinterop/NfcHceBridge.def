@@ -66,4 +66,29 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+/**
+ * Purely diagnostic (`wiki/IOS_NFC_PLAN.md` §9) — logs `UIApplication` lifecycle state and the system
+ * Bluetooth radio's own power state around Option 4's BLE advertising/connection window. No behavior
+ * change. See the Swift implementation's own doc comment for exactly what this can and cannot observe.
+ */
+@interface BleDiagnosticsLogger : NSObject
+
+- (instancetype)init;
+
+/**
+ * A one-shot snapshot at a single known moment, `label` naming which one — e.g. cold-tap arm time or
+ * handover-complete time.
+ */
+- (void)logSnapshot:(NSString *)label;
+
+/**
+ * ~20 seconds of once-per-second sampling, plus live `UIApplication` lifecycle notification logging
+ * for the same window. Auto-stops at the end of the window; see `stop` for stopping it early.
+ */
+- (void)start;
+
+- (void)stop;
+
+@end
+
 NS_ASSUME_NONNULL_END
