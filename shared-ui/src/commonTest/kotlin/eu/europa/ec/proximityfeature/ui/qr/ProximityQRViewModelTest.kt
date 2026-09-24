@@ -351,4 +351,24 @@ class ProximityQRViewModelTest {
             assertEquals(Effect.ShowSnackbar(message = "NFC unavailable"), effect.await())
             assertNull(viewModel.viewState.value.error)
         }
+
+    // Real-device finding (wiki/IOS_NFC_PLAN.md §9): iOS's own default contactless-app routing can
+    // show its Wallet/Pay picker if the phone lingers near the reader after CardSession actually ends
+    // — telling the user the tap is done, right when Connecting arrives, prompts them to move the
+    // phone away before that becomes reachable.
+    @Test
+    fun connecting_also_tells_the_user_the_tap_is_done_so_they_can_move_the_phone_away() =
+        runTest(mainDispatcher) {
+            val viewModel = ProximityQRViewModel(
+                FakeProximityQRInteractor(listOf(ProximityQRPartialState.Connecting)),
+                config
+            )
+            val effect = async { viewModel.effect.first() }
+            advanceUntilIdle()
+
+            assertEquals(
+                Effect.ShowSnackbar(message = "Tap complete — you can move your phone away now."),
+                effect.await(),
+            )
+        }
 }

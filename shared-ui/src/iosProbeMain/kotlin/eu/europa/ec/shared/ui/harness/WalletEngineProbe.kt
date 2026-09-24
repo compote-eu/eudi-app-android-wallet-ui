@@ -556,6 +556,8 @@ private suspend fun probeProximity(onResult: (String) -> Unit) {
             is ProximityQRPartialState.Connecting -> "startQrEngagement -> connecting (Option 4, cold-tap only)"
             is ProximityQRPartialState.Disconnected -> "startQrEngagement -> disconnected"
             is ProximityQRPartialState.NfcNotice -> "startQrEngagement -> NFC notice: ${first.message}"
+            is ProximityQRPartialState.NfcEngagementDisabledUnexpectedly ->
+                "startQrEngagement -> NFC engagement disabled unexpectedly (CardSession ended on its own)"
             null -> "startQrEngagement -> nothing within $PROXIMITY_PROBE_TIMEOUT"
         }
     )

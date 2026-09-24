@@ -190,6 +190,15 @@ class IosProximityPresenter internal constructor(
     val nfcNotice: SharedFlow<String> = mutableNfcNotice.asSharedFlow()
 
     /**
+     * One-shot signal: [onCardSessionEndedUnexpectedly] just turned [nfcEngagementEnabled] off on the
+     * UI's behalf, so the "Share over NFC" switch needs to visually follow — [nfcEngagementEnabled]
+     * itself is a plain `var`, not observable, so without this the switch would keep showing on while
+     * `CardSession` is actually gone. Same `extraBufferCapacity = 1` reasoning as [mutableNfcNotice].
+     */
+    private val mutableNfcEngagementDisabledUnexpectedly = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val nfcEngagementDisabledUnexpectedly: SharedFlow<Unit> = mutableNfcEngagementDisabledUnexpectedly.asSharedFlow()
+
+    /**
      * Owns CoreNFC's `CardSession` for as long as cold-tap (Annex C) engagement is armed — entirely
      * independent of QR engagement. Started/stopped from [armColdTapEngagement]/[disarmColdTapEngagement],
      * themselves called from [onScreenEntered]/[onScreenExited] — not tied to [startQrEngagement], which
@@ -200,8 +209,14 @@ class IosProximityPresenter internal constructor(
      * `nfcTransport.engagementHelper`'s nullness directly after [onColdTapHandoverComplete] runs — the
      * actual piece of state a real-device bug turned out to hinge on. Same justification as
      * [mutableState]/[isPresentmentActuallyInProgress]'s own `internal` visibility.
+     *
+     * Wired to [onCardSessionEndedUnexpectedly] — real-device finding (`wiki/IOS_NFC_PLAN.md` §9): the
+     * user cancelling the system NFC sheet (or it timing out) ends `CardSession` on its own, outside any
+     * of this class's own explicit [disarmColdTapEngagement] call sites, so without this callback nothing
+     * ever reset [nfcEngagementEnabled]/[engagementHelperArmed] — the switch stayed on and every later tap
+     * was silently ignored.
      */
-    internal val nfcTransport = IosNfcHceTransport()
+    internal val nfcTransport = IosNfcHceTransport(onSessionEndedUnexpectedly = ::onCardSessionEndedUnexpectedly)
 
     /**
      * Whether [nfcTransport] currently has a successfully-started [MdocNfcEngagementHelper] armed.
@@ -551,17 +566,31 @@ class IosProximityPresenter internal constructor(
         // own doc comment. Compare this line's (Logger-supplied) timestamp against the physical tap's
         // wall-clock time to check whether the assertion's 15-second window had already expired.
         Logger.i(TAG, "armColdTapEngagement: requesting CoreNFC start (NFCPresentmentIntentAssertion + CardSession)")
-        nfcTransport.start { result ->
-            if (result == NfcStartResult.Started) {
-                engagementHelperArmed = true
-                Logger.i(TAG, "armColdTapEngagement: CoreNFC started, cold-tap engagement armed")
-            } else {
-                nfcTransport.engagementHelper = null
-                nfcTransport.ndefHandoverCompleted = false
-                closeColdTapBleTransportIfUnclaimed()
-                Logger.w(TAG, "armColdTapEngagement: NFC card emulation did not start: $result")
-                mutableNfcNotice.tryEmit(nfcStartFailureMessage(result))
-            }
+        nfcTransport.start { result -> onNfcStartResult(result) }
+    }
+
+    /**
+     * `internal`, not `private`: a test needs to drive this directly with
+     * [NfcStartResult.AssertionCooldown] without a real `CardSession`, which the Simulator has no radio
+     * for — same justification as [nfcTransport]/[onColdTapHandoverComplete]'s own `internal` visibility.
+     */
+    internal fun onNfcStartResult(result: NfcStartResult) {
+        if (result == NfcStartResult.Started) {
+            engagementHelperArmed = true
+            Logger.i(TAG, "armColdTapEngagement: CoreNFC started, cold-tap engagement armed")
+            return
+        }
+        nfcTransport.engagementHelper = null
+        nfcTransport.ndefHandoverCompleted = false
+        closeColdTapBleTransportIfUnclaimed()
+        Logger.w(TAG, "armColdTapEngagement: NFC card emulation did not start: $result")
+        mutableNfcNotice.tryEmit(nfcStartFailureMessage(result))
+        if (result == NfcStartResult.AssertionCooldown) {
+            // CardSession never started — NFC was never active, so the switch must not keep showing
+            // on. Real-device finding, wiki/IOS_NFC_PLAN.md §9. Only the cleanup above was needed
+            // first: unlike onCardSessionEndedUnexpectedly, there is no armed CardSession to tear down
+            // via disarmColdTapEngagement/nfcTransport.stop().
+            turnNfcEngagementOffAndSignalUi()
         }
     }
 
@@ -594,6 +623,38 @@ class IosProximityPresenter internal constructor(
         clearEngagementHelper()
         Logger.i(TAG, "disarmColdTapEngagement: stopping CoreNFC")
         nfcTransport.stop()
+    }
+
+    /**
+     * [nfcTransport]'s `CardSession` ended on its own — the user cancelled the system NFC sheet, or it
+     * timed out — real-device finding (`wiki/IOS_NFC_PLAN.md` §9). Deliberately does *not* try to
+     * re-arm: [nfcEngagementEnabled] (the "Share over NFC" switch) represents whether NFC is genuinely
+     * active right now, not a standing intent independent of reality, so the correct response is to turn
+     * it off and let the user explicitly opt back in — which shows the system sheet again, deliberately.
+     *
+     * [disarmColdTapEngagement] (not just [clearEngagementHelper]) because `CardSession` is already gone
+     * on the Swift side by the time this runs — see `NfcHceBridge.swift`'s own `stop()`/`stopRequested`
+     * doc comments for why calling it again here is still safe: with `cardSession` already `nil`, it is a
+     * no-op past its own early-return guard.
+     */
+    private fun onCardSessionEndedUnexpectedly() {
+        Logger.w(TAG, "onCardSessionEndedUnexpectedly: CardSession ended without our own stop() — turning the NFC switch off")
+        disarmColdTapEngagement()
+        turnNfcEngagementOffAndSignalUi()
+    }
+
+    /**
+     * The shared half of "CardSession isn't actually running, so the switch must show off" —
+     * [nfcEngagementEnabled] itself is a plain `var`, not observable, so this also emits
+     * [nfcEngagementDisabledUnexpectedly] so the UI follows. Used both when a session that was running
+     * ended on its own ([onCardSessionEndedUnexpectedly]) and when one never managed to start in the
+     * first place ([armColdTapEngagement]'s own `NfcStartResult.AssertionCooldown` branch) — what
+     * differs between those two is what teardown, if any, is needed first; the switch's own reset is
+     * identical either way, so it's factored out once rather than duplicated.
+     */
+    private fun turnNfcEngagementOffAndSignalUi() {
+        nfcEngagementEnabled = false
+        mutableNfcEngagementDisabledUnexpectedly.tryEmit(Unit)
     }
 
     /**
@@ -932,6 +993,7 @@ class IosProximityPresenter internal constructor(
         NfcStartResult.NotEligible -> NFC_NOT_ELIGIBLE
         NfcStartResult.AccessNotAccepted -> NFC_ACCESS_NOT_ACCEPTED
         NfcStartResult.TransientFailure -> NFC_TRANSIENT_FAILURE
+        NfcStartResult.AssertionCooldown -> NFC_ASSERTION_COOLDOWN
     }
 
     private companion object {
@@ -960,6 +1022,17 @@ class IosProximityPresenter internal constructor(
             "NFC data retrieval isn't enabled for this app yet. Sharing continues over Bluetooth."
         const val NFC_TRANSIENT_FAILURE =
             "Could not start NFC data retrieval. Sharing continues over Bluetooth."
+
+        /**
+         * Real-device finding (`wiki/IOS_NFC_PLAN.md` §9): reachable through an ordinary flow — cancel
+         * the system sheet (or let it time out), then immediately re-enable "Share over NFC" before
+         * Apple's own `NFCPresentmentIntentAssertion` cool-down has elapsed. No countdown here — a
+         * static, accurate message is enough; see [NfcStartResult.AssertionCooldown]'s own doc comment
+         * for why this is a distinct case from [NFC_TRANSIENT_FAILURE] rather than folded into it.
+         */
+        const val NFC_ASSERTION_COOLDOWN =
+            "NFC needs a moment to reset after the last attempt — please wait a few seconds and try " +
+                "again. Sharing continues over Bluetooth."
     }
 }
 

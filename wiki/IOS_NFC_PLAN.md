@@ -1718,3 +1718,573 @@ happens to be green."
 clean. `generateIosProject` + full `xcodebuild` (`EudiWallet` + `EudiWalletDocumentProvider`, real
 connected device) succeeded. **Not yet re-tested on real hardware** — ready for another real-device tap
 to confirm the fix holds under the actual conditions that surfaced the bug.
+
+### Second real-device finding on Option 4: an unexpected `CardSession` end left the "Share over NFC" switch silently stale
+
+Reported by the user after the first successful end-to-end Option 4 run: after the system NFC sheet is
+cancelled (or times out), the sheet does **not** reappear on a later tap unless the switch is manually
+toggled off and back on — the app looks ready for NFC (switch still on) but is not actually listening at
+all.
+
+**Traced precisely, confirming which of two possible causes this was rather than assuming**: is
+`disarmColdTapEngagement()` ever called from an unintended path (e.g. `onScreenExited()` firing without
+the user actually leaving the screen), or does `CardSession` simply have no way at all to tell Kotlin it
+ended on its own? Re-grepped from scratch rather than trusting an earlier restated summary: exactly two
+call sites exist, both gated by a genuine, deliberate user action —
+`onScreenEntered()`'s `else` branch (only reached when the switch is off at call time, itself only
+invoked at screen entry or an explicit switch toggle) and `onScreenExited()` (only reached via explicit
+navigation/cancel). **No accidental or reactive path exists at all** — the real gap is the opposite one:
+`NfcHceBridgeDelegate` had no session-lifecycle callback whatsoever, and the Swift `.sessionInvalidated`
+event case discarded its own associated `CardSession.Error` and told Kotlin nothing. So when the user
+cancels the system sheet (or it times out), `engagementHelperArmed`/`nfcEngagementEnabled` simply never
+learn the session is gone, and stay believing cold-tap is still armed indefinitely.
+
+**Fix — a new, purpose-built session-end signal, expected vs. unexpected distinguished on the Swift
+side**:
+
+- `NfcHceBridge.swift`: a new `stopRequested: Bool`, set synchronously at the top of `stop()` (before the
+  existing 3-second-delayed `stopEmulation()`/`invalidate()`) and reset at the top of every fresh
+  `startCardSession()`. The `.sessionInvalidated(let reason)` event case now binds and logs `reason`
+  (previously discarded entirely) and, only when `!stopRequested`, nils `cardSession` and calls a new
+  `NfcHceBridgeDelegate.sessionEndedUnexpectedly()` — added to both the Swift protocol and the matching
+  `NfcHceBridge.def` Objective-C declaration. An *expected* end (our own `stop()` already called, e.g.
+  right after a successful Option 4 handover) never calls it — those paths' own existing teardown is
+  already correct.
+- `IosNfcHceTransport.kt`: a new `onSessionEndedUnexpectedly: () -> Unit = {}` constructor parameter,
+  threaded into `ApduDelegate` (a new `onSessionEndedUnexpected` parameter) and its new
+  `override fun sessionEndedUnexpectedly()`, which logs and invokes the callback.
+- `IosProximityPresenter.kt`: `nfcTransport` now constructed with
+  `IosNfcHceTransport(onSessionEndedUnexpectedly = ::onCardSessionEndedUnexpectedly)`. The new
+  `onCardSessionEndedUnexpectedly()` sets `nfcEngagementEnabled = false`, calls
+  `disarmColdTapEngagement()` (safe/idempotent even though `CardSession` is already gone by this point —
+  `stop()`'s own early-return guard on a `nil` session makes the repeat call a no-op), and emits a new
+  one-shot `nfcEngagementDisabledUnexpectedly: SharedFlow<Unit>` (mirrors the existing
+  `mutableNfcNotice`/`nfcNotice` pattern). **Deliberately does not auto-re-arm** — the switch represents
+  whether NFC is genuinely active right now, not a standing intent, so the correct response is to turn it
+  off and require the user to explicitly opt back in, which shows the system sheet again, deliberately.
+- The established 4-file UI ripple: `IosProximityCoordinator.kt`'s `qrEvents()` merges the new flow in
+  (same "subscribed from the moment collection starts" reasoning as `nfcNotice`);
+  `ProximityQRInteractor.kt` gains `ProximityQRPartialState.NfcEngagementDisabledUnexpectedly` (iOS-only,
+  no-op on Android, same as `Connecting`/`NfcNotice`); `ProximityQRViewModel.kt`'s `generateQrCode()`
+  handles it with `setState { copy(nfcDataRetrievalEnabled = false) }` — deliberately *not* routed through
+  `Event.NfcDataRetrievalToggled`, since that would call `interactor.toggleNfcDataRetrieval(false)` again
+  (redundant) and `restartEngagementForNfcToggle()` (which would re-arm engagement, the auto-re-arm this
+  fix explicitly rejects); `WalletEngineProbe.kt`'s own exhaustive `when` over `ProximityQRPartialState`
+  needed the same new branch, caught by the compiler rather than a manual grep — same pattern as
+  `Connecting` before it.
+
+**Tests added** to `IosProximityPresentmentTest.kt`, driving the real callback chain
+(`IosNfcHceTransport.ApduDelegate.sessionEndedUnexpectedly()` → `onSessionEndedUnexpected` →
+`IosProximityPresenter.onCardSessionEndedUnexpectedly()`), not a stand-in for it — required widening
+`IosNfcHceTransport.delegate` from `private` to `internal`, same justification as `nfcTransport`'s own
+`internal` visibility:
+
+- `an_unexpected_card_session_end_turns_the_nfc_switch_off_and_signals_the_ui`: arms the switch, calls
+  `nfcTransport.delegate.sessionEndedUnexpectedly()` directly, asserts `isNfcEngagementEnabled() == false`
+  and that `nfcEngagementDisabledUnexpectedly` emitted (collected via
+  `launch(start = CoroutineStart.UNDISPATCHED)` so the collector is subscribed before the synchronous
+  trigger, not raced against it).
+- `an_expected_card_session_end_does_not_signal_the_unexpected_flow`: arms the switch, calls
+  `onScreenExited()` (an existing, expected `disarmColdTapEngagement()` call site), asserts the new flow
+  did *not* emit and that `isNfcEngagementEnabled()` is untouched — `disarmColdTapEngagement()` alone
+  never touches the switch's own state, only the unexpected-end path does.
+
+**Verified the first test actually catches the regression**, not just that it's green: temporarily
+reverted `nfcTransport`'s construction back to the no-arg `IosNfcHceTransport()`, confirmed the test
+failed with `kotlin.AssertionError` on the expected assertion, then re-applied the fix and confirmed both
+tests pass again — a genuine positive control.
+
+**Verified**: `:shared-logic:testAndroidHostTest` 115/115, `:shared-logic:iosSimulatorArm64Test` 458/458
+(+2 for the two new tests), `:shared-ui:testAndroidHostTest` 482/482, `:shared-ui:iosSimulatorArm64Test`
+530/530 — all from actual `TEST-*.xml` files, each task genuinely executed (not `UP-TO-DATE`/
+`FROM-CACHE`). `detekt`/`ktlintCheck` clean. `generateIosProject` succeeded. **No real device was
+connected at verification time** (`xcrun devicectl list devices` showed all three paired devices as
+`unavailable`) — fell back to `xcodebuild -destination 'generic/platform=iOS'` for `EudiWallet`, which
+succeeded (`** BUILD SUCCEEDED **`) and does compile `iosApp/NfcHceBridge/`, but — same distinction
+flagged for the previous checkpoint — this is a compile-correctness check only, not a substitute for a
+real-device run. **Still needs a real-hardware test**: cancel the system NFC sheet deliberately and
+confirm the switch turns off immediately; re-enable it and confirm the sheet reappears.
+
+### Third real-device finding on Option 4: `NFCPresentmentIntentAssertion`'s own assertion-level cooldown, reachable through the switch-off fix itself
+
+Reported immediately after the above: re-enabling the switch right after it auto-turned off (the second
+finding's own fix) can itself fail, surfacing this app's existing generic notice: *"Could not start NFC
+data retrieval. Sharing continues over Bluetooth."*
+
+**Traced to the specific `NfcStartResult` case and failure condition, not assumed**: this only comes from
+`IosProximityPresenter.kt`'s `nfcStartFailureMessage()`, reached from `armColdTapEngagement()`'s
+`nfcTransport.start { result -> ... }` callback when `result != NfcStartResult.Started`. On the Swift
+side, that code (previously always `4`/`.transientFailure`) is set in `startCardSession()`
+(NfcHceBridge.swift) in exactly two places: the `NFCPresentmentIntentAssertion.acquire()` do/catch, and
+the `CardSession()`/`startEmulation()` do/catch. Given the timing — an immediate re-toggle re-triggers
+`armColdTapEngagement()` with no delay — the far more likely of the two is the assertion `acquire()`
+catch's `NFCPresentmentIntentAssertion.Error.systemNotAvailable` branch, already logged distinctly as
+`"...systemNotAvailable (cool-down)"`.
+
+**This is a separate, Apple-imposed cooldown from the previously-documented `CardSession`-level one** —
+worth stating explicitly since both are "~15 seconds" and easy to conflate:
+
+- The **`CardSession`-level cooldown** (`Timing.maxRespondRetries`'s own doc comment, NfcHceBridge.swift):
+  Apple's `CardSession` runs for roughly 15 seconds before a roughly 15-second cool-down, during which
+  `respond(response:)` can transiently throw `CardSession.Error.transmissionError` — this is empirically
+  sourced from pagopa/iso18013-ios's own measured retry count, not from Apple's documentation directly,
+  and it governs mid-conversation APDU response retries *within an already-active session*.
+- The **`NFCPresentmentIntentAssertion`-level cooldown** (this finding): `startCardSession()`'s own doc
+  comment, written earlier in this project directly against Apple's `NFCPresentmentIntentAssertion`
+  documentation, already states an acquired assertion is hard-capped at 15 seconds, followed by a
+  mandatory 15-second cool-down before a new one can be acquired — and flags this as a known,
+  unsolved limitation. It governs whether a *new* `CardSession` can even start at all. A fresh live fetch
+  of Apple's documentation page was attempted to re-verify the exact wording, as requested — it returned
+  only the page title (the same JS-rendered-content limitation already hit earlier in this project for
+  `CardSession.Event`'s full case list), so this finding relies on the in-repo comment's own prior
+  citation, not a newly-quoted one. One detail that comment already flags as unverified and remains
+  unverified here: whether the cooldown clock starts from the original `acquire()` or from an early
+  release (`stop()`'s own `presentmentIntentAssertion = nil`) — either way, an immediate re-toggle lands
+  well inside the window.
+
+At the time this was investigated, no real device was connected, so no fresh log capture confirmed the
+exact `systemNotAvailable` line for this specific occurrence — the determination above is inferred from
+the code paths and Apple's documented contract, not a captured reproduction.
+
+**Fix — split the ambiguous case out, on both distinguishing message and switch state**:
+
+- `NfcHceBridge.swift`: new `StartResult.assertionCooldown = 5`, returned by the
+  `NFCPresentmentIntentAssertion.Error.systemNotAvailable` catch specifically (previously
+  `.transientFailure`, now reserved for any other `CardSession` construction/`startEmulation()` failure).
+  `NfcHceBridge.def`'s doc comment updated to document code `5` alongside the existing `0`-`4`.
+- `IosNfcHceTransport.kt`: new `NfcStartResult.AssertionCooldown`, decoded by `fromCode(5L)` — the
+  existing `else -> TransientFailure` fallback is untouched, so any further undocumented code still
+  degrades to the generic case rather than silently miscategorizing as this one.
+- `IosProximityPresenter.kt`: a new message constant, `NFC_ASSERTION_COOLDOWN` — *"NFC needs a moment to
+  reset after the last attempt — please wait a few seconds and try again. Sharing continues over
+  Bluetooth."* No countdown timer — deliberately a static, accurate explanation, not a precision the
+  underlying Apple API doesn't actually document reliably enough to promise. `nfcStartFailureMessage()`
+  gets one new `when` branch.
+- The switch-off half **reuses the exact mechanism the previous finding's fix built**, not a new one:
+  `onCardSessionEndedUnexpectedly()`'s `nfcEngagementEnabled = false` + `nfcEngagementDisabledUnexpectedly`
+  emission was factored out into a small shared `turnNfcEngagementOffAndSignalUi()`, called both from
+  there (after `disarmColdTapEngagement()`'s teardown) and from the new
+  `NfcStartResult.AssertionCooldown` branch (no teardown needed there — `CardSession` never started, so
+  there is nothing `disarmColdTapEngagement()`/`nfcTransport.stop()` would do beyond what the existing
+  inline cleanup, now factored into `onNfcStartResult()`, already does).
+- `armColdTapEngagement()`'s previously-inline `nfcTransport.start { ... }` callback body was extracted
+  into `internal fun onNfcStartResult(result: NfcStartResult)` — needed for the test below, and matches
+  this file's own established pattern of widening exactly the piece a fix touches, not more.
+
+**Test added**, `an_assertion_cooldown_start_failure_shows_the_cooldown_message_and_turns_the_switch_off`:
+calls `onNfcStartResult(NfcStartResult.AssertionCooldown)` directly (no real `CardSession` — the
+Simulator has no NFC radio), collecting both `nfcNotice` and `nfcEngagementDisabledUnexpectedly` via
+`launch(start = CoroutineStart.UNDISPATCHED)` so each collector is subscribed before the synchronous
+trigger, and asserts: the emitted notice text matches `NFC_ASSERTION_COOLDOWN` exactly (the constant
+itself stays `private`, so the test's literal string intentionally mirrors it rather than exposing it
+further); the disabled-unexpectedly flow emitted; `isNfcEngagementEnabled()` is `false` afterwards.
+**Verified as a genuine positive control**: temporarily disabled the `AssertionCooldown` branch (a
+short-circuited `false &&` guard), confirmed the test failed, re-enabled it, confirmed it passes again.
+
+**Verified**: `:shared-logic:testAndroidHostTest` 115/115, `:shared-logic:iosSimulatorArm64Test` 459/459
+(+1 for the new test), `:shared-ui:testAndroidHostTest` 482/482, `:shared-ui:iosSimulatorArm64Test`
+530/530 — all from actual `TEST-*.xml` files, genuinely executed. `detekt`/`ktlintCheck` clean.
+`generateIosProject` succeeded. **A real device was connected this time** (`Martin's iPhone`) — full
+`xcodebuild` for `EudiWallet` (embedding `EudiWalletDocumentProvider`) against it succeeded
+(`** BUILD SUCCEEDED **`), and the build was installed onto that device (`xcrun devicectl device install
+app`). **Not yet exercised on the device itself**: rapidly re-toggling the switch within the cooldown
+window right after an unexpected session end, to confirm both the clearer message and the switch turning
+off, still needs a hands-on real-device pass.
+
+### Fourth real-device finding on Option 4: the system Wallet/Pay card picker can appear after a successful tap, if the phone lingers near the reader
+
+Reported after a successful end-to-end run: the native Apple Pay/Wallet card picker sometimes appears
+after engagement completes and `CardSession` is deliberately ended (Option 4's own design, switching to
+BLE) — more noticeable the longer the phone stays near the reader afterward, e.g. during a slow BLE
+connection (the reader-side 40-second discovery-retry timeout case).
+
+**Confirmed as the same mechanism already documented here, from the opposite direction, not a new one.**
+The "Second real-device finding" above (this same §9) already established how iOS decides which app
+answers an NFC field-detect event: the background default-contactless-app entitlement (not used here),
+or `NFCPresentmentIntentAssertion` — *"Eligible apps running in the foreground can prevent the system
+default contactless app from launching... acquire a presentment intent assertion when the user expresses
+an active intent to perform an NFC transaction"* (Apple's own documentation, quoted there). That finding
+was about the assertion's absence **before** a tap; this one is its absence **after** one. Tracing
+`NfcHceBridge.swift`'s actual teardown timing:
+
+- `presentmentIntentAssertion = nil` runs **synchronously, immediately** inside `stop()` — its own
+  existing doc comment already states why: *"we no longer want to suppress the system's default
+  contactless app once we've stopped listening ourselves."* General-purpose behavior, not specific to
+  Option 4.
+- `stopEmulation()`/`invalidate()` — what actually ends `CardSession`'s ability to answer APDUs — are
+  deferred behind the existing `Timing.stopDelay` (~3 seconds).
+- `onColdTapHandoverComplete()` (Option 4) calls `nfcTransport.stop()` **immediately on handover
+  completing** — essentially at the moment of the tap itself, well before BLE connects or consent shows.
+
+So from ~0s after the tap, the suppression that was keeping the default picker away is already gone;
+`CardSession` itself lingers ~3 more seconds, still nominally claiming the field. Once that ~3-second
+window ends, nothing claims the field at all. If the phone is still resting near an actively-polling
+reader at that point — the slow-BLE case keeps the reader polling far longer than 3 seconds, and there's
+no reason to expect the phone has moved during a deliberate tap-and-wait — the next field-detect event
+has only the default-routing path left, exactly the mechanism the second finding already confirmed fires
+whenever nothing suppresses it. A fresh attempt to re-verify Apple's `stopEmulation(status:)`/`CardSession`
+documentation for this investigation returned only page titles on every fetch (the same JS-rendered-
+content limitation hit repeatedly elsewhere in this project) — this finding relies on the already-
+established, previously-cited doc quote and the code's own verified timing, not a new live quote.
+
+**No documented way to tell iOS the interaction is over independent of the timing above** — checked
+before implementing anything: `stopEmulation(status:)` is always called with `.success` at both call
+sites in this file, and `invalidate()` takes no reason argument. Neither appears to be a signal to iOS's
+own UI-routing subsystem (the routing decision is governed by whether a `CardSession`/assertion is
+currently held, per the second finding's own quote, not by how the previous one ended). A more invasive
+mitigation — holding `NFCPresentmentIntentAssertion` open a few seconds longer specifically after
+handover, independent of `CardSession`'s own teardown — was considered as a real option but not pursued
+this pass, in favor of the simpler UX mitigation below.
+
+**Fix implemented — UX mitigation, not a timing change**: a snackbar shown the moment
+`ProximityQRPartialState.Connecting` arrives (`ProximityQRViewModel.kt`'s `generateQrCode()`), telling
+the user the tap itself is complete and they can move the phone away — *"Tap complete — you can move
+your phone away now."* Deliberately plain, un-localized text (a new top-level `private const
+TAP_COMPLETE_MOVE_PHONE_AWAY`), matching this same NFC-status-message family's existing convention: every
+sibling message this feature shows (`NfcNotice`, and all of `IosProximityPresenter`'s own
+`NfcStartResult` failure messages) is already plain English, not routed through this app's
+`composeResources` localization — introducing localization for just this one new string while its
+siblings stay hardcoded would be its own, out-of-scope inconsistency. Reuses the exact same
+`Effect.ShowSnackbar` pipe `NfcNotice` already uses — no new UI, no new screen, no timing logic.
+
+**Test added**, `connecting_also_tells_the_user_the_tap_is_done_so_they_can_move_the_phone_away`
+(`ProximityQRViewModelTest.kt`, `commonTest` — runs on both `testAndroidHostTest` and
+`iosSimulatorArm64Test`): feeds `ProximityQRPartialState.Connecting` through a fake interactor and
+asserts the exact `Effect.ShowSnackbar` message, mirroring the existing `NfcNotice` test's own style
+(hardcoded literal, not the private constant — consistent with that sibling test rather than exposing
+the constant further). **Verified as a genuine positive control**: temporarily commented out the new
+`setEffect` call, confirmed the test failed (`UncompletedCoroutinesError` — `viewModel.effect.first()`
+never resolved), restored it, confirmed it passes again.
+
+**Verified**: `:shared-logic:testAndroidHostTest` 115/115, `:shared-logic:iosSimulatorArm64Test`
+459/459, `:shared-ui:testAndroidHostTest` 483/483 (+1), `:shared-ui:iosSimulatorArm64Test` 531/531 (+1,
+the same `commonTest` test on both platforms) — all from actual `TEST-*.xml` files, genuinely executed.
+`detekt`/`ktlintCheck` clean. This change touches only `shared-ui`'s `commonMain`/`commonTest` — no
+`iosApp/NfcHceBridge/` file changed, so per this file's own verification rules a full `xcodebuild` is not
+required this pass (the still-open real-device passes for the two findings above remain outstanding
+separately).
+
+### Fifth real-device finding on Option 4: an early-invalidation path for `CardSession`, complementary to the UX mitigation above — not a replacement for it
+
+Investigated whether the fourth finding's fixed `Timing.stopDelay` (3 seconds) could instead be tied to
+actual BLE progress, to shrink the window that lets the system Wallet/Pay picker appear. **The
+investigation's own conclusion, load-bearing for what follows**: `stopDelay` already ends `CardSession`
+well before a slow BLE connection completes in every realistic case (the reported, dominant scenario —
+tap #1's 40-second discovery-retry timeout) — an event-driven trigger tied to `IosProximityState.Requesting`
+can only ever preempt the *already low-risk* fast-BLE case (tap #2), because `Requesting` is essentially
+never reached before the fixed 3-second timer already fires. **This is why the fourth finding's UX
+message stays in place and is not superseded by what follows** — the request that prompted this fix
+described it as possibly making that message "no longer needed," and that determination doesn't hold: for
+the dominant slow-BLE case, this fix changes nothing, and the UX message remains the only mitigation that
+actually addresses it.
+
+**What this fix does add, honestly scoped**: for the fast-BLE case specifically, `CardSession` can now be
+torn down as soon as a BLE request has genuinely arrived and been matched (`IosProximityState.Requesting`),
+rather than always waiting out the full fixed 3 seconds regardless. A real, if narrower, improvement for
+that one case — shrinking an already-small window further, not eliminating a large one.
+
+**Implementation — a race between two paths, with the original one kept intact as the floor/fallback**:
+
+- `NfcHceBridge.swift`: `stop()` now stores the delayed-teardown `Task` (`pendingTeardownTask`) and the
+  `CardSession` it captured (`pendingTeardownSession`), both type-erased `Any?` for the same reason as
+  `cardSession`/`presentmentIntentAssertion`. A new `invalidateNow()` cancels that pending task and
+  performs the teardown itself instead, after a short, deliberate `Timing.earlyInvalidateBuffer` (500ms)
+  — *not* instantly on call, specifically to cover residual uncertainty about NFC/BLE sequencing this app
+  doesn't control (a cross-repo boundary, §8) rather than a specific known race. Both the delayed task's
+  own completion and `invalidateNow()` clear `pendingTeardownTask`/`pendingTeardownSession` *before*
+  performing their respective teardown (not after), so whichever path reaches that check first is the one
+  that runs — the other finds nothing left pending and no-ops. `stop()`'s existing `try? await
+  Task.sleep(...)` was changed to an explicit `do`/`catch` that returns early on cancellation: `try?`
+  would have swallowed `invalidateNow()`'s cancellation and torn the session down a second time anyway.
+- `NfcHceBridge.def` / `IosNfcHceTransport.kt`: `invalidateNow()` added to both, mirroring `stop()`'s own
+  seam. `IosNfcHceTransport.kt` gains `pendingStopBridge` (`internal` — see below), set by `stop()` before
+  it nulls the general-purpose `bridge` field (which itself is nulled synchronously, well before Option
+  4's `Requesting` transition could ever fire, so `invalidateNow()` can't just read `bridge` again).
+- `IosProximityPresenter.kt`: `awaitConsent()` calls `nfcTransport.invalidateNow()` immediately after
+  publishing `IosProximityState.Requesting` — unconditionally, not gated on cold-tap origin specifically:
+  a no-op for a QR-only presentment, where `pendingStopBridge` is simply `null` since cold-tap was never
+  armed at all.
+
+**Test added**, `IosNfcHceTransportTest.kt`'s `invalidateNow consumes the pending bridge left by stop and
+is a no-op without one`: the actual fast-vs-slow timing race lives entirely in Swift `Task`
+cancellation/scheduling and needs real `CardSession` hardware to observe — unreachable from the Simulator,
+same limitation this test file's own header comment already states, and the same reason
+`IosProximityPresentmentTest.kt` can't reach `awaitConsent()`'s real call site either (no BLE wire on the
+Simulator). What a Simulator test genuinely can verify, and does: the Kotlin-side bookkeeping the
+mechanism depends on — `stop()` leaves the bridge reachable for a later `invalidateNow()` (the "something
+real to preempt" case), `invalidateNow()` consumes it exactly once, and both a pre-`stop()` call and a
+repeat call afterward are safe no-ops. Required widening `IosNfcHceTransport.pendingStopBridge` from
+`private` to `internal`, same justification pattern as `delegate`'s own visibility in the same class.
+**Verified as a genuine positive control**: temporarily removed the `pendingStopBridge = null` line,
+confirmed the test failed, restored it, confirmed it passes again.
+
+**Verified**: `:shared-logic:testAndroidHostTest` 115/115, `:shared-logic:iosSimulatorArm64Test` 460/460
+(+1), `:shared-ui:testAndroidHostTest` 483/483, `:shared-ui:iosSimulatorArm64Test` 531/531 — all from
+actual `TEST-*.xml` files, genuinely executed. `detekt`/`ktlintCheck` clean. `generateIosProject`
+succeeded. A real device was connected (`Martin's iPhone`) — full `xcodebuild` for `EudiWallet`
+(embedding `EudiWalletDocumentProvider`) against it succeeded (`** BUILD SUCCEEDED **`), and the build was
+installed onto that device (`xcrun devicectl device install app`). **Not yet exercised on the device
+itself**: a real fast-BLE tap, confirming `CardSession` tears down at `Requesting` rather than waiting the
+full 3 seconds, and confirming the card picker doesn't appear (or appears less often) when the phone is
+held near the reader only briefly afterward — this, and the still-open real-hardware passes for the two
+findings above, remain outstanding.
+
+**Update, tried and reverted the same night, after real-device testing (see the Sixth finding below for
+the joint verdict): this early-invalidation path is a confirmed reliability regression, not just an
+insufficient optimization — see the correction at the end of the Sixth finding for the real-device
+evidence and what was reverted.** Recorded here rather than deleted so the same optimization isn't
+re-attempted without knowing why it failed.
+
+### Sixth real-device finding on Option 4: a third, faster `CardSession`-invalidation trigger, based on NFC's own trailing-read pattern — the fifth finding's fixed count rejected, inactivity-based version implemented instead
+
+The fifth finding's BLE-`Requesting`-triggered `invalidateNow()` still only preempts the fixed 3-second
+timer in the fast-BLE case. Investigated a third, faster trigger based on the trailing-NDEF-read pattern
+itself — this needs no BLE progress at all, so it can fire in *every* case, slow or fast.
+
+**Design confirmed safe before implementing, per two explicit questions**:
+
+1. *What happens to a trailing `READ_BINARY` that arrives after `CardSession` has already been
+   invalidated?* Traced precisely: a genuinely new APDU can't reach this app at all once invalidated —
+   `session.eventStream`'s `.received` case is only ever delivered for an active session, and CoreNFC
+   simply stops yielding events for one that's gone. An APDU already in flight at the moment of
+   invalidation hits `respond(to:with:attempt:)`'s own pre-existing terminal `catch { }` (`NfcHceBridge.swift`)
+   — already there, adapted from pagopa, not something added for this. **Correction made explicitly, not
+   assumed**: the actual safety net here is CoreNFC's own event-stream lifecycle plus that pre-existing
+   catch-all — *not* `ndefHandoverCompleted`, which guards a different, unrelated failure mode (a repeat
+   `SELECT` re-entering `MdocNfcEngagementHelper`'s construction logic, the original 6A82-adjacent bug).
+2. *Is "exactly 2 trailing reads" (observed once on real hardware) a reliable count to hard-code?*
+   No — rejected. The NDEF Type 4 Tag read pattern genuinely needs at least two reads (`NLEN`, then
+   content) — a real protocol floor, not coincidental — but a larger Handover Select (more connection
+   methods, longer service names) can need the content read split across additional `READ_BINARY`s at
+   increasing offsets, exceeding 2. A fixed-count trigger would invalidate `CardSession` before such a
+   reader finished reading its own message — not a graceful fallback, a silently broken tap, since the
+   reader would never learn the BLE connection method's UUID and never attempt to connect at all.
+
+**Implemented instead: an inactivity-based trigger, general rather than count-based.** Tracks the time
+since the last APDU once handover has completed; fires `invalidateNow()` after 500ms of silence,
+resetting on every new APDU in between — self-adapting to however many reads a given message actually
+needs, rather than assuming a specific count.
+
+- `IosNfcHceTransport.kt`: `ApduDelegate` gains `resetInactivityTimer()` (`internal`), called from
+  `processCommandApdu` for every APDU (a no-op before handover completes) and from a new
+  `IosNfcHceTransport.armInactivityTimeout()` (called once, directly, at the moment handover completes —
+  covering the case where that same `SELECT`/`READ` is the reader's *last* NFC interaction, with no
+  further APDU ever arriving to reactively re-arm it). Cancels and replaces any still-pending timer job
+  each time; fires `onInactivityTimeout` (wired to `invalidateNow`) once `INACTIVITY_TIMEOUT` (500ms, a
+  new named `internal val` constant) elapses with nothing new. A dedicated log line —
+  `"inactivityTimeout: 500ms of NFC silence since the last APDU — invalidating CardSession early"` —
+  distinguishes this trigger from the BLE-`Requesting` one in device logs, as asked.
+- `IosProximityPresenter.kt`: `onColdTapHandoverComplete()` calls `nfcTransport.armInactivityTimeout()`
+  right alongside setting `ndefHandoverCompleted = true`.
+- `invalidateNow()`'s own doc comment updated to name all three redundant triggers in firing order:
+  this one, then the BLE-`Requesting` one, then `Timing.stopDelay` itself as the floor — each is a safe
+  no-op once an earlier one has already run (`invalidateNow()`'s existing idempotency, unchanged).
+
+**Tests added**, `IosNfcHceTransportTest.kt`, both using `scope = this` (the test's own `TestScope`) so
+the `delay()`-based timer advances on virtual time rather than a real 500ms wall-clock wait:
+
+- `500ms of silence after handover completes triggers the inactivity timeout`: sends one trailing read,
+  advances exactly the timeout window, asserts it fired.
+- `a new APDU just before the window elapses resets the inactivity timer instead of firing early`: sends
+  a read, advances to just short of the window, asserts it hasn't fired; sends a second read (asserting
+  it's still answered `SUCCESS`, not rejected — the exact failure mode the fixed-count design would have
+  risked); advances to just short of the *reset* window, asserts still not fired; advances past it,
+  asserts it fires.
+
+**Verified both as genuine positive controls**: temporarily removed `inactivityJob?.cancel()` — the
+reset test failed as expected (fired prematurely). Separately, temporarily removed the
+`resetInactivityTimer()` call from `processCommandApdu` entirely — both new tests failed (nothing ever
+arms the timer without it). Both reverted and reconfirmed green.
+
+**Verified**: `:shared-logic:testAndroidHostTest` 115/115, `:shared-logic:iosSimulatorArm64Test` 462/462
+(+2), `:shared-ui:testAndroidHostTest` 483/483, `:shared-ui:iosSimulatorArm64Test` 531/531 — all from
+actual `TEST-*.xml` files, genuinely executed. `detekt`/`ktlintCheck` clean. `generateIosProject`
+succeeded. A real device was connected (`Martin's iPhone`) and the full `xcodebuild` for `EudiWallet`
+(embedding `EudiWalletDocumentProvider`) against it succeeded (`** BUILD SUCCEEDED **`) — genuinely
+compiled and signed for that real device, not a generic/simulator fallback. **The device disconnected
+before the install step** (`xcrun devicectl device install app` failed:
+`com.apple.dt.CoreDeviceError error 4000`, `xcrun devicectl list devices` then showed it `unavailable`)
+— so, unlike the two findings above, this one was **not** installed or run on hardware this pass, and
+**no log-timestamp comparison between the inactivity trigger and the previous BLE-triggered approach was
+captured**, contrary to what was asked. Once reconnected: install, tap, and pull the device log to
+confirm the new `inactivityTimeout: ...` line fires (and roughly when, relative to
+`onColdTapHandoverComplete`) ahead of `awaitConsent`'s own `invalidateNow` call in the same session.
+
+**Update, later the same night: both early-invalidation triggers (this finding's inactivity timer and the
+Fifth finding's BLE-`Requesting` trigger) were tried on real hardware, found to cause a genuine BLE
+reliability regression, and reverted — a rejected approach, recorded here rather than deleted.**
+
+A user report after further real-device testing — quiet-period NFC teardown behaving correctly, but BLE
+peripheral discovery failing repeatedly per the device log — prompted a direct, real-device A/B test
+rather than further theorizing:
+
+1. Both triggers were temporarily disabled (the inactivity timer short-circuited with an unconditional
+   early return; the `awaitConsent()` call to `invalidateNow()` commented out), leaving only the
+   original, unmodified `Timing.stopDelay` as the sole `CardSession` teardown path — exactly the state
+   before the Fifth finding.
+2. Rebuilt, reinstalled, and real-device tested: phone moved away immediately after the tap, no card
+   picker, no backgrounding involved at all.
+3. **Confirmed reliable**: BLE connected and completed a full, clean end-to-end transfer — a real
+   `DeviceResponse` sent, session-termination received, transport closed gracefully. The same scenario
+   with both early-invalidation triggers active had been failing.
+
+**Conclusion**: ending `CardSession`/CoreNFC's HCE session early does not give CoreBluetooth's own
+peripheral stack enough time to reach a stable, discoverable advertising state before a scanning reader
+starts looking for it. The original `Timing.stopDelay` (3 seconds) is not an arbitrary, safely-shortenable
+constant — empirically, on real hardware, it is close to the floor CoreBluetooth's peripheral stack
+actually needs after `CardSession`/`NFCPresentmentIntentAssertion` teardown for a scanning reader to
+reliably discover the already-advertising BLE peripheral. Neither trigger's own individual reasoning was
+wrong on its own terms (the BLE-`Requesting` trigger's timing analysis, the inactivity trigger's rejection
+of a fixed read-count, the safety analysis of a post-invalidation trailing read) — the actual, real-device
+cost was a layer beneath any of that reasoning, in CoreBluetooth's own peripheral-advertising stack, not
+in this app's own NFC-side logic.
+
+**Reverted, cleanly, not just disabled**: `NfcHceBridge.swift`'s `pendingTeardownTask`/
+`pendingTeardownSession` properties, `invalidateNow()`, and `Timing.earlyInvalidateBuffer` removed;
+`stop()`'s delayed-teardown `Task` reverted to its original, non-cancellable `try? await
+Task.sleep(for: Timing.stopDelay)` form. `NfcHceBridge.def`'s `invalidateNow` declaration removed.
+`IosNfcHceTransport.kt`'s `invalidateNow()`, `pendingStopBridge`, `armInactivityTimeout()`,
+`ApduDelegate.resetInactivityTimer()`/`inactivityJob`/`onInactivityTimeout`, and the `INACTIVITY_TIMEOUT`
+constant all removed, along with the `processCommandApdu` call site and now-unused imports.
+`IosProximityPresenter.kt`'s `onColdTapHandoverComplete()`/`awaitConsent()` calls into either mechanism
+removed. `IosNfcHceTransportTest.kt`'s three tests for this mechanism (and their now-unused helpers)
+removed along with it — they tested real code that no longer exists. `Timing.stopDelay`'s own doc comment
+now carries this finding's summary directly, so a future reader hits the "tried and reverted" context at
+the exact constant someone would otherwise be tempted to shorten again.
+
+**Unaffected by this revert, confirmed still valid**: the Fourth finding's UX mitigation (the "Tap
+complete — you can move your phone away now" snackbar) and the Seventh finding below (the
+`bluetooth-peripheral` background mode fix) — both are independent of `CardSession`'s teardown timing
+itself, and neither touches `Timing.stopDelay` or anything this revert removed.
+
+**Verified**: `:shared-logic:testAndroidHostTest` 115/115, `:shared-logic:iosSimulatorArm64Test` 459/459
+(−3, the three removed tests), `:shared-ui:testAndroidHostTest` 483/483, `:shared-ui:iosSimulatorArm64Test`
+531/531 — all from actual `TEST-*.xml` files, genuinely executed. `detekt`/`ktlintCheck` clean. This is
+now the correct, final state for today's commit regarding `CardSession` teardown timing — do not
+re-attempt early invalidation of `Timing.stopDelay` without first establishing, on real hardware, how much
+time CoreBluetooth's peripheral stack genuinely needs after `CardSession` teardown, independent of
+anything on the NFC side.
+
+### Closing note on the card-picker investigation: confirmed as expected iOS behavior, not further pursued
+
+A separate report, distinct from the fourth/fifth/sixth findings above (those are about the picker
+appearing *after* a successful tap, while `CardSession` is winding down): with "Share over NFC" **off**
+— no `CardSession`/`NFCPresentmentIntentAssertion` ever active — tapping the phone against a reader can
+still show the native Apple Pay/Wallet card picker.
+
+**Confirmed as expected iOS default routing, not a bug, and not caused by any entitlement in this app**:
+
+- Traced the full call graph: `armColdTapEngagement()` (the only function that ever calls
+  `nfcTransport.start()`, in turn the only path to `NFCPresentmentIntentAssertion.acquire()`/
+  `CardSession()`) has exactly one call site, `onScreenEntered()`'s `if (nfcEngagementEnabled)` branch;
+  `nfcEngagementEnabled` has exactly three writers (its `false` default, `setNfcEngagementEnabled()`,
+  and `turnNfcEngagementOffAndSignalUi()`), none of them capable of leaving it stale relative to what the
+  switch shows. No code path starts `CardSession` while the switch is off.
+- Re-checked `iosApp/project.yml` directly (`git status --short` confirmed no uncommitted changes to it):
+  `com.apple.developer.nfc.hce.default-contactless-app` is not present and never has been active — it
+  was tried once, failed a real, signed device build outright (`Entitlement ...
+  default-contactless-app requires approval from Apple to include in a profile`, "Second real-device
+  finding" above), and was reverted before ever shipping. Only the base `com.apple.developer.nfc.hce`
+  entitlement and `select-identifier-prefixes` are present, and that pairing was already proven
+  (that same earlier finding) to be insufficient on its own to claim priority over the system's default
+  routing — claiming priority needs an actively-held `NFCPresentmentIntentAssertion`, which the switch
+  being off means never happens.
+
+**Independent confirmation this is a known, shared limitation, not specific to this app — verified via a
+live fetch of Apple Developer Forums thread 789477 ("HCE issues"), not just cited secondhand.** Another
+developer building a similar HCE-based app reports the identical symptom: *"if our application is not
+selected as default NFC application our users may see Wallet popup when there's no active presentment
+intent."* An Apple DTS engineer's own reply in that thread is more definitive than a "maybe" on the two
+possible mitigations, worth recording precisely:
+
+- `PassKit`'s `requestAutomaticPassPresentationSuppression()` — **explicitly ruled out by DTS, not merely
+  unverified**: *"Pass suppression won't work, because it will suppress your app too"* — and, more
+  fundamentally, *"the pass presentation suppression managed entitlement and its API family does not
+  interact with HCE communication at all, as they are on completely separate layers of the system."*
+  Requires its own separate entitlement (`com.apple.developer.passkit.pass-presentation-suppression`)
+  regardless, so this is doubly not worth pursuing.
+- **The only fix DTS names**: register AIDs via `com.apple.developer.nfc.hce` *and* have the user set the
+  app as their device's default contactless app — i.e. exactly the
+  `com.apple.developer.nfc.hce.default-contactless-app` entitlement this project already attempted and
+  had rejected outright for this App ID (Second real-device finding). Apple's own forum answer confirms
+  there is no other supported way to suppress this popup while `CardSession` isn't active.
+
+**Conclusion**: accepted as an unavoidable, Apple-controlled UX characteristic of HCE-based apps whose
+NFC involvement is switch-gated rather than registered as the device default — which is deliberate here,
+not an oversight (`wiki/IOS_NFC_PLAN.md`'s own design: NFC is always explicit, never passive). No further
+investigation planned unless Apple documents a new supported mitigation, or this App ID is ever granted
+the default-contactless-app capability and a product decision is made to pursue that path (its own
+tradeoffs — becoming the device's default handler for these AIDs generally — not evaluated here).
+
+### Seventh real-device finding on Option 4: BLE discovery unreliability traced to the app losing foreground focus while cold-tap is armed, not to BLE itself
+
+Reported: BLE works reliably via QR-then-BLE, but was unreliable specifically for cold-tap-then-BLE, with
+one real-device log showing BLE advertising 37+ seconds before the reader started scanning for it —
+including the exact window the previous finding's card picker took over foreground focus.
+
+**Investigated whether the two paths differ in *when* advertising starts — they don't.** Traced both:
+`IosProximityCoordinator.qrEvents()`'s flow builder calls `onScreenEntered()` then `startQrEngagement()`
+back to back at screen-entry time, and `startQrEngagement()` starts advertising *before* the QR is even
+generated — the QR payload embeds the same BLE connection method advertising already produced.
+`armColdTapEngagement()` is called from the very same `onScreenEntered()`, at the same trigger point.
+**The real asymmetry is human-driven elapsed time, not a code-level design difference**: once a QR is
+visible, scanning it is the tester's one obvious next action, so the gap is naturally short; once
+cold-tap is armed, nothing couples "screen open" to "user taps soon" — the user can leave the screen
+open indefinitely, including long enough for the previous finding's card picker to take over.
+
+**Root cause, confirmed against Apple's own documentation, not assumed — with a real quote this time, not
+just a page title:** *"On the peripheral side, advertising is disabled, and any central trying to access
+a dynamic characteristic value of one of the app's published services receives an error"* — Apple's Core
+Bluetooth Background Processing guide, describing exactly what happens when an app loses foreground
+focus **without** the `bluetooth-peripheral` background mode declared. Checked this app's own
+configuration directly (`grep -rln "UIBackgroundModes" iosApp/` returned nothing): **this app declared no
+Bluetooth background mode at all.** So the moment anything takes foreground focus away — including the
+previous finding's own card picker — BLE advertising doesn't merely degrade, it **stops outright**, and
+only resumes once the app returns to the foreground. A purely-foreground, never-backgrounded long wait
+has no documented degradation in the same source; this is specifically a foreground-focus-loss mechanism,
+not an elapsed-time one.
+
+**A third option (advertise at `onHandoverComplete` instead of arm time) was considered and rejected as
+architecturally incompatible**, not merely suboptimal: Option 4's static Handover Select design requires
+the BLE peripheral to already exist and be advertising *before* any tap can happen — the reader learns
+the connection method's UUID from the Handover Select it reads *during* the tap itself, which by
+definition happens against an already-live peripheral. By the time `onColdTapHandoverComplete()` runs in
+Kotlin, the reader has already read that UUID from the NFC exchange that preceded it; advertising a fresh
+UUID at that point wouldn't reach a reader already holding the old one.
+
+**Fix: declare `bluetooth-peripheral` background mode** (`iosApp/project.yml`, `EudiWallet` target's
+`Info.plist` properties). **Confirmed against Apple's documentation before adding, not assumed** — a
+real quote, not a page title, from the same Core Bluetooth Background Processing guide: *"The Core
+Bluetooth background execution modes are declared by adding the `UIBackgroundModes` key to your
+`Info.plist` file"* — purely self-declared, no mention anywhere of requiring separate Apple approval or
+a provisioning-profile capability, unlike `com.apple.developer.nfc.hce.default-contactless-app` (Second
+finding above), which explicitly does. The real, signed-device `xcodebuild` below confirms this in
+practice too: no provisioning error, unlike that earlier attempt.
+
+**Flagged and reconciled against an existing, deliberate decision in the same file before touching it**:
+`project.yml` already had a comment dated 2026-09-04 stating "NO BACKGROUND MODES... deliberate" — a
+`BGProcessingTask` for credential top-up was removed specifically so the wallet database could carry
+`NSFileProtectionComplete` (unreadable while the device is locked). `bluetooth-peripheral` is a
+categorically different mechanism — it only keeps an *already-armed*, user-initiated peripheral alive
+through a foreground-focus loss, nothing scheduled or deferred — so it doesn't reopen that decision, and
+the comment now says so explicitly rather than being silently left stale/contradictory. **One real
+limit, documented in the same comment, not glossed over**: this only helps the backgrounded-but-unlocked
+case (the picker scenario is exactly that — it doesn't lock the device). If the device is genuinely
+*locked* during the wait, the document database is still unreadable regardless of whether BLE itself
+survives, so a share attempted while truly locked still cannot complete either way — `bluetooth-peripheral`
+doesn't change that, and was never expected to.
+
+**Kept, not replaced**: the "Tap complete — you can move your phone away now" snackbar (third finding)
+stays — even with BLE surviving a foreground-focus loss, avoiding the card picker's visual interruption
+entirely is still the nicer experience than merely surviving it in the background.
+
+**Verified**: no Kotlin/Swift production code changed (config-only), so the Kotlin scoped test suites and
+`detekt`/`ktlintCheck` are unaffected by this specific change — not re-run for it alone.
+`generateIosProject` succeeded; the generated `Info.plist` was checked directly (`PlistBuddy -c "Print
+:UIBackgroundModes"`) and confirmed to contain `bluetooth-peripheral`. The real-device `xcodebuild`
+(`EudiWallet` + `EudiWalletDocumentProvider`, `Martin's iPhone`) succeeded with no provisioning/entitlement
+error, and the build was installed onto that device. **Not yet exercised on the device itself**: the
+actual cold-tap-then-backgrounded-then-tap-close scenario needs a real hands-on test — hold the phone
+near a reader after tapping, let the card picker (or another app switch) take foreground focus, and
+confirm the verifier still discovers and connects, which requires a physical action this investigation
+cannot perform on its own.

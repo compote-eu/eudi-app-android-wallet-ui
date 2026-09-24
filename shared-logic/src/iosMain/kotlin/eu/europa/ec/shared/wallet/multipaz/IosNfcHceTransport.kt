@@ -48,14 +48,26 @@ sealed interface NfcStartResult {
     data object AccessNotAccepted : NfcStartResult
     data object TransientFailure : NfcStartResult
 
+    /**
+     * `NFCPresentmentIntentAssertion.acquire()` failed with `.systemNotAvailable` — real-device finding
+     * (`wiki/IOS_NFC_PLAN.md` §9): Apple's own documented assertion-level cooldown (hard-capped at 15
+     * seconds, followed by a mandatory 15-second cool-down before a new one can be acquired), distinct
+     * from the separately-documented `CardSession`-level HCE session/cool-down `Timing.maxRespondRetries`
+     * was tuned for. Split out from [TransientFailure] specifically so the UI can explain the real
+     * constraint instead of a generic failure message, and so [IosProximityPresenter] can still turn the
+     * "Share over NFC" switch off — `CardSession` never started, so NFC was never active either way.
+     */
+    data object AssertionCooldown : NfcStartResult
+
     companion object {
         fun fromCode(code: Long): NfcStartResult = when (code) {
             0L -> Started
             1L -> NotSupported
             2L -> NotEligible
             3L -> AccessNotAccepted
-            // Any other value is unreached by the Swift side today, but a fresh, undocumented value
-            // is exactly what "no precise diagnosis" is for, matching this file's ApduDelegate.
+            5L -> AssertionCooldown
+            // Any other value (4, or a fresh, undocumented one) is exactly what "no precise diagnosis"
+            // is for, matching this file's ApduDelegate.
             else -> TransientFailure
         }
     }
@@ -100,7 +112,17 @@ sealed interface NfcStartResult {
  * lifecycle — route the raw bytes CoreNFC hands over to the right one, and back.
  */
 @OptIn(ExperimentalForeignApi::class)
-class IosNfcHceTransport {
+class IosNfcHceTransport(
+    /**
+     * Real-device finding (`wiki/IOS_NFC_PLAN.md` §9): called when `CardSession` ended without
+     * [stop] having been called first — the user cancelled the system NFC sheet, or it timed out.
+     * Never called for an expected end. `IosProximityPresenter` uses this to turn the "Share over
+     * NFC" switch off and reset its own armed-state bookkeeping, which — before this existed — had
+     * no way to ever learn the session was gone, and stayed believing cold-tap was still armed
+     * indefinitely, silently ignoring every later tap.
+     */
+    private val onSessionEndedUnexpectedly: () -> Unit = {},
+) {
 
     /**
      * The current cold-tap (Annex C) engagement helper, or `null` if none is currently offered.
@@ -128,9 +150,15 @@ class IosNfcHceTransport {
      */
     var ndefHandoverCompleted: Boolean = false
 
-    private val delegate = ApduDelegate(
+    /**
+     * `internal`, not `private`: a test needs to call [ApduDelegate.sessionEndedUnexpectedly] directly
+     * to exercise the real [onSessionEndedUnexpectedly] wiring end to end without a real `CardSession` —
+     * same justification as [IosProximityPresenter.nfcTransport]'s own `internal` visibility.
+     */
+    internal val delegate = ApduDelegate(
         engagementHelperProvider = { engagementHelper },
         ndefHandoverCompletedProvider = { ndefHandoverCompleted },
+        onSessionEndedUnexpected = onSessionEndedUnexpectedly,
     )
     private var bridge: NfcHceBridge? = null
 
@@ -156,7 +184,6 @@ class IosNfcHceTransport {
         bridge = null
         NfcTransportMdoc.onDeactivated()
     }
-
 
     /**
      * The Objective-C-visible half of the seam: Swift calls [processCommandApdu] once per APDU, and
@@ -286,12 +313,25 @@ class IosNfcHceTransport {
                 scope.launch { sendResponse(helper.processApdu(command)) }
             }
         },
+        /** See [IosNfcHceTransport]'s own constructor parameter of the same name. */
+        private val onSessionEndedUnexpected: () -> Unit = {},
     ) : NSObject(), NfcHceBridgeDelegateProtocol {
 
         /** Which application the last successful `SELECT APPLICATION` chose; see this class's own doc. */
         private enum class SelectedApplication { NONE, MDOC, NDEF }
 
         private var selectedApplication = SelectedApplication.NONE
+
+        /**
+         * Real-device finding (`wiki/IOS_NFC_PLAN.md` §9): `NfcHceBridge.swift` calls this when
+         * `CardSession` ended without its own `stop()` having been called first — the user cancelled
+         * the system NFC sheet, or it timed out. Never called for an expected end (our own `stop()`
+         * already called, e.g. right after a successful Option 4 handover).
+         */
+        override fun sessionEndedUnexpectedly() {
+            Logger.w(TAG, "sessionEndedUnexpectedly: CardSession ended without our own stop()")
+            onSessionEndedUnexpected()
+        }
 
         override fun processCommandApdu(commandApdu: NSData, completion: (NSData?) -> Unit) {
             try {

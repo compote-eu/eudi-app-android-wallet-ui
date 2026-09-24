@@ -45,6 +45,13 @@ import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
 import org.koin.core.annotation.KoinViewModel
 
+/**
+ * Real-device finding (`wiki/IOS_NFC_PLAN.md` §9): shown right when [ProximityQRPartialState.Connecting]
+ * arrives — see that handler's own doc comment for why moving the phone away then, rather than leaving
+ * it near the reader, matters.
+ */
+private const val TAP_COMPLETE_MOVE_PHONE_AWAY = "Tap complete — you can move your phone away now."
+
 data class State(
     val isLoading: Boolean = true,
     val error: ContentErrorConfig? = null,
@@ -213,6 +220,17 @@ class ProximityQRViewModel(
                                 error = null,
                             )
                         }
+                        // Real-device finding (wiki/IOS_NFC_PLAN.md §9): iOS's own default contactless-
+                        // app routing can show its Wallet/Pay picker if the phone lingers near the
+                        // reader after CardSession actually ends (~3+ seconds after this state is
+                        // entered) — telling the user the tap itself is done, right when it happens,
+                        // prompts them to move the phone away before that becomes reachable. Plain,
+                        // un-localized text, matching this same NFC-status-message family's existing
+                        // ones (NfcNotice above, all of IosProximityPresenter's own failure messages) —
+                        // see this screen's other Effect.ShowSnackbar call for that established pattern.
+                        setEffect {
+                            Effect.ShowSnackbar(message = TAP_COMPLETE_MOVE_PHONE_AWAY)
+                        }
                     }
 
                     is ProximityQRPartialState.Connected -> {
@@ -233,6 +251,17 @@ class ProximityQRViewModel(
 
                     is ProximityQRPartialState.NfcNotice -> {
                         setEffect { Effect.ShowSnackbar(message = response.message) }
+                    }
+
+                    is ProximityQRPartialState.NfcEngagementDisabledUnexpectedly -> {
+                        // iOS-only, real-device finding (wiki/IOS_NFC_PLAN.md §9): CardSession ended on
+                        // its own (system sheet cancelled/timed out) and the platform side already turned
+                        // NFC off and did not re-arm it — only the switch's own UI state needs to follow.
+                        // Deliberately not routed through Event.NfcDataRetrievalToggled: that would call
+                        // interactor.toggleNfcDataRetrieval(false) again (redundant — the platform side
+                        // already turned itself off) and restartEngagementForNfcToggle() (which would
+                        // re-arm cold-tap engagement, the auto-re-arm this fix explicitly rejects).
+                        setState { copy(nfcDataRetrievalEnabled = false) }
                     }
                 }
             }

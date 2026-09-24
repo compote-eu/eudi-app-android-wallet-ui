@@ -13,6 +13,14 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol NfcHceBridgeDelegate <NSObject>
 - (void)processCommandApdu:(NSData *)commandApdu
                  completion:(void (^)(NSData *responseApdu))completion;
+
+/**
+ * Called when the card session ended without this bridge's own `stop` having been called first —
+ * the user cancelled the system NFC sheet, or it timed out. Never called for an expected end
+ * (`stop` already called, e.g. after a successful handover) — see the Swift implementation's own
+ * doc comment on `stopRequested` for how that distinction is tracked.
+ */
+- (void)sessionEndedUnexpectedly;
 @end
 
 /**
@@ -38,9 +46,12 @@ NS_ASSUME_NONNULL_BEGIN
  *       check `NFCPresentmentIntentAssertion.acquire()` must pass first, per Apple's documented
  *       required sequence — see the doc comment on `startCardSession()` in the Swift implementation)
  *   3 = access not accepted (the entitlement is present but not yet granted/approved)
- *   4 = transient failure — any other `CardSession` start failure, or
- *       `NFCPresentmentIntentAssertion.Error.systemNotAvailable` (the 15-second cool-down between
- *       assertions; see the same doc comment)
+ *   4 = transient failure — any other `CardSession` construction/`startEmulation()` failure not covered
+ *       by a more specific code above
+ *   5 = assertion cooldown — `NFCPresentmentIntentAssertion.Error.systemNotAvailable`: Apple's own
+ *       documented ~15-second cool-down before a new assertion can be acquired, distinct from the
+ *       separately-documented `CardSession`-level HCE session/cool-down; see the Swift implementation's
+ *       own doc comment on `startCardSession()` for the full explanation and `wiki/IOS_NFC_PLAN.md` §9
  */
 - (void)startWithCompletion:(void (^)(NSInteger result))completion;
 

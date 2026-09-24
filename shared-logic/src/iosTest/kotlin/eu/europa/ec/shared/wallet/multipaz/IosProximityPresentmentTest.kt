@@ -33,8 +33,11 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
@@ -596,6 +599,105 @@ class IosProximityPresentmentTest {
             Nfc.RESPONSE_STATUS_SUCCESS,
             trailingRead.status,
             "tonight's real-device regression: this used to come back 6A82",
+        )
+    }
+
+    // Real-device finding (wiki/IOS_NFC_PLAN.md §9): cancelling the system NFC sheet (or letting it time
+    // out) ends CardSession on its own, entirely outside disarmColdTapEngagement()'s own explicit call
+    // sites (onScreenEntered's else branch, onScreenExited) — before this fix, nothing ever reset
+    // nfcEngagementEnabled/engagementHelperArmed in that case, so the "Share over NFC" switch stayed on
+    // while CardSession was actually gone, and every later tap was silently ignored. This drives the real
+    // callback chain NfcHceBridge.swift would (IosNfcHceTransport.ApduDelegate.sessionEndedUnexpectedly ->
+    // IosProximityPresenter.onCardSessionEndedUnexpectedly), not a stand-in for it — see
+    // IosNfcHceTransport.delegate's own doc comment for why it's internal.
+    @Test
+    fun an_unexpected_card_session_end_turns_the_nfc_switch_off_and_signals_the_ui() = runTest {
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+        presenter.setNfcEngagementEnabled(true)
+
+        // CoroutineStart.UNDISPATCHED, not the plain default: the collector must actually be subscribed
+        // to the flow before the synchronous trigger below runs, or (replay = 0) it would miss an
+        // emission that happened before it started collecting — same reasoning as the positive-control
+        // discipline used elsewhere in this file for real-device regressions.
+        var signalled = false
+        val collector = launch(start = CoroutineStart.UNDISPATCHED) {
+            presenter.nfcEngagementDisabledUnexpectedly.collect { signalled = true }
+        }
+
+        presenter.nfcTransport.delegate.sessionEndedUnexpectedly()
+        advanceUntilIdle()
+        collector.cancel()
+
+        assertEquals(true, signalled, "an unexpected CardSession end must signal the UI to follow suit")
+        assertEquals(
+            false,
+            presenter.isNfcEngagementEnabled(),
+            "an unexpected CardSession end must turn the switch off, not leave it standing on",
+        )
+    }
+
+    // The other half of the same fix: an *expected* end — our own disarmColdTapEngagement() call sites,
+    // e.g. onScreenExited() below — must not fire the unexpected-end signal at all. That path already
+    // tears cold-tap engagement down correctly on its own; re-signalling here would be redundant at best
+    // and would incorrectly flip a switch the user never touched at worst.
+    @Test
+    fun an_expected_card_session_end_does_not_signal_the_unexpected_flow() = runTest {
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+        presenter.setNfcEngagementEnabled(true)
+
+        var signalled = false
+        val collector = launch { presenter.nfcEngagementDisabledUnexpectedly.collect { signalled = true } }
+
+        presenter.onScreenExited()
+        advanceUntilIdle()
+        collector.cancel()
+
+        assertEquals(false, signalled, "disarmColdTapEngagement()'s own call sites are an expected end")
+        assertEquals(
+            true,
+            presenter.isNfcEngagementEnabled(),
+            "disarmColdTapEngagement() alone must not touch the switch's own state — only the " +
+                "unexpected-end path does",
+        )
+    }
+
+    // Real-device finding, wiki/IOS_NFC_PLAN.md §9: NFCPresentmentIntentAssertion.acquire()'s own
+    // Apple-imposed ~15-second cool-down is reachable through an ordinary flow — cancel the system
+    // sheet, then immediately re-enable "Share over NFC" before the cool-down has elapsed. CardSession
+    // never started in that case, so beyond showing a message that names the real constraint (not the
+    // generic transient-failure one), the switch itself must also turn off — same principle, and the
+    // same turnNfcEngagementOffAndSignalUi() mechanism, as the unexpected-session-end fix above.
+    @Test
+    fun an_assertion_cooldown_start_failure_shows_the_cooldown_message_and_turns_the_switch_off() = runTest {
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+        presenter.setNfcEngagementEnabled(true)
+
+        var message: String? = null
+        val noticeCollector = launch(start = CoroutineStart.UNDISPATCHED) {
+            presenter.nfcNotice.collect { message = it }
+        }
+        var signalled = false
+        val disabledCollector = launch(start = CoroutineStart.UNDISPATCHED) {
+            presenter.nfcEngagementDisabledUnexpectedly.collect { signalled = true }
+        }
+
+        presenter.onNfcStartResult(NfcStartResult.AssertionCooldown)
+        advanceUntilIdle()
+        noticeCollector.cancel()
+        disabledCollector.cancel()
+
+        assertEquals(
+            "NFC needs a moment to reset after the last attempt — please wait a few seconds and try " +
+                "again. Sharing continues over Bluetooth.",
+            message,
+            "must name the real constraint, not the generic transient-failure message — mirrors " +
+                "IosProximityPresenter's own private NFC_ASSERTION_COOLDOWN constant",
+        )
+        assertEquals(true, signalled, "the switch's UI state must be told to follow suit")
+        assertEquals(
+            false,
+            presenter.isNfcEngagementEnabled(),
+            "CardSession never started, so NFC was never active — the switch must not keep showing on",
         )
     }
 }

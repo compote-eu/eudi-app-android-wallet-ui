@@ -53,6 +53,16 @@ sealed class ProximityQRPartialState {
      * `wiki/IOS_NFC_PLAN.md`'s Findings A/B/D/E notes.
      */
     data class NfcNotice(val message: String) : ProximityQRPartialState()
+
+    /**
+     * iOS-only, real-device finding (`wiki/IOS_NFC_PLAN.md` §9): `CardSession` ended on its own — the
+     * user cancelled the system NFC sheet, or it timed out — mirrors
+     * [eu.europa.ec.shared.wallet.multipaz.IosProximityPresenter.nfcEngagementDisabledUnexpectedly].
+     * The platform side already turned `nfcEngagementEnabled` off and re-armed nothing; this only tells
+     * the screen to follow suit so the "Share over NFC" switch doesn't keep showing on while NFC isn't
+     * actually listening. Android never emits this — same no-op reasoning as [Connecting]/[NfcNotice].
+     */
+    data object NfcEngagementDisabledUnexpectedly : ProximityQRPartialState()
 }
 
 interface ProximityQRInteractor : ScopedPresentationInteractor {

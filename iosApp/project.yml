@@ -351,14 +351,36 @@ targets:
         # the wallet advertises, and without the key the app is terminated instead of prompted.
         NSBluetoothAlwaysUsageDescription: >-
           Share documents from your wallet with a nearby reader over Bluetooth.
-        # ⛔ NO BACKGROUND MODES, AND NO `BGTaskSchedulerPermittedIdentifiers` — deliberate, 2026-09-04.
-        # There was a `BGProcessingTask` here for credential top-up, iOS's counterpart of Android's
-        # `ReIssuanceWorkManager`. It was removed so the wallet database can carry
+        # `bluetooth-peripheral` only — real-device finding (wiki/IOS_NFC_PLAN.md §9): this app declared
+        # no UIBackgroundModes at all, and Apple's own Core Bluetooth Background Processing guide is
+        # explicit about what that means — "advertising is disabled" the moment the app loses foreground
+        # focus. Option 4 cold-tap (§9) arms a BLE peripheral well before any tap and can stay armed for
+        # a long, user-paced wait; anything that backgrounds the app during that wait — including iOS's
+        # own default contactless-app picker taking foreground focus, the exact scenario this was found
+        # in — silently killed the peripheral outright, not merely degraded it. Self-declared in
+        # `Info.plist`, confirmed against Apple's own documentation before adding: no separate
+        # entitlement/capability approval needed, unlike `com.apple.developer.nfc.hce.default-contactless-app`
+        # above, which does.
+        #
+        # Does NOT reach through the `NSFileProtectionComplete` concern below: if the device is
+        # genuinely *locked* (not just backgrounded — the picker scenario above doesn't lock it), the
+        # wallet's own document database is still unreadable regardless of whether BLE itself survives,
+        # so a share attempted while truly locked still cannot complete either way. This addition only
+        # helps the backgrounded-but-unlocked case — which is what was actually observed.
+        UIBackgroundModes:
+          - bluetooth-peripheral
+        # ⛔ Still no `BGTaskSchedulerPermittedIdentifiers` / `BGProcessingTask` — deliberate, 2026-09-04,
+        # not reopened by the addition above. That mechanism is categorically different: scheduling
+        # arbitrary work to run at some *later*, unpredictable time, independent of any session the user
+        # is actively in — `bluetooth-peripheral` only keeps an *already-armed*, user-initiated
+        # peripheral alive through a foreground-focus loss, nothing scheduled or deferred. The original
+        # `BGProcessingTask` here (credential top-up, iOS's counterpart of Android's
+        # `ReIssuanceWorkManager`) was removed so the wallet database can carry
         # `NSFileProtectionComplete`: that class makes the file unreadable while the device is locked,
         # which is incompatible with any work running while it is. The official iOS wallet makes the
-        # same trade — no background tasks, documents in the Keychain under a passcode-required class.
-        # Android keeps its two workers; the divergence is intended. See `refreshRevocationOnLaunch`
-        # in `iOSApp.swift` for the measurements behind the decision.
+        # same trade — no scheduled background tasks, documents in the Keychain under a
+        # passcode-required class. Android keeps its two workers; the divergence is intended. See
+        # `refreshRevocationOnLaunch` in `iOSApp.swift` for the measurements behind the decision.
     # ── Digital Credentials API: the provider entitlement ────────────────────────────────────────
     #
     # Registering a document with iOS's credential picker needs this restricted entitlement, and the

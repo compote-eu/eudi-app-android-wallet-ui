@@ -41,6 +41,13 @@ import Foundation
 @objc(NfcHceBridgeDelegate) public protocol NfcHceBridgeDelegate: NSObjectProtocol {
     @objc(processCommandApdu:completion:)
     func processCommandApdu(_ commandApdu: Data, completion: @escaping (Data?) -> Void)
+
+    /// Called when the card session ended without this bridge's own `stop()` having been called first
+    /// — the user cancelled the system NFC sheet, or it timed out. Never called for an expected end
+    /// (`stop()` already called, e.g. after a successful handover) — see `stop()`'s own doc comment for
+    /// how that distinction is tracked.
+    @objc(sessionEndedUnexpectedly)
+    func sessionEndedUnexpectedly()
 }
 
 /// Owns a CoreNFC `CardSession` and feeds every APDU the reader sends to `NfcHceBridgeDelegate`.
@@ -75,6 +82,14 @@ import Foundation
         /// pagopa/iso18013-ios's NFCCardEmulator.swift `stop()` (`Task.sleep(for: .seconds(3))`),
         /// which gives an in-flight response time to actually reach the reader instead of being cut
         /// off mid-transfer by an immediate `invalidate()`.
+        ///
+        /// **Real-device finding, tried and reverted (`wiki/IOS_NFC_PLAN.md` §9): an early-invalidation
+        /// path (a fast BLE-`Requesting`-triggered preempt of this delay, plus a 500ms NFC-inactivity
+        /// timer) was implemented, real-device tested, and found to cause BLE peripheral connection
+        /// failures — CoreBluetooth's own peripheral stack needs close to the full `stopDelay` window to
+        /// stabilize before a scanning reader can reliably discover it. Reverting to this delay as the
+        /// sole teardown trigger restored a reliable, real, end-to-end transfer. Do not re-attempt this
+        /// specific optimization without addressing that reliability cost first.**
         static let stopDelay: Duration = .seconds(3)
     }
 
@@ -89,6 +104,11 @@ import Foundation
         case notEligible = 2
         case accessNotAccepted = 3
         case transientFailure = 4
+        /// `NFCPresentmentIntentAssertion.acquire()` failed with `.systemNotAvailable` — Apple's own
+        /// documented assertion-level cooldown, distinct from `transientFailure`'s catch-all so Kotlin
+        /// can show a message that explains the real constraint. See `startCardSession()`'s own doc
+        /// comment for the cooldown's documented shape.
+        case assertionCooldown = 5
     }
 
     /// Real-device correlation logging (`wiki/IOS_NFC_PLAN.md` §9): matches this codebase's existing
@@ -118,6 +138,16 @@ import Foundation
     /// Same type-erasure reason as `cardSession`. See `startCardSession()`'s own doc comment for why
     /// this exists and what it does and doesn't cover.
     private var presentmentIntentAssertion: Any?
+
+    /// Whether `stop()` has been called for the currently-armed session — real-device finding
+    /// (`wiki/IOS_NFC_PLAN.md` §9): the Kotlin side had no way to distinguish a session `stop()` itself
+    /// ended (expected — e.g. right after a successful Option 4 handover) from one that ended on its
+    /// own (unexpected — the user cancelled the system sheet, or it timed out), so it kept believing
+    /// cold-tap was still armed indefinitely after an unexpected end, silently ignoring every later tap.
+    /// Set `true` synchronously inside `stop()`, reset `false` at the start of each fresh
+    /// `startCardSession()` call — checked in the `eventStream` loop's own `.sessionInvalidated` case to
+    /// decide whether to notify `delegate.sessionEndedUnexpectedly()`.
+    private var stopRequested = false
 
     @objc(initWithDelegate:)
     public init(delegate: NfcHceBridgeDelegate) {
@@ -158,6 +188,11 @@ import Foundation
     @objc(stop)
     public func stop() {
         log("stop: called")
+        // Set synchronously, before anything else — see stopRequested's own doc comment. This is what
+        // lets the eventStream loop's own .sessionInvalidated case (reached later, whether from this
+        // call's own delayed invalidate() below or from the session ending entirely on its own) tell an
+        // expected end from an unexpected one.
+        stopRequested = true
         // Releasing the reference (rather than waiting for its own 15-second expiry, see
         // startCardSession()'s doc comment) is deliberate: we no longer want to suppress the
         // system's default contactless app once we've stopped listening ourselves.
@@ -203,8 +238,20 @@ import Foundation
     /// still has an unavoidable 15-second gap where suppression lapses. Whether that gap matters in
     /// practice (most taps likely happen well within the first 15 seconds of arming) is unverified;
     /// see `wiki/IOS_NFC_PLAN.md` §9 for this as an open, undecided item alongside Stage 3's other two.
+    ///
+    /// **Surfaced to the user, not just logged**: a real-device report showed this cooldown reachable
+    /// through an ordinary flow — cancel the system sheet (or let it time out), then immediately
+    /// re-enable "Share over NFC". `.systemNotAvailable` below returns `.assertionCooldown`, a distinct
+    /// `StartResult` from the generic `.transientFailure`, so `IosProximityPresenter` can show a message
+    /// naming the real constraint instead of a generic failure, and turn the switch back off — see
+    /// `wiki/IOS_NFC_PLAN.md` §9 for the full writeup, including why this is a different cooldown than
+    /// the `CardSession`-level one `Timing.maxRespondRetries` was tuned for.
     @available(iOS 17.4, *)
     private func startCardSession() async -> StartResult {
+        // Reset for this fresh session — see stopRequested's own doc comment for why: a stale `true`
+        // left over from a *previous* session's own stop() would misclassify this new session's own,
+        // later, genuinely unexpected end as expected.
+        stopRequested = false
         guard NFCReaderSession.readingAvailable, CardSession.isSupported else {
             log("startCardSession: not supported")
             return .notSupported
@@ -224,7 +271,7 @@ import Foundation
             return .notEligible
         } catch NFCPresentmentIntentAssertion.Error.systemNotAvailable {
             log("startCardSession: NFCPresentmentIntentAssertion.acquire() failed: systemNotAvailable (cool-down)")
-            return .transientFailure
+            return .assertionCooldown
         } catch {
             log("startCardSession: NFCPresentmentIntentAssertion.acquire() failed: \(error)")
             return .transientFailure
@@ -267,9 +314,17 @@ import Foundation
                         }
                     }
 
-                case .sessionInvalidated:
-                    log("eventStream: sessionInvalidated")
+                case .sessionInvalidated(let reason):
+                    log("eventStream: sessionInvalidated: \(reason)")
                     await session.stopEmulation(status: .success)
+                    // See stopRequested's own doc comment — real-device finding, wiki/IOS_NFC_PLAN.md §9.
+                    // Only notify for the unexpected case: an expected end (our own stop() already
+                    // called, e.g. right after a successful Option 4 handover) has nothing new to tell
+                    // Kotlin — its own explicit call sites already handle that teardown correctly.
+                    if !self.stopRequested {
+                        self.cardSession = nil
+                        self.delegate.sessionEndedUnexpectedly()
+                    }
 
                 default:
                     break

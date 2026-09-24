@@ -125,6 +125,11 @@ internal class IosProximityCoordinator(
         presenter.nfcNotice.map<String, ProximityQRPartialState> { message ->
             ProximityQRPartialState.NfcNotice(message = message)
         },
+        // Same "merged in, subscribed from the moment collection starts" reasoning as nfcNotice above —
+        // real-device finding, wiki/IOS_NFC_PLAN.md §9.
+        presenter.nfcEngagementDisabledUnexpectedly.map<Unit, ProximityQRPartialState> {
+            ProximityQRPartialState.NfcEngagementDisabledUnexpectedly
+        },
         flow {
             // Reconciles cold-tap (Annex C) engagement with the current switch value before QR even
             // starts — idempotent, so this also covers restartEngagementForNfcToggle()'s restart, which
