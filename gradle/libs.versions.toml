@@ -1,13 +1,15 @@
 [versions]
 # Kotlin
 kotlin = "2.4.10"
-composeMultiplatform = "1.12.0"
+composeMultiplatform = "1.12.1"
 androidxLifecycleViewmodel = "2.11.0"
 navigation3 = "1.1.7"
 # JetBrains' multiplatform build of navigation3-ui. Google publishes navigation3-*runtime* for iOS but
 # NOT navigation3-ui, so `NavDisplay` is Android-only upstream; this fork fills exactly that gap and
 # delegates to the androidx artifacts on Android. Its own line, since it tracks the fork not androidx.
-jetbrainsNavigation3 = "1.1.1"
+# Each fork release is built against ONE androidx release (1.1.2 <-> navigation3 1.1.7), and every CMP
+# release note names the pair, so move `navigation3` only together with this.
+jetbrainsNavigation3 = "1.1.2"
 kotlinxAtomicfu = "0.33.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxDatetime = "0.8.0"
@@ -106,7 +108,7 @@ ktlintGradle = "14.2.0"
 owaspDependencyCheck = "13.0.0"
 protobufPlugin = "0.10.0"
 secrets = "2.0.1"
-sonar = "7.4.0.8496"
+sonar = "7.5.0.8588"
 
 [libraries]
 # Kotlin
