@@ -670,12 +670,15 @@ internal class OpenID4VciCompatibilityEngine(
             return data
         }
 
-        Logger.i(TAG, "sending scope '${scopes.joinToString(" ")}' instead of authorization_details")
+        // Once each: a document and its `_deferred` twin share one scope, and `scope` is a set
+        // (RFC 6749 §3.3), so repeating it asks for nothing more.
+        val scope = scopes.distinct().joinToString(" ")
+        Logger.i(TAG, "sending scope '$scope' instead of authorization_details")
         val rewritten = Parameters.build {
             parameters.forEach { name, values ->
                 if (name != "authorization_details") appendAll(name, values)
             }
-            append("scope", scopes.joinToString(" "))
+            append("scope", scope)
         }.formUrlEncode()
 
         return HttpRequestData(

@@ -749,6 +749,29 @@ class OpenID4VciHttpClientTest {
     }
 
     @Test
+    fun configurations_that_share_a_scope_send_it_once() = runTest {
+        var parBody = ""
+        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it })
+        client.get(issuerMetadataUrl).readRawBytes()
+        client.get(asMetadataUrl).readRawBytes()
+
+        // A document and its `_deferred` twin, which the dev and Plaut issuers both publish under one
+        // scope — exactly what a multi-document request asks for.
+        client.submitForm(
+            url = parEndpoint,
+            formParameters = parametersOf(
+                "authorization_details" to listOf(
+                    """[{"type":"openid_credential","credential_configuration_id":"pid_mdoc"},""" +
+                        """{"type":"openid_credential","credential_configuration_id":"pid_mdoc_deferred"}]"""
+                ),
+            ),
+        )
+
+        // `scope` is a set (RFC 6749 §3.3), so a repeated value asks for nothing more.
+        assertEquals("pid_scope", parBody.parseUrlEncodedParameters()["scope"])
+    }
+
+    @Test
     fun a_request_that_already_has_a_scope_is_not_rewritten() = runTest {
         var parBody = ""
         val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it })
