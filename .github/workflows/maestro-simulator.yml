@@ -87,11 +87,16 @@ jobs:
       # (see its comment below in ios-tests) — `sys.boot_completed` becoming `1` is the Android
       # analogue of `bootstatus -b` returning, and carries the same caveat: it signals the boot
       # sequence completed, not that every system service (package manager, input dispatch) is
-      # necessarily ready to accept commands yet. The settle sleep after the poll is precautionary,
-      # modeled on the iOS incident, NOT itself confirmed as a real Android race in this repo — no
-      # equivalent failure has actually been hit here. Keep it, but don't treat the "20s" iOS
-      # figure as validated for Android; revisit if this step turns out unnecessary or insufficient
-      # once this workflow has actually run a few times.
+      # necessarily ready to accept commands yet.
+      #
+      # CONFIRMED as a real Android race, not just a theoretical iOS-derived precaution: this
+      # workflow's first real CI run (job 108955336057, 2026-09-28) failed at the very next step
+      # ("Disable animations") with `error: closed` on the first `adb shell` call — the ADB
+      # transport itself had dropped moments after `sys.boot_completed` read 1. The settle sleep
+      # below was already 10s (the iOS-derived starting value) and was NOT sufficient on its own;
+      # bumped to 15s here as a modest additional buffer, but see "Disable animations" below for
+      # the fix actually expected to close the gap — a fixed sleep can't deterministically fix a
+      # transport-level drop, only reduce how often it's hit.
       - name: Wait for emulator boot
         run: |
           "$ANDROID_HOME/platform-tools/adb" wait-for-device
@@ -108,13 +113,33 @@ jobs:
             echo "::error::Emulator did not report sys.boot_completed=1 within the poll window."
             exit 1
           fi
-          sleep 10
+          sleep 15
 
+      # Retries each command rather than relying on the settle delay above alone: the confirmed
+      # failure here (`error: closed`) is a different class of problem than the iOS
+      # SpringBoard-readiness race that motivated that delay — it's the ADB transport itself
+      # dropping/re-negotiating shortly after boot, not a system service being slow to accept
+      # commands. A longer sleep reduces how often the window is hit but can't guarantee it;
+      # retrying the actual command after a `wait-for-device` re-sync is what directly handles a
+      # transport that closed and needs to be re-established.
       - name: Disable animations
         run: |
-          "$ANDROID_HOME/platform-tools/adb" shell settings put global window_animation_scale 0
-          "$ANDROID_HOME/platform-tools/adb" shell settings put global transition_animation_scale 0
-          "$ANDROID_HOME/platform-tools/adb" shell settings put global animator_duration_scale 0
+          adb_shell_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              if "$ANDROID_HOME/platform-tools/adb" shell "$@"; then
+                return 0
+              fi
+              echo "adb shell $* failed (attempt $attempt/3) — re-syncing and retrying..."
+              "$ANDROID_HOME/platform-tools/adb" wait-for-device
+              sleep 3
+            done
+            echo "::error::adb shell $* failed after 3 attempts."
+            return 1
+          }
+          adb_shell_retry settings put global window_animation_scale 0
+          adb_shell_retry settings put global transition_animation_scale 0
+          adb_shell_retry settings put global animator_duration_scale 0
 
       # Checks the binary's own full path directly, not `command -v maestro`: $GITHUB_PATH
       # additions are job-scoped in GitHub Actions and do NOT carry over between jobs, even on
