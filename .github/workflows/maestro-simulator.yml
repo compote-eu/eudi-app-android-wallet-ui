@@ -57,6 +57,26 @@ jobs:
       # list — check `$ANDROID_HOME/emulator/emulator -list-avds` there before finalizing.
       AVD_NAME: Pixel_6a
       MAESTRO_VERSION: '2.8.0'
+      # INCIDENT (2026-09-28, job 108955336057 and its re-run 36433600188): this workflow's
+      # first two real CI attempts both failed at "Disable animations" with adb `error: closed`.
+      # Root-caused via local repro on this same runner machine, NOT an AVD boot-timing race:
+      # BlueStacks (an unrelated third-party Android emulator, already running on this shared
+      # persistent Mac for an unrelated reason) was squatting on port 5555 — the Android SDK
+      # emulator's default first-instance ADB bridge port. Our own AVD's console (port 5554)
+      # bound fine and it genuinely booted internally ("Boot completed in 20816 ms" in its own
+      # log), but its ADB bridge collided with BlueStacks' already-there connection, so
+      # `adb devices -l` only ever showed BlueStacks' phantom device, and every unqualified
+      # `adb`/`adb -e` command — including the emulator's own internal post-boot calls — got
+      # routed to BlueStacks' fluctuating connection instead of our AVD. No amount of settle
+      # delay or retry-without-explicit-targeting could ever have fixed this.
+      #
+      # Fix: an explicit, deliberately-unusual port (outside the default 5554-5584 range other
+      # emulator software would try first) claimed by our own AVD and referenced by serial in
+      # EVERY adb/maestro call below — never relying on default single-device resolution again,
+      # so this workflow stays correct even if BlueStacks (or anything else) starts using the
+      # default port again on this shared machine in the future.
+      EMULATOR_PORT: '5580'
+      SERIAL: emulator-5580
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -73,14 +93,35 @@ jobs:
       - name: Build Android app (dev debug)
         run: ./gradlew :androidApp:assembleDevDebug --no-daemon
 
+      # Added directly in response to the 2026-09-28 BlueStacks incident (see the env: block
+      # comment above): logs what's already connected/listening BEFORE we touch anything, and
+      # fails loudly and immediately if our own dedicated port is already occupied by something
+      # foreign, rather than silently launching into a collision and producing the same
+      # hours-to-diagnose "error: closed" symptom again. This is diagnostic-first, not just a
+      # gate: `adb devices -l`'s output lands in the CI log regardless of outcome, so a future
+      # collision (same port or a different one) is immediately visible here instead of requiring
+      # another local-repro investigation like this incident needed.
+      - name: Pre-flight device/port check
+        run: |
+          echo "Currently connected adb devices (before this job touches anything):"
+          "$ANDROID_HOME/platform-tools/adb" devices -l
+          if lsof -i :"$EMULATOR_PORT" >/dev/null 2>&1; then
+            echo "::error::Port $EMULATOR_PORT is already in use by another process — refusing to launch our emulator into a collision. Run 'lsof -i :$EMULATOR_PORT' on the runner to identify it (this is exactly how the 2026-09-28 BlueStacks incident was found)."
+            lsof -i :"$EMULATOR_PORT" || true
+            exit 1
+          fi
+          echo "Port $EMULATOR_PORT is free — safe to proceed."
+
       # Mirrors the iOS job's "Erase and boot simulator" step: this is a persistent runner, not a
       # fresh VM per run, so a leftover emulator from a prior run (or a prior run's app data) is a
       # real possibility, not a theoretical one — wipe first rather than assume a clean slate.
+      # `-port $EMULATOR_PORT` and `-s "$SERIAL" emu kill` (not bare `-e`) are both part of the
+      # 2026-09-28 fix — see the env: block comment above.
       - name: Wipe emulator data
         run: |
-          "$ANDROID_HOME/platform-tools/adb" -e emu kill || true
+          "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" emu kill || true
           sleep 2
-          "$ANDROID_HOME/emulator/emulator" -avd "$AVD_NAME" -wipe-data -no-window -no-audio -no-boot-anim &
+          "$ANDROID_HOME/emulator/emulator" -avd "$AVD_NAME" -port "$EMULATOR_PORT" -wipe-data -no-window -no-audio -no-boot-anim &
           echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
 
       # Android equivalent of the iOS job's confirmed `bootstatus -b` + settle-delay lesson
@@ -99,10 +140,10 @@ jobs:
       # transport-level drop, only reduce how often it's hit.
       - name: Wait for emulator boot
         run: |
-          "$ANDROID_HOME/platform-tools/adb" wait-for-device
+          "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" wait-for-device
           BOOT_COMPLETED=""
           for i in $(seq 1 60); do
-            BOOT_COMPLETED=$("$ANDROID_HOME/platform-tools/adb" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            BOOT_COMPLETED=$("$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
             if [ "$BOOT_COMPLETED" = "1" ]; then
               echo "Boot completed after ${i} checks."
               break
@@ -127,14 +168,14 @@ jobs:
           adb_shell_retry() {
             local attempt
             for attempt in 1 2 3; do
-              if "$ANDROID_HOME/platform-tools/adb" shell "$@"; then
+              if "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" shell "$@"; then
                 return 0
               fi
-              echo "adb shell $* failed (attempt $attempt/3) — re-syncing and retrying..."
-              "$ANDROID_HOME/platform-tools/adb" wait-for-device
+              echo "adb -s $SERIAL shell $* failed (attempt $attempt/3) — re-syncing and retrying..."
+              "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" wait-for-device
               sleep 3
             done
-            echo "::error::adb shell $* failed after 3 attempts."
+            echo "::error::adb -s $SERIAL shell $* failed after 3 attempts."
             return 1
           }
           adb_shell_retry settings put global window_animation_scale 0
@@ -167,7 +208,7 @@ jobs:
       - name: Install app
         run: |
           APK_PATH="androidApp/build/outputs/apk/dev/debug/androidApp-dev-debug.apk"
-          "$ANDROID_HOME/platform-tools/adb" install -r "$APK_PATH"
+          "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" install -r "$APK_PATH"
 
       # Marks "now" so the artifact-staging step below can find exactly the ~/.maestro/tests
       # folders this job's own flow run creates, via `find -newer`, rather than uploading every
@@ -181,12 +222,12 @@ jobs:
       # continuation file is deliberately NOT included here yet.
       - name: Run Maestro flow (TC-01 common — PIN setup through document catalog)
         timeout-minutes: 10
-        run: maestro test .maestro/kmp/issuance/tc-01-pid-issuance-common.yaml
+        run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-01-pid-issuance-common.yaml
 
       - name: Kill emulator
         if: always()
         run: |
-          "$ANDROID_HOME/platform-tools/adb" -e emu kill || true
+          "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" emu kill || true
 
       # `device-logcat.txt` excluded for the same reason the iOS job excludes its own device-level
       # logs: confirmed directly against this session's own Maestro test-run folders (2026-09-28)
