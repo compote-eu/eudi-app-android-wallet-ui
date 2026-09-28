@@ -30,6 +30,7 @@ import io.ktor.http.HttpProtocolVersion
 import io.ktor.http.HttpMethod
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.isSuccess
 import io.ktor.http.Parameters
 import io.ktor.http.content.OutgoingContent
 import io.ktor.http.content.TextContent
@@ -249,9 +250,14 @@ internal class OpenID4VciCompatibilityEngine(
     private var scopesByConfigurationId: Map<String, String> = emptyMap()
 
     override suspend fun execute(data: HttpRequestData): HttpResponseData {
-        val request =
-            if (isPushedAuthorizationRequest(data)) withScopeInsteadOfAuthorizationDetails(data)
-            else data
+        // A credential or deferred credential request to an issuer whose metadata offered encryption.
+        // Looked up per request, and before anything is sent: see [CredentialEncryptionRegistry].
+        val exchange = credentialExchangeFor(data)
+        val request = when {
+            isPushedAuthorizationRequest(data) -> withScopeInsteadOfAuthorizationDetails(data)
+            exchange != null -> encryptedCredentialRequest(data, exchange)
+            else -> data
+        }
 
         val isTokenExchange = isTokenRequest(data)
         val isRefreshExchange = isTokenExchange && isRefreshGrant(data)
@@ -271,16 +277,96 @@ internal class OpenID4VciCompatibilityEngine(
 
         if (isTokenExchange) traceTokenResponse(response)
 
-        return when {
-            isWellKnown(data) -> rememberEndpoints(data, response)
-            isPushedAuthorizationRequest(data) ->
-                injectFreshAttestationChallenge(acceptCreatedOrOk(response))
-            isRefreshExchange && response.statusCode != HttpStatusCode.OK ->
-                noteAndMaybeArm(response)
+        // Decrypted before anything else reads it, so the deferral note below sees the issuer's JSON.
+        // Only a success is a JWE: an issuer does not encrypt an error to a key it may not trust.
+        val readable =
+            if (exchange != null && response.statusCode.isSuccess()) decryptedCredentialResponse(response, exchange)
+            else response
 
-            isDeferredIssuance(response) -> noteDeferredIssuance(response)
-            else -> response
+        return when {
+            isWellKnown(data) -> rememberEndpoints(data, readable)
+            isPushedAuthorizationRequest(data) ->
+                injectFreshAttestationChallenge(acceptCreatedOrOk(readable))
+            isRefreshExchange && readable.statusCode != HttpStatusCode.OK ->
+                noteAndMaybeArm(readable)
+
+            isDeferredIssuance(readable) -> noteDeferredIssuance(readable)
+            else -> readable
         }
+    }
+
+    /** The encryption this POST needs, begun; null when it is not one the issuer asked to encrypt. */
+    private suspend fun credentialExchangeFor(data: HttpRequestData): CredentialExchange? {
+        if (data.method != HttpMethod.Post) return null
+        val encryption = CredentialEncryptionRegistry.forEndpoint(data.url.toString()) ?: return null
+        return if (encryption.isActive) encryption.begin() else null
+    }
+
+    /**
+     * The same request with its JSON body encrypted, and `credential_response_encryption` added.
+     *
+     * The DPoP proof is unaffected: it signs the method, the URL and the access token, not the body.
+     */
+    private suspend fun encryptedCredentialRequest(
+        data: HttpRequestData,
+        exchange: CredentialExchange,
+    ): HttpRequestData {
+        // Refused rather than sent unencrypted: the answer would be decrypted with a key the issuer was
+        // never given, and an issuer that requires encryption refuses the plain request anyway.
+        val body = checkNotNull(data.body as? OutgoingContent.ByteArrayContent) {
+            "The credential request body could not be read to encrypt it."
+        }
+        val payload = Json.parseToJsonElement(body.bytes().decodeToString()).jsonObject
+        val encoded = exchange.encode(payload)
+        Logger.i(TAG, "encrypting the credential request to ${data.url.encodedPath} (${encoded.contentType})")
+
+        return HttpRequestData(
+            url = data.url,
+            method = data.method,
+            // Content-Length and Content-Type would describe the old body; the new content supplies both.
+            headers = HeadersBuilder().apply {
+                data.headers.forEach { name, values ->
+                    if (!name.equals(CONTENT_LENGTH, ignoreCase = true) &&
+                        !name.equals(CONTENT_TYPE, ignoreCase = true)
+                    ) {
+                        appendAll(name, values)
+                    }
+                }
+            }.build(),
+            body = TextContent(encoded.text, encoded.contentType),
+            executionContext = data.executionContext,
+            attributes = data.attributes,
+        )
+    }
+
+    /**
+     * A successful credential answer as JSON, decrypted when the exchange asked for a JWE — and given back
+     * the status the plain protocol would have used.
+     *
+     * 🚨 An encrypted **deferral** arrives as `200`, not `202`. The EUDI reference issuer answers every
+     * encrypted credential response with `200 OK` (`eudi-srv-pid-issuer` `WalletApi.kt`,
+     * `IssueCredentialResponse.EncryptedJwtIssued -> ok()`), so the `transaction_id` is only visible
+     * *inside* the JWE, while the plain response is `202` exactly when it carries one. Measured against
+     * Plaut's dev issuer 2026-09-28: the `_deferred` configuration came back `200` with no credentials, and
+     * was read as an empty issuance — `List is empty` — instead of being parked. Restoring the `202`
+     * hands the rest of the flow the answer it has always handled, in every path at once.
+     */
+    private suspend fun decryptedCredentialResponse(
+        response: HttpResponseData,
+        exchange: CredentialExchange,
+    ): HttpResponseData {
+        if (!exchange.decryptsResponse) return response
+        val bytes = (response.body as? ByteReadChannel)?.readRemaining()?.readByteArray() ?: ByteArray(0)
+        val json = exchange.decode(bytes.decodeToString())
+        val deferral = runCatching { Json.parseToJsonElement(json).jsonObject }.getOrNull()
+            ?.let { it["transaction_id"] != null && it["credentials"] == null } == true
+        val status = if (deferral) HttpStatusCode.Accepted else response.statusCode
+        Logger.i(
+            TAG,
+            "decrypted the credential response (${response.statusCode.value})" +
+                if (deferral) "; it is a deferral, handed on as 202" else "",
+        )
+        return response.replacingBody(json.encodeToByteArray(), asJson = true, statusCode = status)
     }
 
     /**
@@ -391,6 +477,10 @@ internal class OpenID4VciCompatibilityEngine(
                 pushedAuthorizationRequestEndpoint = it
             }
             json["token_endpoint"]?.jsonPrimitive?.content?.let { tokenEndpoint = it }
+            CredentialEncryptionRegistry.record(json)?.let { offer ->
+                offer.onSuccess { if (it.isActive) Logger.i(TAG, "the issuer takes encrypted credential exchanges: $it") }
+                    .onFailure { Logger.w(TAG, "the issuer's credential encryption is unusable: ${it.message}") }
+            }
             json["credential_configurations_supported"]?.jsonObject?.let { configurations ->
                 scopesByConfigurationId = configurations.mapNotNull { (id, configuration) ->
                     configuration.jsonObject["scope"]?.jsonPrimitive?.content?.let { id to it }
@@ -845,6 +935,7 @@ internal class OpenID4VciCompatibilityEngine(
     private fun HttpResponseData.replacingBody(
         bytes: ByteArray,
         asJson: Boolean = false,
+        statusCode: HttpStatusCode = this.statusCode,
     ): HttpResponseData = HttpResponseData(
         statusCode = statusCode,
         requestTime = requestTime,
