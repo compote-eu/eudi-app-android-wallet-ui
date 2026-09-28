@@ -205,10 +205,17 @@ jobs:
       - name: Verify Maestro
         run: maestro --version
 
+      # Explicit launch after install, mirroring the ios-tests job's own `xcrun simctl launch`
+      # below — confirmed necessary interactively this session (2026-09-28): on a truly fresh
+      # install, Maestro's `appId:` declaration in the flow file alone does not reliably
+      # auto-launch the app first. Without this, the flow's first `tapOn: pin_text_field_0`
+      # times out against the home screen (app installed, never launched), not a real app bug.
       - name: Install app
         run: |
           APK_PATH="androidApp/build/outputs/apk/dev/debug/androidApp-dev-debug.apk"
           "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" install -r "$APK_PATH"
+          "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" shell am start -n eu.compote.euidi.dev/eu.europa.ec.assemblylogic.ui.MainActivity
+          sleep 3
 
       # Marks "now" so the artifact-staging step below can find exactly the ~/.maestro/tests
       # folders this job's own flow run creates, via `find -newer`, rather than uploading every
