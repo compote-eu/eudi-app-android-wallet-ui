@@ -80,17 +80,42 @@ internal class IosDeferredDocumentCompleter(
         val issuer = issuers.firstOrNull { it.issuerUrl == issuerUrl }
             ?: return DeferredCollection.Unsupported("this build does not know the issuer $issuerUrl")
 
+        // Two ways back to the issuer. A refresh token, from the stored authorization, is the durable
+        // one. An issuer that grants none (measured: Plaut's dev issuer, 2026-09-28) leaves only the
+        // issuing session's access token, kept with the parked document — usable until it expires, as
+        // Android's openid4vci-kt uses it.
         val authorization = document.authorizationData
-            ?: return DeferredCollection.AuthorizationExpired
-        val stored = authorization.openID4VciAuthorization()
-            ?: return DeferredCollection.Failed("the stored authorization could not be read")
+        val stored = authorization?.openID4VciAuthorization()
+        val resume = metadata.deferredResume
+        val dpopKeyAlias = when {
+            stored != null -> stored.dpopKeyAlias
+            authorization != null ->
+                return DeferredCollection.Failed("the stored authorization could not be read")
+            resume == null -> {
+                Logger.w(
+                    TAG,
+                    "${document.identifier} has no stored authorization and no access token to resume " +
+                        "with; it cannot be collected",
+                )
+                return DeferredCollection.AuthorizationExpired
+            }
+            resume.isExpired() -> {
+                Logger.w(
+                    TAG,
+                    "${document.identifier}'s access token expired at ${resume.expiresAt}, and the issuer " +
+                        "granted no refresh token; it can no longer be collected",
+                )
+                return DeferredCollection.AuthorizationExpired
+            }
+            else -> resume.dpopKeyAlias
+        }
 
         val dpopKey = runCatching {
-            AsymmetricKey.anonymous(store.keySecureArea, stored.dpopKeyAlias)
+            AsymmetricKey.anonymous(store.keySecureArea, dpopKeyAlias)
         }.getOrElse {
             // The alias is in the CBOR but the key is gone — a wiped secure area, or a store restored
             // without it. Nothing can be signed, so nothing can be collected.
-            Logger.w(TAG, "the DPoP key ${stored.dpopKeyAlias} is no longer in the secure area")
+            Logger.w(TAG, "the DPoP key $dpopKeyAlias is no longer in the secure area")
             return DeferredCollection.AuthorizationExpired
         }
         // Thrown away afterwards: a wallet attestation says *which client this is*, nothing about the
@@ -111,7 +136,8 @@ internal class IosDeferredDocumentCompleter(
         val collected = collector.collect(
             issuerUrl = issuerUrl,
             transactionId = transactionId,
-            refreshToken = stored.refreshToken,
+            refreshToken = stored?.refreshToken,
+            storedAccessToken = if (stored == null) resume?.accessToken else null,
             dpopKey = dpopKey,
             attestationKey = attestationKey,
         )

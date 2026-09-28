@@ -166,6 +166,30 @@ class DeferredPendingDocumentTest {
         assertEquals(document.identifier, notice.parkedDocumentId)
     }
 
+    @Test
+    fun a_deferral_without_a_refresh_token_is_parked_with_the_sessions_access_token() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val resume = DeferredResume(accessToken = "at-1", dpopKeyAlias = "vci-dpop-1", expiresAt = null)
+        val notice = DeferredIssuanceNotice().apply {
+            transactionId = "txn-from-the-issuer"
+            this.resume = resume
+        }
+        val handler = IosDocumentProvisioningHandler(store, deferred = notice)
+        val document = store.documentStore.createDocument(
+            displayName = "PID (about to be deferred)",
+            metadata = EudiDocumentMetadata.create(
+                documentManagerId = store.documentManagerId,
+                format = StoredDocumentFormat.MsoMdoc(docType),
+                credentialPolicy = policy,
+            ),
+        )
+
+        handler.cleanupDocumentOnError(document, IllegalStateException("202 Accepted"))
+
+        val kept = assertNotNull(store.documentStore.lookupDocument(document.identifier))
+        assertEquals(resume, assertNotNull(kept.eudiMetadata).deferredResume)
+    }
+
     /** The control: an ordinary failure must still delete, or every failed issuance leaves a husk. */
     @Test
     fun an_ordinary_failure_still_deletes_the_document() = runTest {

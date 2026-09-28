@@ -91,6 +91,13 @@ class DeferredIssuanceNotice {
     var parkedDocumentId: String? = null
         internal set
 
+    /**
+     * How the parked document can be collected later when there is no refresh token, set by the batch
+     * client just before its credential request. Null when a refresh token exists — the stored
+     * authorization is the way back then — and in multipaz's own flows, whose token stays private to it.
+     */
+    internal var resume: DeferredResume? = null
+
     /** True once the issuer has deferred this attempt. */
     val wasDeferred: Boolean get() = transactionId != null
 }

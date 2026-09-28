@@ -102,9 +102,14 @@ internal class IosDeferredCredentialCollector(
     suspend fun collect(
         issuerUrl: String,
         transactionId: String,
-        refreshToken: String,
+        refreshToken: String?,
         dpopKey: AsymmetricKey,
         attestationKey: AsymmetricKey,
+        /**
+         * The issuing session's own access token, used as-is when there is no [refreshToken] — for an
+         * issuer that grants none. It must be bound to [dpopKey].
+         */
+        storedAccessToken: String? = null,
     ): DeferredCollection = runCatching {
         val issuer = issuerMetadata(issuerUrl)
         val deferredEndpoint = issuer["deferred_credential_endpoint"]?.jsonPrimitive?.contentOrNull
@@ -118,8 +123,12 @@ internal class IosDeferredCredentialCollector(
         // compatibility engine, so it reads the offer itself rather than from the registry.
         val encryption = CredentialEncryption.fromIssuerMetadata(issuer)
 
-        val accessToken = refreshAccessToken(authorizationServer, refreshToken, dpopKey, attestationKey)
-            ?: return DeferredCollection.AuthorizationExpired
+        val accessToken = if (refreshToken != null) {
+            refreshAccessToken(authorizationServer, refreshToken, dpopKey, attestationKey)
+                ?: return DeferredCollection.AuthorizationExpired
+        } else {
+            storedAccessToken ?: return DeferredCollection.AuthorizationExpired
+        }
 
         requestCredential(deferredEndpoint, transactionId, accessToken, dpopKey, encryption)
     }.getOrElse { throwable ->
@@ -223,8 +232,24 @@ internal class IosDeferredCredentialCollector(
             return exchange.decode(text).asCredentials(pending = response.status == HttpStatusCode.Accepted)
         }
 
-        val error = runCatching { text.asJsonObject()["error"]?.jsonPrimitive?.contentOrNull }.getOrNull()
+        // RFC 6750 §3 / RFC 9449 §7.1 put a token error in the challenge rather than the body — which is
+        // exactly how Plaut's issuer answers: an empty body and `WWW-Authenticate: DPoP … error=…`.
+        val challenge = response.headers[HttpHeaders.WWWAuthenticate]
+        val body = runCatching { text.asJsonObject() }.getOrNull()
+        fun field(name: String): String? = body?.get(name)?.jsonPrimitive?.contentOrNull
+            ?: challenge?.let { Regex("\\b$name=\"([^\"]*)\"").find(it)?.groupValues?.get(1) }
+        val error = field("error")
+        val description = field("error_description")
+        Logger.i(
+            TAG,
+            "deferred endpoint answered ${response.status}" +
+                (error?.let { " ($it${description?.let { d -> ": $d" } ?: ""})" } ?: ""),
+        )
         return when (error) {
+            // The access token is no longer accepted. With a refresh token that means the refresh just
+            // failed to take; without one it is the stored token's end — either way the user has to add
+            // the document again, which is what this outcome tells the sweep.
+            INVALID_TOKEN -> DeferredCollection.AuthorizationExpired
             // The issuer is still working on it; `interval` is its own advice on when to ask again.
             ISSUANCE_PENDING -> DeferredCollection.StillPending(
                 retryAfterSeconds = runCatching {
@@ -310,6 +335,7 @@ internal class IosDeferredCredentialCollector(
         const val DPOP_SCHEME = "DPoP"
         const val DPOP_JWT_TYPE = "dpop+jwt"
         const val ISSUANCE_PENDING = "issuance_pending"
+        const val INVALID_TOKEN = "invalid_token"
         const val INVALID_TRANSACTION_ID = "invalid_transaction_id"
         const val JTI_BYTES = 15
     }

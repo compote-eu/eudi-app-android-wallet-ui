@@ -93,6 +93,8 @@ class IosDeferredCredentialCollectorTest {
     private fun collectorOver(
         deferredResponses: List<Pair<HttpStatusCode, String>>,
         refreshStatus: HttpStatusCode = HttpStatusCode.OK,
+        /** What a 401 carries; by default the nonce the live issuers hand out on their first refusal. */
+        unauthorizedHeaders: io.ktor.http.Headers = headersOf("DPoP-Nonce", listOf("nonce-from-issuer")),
         metadataJwt: String = issuerMetadataJwt(),
         recorded: MutableList<Recorded> = mutableListOf(),
     ): Pair<IosDeferredCredentialCollector, MutableList<Recorded>> {
@@ -129,7 +131,7 @@ class IosDeferredCredentialCollectorTest {
                     deferredCalls++
                     // The nonce only ever arrives on the refusal, exactly as the live issuer does it.
                     val headers = if (status == HttpStatusCode.Unauthorized) {
-                        headersOf("DPoP-Nonce", listOf("nonce-from-issuer"))
+                        unauthorizedHeaders
                     } else {
                         jsonHeaders
                     }
@@ -245,6 +247,33 @@ class IosDeferredCredentialCollectorTest {
 
         assertIs<DeferredCollection.StillPending>(result)
         assertEquals(42, result.retryAfterSeconds)
+    }
+
+    @Test
+    fun a_rejected_access_token_reports_the_authorization_expired() = runTest {
+        // Refused twice: once for the nonce, then for the token itself.
+        val (collector, _) = collectorOver(
+            listOf(HttpStatusCode.Unauthorized to """{"error":"invalid_token"}""")
+        )
+
+        assertIs<DeferredCollection.AuthorizationExpired>(collector.run())
+    }
+
+    @Test
+    fun a_token_rejected_in_the_challenge_alone_reports_the_authorization_expired() = runTest {
+        // Plaut's dev issuer, verbatim (2026-09-28, both platforms): an EMPTY body, no nonce, and the
+        // error only in the challenge — ~40 s after issuing a token it said would live 300 s.
+        val (collector, recorded) = collectorOver(
+            deferredResponses = listOf(HttpStatusCode.Unauthorized to ""),
+            unauthorizedHeaders = headersOf(
+                "WWW-Authenticate",
+                """DPoP realm="pid-issuer", error="invalid_token", error_description="Access token is not valid"""",
+            ),
+        )
+
+        assertIs<DeferredCollection.AuthorizationExpired>(collector.run())
+        // No nonce was offered, so nothing is retried: one refusal is the answer.
+        assertEquals(1, recorded.count { it.url == deferredEndpoint })
     }
 
     @Test

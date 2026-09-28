@@ -539,7 +539,7 @@ class IosCredentialIssuer(
                             RpcAuthClientSession() + environment,
                         document = null,
                     ) {
-                        IosOpenID4VciProvisioningClient(session, configurationId, httpClient)
+                        IosOpenID4VciProvisioningClient(session, configurationId, httpClient, deferred)
                     }
 
                     coroutineScope {
