@@ -25,6 +25,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
@@ -113,10 +114,14 @@ internal class IosDeferredCredentialCollector(
         val authorizationServer = issuer["authorization_servers"]?.jsonArray
             ?.firstOrNull()?.jsonPrimitive?.contentOrNull ?: issuerUrl
 
+        // The deferred request is encrypted exactly like the first one was. This client is not the
+        // compatibility engine, so it reads the offer itself rather than from the registry.
+        val encryption = CredentialEncryption.fromIssuerMetadata(issuer)
+
         val accessToken = refreshAccessToken(authorizationServer, refreshToken, dpopKey, attestationKey)
             ?: return DeferredCollection.AuthorizationExpired
 
-        requestCredential(deferredEndpoint, transactionId, accessToken, dpopKey)
+        requestCredential(deferredEndpoint, transactionId, accessToken, dpopKey, encryption)
     }.getOrElse { throwable ->
         Logger.w(TAG, "deferred collection failed: ${throwable::class.simpleName}: ${throwable.message}")
         DeferredCollection.Failed(throwable.message ?: "the issuer could not be reached")
@@ -182,27 +187,41 @@ internal class IosDeferredCredentialCollector(
         transactionId: String,
         accessToken: String,
         dpopKey: AsymmetricKey,
+        encryption: CredentialEncryption = CredentialEncryption.None,
     ): DeferredCollection {
         val ath = Crypto.digest(Algorithm.SHA256, accessToken.encodeToByteArray()).toBase64Url()
-        val body = buildJsonObject { put("transaction_id", transactionId) }.toString()
+        val payload = buildJsonObject { put("transaction_id", transactionId) }
 
-        suspend fun attempt(nonce: String?): HttpResponse = httpClient.post(deferredEndpoint) {
-            header(HttpHeaders.Authorization, "$DPOP_SCHEME $accessToken")
-            header(DPOP_HEADER, dpopKey.dpopProof(deferredEndpoint, ath = ath, nonce = nonce))
-            contentType(ContentType.Application.Json)
-            setBody(body)
+        // Each attempt is its own exchange: a retry sends a new response key, and its answer is
+        // decrypted with that one.
+        suspend fun attempt(nonce: String?): Pair<HttpResponse, CredentialExchange> {
+            val exchange = encryption.begin()
+            val body = exchange.encode(payload)
+            val response = httpClient.post(deferredEndpoint) {
+                header(HttpHeaders.Authorization, "$DPOP_SCHEME $accessToken")
+                header(DPOP_HEADER, dpopKey.dpopProof(deferredEndpoint, ath = ath, nonce = nonce))
+                contentType(body.contentType)
+                setBody(body.text)
+            }
+            return response to exchange
         }
 
-        var response = attempt(nonce = null)
+        var (response, exchange) = attempt(nonce = null)
         if (!response.status.isSuccess()) {
             val nonce = response.headers[DPOP_NONCE_HEADER]
             if (nonce != null) {
                 Logger.i(TAG, "the issuer asked for a DPoP nonce, retrying with it")
-                response = attempt(nonce)
+                attempt(nonce).let { (retried, retriedExchange) ->
+                    response = retried
+                    exchange = retriedExchange
+                }
             }
         }
         val text = response.bodyAsText()
-        if (response.status.isSuccess()) return text.asCredentials()
+        // Only a success is encrypted; an error answer is always plain JSON.
+        if (response.status.isSuccess()) {
+            return exchange.decode(text).asCredentials(pending = response.status == HttpStatusCode.Accepted)
+        }
 
         val error = runCatching { text.asJsonObject()["error"]?.jsonPrimitive?.contentOrNull }.getOrNull()
         return when (error) {
@@ -369,7 +388,7 @@ private fun String.decodeBase64UrlToString(): String =
  * replaced it. An issuer that answers 200 with neither is a failure rather than an empty success —
  * silently storing nothing would park the document for ever.
  */
-private fun String.asCredentials(): DeferredCollection {
+private fun String.asCredentials(pending: Boolean = false): DeferredCollection {
     val body = runCatching { asJsonObject() }.getOrElse {
         return DeferredCollection.Failed("the issuer's answer was not JSON")
     }
@@ -386,10 +405,12 @@ private fun String.asCredentials(): DeferredCollection {
         // a 400 with `issuance_pending`. Reading that as success would have parked the document
         // forever while reporting that it had been collected.
         val rotated = body["transaction_id"]?.jsonPrimitive?.contentOrNull
-        if (!rotated.isNullOrBlank()) {
+        // A `202` is "not yet" by definition, with or without a handle in it: the reference issuer sends
+        // exactly that for a pending deferred request, encrypted or not.
+        if (!rotated.isNullOrBlank() || pending) {
             return DeferredCollection.StillPending(
                 retryAfterSeconds = body["interval"]?.jsonPrimitive?.intOrNull,
-                transactionId = rotated,
+                transactionId = rotated?.takeIf { it.isNotBlank() },
             )
         }
     }
