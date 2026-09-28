@@ -2,6 +2,8 @@
 # navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
 # attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
 #
+# IDs updated from static code analysis (testTag inventory + navigation mapping) — NOT YET
+# LIVE-VERIFIED.
 
 appId: eu.europa.ec.euidi.dev
 ---
@@ -55,11 +57,11 @@ appId: eu.europa.ec.euidi.dev
 #   real personal or production credential.
 
 - tapOn:
-    id: "documents_tab"
+    id: "dashboard_screen_bottom_navigation_item_documents"
 - tapOn:
     id: "documents_screen_plus_button"
 - tapOn:
-    id: "options_screen_from_list_button"
+    id: "documents_tab_bottom_sheet_button_0"
 
 # The deferred mDL row is far down the list. A few explicit scrolls first
 # cut down how much implicit scroll-search Maestro's own text-tap retry has
@@ -112,4 +114,4 @@ appId: eu.europa.ec.euidi.dev
 # comment). The companion shell script waits after this flow returns, then
 # reads the app's own log file to check the actual retry timing.
 - tapOn:
-    id: "documents_tab"
+    id: "dashboard_screen_bottom_navigation_item_documents"

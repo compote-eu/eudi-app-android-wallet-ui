@@ -2,6 +2,8 @@
 # navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
 # attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
 #
+# IDs updated from static code analysis (testTag inventory + navigation mapping) — NOT YET
+# LIVE-VERIFIED.
 
 appId: eu.europa.ec.euidi.dev
 ---
@@ -56,11 +58,11 @@ appId: eu.europa.ec.euidi.dev
 
 # --- Dashboard -> Documents -> Add -> Choose from list ---
 - tapOn:
-    id: "documents_tab"
+    id: "dashboard_screen_bottom_navigation_item_documents"
 - tapOn:
     id: "documents_screen_plus_button"
 - tapOn:
-    id: "options_screen_from_list_button"
+    id: "documents_tab_bottom_sheet_button_0"
 
 # Same shimmer/placeholder timing guard as TC-01's own copy of this wait
 # - see that flow's own comment for the full rationale.

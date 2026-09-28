@@ -23,7 +23,7 @@ background, setup, and the cross-platform selector finding this porting effort i
 
 | TC | Description | Status |
 |---|---|---|
-| TC-01 | PID issuance happy path | **Ported, blocked by app bug** — see [Known active blockers](../wiki/maestro-testing.md#known-active-blockers) in the wiki. In-app portion (PIN → Documents → Add → catalog) verified working, unmodified, on both iOS and Android: `.maestro/kmp/issuance/tc-01-pid-issuance-common.yaml`. Android continuation into the identity-proofing form reaches "Authorize" then fails at token exchange: `.maestro/kmp/issuance/tc-01-pid-issuance-android-continuation.yaml`. iOS blocked earlier (never reaches the form at all). |
+| TC-01 | PID issuance happy path | **Ported, blocked by app bug** — see [Known active blockers](../wiki/maestro-testing.md#known-active-blockers) in the wiki. In-app portion (PIN → Documents → Add → catalog) verified working, unmodified, on both iOS and Android: `.maestro/kmp/issuance/tc-01-pid-issuance-common.yaml`. Android continuation into the identity-proofing form reaches "Authorize" then fails at token exchange: `.maestro/kmp/issuance/tc-01-pid-issuance-android-continuation.yaml`. iOS blocked earlier (never reaches the form at all). Reference file `.maestro/issuance/tc-01-pid-issuance.yaml` also had its ids statically corrected 2026-09-28, not live-verified. |
 | TC-02 | BLE proximity presentation, custom attribute selection (PID) | Not started |
 | TC-03 | BLE proximity presentation, full PID | Not started |
 | TC-04 | BLE proximity presentation, full PID requested but partial share | Not started |
@@ -31,25 +31,25 @@ background, setup, and the cross-platform selector finding this porting effort i
 | TC-07 | Zero attribute selection on the consent screen | Not started |
 | TC-13 | BLE connection interrupted mid-transfer | Not started |
 | TC-14 | App backgrounded during BLE engagement/handshake | Not started |
-| TC-17 | Deferred issuance retry-interval violation | Not started |
-| TC-18 | Cancel an in-progress issuance | Not started |
+| TC-17 | Deferred issuance retry-interval violation | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-18 | Cancel an in-progress issuance | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 | TC-20 | Duplicate mDL issuance | Not started |
-| TC-22 | Remote presentation via deep link (OpenID4VP) | Not started |
-| TC-24 | User rejects a remote presentation request | Not started |
-| TC-25 | RP requests an attribute/document the wallet doesn't have | Not started |
-| TC-26 | Present multiple documents at once (PID + mDL) | Not started |
-| TC-30 | Delete a document | Not started |
-| TC-32 | Reinstall wipes state (empty-state UI check) | Not started |
-| TC-34 | Transaction log completeness (History tab) | Not started |
+| TC-22 | Remote presentation via deep link (OpenID4VP) | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-24 | User rejects a remote presentation request | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-25 | RP requests an attribute/document the wallet doesn't have | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-26 | Present multiple documents at once (PID + mDL) | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-30 | Delete a document | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-32 | Reinstall wipes state (empty-state UI check) | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-34 | Transaction log completeness (History tab) | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 | TC-37 | QES / remote-qualified-signing flow (physical device only, Appium in the reference project, not Maestro) | Not started |
 | TC-40 | Repeated incorrect PIN (throttling) | Not started |
-| TC-42 | App backgrounded, requires PIN on return | Not started |
+| TC-42 | App backgrounded, requires PIN on return | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 | TC-43 | Change PIN code | Not started |
-| TC-46 | Remote/OpenID4VP presentation: trigger + share + network-loss handling | Not started |
-| TC-47 | Force-kill mid-flow recovery | Not started |
-| TC-50 | mDL issuance (no existing PID required) | Not started |
-| TC-51 | Duplicate PID issuance | Not started |
-| TC-57 | Issuance via a scanned/deep-linked OpenID4VCI Credential Offer | Not started |
+| TC-46 | Remote/OpenID4VP presentation: trigger + share + network-loss handling | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-47 | Force-kill mid-flow recovery | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-50 | mDL issuance (no existing PID required) | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-51 | Duplicate PID issuance | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-57 | Issuance via a scanned/deep-linked OpenID4VCI Credential Offer | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 
 ## Notes
 
@@ -62,3 +62,10 @@ background, setup, and the cross-platform selector finding this porting effort i
   not assumed here.
 - This table is intentionally flat/manual rather than generated — update it by hand as each TC is
   actually attempted, in the same commit as the flow file(s) that change its status.
+- 2026-09-28: a bulk, mechanical pass corrected 7 distinct wrong `id:` selectors (32 occurrences
+  across 17 reference files) based on static cross-referencing against this app's real Compose
+  testTags — no simulator/emulator run, so **none of these corrections are live-verified**. Each
+  touched file's header now says so explicitly. This does not change any TC's status above from
+  "Not started" to "Ported" — a corrected reference file is still just reference material until an
+  actual flow is built and run under `.maestro/kmp/`. See the session history for the full
+  correction table if needed; it is not reproduced here to keep this file flat.

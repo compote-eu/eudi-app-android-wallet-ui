@@ -2,6 +2,8 @@
 # navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
 # attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
 #
+# IDs updated from static code analysis (testTag inventory + navigation mapping) — NOT YET
+# LIVE-VERIFIED.
 
 appId: eu.europa.ec.euidi.dev
 ---
@@ -80,7 +82,7 @@ appId: eu.europa.ec.euidi.dev
 - assertVisible:
     id: "request_screen_requested_document_0"
 - tapOn:
-    id: "request_screen_share_button"
+    id: "request_screen_primary_button"
 
 # --- PIN entry: deliberately only 5 of 6 digits. The orchestrating
 #     shell script takes the host offline immediately after this flow

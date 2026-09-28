@@ -2,6 +2,8 @@
 # navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
 # attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
 #
+# IDs updated from static code analysis (testTag inventory + navigation mapping) — NOT YET
+# LIVE-VERIFIED.
 
 appId: eu.europa.ec.euidi.dev
 ---
@@ -98,7 +100,7 @@ appId: eu.europa.ec.euidi.dev
 
 # --- Share both via the single shared button + PIN re-entry ---
 - tapOn:
-    id: "request_screen_share_button"
+    id: "request_screen_primary_button"
 - tapOn:
     id: "pin_text_field_0"
 - inputText: "123456"
@@ -110,7 +112,7 @@ appId: eu.europa.ec.euidi.dev
 - assertVisible: "mDL (MSO Mdoc)"
 - assertVisible: "PID (MSO Mdoc)"
 - assertVisible:
-    id: "document_success_screen_done_button"
+    id: "document_success_screen_button"
 
 # --- Verify the verifier backend actually received BOTH documents'
 #     claims (not just that the transaction succeeded overall - see
@@ -119,7 +121,7 @@ appId: eu.europa.ec.euidi.dev
 - runScript: tc-26-verify-both-received.js
 
 - tapOn:
-    id: "document_success_screen_done_button"
+    id: "document_success_screen_button"
 
 # --- Verify: nothing removed by sharing. "Done" returns to whichever
 #     tab was active before the deep link was triggered (confirmed
@@ -127,7 +129,7 @@ appId: eu.europa.ec.euidi.dev
 #     state), so navigate to Documents explicitly rather than assuming
 #     it's already showing. ---
 - tapOn:
-    id: "documents_tab"
+    id: "dashboard_screen_bottom_navigation_item_documents"
 - assertVisible: "mDL (MSO Mdoc)"
 - assertVisible: "PID (MSO Mdoc)"
 - assertVisible: "PID (SD-JWT VC)"

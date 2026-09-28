@@ -2,6 +2,8 @@
 # navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
 # attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
 #
+# IDs updated from static code analysis (testTag inventory + navigation mapping) — NOT YET
+# LIVE-VERIFIED.
 
 appId: eu.europa.ec.euidi.dev
 ---
@@ -93,13 +95,13 @@ appId: eu.europa.ec.euidi.dev
 #     the normal consent/Share screen ---
 - assertVisible: "Required credential_set cannot be satisfied"
 - assertNotVisible:
-    id: "request_screen_share_button"
+    id: "request_screen_primary_button"
 - tapOn:
     id: "back_button"
 
 # --- Verify: clean return to Documents, no error/stuck state ---
 - assertVisible:
-    id: "documents_tab"
+    id: "dashboard_screen_bottom_navigation_item_documents"
 
 # --- Verify the verifier backend received nothing (see
 #     tc-25-verify-no-receipt.js for why this check is the same shape as

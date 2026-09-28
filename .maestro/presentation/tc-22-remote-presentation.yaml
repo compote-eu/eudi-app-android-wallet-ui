@@ -2,6 +2,8 @@
 # navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
 # attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
 #
+# IDs updated from static code analysis (testTag inventory + navigation mapping) — NOT YET
+# LIVE-VERIFIED.
 
 appId: eu.europa.ec.euidi.dev
 ---
@@ -120,7 +122,7 @@ appId: eu.europa.ec.euidi.dev
 - assertVisible: "Testerova"
 
 - tapOn:
-    id: "request_screen_share_button"
+    id: "request_screen_primary_button"
 
 # --- Re-authenticate to authorize the share ---
 - tapOn:
@@ -132,14 +134,14 @@ appId: eu.europa.ec.euidi.dev
     visible: "You successfully shared the following information with"
     timeout: 15000
 - assertVisible:
-    id: "document_success_screen_done_button"
+    id: "document_success_screen_button"
 
 # --- Verify the verifier backend actually received the data (not just a
 #     UI success screen - see tc-22-verify-server-receipt.js for why) ---
 - runScript: tc-22-verify-server-receipt.js
 
 - tapOn:
-    id: "document_success_screen_done_button"
+    id: "document_success_screen_button"
 
 # --- Verify: back to Documents, PID untouched by sharing it ---
 - assertVisible: "PID (MSO Mdoc)"

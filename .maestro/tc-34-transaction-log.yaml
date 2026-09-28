@@ -2,6 +2,8 @@
 # navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
 # attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
 #
+# IDs updated from static code analysis (testTag inventory + navigation mapping) — NOT YET
+# LIVE-VERIFIED.
 
 appId: eu.europa.ec.euidi.dev
 ---
@@ -46,5 +48,5 @@ appId: eu.europa.ec.euidi.dev
 # presence itself is fixed; it can't be meaningfully tested against a
 # screen that never shows anything.
 - tapOn:
-    id: "history_tab"
+    id: "dashboard_screen_bottom_navigation_item_transactions"
 - assertNotVisible: "No results"
