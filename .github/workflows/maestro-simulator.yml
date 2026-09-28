@@ -231,6 +231,47 @@ jobs:
         timeout-minutes: 10
         run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-01-pid-issuance-common.yaml
 
+      # TC-22/24/25 wired in mechanically, NOT yet live-verified against this app (each file's own
+      # header still says so) — added at the user's explicit request without device verification;
+      # appId has been corrected to this app's real eu.compote.euidi.dev (was the iOS sibling
+      # project's eu.europa.ec.euidi.dev), but everything else in these three files is still an
+      # unconfirmed reference port. All three run on the SAME $SERIAL as TC-01 above, no erase or
+      # reinstall in between — they depend on that same emulator session still holding TC-01's
+      # issued PID; running any of them in isolation, without TC-01 having issued a PID first,
+      # is expected to fail on a precondition these files assume, not a real bug.
+      #
+      # TC-22 (remote presentation via deep link, OpenID4VP): needs the PID TC-01 just issued
+      # (it requests and shares the PID's family_name claim) — does not depend on any mDL
+      # presence/absence. Fetches a fresh presentation request from the live verifier backend,
+      # opens it as a deep link, shares via the consent screen, then confirms server-side that
+      # the verifier actually received the data.
+      - name: Run Maestro flow (TC-22 remote presentation)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/presentation/tc-22-remote-presentation.yaml
+
+      # TC-24 (user rejects a remote presentation request): reuses TC-22's own setup script
+      # (same PID precondition, same verifier backend call) but taps Back instead of Share on
+      # the consent screen, then confirms both a clean return to Documents and that the verifier
+      # received nothing. Chained directly after TC-22 rather than run standalone so that any
+      # one-time system permission prompt tied to opening this app's deep-link scheme (unconfirmed
+      # whether Android's OS shows an equivalent to iOS's one-time "Open in EUDI Wallet?" dialog —
+      # not yet observed live on this platform) is already resolved by the time this runs.
+      - name: Run Maestro flow (TC-24 reject presentation)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/presentation/tc-24-reject-presentation.yaml
+
+      # TC-25 (RP requests a document the wallet doesn't have): fetches a fresh request for
+      # Photo ID (org.iso.23220.photoid.1), a doctype this wallet holds zero of. PID being
+      # present (from TC-01) is what makes this "wallet has other documents, just not this one,"
+      # matching a real scenario rather than an empty-wallet edge case — the PID itself isn't
+      # what's being requested here. Per the file's own header, this is architecturally distinct
+      # from TC-24's consent-screen-with-reject path, not a variant of it: the app is expected to
+      # show a separate pre-consent error screen and never reach the normal Share/consent UI at
+      # all. Chained after TC-24 for the same shared-session/one-time-dialog reasoning above.
+      - name: Run Maestro flow (TC-25 unsatisfiable request)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/presentation/tc-25-unsatisfiable-request.yaml
+
       - name: Kill emulator
         if: always()
         run: |
@@ -406,6 +447,57 @@ jobs:
           UDID: ${{ steps.sim.outputs.udid }}
         run: |
           maestro --udid "$UDID" test .maestro/kmp/issuance/tc-01-pid-issuance-common.yaml
+
+      # TC-22/24/25 wired in mechanically, NOT yet live-verified against this app (each file's own
+      # header still says so) — added at the user's explicit request without device verification;
+      # appId has been corrected to this app's real eu.compote.euidi.dev (was the iOS sibling
+      # project's eu.europa.ec.euidi.dev), but everything else in these three files is still an
+      # unconfirmed reference port. All three run on the SAME booted simulator ($UDID) as TC-01
+      # above, no erase or reinstall in between — they depend on that same simulator session still
+      # holding TC-01's issued PID; running any of them in isolation, without TC-01 having issued a
+      # PID first, is expected to fail on a precondition these files assume, not a real bug.
+      #
+      # TC-22 (remote presentation via deep link, OpenID4VP): needs the PID TC-01 just issued
+      # (it requests and shares the PID's family_name claim) — does not depend on any mDL
+      # presence/absence. Fetches a fresh presentation request from the live verifier backend,
+      # opens it as a deep link, shares via the consent screen, then confirms server-side that
+      # the verifier actually received the data.
+      - name: Run Maestro flow (TC-22 remote presentation)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/presentation/tc-22-remote-presentation.yaml
+
+      # TC-24 (user rejects a remote presentation request): reuses TC-22's own setup script
+      # (same PID precondition, same verifier backend call) but taps Back instead of Share on
+      # the consent screen, then confirms both a clean return to Documents and that the verifier
+      # received nothing. Chained directly after TC-22 rather than run standalone so that a
+      # one-time "Open in EUDI Wallet?" system dialog the reference file's own comments describe
+      # (asserted for the iOS sibling project, NOT independently confirmed against this app) is
+      # already dismissed by the time this runs, same reasoning as the equivalent step in
+      # android-tests.
+      - name: Run Maestro flow (TC-24 reject presentation)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/presentation/tc-24-reject-presentation.yaml
+
+      # TC-25 (RP requests a document the wallet doesn't have): fetches a fresh request for
+      # Photo ID (org.iso.23220.photoid.1), a doctype this wallet holds zero of. PID being
+      # present (from TC-01) is what makes this "wallet has other documents, just not this one,"
+      # matching a real scenario rather than an empty-wallet edge case — the PID itself isn't
+      # what's being requested here. Per the file's own header, this is architecturally distinct
+      # from TC-24's consent-screen-with-reject path, not a variant of it: the app is expected to
+      # show a separate pre-consent error screen and never reach the normal Share/consent UI at
+      # all. Chained after TC-24 for the same shared-session/one-time-dialog reasoning above.
+      - name: Run Maestro flow (TC-25 unsatisfiable request)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/presentation/tc-25-unsatisfiable-request.yaml
 
       - name: Prepare Maestro artifacts for upload
         if: failure()

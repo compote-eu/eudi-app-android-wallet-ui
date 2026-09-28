@@ -5,7 +5,7 @@
 # IDs updated from static code analysis (testTag inventory + navigation mapping) — NOT YET
 # LIVE-VERIFIED.
 
-appId: eu.europa.ec.euidi.dev
+appId: eu.compote.euidi.dev
 ---
 # TC-24 — user rejects a remote presentation request
 #
