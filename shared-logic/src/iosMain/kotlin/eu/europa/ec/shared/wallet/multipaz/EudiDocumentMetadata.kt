@@ -67,6 +67,13 @@ internal class EudiDocumentMetadata private constructor(
     val deferredTransactionId: String? get() = data.deferredTransactionId
 
     /**
+     * How a deferred document can be collected when its issuer gave **no refresh token** — the issuing
+     * session's own access token. Null whenever a refresh token exists (that is the better way back) and
+     * on every document that is not parked; cleared with the handle by [completeDeferred].
+     */
+    val deferredResume: DeferredResume? get() = data.deferredResume
+
+    /**
      * Marks the document issued, stamping [issuedAt]. Mirrors `ApplicationMetadata.issue`, including
      * its contract: the caller is responsible for persisting the change via `Document.edit`.
      */
@@ -78,8 +85,8 @@ internal class EudiDocumentMetadata private constructor(
      * Records the handle an issuer gave when it deferred this document, so a later sweep knows what to
      * ask it for. Same contract as [issue]: the caller persists the change with `Document.edit`.
      */
-    fun park(transactionId: String) {
-        data = data.copy(deferredTransactionId = transactionId)
+    fun park(transactionId: String, resume: DeferredResume? = data.deferredResume) {
+        data = data.copy(deferredTransactionId = transactionId, deferredResume = resume)
     }
 
     /**
@@ -87,7 +94,7 @@ internal class EudiDocumentMetadata private constructor(
      * as [issue]: the caller persists the change with `Document.edit`.
      */
     fun completeDeferred() {
-        data = data.copy(deferredTransactionId = null)
+        data = data.copy(deferredTransactionId = null, deferredResume = null)
     }
 
     internal data class Data(
@@ -97,6 +104,7 @@ internal class EudiDocumentMetadata private constructor(
         val issuerMetadata: IssuerMetadata? = null,
         val issuedAt: Instant? = null,
         val deferredTransactionId: String? = null,
+        val deferredResume: DeferredResume? = null,
     ) {
 
         fun toCbor(): ByteString = ByteString(
@@ -111,6 +119,11 @@ internal class EudiDocumentMetadata private constructor(
                     // issuance date is ever displayed at.
                     issuedAt?.let { put("issuedAtEpochSeconds", it.epochSeconds) }
                     deferredTransactionId?.let { put("deferredTransactionId", it) }
+                    deferredResume?.let { resume ->
+                        put("deferredAccessToken", resume.accessToken)
+                        put("deferredDpopKeyAlias", resume.dpopKeyAlias)
+                        resume.expiresAt?.let { put("deferredAccessTokenExpiresAtEpochSeconds", it.epochSeconds) }
+                    }
                 },
             ),
         )
@@ -130,6 +143,18 @@ internal class EudiDocumentMetadata private constructor(
                         Instant.fromEpochSeconds(it.asNumber)
                     },
                     deferredTransactionId = item.optional("deferredTransactionId") { it.asTstr },
+                    // All three or nothing: a token without its DPoP key cannot be presented.
+                    deferredResume = item.optional("deferredAccessToken") { it.asTstr }?.let { token ->
+                        item.optional("deferredDpopKeyAlias") { it.asTstr }?.let { alias ->
+                            DeferredResume(
+                                accessToken = token,
+                                dpopKeyAlias = alias,
+                                expiresAt = item.optional("deferredAccessTokenExpiresAtEpochSeconds") {
+                                    Instant.fromEpochSeconds(it.asNumber)
+                                },
+                            )
+                        }
+                    },
                 )
             }
         }
@@ -187,6 +212,28 @@ internal sealed interface StoredDocumentFormat {
 }
 
 /** Same CBOR shape as the Android original's `DocumentFormat.toDataItem()`. */
+/**
+ * The issuing session's access token, kept with a parked document for an issuer that grants **no refresh
+ * token** — without it such a document could never be collected, and the sweep would delete it.
+ *
+ * Android's openid4vci-kt keeps the same thing in its deferred-issuance context and polls with it while
+ * it is valid. [dpopKeyAlias] is the key the token is bound to (DPoP, RFC 9449), without which it cannot
+ * be presented; [expiresAt] is from the token response's `expires_in`, null when the issuer sent none.
+ *
+ * ⚠️ A bearer of access, if briefly: it is stored only while the document is parked, cleared on
+ * collection, and lives in the same protected store as the credentials themselves.
+ */
+internal data class DeferredResume(
+    val accessToken: String,
+    val dpopKeyAlias: String,
+    val expiresAt: Instant?,
+) {
+    fun isExpired(now: Instant = Clock.System.now()): Boolean = expiresAt?.let { now >= it } ?: false
+
+    /** Never the token itself. */
+    override fun toString(): String = "DeferredResume(dpopKeyAlias=$dpopKeyAlias, expiresAt=$expiresAt)"
+}
+
 private fun StoredDocumentFormat.toDataItem(): DataItem = buildCborMap {
     when (this@toDataItem) {
         is StoredDocumentFormat.MsoMdoc -> put("docType", docType)

@@ -47,6 +47,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 import kotlin.test.assertTrue
 
 class IosOpenID4VciProvisioningClientTest {
@@ -88,6 +90,7 @@ class IosOpenID4VciProvisioningClientTest {
     private var parHeaders: Map<String, String> = emptyMap()
     private var tokenBody: String = ""
     private var credentialBodies = mutableListOf<String>()
+    private var tokenResponse = """{"access_token":"at-1","refresh_token":"rt-1","c_nonce":"nonce-1"}"""
 
     private fun engine() = MockEngine { request ->
         val json = headersOf("Content-Type", "application/json")
@@ -103,11 +106,7 @@ class IosOpenID4VciProvisioningClientTest {
 
             tokenEndpoint -> {
                 tokenBody = request.body.toByteArray().decodeToString()
-                respond(
-                    """{"access_token":"at-1","refresh_token":"rt-1","c_nonce":"nonce-1"}""",
-                    HttpStatusCode.OK,
-                    json,
-                )
+                respond(tokenResponse, HttpStatusCode.OK, json)
             }
 
             credentialEndpoint -> {
@@ -282,6 +281,21 @@ class IosOpenID4VciProvisioningClientTest {
     }
 
     @Test
+    fun the_client_hands_its_notice_the_access_token_before_the_issuer_can_defer() = runTest {
+        // The link between the session, which has the token, and the handler, which parks the document:
+        // without it the handler would park a document nothing can ever collect.
+        tokenResponse = """{"access_token":"at-1","expires_in":300,"c_nonce":"nonce-1"}"""
+        val session = session(listOf("pid_mdoc"))
+        session.authorize(redirectResponse(session.challenge() as AuthorizationChallenge.OAuth))
+        val notice = DeferredIssuanceNotice()
+
+        IosOpenID4VciProvisioningClient(session, "pid_mdoc", httpClient, notice)
+            .obtainCredentials(KeyBindingInfo.OpenidProofOfPossession(listOf(proofJwt("cred-a"))))
+
+        assertEquals("at-1", assertNotNull(notice.resume).accessToken)
+    }
+
+    @Test
     fun an_issued_credential_is_paired_with_the_pending_credential_its_proof_names() = runTest {
         val session = session(listOf("pid_mdoc"))
         session.authorize(redirectResponse(session.challenge() as AuthorizationChallenge.OAuth))
@@ -324,6 +338,32 @@ class IosOpenID4VciProvisioningClientTest {
         assertEquals("rt-1", (map.items[Tstr("refreshToken")] as Tstr).value)
         // Without the alias the DPoP key cannot be reopened, and a refresh is unauthenticated.
         assertNotNull(map.items[Tstr("dpopKeyAlias")])
+    }
+
+    @Test
+    fun without_a_refresh_token_the_session_offers_its_access_token_for_a_deferred_collection() = runTest {
+        // Plaut's dev issuer, 2026-09-28: no refresh token, so the parked document's only way back.
+        tokenResponse = """{"access_token":"at-1","expires_in":300,"c_nonce":"nonce-1"}"""
+        val session = session(listOf("pid_mdoc"))
+        val before = Clock.System.now()
+        session.authorize(redirectResponse(session.challenge() as AuthorizationChallenge.OAuth))
+
+        val resume = assertNotNull(session.deferredResume())
+        assertEquals("at-1", resume.accessToken)
+        // The key the token is DPoP-bound to, without which it cannot be presented.
+        assertTrue(resume.dpopKeyAlias.isNotBlank())
+        val expiresAt = assertNotNull(resume.expiresAt)
+        assertTrue(expiresAt >= before + 300.seconds && expiresAt <= Clock.System.now() + 300.seconds)
+        // Unchanged: without a refresh token there is still no authorization data for a refresh.
+        assertNull(session.authorizationData("pid_mdoc"))
+    }
+
+    @Test
+    fun with_a_refresh_token_the_session_offers_no_access_token_to_keep() = runTest {
+        val session = session(listOf("pid_mdoc"))
+        session.authorize(redirectResponse(session.challenge() as AuthorizationChallenge.OAuth))
+
+        assertNull(session.deferredResume(), "the stored authorization is the way back")
     }
 
     @Test

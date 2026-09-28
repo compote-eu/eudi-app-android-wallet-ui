@@ -151,12 +151,13 @@ internal class IosDocumentProvisioningHandler(
             super.cleanupDocumentOnError(document, err)
             return
         }
-        metadata.park(transactionId)
+        metadata.park(transactionId, resume = deferred.resume)
         document.edit { this.metadata = metadata }
         deferred.parkedDocumentId = document.identifier
         Logger.i(
             TAG,
-            "the issuer deferred ${document.identifier}; parked it with transaction $transactionId"
+            "the issuer deferred ${document.identifier}; parked it with transaction $transactionId" +
+                if (deferred.resume != null) " (resumable with the session's access token)" else ""
         )
     }
 

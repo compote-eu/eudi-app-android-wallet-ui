@@ -42,6 +42,7 @@ import org.multipaz.util.toBase64Url
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -87,7 +88,9 @@ class IosDeferredDocumentCompleterTest {
      */
     private suspend fun MultipazWalletStore.parkWithPendingCredential(
         transactionId: String = "txn-abc-123",
-        refreshToken: String = "the-refresh-token",
+        /** Null for an issuer that grants none: then multipaz stores no authorization data at all. */
+        refreshToken: String? = "the-refresh-token",
+        resume: DeferredResume? = null,
     ): Document {
         keySecureArea.createKey(dpopAlias, SoftwareCreateKeySettings.Builder().build())
         val document = documentStore.createDocument(
@@ -101,17 +104,19 @@ class IosDeferredDocumentCompleterTest {
                     documentConfigurationIdentifier = "mso_mdoc",
                     credentialIssuerIdentifier = issuerUrl,
                 ),
-            ),
+            ).also { it.park(transactionId, resume) },
         )
         // The CBOR multipaz writes. Only the two members this flow reads are set; the rest is absent,
         // which is legal there since every member is optional.
-        val authorization = Cbor.encode(
-            buildCborMap {
-                put("dpopKeyAlias", Tstr(dpopAlias))
-                put("refreshToken", Tstr(refreshToken))
-            }
-        )
-        document.edit { authorizationData = ByteString(*authorization) }
+        if (refreshToken != null) {
+            val authorization = Cbor.encode(
+                buildCborMap {
+                    put("dpopKeyAlias", Tstr(dpopAlias))
+                    put("refreshToken", Tstr(refreshToken))
+                }
+            )
+            document.edit { authorizationData = ByteString(*authorization) }
+        }
         MdocCredential.create(
             document = document,
             asReplacementForIdentifier = null,
@@ -136,13 +141,18 @@ class IosDeferredDocumentCompleterTest {
         return data.toByteArray().toBase64Url()
     }
 
+    /** What the stand-in issuer was asked, with the token each request presented. */
+    private class Sent(val url: String, val authorization: String?)
+
     private fun completerOver(
         store: MultipazWalletStore,
         deferredStatus: HttpStatusCode,
         deferredBody: String,
+        sent: MutableList<Sent> = mutableListOf(),
     ): IosDeferredDocumentCompleter {
         val engine = MockEngine { request ->
             val url = request.url.toString()
+            sent += Sent(url, request.headers["Authorization"])
             when {
                 url.endsWith(".well-known/openid-credential-issuer") -> respond(
                     """{"credential_issuer":"$issuerUrl",""" +
@@ -266,5 +276,62 @@ class IosDeferredDocumentCompleterTest {
 
     private companion object {
         val jsonHeaders = headersOf("Content-Type", listOf("application/json"))
+    }
+
+    // ── An issuer that grants no refresh token ────────────────────────────────────────────────────
+
+    private fun resumeFor(expiresIn: kotlin.time.Duration) = DeferredResume(
+        accessToken = "the-sessions-access-token",
+        dpopKeyAlias = dpopAlias,
+        expiresAt = Clock.System.now() + expiresIn,
+    )
+
+    @Test
+    fun without_a_refresh_token_the_document_is_collected_with_the_sessions_access_token() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val parked = store.parkWithPendingCredential(refreshToken = null, resume = resumeFor(5.minutes))
+        val sent = mutableListOf<Sent>()
+        val credential = issuedCredentialFor(parked)
+
+        val result = completerOver(
+            store,
+            HttpStatusCode.OK,
+            """{"credentials":[{"credential":"$credential"}]}""",
+            sent,
+        ).complete(parked)
+
+        assertIs<DeferredCollection.Issued>(result)
+        // Nothing refreshed — there was nothing to refresh with — and the stored token was presented.
+        assertTrue(sent.none { it.url == tokenEndpoint }, "no refresh was attempted")
+        assertEquals("DPoP the-sessions-access-token", sent.single { it.url == deferredEndpoint }.authorization)
+        // The token does not outlive the wait: cleared with the handle.
+        val reread = store.documentStore.lookupDocument(parked.identifier)!!.eudiMetadata!!
+        assertNull(reread.deferredTransactionId)
+        assertNull(reread.deferredResume)
+    }
+
+    @Test
+    fun an_expired_access_token_without_a_refresh_token_is_reported_expired_without_asking() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val parked = store.parkWithPendingCredential(refreshToken = null, resume = resumeFor((-1).minutes))
+        val sent = mutableListOf<Sent>()
+
+        val result = completerOver(store, HttpStatusCode.OK, "{}", sent).complete(parked)
+
+        assertIs<DeferredCollection.AuthorizationExpired>(result)
+        assertTrue(sent.isEmpty(), "the issuer was not asked")
+    }
+
+    @Test
+    fun a_document_with_neither_a_refresh_token_nor_an_access_token_is_reported_expired() = runTest {
+        // Exactly the state Plaut's parked documents were in before the access token was kept.
+        val store = storeOver(EphemeralStorage())
+        val parked = store.parkWithPendingCredential(refreshToken = null, resume = null)
+        val sent = mutableListOf<Sent>()
+
+        val result = completerOver(store, HttpStatusCode.OK, "{}", sent).complete(parked)
+
+        assertIs<DeferredCollection.AuthorizationExpired>(result)
+        assertTrue(sent.isEmpty())
     }
 }

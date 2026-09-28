@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import platform.Foundation.NSLocale
 import platform.Foundation.currentLocale
+import org.multipaz.util.Logger
 import platform.Foundation.languageCode
 
 /**
@@ -151,7 +152,11 @@ internal class IosDocumentsPlatformBridge(
         // The screen's set first, so its ordering and its format types win where they overlap.
         val toSweep = deferredDocuments + awaitingDeferred().filterKeys { it !in deferredDocuments }
         toSweep.forEach { (documentId, _) ->
-            when (val outcome = collectDeferred(documentId)) {
+            val outcome = collectDeferred(documentId)
+            // Every outcome is named, because the one that deletes a document used to leave no trace at
+            // all: a parked document simply vanished from the list (Plaut's issuer, 2026-09-28).
+            Logger.i(TAG, "deferred sweep: $documentId -> $outcome")
+            when (outcome) {
                 is DeferredCollection.Issued -> issuedIds += documentId
 
                 // Reported failed AND removed, which is what Android does with the same two outcomes
@@ -163,6 +168,7 @@ internal class IosDocumentsPlatformBridge(
                 is DeferredCollection.AuthorizationExpired,
                     -> {
                     failed += documentId
+                    Logger.w(TAG, "removing $documentId: it can never be collected ($outcome)")
                     // 🪤 `.invoke`, not `deleteDocument(id)`: that name also belongs to this class's
                     // own override, which returns a COLD Flow — calling it deletes nothing at all
                     // unless the flow is collected, and it reads exactly like a delete. Caught by
@@ -200,3 +206,5 @@ internal class IosDocumentsPlatformBridge(
         )
     }.flowOn(dispatcher)
 }
+
+private const val TAG = "IosDocumentsPlatformBridge"

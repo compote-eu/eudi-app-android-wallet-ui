@@ -39,6 +39,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import org.multipaz.cbor.Cbor
@@ -66,7 +67,10 @@ import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import org.multipaz.webtoken.buildJwt
 import kotlin.random.Random
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlin.reflect.KClass
 
 /**
@@ -125,6 +129,7 @@ internal class IosVciAuthorizationSession(
 
     private var accessToken: String? = null
     private var refreshToken: String? = null
+    private var accessTokenExpiresAt: Instant? = null
     private var keyChallenge: String? = null
 
     /** True once the token is in hand, which is what makes later configurations free. */
@@ -190,6 +195,31 @@ internal class IosVciAuthorizationSession(
             ?: throw IllegalStateException("The issuer returned no access token.")
         refreshToken = body["refresh_token"]?.jsonPrimitive?.content
         keyChallenge = body["c_nonce"]?.jsonPrimitive?.content
+        val expiresIn = body["expires_in"]?.jsonPrimitive?.longOrNull
+        accessTokenExpiresAt = expiresIn?.let { Clock.System.now() + it.seconds }
+
+        // The names only — never a value. Whether a refresh token came back decides whether a deferred
+        // credential can be collected at all later, and it was invisible until this line existed.
+        Logger.i(TAG, "token response carries ${body.keys.sorted()}")
+        if (refreshToken == null) {
+            Logger.i(
+                TAG,
+                "no refresh token: a deferred credential can be collected only while this access token " +
+                    "is valid (expires_in=${expiresIn ?: "unstated"})",
+            )
+        }
+    }
+
+    /**
+     * What a document the issuer defers needs to be collected later, when there is **no refresh token**:
+     * this session's access token and the DPoP key it is bound to. Null when a refresh token exists —
+     * the stored authorization data is the way back then — or before the session is authorized.
+     */
+    fun deferredResume(): DeferredResume? {
+        if (refreshToken != null) return null
+        val token = accessToken ?: return null
+        val alias = dpopKeyAlias ?: return null
+        return DeferredResume(accessToken = token, dpopKeyAlias = alias, expiresAt = accessTokenExpiresAt)
     }
 
     /** The `c_nonce` the credential proofs must carry, from the token response or the nonce endpoint. */
@@ -632,6 +662,8 @@ internal class IosOpenID4VciProvisioningClient(
     private val configurationId: String,
     /** This document's own shimmed client, so its deferral notice is its own. */
     private val credentialHttpClient: HttpClient,
+    /** The same notice that client fills in, which also carries how to collect a deferral later. */
+    private val deferredNotice: DeferredIssuanceNotice? = null,
 ) : ProvisioningClient {
 
     /**
@@ -661,8 +693,13 @@ internal class IosOpenID4VciProvisioningClient(
 
     override suspend fun getKeyBindingChallenge(): String = session.keyBindingChallenge()
 
-    override suspend fun obtainCredentials(keyInfo: KeyBindingInfo): Credentials =
-        session.obtainCredentials(configurationId, keyInfo, credentialHttpClient)
+    override suspend fun obtainCredentials(keyInfo: KeyBindingInfo): Credentials {
+        // Before the request, because the issuer's answer is what decides it: if it defers, the handler
+        // parks the document with this, and without it a refresh-token-less issuer's document would be
+        // uncollectable.
+        deferredNotice?.resume = session.deferredResume()
+        return session.obtainCredentials(configurationId, keyInfo, credentialHttpClient)
+    }
 }
 
 /** A refresh token and the DPoP key it is now bound to, for one document to keep as its own. */
