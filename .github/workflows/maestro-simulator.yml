@@ -1,0 +1,364 @@
+name: Maestro Simulator
+
+# Rewritten from scratch for this KMP repo on 2026-09-28. The file this replaced was the
+# `eudi-app-ios-wallet-ui` sibling project's own CI workflow, copied in wholesale along with the
+# rest of the unverified `.maestro/` reference material — it referenced a nonexistent
+# `EudiReferenceWallet.xcodeproj`, the wrong scheme/appId, and had no Android job at all. See
+# `wiki/BRANCHES.md` for why this repo carries copied-but-unadapted material from that project.
+#
+# Scoped deliberately narrow: the ONLY flow either job runs is
+# `.maestro/kmp/issuance/tc-01-pid-issuance-common.yaml` — the single flow that has actually been
+# built and verified, unmodified, against this app's real screens on both platforms (see
+# `.maestro/PORTING_STATUS.md`, TC-01's row). Every other file under `.maestro/` (including the
+# Android continuation file for TC-01 itself) is either unverified reference material or, in the
+# continuation file's specific case, now KNOWN STALE — see the note on that further down and in
+# this PR/commit's own description. Add more flows here only once they've been through the same
+# live "screenshot → hierarchy dump → flow snippet" verification discipline as this one, not
+# straight from the reference copies.
+#
+# Two independent jobs, not one with two platforms inline: android-tests and ios-tests each stand
+# on their own so a failure in one doesn't hide whether the other (shared-flow-file) side is
+# still green — see ios-tests' `if: always()` below.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-tests:
+    name: Android — Maestro (TC-01 common flow)
+    # Custom label, not bare `self-hosted`: confirmed against the runner's actual registered
+    # labels (self-hosted, macOS, ARM64, maestro, mobile-e2e) — `maestro` is provisioned
+    # specifically for this kind of workflow, not any self-hosted runner in the fleet, matching
+    # the already-decided security posture of scoping runner access per-workload.
+    runs-on: [self-hosted, macOS, maestro]
+    permissions:
+      contents: read
+    # Generous ceiling, not an expected duration — the flow itself normally finishes in well
+    # under 5 minutes (confirmed interactively this session: PIN setup through the document
+    # catalog, unmodified, passes in seconds). Sized to comfortably absorb a cold Gradle build,
+    # not to tolerate a hung Maestro driver — that failure mode is bounded separately, and much
+    # more tightly, on the flow-run step itself below.
+    timeout-minutes: 30
+    env:
+      # Confirmed live on the machine this workflow was authored on (echo $ANDROID_HOME →
+      # /Users/martin.cekan/Library/Android/sdk) — but that's this session's interactive dev
+      # shell, not necessarily the actual self-hosted CI runner's account/home directory. If the
+      # runner logs in as a different user (e.g. a dedicated `runner`/`ci` account), this path's
+      # username segment will need adjusting — check `echo $ANDROID_HOME` on the real runner
+      # before trusting this as-is.
+      ANDROID_HOME: /Users/martin.cekan/Library/Android/sdk
+      # Confirmed real, not a placeholder: this is the exact AVD actively running and used for
+      # today's live TC-01 re-verification on this machine — cross-checked two ways
+      # (`ps aux | grep qemu` showing `-avd Pixel_6a`, and `adb -s emulator-5554 emu avd name` →
+      # `Pixel_6a`). Still not independently confirmed to exist on the actual CI runner's AVD
+      # list — check `$ANDROID_HOME/emulator/emulator -list-avds` there before finalizing.
+      AVD_NAME: Pixel_6a
+      MAESTRO_VERSION: '2.8.0'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # No setup-java/setup-gradle action, and no ~/.gradle caching: this is a persistent
+      # self-hosted runner, so the Gradle wrapper's own dependency cache already survives between
+      # runs on disk — adding actions/setup-java's or gradle/actions/setup-gradle's own caching on
+      # top would just double-cache the same thing for no benefit, same lesson already learned
+      # about the SPM cache on the iOS side of this runner (see ios-tests below). JDK 17 is
+      # assumed already present on the runner per this repo's build requirements (`CLAUDE.md`) —
+      # not independently confirmed for this specific runner image.
+      - name: Build Android app (dev debug)
+        run: ./gradlew :androidApp:assembleDevDebug --no-daemon
+
+      # Mirrors the iOS job's "Erase and boot simulator" step: this is a persistent runner, not a
+      # fresh VM per run, so a leftover emulator from a prior run (or a prior run's app data) is a
+      # real possibility, not a theoretical one — wipe first rather than assume a clean slate.
+      - name: Wipe emulator data
+        run: |
+          "$ANDROID_HOME/platform-tools/adb" -e emu kill || true
+          sleep 2
+          "$ANDROID_HOME/emulator/emulator" -avd "$AVD_NAME" -wipe-data -no-window -no-audio -no-boot-anim &
+          echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
+
+      # Android equivalent of the iOS job's confirmed `bootstatus -b` + settle-delay lesson
+      # (see its comment below in ios-tests) — `sys.boot_completed` becoming `1` is the Android
+      # analogue of `bootstatus -b` returning, and carries the same caveat: it signals the boot
+      # sequence completed, not that every system service (package manager, input dispatch) is
+      # necessarily ready to accept commands yet. The settle sleep after the poll is precautionary,
+      # modeled on the iOS incident, NOT itself confirmed as a real Android race in this repo — no
+      # equivalent failure has actually been hit here. Keep it, but don't treat the "20s" iOS
+      # figure as validated for Android; revisit if this step turns out unnecessary or insufficient
+      # once this workflow has actually run a few times.
+      - name: Wait for emulator boot
+        run: |
+          "$ANDROID_HOME/platform-tools/adb" wait-for-device
+          BOOT_COMPLETED=""
+          for i in $(seq 1 60); do
+            BOOT_COMPLETED=$("$ANDROID_HOME/platform-tools/adb" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            if [ "$BOOT_COMPLETED" = "1" ]; then
+              echo "Boot completed after ${i} checks."
+              break
+            fi
+            sleep 5
+          done
+          if [ "$BOOT_COMPLETED" != "1" ]; then
+            echo "::error::Emulator did not report sys.boot_completed=1 within the poll window."
+            exit 1
+          fi
+          sleep 10
+
+      - name: Disable animations
+        run: |
+          "$ANDROID_HOME/platform-tools/adb" shell settings put global window_animation_scale 0
+          "$ANDROID_HOME/platform-tools/adb" shell settings put global transition_animation_scale 0
+          "$ANDROID_HOME/platform-tools/adb" shell settings put global animator_duration_scale 0
+
+      # Checks the binary's own full path directly, not `command -v maestro`: $GITHUB_PATH
+      # additions are job-scoped in GitHub Actions and do NOT carry over between jobs, even on
+      # this same persistent self-hosted Mac — only the underlying ~/.maestro/bin/maestro file
+      # itself persists on disk across jobs/runs. A fresh job's shell has no reason to already
+      # resolve `maestro` via PATH before this step's own GITHUB_PATH line runs, so `command -v`
+      # would false-negative every time and reinstall regardless — checking the real path is what
+      # actually makes the skip work. Pinned to 2.8.0, matching the version already verified
+      # locally this session (`maestro --version` → 2.8.0) and the version ios-tests below pins
+      # to, for consistency across both jobs.
+      - name: Install Maestro CLI
+        run: |
+          MAESTRO_BIN="$HOME/.maestro/bin/maestro"
+          if [ -x "$MAESTRO_BIN" ] && "$MAESTRO_BIN" --version 2>/dev/null | grep -q "$MAESTRO_VERSION"; then
+            echo "Maestro $MAESTRO_VERSION already installed at $MAESTRO_BIN on this persistent runner — skipping reinstall."
+          else
+            echo "Maestro $MAESTRO_VERSION not found (or a different version is present) at $MAESTRO_BIN — installing."
+            curl -Ls "https://get.maestro.mobile.dev" | bash
+          fi
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Maestro
+        run: maestro --version
+
+      - name: Install app
+        run: |
+          APK_PATH="androidApp/build/outputs/apk/dev/debug/androidApp-dev-debug.apk"
+          "$ANDROID_HOME/platform-tools/adb" install -r "$APK_PATH"
+
+      # Marks "now" so the artifact-staging step below can find exactly the ~/.maestro/tests
+      # folders this job's own flow run creates, via `find -newer`, rather than uploading every
+      # folder ever accumulated on this persistent runner — same pattern as ios-tests below.
+      - name: Mark start of this job's Maestro test runs
+        run: touch /tmp/maestro_marker_android
+
+      # Short per-step timeout inside the longer job-level one: a hung Maestro driver should fail
+      # loudly and fast, not quietly eat the whole job budget — same reasoning as ios-tests below.
+      # Scoped to ONLY the common flow file — see this file's header for why the Android
+      # continuation file is deliberately NOT included here yet.
+      - name: Run Maestro flow (TC-01 common — PIN setup through document catalog)
+        timeout-minutes: 10
+        run: maestro test .maestro/kmp/issuance/tc-01-pid-issuance-common.yaml
+
+      - name: Kill emulator
+        if: always()
+        run: |
+          "$ANDROID_HOME/platform-tools/adb" -e emu kill || true
+
+      # `device-logcat.txt` excluded for the same reason the iOS job excludes its own device-level
+      # logs: confirmed directly against this session's own Maestro test-run folders (2026-09-28)
+      # that it's 85-92% of total folder size across three separate runs — dominant, and rarely
+      # the actual diagnostic need. Screenshots and hierarchy dumps (Maestro's own failure-point
+      # captures) are always kept; they're what's small and what's actually useful for diagnosing
+      # a failure.
+      - name: Prepare Maestro artifacts for upload
+        if: failure()
+        run: |
+          STAGING="maestro-artifacts-staging"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING"
+          NEW_DIRS=$(find "$HOME/.maestro/tests" -maxdepth 1 -mindepth 1 -type d -newer /tmp/maestro_marker_android)
+          if [ -z "$NEW_DIRS" ]; then
+            echo "No new Maestro test-run folders found since this job started — nothing to stage."
+          else
+            for d in $NEW_DIRS; do
+              rsync -a --exclude='device-logcat.txt' "$d" "$STAGING/"
+            done
+          fi
+          echo "Staged artifact contents:"
+          find "$STAGING" -type f | sort
+
+      - name: Upload Maestro debug artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-debug-artifacts-android
+          path: maestro-artifacts-staging
+          retention-days: 3
+
+  ios-tests:
+    name: iOS — Maestro (TC-01 common flow)
+    needs: android-tests
+    # Critical: must run even if android-tests failed, so a platform-specific Android failure
+    # doesn't mask whether the shared flow file is still fine on iOS (or vice versa) — this is
+    # the whole reason these are two jobs instead of one, not just organizational tidiness.
+    if: always()
+    runs-on: [self-hosted, macOS, maestro]
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    env:
+      # Confirmed correct THIS session, by an actual local xcodebuild run that produced
+      # "BUILD SUCCEEDED" — not carried over from the old file's guesses.
+      SCHEME: EudiWallet
+      CONFIGURATION: Debug
+      # Confirmed real, not a placeholder: `xcrun simctl list devices booted` showed exactly this
+      # device — "iPhone 16 Pro" (UDID DB1FC896-B132-4F26-9F53-F4361270CDC1, iOS 18.0) — actively
+      # booted and used for today's live TC-01 re-verification on this machine. CLAUDE.md's own
+      # documented example command uses "iPhone 17" instead, but that's not what was actually
+      # available/used here today — using the device genuinely exercised this session. Still not
+      # independently confirmed present on the actual CI runner's image — check
+      # `xcrun simctl list devices available` there before finalizing.
+      SIMULATOR_NAME: iPhone 16 Pro
+      MAESTRO_VERSION: '2.8.0'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # Per CLAUDE.md's explicit guardrail: never hand-edit or assume iosApp/iosApp.xcodeproj is
+      # already present — it's git-ignored and regenerated from iosApp/project.yml plus
+      # app.properties/version.properties. The file this workflow replaces skipped this entirely
+      # and assumed a committed EudiReferenceWallet.xcodeproj, which is a different project's
+      # layout, not this repo's.
+      - name: Generate iOS project
+        run: ./gradlew generateIosProject --no-daemon
+
+      - name: Find simulator UDID
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available \
+            | grep "$SIMULATOR_NAME" \
+            | tail -1 \
+            | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}')
+          if [ -z "$UDID" ]; then
+            echo "::error::No '$SIMULATOR_NAME' simulator found on this runner image."
+            exit 1
+          fi
+          echo "Found UDID: $UDID"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve package dependencies
+        run: |
+          cd iosApp
+          xcodebuild -resolvePackageDependencies \
+            -project iosApp.xcodeproj \
+            -scheme "$SCHEME"
+
+      # No SPM/DerivedData caching: same persistent-runner lesson as Gradle above — this Mac
+      # already keeps its SPM cache and DerivedData between runs on disk, so an actions-level
+      # cache would just duplicate what's already there for no benefit.
+      - name: Build for simulator
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          cd iosApp
+          xcodebuild build \
+            -project iosApp.xcodeproj \
+            -scheme "$SCHEME" \
+            -configuration "$CONFIGURATION" \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath ../DerivedData \
+            2>&1 | tee xcodebuild-maestro-build.log
+
+      # Same settle-delay pattern already proven necessary on the sibling iOS project's own
+      # runner (see that project's incident: "Suppress QuickPath keyboard tip" failed with
+      # CoreSimulator error code=124, "Domain is tearing down", when this delay was missing) —
+      # reused here defensively since this is the same class of runner/simulator readiness race,
+      # even though it hasn't independently recurred against this specific repo yet.
+      - name: Erase and boot simulator
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          xcrun simctl shutdown "$UDID" || true
+          xcrun simctl erase "$UDID"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          sleep 20
+
+      # Not confirmed applicable to this app — kept from the sibling project's own confirmed
+      # finding (QuickPath keyboard tip overlapping and shifting layout during point-based taps)
+      # as defense in depth, since it costs nothing and this workflow's own flow uses inputText,
+      # not point-based taps, for its only text entry (the PIN). Safe to drop later if this app
+      # is confirmed never to hit it.
+      - name: Suppress QuickPath keyboard tip
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          xcrun simctl spawn "$UDID" defaults write com.apple.keyboard CPDidDiscover -bool true
+          xcrun simctl spawn "$UDID" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true
+
+      - name: Install app
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          APP_PATH="../DerivedData/Build/Products/${CONFIGURATION}-iphonesimulator/EudiWallet.app"
+          cd iosApp
+          xcrun simctl install "$UDID" "$APP_PATH"
+          # Correct bundle id for THIS repo, confirmed live this session (fresh install + PIN
+          # setup + issuance all worked against it): eu.compote.euidi.dev — NOT the iOS sibling
+          # project's eu.europa.ec.euidi.dev, which the old copied workflow had hardcoded.
+          xcrun simctl launch "$UDID" eu.compote.euidi.dev
+          sleep 3
+
+      - name: Install Maestro CLI
+        run: |
+          MAESTRO_BIN="$HOME/.maestro/bin/maestro"
+          if [ -x "$MAESTRO_BIN" ] && "$MAESTRO_BIN" --version 2>/dev/null | grep -q "$MAESTRO_VERSION"; then
+            echo "Maestro $MAESTRO_VERSION already installed at $MAESTRO_BIN on this persistent runner — skipping reinstall."
+          else
+            echo "Maestro $MAESTRO_VERSION not found (or a different version is present) at $MAESTRO_BIN — installing."
+            curl -Ls "https://get.maestro.mobile.dev" | bash
+          fi
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Maestro
+        run: maestro --version
+
+      - name: Mark start of this job's Maestro test runs
+        run: touch /tmp/maestro_marker_ios
+
+      - name: Run Maestro flow (TC-01 common — PIN setup through document catalog)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/kmp/issuance/tc-01-pid-issuance-common.yaml
+
+      - name: Prepare Maestro artifacts for upload
+        if: failure()
+        run: |
+          STAGING="maestro-artifacts-staging"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING"
+          NEW_DIRS=$(find "$HOME/.maestro/tests" -maxdepth 1 -mindepth 1 -type d -newer /tmp/maestro_marker_ios)
+          if [ -z "$NEW_DIRS" ]; then
+            echo "No new Maestro test-run folders found since this job started — nothing to stage."
+          else
+            for d in $NEW_DIRS; do
+              rsync -a \
+                --exclude='device-simulator.log' \
+                --exclude='device-xctest.log' \
+                --exclude='xctest_runner_*.log' \
+                "$d" "$STAGING/"
+            done
+          fi
+          echo "Staged artifact contents:"
+          find "$STAGING" -type f | sort
+
+      - name: Upload Maestro debug artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-debug-artifacts-ios
+          path: maestro-artifacts-staging
+          retention-days: 3
