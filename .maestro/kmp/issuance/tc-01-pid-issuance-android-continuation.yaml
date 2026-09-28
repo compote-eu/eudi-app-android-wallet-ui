@@ -35,12 +35,37 @@
 # Never re-verified against the just-split DocumentOfferScreen PRIMARY_BUTTON/SECONDARY_BUTTON
 # tags (added earlier the same day) — this flow never reaches that screen; the catalog tap
 # goes straight into the identity-proofing redirect instead, same as the native reference flow.
+#
+# CHROME FIRST-RUN DIALOGS (found and fixed 2026-09-28, confirmed live against a genuinely
+# fresh/wiped emulator — see below): tapping "PID Combined" hands off to a real Chrome browser
+# session for the identity-proofing form. On an emulator where Chrome has never been launched
+# before, this triggers two dialogs in sequence before the actual form appears:
+#   1. Chrome's own first-run experience (`dumpsys window` confirms
+#      com.android.chrome/org.chromium.chrome.browser.firstrun.FirstRunActivity) — "Make Chrome
+#      your own" / "Add account to device" / "Stay signed out".
+#   2. A separate "Chrome notifications make things easier" permission prompt.
+# Root-cause suppression was tried first and does NOT work here: the standard
+# `/data/local/tmp/chrome-command-line` flags file (`--disable-fre --no-first-run
+# --no-default-browser-check`), which normally suppresses Chrome's FRE on AOSP/userdebug
+# images, was applied at boot time on a freshly wiped emulator and the dialog still appeared —
+# most likely because this system image (`google_apis_playstore`) is Play-Store-signed, and
+# Chrome only honors that flags file on non-"user" build types. The two-step optional dismiss
+# below is the confirmed, working fix instead, same pattern as this project's other one-time
+# system-dialog handling: tap through if present, no-op if Chrome has already been through its
+# FRE earlier in the same emulator session (e.g. chained after another flow that already
+# triggered it).
 
 appId: eu.compote.euidi.dev
 ---
 - scroll
 - scroll
 - tapOn: "PID Combined"
+- tapOn:
+    id: "com.android.chrome:id/signin_fre_dismiss_button"
+    optional: true
+- tapOn:
+    text: "No thanks"
+    optional: true
 - tapOn: "FormEU"
 - tapOn: "Submit"
 - tapOn:
