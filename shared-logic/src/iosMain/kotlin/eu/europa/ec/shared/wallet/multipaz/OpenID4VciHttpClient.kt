@@ -216,6 +216,9 @@ internal fun openID4VciHttpClient(
         // multipaz's requirement, not ours: the OAuth redirect must come back to the caller so the
         // authorization code can be read off it.
         followRedirects = false
+        // The first request after the user comes back from the browser or eIDENTITA can meet a socket iOS
+        // reclaimed while the wallet was suspended.
+        retryOnceWhenConnectionLost()
     }
 
 /**

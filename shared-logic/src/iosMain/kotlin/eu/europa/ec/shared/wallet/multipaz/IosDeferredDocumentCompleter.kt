@@ -236,7 +236,9 @@ suspend fun IosWalletEngine.collectDeferredDocument(documentId: String): Deferre
         ?: return DeferredCollection.Failed("no such document")
     return IosDeferredDocumentCompleter(
         store = store,
-        httpClient = HttpClient(Darwin.create()),
+        // A sweep runs as the documents screen appears — often right after the wallet resumes, when a
+        // pooled connection may be dead.
+        httpClient = HttpClient(Darwin.create()) { retryOnceWhenConnectionLost() },
         walletProviderBaseUrl = iosWalletConfig.walletProviderUrl,
     ).complete(document)
 }
