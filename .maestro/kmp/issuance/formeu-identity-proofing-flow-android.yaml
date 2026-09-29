@@ -1,0 +1,98 @@
+# Shared sub-flow, ANDROID ONLY: the FormEU test issuer's identity-proofing
+# form in Chrome, from the "FormEU" country choice through the native
+# issuance success screen's "Close" button.
+#
+# Android counterpart of formeu-identity-proofing-flow.yaml, which keeps the
+# iOS coordinates and stays the iOS path (tc-01-pid-issuance-common.yaml).
+# That file's `point:` taps do NOT fit Android's form: run on 2026-09-29 on a
+# wiped Pixel_6a, they left Android's native date picker open over the form
+# with Country Code empty, and the flow then failed at "Confirm".
+#
+# Callers must already be past the Chrome hand-off and its first-run dialogs
+# (see tc-01-pid-issuance-android.yaml) - this file starts on the form.
+#
+# Fields are found by their visible labels, not by screen percentages. Chrome
+# exposes every label ("Birth Date", "Family Name", "Given Name",
+# "Country Code", Place Of Birth "Country") with its input directly below it
+# (confirmed from a live `maestro hierarchy` dump, 2026-09-29). The raw
+# `point:` taps previously in tc-01-pid-issuance-android-continuation.yaml
+# were tried here first and failed on the same day: the Country Code tap at
+# 50%,30% landed on no input, and the next `hideKeyboard` - which on Android
+# is a BACK key press - then navigated Chrome back instead of closing a
+# keyboard, and a later one closed the Custom Tab altogether. Every
+# `hideKeyboard` below therefore follows a label-matched tap that is known to
+# focus an input; don't put one after a tap that might miss.
+#
+# The iOS-only system identity-verification "Allow" dialog is left out.
+#
+# Like the iOS sub-flow, this does NOT assert the issued documents - each
+# caller asserts the result it expects.
+
+appId: eu.compote.euidi.dev
+---
+- tapOn: "FormEU"
+- tapOn: "Submit"
+
+# Birth Date: open the native date picker and accept the default (today).
+- tapOn:
+    below: "Birth Date"
+- tapOn: "SET"
+
+- tapOn:
+    below: "Family Name"
+- inputText: "Doe"
+- hideKeyboard
+- tapOn:
+    below: "Given Name"
+- inputText: "John"
+- hideKeyboard
+
+# Nationality > Country Code. Scroll until the button under its input is
+# fully on screen so the input itself is too.
+- scrollUntilVisible:
+    element:
+      text: "\\+ Add Nationality"
+    direction: DOWN
+- tapOn:
+    below: "Country Code"
+- inputText: "FR"
+- hideKeyboard
+
+# Place Of Birth > Country - the form requires at least one Place Of Birth
+# field. "Country" is a full-string match, so it doesn't hit "Country Code".
+- scrollUntilVisible:
+    element:
+      text: "Locality"
+    direction: DOWN
+- tapOn:
+    below: "Country"
+- inputText: "FR"
+- hideKeyboard
+
+- scrollUntilVisible:
+    element:
+      text: "Confirm"
+    direction: DOWN
+- tapOn: "Confirm"
+
+# --- Review & Send -> Authorize ---
+- extendedWaitUntil:
+    visible: "Review & Send"
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      text: "Authorize"
+    direction: DOWN
+- tapOn: "Authorize"
+
+# --- Native "Document issued" success screen -> Close ---
+# A long wait, not assertVisible: this follows the redirect back into the app
+# and the token/credential calls to the same dev issuer whose requests took
+# up to 11.7s each before the Chrome hand-off.
+- extendedWaitUntil:
+    visible: "You have successfully added the following to your wallet"
+    timeout: 60000
+# This app's button reads "Close", not the iOS reference's "Done" - matched
+# by its tag instead of either text.
+- tapOn:
+    id: "document_success_screen_button"

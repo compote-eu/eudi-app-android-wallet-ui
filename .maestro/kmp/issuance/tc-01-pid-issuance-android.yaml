@@ -50,28 +50,49 @@ appId: eu.compote.euidi.dev
 
 
 # --- Select PID Combined (matched by stable text, not the volatile id) ---
-- scroll
-- scroll
+# scrollUntilVisible, not a fixed number of scrolls: how far each plain
+# `scroll` moves this list varies run to run, and two of them have been
+# seen (2026-09-29, saved hierarchy dumps) stopping one row short with the
+# real, fully loaded catalog on screen - PID Combined just below the fold.
+- scrollUntilVisible:
+    element:
+      text: "PID Combined"
+    direction: DOWN
+    timeout: 20000
 - tapOn: "PID Combined"
+# Wait for the hand-off to Chrome before looking for anything in it. After
+# the tap the app shows a spinner over this list while it fetches issuer
+# metadata and sends the pushed authorization request to the dev issuer;
+# measured on 2026-09-29 from logcat at 8s and 35s (one metadata GET alone
+# took 11.7s). The list only disappears once Chrome is in front.
+- extendedWaitUntil:
+    notVisible: "PID Combined"
+    timeout: 60000
+# Chrome first-run dialogs on a fresh device. A bare optional tapOn gives up
+# almost at once, and Chrome takes a while to draw its FRE after the
+# hand-off (6.4s-9.0s on 2026-09-29, and past a 10s optional wait once), so
+# each dismiss waits first for whichever comes up: the dialog, or the
+# FormEU page itself when Chrome has already been through its first run.
+# Text selectors are full-string regexes, hence the `|`.
+- extendedWaitUntil:
+    visible: "Stay signed out|FormEU"
+    timeout: 30000
 - tapOn:
     id: "com.android.chrome:id/signin_fre_dismiss_button"
     optional: true
+- extendedWaitUntil:
+    visible: "No thanks|FormEU"
+    timeout: 30000
 - tapOn:
     text: "No thanks"
     optional: true
 
-# --- ASWebAuthenticationSession consent -> FormEU identity-proofing form ->
-#     Review & Send -> Authorize -> success screen -> Done ---
-# Extracted into a shared sub-flow (formeu-identity-proofing-flow.yaml) since
-# TC-57's credential-offer entry point converges on this exact same
-# ASWebAuthenticationSession session once its own "Issue" tap completes -
-# see that file's own header comment for the full rationale. Its individual
-# steps (FormEU vs. a real country, the Birth Date picker's default-today
-# behavior, the "next field" accessory-button tap for the hidden Place Of
-# Birth field, the Allow-dialog's generous optional timeout for a
-# fresh-erased device's slower key generation, etc.) are documented there,
-# not repeated here, to avoid the two files drifting out of sync.
-- runFlow: formeu-identity-proofing-flow.yaml
+# --- FormEU identity-proofing form in Chrome -> Review & Send -> Authorize ->
+#     success screen -> Close ---
+# The Android sub-flow, not the iOS one (formeu-identity-proofing-flow.yaml):
+# the form's coordinates differ per platform - see
+# formeu-identity-proofing-flow-android.yaml's header.
+- runFlow: formeu-identity-proofing-flow-android.yaml
 
 # --- Verify: PID appears in Documents list with a validity date ---
 # extendedWaitUntil (not a plain assertVisible) because the Documents list
@@ -84,8 +105,9 @@ appId: eu.compote.euidi.dev
 - assertVisible: "PID (SD-JWT VC)"
 # Maestro's text selectors are a FULL-STRING regex match (Pattern.matches),
 # not a substring search — "Valid until" alone only matches a node whose
-# entire accessible text equals exactly that. The real node text is
-# "Valid until 08 Nov 2026" (confirmed via a saved screen-hierarchy dump at
-# the point of failure), so the pattern needs an explicit date-shaped
-# suffix rather than relying on implicit substring matching.
-- assertVisible: "Valid until \\d{2} \\w{3} \\d{4}"
+# entire accessible text equals exactly that, so the pattern needs an
+# explicit date-shaped suffix. On this app on Android the real node text is
+# "Valid until: 28 Dec 2026" - with a colon, unlike the iOS reference
+# app's "Valid until 08 Nov 2026" this pattern was first written against
+# (saved screen-hierarchy dump, 2026-09-29).
+- assertVisible: "Valid until: \\d{2} \\w{3} \\d{4}"
