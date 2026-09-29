@@ -24,6 +24,17 @@ import eu.europa.ec.eudi.openid4vci.CredentialOfferRequestException
 import eu.europa.ec.eudi.wallet.trust.IssuerNotTrustedException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import io.ktor.client.HttpClient
+import io.ktor.client.call.NoTransformationFoundException
+import io.ktor.client.call.body
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.request.post
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TestThrowableExtensions {
@@ -154,6 +165,77 @@ class TestThrowableExtensions {
 
         // Then
         assertNull(reason)
+    }
+
+    //endregion
+
+    //region isTerminalDeferredFailure
+
+    /** Exactly what openid4vci-kt runs into: a typed error body read from a response that has none. */
+    private class ErrorBody(val error: String)
+
+    private fun failureFromAnEmptyBodied(status: HttpStatusCode): Throwable = runBlocking {
+        val client = HttpClient(
+            MockEngine {
+                respond(
+                    content = "",
+                    status = status,
+                    headers = headersOf(
+                        "WWW-Authenticate",
+                        """DPoP realm="pid-issuer", error="invalid_token", error_description="Access token is not valid"""",
+                    ),
+                )
+            }
+        )
+        runCatching { client.post("https://issuer.test/wallet/deferredEndpoint").body<ErrorBody>() }
+            .exceptionOrNull()!!
+    }
+
+    @Test
+    fun `an empty-bodied 401 from the deferred endpoint is final`() {
+        // Given — Plaut's dev issuer, verbatim (2026-09-28/29)
+        val failure = failureFromAnEmptyBodied(HttpStatusCode.Unauthorized)
+
+        // Then — the real exception, not a stand-in for it
+        assertTrue(failure is NoTransformationFoundException)
+        assertTrue(failure.isTerminalDeferredFailure())
+    }
+
+    @Test
+    fun `an empty-bodied server error is not final`() {
+        // Given
+        val failure = failureFromAnEmptyBodied(HttpStatusCode.InternalServerError)
+
+        // Then — a passing fault on the issuer's side: asking again later is right
+        assertFalse(failure.isTerminalDeferredFailure())
+    }
+
+    @Test
+    fun `an invalid_token error body is final`() {
+        // Given — what wallet-core makes of a JSON `Errored` answer
+        val failure = IllegalStateException("invalid_token")
+
+        // Then
+        assertTrue(failure.isTerminalDeferredFailure())
+    }
+
+    @Test
+    fun `a spent transaction id is final`() {
+        assertTrue(IllegalStateException("invalid_transaction_id").isTerminalDeferredFailure())
+    }
+
+    @Test
+    fun `a final answer is recognised when it is wrapped`() {
+        assertTrue(RuntimeException("deferred query failed", IllegalStateException("invalid_token")).isTerminalDeferredFailure())
+    }
+
+    @Test
+    fun `other failures are asked about again`() {
+        assertFalse(IllegalStateException("issuance_pending").isTerminalDeferredFailure())
+        assertFalse(IllegalStateException("server_error").isTerminalDeferredFailure())
+        assertFalse(java.io.IOException("connection reset").isTerminalDeferredFailure())
+        // Trust is its own outcome, decided before this one.
+        assertFalse(IssuerNotTrustedException(cause = RuntimeException("untrusted chain")).isTerminalDeferredFailure())
     }
 
     //endregion
