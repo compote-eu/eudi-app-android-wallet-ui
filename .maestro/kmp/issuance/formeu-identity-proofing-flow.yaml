@@ -38,9 +38,6 @@ appId: eu.europa.ec.euidi.dev
 # reasoning is repeated here to avoid the two files drifting out of
 # sync with each other.
 
-# --- ASWebAuthenticationSession system consent ---
-- tapOn: "Continue"
-
 # --- Mock identity-proofing form (ec.dev.issuer.eudiw.dev, FormEU test issuer) ---
 - tapOn: "FormEU"
 - scroll
