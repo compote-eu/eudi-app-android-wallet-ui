@@ -133,7 +133,8 @@ fun provideWalletCoreDocumentsController(
     transactionLogDao: TransactionLogDao,
     revokedDocumentDao: RevokedDocumentDao,
     failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
-    prefKeys: PrefKeys
+    prefKeys: PrefKeys,
+    logController: LogController,
 ): WalletCoreDocumentsController =
     WalletCoreDocumentsControllerImpl(
         resourceProvider,
@@ -142,7 +143,8 @@ fun provideWalletCoreDocumentsController(
         transactionLogDao,
         revokedDocumentDao,
         failedReIssuedDocumentDao,
-        prefKeys
+        prefKeys,
+        logController,
     )
 
 @Scope(WalletPresentationScope::class)

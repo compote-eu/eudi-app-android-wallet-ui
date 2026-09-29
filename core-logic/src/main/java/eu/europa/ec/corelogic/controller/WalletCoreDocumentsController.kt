@@ -16,6 +16,7 @@
 
 package eu.europa.ec.corelogic.controller
 
+import eu.europa.ec.businesslogic.controller.log.LogController
 import androidx.core.net.toUri
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
@@ -31,6 +32,7 @@ import eu.europa.ec.corelogic.extension.parseTransactionLog
 import eu.europa.ec.corelogic.extension.toCoreTransactionLog
 import eu.europa.ec.corelogic.extension.toIssuerRegistrationDomain
 import eu.europa.ec.corelogic.extension.toTransactionLogData
+import eu.europa.ec.corelogic.extension.isTerminalDeferredFailure
 import eu.europa.ec.corelogic.extension.toUntrustedIssuerReasonOrNull
 import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
 import eu.europa.ec.corelogic.model.DocumentCategories
@@ -223,6 +225,7 @@ class WalletCoreDocumentsControllerImpl(
     private val revokedDocumentDao: RevokedDocumentDao,
     private val failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
     private val prefKeys: PrefKeys,
+    private val logController: LogController,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     walletCore: EudiWallet? = null,
 ) : WalletCoreDocumentsController {
@@ -691,16 +694,30 @@ class WalletCoreDocumentsControllerImpl(
                     onIssueResult = { deferredIssuanceResult ->
                         when (deferredIssuanceResult) {
                             is DeferredIssueResult.DocumentFailed -> {
+                                val cause = deferredIssuanceResult.cause
                                 trySendBlocking(
-                                    if (deferredIssuanceResult.cause.toUntrustedIssuerReasonOrNull() != null) {
-                                        IssueDeferredDocumentPartialState.IssuerNotTrusted(
-                                            documentId = deferredIssuanceResult.documentId
-                                        )
-                                    } else {
-                                        IssueDeferredDocumentPartialState.Failed(
+                                    when {
+                                        cause.toUntrustedIssuerReasonOrNull() != null ->
+                                            IssueDeferredDocumentPartialState.IssuerNotTrusted(
+                                                documentId = deferredIssuanceResult.documentId
+                                            )
+
+                                        // Expired, not Failed: a Failed document is polled again every
+                                        // few seconds for ever, and nothing a later poll sends can change
+                                        // this answer. See isTerminalDeferredFailure.
+                                        cause.isTerminalDeferredFailure() -> {
+                                            logController.w(TAG) {
+                                                "deferred ${deferredIssuanceResult.documentId}: the issuer's " +
+                                                    "answer is final, treating it as expired (${cause.message?.lineSequence()?.firstOrNull()})"
+                                            }
+                                            IssueDeferredDocumentPartialState.Expired(
+                                                documentId = deferredIssuanceResult.documentId
+                                            )
+                                        }
+
+                                        else -> IssueDeferredDocumentPartialState.Failed(
                                             documentId = deferredIssuanceResult.documentId,
-                                            errorMessage = deferredIssuanceResult.cause.localizedMessage
-                                                ?: documentErrorMessage
+                                            errorMessage = cause.localizedMessage ?: documentErrorMessage
                                         )
                                     }
                                 )
@@ -1114,3 +1131,5 @@ class WalletCoreDocumentsControllerImpl(
             ?: Result.failure(RuntimeException(errorMessage))
     }
 }
+
+private const val TAG = "WalletCoreDocumentsController"

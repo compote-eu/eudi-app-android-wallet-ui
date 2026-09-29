@@ -42,6 +42,7 @@ dependencies {
     implementation(libs.androidx.biometric)
 
     testImplementation(project(LibraryModule.TestLogic.path))
+    testImplementation(libs.ktor.client.mock)
 }
 
 excludeFromKoverReport(
