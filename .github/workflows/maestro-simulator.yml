@@ -229,7 +229,7 @@ jobs:
       # continuation file is deliberately NOT included here yet.
       - name: Run Maestro flow (TC-01 common — PIN setup through document catalog)
         timeout-minutes: 10
-        run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-01-pid-issuance-common.yaml
+        run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-01-pid-issuance-android.yaml
 
       # TC-22/24/25 wired in mechanically, NOT yet live-verified against this app (each file's own
       # header still says so) — added at the user's explicit request without device verification;

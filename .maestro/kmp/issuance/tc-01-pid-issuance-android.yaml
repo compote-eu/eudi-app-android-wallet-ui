@@ -48,36 +48,17 @@ appId: eu.compote.euidi.dev
 - assertVisible:
     id: "add_document_screen_subtitle"
 
-# This screen has no dedicated skeleton/loading accessibility id to wait
-# on: AddDocumentViewModel.initialize() seeds the list with hardcoded fake
-# placeholder rows ("Document name 1..4" under a fake "Issuer" header,
-# AddDocumentUIModel.mocks) rendered under the SAME cell identifiers as the
-# real data, with a generic shimmer view modifier - real and fake rows are
-# visually/structurally indistinguishable to a selector, only the actual
-# text differs. Waiting on "PID Combined" itself doesn't work here either:
-# confirmed live that it sits well down the list (behind Certificate of
-# Residence/Diploma/EHIC/Employee ID/Health ID, all alphabetically before
-# it within the same first issuer bucket - ec.dev.issuer.eudiw.dev sorts
-# first since it's the only issuer of a PID doc, see
-# AddDocumentInteractor.swift's bucket-then-alphabetical sort), so it's
-# never visible before the scroll steps below regardless of load state.
-# "Certificate of Residence (MSO Mdoc)" is the actual first real item,
-# confirmed live to render at the very top of this screen with no
-# scrolling needed - waiting for it here confirms the real issuer fetch
-# has replaced the fake placeholder rows before scrolling/tapping races
-# against it. This addresses a real, diagnosed timing gap (TC-01 failed
-# with "Tap on 'PID Combined'" landing on a screenshot showing
-# skeleton/shimmer placeholder bars, not a real regression) - NOT YET
-# reverified locally across multiple runs as of this commit, so treat
-# this as a diagnosed fix pending that confirmation, not a proven one.
-- extendedWaitUntil:
-    visible: "Certificate of Residence (MSO Mdoc)"
-    timeout: 15000
 
 # --- Select PID Combined (matched by stable text, not the volatile id) ---
 - scroll
 - scroll
 - tapOn: "PID Combined"
+- tapOn:
+    id: "com.android.chrome:id/signin_fre_dismiss_button"
+    optional: true
+- tapOn:
+    text: "No thanks"
+    optional: true
 
 # --- ASWebAuthenticationSession consent -> FormEU identity-proofing form ->
 #     Review & Send -> Authorize -> success screen -> Done ---
