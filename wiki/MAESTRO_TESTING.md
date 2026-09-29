@@ -62,6 +62,27 @@ adb devices
 If a **physical device** shows up here, don't assume it's usable — a locked personal phone will
 silently fail auth-gated steps. Prefer an emulator for routine flow development.
 
+**On a Play Store system image (`google_apis_playstore`, e.g. the CI's `Pixel_6a`), disable Play
+Store right after every boot/wipe, before running any flow that goes through Chrome** (TC-01's
+identity-proofing form does):
+```bash
+adb -s <serial> shell pm disable-user --user 0 com.android.vending
+adb -s <serial> shell pm list packages -d | grep vending   # expect: package:com.android.vending
+```
+A freshly wiped image auto-updates Google Play services in the background within its first few
+minutes, and when that update finishes Android kills Chrome even while it's in the foreground —
+the form vanishes mid-flow and the run fails at whatever step comes next, looking like a flow
+bug. No root is needed; this app doesn't need Play Store at runtime. The CI's `android-tests` job
+does the same in its "Disable Play Store auto-updates" step, whose comment has the full diagnosis.
+To check a failed run for this, look in its `device-logcat.txt` for
+`Process com.android.chrome ... has died: fg TOP` shortly after a Finsky
+`Notifying installation update. [Package:com.google.android.gms ... state:INSTALLED` line.
+
+**The CI runner is this same machine** (self-hosted, `runs-on: [self-hosted, macOS, maestro]`), and
+its Android job uses the same AVD on the same port (`Pixel_6a`, `-port 5580` → `emulator-5580`). A
+CI run kills and wipes a local emulator on that port, and a local run during a CI job breaks the
+job — check `gh run list --workflow maestro-simulator.yml` before starting one.
+
 ## 3. Critical rule: Maestro Studio and the CLI cannot share a device session
 
 **Close Maestro Studio (`maestro studio`) completely before running any `maestro test` or

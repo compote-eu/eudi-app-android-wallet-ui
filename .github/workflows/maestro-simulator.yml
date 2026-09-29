@@ -182,6 +182,50 @@ jobs:
           adb_shell_retry settings put global transition_animation_scale 0
           adb_shell_retry settings put global animator_duration_scale 0
 
+      # Stops Play Store (com.android.vending) from auto-updating anything on this freshly wiped
+      # `google_apis_playstore` image while a flow runs. When its background update of Google Play
+      # services (com.google.android.gms) finishes, Android kills Chrome - even in the foreground
+      # (`Process com.android.chrome ... has died: fg TOP`, signal 9, 0.15-0.5s after Finsky's
+      # `state:INSTALLED` for gms) - and TC-01's FormEU form, which runs in Chrome, disappears
+      # mid-flow, dropping the flow back into the app.
+      #
+      # Diagnostic chain, 2026-09-29: local run 11 and CI run 36554995193 both left Chrome during
+      # the form, right around a `hideKeyboard` - which on Android is a BACK key press - so that
+      # BACK was suspected first and the sub-flow was changed to close the keyboard by tapping a
+      # section heading instead. The next fresh run (local run 12) failed the same way with no
+      # BACK sent at all. Reading this CI run's own full device logcat - still on disk because
+      # this Mac is both the dev machine and the self-hosted runner, while the uploaded artifact
+      # left logcat out - showed Chrome being killed by the Play services update, not navigated
+      # away from, in all three failures (update landing 34-53s after the Chrome hand-off, while
+      # the ~60s form was being filled), and no such update in any passing run. Play Store had
+      # started self-updating and then updating Play services on every fresh wipe from about
+      # midday that day, so this stopped being rare.
+      #
+      # `pm disable-user` works here without root (confirmed live: shell uid 2000, `user` build,
+      # "new state: disabled-user"). This app does not need Play Store at runtime - it uses no
+      # Play Integrity (see IosOpenID4VciBackend.kt's note). The check below fails the job if
+      # the package is somehow still enabled, rather than letting the flow race the update again.
+      - name: Disable Play Store auto-updates
+        run: |
+          adb_shell_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              if "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" shell "$@"; then
+                return 0
+              fi
+              echo "adb -s $SERIAL shell $* failed (attempt $attempt/3) — re-syncing and retrying..."
+              "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" wait-for-device
+              sleep 3
+            done
+            echo "::error::adb -s $SERIAL shell $* failed after 3 attempts."
+            return 1
+          }
+          adb_shell_retry pm disable-user --user 0 com.android.vending
+          if ! "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" shell pm list packages -d | tr -d '\r' | grep -qx 'package:com.android.vending'; then
+            echo "::error::com.android.vending is still enabled - Play services updates could kill Chrome mid-flow."
+            exit 1
+          fi
+
       # Checks the binary's own full path directly, not `command -v maestro`: $GITHUB_PATH
       # additions are job-scoped in GitHub Actions and do NOT carry over between jobs, even on
       # this same persistent self-hosted Mac — only the underlying ~/.maestro/bin/maestro file
@@ -277,16 +321,26 @@ jobs:
         run: |
           "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" emu kill || true
 
-      # `device-logcat.txt` excluded for the same reason the iOS job excludes its own device-level
-      # logs: confirmed directly against this session's own Maestro test-run folders (2026-09-28)
-      # that it's 85-92% of total folder size across three separate runs — dominant, and rarely
-      # the actual diagnostic need. Screenshots and hierarchy dumps (Maestro's own failure-point
-      # captures) are always kept; they're what's small and what's actually useful for diagnosing
-      # a failure.
+      # The full `device-logcat.txt` is excluded: it's 85-92% of total folder size (measured
+      # 2026-09-28), and - more importantly, this repo being public - the dev build logs complete
+      # HTTP headers and bodies into it (access/refresh tokens, DPoP proofs, client attestations,
+      # PID claims), so it must never be uploaded as-is. Screenshots and hierarchy dumps
+      # (Maestro's own failure-point captures) are always kept.
+      #
+      # A filtered `device-logcat-filtered.txt` is staged next to it instead: an ALLOWLIST of the
+      # line types that actually diagnosed this job's failures on 2026-09-29 - activity starts
+      # (Chrome hand-off / first-run / return to app), keyboard show/hide (ImeTracker), injected
+      # key presses (Maestro's hideKeyboard is a BACK key), the app's HTTP request URLs and
+      # response status lines (not their headers/bodies), issuer error_description lines, and
+      # crashes. Checked against three local runs' full logcats: no tokens, attestations,
+      # authorization codes (Android already truncates intent URIs to `/...`) or PID claims
+      # survive it; ~24 KB per run. Extend the allowlist only with line types known to be free
+      # of credential/PII content - never switch it to a denylist.
       - name: Prepare Maestro artifacts for upload
         if: failure()
         run: |
           STAGING="maestro-artifacts-staging"
+          LOGCAT_ALLOW='ActivityTaskManager.*(START u0|Displayed )|ImeTracker|adbd.*keyevent|WindowManager.*(Changing focus|focus changed)|EUDI Wallet[^:]*: (REQUEST|RESPONSE): |"error_description"|AndroidRuntime|FATAL EXCEPTION'
           rm -rf "$STAGING"
           mkdir -p "$STAGING"
           NEW_DIRS=$(find "$HOME/.maestro/tests" -maxdepth 1 -mindepth 1 -type d -newer /tmp/maestro_marker_android)
@@ -295,6 +349,12 @@ jobs:
           else
             for d in $NEW_DIRS; do
               rsync -a --exclude='device-logcat.txt' "$d" "$STAGING/"
+              find "$d" -name device-logcat.txt | while read -r LOG; do
+                OUT="$STAGING/$(basename "$d")/${LOG#"$d"/}"
+                OUT="${OUT%device-logcat.txt}device-logcat-filtered.txt"
+                mkdir -p "$(dirname "$OUT")"
+                grep -E "$LOGCAT_ALLOW" "$LOG" > "$OUT" || true
+              done
             done
           fi
           echo "Staged artifact contents:"

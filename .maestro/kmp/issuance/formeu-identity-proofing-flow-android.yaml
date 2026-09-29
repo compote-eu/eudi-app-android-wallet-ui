@@ -19,9 +19,19 @@
 # were tried here first and failed on the same day: the Country Code tap at
 # 50%,30% landed on no input, and the next `hideKeyboard` - which on Android
 # is a BACK key press - then navigated Chrome back instead of closing a
-# keyboard, and a later one closed the Custom Tab altogether. Every
-# `hideKeyboard` below therefore follows a label-matched tap that is known to
-# focus an input; don't put one after a tap that might miss.
+# keyboard, and a later one closed the Custom Tab altogether.
+#
+# No `hideKeyboard` here for that reason: even after label-matched taps, a
+# BACK sent while the keyboard was not actually up left Chrome for the app
+# (local run 11 and CI run 36554995193, 2026-09-29). The keyboard is closed
+# instead by tapping the nearest section heading still on screen above it -
+# "Mandatory Information", "Nationality", "Place Of Birth". Those are plain
+# text (TextView in Chrome's tree); the field captions are View nodes, most
+# likely <label>s, which would re-focus their input. Which heading is still
+# visible depends on how far Chrome scrolls the focused field up; the ones
+# below were checked live with `dumpsys input_method` (mInputShown=false,
+# Chrome still in front) after each tap. A heading tap cannot navigate, and
+# fails loudly if the heading is off screen.
 #
 # The iOS-only system identity-verification "Allow" dialog is left out.
 #
@@ -41,11 +51,11 @@ appId: eu.compote.euidi.dev
 - tapOn:
     below: "Family Name"
 - inputText: "Doe"
-- hideKeyboard
+- tapOn: "Mandatory Information"    # closes the keyboard
 - tapOn:
     below: "Given Name"
 - inputText: "John"
-- hideKeyboard
+- tapOn: "Nationality"    # "Mandatory Information" is scrolled off by now
 
 # Nationality > Country Code. Scroll until the button under its input is
 # fully on screen so the input itself is too.
@@ -56,7 +66,7 @@ appId: eu.compote.euidi.dev
 - tapOn:
     below: "Country Code"
 - inputText: "FR"
-- hideKeyboard
+- tapOn: "Nationality"
 
 # Place Of Birth > Country - the form requires at least one Place Of Birth
 # field. "Country" is a full-string match, so it doesn't hit "Country Code".
@@ -67,7 +77,7 @@ appId: eu.compote.euidi.dev
 - tapOn:
     below: "Country"
 - inputText: "FR"
-- hideKeyboard
+- tapOn: "Place Of Birth"
 
 - scrollUntilVisible:
     element:
