@@ -206,8 +206,9 @@ class IosRemotePresenter internal constructor(
         Logger.i(TAG, "starting an exchange for ${uri.substringBefore(':')}; cancelling any previous")
         cancel()
         // A fresh one per exchange: answering with the previous verifier's `response_uri` would tell
-        // the wrong party, and telling nobody is better than telling the wrong one.
-        requestNotice = PresentationRequestNotice()
+        // the wrong party, and telling nobody is better than telling the wrong one. It carries the link's
+        // `client_id`, which the signed request object must repeat.
+        requestNotice = PresentationRequestNotice(linkClientId = linkClientIdOf(uri))
         mutableState.value = IosRemotePresentationState.Resolving
 
         presentmentJob = scope.launch {
