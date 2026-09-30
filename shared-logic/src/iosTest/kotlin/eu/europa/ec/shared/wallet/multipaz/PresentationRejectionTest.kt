@@ -148,6 +148,51 @@ class PresentationRejectionTest {
         }
     }
 
+    /** Fetches the request object, then posts a response the verifier answers with [status] and [answer]. */
+    private suspend fun noticeAfterResponding(status: HttpStatusCode, answer: String): PresentationRequestNotice {
+        val notice = PresentationRequestNotice(linkClientId = clientId)
+        val requestObject = requestObjectJwt()
+        val engine = MockEngine { request ->
+            if (request.method == HttpMethod.Get) {
+                respond(requestObject, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
+            } else {
+                respond(answer, status, io.ktor.http.headersOf("Content-Type", "application/json"))
+            }
+        }
+        val client = HttpClient(PresentationObservingEngineFactory(notice) { engine }.create {})
+        client.request("https://verifier.test/request.jwt")
+        // multipaz reads the very answer this observes, so its body must survive being read here.
+        assertEquals(answer, client.request(responseUri) { method = HttpMethod.Post }.bodyAsText())
+        return notice
+    }
+
+    @Test
+    fun a_verifiers_refusal_is_kept_for_the_log() = runTest {
+        // The EUDI verifier's answer to an unreadable response, measured on both dev verifiers 2026-09-30.
+        val notice = noticeAfterResponding(
+            HttpStatusCode.BadRequest,
+            """{"error":"InvalidEncryptedResponse","description":"Invalid serialized unsecured/JWS/JWE object: Missing part delimiters","cause":null}""",
+        )
+
+        assertEquals(
+            "400 Bad Request InvalidEncryptedResponse: Invalid serialized unsecured/JWS/JWE object: Missing part delimiters",
+            notice.verifierRefusal,
+        )
+    }
+
+    @Test
+    fun an_accepted_response_leaves_nothing_to_log() = runTest {
+        assertNull(noticeAfterResponding(HttpStatusCode.OK, "{}").verifierRefusal)
+    }
+
+    @Test
+    fun a_refusal_that_is_not_the_verifiers_json_is_kept_as_it_came() = runTest {
+        assertEquals(
+            "502 Bad Gateway upstream timed out",
+            noticeAfterResponding(HttpStatusCode.BadGateway, "upstream timed out").verifierRefusal,
+        )
+    }
+
     @Test
     fun the_rejection_is_posted_as_access_denied_with_the_requests_state() = runTest {
         val notice = noticeAfterFetching(requestObjectJwt())
