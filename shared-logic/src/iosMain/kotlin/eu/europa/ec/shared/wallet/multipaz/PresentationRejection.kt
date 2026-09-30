@@ -35,7 +35,7 @@ import io.ktor.http.Parameters
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
-import io.ktor.utils.io.readRemaining
+import io.ktor.utils.io.readBuffer
 import kotlinx.io.readByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -201,7 +201,7 @@ private fun refusalOf(status: HttpStatusCode, body: String): String {
 private const val MAX_REFUSAL_LENGTH = 500
 
 private suspend fun HttpResponseData.replayableBody(): Pair<ByteArray, HttpResponseData> {
-    val bytes = (body as? ByteReadChannel)?.readRemaining()?.readByteArray() ?: ByteArray(0)
+    val bytes = (body as? ByteReadChannel)?.readBuffer()?.readByteArray() ?: ByteArray(0)
     return bytes to HttpResponseData(
         statusCode = statusCode,
         requestTime = requestTime,
