@@ -59,7 +59,12 @@ koinPlugin = "1.1.0"
 # EUDI wallet SDKs
 eudiWalletCore = "0.30.2"
 rqesUiSDK = "0.4.0"
-eudiLibKmpEtsi1196x2 = "0.4.0-alpha.2"
+eudiLibKmpEtsi1196x2 = "0.4.0-alpha.1"
+# The ETSI trust library for iOS alone. Android must stay on the version eudiWalletCore was built
+# against (the line above, as upstream pins it): wallet-core 0.30.2 calls a LoadLoTEAndPointers
+# constructor that 0.4.0-alpha.2 no longer has, and fails at runtime if Gradle lifts it. iOS has no
+# wallet-core, so it can move on its own; iosApp/PKIXBridge must match this version.
+eudiLibKmpEtsi1196x2Ios = "0.4.0-alpha.2"
 # Multipaz — the KMP identity-credential engine underneath eudi-lib-android-wallet-core. Already on
 # the Android classpath transitively at this exact version; declared explicitly because the iOS
 # document layer reads its DocumentStore directly (there is no KMP wallet-core / document manager).
@@ -225,6 +230,7 @@ koin-workmanager = { group = "io.insert-koin", name = "koin-androidx-workmanager
 eudi-wallet-core = { group = "eu.europa.ec.eudi", name = "eudi-lib-android-wallet-core", version.ref = "eudiWalletCore" }
 rqes-ui-sdk = { group = "eu.europa.ec.eudi", name = "eudi-lib-android-rqes-ui", version.ref = "rqesUiSDK" }
 eudi-lib-kmp-etsi119602-consultation = { module = "eu.europa.ec.eudi:etsi-119602-consultation", version.ref = "eudiLibKmpEtsi1196x2" }
+eudi-lib-kmp-ios-etsi119602-consultation = { module = "eu.europa.ec.eudi:etsi-119602-consultation", version.ref = "eudiLibKmpEtsi1196x2Ios" }
 multipaz = { group = "org.multipaz", name = "multipaz", version.ref = "multipaz" }
 
 # Logging

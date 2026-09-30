@@ -176,7 +176,7 @@ kotlin {
             // and nothing else — checked with `:shared-logic:dependencies`.
             implementation(libs.ktor.client.darwin)
             // EXPERIMENT: ETSI trust-list consultation.
-            implementation(libs.eudi.lib.kmp.etsi119602.consultation)
+            implementation(libs.eudi.lib.kmp.ios.etsi119602.consultation)
         }
         iosTest.dependencies {
             // The mock HTTP engine for `MultipazRevocationCheckerTest`; everything else it needs
@@ -222,7 +222,7 @@ fun pkixBridgeDirectory(targetName: String): Provider<Directory> =
  * (`_OBJC_CLASS_$__TtC10PKIXBridge13PKIXValidator` — the `10` is the length of the module name).
  * Compiling the same files under any other module name produces an archive that satisfies nothing.
  *
- * 🪤 Keep the sources in step with `eudiLibKmpEtsi1196x2` in `libs.versions.toml`; they are a copy of
+ * 🪤 Keep the sources in step with `eudiLibKmpEtsi1196x2Ios` in `libs.versions.toml`; they are a copy of
  * that tag's `ios/cinterop/Sources/PKIXBridge`. See `iosApp/PKIXBridge/VENDORED.md`.
  */
 fun registerPkixBridgeBuild(target: KotlinNativeTarget): TaskProvider<Exec> {

@@ -34,5 +34,5 @@ binaries cannot borrow an Xcode target, so `shared-logic/build.gradle.kts` compi
 into `libPKIXBridge.a` with `swiftc` and puts them on the test linker's path — see
 `registerPkixBridgeBuild`. Both paths must produce a Swift module named exactly `PKIXBridge`.
 
-**Keep in step with the klib version.** If `eudiLibKmpEtsi1196x2` moves in `libs.versions.toml`, re-copy
+**Keep in step with the klib version.** If `eudiLibKmpEtsi1196x2Ios` moves in `libs.versions.toml`, re-copy
 from the matching tag.
