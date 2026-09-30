@@ -27,15 +27,19 @@ import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpResponseData
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.http.isSuccess
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
-import io.ktor.utils.io.readRemaining
+import io.ktor.utils.io.readBuffer
 import kotlinx.io.readByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -52,7 +56,10 @@ import kotlin.io.encoding.ExperimentalEncodingApi
  * once, so this reads them **in passing** rather than fetching it again: a `request_uri` may legitimately
  * be single-use, and a second GET could invalidate the very exchange it is trying to be polite about.
  */
-internal class PresentationRequestNotice {
+internal class PresentationRequestNotice(
+    /** The `client_id` the link carried; the request object must repeat it. See [checkClientIdBinding]. */
+    val linkClientId: String? = null,
+) {
     var responseUri: String? = null
         private set
     var state: String? = null
@@ -72,6 +79,17 @@ internal class PresentationRequestNotice {
     var requestSigner: X509Cert? = null
         private set
 
+    /**
+     * What the verifier said when it refused the response, for the log.
+     *
+     * multipaz checks the answer's status with a bare `check(...)` and drops its body — as do the OpenID4VP
+     * libraries of both official wallets — yet the verifier explains itself there: the EUDI verifier answers
+     * `400 {"error", "description"}`. Logged rather than shown, because its wording is the verifier's own and
+     * written for developers.
+     */
+    var verifierRefusal: String? = null
+        private set
+
     /** True once a request object has been seen and it named somewhere to answer. */
     val canReject: Boolean get() = responseUri != null
 
@@ -85,10 +103,15 @@ internal class PresentationRequestNotice {
         this.requestObject = requestObject
         this.requestSigner = signer
     }
+
+    fun rememberRefusal(refusal: String) {
+        verifierRefusal = refusal
+    }
 }
 
 /**
- * Wraps the transport multipaz uses for a presentation so the request object can be observed.
+ * Wraps the transport multipaz uses for a presentation so the request object can be observed — and
+ * refused, when the certificate that signed it does not prove the verifier it names ([checkClientIdBinding]).
  *
  * The same shape as [OpenID4VciCompatibilityEngine] on the issuance side, and for the same reason:
  * the engine is the only place that sees what crosses the wire, and multipaz keeps the parsed request
@@ -127,35 +150,58 @@ private class PresentationObservingEngine(
 
     override suspend fun execute(data: HttpRequestData): HttpResponseData {
         val response = delegate.execute(data)
-        // The request object is the only GET in this flow that answers with a JWS, so the shape is
-        // enough to spot it without matching on URLs the verifier is free to choose.
-        if (data.method != HttpMethod.Get) return response
+        // Once the request object has named its `response_uri`, a refused POST is the verifier turning the
+        // response down — the one answer whose body multipaz discards.
+        if (data.method == HttpMethod.Post && notice.responseUri != null && !response.statusCode.isSuccess()) {
+            val (bytes, replayable) = response.replayableBody()
+            notice.rememberRefusal(refusalOf(response.statusCode, bytes.decodeToString()))
+            return replayable
+        }
+        // Spotted the way multipaz accepts one — by its media type, whatever the method: with
+        // `request_uri_method=post` the request object is the answer to a POST.
+        val contentType = response.headers[HttpHeaders.ContentType]
+            ?.let { runCatching { ContentType.parse(it) }.getOrNull() }
+        if (contentType?.match(REQUEST_OBJECT) != true) return response
         val (bytes, replayable) = response.replayableBody()
-        runCatching { bytes.decodeToString().rememberRequestObject(notice) }
+        val compact = bytes.decodeToString().trim()
+        val claims = runCatching { compact.jwsClaims() }.getOrNull() ?: return replayable
+        val signer = jwsCertificateChain(compact)?.certificates?.firstOrNull()
+        // Before multipaz reads it, and before the notice learns its `response_uri`: a request that does
+        // not prove who sent it is never put to the user, and never answered either.
+        checkClientIdBinding(notice.linkClientId, claims, signer)
+        notice.remember(
+            responseUri = claims["response_uri"]?.jsonPrimitive?.contentOrNull,
+            state = claims["state"]?.jsonPrimitive?.contentOrNull,
+        )
+        notice.remember(requestObject = claims, signer = signer)
         return replayable
     }
 }
 
 @OptIn(ExperimentalEncodingApi::class)
-private fun String.rememberRequestObject(notice: PresentationRequestNotice) {
-    val parts = trim().split('.')
-    if (parts.size != 3) return
+private fun String.jwsClaims(): JsonObject {
+    val parts = split('.')
+    require(parts.size == 3) { "not a compact JWS" }
     val payload = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL)
         .decode(parts[1]).decodeToString()
-    val claims = Json.parseToJsonElement(payload).jsonObject
-    notice.remember(
-        responseUri = claims["response_uri"]?.jsonPrimitive?.contentOrNull,
-        state = claims["state"]?.jsonPrimitive?.contentOrNull,
-    )
-    notice.remember(
-        requestObject = claims,
-        signer = runCatching { jwsCertificateChain(this) }.getOrNull()
-            ?.certificates?.firstOrNull(),
-    )
+    return Json.parseToJsonElement(payload).jsonObject
 }
 
+private val REQUEST_OBJECT = ContentType("application", "oauth-authz-req+jwt")
+
+/** `400 Bad Request InvalidVpToken: vp_token is not valid: …`, or the body itself when it is not that shape. */
+private fun refusalOf(status: HttpStatusCode, body: String): String {
+    val fields = runCatching { Json.parseToJsonElement(body).jsonObject }.getOrNull()
+    fun field(name: String) = (fields?.get(name) as? JsonPrimitive)?.contentOrNull
+    val said = listOfNotNull(field("error"), field("description")).joinToString(": ").ifEmpty { body.trim() }
+    return "$status $said".take(MAX_REFUSAL_LENGTH)
+}
+
+/** A verifier's description can quote a whole document's validation; the log needs the start of it. */
+private const val MAX_REFUSAL_LENGTH = 500
+
 private suspend fun HttpResponseData.replayableBody(): Pair<ByteArray, HttpResponseData> {
-    val bytes = (body as? ByteReadChannel)?.readRemaining()?.readByteArray() ?: ByteArray(0)
+    val bytes = (body as? ByteReadChannel)?.readBuffer()?.readByteArray() ?: ByteArray(0)
     return bytes to HttpResponseData(
         statusCode = statusCode,
         requestTime = requestTime,

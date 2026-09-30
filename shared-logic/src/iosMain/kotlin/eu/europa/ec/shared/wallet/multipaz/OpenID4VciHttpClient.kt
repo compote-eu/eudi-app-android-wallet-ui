@@ -44,7 +44,7 @@ import kotlinx.coroutines.Job
 import io.ktor.utils.io.InternalAPI
 import io.ktor.util.date.GMTDate
 import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.readRemaining
+import io.ktor.utils.io.readBuffer
 import kotlinx.io.readByteArray
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -366,7 +366,7 @@ internal class OpenID4VciCompatibilityEngine(
         exchange: CredentialExchange,
     ): HttpResponseData {
         if (!exchange.decryptsResponse) return response
-        val bytes = (response.body as? ByteReadChannel)?.readRemaining()?.readByteArray() ?: ByteArray(0)
+        val bytes = (response.body as? ByteReadChannel)?.readBuffer()?.readByteArray() ?: ByteArray(0)
         val json = exchange.decode(bytes.decodeToString())
         val deferral = runCatching { Json.parseToJsonElement(json).jsonObject }.getOrNull()
             ?.let { it["transaction_id"] != null && it["credentials"] == null } == true
@@ -411,7 +411,7 @@ internal class OpenID4VciCompatibilityEngine(
 
     /** Reads a response body and hands back an equivalent response, since a channel is read once. */
     private suspend fun replayableBody(response: HttpResponseData): Pair<ByteArray, HttpResponseData> {
-        val bytes = (response.body as? ByteReadChannel)?.readRemaining()?.readByteArray()
+        val bytes = (response.body as? ByteReadChannel)?.readBuffer()?.readByteArray()
             ?: ByteArray(0)
         return bytes to HttpResponseData(
             statusCode = response.statusCode,
@@ -475,7 +475,7 @@ internal class OpenID4VciCompatibilityEngine(
         if (response.statusCode != HttpStatusCode.OK) return response
         val unwrapped =
             if (isSignedMetadata(response)) unwrapSignedMetadata(data, response) else response
-        val bytes = (unwrapped.body as ByteReadChannel).readRemaining().readByteArray()
+        val bytes = (unwrapped.body as ByteReadChannel).readBuffer().readByteArray()
 
         runCatching {
             val json = Json.parseToJsonElement(bytes.decodeToString()).jsonObject
@@ -809,7 +809,7 @@ internal class OpenID4VciCompatibilityEngine(
             )
         )
         if (response.statusCode != HttpStatusCode.OK) return null
-        val text = (response.body as ByteReadChannel).readRemaining().readByteArray().decodeToString()
+        val text = (response.body as ByteReadChannel).readBuffer().readByteArray().decodeToString()
         return Json.parseToJsonElement(text).jsonObject["attestation_challenge"]?.jsonPrimitive?.content
     }
 
@@ -827,7 +827,7 @@ internal class OpenID4VciCompatibilityEngine(
         data: HttpRequestData,
         response: HttpResponseData,
     ): HttpResponseData {
-        val jwt = (response.body as ByteReadChannel).readRemaining().readByteArray().decodeToString()
+        val jwt = (response.body as ByteReadChannel).readBuffer().readByteArray().decodeToString()
         val parts = jwt.trim().split('.')
         if (parts.size != 3) {
             Logger.w(TAG, "signed metadata from ${data.url} is not a JWT; passing it through")

@@ -2,22 +2,18 @@
 
 Copied from
 [`eudi-lib-kmp-etsi-1196x2`](https://github.com/eu-digital-identity-wallet/eudi-lib-kmp-etsi-1196x2)
-at tag **`v0.4.0-alpha.1`**, path `ios/cinterop/Sources/PKIXBridge`. Apache-2.0, same as upstream.
+at tag **`v0.4.0-alpha.2`**, path `ios/cinterop/Sources/PKIXBridge`. Apache-2.0, same as upstream. The
+Swift sources are byte-identical to that tag.
 
-**Cherry-picked ahead of a tag: PR #178** (`ASN1/ASN1.swift`, `ASN1/ASN1Parser.swift`, `X509/X509Parser.swift`).
-This is *not* pristine `v0.4.0-alpha.1` — it is `alpha.1` plus the parser-hardening from
-[#178](https://github.com/eu-digital-identity-wallet/eudi-lib-kmp-etsi-1196x2/pull/178), taken because
-`alpha.1`'s parser **crashes the process** (SIGTRAP / stack overflow) on malformed DER, and the leaf is
-parsed *before* trust is established on the relying-party path. #178 makes it throw instead. Only those
-three files were taken — #158 (revocation-on-by-default), #168/#171 (QcType/QCStatement) were **left out**
-on purpose; they belong to the full re-vendor at `v0.4.0-alpha.2`. Safe against the `alpha.1` klib because
-#178 touches only `internal` types — the `@objc` cinterop surface is unchanged. When bumping to `alpha.2`,
-re-copy the whole tree from that tag (which already includes #178) and drop this note's cherry-pick line.
+**Revocation is switched off by the caller, not by this copy.** Since `v0.4.0-alpha.2` (#158)
+`PKIXConfiguration()` enables revocation checking by default. `IosEtsiTrust` passes
+`PKIXConfiguration(isRevocationEnabled = false)` explicitly — Android's flavours call
+`relaxPkixRevocation()` — so this copy stays unmodified and the setting does not depend on the default.
 
 **One local change:** the `PKIXBridgeTests` target was removed from `Package.swift`. Upstream's manifest
 declares it at `Tests/PKIXBridgeTests`, which is not vendored, and SPM refuses to resolve a manifest
-naming a path that does not exist (`invalid custom path 'Tests/PKIXBridgeTests'`). Beyond that and the
-#178 cherry-pick above, the Swift sources are untouched.
+naming a path that does not exist (`invalid custom path 'Tests/PKIXBridgeTests'`). Beyond that, the Swift
+sources are untouched.
 
 **Why it is here rather than an SPM dependency.** The ETSI consultation library reaches iOS certificate
 path validation through **cinterop**: the published klib records the Swift symbols

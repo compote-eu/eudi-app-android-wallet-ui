@@ -21,15 +21,17 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
 import io.ktor.client.engine.mock.toByteArray
-import io.ktor.client.request.get
+import io.ktor.client.request.request
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.parseUrlEncodedParameters
 import kotlinx.coroutines.test.runTest
-import kotlin.io.encoding.Base64
-import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -45,31 +47,35 @@ import kotlin.test.assertTrue
  * The address for that answer is in the signed request object, which is why it is read **in passing**
  * as multipaz fetches it rather than by fetching it again — a `request_uri` may be single-use.
  */
-@OptIn(ExperimentalEncodingApi::class)
 class PresentationRejectionTest {
 
     private val responseUri = "https://verifier.test/wallet/direct_post/abc"
 
-    private fun requestObjectJwt(
+    /** The verifier the fixtures speak for; its certificate names this host, as the binding requires. */
+    private val clientId = "x509_san_dns:verifier.test"
+
+    private suspend fun requestObjectJwt(
         responseUri: String? = this.responseUri,
         state: String? = "the-state",
-    ): String {
-        val b64 = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
-        val claims = listOfNotNull(
-            responseUri?.let { """"response_uri":"$it"""" },
-            state?.let { """"state":"$it"""" },
-            """"nonce":"n-123"""",
-        ).joinToString(",")
-        return listOf(
-            b64.encode("""{"typ":"oauth-authz-req+jwt","alg":"ES256"}""".encodeToByteArray()),
-            b64.encode("{$claims}".encodeToByteArray()),
-            b64.encode("signature".encodeToByteArray()),
-        ).joinToString(".")
-    }
+        clientId: String = this.clientId,
+        signerDnsNames: List<String> = listOf("verifier.test"),
+    ): String = signedRequestObject(
+        claims = buildJsonObject {
+            put("client_id", clientId)
+            responseUri?.let { put("response_uri", it) }
+            state?.let { put("state", it) }
+            put("nonce", "n-123")
+        },
+        signer = testVerifierCertificate(dnsNames = signerDnsNames),
+    )
 
-    /** Drives a GET through the observing engine, as multipaz's request-object fetch would. */
-    private suspend fun noticeAfterFetching(body: String, isJwt: Boolean = true): PresentationRequestNotice {
-        val notice = PresentationRequestNotice()
+    /** Drives a fetch through the observing engine, as multipaz's request-object fetch would. */
+    private suspend fun noticeAfterFetching(
+        body: String,
+        isJwt: Boolean = true,
+        method: HttpMethod = HttpMethod.Get,
+    ): PresentationRequestNotice {
+        val notice = PresentationRequestNotice(linkClientId = clientId)
         val engine = MockEngine {
             respond(
                 body,
@@ -83,7 +89,7 @@ class PresentationRejectionTest {
         val observed = PresentationObservingEngineFactory(notice) { engine }
         // The body must still be readable downstream: multipaz parses the very response this observes.
         val client = HttpClient(observed.create {})
-        assertEquals(body, client.get("https://verifier.test/request.jwt").bodyAsText())
+        assertEquals(body, client.request("https://verifier.test/request.jwt") { this.method = method }.bodyAsText())
         return notice
     }
 
@@ -111,6 +117,80 @@ class PresentationRejectionTest {
         val notice = noticeAfterFetching("""{"not":"a jwt"}""", isJwt = false)
 
         assertFalse(notice.canReject)
+    }
+
+    @Test
+    fun a_request_object_fetched_by_post_is_observed_too() = runTest {
+        // With `request_uri_method=post` the request object is the answer to a POST.
+        val notice = noticeAfterFetching(requestObjectJwt(), method = HttpMethod.Post)
+
+        assertTrue(notice.canReject)
+        assertEquals(responseUri, notice.responseUri)
+    }
+
+    @Test
+    fun a_request_object_that_does_not_prove_its_verifier_fails_the_fetch_and_is_never_answered() = runTest {
+        for (method in listOf(HttpMethod.Get, HttpMethod.Post)) {
+            val notice = PresentationRequestNotice(linkClientId = clientId)
+            val body = requestObjectJwt(signerDnsNames = listOf("impostor.test"))
+            val engine = MockEngine {
+                respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
+            }
+            val client = HttpClient(PresentationObservingEngineFactory(notice) { engine }.create {})
+
+            // Refused before multipaz could read it, so the consent screen is never reached...
+            assertFailsWith<ClientIdBindingException> {
+                client.request("https://verifier.test/request.jwt") { this.method = method }
+            }
+            // ...and nothing was learned, so the request's response_uri is never written to either.
+            assertFalse(notice.canReject, "$method: a refused request must leave nobody to answer")
+            assertNull(notice.requestObject)
+        }
+    }
+
+    /** Fetches the request object, then posts a response the verifier answers with [status] and [answer]. */
+    private suspend fun noticeAfterResponding(status: HttpStatusCode, answer: String): PresentationRequestNotice {
+        val notice = PresentationRequestNotice(linkClientId = clientId)
+        val requestObject = requestObjectJwt()
+        val engine = MockEngine { request ->
+            if (request.method == HttpMethod.Get) {
+                respond(requestObject, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
+            } else {
+                respond(answer, status, io.ktor.http.headersOf("Content-Type", "application/json"))
+            }
+        }
+        val client = HttpClient(PresentationObservingEngineFactory(notice) { engine }.create {})
+        client.request("https://verifier.test/request.jwt")
+        // multipaz reads the very answer this observes, so its body must survive being read here.
+        assertEquals(answer, client.request(responseUri) { method = HttpMethod.Post }.bodyAsText())
+        return notice
+    }
+
+    @Test
+    fun a_verifiers_refusal_is_kept_for_the_log() = runTest {
+        // The EUDI verifier's answer to an unreadable response, measured on both dev verifiers 2026-09-30.
+        val notice = noticeAfterResponding(
+            HttpStatusCode.BadRequest,
+            """{"error":"InvalidEncryptedResponse","description":"Invalid serialized unsecured/JWS/JWE object: Missing part delimiters","cause":null}""",
+        )
+
+        assertEquals(
+            "400 Bad Request InvalidEncryptedResponse: Invalid serialized unsecured/JWS/JWE object: Missing part delimiters",
+            notice.verifierRefusal,
+        )
+    }
+
+    @Test
+    fun an_accepted_response_leaves_nothing_to_log() = runTest {
+        assertNull(noticeAfterResponding(HttpStatusCode.OK, "{}").verifierRefusal)
+    }
+
+    @Test
+    fun a_refusal_that_is_not_the_verifiers_json_is_kept_as_it_came() = runTest {
+        assertEquals(
+            "502 Bad Gateway upstream timed out",
+            noticeAfterResponding(HttpStatusCode.BadGateway, "upstream timed out").verifierRefusal,
+        )
     }
 
     @Test

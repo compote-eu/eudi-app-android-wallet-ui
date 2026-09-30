@@ -206,8 +206,9 @@ class IosRemotePresenter internal constructor(
         Logger.i(TAG, "starting an exchange for ${uri.substringBefore(':')}; cancelling any previous")
         cancel()
         // A fresh one per exchange: answering with the previous verifier's `response_uri` would tell
-        // the wrong party, and telling nobody is better than telling the wrong one.
-        requestNotice = PresentationRequestNotice()
+        // the wrong party, and telling nobody is better than telling the wrong one. It carries the link's
+        // `client_id`, which the signed request object must repeat.
+        requestNotice = PresentationRequestNotice(linkClientId = linkClientIdOf(uri))
         mutableState.value = IosRemotePresentationState.Resolving
 
         presentmentJob = scope.launch {
@@ -407,13 +408,13 @@ class IosRemotePresenter internal constructor(
      *
      * The message is used only when it is likely to mean anything to a person. That rules out the most
      * common one: `uriSchemePresentment` checks the verifier's HTTP status with a bare `check(...)` and
-     * discards the body, so a rejected response arrives as `IllegalStateException("Check failed.")` —
-     * the verifier's actual explanation never reaches the wallet. Showing either that string or the
-     * exception's class name would be worse than a plain sentence. (Worth reporting upstream; the
-     * verifier's body is exactly what a user would need.)
+     * discards the body, so a rejected response arrives as `IllegalStateException("Check failed.")`.
+     * Showing either that string or the exception's class name would be worse than a plain sentence.
+     * The verifier's own explanation is logged instead — see [PresentationRequestNotice.verifierRefusal].
      */
     private fun fail(cause: Throwable) {
         Logger.w(TAG, "remote presentation failed: ${cause::class.simpleName}: ${cause.message}")
+        requestNotice.verifierRefusal?.let { Logger.w(TAG, "the verifier refused the response: $it") }
         mutableState.value = IosRemotePresentationState.Failed(
             message = cause.message?.takeIf { it.isNotBlank() && it != CHECK_FAILED } ?: SHARING_FAILED
         )
