@@ -17,7 +17,7 @@ appId: eu.compote.euidi.dev
 #   practice runs chained after it in CI, which is also what makes the
 #   "one-time per erase" system dialog already granted (see below).
 # Steps: fetch a fresh presentation request (same mechanism as TC-22) ->
-#   open it as a deep link -> on the consent screen, tap Back instead of
+#   open it as a deep link -> on the consent screen, tap Cancel instead of
 #   Share -> confirm a clean return to Documents -> verify server-side
 #   that the verifier backend received nothing.
 # Expected: the app returns to Documents with no error/stuck state, and
@@ -43,11 +43,16 @@ appId: eu.compote.euidi.dev
 #   against a freshly-erased simulator (e.g. local exploration), where
 #   the dialog WOULD appear on this flow's own first trigger.
 #
-# - No confirmation dialog on rejection: tapping "Back" on the consent
-#   screen (id `back_button`) returns immediately to Documents with no
-#   "Are you sure?" prompt - confirmed directly, not assumed. There is
-#   no dedicated "Cancel"/"Reject" button on this screen; "Back" is the
-#   only rejection-adjacent control that exists.
+# - Rejects via the consent screen's "Cancel" button,
+#   `request_screen_secondary_button` (next to Share,
+#   `request_screen_primary_button`) - NOT `back_button`, which the iOS
+#   reference app this was ported from had and this app does not: its
+#   toolbar arrow has only the content description "Go Back" and no tag
+#   (CI run 36692796223's failure-point hierarchy, 2026-09-30). Both
+#   controls send the same Event.OnBack (RequestScreen.kt), and
+#   RequestViewModel.handleOnBack() declines the request and pops straight
+#   back with no "Are you sure?" prompt - so Cancel is exactly the reject
+#   this test means.
 #
 # - Verification distinguishes "nothing received" from "successfully
 #   shared" (see tc-24-verify-no-receipt.js), NOT "explicit reject" from
@@ -74,7 +79,7 @@ appId: eu.compote.euidi.dev
     text: "Open"
     optional: true
 
-# --- Consent screen: confirm it rendered, then reject via Back instead
+# --- Consent screen: confirm it rendered, then reject via Cancel instead
 #     of Share ---
 #
 # Uses `request_screen_requested_document_0`, NOT
@@ -87,7 +92,7 @@ appId: eu.compote.euidi.dev
 - assertVisible:
     id: "request_screen_requested_document_0"
 - tapOn:
-    id: "back_button"
+    id: "request_screen_secondary_button"
 
 # --- Verify: clean return to Documents, no error/stuck state ---
 - assertVisible:

@@ -19,34 +19,28 @@ appId: eu.compote.euidi.dev
 #   system dialog already granted (see below).
 # Steps: fetch a fresh presentation request for a document type this
 #   wallet holds zero of (Photo ID, org.iso.23220.photoid.1) -> open it
-#   as a deep link -> confirm the app shows a distinct pre-consent error
-#   screen rather than the normal consent/Share screen -> tap Back ->
-#   confirm a clean return to Documents -> verify server-side that
-#   nothing was received.
-# Expected: "Required credential_set cannot be satisfied" error screen,
-#   no Share button ever offered, clean return to Documents on Back, and
-#   the verifier's own transaction record shows no successful share.
+#   as a deep link -> confirm the consent screen shows its "no matching
+#   document" state with Share disabled -> tap Cancel -> confirm a clean
+#   return to Documents -> verify server-side that nothing was received.
+# Expected: the "The requested document is not available in your EUDI
+#   Wallet..." error on the consent screen, Share present but disabled,
+#   clean return to Documents on Cancel, and no vp_token at the verifier.
 #
 # Notes:
 #
-# - This is NOT a variant of TC-24's consent screen with a greyed-out
-#   attribute - it's architecturally different, confirmed directly by
-#   triggering it live: the app never reaches request_screen_share_button
-#   or request_screen_requested_document_0 at all. Instead of the normal
-#   consent screen, it shows a distinct error state with an
-#   exclamationmark.circle icon and the text below - the app evidently
-#   parses the DCQL query and checks against its own held documents
-#   BEFORE ever presenting a consent/Share UI, and refuses outright when
-#   nothing it holds can satisfy the credential_set.
+# - In THIS app it is the same consent screen as TC-22/TC-24, not a
+#   separate error screen (the iOS reference app this was ported from has
+#   a distinct "Required credential_set cannot be satisfied" screen with
+#   only a back button). Confirmed from a live hierarchy dump on Android,
+#   2026-09-30: "Data sharing request" / "Verifier Signer dev" header, an
+#   `Error` icon and the request_no_data text where the requested-data list
+#   would be, `request_screen_primary_button` ("Share") with
+#   enabled=false, and `request_screen_secondary_button` ("Cancel")
+#   enabled. The error text has no testTag, hence the text match below.
 #
-# - "Required credential_set cannot be satisfied" has no dedicated
-#   accessibility id (confirmed via a full hierarchy dump - it's the only
-#   text on this screen without a resource-id, unlike
-#   request_screen_description above it), hence the plain text-based
-#   assertion below rather than an id: selector.
-#
-# - Only back_button is present on this screen - no retry/OK/dismiss
-#   control, same single-exit-path pattern as TC-24's consent screen.
+# - Cancel is `request_screen_secondary_button`, not `back_button` (which
+#   this app doesn't have) - same fix and same Event.OnBack decline as
+#   TC-24; see tc-24-reject-presentation.yaml's notes.
 #
 # - Reuses the same setup-script structure as TC-22/TC-24
 #   (tc-25-setup-photoid-request.js) - see that file for why the
@@ -62,16 +56,11 @@ appId: eu.compote.euidi.dev
 #   Kept optional for the same standalone-local-run reason as TC-24.
 #
 # - Verification (tc-25-verify-no-receipt.js) is intentionally the SAME
-#   shape as TC-24's: confirmed live that the verifier's event log is
-#   byte-for-byte identical between a rejected transaction and an
-#   unsatisfiable-request one (both: Transaction initialized -> Request
-#   object retrieved -> Verifier failed to get wallet, both 400 on the
-#   main endpoint). The verifier has no visibility into WHY the wallet
-#   never submitted a response - declined vs. unsatisfiable both look
-#   like silence from its side. The client-side assertions below (the
-#   error text + absence of a Share button) are the ONLY signal that
-#   distinguishes this scenario from TC-24 at all; the server-side check
-#   only ever proves "nothing was received," same as TC-24.
+#   shape as TC-24's: the verifier can't tell a decline from an
+#   unsatisfiable request, so the server-side check only ever proves
+#   "nothing was received" (no vp_token), and the client-side assertions
+#   above (the error text, Share disabled) are the only signal that
+#   distinguishes this scenario from TC-24 at all.
 
 # --- Setup: fetch a fresh presentation request for a document type this
 #     wallet holds zero of ---
@@ -91,13 +80,17 @@ appId: eu.compote.euidi.dev
     text: "Open"
     optional: true
 
-# --- Pre-consent error screen: confirm the distinct error state, not
-#     the normal consent/Share screen ---
-- assertVisible: "Required credential_set cannot be satisfied"
-- assertNotVisible:
+# --- Consent screen in its "no matching document" state: the inline
+#     error text, Share present but disabled, then Cancel ---
+# Full-string match (Maestro text selectors are full regexes) on the
+# shared English string request_no_data (shared-ui strings.xml), which
+# RequestScreen.kt renders in place of the requested-data list.
+- assertVisible: "The requested document is not available in your EUDI Wallet. Please contact the authorised issuer for further information."
+- assertVisible:
     id: "request_screen_primary_button"
+    enabled: false
 - tapOn:
-    id: "back_button"
+    id: "request_screen_secondary_button"
 
 # --- Verify: clean return to Documents, no error/stuck state ---
 - assertVisible:

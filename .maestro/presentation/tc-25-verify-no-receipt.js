@@ -3,45 +3,56 @@
 // attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
 //
 
-// TC-25 post-error verification — same shape as tc-24-verify-no-
-// receipt.js, and deliberately so: confirmed live during TC-25's
-// exploration that the verifier's own event log is BYTE-FOR-BYTE
-// identical between a rejected transaction (TC-24) and an unsatisfiable-
-// request transaction (this one) - both produce exactly:
-//   Transaction initialized -> Request object retrieved ->
-//   Verifier failed to get wallet ("should be in Submitted state but is
-//   in RequestObjectRetrieved")
-// and both 400 on the main GET /ui/presentations/{id} endpoint.
+// TC-25 post-error verification — same shape and same accept/fail rules
+// as tc-24-verify-no-receipt.js, deliberately: the verifier has no
+// visibility into WHY no credential arrived. "User cancelled a normal
+// consent screen" (TC-24) and "the request couldn't be satisfied, so the
+// user cancelled the no-matching-document consent screen" (this one) look
+// the same from its side. The only place the distinction is visible is the
+// app's own UI (the request_no_data text and the disabled Share button,
+// asserted in tc-25-unsatisfiable-request.yaml before this script runs).
+// This script's job is only TC-24's: confirm nothing was received.
 //
-// Why: the verifier only ever learns that a response was never
-// submitted - it has no visibility into WHY. "User tapped Back on a
-// normal consent screen" and "app determined it can't satisfy the
-// credential_set and showed an error screen instead of a consent
-// screen" are both just silence from the verifier's side. There is no
-// server-side signal that distinguishes this scenario from TC-24's -
-// the ONLY place that distinction is actually visible is the app's own
-// UI (the exclamation-mark icon and "Required credential_set cannot be
-// satisfied" text, asserted in tc-25-unsatisfiable-request.yaml before
-// this script ever runs). This script's job is only what TC-24's job
-// is: confirm nothing was received either way.
-const mainResponse = http.get("https://dev.verifier-backend.eudiw.dev/ui/presentations/" + output.transactionId);
+// See tc-24-verify-no-receipt.js for the full reasoning. In short: this
+// app's Cancel actively posts an encrypted "access_denied" error response
+// (-> 200 with {"error":"access_denied"} and no vp_token), where the iOS
+// reference app just abandons the request (-> 400). Both mean nothing was
+// shared, and the event log can't tell a decline from a share (both post
+// a wallet response), so only the presence of a vp_token decides.
+//
+// Accepted: 200 with error "access_denied" and no vp_token; or any non-200.
+// Failed: a vp_token present; or 200 with neither vp_token nor
+// error "access_denied".
+//
+// Never includes a response body in its output - on a failure it would be
+// the shared vp_token, and this output lands in maestro.log, which CI
+// uploads as a public artifact.
+const base = "https://dev.verifier-backend.eudiw.dev/ui/presentations/" + output.transactionId;
+const mainResponse = http.get(base);
 
+let outcome;
 if (mainResponse.ok) {
-  throw new Error("Verifier GET /ui/presentations/{id} returned " + mainResponse.status + " (expected non-200 for an unsatisfiable-request transaction) - body=" + mainResponse.body);
+  let body;
+  try {
+    body = json(mainResponse.body);
+  } catch (e) {
+    throw new Error("Verifier GET /ui/presentations/{id} returned " + mainResponse.status + " with a non-JSON body - cannot confirm nothing was shared");
+  }
+  if (body.vp_token) {
+    throw new Error("Verifier backend HAS a vp_token for this transaction - data WAS shared despite the unsatisfiable request (body keys=" + JSON.stringify(Object.keys(body)) + ")");
+  }
+  if (body.error !== "access_denied") {
+    throw new Error("Verifier GET /ui/presentations/{id} returned " + mainResponse.status + " with no vp_token but error=" + JSON.stringify(body.error) + " (expected \"access_denied\") - body keys=" + JSON.stringify(Object.keys(body)));
+  }
+  outcome = "declined (200, error=access_denied, no vp_token)";
+} else {
+  outcome = "never submitted (status " + mainResponse.status + ")";
 }
 
-const eventsResponse = http.get("https://dev.verifier-backend.eudiw.dev/ui/presentations/" + output.transactionId + "/events");
-
-if (!eventsResponse.ok) {
-  throw new Error("Verifier GET /ui/presentations/{id}/events failed: status=" + eventsResponse.status + " body=" + eventsResponse.body);
+const eventsResponse = http.get(base + "/events");
+let eventNames = "unavailable (status " + eventsResponse.status + ")";
+if (eventsResponse.ok) {
+  eventNames = JSON.stringify((json(eventsResponse.body).events || []).map(function (e) { return e.event; }));
 }
 
-const parsed = json(eventsResponse.body);
-const events = parsed.events || [];
-const walletResponsePosted = events.some(function (e) { return e.event === "Wallet response posted"; });
-
-if (walletResponsePosted) {
-  throw new Error("Verifier backend recorded a \"Wallet response posted\" event - data WAS shared despite the unsatisfiable request. events=" + JSON.stringify(events.map(function (e) { return e.event; })));
-}
-
-console.log("TC-25 verify: no data received - main endpoint status=" + mainResponse.status + ", event trail=" + JSON.stringify(events.map(function (e) { return e.event; })));
+console.log("TC-25 verify: no data received - " + outcome + ", event trail=" + eventNames);

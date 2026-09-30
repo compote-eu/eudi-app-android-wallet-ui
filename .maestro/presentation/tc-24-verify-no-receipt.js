@@ -8,47 +8,67 @@
 // NOTHING for this transaction, rather than trusting the app's own
 // clean return to Documents as proof nothing leaked.
 //
-// Two checks, mirroring the exploration's side-by-side comparison of a
-// rejected vs. a successful transaction's event log:
+// What "rejected" looks like at the verifier differs between this app and
+// the iOS reference app this was ported from - both are legitimate
+// "nothing was shared" outcomes, just different protocol-level behaviour,
+// not a bug in either app:
 //
-// 1. GET /ui/presentations/{id} (the same endpoint tc-22's verify script
-//    asserts a 200 + populated vp_token from) must NOT return 200 here -
-//    a rejected/abandoned transaction 400s instead (empty body; the
-//    verifier's own error is "Presentation should be in Submitted state
-//    but is in RequestObjectRetrieved").
+// - This app ACTIVELY DECLINES. Cancel/Back on the consent screen runs
+//   RequestViewModel.handleOnBack() -> onUserDeclined(), which posts an
+//   encrypted OpenID4VP error response ("access_denied") to the verifier's
+//   direct_post endpoint. Verified 2026-09-30 on Android: the decline's
+//   encrypted `response=` payload was 619 chars against 3921 for a real
+//   share (which carries the mdoc vp_token), and afterwards
+//   GET /ui/presentations/{id} returned 200 with {"error":"access_denied"}
+//   and no vp_token.
+// - The iOS reference app just ABANDONS the request: nothing is posted, and
+//   the same GET returns 400 ("Presentation should be in Submitted state
+//   but is in RequestObjectRetrieved").
 //
-// 2. GET /ui/presentations/{id}/events must contain no "Wallet response
-//    posted" event anywhere in its log. This is the actual positive
-//    proof of non-receipt: a successful share (confirmed during TC-22's
-//    exploration) always produces exactly this event right before
-//    "Verifier got wallet response"; its absence here is what
-//    distinguishes "nothing was ever shared" from a successful run,
-//    not just the 400 status code alone.
+// So the one thing that tells "shared" from "not shared" is whether the
+// verifier holds a vp_token for this transaction. The event log can't:
+// after this app's decline it reads "Transaction initialized", "Request
+// object retrieved", "Wallet response posted", "Verifier got wallet
+// response" - the same "Wallet response posted" a real share produces - so
+// the previous "no such event" check would fail a correct decline. It is
+// still fetched, and only its event names are logged, for diagnosis.
 //
-// Note (documented, not re-litigated here every run): this can't tell
-// "user explicitly tapped Back" apart from "request was never touched
-// at all" - both produce an identical event trail. That distinction
-// doesn't matter for what this test checks (confirm nothing leaked,
-// same TC-13/TC-14-derived goal as tc-22-verify-server-receipt.js) -
-// both are the correct, safe outcome.
-const mainResponse = http.get("https://dev.verifier-backend.eudiw.dev/ui/presentations/" + output.transactionId);
+// Accepted as a safe reject:
+//   - 200 with error "access_denied" and no vp_token (this app's decline)
+//   - any non-200 (nothing was ever submitted: the abandon case)
+// Failed:
+//   - a vp_token present - something WAS shared
+//   - 200 with neither a vp_token nor error "access_denied" (unexpected state)
+//
+// Never includes a response body in its output: on a failure it would be
+// the shared vp_token, and this output lands in maestro.log, which CI
+// uploads as a public artifact.
+const base = "https://dev.verifier-backend.eudiw.dev/ui/presentations/" + output.transactionId;
+const mainResponse = http.get(base);
 
+let outcome;
 if (mainResponse.ok) {
-  throw new Error("Verifier GET /ui/presentations/{id} returned " + mainResponse.status + " (expected non-200 for a rejected transaction) - body=" + mainResponse.body);
+  let body;
+  try {
+    body = json(mainResponse.body);
+  } catch (e) {
+    throw new Error("Verifier GET /ui/presentations/{id} returned " + mainResponse.status + " with a non-JSON body - cannot confirm nothing was shared");
+  }
+  if (body.vp_token) {
+    throw new Error("Verifier backend HAS a vp_token for this transaction - data WAS shared, rejection did not prevent it (body keys=" + JSON.stringify(Object.keys(body)) + ")");
+  }
+  if (body.error !== "access_denied") {
+    throw new Error("Verifier GET /ui/presentations/{id} returned " + mainResponse.status + " with no vp_token but error=" + JSON.stringify(body.error) + " (expected \"access_denied\") - body keys=" + JSON.stringify(Object.keys(body)));
+  }
+  outcome = "declined (200, error=access_denied, no vp_token)";
+} else {
+  outcome = "never submitted (status " + mainResponse.status + ")";
 }
 
-const eventsResponse = http.get("https://dev.verifier-backend.eudiw.dev/ui/presentations/" + output.transactionId + "/events");
-
-if (!eventsResponse.ok) {
-  throw new Error("Verifier GET /ui/presentations/{id}/events failed: status=" + eventsResponse.status + " body=" + eventsResponse.body);
+const eventsResponse = http.get(base + "/events");
+let eventNames = "unavailable (status " + eventsResponse.status + ")";
+if (eventsResponse.ok) {
+  eventNames = JSON.stringify((json(eventsResponse.body).events || []).map(function (e) { return e.event; }));
 }
 
-const parsed = json(eventsResponse.body);
-const events = parsed.events || [];
-const walletResponsePosted = events.some(function (e) { return e.event === "Wallet response posted"; });
-
-if (walletResponsePosted) {
-  throw new Error("Verifier backend recorded a \"Wallet response posted\" event - data WAS shared, rejection did not prevent it. events=" + JSON.stringify(events.map(function (e) { return e.event; })));
-}
-
-console.log("TC-24 verify: no data received - main endpoint status=" + mainResponse.status + ", event trail=" + JSON.stringify(events.map(function (e) { return e.event; })));
+console.log("TC-24 verify: no data received - " + outcome + ", event trail=" + eventNames);
