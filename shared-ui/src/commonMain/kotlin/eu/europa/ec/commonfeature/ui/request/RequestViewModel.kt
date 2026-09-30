@@ -116,6 +116,9 @@ sealed class RequestBottomSheetContent {
 abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
     protected var viewModelJob: Job? = null
 
+    /** Set by the first [handleOnBack]; see there. */
+    private var leaving = false
+
     /**
      * Guards the one-shot initial work. Deliberately NOT saveable: it must survive configuration
      * change (where re-running would submit the request twice) but reset with the process, so a
@@ -261,6 +264,14 @@ abstract class RequestViewModel : MviViewModel<Event, State, Effect>() {
     protected open fun onUserDeclined() = Unit
 
     private fun handleOnBack() {
+        // One exit per request screen. On iOS, declining ends the exchange, and the coordinator reports
+        // that end as `Disconnect` - which the subclasses answer with another `Event.OnBack`. A second
+        // pass here popped the screen underneath too (Documents), landing a user who had just cancelled
+        // on whatever sat below it. Safe as a plain field: the view-model lives for exactly one nav
+        // entry (`@KoinViewModel` in a per-entry ViewModelStore, cleared on pop), so it can't carry
+        // over into a later visit.
+        if (leaving) return
+        leaving = true
         // Before the navigation, so the answer is dispatched while the scope this runs in is alive.
         onUserDeclined()
         setState {
