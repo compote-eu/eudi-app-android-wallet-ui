@@ -110,7 +110,8 @@ kotlin {
         binaries.withType(TestExecutable::class.java).configureEach {
             linkerOpts("-lsqlite3")
             linkerOpts("-L${pkixBridgeDirectory(targetName).get().asFile.absolutePath}", "-lPKIXBridge")
-            linkTaskProvider.configure { dependsOn(pkixBridge) }
+            // An input, not just a dependency: a re-vendored archive must relink the test binary.
+            linkTaskProvider.configure { inputs.files(pkixBridge).withPropertyName("pkixBridgeLibrary") }
         }
     }
 

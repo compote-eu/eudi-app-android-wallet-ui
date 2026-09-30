@@ -96,7 +96,11 @@ kotlin {
         ).configureEach {
             linkerOpts("-lsqlite3")
             linkerOpts("-L${pkixDirectory.get().asFile.absolutePath}", "-lPKIXBridge")
-            linkTaskProvider.configure { dependsOn(pkixTask) }
+            linkTaskProvider.configure {
+                dependsOn(pkixTask)
+                // Tracked as well, so a re-vendored archive relinks; see the same line in :shared-logic.
+                inputs.file(pkixDirectory.map { it.file("libPKIXBridge.a") }).withPropertyName("pkixBridgeLibrary")
+            }
         }
     }
 
