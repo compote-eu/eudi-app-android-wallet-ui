@@ -28,7 +28,9 @@ import eu.europa.ec.eudi.etsi119602.consultation.eudiwIos
 import eu.europa.ec.eudi.etsi119602.datamodel.Uri
 import eu.europa.ec.eudi.etsi1196x2.consultation.CertificationChainValidation
 import eu.europa.ec.eudi.etsi1196x2.consultation.SupportedLists
+import eu.europa.ec.eudi.etsi1196x2.consultation.ValidateCertificateChainUsingPKIXIos
 import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
+import eu.europa.ec.eudi.etsi1196x2.consultation.pkix.PKIXConfiguration
 import eu.europa.ec.shared.wallet.platform.IosAppGroup
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -71,8 +73,10 @@ import kotlin.time.Duration.Companion.hours
  *   `PID` and `WalletProviderAttestation` carry profiles but nothing validates in them. If a future
  *   issuer or verifier is rejected on profile grounds, this is the decision to revisit, and
  *   [probeLoteTrustLists] is what measures it.
- * - **`relaxPkixRevocation()`** → free here: `ValidateCertificateChainUsingPKIXIos` already runs with
- *   revocation checking disabled, so there is nothing to switch off.
+ * - **`relaxPkixRevocation()`** → an explicit `PKIXConfiguration(isRevocationEnabled = false)`. The vendored
+ *   PKIXBridge enables revocation checking by default since `v0.4.0-alpha.2` (#158); without this the iOS
+ *   validator would start fetching revocation data during chain validation, which Android's flavours
+ *   switch off.
  * - **`DoNotLoadOtherPointers`**, so a list can only introduce the entities it names, never redirect
  *   the wallet to a further list of someone else's choosing.
  *
@@ -127,6 +131,8 @@ internal class IosEtsiTrust(
         }
     }
 
+    // `PKIXConfiguration` and the iOS validator are cinterop types.
+    @OptIn(ExperimentalForeignApi::class)
     private val validator by lazy {
         ProvisionTrustAnchorsFromLoTEs
             .eudiwIos(
@@ -139,6 +145,8 @@ internal class IosEtsiTrust(
                 ),
                 // ⛔ `SupportedLists.eu()` as published — end-entity profiles included. See the class note.
                 svcTypePerCtx = SupportedLists.eu(),
+                // Android's `relaxPkixRevocation()`; stated rather than left to the default. See the class note.
+                pkix = ValidateCertificateChainUsingPKIXIos(PKIXConfiguration(isRevocationEnabled = false)),
             )
             // `nonCached` refers to the *anchor* set, not the lists: the caching that matters is
             // [loader]'s, which is on disk and survives process death. The in-memory `cached(...)`

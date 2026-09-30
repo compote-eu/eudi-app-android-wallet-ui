@@ -59,7 +59,7 @@ koinPlugin = "1.1.0"
 # EUDI wallet SDKs
 eudiWalletCore = "0.30.2"
 rqesUiSDK = "0.4.0"
-eudiLibKmpEtsi1196x2 = "0.4.0-alpha.1"
+eudiLibKmpEtsi1196x2 = "0.4.0-alpha.2"
 # Multipaz — the KMP identity-credential engine underneath eudi-lib-android-wallet-core. Already on
 # the Android classpath transitively at this exact version; declared explicitly because the iOS
 # document layer reads its DocumentStore directly (there is no KMP wallet-core / document manager).
