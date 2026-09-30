@@ -64,4 +64,7 @@ const parsed = json(response.body);
 // consume its output in one continuous flow.
 output.presentationUrl = parsed.authorization_request_uri;
 output.transactionId = parsed.transaction_id;
-console.log("TC-22 setup: transaction_id=" + parsed.transaction_id);
+// Length only, never the id itself: this line lands in maestro.log, which CI uploads
+// as a public artifact, and GET /ui/presentations/{transaction_id} returns the shared
+// vp_token with no auth.
+console.log("TC-22 setup: transaction_id received, length=" + parsed.transaction_id.length);

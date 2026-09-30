@@ -50,11 +50,11 @@ appId: eu.compote.euidi.dev
 
 - tapOn:
     below: "Family Name"
-- inputText: "Doe"
+- inputText: "Testerova"    # same test identity as the iOS sub-flow; TC-22 asserts it
 - tapOn: "Mandatory Information"    # closes the keyboard
 - tapOn:
     below: "Given Name"
-- inputText: "John"
+- inputText: "Maestro"
 - tapOn: "Nationality"    # "Mandatory Information" is scrolled off by now
 
 # Nationality > Country Code. Scroll until the button under its input is

@@ -57,8 +57,15 @@
 
 appId: eu.compote.euidi.dev
 ---
-- scroll
-- scroll
+# scrollUntilVisible, not a fixed number of scrolls: how far each plain
+# `scroll` moves this list varies run to run, and two of them have been
+# seen (2026-09-29, saved hierarchy dumps) stopping one row short with the
+# real, fully loaded catalog on screen - PID Combined just below the fold.
+- scrollUntilVisible:
+    element:
+      text: "PID Combined"
+    direction: DOWN
+    timeout: 20000
 - tapOn: "PID Combined"
 - tapOn:
     id: "com.android.chrome:id/signin_fre_dismiss_button"

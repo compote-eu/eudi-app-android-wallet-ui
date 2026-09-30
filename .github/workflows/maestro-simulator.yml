@@ -357,6 +357,19 @@ jobs:
               done
             done
           fi
+          # Mask verifier transaction_ids in every staged text log/JSON (defense in depth - the
+          # tc-22/25/26 setup scripts already log only its length). GET
+          # /ui/presentations/{transaction_id} on the dev verifier returns the shared vp_token
+          # with no auth, and these artifacts are public; confirmed 2026-09-30 that Maestro wrote
+          # the id twice into maestro.log (its logMessages echo and the JsConsole line). Fails
+          # this step - and so skips the upload - if an unmasked id is still present.
+          find "$STAGING" -type f \( -name '*.log' -o -name '*.json' -o -name '*.txt' \) -exec sed -i '' -E \
+            -e 's/(transaction_id=)[A-Za-z0-9_-]+/\1<redacted>/g' \
+            -e 's/("transaction_id"[[:space:]]*:[[:space:]]*")[^"]+/\1<redacted>/g' {} +
+          if grep -rqE 'transaction_id=[A-Za-z0-9_-]{8,}|"transaction_id"[[:space:]]*:[[:space:]]*"[^<"]' "$STAGING"; then
+            echo "::error::Unmasked transaction_id still present in staged artifacts - not uploading."
+            exit 1
+          fi
           echo "Staged artifact contents:"
           find "$STAGING" -type f | sort
 
@@ -576,6 +589,19 @@ jobs:
                 --exclude='xctest_runner_*.log' \
                 "$d" "$STAGING/"
             done
+          fi
+          # Mask verifier transaction_ids in every staged text log/JSON (defense in depth - the
+          # tc-22/25/26 setup scripts already log only its length). GET
+          # /ui/presentations/{transaction_id} on the dev verifier returns the shared vp_token
+          # with no auth, and these artifacts are public; confirmed 2026-09-30 that Maestro wrote
+          # the id twice into maestro.log (its logMessages echo and the JsConsole line). Fails
+          # this step - and so skips the upload - if an unmasked id is still present.
+          find "$STAGING" -type f \( -name '*.log' -o -name '*.json' -o -name '*.txt' \) -exec sed -i '' -E \
+            -e 's/(transaction_id=)[A-Za-z0-9_-]+/\1<redacted>/g' \
+            -e 's/("transaction_id"[[:space:]]*:[[:space:]]*")[^"]+/\1<redacted>/g' {} +
+          if grep -rqE 'transaction_id=[A-Za-z0-9_-]{8,}|"transaction_id"[[:space:]]*:[[:space:]]*"[^<"]' "$STAGING"; then
+            echo "::error::Unmasked transaction_id still present in staged artifacts - not uploading."
+            exit 1
           fi
           echo "Staged artifact contents:"
           find "$STAGING" -type f | sort
