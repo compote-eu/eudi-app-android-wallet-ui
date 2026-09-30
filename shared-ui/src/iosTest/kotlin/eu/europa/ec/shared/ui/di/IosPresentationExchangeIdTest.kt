@@ -49,7 +49,7 @@ class IosPresentationExchangeIdTest {
         )
 
     private fun coordinator(): Pair<IosRemotePresentationCoordinator, IosRemotePresenter> {
-        val presenter = IosRemotePresenter(walletEngine = IosWalletEngine())
+        val presenter = IosRemotePresenter(walletEngine = IosWalletEngine(), isRegistrationCheckEnabled = { false })
         return IosRemotePresentationCoordinator(presenter, SilentStringCatalog) to presenter
     }
 

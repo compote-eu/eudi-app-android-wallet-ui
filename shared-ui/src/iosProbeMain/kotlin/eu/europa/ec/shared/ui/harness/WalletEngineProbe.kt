@@ -875,8 +875,8 @@ private suspend fun probeCredentialOffer(onResult: (String) -> Unit) {
 
     // End-to-end means with the check ON: off is the default, and a run that left it off would prove
     // only that the gate can be skipped. Restored below so the probe leaves no state behind.
-    val registrationCheckWasEnabled = IosPreferences.checkIssuerRegistration()
-    IosPreferences.setCheckIssuerRegistration(true)
+    val registrationCheckWasEnabled = IosPreferences.isRegistrationCheckEnabled()
+    IosPreferences.setRegistrationCheckEnabled(true)
     onResult("registration check: on (was $registrationCheckWasEnabled)")
 
     val bridge = IosDocumentOfferPlatformBridge(
@@ -913,7 +913,7 @@ private suspend fun probeCredentialOffer(onResult: (String) -> Unit) {
         redirects.cancel()
         onResult("offer issuance -> $state")
     }
-    IosPreferences.setCheckIssuerRegistration(registrationCheckWasEnabled)
+    IosPreferences.setRegistrationCheckEnabled(registrationCheckWasEnabled)
 }
 
 /** One line per outcome, so a console run says which branch the gate took. */

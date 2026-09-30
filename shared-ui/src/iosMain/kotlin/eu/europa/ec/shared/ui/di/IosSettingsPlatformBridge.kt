@@ -149,17 +149,17 @@ internal class IosSettingsPlatformBridge(
     override val canCheckRegistrations: Boolean get() = true
 
     /**
-     * False: the flag is read on every offer resolution, not captured when anything was built, so a
-     * flip is live from the next offer onwards. Watched on a simulator — the toggle was turned on and
-     * the very next offer was checked against it.
+     * False: the flag is read on every offer resolution and every verifier request, not captured when
+     * anything was built, so a flip is live from the next one onwards. Watched on a simulator — the
+     * toggle was turned on and the very next offer was checked against it.
      */
     override val registrationCheckNeedsRestart: Boolean get() = false
 
     override suspend fun isRegistrationCheckEnabled(): Boolean =
-        IosPreferences.checkIssuerRegistration()
+        IosPreferences.isRegistrationCheckEnabled()
 
     override suspend fun setRegistrationCheckEnabled(enabled: Boolean) =
-        IosPreferences.setCheckIssuerRegistration(enabled)
+        IosPreferences.setRegistrationCheckEnabled(enabled)
 
     /**
      * multipaz's log file, when it has anything in it.

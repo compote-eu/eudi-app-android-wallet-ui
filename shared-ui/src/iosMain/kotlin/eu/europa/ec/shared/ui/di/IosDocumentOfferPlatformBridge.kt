@@ -62,10 +62,10 @@ internal class IosDocumentOfferPlatformBridge(
     private val credentialIssuer: IosCredentialIssuer,
     /**
      * Whether the user asked for issuer registration certificates to be checked. Off by default on
-     * both platforms — see [IosPreferences.checkIssuerRegistration].
+     * both platforms — see [IosPreferences.isRegistrationCheckEnabled].
      */
     private val isRegistrationCheckEnabled: suspend () -> Boolean = {
-        IosPreferences.checkIssuerRegistration()
+        IosPreferences.isRegistrationCheckEnabled()
     },
     /**
      * The check itself, supplied by the DI module rather than defaulted here.

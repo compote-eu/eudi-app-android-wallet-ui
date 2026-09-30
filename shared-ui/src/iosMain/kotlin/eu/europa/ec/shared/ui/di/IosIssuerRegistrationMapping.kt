@@ -112,7 +112,8 @@ private fun IssuerRegistrationFailure.toDomain(): RegistrationFailureReasonDomai
  */
 internal fun RelyingPartyRegistrationOutcome.toDomain(locale: String): RegistrationStatusDomain =
     when (this) {
-        is RelyingPartyRegistrationOutcome.NotOffered -> RegistrationStatusDomain.NotEvaluated
+        is RelyingPartyRegistrationOutcome.NotOffered,
+        is RelyingPartyRegistrationOutcome.NotChecked -> RegistrationStatusDomain.NotEvaluated
 
         is RelyingPartyRegistrationOutcome.Verified -> RegistrationStatusDomain.Verified(
             details = registration.toDetails(locale),

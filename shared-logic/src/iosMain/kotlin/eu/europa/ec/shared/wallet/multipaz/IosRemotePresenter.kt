@@ -116,6 +116,8 @@ class IosRemotePresenter internal constructor(
      * ambiguous overload, so the public one below is the single place the production value is chosen.
      */
     private val readerTrust: ReaderTrustSource?,
+    /** Whether the user asked for registration certificates to be checked; read on every request. */
+    private val isRegistrationCheckEnabled: suspend () -> Boolean,
 ) {
 
     /**
@@ -127,9 +129,14 @@ class IosRemotePresenter internal constructor(
      */
     constructor(
         walletEngine: IosWalletEngine,
+        /**
+         * The user's registration-check setting. No default: the stored value lives in `:shared-ui`,
+         * and a silent `false` here would switch the check off for any caller that forgot it.
+         */
+        isRegistrationCheckEnabled: suspend () -> Boolean,
         credentialDomain: String = MultipazWalletStore.DEFAULT_DOCUMENT_MANAGER_ID,
         scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
-    ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust())
+    ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust(), isRegistrationCheckEnabled)
 
     /** Filled in by the observing engine while multipaz fetches the request object. */
     private var requestNotice = PresentationRequestNotice()
@@ -138,10 +145,16 @@ class IosRemotePresenter internal constructor(
      * What the verifier's registration certificate says, or [RelyingPartyRegistrationOutcome.NotOffered]
      * when it publishes none — which is most of them today.
      *
+     * Asked only when the user switched the registration check on, as Android does: wallet-core
+     * evaluates a verifier's certificate only under `WrpRegistrationPolicy.Enabled`, which follows the
+     * same setting, and it is off by default. Off means not looked at, so no trust list is consulted and
+     * no status list is fetched — the check's traffic stops with it.
+     *
      * Never throws and never blocks the consent screen: a verifier whose registration cannot be judged
      * is still one the user may want to answer, and Android refuses nothing on this either.
      */
     private suspend fun evaluateRelyingPartyRegistration(): RelyingPartyRegistrationOutcome {
+        if (!isRegistrationCheckEnabled()) return RelyingPartyRegistrationOutcome.NotChecked
         val requestObject = requestNotice.requestObject
             ?: return RelyingPartyRegistrationOutcome.NotOffered
         // The concrete ETSI source, because the trust *lists* are what a registration certificate is
