@@ -5,10 +5,10 @@
 
 appId: eu.europa.ec.euidi.dev
 ---
-# Shared sub-flow — the ASWebAuthenticationSession identity-proofing
-# session against the FormEU test issuer (ec.dev.issuer.eudiw.dev),
-# from the system consent dialog through the native issuance success
-# screen's "Done" button.
+# Shared sub-flow (iOS) — the identity-proofing session against the
+# FormEU test issuer (ec.dev.issuer.eudiw.dev) in Safari, from the
+# country page through the native issuance success screen's "Close"
+# button (document_success_screen_button).
 #
 # Extracted from tc-01-pid-issuance.yaml (which originally inlined this
 # section) so tc-57-credential-offer-qr.yaml can reuse it via `runFlow`
@@ -39,58 +39,147 @@ appId: eu.europa.ec.euidi.dev
 # sync with each other.
 
 # --- Mock identity-proofing form (ec.dev.issuer.eudiw.dev, FormEU test issuer) ---
-- tapOn: "FormEU"
+# Select FormEU and CONFIRM it is selected before Submit. The country page
+# preselects Czechia, and a plain `tapOn: "FormEU"` can fire while the page
+# is still unstyled: CI run 36699112656 (2026-09-30, iPhone 16 Pro Max /
+# iOS 18.5) tapped a 26x10pt "FormEU" text node at the far left edge
+# ([3,232][29,242]; styled, that label sits centred in its card), the tap
+# selected nothing, and Submit sent the Czechia default - Safari went to
+# eidas.projj.eu (`entity=CZ`) and showed `invalid_request`, so every later
+# step ran against the wrong page.
+#
+# Each country card is a radio whose accessibility value - exposed by
+# Maestro as `text` - is "1" when selected and "0" otherwise (its `checked`/
+# `selected` attributes stay false either way), with the country name as
+# accessibilityText. FormEU sits in the right-hand column, Czechia in the
+# left, so a "1" right of nodeEU means a right-column radio is on - checked
+# live to FAIL while Czechia is still the default and to pass once FormEU is
+# selected. `retry` re-taps once the page has finished laying out.
+#
+# First wait for the country page itself. After "PID Combined" the app
+# fetches issuer metadata and sends the pushed authorization request to the
+# dev issuer before Safari opens - 8-35s measured on Android, and on iOS a
+# run (2026-09-30) was still fetching metadata when a bare `tapOn: "FormEU"`
+# gave up after ~17s. The retry below doesn't add that time: after its first
+# attempt, each re-tap fails within ~0.5s. Same 60s budget as the Android
+# flow's hand-off wait.
+- extendedWaitUntil:
+    visible: "FormEU"
+    timeout: 60000
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn: "FormEU"
+      - assertVisible:
+          text: "1"
+          rightOf: "nodeEU"
 - scroll
 - tapOn: "Submit"
 
-# Birth Date: open the native date picker and accept the default (today).
-- tapOn:
-    point: "50%, 63%"
-- tapOn:
-    point: "85%, 55%"
-- assertVisible: "Family Name"
+# --- FormEU form: every field found by its visible label, no coordinates ---
+# Checked against live hierarchy dumps on the CI device (iPhone 16 Pro Max /
+# iOS 18.5, 2026-09-30): Safari exposes each label ("Birth Date", "Family
+# Name", "Given Name", "Country Code", Place Of Birth "Country") with its
+# input directly below it, the date picker's and the keyboard accessory
+# bar's buttons are labelled ("Done"; only one of the two is ever on screen),
+# and the earlier percentage taps missed on this device - Place Of Birth >
+# Country stayed empty, so the form's required field blocked Confirm.
+# "Country Code" also matches its wrapping container, but `below:` was
+# confirmed live to land on the input itself (one Nationality row, "CZ" in
+# it), not on "+ Add Nationality" further down.
+#
+# Each typed value is asserted right after typing it: a missed field then
+# fails at that field instead of surfacing later as a "Review & Send"
+# timeout. No retry around these - re-typing could duplicate the text, and
+# the label taps were reliable in every probe; only the FormEU radio above
+# needed tap-then-verify-with-retry, because of its page-load race.
+# 60s, not 20s: Submit is another round trip to the same slow dev issuer
+# (seen on iOS: the country page still loading when a 20s wait expired).
+- extendedWaitUntil:
+    visible: "Family Name"
+    timeout: 60000
 
-# Family Name / Given Name
+# Birth Date: opens iOS's inline calendar with today preselected; accept it.
+- tapOn:
+    below: "Birth Date"
+- tapOn: "Done"
+
 - tapOn:
     below: "Family Name"
 - inputText: "Testerova"
+- assertVisible: "Testerova"
 - tapOn:
-    point: "50%, 44%"
+    below: "Given Name"
 - inputText: "Maestro"
+- assertVisible: "Maestro"
+- tapOn: "Done"
 
-# Nationality > Country Code
+# Nationality > Country Code. Scroll until the button under its input is
+# fully on screen so the input itself is too.
+- scrollUntilVisible:
+    element:
+      text: "\\+ Add Nationality"
+    direction: DOWN
+    timeout: 15000
 - tapOn:
-    point: "50%, 52%"
+    below: "Country Code"
 - inputText: "CZ"
+- assertVisible: "CZ"
+- tapOn: "Done"
 
-# Place Of Birth > Country
+# Place Of Birth > Country - required; "Country" is a full-string match, so
+# it doesn't hit "Country Code".
+- scrollUntilVisible:
+    element:
+      text: "Locality"
+    direction: DOWN
+    timeout: 15000
 - tapOn:
-    point: "24%, 58%"
+    below: "Country"
 - inputText: "Czechia"
+- assertVisible: "Czechia"
+- tapOn: "Done"
 
-# Dismiss keyboard via the accessory bar's checkmark, then submit.
-- tapOn:
-    point: "90%, 58%"
-- scroll
-- scroll
+- scrollUntilVisible:
+    element:
+      text: "Confirm"
+    direction: DOWN
+    timeout: 15000
 - tapOn: "Confirm"
 
-# --- Review & Send ---
-- assertVisible: "Review & Send"
-- scroll
-- scroll
+# --- Review & Send -> Authorize ---
+- extendedWaitUntil:
+    visible: "Review & Send"
+    timeout: 20000
+- scrollUntilVisible:
+    element:
+      text: "Authorize"
+    direction: DOWN
+    timeout: 15000
 - tapOn: "Authorize"
 
-# --- System identity-verification permission (first grant only; optional) ---
+# --- Safari's "Open in “EUDI Wallet”?" hand-back to the app ---
+# This app runs the issuer session in Safari, not in an
+# ASWebAuthenticationSession like the iOS reference app this was ported
+# from, so there is no system "Allow" identity-verification prompt here;
+# instead Safari asks before following the OAuth redirect back into the app
+# (seen live 2026-09-30: an SFDialogView with Cancel / Open). Optional, in
+# case a future Safari stops asking.
 - extendedWaitUntil:
-    visible:
-      text: "Allow"
-    timeout: 20000
+    visible: "Open in .EUDI Wallet.\\?"
+    timeout: 30000
     optional: true
 - tapOn:
-    text: "Allow"
+    text: "Open"
     optional: true
 
-# --- Native "Add Document" success screen -> Done ---
-- assertVisible: "You have successfully added the following to your wallet"
-- tapOn: "Done"
+# --- Native "Document issued" success screen -> Close ---
+# Long wait: this follows the token and credential calls to the dev issuer.
+# The button is the shared-UI tag document_success_screen_button (reads
+# "Close" in this app, not the reference app's "Done") - same tag the
+# Android sub-flow uses.
+- extendedWaitUntil:
+    visible: "You have successfully added the following to your wallet"
+    timeout: 60000
+- tapOn:
+    id: "document_success_screen_button"

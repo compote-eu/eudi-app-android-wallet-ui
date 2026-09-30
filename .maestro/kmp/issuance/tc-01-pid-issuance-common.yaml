@@ -110,8 +110,9 @@ appId: eu.compote.euidi.dev
 - assertVisible: "PID (SD-JWT VC)"
 # Maestro's text selectors are a FULL-STRING regex match (Pattern.matches),
 # not a substring search — "Valid until" alone only matches a node whose
-# entire accessible text equals exactly that. The real node text is
-# "Valid until 08 Nov 2026" (confirmed via a saved screen-hierarchy dump at
-# the point of failure), so the pattern needs an explicit date-shaped
-# suffix rather than relying on implicit substring matching.
-- assertVisible: "Valid until \\d{2} \\w{3} \\d{4}"
+# entire accessible text equals exactly that, so the pattern needs an
+# explicit date-shaped suffix. This app's text comes from the shared-UI
+# string dashboard_document_has_not_expired, "Valid until: %1$s" - with a
+# colon (e.g. "Valid until: 28 Dec 2026"), unlike the iOS reference app's
+# "Valid until 08 Nov 2026" this pattern was first written against.
+- assertVisible: "Valid until: \\d{2} \\w{3} \\d{4}"
