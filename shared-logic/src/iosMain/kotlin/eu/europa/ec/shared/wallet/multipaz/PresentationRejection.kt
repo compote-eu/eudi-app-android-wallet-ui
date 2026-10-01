@@ -44,6 +44,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.X509CertChain
 import org.multipaz.util.Logger
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
@@ -110,8 +111,20 @@ internal class PresentationRequestNotice(
 }
 
 /**
+ * A request object refused because nothing this wallet trusts vouches for the verifier that signed it.
+ *
+ * Android's openid4vp-kt refuses the same request (`Untrusted x5c`) and the app shows "Presentation
+ * blocked"; the official iOS wallet does the same. The screen has its own words for it, so the message is
+ * for the log only.
+ */
+internal class UntrustedVerifierException : IllegalStateException(UNTRUSTED_VERIFIER)
+
+private const val UNTRUSTED_VERIFIER = "the verifier's access certificate is not trusted"
+
+/**
  * Wraps the transport multipaz uses for a presentation so the request object can be observed — and
- * refused, when the certificate that signed it does not prove the verifier it names ([checkClientIdBinding]).
+ * refused, when the certificate that signed it does not prove the verifier it names ([checkClientIdBinding]),
+ * or when nothing this wallet trusts vouches for that certificate ([UntrustedVerifierException]).
  *
  * The same shape as [OpenID4VciCompatibilityEngine] on the issuance side, and for the same reason:
  * the engine is the only place that sees what crosses the wire, and multipaz keeps the parsed request
@@ -119,6 +132,11 @@ internal class PresentationRequestNotice(
  */
 internal class PresentationObservingEngineFactory(
     private val notice: PresentationRequestNotice,
+    /**
+     * Whether a trusted list vouches for the certificate chain that signed the request object. No default:
+     * a permissive one would turn the check off for any caller that forgot it.
+     */
+    private val isVerifierTrusted: suspend (X509CertChain) -> Boolean,
     /**
      * How to build the engine underneath. A lambda rather than an [HttpClientEngineFactory] so a test
      * can substitute a `MockEngine`, whose config type is not Darwin's and could not otherwise satisfy
@@ -128,7 +146,7 @@ internal class PresentationObservingEngineFactory(
 ) : HttpClientEngineFactory<DarwinClientEngineConfig> {
 
     override fun create(block: DarwinClientEngineConfig.() -> Unit): HttpClientEngine =
-        PresentationObservingEngine(delegate(block), notice)
+        PresentationObservingEngine(delegate(block), notice, isVerifierTrusted)
 }
 
 // `execute` carries `@InternalAPI` for everyone who implements an engine — the same opt-in
@@ -137,6 +155,7 @@ internal class PresentationObservingEngineFactory(
 private class PresentationObservingEngine(
     private val delegate: HttpClientEngine,
     private val notice: PresentationRequestNotice,
+    private val isVerifierTrusted: suspend (X509CertChain) -> Boolean,
 ) : HttpClientEngineBase("presentation-observer") {
 
     override val config: HttpClientEngineConfig get() = delegate.config
@@ -165,10 +184,17 @@ private class PresentationObservingEngine(
         val (bytes, replayable) = response.replayableBody()
         val compact = bytes.decodeToString().trim()
         val claims = runCatching { compact.jwsClaims() }.getOrNull() ?: return replayable
-        val signer = jwsCertificateChain(compact)?.certificates?.firstOrNull()
+        val chain = jwsCertificateChain(compact)
+        val signer = chain?.certificates?.firstOrNull()
         // Before multipaz reads it, and before the notice learns its `response_uri`: a request that does
         // not prove who sent it is never put to the user, and never answered either.
         checkClientIdBinding(notice.linkClientId, claims, signer)
+        // Then whether anyone vouches for that signer — where Android refuses too, before anything is matched
+        // against the wallet or asked of the user. An undeterminable verdict refuses as well (fails closed).
+        if (chain == null || !isVerifierTrusted(chain)) {
+            Logger.w(TAG, "refusing the request object: $UNTRUSTED_VERIFIER")
+            throw UntrustedVerifierException()
+        }
         notice.remember(
             responseUri = claims["response_uri"]?.jsonPrimitive?.contentOrNull,
             state = claims["state"]?.jsonPrimitive?.contentOrNull,

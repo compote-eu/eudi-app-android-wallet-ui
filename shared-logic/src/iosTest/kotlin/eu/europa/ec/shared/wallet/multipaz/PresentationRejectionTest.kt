@@ -86,7 +86,7 @@ class PresentationRejectionTest {
                 ),
             )
         }
-        val observed = PresentationObservingEngineFactory(notice) { engine }
+        val observed = PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }) { engine }
         // The body must still be readable downstream: multipaz parses the very response this observes.
         val client = HttpClient(observed.create {})
         assertEquals(body, client.request("https://verifier.test/request.jwt") { this.method = method }.bodyAsText())
@@ -136,7 +136,7 @@ class PresentationRejectionTest {
             val engine = MockEngine {
                 respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
             }
-            val client = HttpClient(PresentationObservingEngineFactory(notice) { engine }.create {})
+            val client = HttpClient(PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }) { engine }.create {})
 
             // Refused before multipaz could read it, so the consent screen is never reached...
             assertFailsWith<ClientIdBindingException> {
@@ -146,6 +146,62 @@ class PresentationRejectionTest {
             assertFalse(notice.canReject, "$method: a refused request must leave nobody to answer")
             assertNull(notice.requestObject)
         }
+    }
+
+    @Test
+    fun a_request_object_from_an_untrusted_verifier_is_refused_and_never_answered() = runTest {
+        for (method in listOf(HttpMethod.Get, HttpMethod.Post)) {
+            val notice = PresentationRequestNotice(linkClientId = clientId)
+            val body = requestObjectJwt()
+            val engine = MockEngine {
+                respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
+            }
+            val client = HttpClient(PresentationObservingEngineFactory(notice, isVerifierTrusted = { false }) { engine }.create {})
+
+            // Android's "Untrusted x5c": refused before multipaz matches anything or asks anyone...
+            assertFailsWith<UntrustedVerifierException> {
+                client.request("https://verifier.test/request.jwt") { this.method = method }
+            }
+            // ...and before the notice learned where to answer, so a Close on the blocked screen sends nothing.
+            assertFalse(notice.canReject, "$method: a blocked request must leave nobody to answer")
+            assertNull(notice.requestObject)
+        }
+    }
+
+    @Test
+    fun the_trust_check_is_asked_about_the_certificate_that_signed_the_request_object() = runTest {
+        val notice = PresentationRequestNotice(linkClientId = clientId)
+        val body = requestObjectJwt()
+        val asked = mutableListOf<org.multipaz.crypto.X509CertChain>()
+        val engine = MockEngine {
+            respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
+        }
+        val client = HttpClient(
+            PresentationObservingEngineFactory(notice, isVerifierTrusted = { asked += it; true }) { engine }.create {}
+        )
+
+        client.request("https://verifier.test/request.jwt")
+
+        val chain = asked.single()
+        assertEquals(jwsCertificateChain(body)?.certificates, chain.certificates, "the request object's own x5c")
+        assertTrue(notice.canReject, "a trusted verifier is answered as before")
+    }
+
+    @Test
+    fun a_request_that_does_not_prove_its_verifier_is_refused_as_such_before_trust_is_asked() = runTest {
+        val notice = PresentationRequestNotice(linkClientId = clientId)
+        val body = requestObjectJwt(signerDnsNames = listOf("impostor.test"))
+        var asked = false
+        val engine = MockEngine {
+            respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
+        }
+        val client = HttpClient(
+            PresentationObservingEngineFactory(notice, isVerifierTrusted = { asked = true; false }) { engine }.create {}
+        )
+
+        // A malformed request is a failure, not a block: it is the binding that refuses it.
+        assertFailsWith<ClientIdBindingException> { client.request("https://verifier.test/request.jwt") }
+        assertFalse(asked, "trust is a question about a certificate that already proved the client_id")
     }
 
     /** Fetches the request object, then posts a response the verifier answers with [status] and [answer]. */
@@ -159,7 +215,7 @@ class PresentationRejectionTest {
                 respond(answer, status, io.ktor.http.headersOf("Content-Type", "application/json"))
             }
         }
-        val client = HttpClient(PresentationObservingEngineFactory(notice) { engine }.create {})
+        val client = HttpClient(PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }) { engine }.create {})
         client.request("https://verifier.test/request.jwt")
         // multipaz reads the very answer this observes, so its body must survive being read here.
         assertEquals(answer, client.request(responseUri) { method = HttpMethod.Post }.bodyAsText())

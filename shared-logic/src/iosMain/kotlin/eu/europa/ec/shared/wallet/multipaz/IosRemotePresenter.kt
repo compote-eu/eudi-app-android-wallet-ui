@@ -81,6 +81,14 @@ sealed interface IosRemotePresentationState {
      * ordinary outcome, which is what a colleague saw on a simulator on 2026-09-17.
      */
     data object NothingToShare : IosRemotePresentationState
+
+    /**
+     * Blocked: nothing this wallet trusts vouches for the verifier's access certificate, or the trust lists
+     * could not say. Nothing was matched, nothing was asked, and nothing is sent — the request was refused
+     * before the wallet learned where it could answer. Android's and the official iOS wallet's "Presentation
+     * blocked", reached at the same point and failing closed the same way.
+     */
+    data object VerifierNotTrusted : IosRemotePresentationState
 }
 
 /**
@@ -236,8 +244,11 @@ class IosRemotePresenter internal constructor(
                     origin = null,
                     // Wrapped so the request object's `response_uri` and `state` are seen in
                     // passing; they are what a rejection has to be addressed to, and multipaz keeps
-                    // its parsed request to itself.
-                    httpClientEngineFactory = PresentationObservingEngineFactory(requestNotice),
+                    // its parsed request to itself. It is also where an untrusted verifier is refused.
+                    httpClientEngineFactory = PresentationObservingEngineFactory(
+                        notice = requestNotice,
+                        isVerifierTrusted = ::isVerifierTrusted,
+                    ),
                 )
                 Logger.i(
                     TAG,
@@ -268,7 +279,12 @@ class IosRemotePresenter internal constructor(
                         mutableState.value = IosRemotePresentationState.NothingToShare
                     }
 
-                    else -> fail(t)
+                    else -> if (t.isUntrustedVerifierRefusal()) {
+                        Logger.w(TAG, "blocked: the verifier's access certificate is not trusted")
+                        mutableState.value = IosRemotePresentationState.VerifierNotTrusted
+                    } else {
+                        fail(t)
+                    }
                 }
             }
         }
@@ -340,6 +356,14 @@ class IosRemotePresenter internal constructor(
         }
         cancel()
     }
+
+    /**
+     * Whether a trusted list vouches for the certificate chain that signed the request object — the same
+     * verdict the consent screen's badge reads ([IosEtsiTrust.trustMetadataFor]). No trust source answers no,
+     * so a presenter built without one refuses rather than waves everything through.
+     */
+    private suspend fun isVerifierTrusted(chain: X509CertChain): Boolean =
+        readerTrust?.trustMetadataFor(Requester(certChain = chain)) != null
 
     /** Abandons the exchange — the back button, and every teardown. */
     fun cancel() {
@@ -460,6 +484,10 @@ class IosRemotePresenter internal constructor(
  * consent screen naming the verifier "null".
  */
 internal fun Requester.certificateCommonName(): String? = certChain.commonName()
+
+/** The observing engine's refusal, however the HTTP stack and multipaz have wrapped it on the way out. */
+private fun Throwable.isUntrustedVerifierRefusal(): Boolean =
+    generateSequence(this) { it.cause }.any { it is UntrustedVerifierException }
 
 /** The same, for the certificate chain a stored event kept when the `Requester` itself is long gone. */
 internal fun X509CertChain?.commonName(): String? =

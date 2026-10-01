@@ -58,7 +58,7 @@ import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.transformWhile
 
 /**
  * The single object the three remote-presentation screens on iOS talk to.
@@ -138,8 +138,21 @@ internal class IosRemotePresentationCoordinator(
         presenter.start(mode.uri)
     }
 
+    /**
+     * The request screen's events, ending with a block.
+     *
+     * 🪤 **It ends there on purpose.** On [IosRemotePresentationState.VerifierNotTrusted] the shared screen
+     * calls `stopPresentation()` and shows "Presentation blocked"; that stop makes the presenter `Idle`, and
+     * `Idle` is a `Disconnect`, which the screen answers by navigating back — the sheet would vanish the
+     * moment it appeared. Android's flow simply has nothing after its block, and neither does this one.
+     */
     fun requestEvents(): Flow<PresentationRequestInteractorPartialState> =
-        presenter.state.mapNotNull { state ->
+        presenter.state.transformWhile { state ->
+            requestEventFor(state)?.let { emit(it) }
+            state !is IosRemotePresentationState.VerifierNotTrusted
+        }
+
+    private fun requestEventFor(state: IosRemotePresentationState): PresentationRequestInteractorPartialState? =
             when (state) {
                 is IosRemotePresentationState.Requesting -> state.request.toPartialState()
 
@@ -159,6 +172,9 @@ internal class IosRemotePresentationCoordinator(
                 is IosRemotePresentationState.Idle ->
                     PresentationRequestInteractorPartialState.Disconnect
 
+                is IosRemotePresentationState.VerifierNotTrusted ->
+                    PresentationRequestInteractorPartialState.VerifierNotTrusted
+
                 // Resolving is the gap between the link and the request; the screen shows its own
                 // spinner meanwhile, and there is nothing truer to say than nothing.
                 is IosRemotePresentationState.Resolving,
@@ -166,7 +182,6 @@ internal class IosRemotePresentationCoordinator(
                 is IosRemotePresentationState.Sent,
                     -> null
             }
-        }
 
     /**
      * Remembers what the user has kept, every time they tick or untick a claim.
@@ -245,6 +260,7 @@ internal class IosRemotePresentationCoordinator(
                 // have matched by then. Ignored rather than reported: the request screen is where that
                 // answer belongs, and it has already given it.
                 is IosRemotePresentationState.NothingToShare,
+                is IosRemotePresentationState.VerifierNotTrusted,
                 is IosRemotePresentationState.Resolving,
                     -> Unit
             }
