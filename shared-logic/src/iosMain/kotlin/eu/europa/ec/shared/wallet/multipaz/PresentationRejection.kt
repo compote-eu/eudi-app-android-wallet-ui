@@ -76,9 +76,15 @@ internal class PresentationRequestNotice(
     var requestObject: JsonObject? = null
         private set
 
-    /** The certificate that signed the request object; the registration must be bound to it. */
-    var requestSigner: X509Cert? = null
+    /**
+     * The chain that signed the request object, as its `x5c` carried it. The whole chain because naming
+     * the verifier asks the trust lists about it, and those need more than the leaf.
+     */
+    var requestSignerChain: X509CertChain? = null
         private set
+
+    /** The certificate that signed the request object; the registration must be bound to it. */
+    val requestSigner: X509Cert? get() = requestSignerChain?.certificates?.firstOrNull()
 
     /**
      * What the verifier said when it refused the response, for the log.
@@ -100,9 +106,9 @@ internal class PresentationRequestNotice(
         this.state = state
     }
 
-    fun remember(requestObject: JsonObject, signer: X509Cert?) {
+    fun remember(requestObject: JsonObject, signerChain: X509CertChain?) {
         this.requestObject = requestObject
-        this.requestSigner = signer
+        this.requestSignerChain = signerChain
     }
 
     fun rememberRefusal(refusal: String) {
@@ -206,7 +212,7 @@ private class PresentationObservingEngine(
             responseUri = claims["response_uri"]?.jsonPrimitive?.contentOrNull,
             state = claims["state"]?.jsonPrimitive?.contentOrNull,
         )
-        notice.remember(requestObject = claims, signer = signer)
+        notice.remember(requestObject = claims, signerChain = chain)
         return replayable
     }
 }

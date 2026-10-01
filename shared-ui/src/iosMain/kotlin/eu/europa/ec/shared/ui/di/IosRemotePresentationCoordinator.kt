@@ -16,7 +16,6 @@
 
 package eu.europa.ec.shared.ui.di
 
-import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import org.multipaz.util.Logger
 import platform.Foundation.languageCode
 import platform.Foundation.currentLocale
@@ -165,7 +164,7 @@ internal class IosRemotePresentationCoordinator(
                 // this, and the shared screen renders it with `error = null`.
                 is IosRemotePresentationState.NothingToShare ->
                     PresentationRequestInteractorPartialState.NoData(
-                        relyingParty = knownRelyingParty(),
+                        relyingParty = state.relyingPartyDomain(NSLocale.currentLocale.languageCode),
                     )
 
                 // The user backed out, or the exchange was abandoned before anything was asked.
@@ -366,21 +365,6 @@ internal class IosRemotePresentationCoordinator(
         presenter.cancel()
     }
 
-    /**
-     * The requester as far as it is known when nothing matched.
-     *
-     * Consent was never asked for on that path, so multipaz's request never arrived and there is no
-     * name to take from it. The screen falls back to its own default, which is the honest rendering:
-     * saying nothing is better than naming the wrong party.
-     */
-    private fun knownRelyingParty(): RelyingPartyDomain = RelyingPartyDomain(
-        name = verifierName,
-        uniqueId = null,
-        hasTrustedAccessCertificate = verifierIsTrusted,
-        logoUri = null,
-        registration = RegistrationStatusDomain.NotEvaluated,
-    )
-
     //region multipaz's request -> the shared consent model
 
     private fun IosPresentmentRequest.toPartialState(): PresentationRequestInteractorPartialState {
@@ -426,5 +410,15 @@ private fun IosPresentmentRequest.relyingPartyDomain(locale: String): RelyingPar
     logoUri = null,
     registration = relyingPartyRegistration.toDomain(locale),
 )
+
+/** The same requester when nothing matched — built alike, so the two screens show the verifier alike. */
+private fun IosRemotePresentationState.NothingToShare.relyingPartyDomain(locale: String): RelyingPartyDomain =
+    RelyingPartyDomain(
+        name = requesterName,
+        uniqueId = null,
+        hasTrustedAccessCertificate = requesterIsTrusted,
+        logoUri = null,
+        registration = relyingPartyRegistration.toDomain(locale),
+    )
 
 private const val TAG = "IosRemotePresentationCoordinator"

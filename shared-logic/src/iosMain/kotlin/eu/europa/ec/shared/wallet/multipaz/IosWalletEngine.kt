@@ -101,9 +101,8 @@ class IosWalletEngine : WalletEngine {
 
     /**
      * The open store, for the paths that need more than [WalletEngine] offers — issuance writes documents
-     * and must write into *this* store: a second `MultipazWalletStore.open()` over the same storage is a
-     * second `DocumentStore` with its own cache, so a document created there would not show up in a list
-     * read from here until something reloaded.
+     * through it. It is the process's one store (`MultipazWalletStore.open()`), whichever engine opened
+     * it first.
      */
     internal suspend fun store(): MultipazWalletStore {
         delegate()

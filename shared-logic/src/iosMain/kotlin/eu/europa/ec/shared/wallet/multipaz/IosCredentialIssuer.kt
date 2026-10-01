@@ -106,9 +106,8 @@ sealed interface IosIssuanceProgress {
  */
 class IosCredentialIssuer(
     /**
-     * The wallet itself, because issuance must write into the *same* store the reader uses: a second
-     * `MultipazWalletStore.open()` over the same storage is a second `DocumentStore` with its own cache,
-     * and a document created there would not appear in the list until something reloaded.
+     * The wallet itself, whose store is the one issuance writes into — the process's only store
+     * (`MultipazWalletStore.open()`), so a new document appears in every list at once.
      */
     private val walletEngine: IosWalletEngine,
     private val issuers: List<IosVciIssuer> = IosIssuerCatalog.issuers,
@@ -135,16 +134,14 @@ class IosCredentialIssuer(
      */
     private val issueWholeOffer: (suspend (IosCredentialOffer, String?) -> Result<String>)? = null,
     /**
-     * Where documents live. Defaults to the engine's own store, which is what production wants — a
-     * second `MultipazWalletStore.open()` would be a second cache over the same storage. Injectable
-     * because [refreshCredentials] decides three of its four outcomes from the store's *contents*, and
-     * those are the outcomes a user actually meets.
+     * Where documents live. Defaults to the engine's own store, which is what production wants.
+     * Injectable because [refreshCredentials] decides three of its four outcomes from the store's
+     * *contents*, and those are the outcomes a user actually meets.
      */
 ) {
 
     /**
-     * Where documents live. Defaults to the engine's own store, which is what production wants — a
-     * second `MultipazWalletStore.open()` would be a second cache over the same storage.
+     * Where documents live. Defaults to the engine's own store, which is what production wants.
      *
      * A `var` set by the internal constructor rather than a public parameter, because
      * [MultipazWalletStore] is internal to this module and this class is what :shared-ui talks to.

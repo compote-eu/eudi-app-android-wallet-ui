@@ -37,10 +37,11 @@ import platform.Foundation.NSURL
  *
  * 🐞 **That is not theoretical: it was observed on a device, in 2 of 5 runs.** Contention is between
  * *connections*, not threads — multipaz pins each storage instance to its own single thread ("Native
- * sqlite crashes when used with Dispatchers.IO"), so a second `MultipazWalletStore.open()` is a second
- * connection and a second contender. The app makes two of them at launch without meaning to:
+ * sqlite crashes when used with Dispatchers.IO"), so each instance is a connection. When it was seen,
+ * every `MultipazWalletStore.open()` made one and the app made two at launch:
  * `reconcileDocumentRegistrations()` and `refreshWalletOnLaunch()` both read the store immediately,
- * concurrently, and whichever loses gets nothing.
+ * concurrently, and whichever lost got nothing. `open()` now shares one store per process, but the
+ * document-provider extension is a second process with a connection of its own to the same file.
  *
  * ⚠️ **The consequence is silent.** Registration only prints, and revocation failure is swallowed by
  * design, so a lost race means a document quietly missing from the system credential picker, or a

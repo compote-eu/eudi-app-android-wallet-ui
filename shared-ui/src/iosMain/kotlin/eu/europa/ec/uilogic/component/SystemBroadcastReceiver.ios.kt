@@ -17,20 +17,27 @@
 package eu.europa.ec.uilogic.component
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import eu.europa.ec.shared.platform.IosBroadcasts
 import eu.europa.ec.shared.platform.PlatformIntent
 
 /**
- * No-op: iOS has no system-wide broadcast bus, so there is nothing to register for. This is the
- * intended end state, not a gap — the redirect this mechanism carries on Android reaches an iOS app
- * through URL handling in the app delegate, which is a different seam entirely.
+ * Listens on [IosBroadcasts], the in-process bus iOS has instead of a system-wide one, for as long as it
+ * is composed — the same lifetime the Android actual gives its registered receiver.
  *
- * [onTrigger] can never fire here: `PlatformIntent` is uninhabited on iOS, so there is no value that
- * could be passed to it.
+ * So a broadcast reaches a screen only while it is composed, which under `NavDisplay` means while it is
+ * the top entry.
  */
 @Composable
 actual fun SystemBroadcastReceiver(
     intentFilters: List<String>,
     onTrigger: (intent: PlatformIntent?) -> Unit,
 ) {
-    // Intentionally empty.
+    val trigger by rememberUpdatedState(onTrigger)
+
+    LaunchedEffect(intentFilters) {
+        IosBroadcasts.receive(intentFilters).collect { trigger(it) }
+    }
 }
