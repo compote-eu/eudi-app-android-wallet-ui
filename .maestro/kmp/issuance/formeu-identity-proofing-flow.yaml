@@ -145,17 +145,32 @@ appId: eu.europa.ec.euidi.dev
       text: "Confirm"
     direction: DOWN
     timeout: 15000
+- scroll
 - tapOn: "Confirm"
 
 # --- Review & Send -> Authorize ---
 - extendedWaitUntil:
     visible: "Review & Send"
     timeout: 20000
+# The extra `scroll` after scrollUntilVisible (here and on Confirm above):
+# the scroll can stop with the button under Safari's own bottom bar - which
+# scrollUntilVisible cannot see, so it reports the button 100% visible - and
+# the tap then hits the toolbar. Seen in 3 of 4 fresh-erase TC-01 runs on
+# 2026-10-01 on an iPhone 16 Pro: Authorize at y 817-871 under the Toolbar's
+# y 796-840 (saved hierarchy dumps), tap "COMPLETED", page never left Review &
+# Send. Both buttons sit just above the page's last element (Cancel), and at
+# the very end of the page they are always clear of the bars, so one more
+# scroll to the end fixes it; at the end already, the scroll is a no-op. End
+# of page measured: Authorize at y 620-668 with the bars from y 748 (iPhone 16
+# Pro), and y 702-750 with the bars from y 830 on CI's iPhone 16 Pro Max. Not
+# `centerElement: true`: at the end of the page the button can't be centred,
+# and the scroll then times out (2 of 2 runs, same day).
 - scrollUntilVisible:
     element:
       text: "Authorize"
     direction: DOWN
     timeout: 15000
+- scroll
 - tapOn: "Authorize"
 
 # --- Safari's "Open in “EUDI Wallet”?" hand-back to the app ---
