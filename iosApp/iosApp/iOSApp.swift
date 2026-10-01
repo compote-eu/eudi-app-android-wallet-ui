@@ -279,10 +279,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 ///
 /// **The two sweeps run in sequence, in one task, in the order the removed background handler used**:
 /// top up first, then check revocation, so the status is read on the credential set the user will
-/// actually present. Sequential rather than two detached tasks for a second reason — each
-/// `MultipazWalletStore.open()` is its own SQLite connection, and two of those racing here is exactly
-/// the contention that made a launch fail with `database is locked` before `WalletSqliteStorage` gave
-/// the connection a `busy_timeout`. One reader avoids leaning on that safety net at all.
+/// actually present.
 ///
 /// 📌 Naming: `runBackgroundReIssuance` and `runBackgroundRevocation` keep "background" in their names
 /// though nothing background is left. Not an oversight — revocation has been launch-only since

@@ -335,7 +335,25 @@ internal class MultipazWalletStore(
         )
 
         /**
-         * Opens the wallet's persistent stores on the device — **two of them since Option D.**
+         * The wallet's store — the same instance for every caller in this process.
+         *
+         * One instance on purpose. Each store owns its own [Storage] objects, and multipaz's `BaseStorage`
+         * reads the list of tables once per instance and keeps it: a table another instance creates after
+         * that is unknown to this one, which then tries to create it again and fails with
+         * `KeyExistsStorageException` on `_SCHEMA`. On a new wallet every table is created after launch,
+         * so with several stores the first issuance could fail that way. One store also means one SQLite
+         * connection and one document cache, so a document written anywhere is seen everywhere at once.
+         *
+         * The document-provider extension is another process and gets its own.
+         */
+        suspend fun open(): MultipazWalletStore = shared.get()
+
+        private val shared = ProcessShared { openUnshared() }
+
+        /**
+         * Opens the wallet's persistent stores on the device — **two of them since Option D** — as a NEW
+         * store on every call. Only tests call this, to supply their own [documentStorage]; everything
+         * else uses [open], which shares one store per process.
          *
          * ⚠️ **The documents are no longer in this database.** They are Keychain items; see
          * [KeychainWalletStorage]. What the file below holds is the wallet's *app data* — bookmarks,
@@ -385,10 +403,11 @@ internal class MultipazWalletStore(
          * 📌 **Encrypting this file ("Option C") is still open**, and is now only about the app-data
          * tables — the argument for it shrank when the documents left. See the storage scoping memo.
          */
+
         // [KeychainWalletStorage]'s protection class is a `CFTypeRef` default, so constructing one
         // asks the caller for the same opt-in the cinterop types carry.
         @OptIn(ExperimentalForeignApi::class)
-        suspend fun open(
+        internal suspend fun openUnshared(
             documentManagerId: String = DEFAULT_DOCUMENT_MANAGER_ID,
             /**
              * The store the documents go in — a seam, and one Option D forced open.

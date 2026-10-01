@@ -80,7 +80,7 @@ class MultipazWalletStoreLocationTest {
         // Keychain, `open()`'s default cannot run here at all — a test binary is not an app and every
         // `SecItem` call returns `errSecNotAvailable`. What this test is about is unaffected: the
         // *database* still holds the wallet's own tables, and where that file lands is what is asserted.
-        MultipazWalletStore.open(documentStorage = EphemeralStorage())
+        MultipazWalletStore.openUnshared(documentStorage = EphemeralStorage())
 
         // Documents is the directory iOS exposes to the Files app the moment an unrelated plist key is
         // set, which is why the wallet's database must not be there.

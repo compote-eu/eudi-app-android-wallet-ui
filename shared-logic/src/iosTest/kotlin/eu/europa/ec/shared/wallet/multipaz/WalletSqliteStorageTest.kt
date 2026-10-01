@@ -16,10 +16,14 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import kotlinx.coroutines.test.runTest
+import org.multipaz.storage.KeyExistsStorageException
+import org.multipaz.storage.StorageTableSpec
 import platform.Foundation.NSURL
 import platform.Foundation.NSUUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
@@ -107,4 +111,43 @@ class WalletSqliteStorageTest {
 
         assertEquals(0L, default, "SQLite's default busy timeout is no longer 0 — re-read the KDoc")
     }
+
+    //region why the wallet keeps ONE storage per process (MultipazWalletStore.open)
+
+    // One spec object per table, as real callers hold them: multipaz refuses a second spec object for
+    // a table it already knows ("Multiple table specs").
+    private val present = StorageTableSpec(name = "Present", supportPartitions = false, supportExpiration = false)
+    private val createdLater =
+        StorageTableSpec(name = "CreatedLater", supportPartitions = false, supportExpiration = false)
+
+    /**
+     * multipaz reads the list of tables once per storage instance and keeps it. So a table created
+     * through another instance afterwards is unknown to this one, which tries to create it again — and
+     * fails on the schema table. This is the fresh-wallet "Oops": several stores, each first touching
+     * the credentials table at a different moment.
+     */
+    @Test
+    fun a_table_another_instance_created_later_is_unknown_and_creating_it_again_fails() = runTest {
+        val url = temporaryUrl()
+        val early = WalletSqliteStorage(url)
+        val other = WalletSqliteStorage(url)
+
+        early.getTable(present)
+        other.getTable(createdLater)
+
+        assertFailsWith<KeyExistsStorageException> { early.getTable(createdLater) }
+    }
+
+    /** The same sequence through one shared instance: it knows every table it created. */
+    @Test
+    fun through_one_shared_instance_the_same_sequence_succeeds() = runTest {
+        val storage = WalletSqliteStorage(temporaryUrl())
+
+        storage.getTable(present)
+        storage.getTable(createdLater)
+
+        storage.getTable(createdLater)
+    }
+
+    //endregion
 }
