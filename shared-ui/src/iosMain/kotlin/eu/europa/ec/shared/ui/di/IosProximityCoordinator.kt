@@ -51,7 +51,7 @@ import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.transformWhile
 
 /**
  * The single object the four proximity screens on iOS talk to.
@@ -102,7 +102,8 @@ internal class IosProximityCoordinator(
                 is IosProximityState.Engaging ->
                     emit(ProximityQRPartialState.QrReady(qrCode = state.qrPayload))
 
-                is IosProximityState.Requesting ->
+                // A block is reported by the request screen, so the QR screen moves on to it either way.
+                is IosProximityState.Requesting, is IosProximityState.VerifierNotTrusted ->
                     emit(ProximityQRPartialState.Connected)
 
                 is IosProximityState.Failed ->
@@ -123,22 +124,37 @@ internal class IosProximityCoordinator(
 
     //region The request screen
 
+    /**
+     * The request screen's events, ending with a block.
+     *
+     * 🪤 **It ends there on purpose.** On [IosProximityState.VerifierNotTrusted] the shared screen calls
+     * `stopPresentation()` and shows "Presentation blocked"; that stop makes the presenter `Idle`, and
+     * `Idle` is a `Disconnect`, which the screen answers by navigating back — the sheet would vanish the
+     * moment it appeared. The remote coordinator ends its stream at the same point for the same reason.
+     */
     fun requestEvents(): Flow<ProximityRequestInteractorPartialState> =
-        presenter.state.mapNotNull { state ->
-            when (state) {
-                is IosProximityState.Requesting -> state.request.toPartialState()
+        presenter.state.transformWhile { state ->
+            requestEventFor(state)?.let { emit(it) }
+            state !is IosProximityState.VerifierNotTrusted
+        }
 
-                is IosProximityState.Failed ->
-                    ProximityRequestInteractorPartialState.Failure(error = state.message)
+    private fun requestEventFor(state: IosProximityState): ProximityRequestInteractorPartialState? =
+        when (state) {
+            is IosProximityState.Requesting -> state.request.toPartialState()
 
-                // The reader went away, or the user backed out of the QR screen.
-                is IosProximityState.Idle -> ProximityRequestInteractorPartialState.Disconnect
+            is IosProximityState.Failed ->
+                ProximityRequestInteractorPartialState.Failure(error = state.message)
 
-                is IosProximityState.Engaging,
-                is IosProximityState.Sending,
-                is IosProximityState.Sent,
-                    -> null
-            }
+            // The reader went away, or the user backed out of the QR screen.
+            is IosProximityState.Idle -> ProximityRequestInteractorPartialState.Disconnect
+
+            is IosProximityState.VerifierNotTrusted ->
+                ProximityRequestInteractorPartialState.VerifierNotTrusted
+
+            is IosProximityState.Engaging,
+            is IosProximityState.Sending,
+            is IosProximityState.Sent,
+                -> null
         }
 
     /**
@@ -199,7 +215,8 @@ internal class IosProximityCoordinator(
                         )
                     }
 
-                is IosProximityState.Engaging -> Unit
+                // A block ends the exchange before consent, so the loading screen is never reached.
+                is IosProximityState.Engaging, is IosProximityState.VerifierNotTrusted -> Unit
             }
         }
     }

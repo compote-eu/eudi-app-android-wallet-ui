@@ -28,11 +28,22 @@ import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
+import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Simple
 import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.X500Name
+import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.fromBase64Url
 import org.multipaz.crypto.EcCurve
 import org.multipaz.documenttype.DocumentTypeRepository
@@ -52,7 +63,11 @@ import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 
 private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
 
@@ -365,4 +380,106 @@ class IosProximityPresentmentTest {
         assertTrue(!advertised.supportsCentralClientMode)
         assertEquals(connectionMethod.peripheralServerModeUuid, advertised.peripheralServerModeUuid)
     }
+
+    //region a reader that authenticates — Android's EnforceIfPresent, through the presenter's own source
+
+    /** The same request as [readerRequest], signed by a reader presenting a self-signed certificate. */
+    private suspend fun authenticatedReaderRequest(elements: Map<String, Boolean>): DeviceRequest {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val name = X500Name.fromName("CN=Test Reader,C=EU")
+        val certificate = X509Cert.Builder(
+            publicKey = key.publicKey,
+            signingKey = AsymmetricKey.AnonymousExplicit(privateKey = key),
+            serialNumber = ASN1Integer(1L),
+            subject = name,
+            issuer = name,
+            validFrom = Clock.System.now() - 1.days,
+            validUntil = Clock.System.now() + 30.days,
+        ).build()
+        val encoded = DeviceRequestGenerator(encodedSessionTranscript = Cbor.encode(Simple.NULL))
+            .addDocumentRequest(
+                docType = PID_DOC_TYPE,
+                itemsToRequest = mapOf(PID_DOC_TYPE to elements),
+                requestInfo = null,
+                readerKey = key,
+                signatureAlgorithm = Algorithm.ES256,
+                readerKeyCertificateChain = X509CertChain(listOf(certificate)),
+            )
+            .generate()
+        // Verified for real here, unlike [readerRequest]: a signature that failed would end the exchange
+        // before consent for a reason that has nothing to do with trust.
+        return DeviceRequest.fromDataItem(Cbor.decode(encoded)).also { it.verifyReaderAuthentication(Simple.NULL) }
+    }
+
+    private fun presenter(store: MultipazWalletStore, readerTrust: ReaderTrustSource, scope: CoroutineScope) =
+        IosProximityPresenter(
+            walletEngine = IosWalletEngine(),
+            credentialDomain = store.documentManagerId,
+            scope = scope,
+            readerTrust = readerTrust,
+        )
+
+    /** What the presenter's own source does with [request] — consent included, transport not. */
+    private suspend fun presentThrough(presenter: IosProximityPresenter, store: MultipazWalletStore, request: DeviceRequest) =
+        mdocPresentment(
+            deviceRequest = request,
+            eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
+            sessionTranscript = Simple.NULL,
+            source = presenter.presentmentSource(store),
+            keyAgreementPossible = listOf(EcCurve.P256),
+            requesterAppId = null,
+            requesterOrigin = null,
+            onDocumentsInFocus = {},
+        )
+
+    @Test
+    fun a_reader_with_an_untrusted_certificate_is_blocked_before_the_request_is_shown() = runTest {
+        val store = walletWithPid()
+        val presenter = presenter(store, ReaderTrustSource { null }, backgroundScope)
+
+        val refusal = assertFailsWith<UntrustedVerifierException> {
+            presentThrough(presenter, store, authenticatedReaderRequest(mapOf("given_name" to false)))
+        }
+
+        // Never published: a screen collecting the state would not have seen the request at all.
+        assertEquals(IosProximityState.Idle, presenter.state.value)
+        assertEquals(IosProximityState.VerifierNotTrusted, presenter.endedBy(refusal))
+    }
+
+    /**
+     * The control for the case above: the same signed request, vouched for, reaches the consent step and
+     * is shown as trusted. Without it, the block could be passing because the signature never verified.
+     */
+    @Test
+    fun a_reader_with_a_trusted_certificate_reaches_consent() = runTest {
+        val store = walletWithPid()
+        val presenter = presenter(store, ReaderTrustSource { TrustMetadata() }, backgroundScope)
+
+        val exchange = async {
+            runCatching { presentThrough(presenter, store, authenticatedReaderRequest(mapOf("given_name" to false))) }
+        }
+        val requesting = presenter.state.filterIsInstance<IosProximityState.Requesting>().first()
+        presenter.decline()
+
+        assertTrue(requesting.request.requesterIsTrusted)
+        assertIs<PresentmentCanceledException>(exchange.await().exceptionOrNull())
+    }
+
+    /** A reader that does not authenticate is allowed even with nothing vouching for it, as on Android. */
+    @Test
+    fun a_reader_that_does_not_authenticate_is_not_blocked() = runTest {
+        val store = walletWithPid()
+        val presenter = presenter(store, ReaderTrustSource { null }, backgroundScope)
+
+        val exchange = async {
+            runCatching { presentThrough(presenter, store, readerRequest(mapOf("given_name" to false))) }
+        }
+        val requesting = presenter.state.filterIsInstance<IosProximityState.Requesting>().first()
+        presenter.decline()
+
+        assertFalse(requesting.request.requesterIsTrusted)
+        assertIs<PresentmentCanceledException>(exchange.await().exceptionOrNull())
+    }
+
+    //endregion
 }

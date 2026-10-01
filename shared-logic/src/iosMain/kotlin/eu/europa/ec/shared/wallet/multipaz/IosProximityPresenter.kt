@@ -72,6 +72,13 @@ sealed interface IosProximityState {
     data class Sent(val sharedDocuments: List<String>) : IosProximityState
 
     data class Failed(val message: String) : IosProximityState
+
+    /**
+     * Blocked: the reader authenticated, and nothing this wallet trusts vouches for its certificate, or the
+     * trust lists could not say ([isUntrustedReader]). The request was never shown and the session was
+     * ended with no response. Android is as strict but shows consent and answers with status 10 instead.
+     */
+    data object VerifierNotTrusted : IosProximityState
 }
 
 /**
@@ -252,7 +259,7 @@ class IosProximityPresenter internal constructor(
                 eDeviceKey = eDeviceKey,
                 deviceEngagement = ByteString(engagement).toDataItem(),
                 handover = Simple.NULL,
-                source = presentmentSource(),
+                source = presentmentSource(walletEngine.store()),
                 keyAgreementPossible = listOf(EcCurve.P256),
                 timeout = ENGAGEMENT_TIMEOUT,
                 onSendingResponse = { mutableState.value = IosProximityState.Sending },
@@ -261,28 +268,36 @@ class IosProximityPresenter internal constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
-            // Two of multipaz's outcomes are answers rather than errors, and the screens show them
-            // differently — both learned from the presentment tests rather than from the docs.
-            when (t) {
-                is PresentmentCanceledException -> {
-                    // The user declined. Nothing was shared and nothing went wrong.
-                    mutableState.value = IosProximityState.Idle
-                }
-
-                is PresentmentCannotSatisfyRequestException -> {
-                    mutableState.value = IosProximityState.Failed(
-                        message = "This wallet holds nothing the reader asked for."
-                    )
-                }
-
-                else -> fail(t)
-            }
+            mutableState.value = endedBy(t)
         }
     }
 
-    /** See [walletPresentmentSource], which holds every decision this shares with the other paths. */
-    private suspend fun presentmentSource() = walletPresentmentSource(
-        store = walletEngine.store(),
+    /**
+     * Where an exchange that did not send ends up. Three of multipaz's outcomes are answers rather than
+     * errors, and the screens show them differently — learned from the presentment tests, not the docs.
+     */
+    internal fun endedBy(cause: Throwable): IosProximityState = when {
+        // The user declined. Nothing was shared and nothing went wrong.
+        cause is PresentmentCanceledException -> IosProximityState.Idle
+
+        cause is PresentmentCannotSatisfyRequestException ->
+            IosProximityState.Failed(message = "This wallet holds nothing the reader asked for.")
+
+        cause.isUntrustedVerifierRefusal() -> {
+            Logger.w(TAG, "blocked: the reader's certificate is not trusted")
+            IosProximityState.VerifierNotTrusted
+        }
+
+        else -> failure(cause)
+    }
+
+    /**
+     * See [walletPresentmentSource], which holds every decision this shares with the other paths.
+     * `internal`, and given the store, so a test can run it through `mdocPresentment` over a seeded store —
+     * the half of the exchange that needs no transport.
+     */
+    internal suspend fun presentmentSource(store: MultipazWalletStore) = walletPresentmentSource(
+        store = store,
         credentialDomain = credentialDomain,
         readerTrust = readerTrust,
         // ISO 18013-5 has no SD-JWT, so there is nothing to offer.
@@ -307,6 +322,10 @@ class IosProximityPresenter internal constructor(
         trustMetadata: TrustMetadata?,
         data: CredentialPresentmentData,
     ): CredentialPresentmentSelection? {
+        // Before the request is published, so a screen never shows it. multipaz ends the session on the
+        // way out and builds no response.
+        if (isUntrustedReader(requester, trustMetadata)) throw UntrustedVerifierException()
+
         val consent = CompletableDeferred<CredentialPresentmentSelection?>()
         pendingConsent = consent
         pendingData = data
@@ -329,8 +348,12 @@ class IosProximityPresenter internal constructor(
     }
 
     private fun fail(cause: Throwable) {
+        mutableState.value = failure(cause)
+    }
+
+    private fun failure(cause: Throwable): IosProximityState.Failed {
         Logger.w(TAG, "proximity presentation failed: ${cause.message}")
-        mutableState.value = IosProximityState.Failed(
+        return IosProximityState.Failed(
             message = cause.message ?: cause::class.simpleName ?: "Sharing failed."
         )
     }

@@ -86,6 +86,24 @@ internal suspend fun walletPresentmentSource(
 )
 
 /**
+ * Whether a request has to be refused before consent: the reader authenticated, and nothing this wallet
+ * trusts vouches for the certificate it authenticated with — or the trust lists could not say.
+ *
+ * Android's `ReaderAuthPolicy.EnforceIfPresent`, which wallet-core applies to proximity and to ISO mdoc
+ * over the DC API. A reader that does not authenticate at all is allowed, as it is there; one whose
+ * signature does not verify never reaches this, because multipaz rejects it before consent. multipaz has
+ * no reader-auth policy of its own, so this is the whole of it.
+ *
+ * ⚠️ The form differs from Android's on purpose. Android shows consent and, on accept, sends an empty
+ * response with status 10; the presenters here refuse before anything is shown and build no response.
+ *
+ * 🪤 multipaz resolves trust only after it has matched the request, so a reader asking for something the
+ * wallet does not hold gets "nothing to share" rather than this refusal. Nothing is released either way.
+ */
+internal fun isUntrustedReader(requester: Requester, trustMetadata: TrustMetadata?): Boolean =
+    requester.certChain != null && trustMetadata == null
+
+/**
  * Empty on purpose. Localized claim names live in multipaz's separate `multipaz-doctypes` artifact;
  * without it a claim shows its data-element identifier, which is exactly what iOS already does on the
  * documents and details screens. Adding the artifact for the consent screens alone would make

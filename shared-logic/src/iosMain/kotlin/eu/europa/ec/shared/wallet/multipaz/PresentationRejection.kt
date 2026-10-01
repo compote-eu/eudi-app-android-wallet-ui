@@ -116,10 +116,17 @@ internal class PresentationRequestNotice(
  * Android's openid4vp-kt refuses the same request (`Untrusted x5c`) and the app shows "Presentation
  * blocked"; the official iOS wallet does the same. The screen has its own words for it, so the message is
  * for the log only.
+ *
+ * Also what a proximity or DC API consent step throws for a reader that authenticated with a certificate
+ * nothing vouches for ([isUntrustedReader]): multipaz lets it through unchanged, after ending the session.
  */
 internal class UntrustedVerifierException : IllegalStateException(UNTRUSTED_VERIFIER)
 
 private const val UNTRUSTED_VERIFIER = "the verifier's access certificate is not trusted"
+
+/** That refusal, however the HTTP stack and multipaz have wrapped it on the way out. */
+internal fun Throwable.isUntrustedVerifierRefusal(): Boolean =
+    generateSequence(this) { it.cause }.any { it is UntrustedVerifierException }
 
 /**
  * Wraps the transport multipaz uses for a presentation so the request object can be observed — and
