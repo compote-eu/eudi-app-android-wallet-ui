@@ -32,6 +32,7 @@ import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.trustmanagement.TrustMetadata
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -151,4 +152,24 @@ class WalletPresentmentSourceTest {
 
         assertNull(source.resolveTrust(requesterWithCertificate()))
     }
+
+    //region the reader-auth rule — Android's EnforceIfPresent
+
+    @Test
+    fun a_reader_that_authenticated_with_an_untrusted_certificate_is_refused() = runTest {
+        assertTrue(isUntrustedReader(requesterWithCertificate(), trustMetadata = null))
+    }
+
+    @Test
+    fun a_reader_that_authenticated_with_a_trusted_certificate_is_allowed() = runTest {
+        assertFalse(isUntrustedReader(requesterWithCertificate(), trustMetadata = TrustMetadata()))
+    }
+
+    @Test
+    fun a_reader_that_did_not_authenticate_is_allowed() {
+        // Nothing vouches for it either, but there is nothing to check: Android lets it through too.
+        assertFalse(isUntrustedReader(Requester(), trustMetadata = null))
+    }
+
+    //endregion
 }

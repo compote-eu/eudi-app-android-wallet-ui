@@ -21,11 +21,14 @@ import eu.europa.ec.shared.wallet.multipaz.harness.MDOC_PID_DOC_TYPE
 import eu.europa.ec.shared.wallet.multipaz.harness.sampleIssuerMetadata
 import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
 import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
+import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.DataItem
 import org.multipaz.cbor.Simple
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.buildCborArray
@@ -36,12 +39,16 @@ import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.Hpke
 import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.X500Name
+import org.multipaz.crypto.X509Cert
+import org.multipaz.crypto.X509CertChain
 import org.multipaz.mdoc.request.DeviceRequestGenerator
 import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlin.test.Test
@@ -241,21 +248,35 @@ class IosDcApiPresenterTest {
         elements: Map<String, Boolean> = mapOf("family_name" to false, "given_name" to false),
     ): String = buildRequest(docType, elements).json
 
+    /** A reader that authenticates its request: its key, and the chain it presents for it. */
+    private class TestReader(val key: EcPrivateKey, val chain: X509CertChain)
+
+    private suspend fun testReader(): TestReader {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val name = X500Name.fromName("CN=Test Reader,C=EU")
+        val certificate = X509Cert.Builder(
+            publicKey = key.publicKey,
+            signingKey = AsymmetricKey.AnonymousExplicit(privateKey = key),
+            serialNumber = ASN1Integer(1L),
+            subject = name,
+            issuer = name,
+            validFrom = Clock.System.now() - 1.days,
+            validUntil = Clock.System.now() + 30.days,
+        ).build()
+        return TestReader(key = key, chain = X509CertChain(listOf(certificate)))
+    }
+
+    /**
+     * @param reader signs the request when given. The signature covers the session transcript, which for
+     *   the DC API is derived from `encryptionInfo` and [origin] — so the request must be built for the
+     *   origin it is presented with, or multipaz rejects the signature before anything else happens.
+     */
     private suspend fun buildRequest(
         docType: String = MDOC_PID_DOC_TYPE,
         elements: Map<String, Boolean> = mapOf("family_name" to false, "given_name" to false),
+        reader: TestReader? = null,
+        origin: String = verifierOrigin,
     ): BuiltRequest {
-        val deviceRequest = DeviceRequestGenerator(encodedSessionTranscript = Cbor.encode(Simple.NULL))
-            .addDocumentRequest(
-                docType = docType,
-                itemsToRequest = mapOf(docType to elements),
-                requestInfo = null,
-                readerKey = null,
-                signatureAlgorithm = Algorithm.UNSET,
-                readerKeyCertificateChain = null,
-            )
-            .generate()
-
         val recipientKey = Crypto.createEcPrivateKey(EcCurve.P256)
         val recipient = buildCborMap {
             put("recipientPublicKey", recipientKey.publicKey.toCoseKey().toDataItem())
@@ -267,6 +288,19 @@ class IosDcApiPresenterTest {
             }
         )
         val encryptionInfoBase64 = encryptionInfo.toBase64Url()
+
+        val deviceRequest = DeviceRequestGenerator(
+            encodedSessionTranscript = Cbor.encode(dcApiSessionTranscript(encryptionInfoBase64, origin)),
+        )
+            .addDocumentRequest(
+                docType = docType,
+                itemsToRequest = mapOf(docType to elements),
+                requestInfo = null,
+                readerKey = reader?.key,
+                signatureAlgorithm = if (reader != null) Algorithm.ES256 else Algorithm.UNSET,
+                readerKeyCertificateChain = reader?.chain,
+            )
+            .generate()
 
         return BuiltRequest(
             json = """{"deviceRequest":"${deviceRequest.toBase64Url()}",""" +
@@ -345,15 +379,92 @@ class IosDcApiPresenterTest {
         assertIs<IosDcApiOutcome.NothingToShare>(outcome)
     }
 
+    //region a reader that authenticates — Android's EnforceIfPresent
+
+    /** The verifier's certificate is on no trusted list: refused before the request is shown. */
+    @Test
+    fun a_reader_with_an_untrusted_certificate_is_blocked_before_consent() = runTest {
+        val store = store()
+        store.seedPid()
+
+        val outcome = IosDcApiPresenter(store, readerTrust = ReaderTrustSource { null }).present(
+            protocol = "org-iso-mdoc",
+            data = buildRequest(reader = testReader()).json,
+            origin = verifierOrigin,
+            onConsent = refuseToBeAsked,
+        )
+
+        assertIs<IosDcApiOutcome.VerifierNotTrusted>(outcome)
+    }
 
     /**
-     * Decrypts what the wallet sent back, so the response can be inspected rather than counted.
-     *
-     * Rebuilds the session transcript exactly as multipaz does — `["dcapi", sha256(["encryptionInfo",
-     * origin])]` under two nulls — because HPKE binds it as `info`, so getting it wrong fails to
-     * decrypt rather than yielding wrong plaintext. That is also what makes this a real check of the
+     * The control for the case above: the same signed request, with a trust source that vouches for it,
+     * reaches consent and is answered. Without it, the block could be passing because the signature never
+     * verified.
+     */
+    @Test
+    fun a_reader_with_a_trusted_certificate_reaches_consent() = runTest {
+        val store = store()
+        store.seedPid()
+        var askedAsTrusted: Boolean? = null
+
+        val outcome = IosDcApiPresenter(store, readerTrust = ReaderTrustSource { TrustMetadata() }).present(
+            protocol = "org-iso-mdoc",
+            data = buildRequest(reader = testReader()).json,
+            origin = verifierOrigin,
+            onConsent = { requester, trustMetadata, data ->
+                askedAsTrusted = requester.certChain != null && trustMetadata != null
+                acceptEverything(requester, trustMetadata, data)
+            },
+        )
+
+        assertIs<IosDcApiOutcome.Sent>(outcome)
+        assertEquals(true, askedAsTrusted, "consent was not shown the reader as authenticated and trusted")
+    }
+
+    /** A reader that does not authenticate is allowed even with nothing vouching for it, as on Android. */
+    @Test
+    fun a_reader_that_does_not_authenticate_is_not_blocked() = runTest {
+        val store = store()
+        store.seedPid()
+
+        val outcome = IosDcApiPresenter(store, readerTrust = ReaderTrustSource { null }).present(
+            protocol = "org-iso-mdoc",
+            data = buildRequest(reader = null).json,
+            origin = verifierOrigin,
+            onConsent = acceptEverything,
+        )
+
+        assertIs<IosDcApiOutcome.Sent>(outcome)
+    }
+
+    //endregion
+
+    /**
+     * The session transcript exactly as multipaz builds it for the DC API — `["dcapi",
+     * sha256(["encryptionInfo", origin])]` under two nulls. A reader signs it, and HPKE binds it as
+     * `info`, so getting it wrong fails rather than yielding a wrong answer: a signature that does not
+     * verify, or a response that does not decrypt. That is also what makes these real checks of the
      * transcript, not only of the claims.
      */
+    private suspend fun dcApiSessionTranscript(encryptionInfoBase64: String, origin: String): DataItem {
+        val dcapiInfo = buildCborArray {
+            add(encryptionInfoBase64)
+            add(origin)
+        }
+        val digest = Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo))
+        val handover = buildCborArray {
+            add("dcapi")
+            add(digest)
+        }
+        return buildCborArray {
+            add(Simple.NULL)
+            add(Simple.NULL)
+            add(handover)
+        }
+    }
+
+    /** Decrypts what the wallet sent back, so the response can be inspected rather than counted. */
     private suspend fun decryptResponse(
         responseJson: String,
         request: BuiltRequest,
@@ -364,21 +475,7 @@ class IosDcApiPresenterTest {
         val envelope = Cbor.decode(encoded.fromBase64Url())
         assertEquals("dcapi", envelope.asArray[0].asTstr, "not a dcapi response envelope")
         val parts = envelope.asArray[1].asMap
-
-        val dcapiInfo = buildCborArray {
-            add(request.encryptionInfoBase64)
-            add(origin)
-        }
-        val digest = Crypto.digest(Algorithm.SHA256, Cbor.encode(dcapiInfo))
-        val handover = buildCborArray {
-            add("dcapi")
-            add(digest)
-        }
-        val sessionTranscript = buildCborArray {
-            add(Simple.NULL)
-            add(Simple.NULL)
-            add(handover)
-        }
+        val sessionTranscript = dcApiSessionTranscript(request.encryptionInfoBase64, origin)
 
         return Hpke.getDecrypter(
             cipherSuite = Hpke.CipherSuite.DHKEM_P256_HKDF_SHA256_HKDF_SHA256_AES_128_GCM,

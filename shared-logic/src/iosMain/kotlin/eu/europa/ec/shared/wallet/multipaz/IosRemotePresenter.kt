@@ -485,10 +485,6 @@ class IosRemotePresenter internal constructor(
  */
 internal fun Requester.certificateCommonName(): String? = certChain.commonName()
 
-/** The observing engine's refusal, however the HTTP stack and multipaz have wrapped it on the way out. */
-private fun Throwable.isUntrustedVerifierRefusal(): Boolean =
-    generateSequence(this) { it.cause }.any { it is UntrustedVerifierException }
-
 /** The same, for the certificate chain a stored event kept when the `Requester` itself is long gone. */
 internal fun X509CertChain?.commonName(): String? =
     this?.certificates?.firstOrNull()?.subject?.components

@@ -133,6 +133,12 @@ class IosDocumentProviderBridge private constructor(
                 declined = false,
             )
 
+            IosDcApiOutcome.VerifierNotTrusted -> IosDcApiResult(
+                responseJson = null,
+                errorMessage = VERIFIER_NOT_TRUSTED,
+                declined = false,
+            )
+
             is IosDcApiOutcome.Failed -> IosDcApiResult(
                 responseJson = null,
                 errorMessage = outcome.message,
@@ -154,5 +160,11 @@ class IosDocumentProviderBridge private constructor(
             IosDocumentProviderBridge(MultipazWalletStore.open())
 
         const val NOTHING_TO_SHARE = "This wallet holds nothing that was asked for."
+
+        /** The app's "Presentation blocked" message (`request_blocked_bottom_sheet_message`), word for word. */
+        const val VERIFIER_NOT_TRUSTED =
+            "This presentation request has been blocked because the relying party could not be verified " +
+                    "by your Wallet.\n\nYour personal information or other data has not been shared with " +
+                    "this relying party."
     }
 }

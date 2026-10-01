@@ -50,6 +50,12 @@ sealed interface IosDcApiOutcome {
     /** The wallet holds nothing this verifier asked for. */
     data object NothingToShare : IosDcApiOutcome
 
+    /**
+     * Blocked before consent: the verifier authenticated, and nothing this wallet trusts vouches for its
+     * certificate, or the trust lists could not say ([isUntrustedReader]). Nothing was shown or built.
+     */
+    data object VerifierNotTrusted : IosDcApiOutcome
+
     /** Anything else, with a message already fit to show. */
     data class Failed(val message: String) : IosDcApiOutcome
 }
@@ -136,6 +142,9 @@ internal class IosDcApiPresenter(
                 // Manager can, which is why the parameter exists at all.
                 preselectedDocuments = emptyList(),
                 source = presentmentSource { requester, trustMetadata, presentmentData ->
+                    // Before [onConsent], so the extension never shows the request.
+                    if (isUntrustedReader(requester, trustMetadata)) throw UntrustedVerifierException()
+
                     onConsent(requester, trustMetadata, presentmentData)?.also { selection ->
                         shared = selection.matches
                             .map { it.credential.document.displayName ?: it.credential.document.identifier }
@@ -152,6 +161,9 @@ internal class IosDcApiPresenter(
         } catch (unsatisfiable: PresentmentCannotSatisfyRequestException) {
             Logger.i(TAG, "nothing matches: ${unsatisfiable.message}")
             IosDcApiOutcome.NothingToShare
+        } catch (refused: UntrustedVerifierException) {
+            Logger.w(TAG, "blocked: ${refused.message}")
+            IosDcApiOutcome.VerifierNotTrusted
         } catch (failure: Throwable) {
             Logger.w(TAG, "presentment failed: ${failure::class.simpleName}: ${failure.message}")
             IosDcApiOutcome.Failed(
