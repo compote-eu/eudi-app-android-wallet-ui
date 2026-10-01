@@ -62,11 +62,20 @@ data class BackgroundRevocationSummary(
  * to conclude `Unknown`" until the trust gate opens — **expired with `650e8c1e`**: a status list is now
  * read and acted on under `INFORM` without an anchor, so a sweep reaches a real verdict.
  *
- * ## What it deliberately does not do
+ * ## What it tells the screens, and when they can hear it
  *
- * No notification, and no deletion. Android's worker broadcasts; here the Documents screen re-reads the
- * store when it appears, so a newly flagged document surfaces on its own. Flagging is all that happens —
- * the flag/clear decision itself is `revocationAction` in commonMain, which both platforms call.
+ * The broadcasts Android's worker sends (see [revocationBroadcasts]): the dashboard's "documents revoked"
+ * message, and the list and details refreshes. Like Android's they reach only the screens composed when
+ * they are sent. A screen composed later still sees the change, because the Documents screen re-reads
+ * the store when it appears. The message is the exception: nothing shows it later.
+ *
+ * 🚩 So the message is heard only when this runs while the dashboard is on screen, and the launch trigger
+ * never does. On an iPhone with four documents the sweep finished **0.52 s after the app's first log
+ * line** (2026-10-01), long before anyone could get past the PIN screen. Android's worker runs again
+ * every 15 minutes, so a later run can find the dashboard on screen.
+ *
+ * No deletion. The flag/clear decision itself is `revocationAction` in commonMain, which both platforms
+ * call.
  *
  * Failure is reported rather than thrown: one unreachable status endpoint must not sink the whole
  * sweep, and the caller has no screen to show an error on. (Until 2026-09-04 there was a second reason —
@@ -78,13 +87,14 @@ suspend fun runBackgroundRevocation(): BackgroundRevocationSummary {
     var checked = 0
 
     return try {
-        val newlyRevoked = engine.refreshRevocationStatuses { documentId, outcome ->
+        val refresh = engine.refreshRevocationStatuses { documentId, outcome ->
             checked++
             Logger.i(TAG, "$documentId -> $outcome")
         }
+        announce(revocationBroadcasts(refresh), TAG)
         BackgroundRevocationSummary(
             checked = checked,
-            newlyRevoked = newlyRevoked.size,
+            newlyRevoked = refresh.newlyRevoked.size,
             failed = false,
         )
     } catch (cancelled: CancellationException) {

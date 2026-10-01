@@ -89,7 +89,7 @@ class IosWalletEngine : WalletEngine {
      */
     suspend fun refreshRevocationStatuses(
         onOutcome: (documentId: String, outcome: RevocationOutcome) -> Unit = { _, _ -> },
-    ): List<WalletDocument> {
+    ): RevocationRefresh {
         val engine = delegate() as MultipazWalletEngine
         return HttpClient(Darwin).use { client ->
             engine.refreshRevocationStatuses(

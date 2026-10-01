@@ -194,18 +194,19 @@ internal class MultipazWalletEngine(
      * the caller's (see `IosWalletEngine.refreshRevocationStatuses` for the two triggers iOS uses
      * instead of Android's 15-minute WorkManager period).
      *
-     * The return value is what a caller needs to raise the "documents revoked" notification the
-     * Android broadcast produces; ignoring it and reading [getRevokedDocumentIds] afterwards is also
-     * fine.
+     * The return value is what a caller needs to send the broadcasts Android's worker sends: the
+     * "documents revoked" message for the newly revoked, a list refresh when anything changed either
+     * way. Ignoring it and reading [getRevokedDocumentIds] afterwards is also fine.
      */
     suspend fun refreshRevocationStatuses(
         checker: MultipazRevocationChecker,
         policy: StatusTrustPolicyDomain = iosWalletConfig.statusTrustPolicy,
         onOutcome: (documentId: String, outcome: RevocationOutcome) -> Unit = { _, _ -> },
-    ): List<WalletDocument> {
+    ): RevocationRefresh {
         val table = store.revokedDocumentsTable()
         val alreadyRevoked = table.enumerate().toSet()
         val newlyRevoked = mutableListOf<WalletDocument>()
+        val cleared = mutableListOf<String>()
 
         ownDocuments().forEach { document ->
             // The format type decides which trusted list, if any, says who may sign this
@@ -239,16 +240,23 @@ internal class MultipazWalletEngine(
             when (action) {
                 RevocationActionDomain.Flag -> {
                     table.insert(key = document.identifier, data = ByteString())
-                    newlyRevoked += WalletDocument(id = document.identifier)
+                    // Named because the user is told which documents were revoked, by name.
+                    newlyRevoked += WalletDocument(
+                        id = document.identifier,
+                        name = document.toStoredDocument()?.name.orEmpty(),
+                    )
                 }
 
-                RevocationActionDomain.Clear -> table.delete(document.identifier)
+                RevocationActionDomain.Clear -> {
+                    table.delete(document.identifier)
+                    cleared += document.identifier
+                }
 
                 RevocationActionDomain.Leave -> Unit
             }
         }
 
-        return newlyRevoked
+        return RevocationRefresh(newlyRevoked = newlyRevoked, cleared = cleared)
     }
 
     //endregion
@@ -277,3 +285,15 @@ internal class MultipazWalletEngine(
  */
 suspend fun createIosWalletEngine(): WalletEngine =
     MultipazWalletEngine(MultipazWalletStore.open())
+
+/**
+ * What one [MultipazWalletEngine.refreshRevocationStatuses] pass changed: the two sets Android's
+ * `RevocationWorkManager` acts on.
+ *
+ * [newlyRevoked] were not flagged before this pass and are now, carrying the names the user is shown.
+ * [cleared] were flagged and their status list now says valid, so they are no longer.
+ */
+data class RevocationRefresh(
+    val newlyRevoked: List<WalletDocument>,
+    val cleared: List<String>,
+)

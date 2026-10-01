@@ -126,8 +126,8 @@ fun DashboardScreen(
      * Injected rather than added to the `PlatformIntent` accessor vocabulary in :shared-logic: the
      * extra is an `ArrayList<RevokedDocumentParcel>`, and that `Parcelable` transport lives in
      * `:core-logic` — a module neither shared module can see. Which broadcast means which event stays
-     * here, as app logic; only the field access is the host's. Never called on iOS, where nothing sends
-     * that broadcast.
+     * here, as app logic; only the field access is the host's. On iOS the revocation sweep sends it on
+     * the in-process bus, with the names and ids as two string lists (`revokedDocumentsInBroadcast`).
      */
     revokedDocumentsFromBroadcast: (PlatformIntent) -> List<RevokedDocumentDataDomain>? = { null },
     /**

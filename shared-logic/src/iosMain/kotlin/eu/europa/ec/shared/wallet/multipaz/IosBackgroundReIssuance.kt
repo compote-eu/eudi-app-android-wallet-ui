@@ -111,8 +111,9 @@ internal fun summarize(
  * - *No browser fallback.* Android passes `allowAuthorizationFallback = false` for exactly this reason:
  *   a background sweep must never try to put a user in front of an authorization page. A document whose
  *   refresh token has expired is left for the user to fix in the foreground.
- * - *No deletion, and no notifications.* Android's worker also prunes and broadcasts; on iOS the
- *   Documents screen re-reads the store when it appears, so a top-up shows up on its own.
+ * - *No deletion, and only the list refresh broadcast* ([reIssuanceBroadcasts] says why the details
+ *   one is left out). Android's worker also prunes. A screen composed after the sweep still sees the
+ *   top-up, because the Documents screen re-reads the store when it appears.
  *
  * Failures are per document: one issuer being unreachable must not stop the sweep, since the whole
  * point is to catch up on whatever it can in the few seconds iOS grants.
@@ -161,6 +162,7 @@ suspend fun runBackgroundReIssuance(): BackgroundReIssuanceSummary {
 
     return summarize(considered = documents.size, outcomes = outcomes)
         .also { Logger.i(TAG, "background re-issuance: $it") }
+        .also { announce(reIssuanceBroadcasts(it), TAG) }
 }
 
 private const val TAG = "IosBackgroundReIssuance"

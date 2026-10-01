@@ -349,7 +349,7 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
 
             val newlyRevoked = engineForRevocation.refreshRevocationStatuses { documentId, outcome ->
                 onResult("  revocation check $documentId -> $outcome")
-            }
+            }.newlyRevoked
             onResult(
                 "refreshRevocationStatuses -> ${newlyRevoked.size} newly revoked " +
                         "${newlyRevoked.map { it.id }}; cached=${engineForRevocation.getRevokedDocumentIds()}"

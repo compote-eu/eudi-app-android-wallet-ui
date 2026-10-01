@@ -18,11 +18,14 @@ package eu.europa.ec.shared.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
+import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
 import eu.europa.ec.dashboardfeature.ui.dashboard.PendingLaunchIntent
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.NavPlatformActions
+import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.shared.wallet.multipaz.IosDeepLinks
+import eu.europa.ec.shared.wallet.multipaz.revokedDocumentsInBroadcast
 import eu.europa.ec.uilogic.component.openIosUrlExternally
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
@@ -31,15 +34,15 @@ import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 /**
  * iOS's answers for the shared `entry<Route> { }` blocks.
  *
- * Only two of the hooks have an answer here, and they are the two the iOS entries already supplied
- * before the entries were shared: the pending universal link, and following one to the route the
- * shared view-model resolved it to.
+ * Two of the hooks are the ones the iOS entries already supplied before the entries were shared: the
+ * pending universal link, and following one to the route the shared view-model resolved it to. A third,
+ * [revokedDocumentsFromBroadcast], came with the revocation sweep's broadcasts.
  *
  * Everything else keeps [NavPlatformActions]'s do-nothing default, which is a statement rather than a
  * gap: [parkAndReturn] returns false because there is nowhere on iOS to park a link for a screen to
  * pick up later, so the shared entries fall through to [openDeepLink] — and with no route to go to
- * that does nothing, exactly as iOS's own `onExternalDeepLink` lambdas did. DC API intent actions,
- * the revocation broadcast and finishing with a result do not exist on this platform at all.
+ * that does nothing, exactly as iOS's own `onExternalDeepLink` lambdas did. DC API intent actions and
+ * finishing with a result do not exist on this platform at all.
  *
  * ⚠️ One deliberate change came with sharing the entries: `pendingDeepLink()` now answers for the
  * document-details and credential-offer screens too, where iOS previously passed nothing. Android
@@ -67,6 +70,9 @@ object IosNavPlatformActions : NavPlatformActions {
 
     override fun pendingLaunchIntent(): PendingLaunchIntent =
         PendingLaunchIntent(deepLink = IosDeepLinks.takePending())
+
+    override fun revokedDocumentsFromBroadcast(intent: PlatformIntent): List<RevokedDocumentDataDomain>? =
+        revokedDocumentsInBroadcast(intent)
 
     override fun openDeepLink(navigator: AppNavigator, link: String, route: AppRoute?) {
         // The shared view-model already decided where the link leads; there is no iOS-side routing.

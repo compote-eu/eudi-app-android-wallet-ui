@@ -503,11 +503,14 @@ class MultipazWalletEngineTest {
         val documentId = store.seedPid(revocationStatus = statusEntry(key, idx = 4))
         val engine = MultipazWalletEngine(store)
 
-        val newlyRevoked = engine.refreshRevocationStatuses(
+        val refresh = engine.refreshRevocationStatuses(
             checker = checkerServing(tokenSaying(key, revoked = listOf(4)))
         )
 
-        assertEquals(listOf(documentId), newlyRevoked.map { it.id })
+        assertEquals(listOf(documentId), refresh.newlyRevoked.map { it.id })
+        // The dashboard tells the user which documents were revoked, by name.
+        assertEquals(listOf("PID MSO MDoc"), refresh.newlyRevoked.map { it.name })
+        assertTrue(refresh.cleared.isEmpty())
         assertTrue(engine.isDocumentRevoked(documentId))
         assertEquals(listOf(documentId), engine.getRevokedDocumentIds())
         // And the flag reaches the projection the document list renders.
@@ -536,7 +539,7 @@ class MultipazWalletEngineTest {
             checker = checkerServing(x5cTokenSaying(key, revoked = listOf(4))),
             policy = StatusTrustPolicyDomain.Inform,
             onOutcome = { id, outcome -> outcomes[id] = outcome },
-        )
+        ).newlyRevoked
 
         // The reading is honest about what it could establish...
         val outcome = outcomes.getValue(documentId)
@@ -565,7 +568,7 @@ class MultipazWalletEngineTest {
         val newlyRevoked = engine.refreshRevocationStatuses(
             checker = checkerServing(x5cTokenSaying(key, revoked = listOf(4))),
             policy = StatusTrustPolicyDomain.Enforce,
-        )
+        ).newlyRevoked
 
         assertTrue(newlyRevoked.isEmpty())
         assertFalse(engine.isDocumentRevoked(documentId))
@@ -588,12 +591,13 @@ class MultipazWalletEngineTest {
         val engine = MultipazWalletEngine(store)
         assertTrue(engine.isDocumentRevoked(documentId))
 
-        engine.refreshRevocationStatuses(
+        val refresh = engine.refreshRevocationStatuses(
             checker = checkerServing(x5cTokenSaying(key, revoked = emptyList())),
             policy = StatusTrustPolicyDomain.Enforce,
         )
 
         assertTrue(engine.isDocumentRevoked(documentId), "an unanchored Valid must not un-revoke")
+        assertTrue(refresh.cleared.isEmpty(), "nor report a clear that did not happen")
     }
 
     @Test
@@ -605,7 +609,7 @@ class MultipazWalletEngineTest {
 
         val newlyRevoked = engine.refreshRevocationStatuses(
             checker = checkerServing(tokenSaying(key, revoked = listOf(9)))
-        )
+        ).newlyRevoked
 
         assertTrue(newlyRevoked.isEmpty())
         assertTrue(engine.getRevokedDocumentIds().isEmpty())
@@ -620,7 +624,7 @@ class MultipazWalletEngineTest {
         val token = tokenSaying(key, revoked = listOf(4))
 
         engine.refreshRevocationStatuses(checker = checkerServing(token))
-        val second = engine.refreshRevocationStatuses(checker = checkerServing(token))
+        val second = engine.refreshRevocationStatuses(checker = checkerServing(token)).newlyRevoked
 
         // "Newly revoked" is what drives the user-facing notification, so re-reporting it every
         // refresh would nag once per period — the same reason the Android worker diffs against Room.
@@ -640,10 +644,13 @@ class MultipazWalletEngineTest {
 
         // Revocation is not a one-way door — a suspended credential can be reinstated, and the
         // Android worker removes the row in exactly this case.
-        engine.refreshRevocationStatuses(checker = checkerServing(tokenSaying(key, emptyList())))
+        val refresh = engine.refreshRevocationStatuses(checker = checkerServing(tokenSaying(key, emptyList())))
 
         assertFalse(engine.isDocumentRevoked(documentId))
         assertTrue(engine.getRevokedDocumentIds().isEmpty())
+        // Reported, because Android refreshes the document list on a clear as well as on a flag.
+        assertEquals(listOf(documentId), refresh.cleared)
+        assertTrue(refresh.newlyRevoked.isEmpty())
     }
 
     @Test
@@ -657,9 +664,10 @@ class MultipazWalletEngineTest {
 
         // THE asymmetry that matters: going offline must not un-revoke a document. Only a positive
         // "valid" answer clears the flag; `Unknown` leaves it alone.
-        engine.refreshRevocationStatuses(checker = failingChecker())
+        val refresh = engine.refreshRevocationStatuses(checker = failingChecker())
 
         assertTrue(engine.isDocumentRevoked(documentId))
+        assertTrue(refresh.cleared.isEmpty())
     }
 
     @Test
@@ -673,7 +681,7 @@ class MultipazWalletEngineTest {
         val newlyRevoked = engine.refreshRevocationStatuses(
             checker = checkerServing(tokenSaying(key, listOf(4))),
             onOutcome = { id, outcome -> outcomes[id] = outcome },
-        )
+        ).newlyRevoked
 
         assertTrue(newlyRevoked.isEmpty())
         assertIs<RevocationOutcome.Unknown>(outcomes[documentId])
