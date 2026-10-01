@@ -24,8 +24,7 @@ package eu.europa.ec.shared.platform
  * `SystemBroadcastReceiver` cannot read anything from it. These three accessors are that vocabulary,
  * kept as narrow as the app actually uses: which action fired, and one string or string-list extra.
  *
- * On iOS they are unreachable rather than unimplemented: `PlatformIntent` has no constructor there and
- * the broadcast receiver is a no-op, so no value can ever reach them.
+ * On iOS they read what `IosBroadcasts` carries: an action and string extras, nothing more.
  */
 expect fun PlatformIntent.platformAction(): String?
 

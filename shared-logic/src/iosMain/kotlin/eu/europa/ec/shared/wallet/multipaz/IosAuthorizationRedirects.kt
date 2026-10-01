@@ -16,6 +16,11 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.corelogic.util.CoreActions
+import eu.europa.ec.shared.platform.IosBroadcasts
+import eu.europa.ec.shared.platform.PlatformIntent
+import kotlinx.atomicfu.locks.reentrantLock
+import kotlinx.atomicfu.locks.withLock
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withTimeoutOrNull
 import org.multipaz.util.Logger
@@ -43,6 +48,11 @@ object IosAuthorizationRedirects {
 
     private val redirects = Channel<String>(Channel.CONFLATED)
 
+    private val lock = reentrantLock()
+
+    /** How many [await] calls are in progress. Written by the flow, read by the app shell's thread. */
+    private var waiters = 0
+
     /**
      * Called by the app shell when a URL is opened on the app. Safe to call from any thread, and safe
      * to call when nothing is waiting.
@@ -54,10 +64,36 @@ object IosAuthorizationRedirects {
             Logger.i(TAG, "ignoring an opened URL that is not an authorization redirect")
             return false
         }
+        // Decided before queuing: the queued redirect wakes the waiting flow, which can take it and stop
+        // waiting on its own thread before the next line runs here.
+        val awaited = lock.withLock { waiters } > 0
         // trySend cannot fail on a conflated channel, but the result is checked rather than assumed.
         val queued = redirects.trySend(url).isSuccess
         Logger.i(TAG, "authorization redirect ${if (queued) "queued" else "dropped"}")
+        if (queued) announceResume(url, awaited)
         return queued
+    }
+
+    /**
+     * Tells the screen that started the flow that it has resumed — what Android's activity broadcasts
+     * as [CoreActions.VCI_RESUME_ACTION], and what turns the screen's spinner back on after the browser
+     * turned it off.
+     *
+     * Only while a flow is waiting. A redirect nobody awaits is not followed by any work, so a spinner
+     * it switched on would never be switched off again.
+     */
+    private fun announceResume(url: String, awaited: Boolean) {
+        if (!awaited) {
+            Logger.i(TAG, "no flow is waiting for the redirect; resume not announced")
+            return
+        }
+        val sent = IosBroadcasts.send(
+            PlatformIntent(
+                action = CoreActions.VCI_RESUME_ACTION,
+                stringExtras = mapOf(RESUME_URI_EXTRA to url),
+            )
+        )
+        Logger.i(TAG, "resume ${if (sent) "announced" else "not announced"} to the screen")
     }
 
     /**
@@ -67,8 +103,18 @@ object IosAuthorizationRedirects {
      * `request_uri` these redirects belong to expires about a minute after it is issued, so a slow login
      * fails at the token endpoint rather than here.
      */
-    suspend fun await(timeout: Duration = DEFAULT_TIMEOUT): String? =
-        withTimeoutOrNull(timeout) { redirects.receive() }
+    suspend fun await(timeout: Duration = DEFAULT_TIMEOUT): String? {
+        val waiting = lock.withLock { ++waiters }
+        Logger.i(TAG, "waiting for the authorization redirect (waiters=$waiting)")
+        var redirect: String? = null
+        try {
+            redirect = withTimeoutOrNull(timeout) { redirects.receive() }
+            return redirect
+        } finally {
+            val left = lock.withLock { --waiters }
+            Logger.i(TAG, "stopped waiting: ${if (redirect != null) "received" else "none"} (waiters=$left)")
+        }
+    }
 
     /** Drops any queued redirect, so a new session cannot pick up an old one. */
     fun clear() {
@@ -87,4 +133,7 @@ object IosAuthorizationRedirects {
     const val REDIRECT_PREFIX = "eu.europa.ec.euidi://authorization"
 
     private val DEFAULT_TIMEOUT = 180.seconds
+
+    /** The extra the shared screens read the redirect from, as Android's `DeepLinkHelper` names it. */
+    internal const val RESUME_URI_EXTRA = "uri"
 }

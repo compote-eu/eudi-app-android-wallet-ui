@@ -16,9 +16,8 @@
 
 package eu.europa.ec.shared.platform
 
-// Unreachable: PlatformIntent has no constructor on iOS, so no instance can exist to call these on.
-actual fun PlatformIntent.platformAction(): String? = null
+actual fun PlatformIntent.platformAction(): String? = action
 
-actual fun PlatformIntent.platformStringExtra(key: String): String? = null
+actual fun PlatformIntent.platformStringExtra(key: String): String? = stringExtras[key]
 
-actual fun PlatformIntent.platformStringListExtra(key: String): List<String> = emptyList()
+actual fun PlatformIntent.platformStringListExtra(key: String): List<String> = stringListExtras[key].orEmpty()

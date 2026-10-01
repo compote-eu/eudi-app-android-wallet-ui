@@ -17,13 +17,19 @@
 package eu.europa.ec.shared.platform
 
 /**
- * Uninhabited: iOS has no intents. The equivalent hand-offs (universal links, `ASWebAuthenticationSession`)
- * do not share this shape, so the type stays uninhabited rather than pretending to generalise.
+ * A broadcast as iOS carries it in process: the action, and the extras its receivers read.
  *
- * The constructor is no longer `private`, so a test can mint a token instance. That is all it is: the
- * class has no members, so an instance carries nothing and can do nothing. It exists so `commonTest`
- * can reach the view-model paths that only pass a [PlatformIntent] through — the same role Android's
- * tests give a `mock<Context>()`. Common code still cannot construct one, because the `expect`
- * declaration exposes no constructor; that is what keeps common code off Android intents, not this.
+ * iOS has no intents and no system broadcast bus, so this is not an intent — it is what [IosBroadcasts]
+ * hands to `SystemBroadcastReceiver`, where shared screens listen for the same actions Android
+ * broadcasts. It carries only what the accessors in `PlatformIntentAccessors` read, and nothing else.
+ *
+ * The no-argument form carries nothing; it is what a test mints when it only needs an instance to pass
+ * through, the role Android's tests give a `mock<Context>()`. Common code still cannot construct one,
+ * because the `expect` declaration exposes no constructor — that is what keeps common code off Android
+ * intents, not this.
  */
-actual class PlatformIntent()
+actual class PlatformIntent(
+    internal val action: String? = null,
+    internal val stringExtras: Map<String, String> = emptyMap(),
+    internal val stringListExtras: Map<String, List<String>> = emptyMap(),
+)
