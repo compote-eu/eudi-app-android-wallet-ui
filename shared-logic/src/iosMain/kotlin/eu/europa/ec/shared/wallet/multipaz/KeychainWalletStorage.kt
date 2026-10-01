@@ -68,6 +68,8 @@ import platform.Security.kSecMatchLimit
 import platform.Security.kSecMatchLimitAll
 import platform.Security.kSecReturnAttributes
 import platform.Security.kSecReturnData
+import platform.Security.kSecUseAuthenticationUI
+import platform.Security.kSecUseAuthenticationUISkip
 import platform.Security.kSecValueData
 import kotlin.random.Random
 import kotlin.time.Clock
@@ -216,12 +218,20 @@ class KeychainWalletStorage(
          * this app wrote and is only ever done once per install, but it is the reason this is not a
          * general-purpose delete: it reads attributes for items it will not touch.
          *
+         * 🚨 **Including a biometry-gated one, which made this prompt for a fingerprint at launch.** The
+         * biometric-login item lives in the same access group, and an attributes-only search that meets
+         * it raises the prompt (the trap `IosBiometricGate.isEnabled` documents). This runs synchronously
+         * on the main thread before the first scene, so after a reinstall over an install with
+         * biometric login on, the launch waited on the prompt and the scene-create watchdog killed the
+         * app (`0x8BADF00D`, 2026-10-01, iPhone SE) — every launch, until someone touched the sensor.
+         * `…UISkip` leaves auth-requiring items out of the search; no document item is one.
+         *
          * @return how many items were removed. Idempotent, so calling it a second time
          * returning zero is how a caller confirms the wipe actually took.
          */
         @OptIn(BetaInteropApi::class)
         fun deleteEverythingUnder(servicePrefix: String, accessGroup: String?): Int {
-            val query = CFDictionaryCreateMutable(kCFAllocatorDefault, 4, null, null)
+            val query = CFDictionaryCreateMutable(kCFAllocatorDefault, 5, null, null)
             val retained = mutableListOf<CFTypeRef>()
             fun keep(value: Any): CFTypeRef? = CFBridgingRetain(value)?.also { retained.add(it) }
             val services = mutableListOf<Pair<String, String>>()
@@ -229,6 +239,7 @@ class KeychainWalletStorage(
                 CFDictionarySetValue(query, kSecClass, kSecClassGenericPassword)
                 CFDictionarySetValue(query, kSecMatchLimit, kSecMatchLimitAll)
                 CFDictionarySetValue(query, kSecReturnAttributes, kCFBooleanTrue)
+                CFDictionarySetValue(query, kSecUseAuthenticationUI, kSecUseAuthenticationUISkip)
                 accessGroup?.let { CFDictionarySetValue(query, kSecAttrAccessGroup, keep(it)) }
                 memScoped {
                     val result = alloc<CFTypeRefVar>()
