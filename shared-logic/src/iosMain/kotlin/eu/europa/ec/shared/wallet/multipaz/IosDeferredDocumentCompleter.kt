@@ -80,42 +80,30 @@ internal class IosDeferredDocumentCompleter(
         val issuer = issuers.firstOrNull { it.issuerUrl == issuerUrl }
             ?: return DeferredCollection.Unsupported("this build does not know the issuer $issuerUrl")
 
-        // Two ways back to the issuer. A refresh token, from the stored authorization, is the durable
-        // one. An issuer that grants none (measured: Plaut's dev issuer, 2026-09-28) leaves only the
-        // issuing session's access token, kept with the parked document — usable until it expires, as
-        // Android's openid4vci-kt uses it.
+        // Two ways back to the issuer, tried in this order. The issuing session's own access token, kept
+        // with the parked document, while it lives — as Android's openid4vci-kt collects, and whatever the
+        // authorization server does with refresh tokens. Then the refresh token from the stored
+        // authorization, once the access token has expired or been refused. An issuer that grants no
+        // refresh token (Plaut's dev issuer until 2026-09-30) leaves only the first.
         val authorization = document.authorizationData
         val stored = authorization?.openID4VciAuthorization()
         val resume = metadata.deferredResume
-        val dpopKeyAlias = when {
-            stored != null -> stored.dpopKeyAlias
-            authorization != null ->
-                return DeferredCollection.Failed("the stored authorization could not be read")
-            resume == null -> {
-                Logger.w(
+        val liveResume = resume?.takeUnless { it.isExpired() }
+        if (liveResume == null && stored == null) {
+            when {
+                authorization != null ->
+                    return DeferredCollection.Failed("the stored authorization could not be read")
+                resume == null -> Logger.w(
                     TAG,
                     "${document.identifier} has no stored authorization and no access token to resume " +
                         "with; it cannot be collected",
                 )
-                return DeferredCollection.AuthorizationExpired
-            }
-            resume.isExpired() -> {
-                Logger.w(
+                else -> Logger.w(
                     TAG,
                     "${document.identifier}'s access token expired at ${resume.expiresAt}, and the issuer " +
                         "granted no refresh token; it can no longer be collected",
                 )
-                return DeferredCollection.AuthorizationExpired
             }
-            else -> resume.dpopKeyAlias
-        }
-
-        val dpopKey = runCatching {
-            AsymmetricKey.anonymous(store.keySecureArea, dpopKeyAlias)
-        }.getOrElse {
-            // The alias is in the CBOR but the key is gone — a wiped secure area, or a store restored
-            // without it. Nothing can be signed, so nothing can be collected.
-            Logger.w(TAG, "the DPoP key $dpopKeyAlias is no longer in the secure area")
             return DeferredCollection.AuthorizationExpired
         }
         // Thrown away afterwards: a wallet attestation says *which client this is*, nothing about the
@@ -133,14 +121,32 @@ internal class IosDeferredDocumentCompleter(
             walletProviderBaseUrl = walletProviderBaseUrl,
             clientId = issuer.clientId,
         )
-        val collected = collector.collect(
-            issuerUrl = issuerUrl,
-            transactionId = transactionId,
-            refreshToken = stored?.refreshToken,
-            storedAccessToken = if (stored == null) resume?.accessToken else null,
-            dpopKey = dpopKey,
-            attestationKey = attestationKey,
-        )
+        var collected: DeferredCollection? = liveResume?.let { live ->
+            val dpopKey = dpopKeyOrNull(live.dpopKeyAlias) ?: return@let null
+            collector.collect(
+                issuerUrl = issuerUrl,
+                transactionId = transactionId,
+                refreshToken = null,
+                storedAccessToken = live.accessToken,
+                dpopKey = dpopKey,
+                attestationKey = attestationKey,
+            )
+        }
+        if ((collected == null || collected is DeferredCollection.AuthorizationExpired) && stored != null) {
+            if (collected != null) {
+                Logger.i(TAG, "${document.identifier}: the access token was refused; refreshing instead")
+            }
+            val dpopKey = dpopKeyOrNull(stored.dpopKeyAlias) ?: return DeferredCollection.AuthorizationExpired
+            collected = collector.collect(
+                issuerUrl = issuerUrl,
+                transactionId = transactionId,
+                refreshToken = stored.refreshToken,
+                dpopKey = dpopKey,
+                attestationKey = attestationKey,
+                onRefreshTokenRotated = { rotated -> keepRotatedRefreshToken(document, rotated) },
+            )
+        }
+        if (collected == null) return DeferredCollection.AuthorizationExpired
 
         when (collected) {
             is DeferredCollection.Issued -> store(document, collected.credentials)
@@ -158,6 +164,33 @@ internal class IosDeferredDocumentCompleter(
             else -> Unit
         }
         return collected
+    }
+
+    /**
+     * The DPoP key [alias] names, or null — logged — when it is no longer in the secure area.
+     *
+     * The alias is in the CBOR but the key is gone: a wiped secure area, or a store restored without it.
+     * Nothing can be signed with a missing key, so nothing can be collected with it.
+     */
+    private suspend fun dpopKeyOrNull(alias: String): AsymmetricKey? = runCatching {
+        AsymmetricKey.anonymous(store.keySecureArea, alias)
+    }.getOrElse {
+        Logger.w(TAG, "the DPoP key $alias is no longer in the secure area")
+        null
+    }
+
+    /** Stores the refresh token a rotating server handed back; the one presented is spent. */
+    private suspend fun keepRotatedRefreshToken(document: Document, rotated: String) {
+        val updated = document.authorizationData?.withRefreshToken(rotated)
+        if (updated == null) {
+            Logger.w(TAG, "${document.identifier}: the rotated refresh token could not be stored")
+            return
+        }
+        document.edit { authorizationData = updated }
+        Logger.i(
+            TAG,
+            "${document.identifier}: the authorization server rotated the refresh token; kept the new one",
+        )
     }
 
     /**
@@ -278,14 +311,21 @@ suspend fun IosWalletEngine.documentsAwaitingDeferredIssuance(): Map<String, Str
  * value is not the CBOR map this expects, which is the honest answer for data written by a version
  * that changed the schema.
  */
-internal fun ByteString.withDpopBinding(rebound: RebindResult): ByteString? {
+internal fun ByteString.withDpopBinding(rebound: RebindResult): ByteString? =
+    rewritten(dpopKeyAlias = rebound.dpopKeyAlias, refreshToken = rebound.refreshToken)
+
+/** The same authorization data with a different refresh token — a rotated one — and everything else kept. */
+internal fun ByteString.withRefreshToken(refreshToken: String): ByteString? = rewritten(refreshToken = refreshToken)
+
+/** See [withDpopBinding]: field by field, replacing only what is given. */
+private fun ByteString.rewritten(dpopKeyAlias: String? = null, refreshToken: String? = null): ByteString? {
     val map = runCatching { Cbor.decode(toByteArray()) }.getOrNull() as? CborMap ?: return null
     val builder = CborMap.builder()
     for ((key, value) in map.items) {
         val name = (key as? Tstr)?.value ?: return null
-        when (name) {
-            DPOP_KEY_ALIAS_KEY -> builder.put(name, rebound.dpopKeyAlias)
-            REFRESH_TOKEN_KEY -> builder.put(name, rebound.refreshToken)
+        when {
+            name == DPOP_KEY_ALIAS_KEY && dpopKeyAlias != null -> builder.put(name, dpopKeyAlias)
+            name == REFRESH_TOKEN_KEY && refreshToken != null -> builder.put(name, refreshToken)
             else -> builder.put(key, value)
         }
     }

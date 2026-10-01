@@ -72,13 +72,18 @@ import kotlin.time.Duration.Companion.minutes
  * - **The client-attestation PoP claim is `challenge`, not `nonce`** — multipaz's own spelling. With
  *   `nonce` the token endpoint answers a flat 401 *"Authentication failed."* that names nothing.
  *
- * ## Why it refreshes rather than reusing a token
+ * ## Which token it presents
  *
- * The access token lives **300 seconds** and the refresh token **1800**. A deferred credential is by
- * definition collected later, so a captured token is almost always dead by then; the refresh token is
- * the only thing worth persisting, and it is what multipaz already stores. Past 30 minutes neither
- * works and the document needs authorizing again — which is the honest limit of this flow, not a
- * defect in it.
+ * The access token lives **300 seconds** and the refresh token **1800**. The issuing session's own access
+ * token is presented while it lives — the caller passes it as `storedAccessToken` — and the refresh token
+ * only after that: Android's openid4vci-kt collects the same way, and it works however the authorization
+ * server treats refresh tokens. Past 30 minutes neither works and the document needs authorizing again —
+ * which is the honest limit of this flow, not a defect in it.
+ *
+ * 🚨 **A refresh can rotate the refresh token** (Plaut's authorization server does, measured 2026-09-30):
+ * the one presented is spent and only the one returned works. A refresh that is not stored is therefore
+ * a document that can never be refreshed again, so the new token is handed to `onRefreshTokenRotated`
+ * before the credential is even asked for.
  *
  * ⛔ Deliberately **not** routed through multipaz's `ProvisioningModel`: re-entering that would start a
  * *new* issuance rather than collect the parked one.
@@ -106,10 +111,12 @@ internal class IosDeferredCredentialCollector(
         dpopKey: AsymmetricKey,
         attestationKey: AsymmetricKey,
         /**
-         * The issuing session's own access token, used as-is when there is no [refreshToken] — for an
-         * issuer that grants none. It must be bound to [dpopKey].
+         * The issuing session's own access token, presented as-is — and in preference to a refresh, so a
+         * caller passes it only while it lives. It must be bound to [dpopKey].
          */
         storedAccessToken: String? = null,
+        /** Told about a refresh token the server rotated, so the caller can store it. See the class. */
+        onRefreshTokenRotated: suspend (String) -> Unit = {},
     ): DeferredCollection = runCatching {
         val issuer = issuerMetadata(issuerUrl)
         val deferredEndpoint = issuer["deferred_credential_endpoint"]?.jsonPrimitive?.contentOrNull
@@ -123,11 +130,15 @@ internal class IosDeferredCredentialCollector(
         // compatibility engine, so it reads the offer itself rather than from the registry.
         val encryption = CredentialEncryption.fromIssuerMetadata(issuer)
 
-        val accessToken = if (refreshToken != null) {
-            refreshAccessToken(authorizationServer, refreshToken, dpopKey, attestationKey)
-                ?: return DeferredCollection.AuthorizationExpired
-        } else {
-            storedAccessToken ?: return DeferredCollection.AuthorizationExpired
+        val accessToken = when {
+            storedAccessToken != null -> storedAccessToken
+            refreshToken != null -> {
+                val refreshed = refreshAccessToken(authorizationServer, refreshToken, dpopKey, attestationKey)
+                    ?: return DeferredCollection.AuthorizationExpired
+                refreshed.refreshToken?.takeIf { it != refreshToken }?.let { onRefreshTokenRotated(it) }
+                refreshed.accessToken
+            }
+            else -> return DeferredCollection.AuthorizationExpired
         }
 
         requestCredential(deferredEndpoint, transactionId, accessToken, dpopKey, encryption)
@@ -142,6 +153,9 @@ internal class IosDeferredCredentialCollector(
         return body.asJsonObjectOrJwtPayload()
     }
 
+    /** What a refresh hands back: the access token, and the refresh token when the server sent one. */
+    private class RefreshedTokens(val accessToken: String, val refreshToken: String?)
+
     /**
      * Trades the stored refresh token for an access token bound to [dpopKey].
      *
@@ -153,7 +167,7 @@ internal class IosDeferredCredentialCollector(
         refreshToken: String,
         dpopKey: AsymmetricKey,
         attestationKey: AsymmetricKey,
-    ): String? {
+    ): RefreshedTokens? {
         val metadata = httpClient
             .get("${authorizationServer.trimEnd('/')}/$AS_METADATA_PATH")
             .bodyAsText().asJsonObjectOrJwtPayload()
@@ -182,10 +196,12 @@ internal class IosDeferredCredentialCollector(
             if (nonce != null) response = attempt(nonce)
         }
         if (!response.status.isSuccess()) {
-            Logger.w(TAG, "refresh refused: ${response.status}")
+            Logger.w(TAG, "refresh refused: ${response.oauthError()}")
             return null
         }
-        return response.bodyAsText().asJsonObject()["access_token"]?.jsonPrimitive?.contentOrNull
+        val body = response.bodyAsText().asJsonObject()
+        val accessToken = body["access_token"]?.jsonPrimitive?.contentOrNull ?: return null
+        return RefreshedTokens(accessToken, body["refresh_token"]?.jsonPrimitive?.contentOrNull)
     }
 
     /**
@@ -351,7 +367,13 @@ internal class IosDeferredCredentialCollector(
 sealed interface DeferredCollection {
 
     /** The issuer minted it. [credentials] are the raw values, in the issuer's own encoding. */
-    data class Issued(val credentials: List<String>) : DeferredCollection
+    data class Issued(val credentials: List<String>) : DeferredCollection {
+        /**
+         * Never the credentials themselves: they are the holder's personal data, and the sweep logs its
+         * outcome. Until 2026-09-30 a collected PID was written into the wallet's log file whole.
+         */
+        override fun toString(): String = "Issued(credentials=${credentials.size})"
+    }
 
     /**
      * Not ready yet, and the issuer would like to be asked again in [retryAfterSeconds].

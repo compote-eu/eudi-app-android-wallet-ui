@@ -615,6 +615,13 @@ class IosCredentialIssuer(
             }
             document.edit { authorizationData = updated }
             Logger.i(TAG, "$documentId now has its own DPoP key ${rebound.dpopKeyAlias}")
+            if (rebound.rotated) {
+                // One live refresh token per authorization on a rotating server: the session's own is spent
+                // now, so the rest stay on the shared key rather than present it again. They collect a
+                // deferred credential with the session's access token instead.
+                Logger.i(TAG, "the authorization server rotates refresh tokens; the rest keep the shared key")
+                break
+            }
         }
     }
 

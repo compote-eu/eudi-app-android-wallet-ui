@@ -37,6 +37,7 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -93,6 +94,8 @@ class IosDeferredCredentialCollectorTest {
     private fun collectorOver(
         deferredResponses: List<Pair<HttpStatusCode, String>>,
         refreshStatus: HttpStatusCode = HttpStatusCode.OK,
+        /** What a successful refresh answers; a rotating server sends a new `refresh_token` in it. */
+        refreshBody: String = """{"access_token":"the-access-token","expires_in":300}""",
         /** What a 401 carries; by default the nonce the live issuers hand out on their first refusal. */
         unauthorizedHeaders: io.ktor.http.Headers = headersOf("DPoP-Nonce", listOf("nonce-from-issuer")),
         metadataJwt: String = issuerMetadataJwt(),
@@ -121,7 +124,7 @@ class IosDeferredCredentialCollectorTest {
                     respond("""{"attestation_challenge":"challenge-value"}""", HttpStatusCode.OK, jsonHeaders)
 
                 url == tokenEndpoint -> if (refreshStatus == HttpStatusCode.OK) {
-                    respond("""{"access_token":"the-access-token","expires_in":300}""", HttpStatusCode.OK, jsonHeaders)
+                    respond(refreshBody, HttpStatusCode.OK, jsonHeaders)
                 } else {
                     respond("""{"error":"invalid_grant"}""", refreshStatus, jsonHeaders)
                 }
@@ -342,5 +345,77 @@ class IosDeferredCredentialCollectorTest {
 
     private companion object {
         val jsonHeaders = headersOf("Content-Type", listOf("application/json"))
+    }
+
+    @Test
+    fun a_refresh_that_rotates_the_refresh_token_hands_the_new_one_back_before_asking_for_the_credential() = runTest {
+        val rotations = mutableListOf<String>()
+        val (collector, recorded) = collectorOver(
+            deferredResponses = listOf(HttpStatusCode.BadRequest to """{"error":"issuance_pending"}"""),
+            refreshBody = """{"access_token":"the-access-token","refresh_token":"the-rotated-refresh-token"}""",
+        )
+
+        val result = collector.collect(
+            issuerUrl = issuerUrl,
+            transactionId = "txn-abc-123",
+            refreshToken = "the-refresh-token",
+            dpopKey = key("dpop"),
+            attestationKey = key("attestation"),
+            onRefreshTokenRotated = { rotations += it },
+        )
+
+        // Handed back even though the credential is not ready: on a rotating server the old token is
+        // already spent, so a poll that stored nothing could never refresh again.
+        assertIs<DeferredCollection.StillPending>(result)
+        assertEquals(listOf("the-rotated-refresh-token"), rotations)
+        assertTrue(recorded.any { it.url == deferredEndpoint })
+    }
+
+    @Test
+    fun a_refresh_that_returns_the_same_refresh_token_reports_no_rotation() = runTest {
+        val rotations = mutableListOf<String>()
+        val (collector, _) = collectorOver(
+            deferredResponses = listOf(HttpStatusCode.BadRequest to """{"error":"issuance_pending"}"""),
+            refreshBody = """{"access_token":"the-access-token","refresh_token":"the-refresh-token"}""",
+        )
+
+        collector.collect(
+            issuerUrl = issuerUrl,
+            transactionId = "txn-abc-123",
+            refreshToken = "the-refresh-token",
+            dpopKey = key("dpop"),
+            attestationKey = key("attestation"),
+            onRefreshTokenRotated = { rotations += it },
+        )
+
+        assertTrue(rotations.isEmpty(), "the dev authorization server echoes the token; nothing to store")
+    }
+
+    @Test
+    fun a_stored_access_token_is_presented_without_refreshing_even_when_a_refresh_token_exists() = runTest {
+        val (collector, recorded) = collectorOver(
+            listOf(HttpStatusCode.OK to """{"credentials":[{"credential":"the-credential"}]}"""),
+        )
+
+        val result = collector.collect(
+            issuerUrl = issuerUrl,
+            transactionId = "txn-abc-123",
+            refreshToken = "the-refresh-token",
+            dpopKey = key("dpop"),
+            attestationKey = key("attestation"),
+            storedAccessToken = "the-sessions-access-token",
+        )
+
+        assertIs<DeferredCollection.Issued>(result)
+        assertTrue(recorded.none { it.url == tokenEndpoint }, "no refresh while an access token is offered")
+    }
+
+    @Test
+    fun an_issued_outcome_never_carries_the_credential_into_a_log_line() {
+        // The sweep logs every outcome, and a collected PID is the holder's name and date of birth.
+        val outcome = DeferredCollection.Issued(listOf("the-credential"))
+
+        assertEquals("Issued(credentials=1)", outcome.toString())
+        assertFalse("the-credential" in outcome.toString())
     }
 }

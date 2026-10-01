@@ -211,12 +211,15 @@ internal class IosVciAuthorizationSession(
     }
 
     /**
-     * What a document the issuer defers needs to be collected later, when there is **no refresh token**:
-     * this session's access token and the DPoP key it is bound to. Null when a refresh token exists —
-     * the stored authorization data is the way back then — or before the session is authorized.
+     * What a document the issuer defers needs to be collected with this session's own access token: the
+     * token, the DPoP key it is bound to, and when it expires. Null before the session is authorized.
+     *
+     * Kept **whether or not there is a refresh token**. A deferred credential is often ready within the
+     * access token's lifetime (Plaut's, 2026-09-30: about a minute of a five-minute token), and collecting
+     * with it is what Android's openid4vci-kt does — it refreshes only once the token has expired. Relying on
+     * the refresh token alone lost both of Plaut's deferred PIDs the day it began rotating them.
      */
     fun deferredResume(): DeferredResume? {
-        if (refreshToken != null) return null
         val token = accessToken ?: return null
         val alias = dpopKeyAlias ?: return null
         return DeferredResume(accessToken = token, dpopKeyAlias = alias, expiresAt = accessTokenExpiresAt)
@@ -349,16 +352,17 @@ internal class IosVciAuthorizationSession(
             response = attempt(dpopNonce)
         }
         if (response.status != HttpStatusCode.OK) {
-            Logger.w(TAG, "the server would not re-bind the refresh token: ${response.status}")
+            Logger.w(TAG, "the server would not re-bind the refresh token: ${response.oauthError()}")
             runCatching { secureArea.deleteKey(alias) }
             return null
         }
 
         val body = response.bodyAsText().asJsonObject()
-        // A server that rotates hands back a new one; this one returns the same token, which stays
-        // usable — either way what the document must store is whatever came back.
-        val rotated = body["refresh_token"]?.jsonPrimitive?.contentOrNull ?: refresh
-        return RebindResult(dpopKeyAlias = alias, refreshToken = rotated)
+        // The dev authorization server returns the same token, which stays usable. Plaut's rotates: the one
+        // presented is spent and only the one returned works — see [RebindResult.rotated]. Either way what
+        // the document must store is whatever came back.
+        val returned = body["refresh_token"]?.jsonPrimitive?.contentOrNull ?: refresh
+        return RebindResult(dpopKeyAlias = alias, refreshToken = returned, rotated = returned != refresh)
     }
 
     /**
@@ -703,7 +707,16 @@ internal class IosOpenID4VciProvisioningClient(
 }
 
 /** A refresh token and the DPoP key it is now bound to, for one document to keep as its own. */
-internal data class RebindResult(val dpopKeyAlias: String, val refreshToken: String)
+internal data class RebindResult(
+    val dpopKeyAlias: String,
+    val refreshToken: String,
+    /**
+     * True when the server handed back a different refresh token, which means it rotates: the session's
+     * token is spent, so re-binding another document with it would be refused, and on a server with reuse
+     * detection could revoke the one just handed out.
+     */
+    val rotated: Boolean = false,
+)
 
 /** The endpoints one issuance needs, read once per session. */
 private data class VciEndpoints(

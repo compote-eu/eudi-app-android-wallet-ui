@@ -25,6 +25,7 @@ import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
@@ -149,6 +150,10 @@ class IosDeferredDocumentCompleterTest {
         deferredStatus: HttpStatusCode,
         deferredBody: String,
         sent: MutableList<Sent> = mutableListOf(),
+        /** What a refresh answers; a rotating server sends a new `refresh_token` here. */
+        tokenBody: String = """{"access_token":"the-token"}""",
+        /** A token the deferred endpoint refuses with `invalid_token`, as an expired one would be. */
+        refusedToken: String? = null,
     ): IosDeferredDocumentCompleter {
         val engine = MockEngine { request ->
             val url = request.url.toString()
@@ -169,8 +174,13 @@ class IosDeferredDocumentCompleterTest {
                     """{"walletInstanceAttestation":"wia.jwt"}""", HttpStatusCode.OK, jsonHeaders
                 )
 
-                url == tokenEndpoint ->
-                    respond("""{"access_token":"the-token"}""", HttpStatusCode.OK, jsonHeaders)
+                url == tokenEndpoint -> respond(tokenBody, HttpStatusCode.OK, jsonHeaders)
+
+                url == deferredEndpoint && request.headers["Authorization"] == "DPoP $refusedToken" -> respond(
+                    "",
+                    HttpStatusCode.Unauthorized,
+                    headersOf(HttpHeaders.WWWAuthenticate, """DPoP error="invalid_token""""),
+                )
 
                 url == deferredEndpoint -> respond(deferredBody, deferredStatus, jsonHeaders)
 
@@ -333,5 +343,84 @@ class IosDeferredDocumentCompleterTest {
 
         assertIs<DeferredCollection.AuthorizationExpired>(result)
         assertTrue(sent.isEmpty())
+    }
+
+    // ── An issuer that grants a refresh token too (Plaut's, from 2026-09-30, rotating it) ─────────────────
+
+    @Test
+    fun with_a_refresh_token_a_live_access_token_is_still_used_first_and_nothing_is_refreshed() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val parked = store.parkWithPendingCredential(resume = resumeFor(5.minutes))
+        val sent = mutableListOf<Sent>()
+        val credential = issuedCredentialFor(parked)
+
+        val result = completerOver(store, HttpStatusCode.OK, """{"credentials":[{"credential":"$credential"}]}""", sent)
+            .complete(parked)
+
+        assertIs<DeferredCollection.Issued>(result)
+        // Android's order: the session's own token while it lives. A refresh here is what lost Plaut's
+        // deferred PIDs once its server began rotating refresh tokens.
+        assertTrue(sent.none { it.url == tokenEndpoint }, "no refresh while the access token lives")
+        assertEquals("DPoP the-sessions-access-token", sent.single { it.url == deferredEndpoint }.authorization)
+    }
+
+    @Test
+    fun an_expired_access_token_falls_back_to_the_refresh_token() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val parked = store.parkWithPendingCredential(resume = resumeFor((-1).minutes))
+        val sent = mutableListOf<Sent>()
+        val credential = issuedCredentialFor(parked)
+
+        val result = completerOver(store, HttpStatusCode.OK, """{"credentials":[{"credential":"$credential"}]}""", sent)
+            .complete(parked)
+
+        assertIs<DeferredCollection.Issued>(result)
+        assertEquals(1, sent.count { it.url == tokenEndpoint })
+        assertEquals("DPoP the-token", sent.single { it.url == deferredEndpoint }.authorization)
+    }
+
+    @Test
+    fun a_refused_access_token_falls_back_to_the_refresh_token_instead_of_giving_up() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val parked = store.parkWithPendingCredential(resume = resumeFor(5.minutes))
+        val sent = mutableListOf<Sent>()
+        val credential = issuedCredentialFor(parked)
+
+        val result = completerOver(
+            store,
+            HttpStatusCode.OK,
+            """{"credentials":[{"credential":"$credential"}]}""",
+            sent,
+            refusedToken = "the-sessions-access-token",
+        ).complete(parked)
+
+        // Plaut's issuer once refused its own token ~40 s in; that must not cost a document that can
+        // still refresh.
+        assertIs<DeferredCollection.Issued>(result)
+        assertEquals(
+            listOf("DPoP the-sessions-access-token", "DPoP the-token"),
+            sent.filter { it.url == deferredEndpoint }.map { it.authorization },
+        )
+    }
+
+    @Test
+    fun a_refresh_token_the_server_rotated_is_kept_for_the_next_poll() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val parked = store.parkWithPendingCredential()
+
+        val result = completerOver(
+            store,
+            HttpStatusCode.BadRequest,
+            """{"error":"issuance_pending","interval":5}""",
+            tokenBody = """{"access_token":"the-token","refresh_token":"the-rotated-refresh-token"}""",
+        ).complete(parked)
+
+        assertIs<DeferredCollection.StillPending>(result)
+        // The one presented is spent on a rotating server: presenting it on the next poll is refused, and
+        // that refusal used to delete the document as "can never be collected".
+        val stored = store.documentStore.lookupDocument(parked.identifier)!!.authorizationData!!
+            .openID4VciAuthorization()
+        assertEquals("the-rotated-refresh-token", assertNotNull(stored).refreshToken)
+        assertEquals(dpopAlias, stored.dpopKeyAlias, "only the refresh token changes")
     }
 }
