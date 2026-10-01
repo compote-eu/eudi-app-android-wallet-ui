@@ -103,6 +103,16 @@ class PresentationRejectionTest {
     }
 
     @Test
+    fun the_signer_chain_is_kept_and_the_signer_is_its_first_certificate() = runTest {
+        val notice = noticeAfterFetching(requestObjectJwt())
+
+        // Naming the verifier asks the trust lists about the chain, so the whole of it is kept.
+        val chain = notice.requestSignerChain
+        assertEquals(1, chain?.certificates?.size)
+        assertEquals(chain?.certificates?.first(), notice.requestSigner)
+    }
+
+    @Test
     fun a_request_object_without_a_response_uri_leaves_nothing_to_answer() = runTest {
         // `response_mode=fragment` requests have no `response_uri`; there is nobody to POST to, and
         // inventing a destination would be worse than staying silent.

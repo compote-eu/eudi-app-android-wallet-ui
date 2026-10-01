@@ -79,8 +79,16 @@ sealed interface IosRemotePresentationState {
      * requester's header and no error — and Android reaches it from two branches of its own. Routing it
      * through `Failed` instead put a *"something went wrong"* heading and a Retry button over an
      * ordinary outcome, which is what a colleague saw on a simulator on 2026-09-17.
+     *
+     * Carries who asked, as the consent screen would have named them, because the screen still shows
+     * the requester's header — and multipaz ends this way before consent, so no request reaches the app
+     * to name them from. Android's no-data screen names the verifier too.
      */
-    data object NothingToShare : IosRemotePresentationState
+    data class NothingToShare(
+        val requesterName: String? = null,
+        val requesterIsTrusted: Boolean = false,
+        val relyingPartyRegistration: RelyingPartyRegistrationOutcome = RelyingPartyRegistrationOutcome.NotOffered,
+    ) : IosRemotePresentationState
 
     /**
      * Blocked: nothing this wallet trusts vouches for the verifier's access certificate, or the trust lists
@@ -276,7 +284,11 @@ class IosRemotePresenter internal constructor(
 
                     is PresentmentCannotSatisfyRequestException -> {
                         // An answer, not an error — see [IosRemotePresentationState.NothingToShare].
-                        mutableState.value = IosRemotePresentationState.NothingToShare
+                        mutableState.value = nothingToShare(
+                            notice = requestNotice,
+                            readerTrust = readerTrust,
+                            registration = evaluateRelyingPartyRegistration(),
+                        )
                     }
 
                     else -> if (t.isUntrustedVerifierRefusal()) {
@@ -422,7 +434,7 @@ class IosRemotePresenter internal constructor(
                 // A name without trust behind it is still worth showing. Unlike proximity there is
                 // usually *something* here: an OpenID4VP request over a URI scheme must be signed, so
                 // the verifier's certificate is present even when nothing vouches for it.
-                requesterName = trustMetadata?.displayName ?: requester.certificateCommonName(),
+                requesterName = requesterName(trustMetadata, requester.certChain),
                 requesterIsTrusted = trustMetadata != null,
                 // Read from the request object the observing engine already kept — `verifier_info` is
                 // another claim multipaz does not parse, and re-fetching a single-use `request_uri`
@@ -484,6 +496,32 @@ class IosRemotePresenter internal constructor(
  * consent screen naming the verifier "null".
  */
 internal fun Requester.certificateCommonName(): String? = certChain.commonName()
+
+/**
+ * What the screens call the verifier: the name a trusted list gives it, else its certificate's own. The
+ * one rule for consent and for "nothing to share", so the two cannot name the same verifier differently.
+ */
+internal fun requesterName(trustMetadata: TrustMetadata?, chain: X509CertChain?): String? =
+    trustMetadata?.displayName ?: chain.commonName()
+
+/**
+ * Who asked, when nothing in the wallet matched: the request's signer as the observing engine kept it,
+ * judged by [readerTrust] the way the consent screen's badge is. Naming only — a request whose signer
+ * nothing vouches for was refused before this, so an undeterminable verdict here just leaves the badge off.
+ */
+internal suspend fun nothingToShare(
+    notice: PresentationRequestNotice,
+    readerTrust: ReaderTrustSource?,
+    registration: RelyingPartyRegistrationOutcome,
+): IosRemotePresentationState.NothingToShare {
+    val chain = notice.requestSignerChain
+    val trustMetadata = chain?.let { runCatching { readerTrust?.trustMetadataFor(Requester(certChain = it)) }.getOrNull() }
+    return IosRemotePresentationState.NothingToShare(
+        requesterName = requesterName(trustMetadata, chain),
+        requesterIsTrusted = trustMetadata != null,
+        relyingPartyRegistration = registration,
+    )
+}
 
 /** The same, for the certificate chain a stored event kept when the `Requester` itself is long gone. */
 internal fun X509CertChain?.commonName(): String? =
