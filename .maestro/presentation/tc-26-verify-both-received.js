@@ -1,6 +1,5 @@
-// ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
-// navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
-// attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+// Ported from eudi-app-ios-wallet-ui and LIVE-VERIFIED unchanged on Android against this KMP
+// app (tc-26-multi-document.yaml, chained after TC-01 -> TC-50, 2026-10-01). NOT yet run on iOS.
 //
 
 // TC-26 post-share verification — confirms the verifier backend

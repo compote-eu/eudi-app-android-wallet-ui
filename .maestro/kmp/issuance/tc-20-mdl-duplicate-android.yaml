@@ -1,0 +1,52 @@
+# TC-20 — duplicate mDL issuance, ANDROID. Built live against this app's real
+# screens (wiped Pixel_6a, 2026-10-01), using .maestro/issuance/tc-20-mdl-
+# duplicate.yaml only as a starting hypothesis.
+#
+# Precondition: exactly one mDL already in the wallet - i.e. run after
+# tc-50-mdl-issuance-android.yaml in the same emulator session (as the CI
+# chain does). Checked below, so a missing precondition fails here, clearly.
+#
+# What this app does with a duplicate, confirmed live: nothing special. The
+# catalog offers mDL as usual, there is no "already have it" warning, the same
+# FormEU issuance runs, and the Documents list then shows a SECOND, separate
+# "mDL (MSO Mdoc)" card with its own validity (and its own fresh credential
+# count, e.g. 30/30 next to the older card's 28/30 after TC-26 used some).
+# The existing mDL is not replaced.
+#
+# The reference file only re-ran TC-50 and asserted "an mDL is visible" - which
+# also passes if the duplicate silently did nothing. This flow checks the
+# count instead: exactly one mDL before, exactly two after. Maestro's `index:`
+# is 0-based over all matching elements, so `index: 1` exists only if there
+# are at least two cards and `index: 2` only if there are three.
+
+appId: eu.compote.euidi.dev
+---
+# --- Precondition: exactly one mDL ---
+- tapOn:
+    id: "dashboard_screen_bottom_navigation_item_documents"
+- extendedWaitUntil:
+    visible: "mDL (MSO Mdoc)"
+    timeout: 10000
+- assertNotVisible:
+    text: "mDL (MSO Mdoc)"
+    index: 1
+
+# --- Issue the mDL again: the same steps and checks as TC-50 ---
+- runFlow: tc-50-mdl-issuance-android.yaml
+
+# --- Verify: two separate mDL cards now, not one replaced, not three ---
+- assertVisible:
+    text: "mDL (MSO Mdoc)"
+    index: 1
+- assertNotVisible:
+    text: "mDL (MSO Mdoc)"
+    index: 2
+# The second card has its own validity line too, and the PIDs are untouched.
+- assertVisible:
+    text: "Valid until: \\d{2} \\w{3} \\d{4}"
+    below:
+      text: "mDL (MSO Mdoc)"
+      index: 1
+    above: "PID (MSO Mdoc)"
+- assertVisible: "PID (MSO Mdoc)"
+- assertVisible: "PID (SD-JWT VC)"

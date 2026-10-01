@@ -1,11 +1,8 @@
-# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
-# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
-# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
-#
-# IDs updated from static code analysis (testTag inventory + navigation mapping) — NOT YET
-# LIVE-VERIFIED.
+# Ported from eudi-app-ios-wallet-ui's TC-26 and LIVE-VERIFIED on Android against this KMP
+# app (wiped Pixel_6a, chained after TC-01 -> TC-50, 2026-10-01): every id, text and the
+# verifier round-trip below checked against real hierarchy dumps. NOT yet run on iOS.
 
-appId: eu.europa.ec.euidi.dev
+appId: eu.compote.euidi.dev
 ---
 # TC-26 — present multiple documents at once (PID + mDL)
 #
@@ -40,8 +37,9 @@ appId: eu.europa.ec.euidi.dev
 # - Two separate cards, not a merged claim list: confirmed directly by
 #   triggering this live - the consent screen shows
 #   request_screen_requested_document_0 and _1 as two independent,
-#   independently-expandable cards (mDL first, then PID, in this
-#   specific run - order isn't asserted here since it isn't guaranteed),
+#   independently-expandable cards (mDL first, then PID, in the iOS
+#   sibling app's run; PID first, then mDL, on this app on Android - order
+#   isn't asserted here since it isn't guaranteed),
 #   each showing only its own claim when expanded ("Licence number" for
 #   mDL, "Family Name(s)" for PID). A single request_screen_share_button
 #   and a single PIN re-entry authorizes both together - there is no
@@ -97,6 +95,23 @@ appId: eu.europa.ec.euidi.dev
     id: "request_screen_requested_document_0"
 - assertVisible:
     id: "request_screen_requested_document_1"
+
+# --- Expand both cards: each must show its own requested claim ---
+# Checked by document title, not card index, since the order isn't
+# guaranteed (see notes above). On Android: "Family Name(s)" / "Testerova"
+# under the PID card, "Licence number" / "123456789" under the mDL card
+# (live hierarchy dump, 2026-10-01). Both values are what TC-01 and TC-50
+# type into the issuer's forms.
+- tapOn:
+    id: "request_screen_requested_document_0"
+- tapOn:
+    id: "request_screen_requested_document_1"
+- assertVisible:
+    text: "Testerova"
+    below: "PID (MSO Mdoc)"
+- assertVisible:
+    text: "123456789"
+    below: "mDL (MSO Mdoc)"
 
 # --- Share both via the single shared button + PIN re-entry ---
 - tapOn:

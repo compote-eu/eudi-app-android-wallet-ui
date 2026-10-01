@@ -45,8 +45,16 @@ appId: eu.compote.euidi.dev
     id: "documents_screen_plus_button"
 - tapOn:
     id: "documents_tab_bottom_sheet_button_0"
-- assertVisible:
-    id: "add_document_screen_subtitle"
+# A long explicit wait, not assertVisible: while the catalog loads, the
+# screen's content is missing from the accessibility tree (2026-10-01 failure
+# dump: only "Go Back" and "QR Scanner", with the subtitle drawn on screen
+# under a spinner), so this can only pass once the dev issuer's metadata has
+# arrived - which took longer than assertVisible's ~17s implicit wait that
+# day. Same 60s budget as the issuer hand-off waits.
+- extendedWaitUntil:
+    visible:
+      id: "add_document_screen_subtitle"
+    timeout: 60000
 
 
 # --- Select PID Combined (matched by stable text, not the volatile id) ---

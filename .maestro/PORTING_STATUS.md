@@ -33,12 +33,12 @@ background, setup, and the cross-platform selector finding this porting effort i
 | TC-14 | App backgrounded during BLE engagement/handshake | Not started |
 | TC-17 | Deferred issuance retry-interval violation | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 | TC-18 | Cancel an in-progress issuance | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
-| TC-20 | Duplicate mDL issuance | Not started |
+| TC-20 | Duplicate mDL issuance | **Ported, partially verified** — Android verified live 2026-10-01: `.maestro/kmp/issuance/tc-20-mdl-duplicate-android.yaml` (a duplicate becomes a second, separate mDL card; checks exactly one before, exactly two after). Passes individually and in one clean full-chain round (TC-01 -> 22 -> 24 -> 25 -> 50 -> 26 -> 20 -> 30), not yet two. iOS not started. |
 | TC-22 | Remote presentation via deep link (OpenID4VP) | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 | TC-24 | User rejects a remote presentation request | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 | TC-25 | RP requests an attribute/document the wallet doesn't have | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
-| TC-26 | Present multiple documents at once (PID + mDL) | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
-| TC-30 | Delete a document | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-26 | Present multiple documents at once (PID + mDL) | **Ported, partially verified** — Android verified live 2026-10-01: `.maestro/presentation/tc-26-multi-document.yaml`, fixed in place (incl. the verifier-side check that both claims arrived). Passes individually and in one clean full-chain round, not yet two. iOS not run. |
+| TC-30 | Delete a document | **Ported, partially verified** — Android verified live 2026-10-01: `.maestro/kmp/issuance/tc-30-delete-document.yaml` (tagged "Remove from wallet" button at the bottom of Document Details, then the "Remove document?" sheet; replaces the reference's coordinate taps). Passes individually and in one clean full-chain round, not yet two. Platform-neutral steps, but iOS not run. |
 | TC-32 | Reinstall wipes state (empty-state UI check) | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 | TC-34 | Transaction log completeness (History tab) | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 | TC-37 | QES / remote-qualified-signing flow (physical device only, Appium in the reference project, not Maestro) | Not started |
@@ -47,7 +47,7 @@ background, setup, and the cross-platform selector finding this porting effort i
 | TC-43 | Change PIN code | Not started |
 | TC-46 | Remote/OpenID4VP presentation: trigger + share + network-loss handling | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 | TC-47 | Force-kill mid-flow recovery | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
-| TC-50 | mDL issuance (no existing PID required) | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
+| TC-50 | mDL issuance (no existing PID required) | **Ported, partially verified** — Android: `.maestro/kmp/issuance/tc-50-mdl-issuance-android.yaml`, verified live 2026-10-01, passes two consecutive fresh-wipe TC-01 -> 22 -> 24 -> 25 -> 50 rounds and one full-chain round; in CI. iOS: `.maestro/kmp/issuance/tc-50-mdl-issuance-ios.yaml` passed two consecutive fresh-erase rounds locally on CI's iPhone 16 Pro Max, but is not committed or in CI yet. |
 | TC-51 | Duplicate PID issuance | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 | TC-57 | Issuance via a scanned/deep-linked OpenID4VCI Credential Offer | Not started (reference ids statically corrected 2026-09-28, not live-verified) |
 

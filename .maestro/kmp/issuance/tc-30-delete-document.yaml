@@ -1,0 +1,70 @@
+# TC-30 — delete a document. Built live against this app's real screens on
+# Android (wiped Pixel_6a, 2026-10-01), replacing .maestro/issuance/tc-30-
+# delete-document.yaml's coordinate taps and overflow-menu "Remove". Uses only
+# this app's own tags and texts, no platform-specific steps, but NOT yet run
+# on iOS.
+#
+# Precondition: two mDL cards - i.e. run after tc-20-mdl-duplicate-android.yaml
+# in the same session (as the CI chain does). This deletes one of them, the
+# duplicate TC-20 added, leaving the wallet as TC-50 left it: one mDL plus
+# both PIDs. Checked below, so a missing precondition fails here, clearly.
+#
+# Confirmed live:
+# - Document Details has a dedicated, tagged "Remove from wallet" button
+#   (document_details_screen_delete_button) - not just the toolbar's "More
+#   Items" overflow. It is the last item of the details screen's scrolling
+#   column (DocumentDetailsScreen.kt's BottomSection), below all the document
+#   data, so it is off screen at first and needs a scroll.
+# - It opens a "Remove document?" bottom sheet with tagged Cancel / Remove
+#   buttons (..._dialogue_delete_document_negative_button / _positive_button).
+# - Remove returns straight to the Documents list.
+#
+# Which card is index 1 depends on the list's order, so this doesn't assert
+# which of the two mDLs went - only that exactly one is left and the PIDs are
+# untouched. (In the 2026-10-01 runs it was the duplicate: the card left had
+# the older credential count.)
+
+appId: eu.compote.euidi.dev
+---
+# --- Precondition: exactly two mDL cards ---
+- tapOn:
+    id: "dashboard_screen_bottom_navigation_item_documents"
+- extendedWaitUntil:
+    visible:
+      text: "mDL (MSO Mdoc)"
+      index: 1
+    timeout: 10000
+- assertNotVisible:
+    text: "mDL (MSO Mdoc)"
+    index: 2
+
+# --- Open the second mDL -> Remove from wallet -> confirm ---
+- tapOn:
+    text: "mDL (MSO Mdoc)"
+    index: 1
+- scrollUntilVisible:
+    element:
+      id: "document_details_screen_delete_button"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "document_details_screen_delete_button"
+- extendedWaitUntil:
+    visible:
+      id: "document_details_screen_dialogue_delete_document_positive_button"
+    timeout: 10000
+- assertVisible: "Remove document\\?"
+- tapOn:
+    id: "document_details_screen_dialogue_delete_document_positive_button"
+
+# --- Verify: back on Documents, exactly one mDL left, PIDs untouched ---
+- extendedWaitUntil:
+    visible:
+      id: "documents_screen_plus_button"
+    timeout: 10000
+- assertVisible: "mDL (MSO Mdoc)"
+- assertNotVisible:
+    text: "mDL (MSO Mdoc)"
+    index: 1
+- assertVisible: "PID (MSO Mdoc)"
+- assertVisible: "PID (SD-JWT VC)"

@@ -36,12 +36,12 @@ jobs:
     runs-on: [self-hosted, macOS, maestro]
     permissions:
       contents: read
-    # Generous ceiling, not an expected duration — the flow itself normally finishes in well
-    # under 5 minutes (confirmed interactively this session: PIN setup through the document
-    # catalog, unmodified, passes in seconds). Sized to comfortably absorb a cold Gradle build,
-    # not to tolerate a hung Maestro driver — that failure mode is bounded separately, and much
-    # more tightly, on the flow-run step itself below.
-    timeout-minutes: 30
+    # Generous ceiling, not an expected duration — the eight chained flows (TC-01 through
+    # TC-30) took about 8 minutes on a wiped local emulator on 2026-10-01, plus build, wipe
+    # and boot. Sized to absorb a cold Gradle build and a slow day at the dev issuer (single
+    # metadata requests have taken over 11s), not to tolerate a hung Maestro driver — that
+    # failure mode is bounded separately, and much more tightly, on each flow-run step below.
+    timeout-minutes: 45
     env:
       # Confirmed live on the machine this workflow was authored on (echo $ANDROID_HOME →
       # /Users/martin.cekan/Library/Android/sdk) — but that's this session's interactive dev
@@ -315,6 +315,31 @@ jobs:
       - name: Run Maestro flow (TC-25 unsatisfiable request)
         timeout-minutes: 10
         run: maestro --device "$SERIAL" test .maestro/presentation/tc-25-unsatisfiable-request.yaml
+
+      # TC-50, TC-26, TC-20, TC-30 — Android only so far; built and verified live on a wiped
+      # Pixel_6a on 2026-10-01, see each file's header. Same session as everything above, and
+      # each depends on the one before: TC-50 issues an mDL (needs the wallet set up and Chrome
+      # past its first run, from TC-01), TC-26 shares TC-01's PID and TC-50's mDL together,
+      # TC-20 issues the mDL a second time and checks for exactly two cards, and TC-30 deletes
+      # one of them and checks for exactly one left. Verification is ONE clean full-chain round
+      # (TC-01 -> 22 -> 24 -> 25 -> 50 -> 26 -> 20 -> 30, 8/8), not this repo's usual two
+      # consecutive — a second round was stopped partway, not failed. Each passed individually
+      # first; TC-50 also passed two consecutive TC-01 -> ... -> 50 rounds.
+      - name: Run Maestro flow (TC-50 mDL issuance)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-50-mdl-issuance-android.yaml
+
+      - name: Run Maestro flow (TC-26 PID + mDL multi-document share)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/presentation/tc-26-multi-document.yaml
+
+      - name: Run Maestro flow (TC-20 duplicate mDL issuance)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-20-mdl-duplicate-android.yaml
+
+      - name: Run Maestro flow (TC-30 delete document)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-30-delete-document.yaml
 
       - name: Kill emulator
         if: always()

@@ -1,0 +1,32 @@
+# Shared sub-flow, ANDROID ONLY: close the keyboard after typing into a web
+# form in Chrome, and confirm it actually closed.
+#
+# Why a point tap, and why this point: the page's left margin just below
+# Chrome's toolbar. Every interactive element of the issuer's forms starts at
+# x >= 63px (the form card; fields at x >= 147px) and Chrome's toolbar ends at
+# y = 279px, so (3%, 15%) = (32, 360)px on the 1080x2400 Pixel_6a lands on
+# plain page background - checked with a live hierarchy dump on 2026-10-01:
+# only non-clickable page containers under it. The keyboard never covers the
+# top of the screen, whatever Chrome has scrolled to. Tapping page background
+# blurs the focused input and cannot navigate.
+#
+# What it replaces: tapping the nearest section heading. That heading could
+# sit right at the keyboard's edge - on 2026-10-01 "Portrait" was at y
+# 1315-1349 with Chrome's autofill bar from y 1328 - so the tap hit the
+# keyboard, the keyboard stayed up, and the next field's text went into the
+# previous field ("TesterovaMaestro"). Not `hideKeyboard` either: on Android
+# that is a BACK press, and a BACK while the keyboard is already down leaves
+# Chrome (see formeu-identity-proofing-flow-android.yaml's header).
+#
+# The wait below fails if the keyboard is still up: Gboard's keys are in the
+# hierarchy while it is shown ("Use voice typing", "Space"). Checked both
+# ways live on 2026-10-01 - it fails with the keyboard up, passes after this
+# tap (`dumpsys input_method`: mInputShown true, then false).
+
+appId: eu.compote.euidi.dev
+---
+- tapOn:
+    point: "3%,15%"
+- extendedWaitUntil:
+    notVisible: "Use voice typing|Space"
+    timeout: 5000

@@ -24,14 +24,10 @@
 # No `hideKeyboard` here for that reason: even after label-matched taps, a
 # BACK sent while the keyboard was not actually up left Chrome for the app
 # (local run 11 and CI run 36554995193, 2026-09-29). The keyboard is closed
-# instead by tapping the nearest section heading still on screen above it -
-# "Mandatory Information", "Nationality", "Place Of Birth". Those are plain
-# text (TextView in Chrome's tree); the field captions are View nodes, most
-# likely <label>s, which would re-focus their input. Which heading is still
-# visible depends on how far Chrome scrolls the focused field up; the ones
-# below were checked live with `dumpsys input_method` (mInputShown=false,
-# Chrome still in front) after each tap. A heading tap cannot navigate, and
-# fails loudly if the heading is off screen.
+# instead by android-chrome-close-keyboard.yaml, which taps the page margin
+# and then confirms the keyboard is down - see that file for why. (It used to
+# be a tap on the nearest section heading, which could sit under the
+# keyboard's edge and miss - 2026-10-01.)
 #
 # The iOS-only system identity-verification "Allow" dialog is left out.
 #
@@ -48,14 +44,28 @@ appId: eu.compote.euidi.dev
     below: "Birth Date"
 - tapOn: "SET"
 
+# Each text entry is checked in place, pinned between its own label and the
+# next one: a value typed into the wrong field then fails right here instead
+# of at Confirm (2026-10-01: "Maestro" went into Family Name, and the flow
+# only failed at "Review & Send"). The `above:` bound matters - Chrome's
+# autofill bar above the keyboard shows the same values (e.g. a "Maestro"
+# chip remembered from an earlier form) and would satisfy a bare check.
 - tapOn:
     below: "Family Name"
 - inputText: "Testerova"    # same test identity as the iOS sub-flow; TC-22 asserts it
-- tapOn: "Mandatory Information"    # closes the keyboard
+- assertVisible:    # the value landed in this field, not a neighbour
+    text: "Testerova"
+    below: "Family Name"
+    above: "Given Name"
+- runFlow: android-chrome-close-keyboard.yaml
 - tapOn:
     below: "Given Name"
 - inputText: "Maestro"
-- tapOn: "Nationality"    # "Mandatory Information" is scrolled off by now
+- assertVisible:    # the value landed in this field, not a neighbour
+    text: "Maestro"
+    below: "Given Name"
+    above: "Nationality"
+- runFlow: android-chrome-close-keyboard.yaml
 
 # Nationality > Country Code. Scroll until the button under its input is
 # fully on screen so the input itself is too.
@@ -65,8 +75,12 @@ appId: eu.compote.euidi.dev
     direction: DOWN
 - tapOn:
     below: "Country Code"
-- inputText: "FR"
-- tapOn: "Nationality"
+- inputText: "CZ"
+- assertVisible:    # the value landed in this field, not a neighbour
+    text: "CZ"
+    below: "Country Code"
+    above: "\\+ Add Nationality"
+- runFlow: android-chrome-close-keyboard.yaml
 
 # Place Of Birth > Country - the form requires at least one Place Of Birth
 # field. "Country" is a full-string match, so it doesn't hit "Country Code".
@@ -76,8 +90,12 @@ appId: eu.compote.euidi.dev
     direction: DOWN
 - tapOn:
     below: "Country"
-- inputText: "FR"
-- tapOn: "Place Of Birth"
+- inputText: "Czechia"
+- assertVisible:    # the value landed in this field, not a neighbour
+    text: "Czechia"
+    below: "Country"
+    above: "Locality"
+- runFlow: android-chrome-close-keyboard.yaml
 
 - scrollUntilVisible:
     element:
