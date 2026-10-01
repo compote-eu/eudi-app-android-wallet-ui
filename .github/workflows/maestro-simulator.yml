@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   android-tests:
-    name: Android — Maestro (TC-01 common flow)
+    name: Android — Maestro E2E
     # Custom label, not bare `self-hosted`: confirmed against the runner's actual registered
     # labels (self-hosted, macOS, ARM64, maestro, mobile-e2e) — `maestro` is provisioned
     # specifically for this kind of workflow, not any self-hosted runner in the fleet, matching
@@ -407,7 +407,7 @@ jobs:
           retention-days: 3
 
   ios-tests:
-    name: iOS — Maestro (TC-01 common flow)
+    name: iOS — Maestro E2E
     needs: android-tests
     # Critical: must run even if android-tests failed, so a platform-specific Android failure
     # doesn't mask whether the shared flow file is still fine on iOS (or vice versa) — this is
