@@ -471,7 +471,10 @@ internal fun provideIosProximitySuccessInteractor(
  */
 @Single
 fun provideIosRemotePresenter(engine: IosWalletEngine): IosRemotePresenter =
-    IosRemotePresenter(walletEngine = engine)
+    IosRemotePresenter(
+        walletEngine = engine,
+        isRegistrationCheckEnabled = { IosPreferences.isRegistrationCheckEnabled() },
+    )
 
 @Single
 internal fun provideIosRemotePresentationCoordinator(

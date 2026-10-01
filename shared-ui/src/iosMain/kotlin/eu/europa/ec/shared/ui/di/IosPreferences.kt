@@ -39,7 +39,9 @@ internal object IosPreferences {
 
     /** Same key string as Android's, so the two platforms' stores read alike even though they are separate. */
     private const val SHOW_BATCH_ISSUANCE_COUNTER = "ShowBatchIssuanceCounter"
-    private const val CHECK_ISSUER_REGISTRATION = "CheckIssuerRegistration"
+
+    /** Android's key too — `PrefKeys.getRegistrationCheckEnabled`. */
+    private const val REGISTRATION_CHECK_ENABLED = "RegistrationCheckEnabled"
 
     fun showBatchIssuanceCounter(): Boolean {
         val defaults = NSUserDefaults.standardUserDefaults
@@ -52,16 +54,17 @@ internal object IosPreferences {
     }
 
     /**
-     * Whether to check an issuer's registration certificate before issuing.
+     * Whether to check registration certificates: an issuer's before issuing, and a verifier's before
+     * asking for consent — one setting for both, as on Android.
      *
      * ⚠️ Defaults to **off**, matching Android, and for a reason worth keeping: almost no issuer
      * publishes `issuer_info` yet, and the checks fail closed — so a default of on would refuse most of
      * the ecosystem for something the user did not ask for.
      */
-    fun checkIssuerRegistration(): Boolean =
-        NSUserDefaults.standardUserDefaults.boolForKey(CHECK_ISSUER_REGISTRATION)
+    fun isRegistrationCheckEnabled(): Boolean =
+        NSUserDefaults.standardUserDefaults.boolForKey(REGISTRATION_CHECK_ENABLED)
 
-    fun setCheckIssuerRegistration(value: Boolean) {
-        NSUserDefaults.standardUserDefaults.setBool(value, CHECK_ISSUER_REGISTRATION)
+    fun setRegistrationCheckEnabled(value: Boolean) {
+        NSUserDefaults.standardUserDefaults.setBool(value, REGISTRATION_CHECK_ENABLED)
     }
 }

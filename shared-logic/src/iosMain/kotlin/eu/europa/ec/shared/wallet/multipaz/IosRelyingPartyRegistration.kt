@@ -61,6 +61,9 @@ sealed interface RelyingPartyRegistrationOutcome {
     /** The request carries no registration certificate. Most verifiers publish none yet. */
     data object NotOffered : RelyingPartyRegistrationOutcome
 
+    /** The user has the registration check switched off, so the certificate was not looked at. */
+    data object NotChecked : RelyingPartyRegistrationOutcome
+
     data class Verified(
         val registration: IssuerRegistration,
         val overAsked: List<OverAskedClaim>,

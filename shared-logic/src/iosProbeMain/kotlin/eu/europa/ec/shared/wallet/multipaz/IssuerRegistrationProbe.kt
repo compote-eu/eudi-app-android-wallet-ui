@@ -246,6 +246,7 @@ private suspend fun runRelyingPartyProbe(onResult: (String) -> Unit) {
 
     when (outcome) {
         is RelyingPartyRegistrationOutcome.NotOffered -> say("RESULT: no certificate offered")
+        is RelyingPartyRegistrationOutcome.NotChecked -> say("RESULT: not checked (the registration check is off)")
         is RelyingPartyRegistrationOutcome.Failed ->
             say("RESULT: FAILED ${outcome.reason}${outcome.detail?.let { " ($it)" } ?: ""}")
 
