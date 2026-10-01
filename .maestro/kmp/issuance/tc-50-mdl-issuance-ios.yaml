@@ -1,0 +1,165 @@
+# TC-50 — mDL issuance, iOS. Built live against this app's real screens
+# (erased iPhone 16 Pro, then CI's iPhone 16 Pro Max, iOS 18.5, 2026-10-01), using
+# .maestro/issuance/tc-50-mdl-issuance.yaml only as a starting hypothesis.
+# Android counterpart: tc-50-mdl-issuance-android.yaml - same steps, but the
+# form needs different taps per platform (see formeu-identity-proofing-flow-
+# android.yaml's header for why).
+#
+# Precondition: wallet already set up and unlocked - i.e. run after
+# tc-01-pid-issuance-common.yaml in the same simulator session (as the CI
+# chain does). Does NOT need the PID itself.
+#
+# Divergences from the reference file and from TC-01's iOS sub-flow
+# (formeu-identity-proofing-flow.yaml), all confirmed live:
+# - No ASWebAuthenticationSession "Continue" consent: the issuer opens in
+#   Safari proper, as for TC-01.
+# - The issuer's mDL country page offers only FormEU and Portugal. As on the
+#   PID page the radios expose their state only as a value ("1" selected,
+#   "0" not), but there is no "nodeEU"/Czechia column here, so the PID
+#   sub-flow's `rightOf: "nodeEU"` check never passes. FormEU is the left
+#   card, so a "1" left of "Portugal" means it is the one selected. Unlike
+#   the PID page (Czechia by default), FormEU is ALREADY selected here before
+#   any tap (hierarchy dump, 2026-10-01), so this check confirms the right
+#   card is on rather than catching a lost tap; it would start to matter if
+#   the issuer's default changed.
+# - The mDL form is NOT the PID form: Birth Date, Document Number, a Driving
+#   Privileges block (Codes > Code / Sign / Value, Expiry Date, Issue Date,
+#   Vehicle Category Code preset to "AM"), Family Name, Given Name, and a
+#   Portrait picker. No Nationality / Place Of Birth.
+# - Driving Privileges > Codes > Code is an HTML `required` input (Confirm
+#   does nothing while it is empty - seen on Android, same form).
+# - The Portrait samples have no label on iOS (Android exposes "image" /
+#   "image2"), only their radio value; the first renders pre-selected.
+# - The reference's "Allow ... for Identity Verification?" dialog did not
+#   appear; Safari's "Open in "EUDI Wallet"?" did, even though TC-01 had
+#   already answered it once in the same session.
+
+appId: eu.compote.euidi.dev
+---
+# --- Dashboard -> Documents -> Add -> Choose from list ---
+- tapOn:
+    id: "dashboard_screen_bottom_navigation_item_documents"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "documents_tab_bottom_sheet_button_0"
+# Same placeholder-rows race as TC-01: wait for the real catalog first.
+- extendedWaitUntil:
+    visible: "Certificate of Residence (MSO Mdoc)"
+    timeout: 60000    # same 60s catalog budget as TC-01's catalog wait
+- scrollUntilVisible:
+    element:
+      text: "mDL (MSO Mdoc)"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "mDL (MSO Mdoc)"
+
+# --- FormEU (same 60s hand-off budget and re-tap retry as TC-01) ---
+- extendedWaitUntil:
+    visible: "FormEU"
+    timeout: 60000
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn: "FormEU"
+      - assertVisible:
+          text: "1"
+          leftOf: "Portugal"
+- tapOn: "Submit"
+- extendedWaitUntil:
+    visible: "Document Number"
+    timeout: 60000
+
+# --- mDL form; Safari's "Done" closes the date picker and the keyboard ---
+# Birth Date: accept the picker's default (today).
+- tapOn:
+    below: "Birth Date"
+- tapOn: "Done"
+- tapOn:
+    below: "Document Number"
+- inputText: "123456789"
+- assertVisible: "123456789"
+- tapOn: "Done"
+# Driving Privileges > Codes > Code (required). "Code" is a full-string
+# match, so it doesn't hit "Vehicle Category Code".
+- tapOn:
+    below: "Code"
+- inputText: "B"
+- tapOn: "Done"
+
+- scrollUntilVisible:
+    element:
+      text: "Given Name"
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    below: "Family Name"
+- inputText: "Testerova"    # same test identity as TC-01's PID
+- assertVisible: "Testerova"
+- tapOn:
+    below: "Given Name"
+- inputText: "Maestro"
+- assertVisible: "Maestro"
+- tapOn: "Done"
+
+# Portrait: tap the first sample anyway so the flow doesn't depend on the
+# pre-selected default, then check it is the selected one.
+- scrollUntilVisible:
+    element:
+      text: "Upload a file"
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    below: "Please select one option or upload a file."
+- assertVisible:
+    text: "1"
+    below: "Please select one option or upload a file."
+    leftOf: "0"
+
+- scrollUntilVisible:
+    element:
+      text: "Confirm"
+    direction: DOWN
+    timeout: 15000
+- scroll
+- tapOn: "Confirm"
+
+# --- Review & Send -> Authorize -> back into the app ---
+- extendedWaitUntil:
+    visible: "Review & Send"
+    timeout: 20000
+# The extra `scroll` on Confirm/Authorize: see formeu-identity-proofing-flow.yaml.
+- scrollUntilVisible:
+    element:
+      text: "Authorize"
+    direction: DOWN
+    timeout: 15000
+- scroll
+- tapOn: "Authorize"
+- extendedWaitUntil:
+    visible: "Open in .EUDI Wallet.\\?"
+    timeout: 30000
+    optional: true
+- tapOn:
+    text: "Open"
+    optional: true
+
+# --- Native success screen -> Close ---
+- extendedWaitUntil:
+    visible: "You have successfully added the following to your wallet"
+    timeout: 60000
+- tapOn:
+    id: "document_success_screen_button"
+
+# --- Verify: mDL in the Documents list, next to TC-01's PIDs ---
+- extendedWaitUntil:
+    visible: "mDL (MSO Mdoc)"
+    timeout: 10000
+- assertVisible: "PID (MSO Mdoc)"
+# The mDL row's own validity line - pinned between the mDL title and the
+# first PID title, since an unanchored "Valid until" also matches the PID
+# rows. Full-string regex; this app's text is "Valid until: 30 Dec 2026".
+- assertVisible:
+    text: "Valid until: \\d{2} \\w{3} \\d{4}"
+    below: "mDL (MSO Mdoc)"
+    above: "PID (MSO Mdoc)"

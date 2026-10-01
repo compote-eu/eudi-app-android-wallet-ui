@@ -416,7 +416,9 @@ jobs:
     runs-on: [self-hosted, macOS, maestro]
     permissions:
       contents: read
-    timeout-minutes: 30
+    # Raised from 30 with the TC-50 -> TC-30 steps below: the eight chained flows took about
+    # 7 minutes on CI's simulator locally on 2026-10-01, on top of a full Xcode build.
+    timeout-minutes: 45
     env:
       # Confirmed correct THIS session, by an actual local xcodebuild run that produced
       # "BUILD SUCCEEDED" — not carried over from the old file's guesses.
@@ -596,6 +598,42 @@ jobs:
           UDID: ${{ steps.sim.outputs.udid }}
         run: |
           maestro --udid "$UDID" test .maestro/presentation/tc-25-unsatisfiable-request.yaml
+
+      # TC-50, TC-26, TC-20, TC-30 — same chain and dependencies as the android-tests job (see
+      # the comment there). TC-26 and TC-30 are the same files as on Android; TC-50 and TC-20
+      # have iOS variants, since issuing goes through Safari rather than Chrome. Verified on
+      # 2026-10-01 on this job's own simulator (iPhone 16 Pro Max, iOS 18.5) after a fresh
+      # build: two consecutive fresh-erase full-chain rounds, 8/8 each. One open, unexplained
+      # iOS issue that this order cannot hit: run straight after TC-50 as the first deep link
+      # after an erase, TC-26's link was once received but never acted on (see
+      # .maestro/PORTING_STATUS.md, TC-26).
+      - name: Run Maestro flow (TC-50 mDL issuance)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/kmp/issuance/tc-50-mdl-issuance-ios.yaml
+
+      - name: Run Maestro flow (TC-26 PID + mDL multi-document share)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/presentation/tc-26-multi-document.yaml
+
+      - name: Run Maestro flow (TC-20 duplicate mDL issuance)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/kmp/issuance/tc-20-mdl-duplicate-ios.yaml
+
+      - name: Run Maestro flow (TC-30 delete document)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/kmp/issuance/tc-30-delete-document.yaml
 
       - name: Prepare Maestro artifacts for upload
         if: failure()

@@ -1,13 +1,14 @@
 # TC-30 — delete a document. Built live against this app's real screens on
 # Android (wiped Pixel_6a, 2026-10-01), replacing .maestro/issuance/tc-30-
 # delete-document.yaml's coordinate taps and overflow-menu "Remove". Uses only
-# this app's own tags and texts, no platform-specific steps, but NOT yet run
-# on iOS.
+# this app's own tags and texts, no platform-specific steps, and runs
+# unchanged on iOS too (iPhone 16 Pro Max, iOS 18.5, same day).
 #
 # Precondition: two mDL cards - i.e. run after tc-20-mdl-duplicate-android.yaml
-# in the same session (as the CI chain does). This deletes one of them, the
-# duplicate TC-20 added, leaving the wallet as TC-50 left it: one mDL plus
-# both PIDs. Checked below, so a missing precondition fails here, clearly.
+# or tc-20-mdl-duplicate-ios.yaml in the same session (as the CI chain does).
+# This deletes one of them, the duplicate TC-20 added, leaving the wallet as
+# TC-50 left it: one mDL plus both PIDs. Checked below, so a missing
+# precondition fails here, clearly.
 #
 # Confirmed live:
 # - Document Details has a dedicated, tagged "Remove from wallet" button

@@ -1,6 +1,6 @@
-# Ported from eudi-app-ios-wallet-ui's TC-26 and LIVE-VERIFIED on Android against this KMP
-# app (wiped Pixel_6a, chained after TC-01 -> TC-50, 2026-10-01): every id, text and the
-# verifier round-trip below checked against real hierarchy dumps. NOT yet run on iOS.
+# Ported from eudi-app-ios-wallet-ui's TC-26 and LIVE-VERIFIED against this KMP app on both
+# platforms, 2026-10-01: built against real hierarchy dumps on Android (wiped Pixel_6a,
+# chained after TC-01 -> TC-50), then run unchanged on iOS (iPhone 16 Pro Max, iOS 18.5).
 
 appId: eu.compote.euidi.dev
 ---

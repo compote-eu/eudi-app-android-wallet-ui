@@ -1,5 +1,5 @@
-// Ported from eudi-app-ios-wallet-ui and LIVE-VERIFIED unchanged on Android against this KMP
-// app (tc-26-multi-document.yaml, chained after TC-01 -> TC-50, 2026-10-01). NOT yet run on iOS.
+// Ported from eudi-app-ios-wallet-ui and LIVE-VERIFIED unchanged on both platforms against
+// this KMP app (tc-26-multi-document.yaml, chained after TC-01 -> TC-50, 2026-10-01).
 //
 
 // TC-26 post-share verification — confirms the verifier backend
