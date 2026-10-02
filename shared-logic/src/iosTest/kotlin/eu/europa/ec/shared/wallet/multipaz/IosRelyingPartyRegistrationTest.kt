@@ -293,6 +293,27 @@ class IosRelyingPartyRegistrationTest {
     }
 
     @Test
+    fun a_readers_certificate_is_bound_to_the_reader_and_judged_against_what_it_asks_for() = runTest {
+        // The same certificate as an ISO 18013-5 reader would carry it: bound to the reader that
+        // authenticated the request, with the elements it asked for in place of a DCQL query.
+        val certificate = ReaderRegistrationCertificate.Jwt(relyingPartyCertificateIn(requestObject())!!)
+        val asked = listOf(
+            OverAskedClaim(format = "mso_mdoc", path = listOf(pidDoctype, "family_name"), doctype = pidDoctype),
+            OverAskedClaim(format = "mso_mdoc", path = listOf(pidDoctype, "birth_date"), doctype = pidDoctype),
+        )
+
+        val verified = validator().evaluateReader(certificate, asked, reader = requestSigner())
+        assertEquals(listOf(asked[1]), assertIs<RelyingPartyRegistrationOutcome.Verified>(verified).overAsked)
+
+        val otherReader = validator().evaluateReader(certificate, asked, reader = requestSigner(orgId = "LEIXG-000000000"))
+        assertEquals(IssuerRegistrationFailure.NOT_BOUND_TO_ISSUER, assertIs<RelyingPartyRegistrationOutcome.Failed>(otherReader).reason)
+
+        // An unauthenticated reader has no certificate to bind to.
+        val anonymous = validator().evaluateReader(certificate, asked, reader = null)
+        assertEquals(IssuerRegistrationFailure.NOT_BOUND_TO_ISSUER, assertIs<RelyingPartyRegistrationOutcome.Failed>(anonymous).reason)
+    }
+
+    @Test
     fun an_untrusted_signer_chain_is_refused() = runTest {
         val outcome = validator(chainTrusted = false).evaluate(requestObject(), requestSigner())
 

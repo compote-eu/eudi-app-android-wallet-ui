@@ -35,6 +35,7 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.engagement.EngagementGenerator
+import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.transport.MdocTransportFactory
@@ -116,6 +117,8 @@ class IosProximityPresenter internal constructor(
      * ambiguous overload, so the public one below is the single place the production value is chosen.
      */
     private val readerTrust: ReaderTrustSource?,
+    /** Whether the user asked for registration certificates to be checked; read on every request. */
+    private val isRegistrationCheckEnabled: suspend () -> Boolean,
 ) {
 
     /**
@@ -127,9 +130,14 @@ class IosProximityPresenter internal constructor(
      */
     constructor(
         walletEngine: IosWalletEngine,
+        /**
+         * The user's registration-check setting. No default: the stored value lives in `:shared-ui`,
+         * and a silent `false` here would switch the check off for any caller that forgot it.
+         */
+        isRegistrationCheckEnabled: suspend () -> Boolean,
         credentialDomain: String = MultipazWalletStore.DEFAULT_DOCUMENT_MANAGER_ID,
         scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
-    ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust())
+    ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust(), isRegistrationCheckEnabled)
 
     private val mutableState = MutableStateFlow<IosProximityState>(IosProximityState.Idle)
     val state: StateFlow<IosProximityState> = mutableState.asStateFlow()
@@ -143,6 +151,9 @@ class IosProximityPresenter internal constructor(
 
     /** What the user agreed to share, remembered so the success state can name it. */
     private var sharedDocuments: List<String> = emptyList()
+
+    /** The request being consented to, as the reader sent it — where its registration certificate is. */
+    private var deviceRequest: DeviceRequest? = null
 
     /**
      * Advertises this wallet over BLE and publishes the QR the reader scans.
@@ -244,6 +255,7 @@ class IosProximityPresenter internal constructor(
         pendingConsent?.complete(null)
         pendingConsent = null
         pendingData = null
+        deviceRequest = null
         presentmentJob?.cancel()
         presentmentJob = null
         scope.launch { runCatching { transport?.close() } }
@@ -269,6 +281,7 @@ class IosProximityPresenter internal constructor(
                 keyAgreementPossible = listOf(EcCurve.P256),
                 timeout = ENGAGEMENT_TIMEOUT,
                 onSendingResponse = { mutableState.value = IosProximityState.Sending },
+                onDeviceRequest = { deviceRequest = it },
             )
             mutableState.value = IosProximityState.Sent(sharedDocuments = sharedDocuments)
         } catch (e: CancellationException) {
@@ -331,6 +344,7 @@ class IosProximityPresenter internal constructor(
         // Before the request is published, so a screen never shows it. multipaz ends the session on the
         // way out and builds no response.
         if (isUntrustedReader(requester, trustMetadata)) throw UntrustedVerifierException()
+        val registration = readerRegistration(requester)
 
         val consent = CompletableDeferred<CredentialPresentmentSelection?>()
         pendingConsent = consent
@@ -341,6 +355,7 @@ class IosProximityPresenter internal constructor(
                 // marks it verified, and over BLE there is usually neither.
                 requesterName = trustMetadata?.displayName ?: requester.appId,
                 requesterIsTrusted = trustMetadata != null,
+                relyingPartyRegistration = registration,
             ),
         )
 
@@ -351,6 +366,30 @@ class IosProximityPresenter internal constructor(
             mutableState.value = IosProximityState.Sending
         }
         return selection
+    }
+
+    /**
+     * What the reader's registration certificate says, when the user has the check switched on — the
+     * proximity half of what wallet-core's request processor does on Android, in the same order.
+     *
+     * Off means not looked at, so nothing is fetched. Without an ETSI trust source there is nothing to
+     * judge against, which Android also answers by not evaluating. A request carrying two different
+     * certificates fails here, as Android's processor fails it; any other trouble judging it is logged and
+     * shown as not evaluated, so the user may still answer.
+     */
+    private suspend fun readerRegistration(requester: Requester): RelyingPartyRegistrationOutcome {
+        if (!isRegistrationCheckEnabled()) return RelyingPartyRegistrationOutcome.NotChecked
+        val request = deviceRequest ?: return RelyingPartyRegistrationOutcome.NotOffered
+        val etsi = readerTrust as? IosEtsiTrust ?: return RelyingPartyRegistrationOutcome.NotOffered
+        val certificate = request.readerRegistrationCertificate()
+        return runCatching {
+            withEtsiRegistrationValidator(etsi) {
+                evaluateReader(certificate, request.requestedClaims(), requester.certChain?.certificates?.firstOrNull())
+            }
+        }.getOrElse {
+            Logger.w(TAG, "the reader's registration could not be evaluated: ${it.message}")
+            RelyingPartyRegistrationOutcome.NotOffered
+        }
     }
 
     private fun fail(cause: Throwable) {

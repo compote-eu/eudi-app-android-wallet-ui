@@ -16,8 +16,6 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
-import eu.europa.ec.shared.wallet.trust.toTrustChain
-import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import io.ktor.client.HttpClient
@@ -187,24 +185,7 @@ class IosRemotePresenter internal constructor(
         val etsi = readerTrust as? IosEtsiTrust ?: return RelyingPartyRegistrationOutcome.NotOffered
 
         return runCatching {
-            HttpClient(Darwin).use { client ->
-                IosRelyingPartyRegistrationValidator(
-                    isChainTrusted = { chain ->
-                        etsi.isTrusted(
-                            chain.certificates.toTrustChain(),
-                            VerificationContext.WalletRelyingPartyRegistrationCertificate,
-                        )
-                    },
-                    checkRevocation = { reference ->
-                        registrationStatusOf(reference, client) { chain ->
-                            etsi.isTrusted(
-                                chain.certificates.toTrustChain(),
-                                VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
-                            )
-                        }
-                    },
-                ).evaluate(requestObject, requestNotice.requestSigner)
-            }
+            withEtsiRegistrationValidator(etsi) { evaluate(requestObject, requestNotice.requestSigner) }
         }.getOrElse {
             Logger.w(TAG, "relying party registration could not be evaluated: ${it.message}")
             RelyingPartyRegistrationOutcome.NotOffered

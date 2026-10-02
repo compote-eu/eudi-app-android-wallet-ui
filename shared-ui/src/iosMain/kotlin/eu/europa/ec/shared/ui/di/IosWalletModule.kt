@@ -430,7 +430,10 @@ fun provideIosSplashInteractor(
  */
 @Single
 fun provideIosProximityPresenter(engine: IosWalletEngine): IosProximityPresenter =
-    IosProximityPresenter(walletEngine = engine)
+    IosProximityPresenter(
+        walletEngine = engine,
+        isRegistrationCheckEnabled = { IosPreferences.isRegistrationCheckEnabled() },
+    )
 
 @Single
 internal fun provideIosProximityCoordinator(

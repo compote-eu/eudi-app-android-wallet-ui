@@ -18,8 +18,6 @@ package eu.europa.ec.shared.ui.di
 
 import eu.europa.ec.shared.resources.document_success_banner_text
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
-import eu.europa.ec.corelogic.model.RelyingPartyDomain
-import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.corelogic.model.ClaimItemId
@@ -50,6 +48,9 @@ import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import kotlinx.coroutines.flow.Flow
+import platform.Foundation.NSLocale
+import platform.Foundation.currentLocale
+import platform.Foundation.languageCode
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.transformWhile
 
@@ -80,7 +81,7 @@ internal class IosProximityCoordinator(
     private var disclosed: List<DocumentPayloadDomain> = emptyList()
 
     private var verifierName: String? = null
-    private var verifierIsTrusted: Boolean = false
+    private var verifierIsFullyVerified: Boolean = false
 
     /** Whether the app is sending, which is what makes a return to [IosProximityState.Idle] a failure. */
     private var sending: Boolean = false
@@ -277,7 +278,7 @@ internal class IosProximityCoordinator(
                     name = verifierName.asUiTextOr(
                         fallback = UiText.Resource(Res.string.document_success_relying_party_default_name),
                     ),
-                    isVerified = verifierIsTrusted,
+                    isVerified = verifierIsFullyVerified,
                 ),
             ),
         )
@@ -296,18 +297,23 @@ internal class IosProximityCoordinator(
     //region multipaz's request -> the shared consent model
 
     private fun IosPresentmentRequest.toPartialState(): ProximityRequestInteractorPartialState {
-        verifierName = requesterName
-        verifierIsTrusted = requesterIsTrusted
+        // Built once and read by every later screen, as on the remote side and in Android's controller.
+        val relyingParty = relyingPartyDomain(
+            requesterName = requesterName,
+            requesterIsTrusted = requesterIsTrusted,
+            registration = relyingPartyRegistration,
+            locale = NSLocale.currentLocale.languageCode,
+        )
+        verifierName = relyingParty.name
+        verifierIsFullyVerified = relyingParty.isFullyVerified
 
         val combinationsUi = toCombinationsUi(strings)
 
         return if (combinationsUi.isEmpty()) {
-            ProximityRequestInteractorPartialState.NoData(
-                relyingParty = relyingPartyDomain(),
-            )
+            ProximityRequestInteractorPartialState.NoData(relyingParty = relyingParty)
         } else {
             ProximityRequestInteractorPartialState.Success(
-                relyingParty = relyingPartyDomain(),
+                relyingParty = relyingParty,
                 combinationsUi = combinationsUi,
                 // multipaz builds the response from the claims the selection carries, so unticking a
                 // row really does keep it out of the mdoc — see `CredentialPresentmentData.toSelection`.
@@ -319,17 +325,3 @@ internal class IosProximityCoordinator(
     //endregion
 }
 
-/**
- * The requester as iOS knows it. [RegistrationStatusDomain.NotEvaluated] is the honest value, not a
- * placeholder: the issuer and relying-party registration policies live in
- * `eudi-lib-android-wallet-core`, which has no iOS counterpart and no multipaz equivalent, so no
- * registration certificate is ever evaluated here. `hasTrustedAccessCertificate` follows what
- * multipaz reports, which is false today because `resolveTrustFn` is never supplied.
- */
-private fun IosPresentmentRequest.relyingPartyDomain(): RelyingPartyDomain = RelyingPartyDomain(
-    name = requesterName,
-    uniqueId = null,
-    hasTrustedAccessCertificate = requesterIsTrusted,
-    logoUri = null,
-    registration = RegistrationStatusDomain.NotEvaluated,
-)

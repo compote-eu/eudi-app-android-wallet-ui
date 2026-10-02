@@ -264,6 +264,12 @@ internal suspend fun iosIso18013Presentment(
     timeoutSubsequentRequests: Duration? = 30.seconds,
     sendTimeout: Duration = 30.seconds,
     onSendingResponse: () -> Unit = {},
+    /**
+     * Each request as it arrives, after its reader authentication has been checked and before consent is
+     * asked — what the consent step reads the reader's registration certificate from, since multipaz's
+     * consent callback is handed only the matches.
+     */
+    onDeviceRequest: (DeviceRequest) -> Unit = {},
 ) {
     // Wait until state changes to CONNECTED, FAILED, or CLOSED
     transport.state.first {
@@ -324,6 +330,7 @@ internal suspend fun iosIso18013Presentment(
 
             val deviceRequest = DeviceRequest.fromDataItem(Cbor.decode(encodedDeviceRequest!!))
             deviceRequest.verifyReaderAuthentication(sessionTranscript)
+            onDeviceRequest(deviceRequest)
             val responseObject = iosMdocPresentment(
                 deviceRequest = deviceRequest,
                 eReaderKey = eReaderKey.publicKey,

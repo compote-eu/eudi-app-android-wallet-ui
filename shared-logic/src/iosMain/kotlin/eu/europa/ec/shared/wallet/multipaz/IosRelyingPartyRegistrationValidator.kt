@@ -16,6 +16,11 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.shared.wallet.trust.toTrustChain
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.darwin.Darwin
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -59,7 +64,23 @@ internal class IosRelyingPartyRegistrationValidator(
         // wallet stays silent here; Android is the reference this fork matches.
         val compact = relyingPartyCertificateIn(requestObject)
             ?: return RelyingPartyRegistrationOutcome.Failed(IssuerRegistrationFailure.CERTIFICATE_ABSENT)
+        return evaluateCertificate(compact, requestSigner, requestedClaimsIn(requestObject))
+    }
 
+    /**
+     * The checks themselves, for a certificate however it arrived — in a request object's `verifier_info`,
+     * or in an ISO 18013-5 request's `euWrprc` ([readerRegistrationCertificate]).
+     *
+     * @param compact the certificate as a compact JWS.
+     * @param presenter the certificate the registration must be bound to: whoever signed the request
+     *   object, or the reader that authenticated the device request.
+     * @param requested every claim asked for, to find what the registration does not cover.
+     */
+    suspend fun evaluateCertificate(
+        compact: String,
+        presenter: X509Cert?,
+        requested: List<OverAskedClaim>,
+    ): RelyingPartyRegistrationOutcome {
         val declaredType = jwsHeader(compact)?.get("typ")?.jsonPrimitive?.contentOrNull
         if (declaredType != REGISTRATION_CERT_TYPE) {
             return RelyingPartyRegistrationOutcome.Failed(
@@ -98,7 +119,7 @@ internal class IosRelyingPartyRegistrationValidator(
 
         val registration = issuerRegistrationFrom(verified)
 
-        val presenterId = requestSigner?.registrationIdentifier()
+        val presenterId = presenter?.registrationIdentifier()
         val boundTo = registration.intermediaryIdentifier ?: registration.subject
         if (presenterId == null || boundTo == null || presenterId != boundTo) {
             return RelyingPartyRegistrationOutcome.Failed(
@@ -150,7 +171,7 @@ internal class IosRelyingPartyRegistrationValidator(
             )
         }
 
-        val overAsked = registration.overAskedAmong(requestedClaimsIn(requestObject))
+        val overAsked = registration.overAskedAmong(requested)
         if (overAsked.isNotEmpty()) {
             Logger.d(
                 TAG,
@@ -164,4 +185,30 @@ internal class IosRelyingPartyRegistrationValidator(
     private companion object {
         const val TAG = "RelyingPartyRegistration"
     }
+}
+
+/**
+ * Runs [evaluation] on a validator over this wallet's ETSI lists: the WRPRC list for the certificate's own
+ * chain, its status context for the status list that says whether it was revoked. One HTTP client serves
+ * the status fetch and is closed afterwards.
+ *
+ * Throws what [evaluation] throws; each caller decides what a registration that cannot be judged means.
+ */
+internal suspend fun withEtsiRegistrationValidator(
+    etsi: IosEtsiTrust,
+    evaluation: suspend IosRelyingPartyRegistrationValidator.() -> RelyingPartyRegistrationOutcome,
+): RelyingPartyRegistrationOutcome = HttpClient(Darwin).use { client ->
+    IosRelyingPartyRegistrationValidator(
+        isChainTrusted = { chain ->
+            etsi.isTrusted(chain.certificates.toTrustChain(), VerificationContext.WalletRelyingPartyRegistrationCertificate)
+        },
+        checkRevocation = { reference ->
+            registrationStatusOf(reference, client) { chain ->
+                etsi.isTrusted(
+                    chain.certificates.toTrustChain(),
+                    VerificationContext.WalletRelyingPartyRegistrationCertificateStatus,
+                )
+            }
+        },
+    ).evaluation()
 }

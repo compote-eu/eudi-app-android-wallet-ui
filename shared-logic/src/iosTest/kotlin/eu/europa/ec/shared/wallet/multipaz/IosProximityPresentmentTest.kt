@@ -445,14 +445,14 @@ class IosProximityPresentmentTest {
     @Test
     fun the_exchange_runs_on_the_main_thread_where_core_bluetooth_answers() {
         // Off it, multipaz's BLE sender can miss CoreBluetooth's "ready to write" and stall mid-response.
-        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine(), isRegistrationCheckEnabled = { false })
 
         assertEquals<Any?>(Dispatchers.Main, presenter.scope.coroutineContext[ContinuationInterceptor])
     }
 
     @Test
     fun the_engagement_qr_is_an_mdoc_uri_a_reader_can_parse() = runTest {
-        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine(), isRegistrationCheckEnabled = { false })
         val key = Crypto.createEcPrivateKey(EcCurve.P256)
         val connectionMethod = presenter.bleConnectionMethod()
 
@@ -508,6 +508,7 @@ class IosProximityPresentmentTest {
             credentialDomain = store.documentManagerId,
             scope = scope,
             readerTrust = readerTrust,
+            isRegistrationCheckEnabled = { false },
         )
 
     /** What the presenter's own source does with [request] — consent included, transport not. */
