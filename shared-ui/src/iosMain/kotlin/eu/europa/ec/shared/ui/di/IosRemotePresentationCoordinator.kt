@@ -23,6 +23,8 @@ import platform.Foundation.NSLocale
 import eu.europa.ec.shared.resources.document_success_banner_text
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.corelogic.model.RelyingPartyDomain
+import eu.europa.ec.corelogic.model.requesterUniqueIdOrNull
+import eu.europa.ec.corelogic.model.resolveRequesterName
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
@@ -47,6 +49,7 @@ import eu.europa.ec.shared.wallet.multipaz.IosPresentmentDisclosure
 import eu.europa.ec.shared.wallet.multipaz.IosPresentmentRequest
 import eu.europa.ec.shared.wallet.multipaz.IosRemotePresentationState
 import eu.europa.ec.shared.wallet.multipaz.IosRemotePresenter
+import eu.europa.ec.shared.wallet.multipaz.RelyingPartyRegistrationOutcome
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -83,7 +86,7 @@ internal class IosRemotePresentationCoordinator(
     private var disclosed: List<DocumentPayloadDomain> = emptyList()
 
     private var verifierName: String? = null
-    private var verifierIsTrusted: Boolean = false
+    private var verifierIsFullyVerified: Boolean = false
 
     /** Where the verifier asked the user to be sent afterwards, read by the success screen. */
     var redirectUri: String? = null
@@ -322,7 +325,7 @@ internal class IosRemotePresentationCoordinator(
                     name = verifierName.asUiTextOr(
                         fallback = UiText.Resource(Res.string.document_success_relying_party_default_name),
                     ),
-                    isVerified = verifierIsTrusted,
+                    isVerified = verifierIsFullyVerified,
                 ),
             ),
         )
@@ -368,18 +371,19 @@ internal class IosRemotePresentationCoordinator(
     //region multipaz's request -> the shared consent model
 
     private fun IosPresentmentRequest.toPartialState(): PresentationRequestInteractorPartialState {
-        verifierName = requesterName
-        verifierIsTrusted = requesterIsTrusted
+        // Both identity values are taken off the object the consent screen renders, as Android's
+        // controller does: the success screen names the verifier as consent did.
+        val relyingParty = relyingPartyDomain(NSLocale.currentLocale.languageCode)
+        verifierName = relyingParty.name
+        verifierIsFullyVerified = relyingParty.isFullyVerified
 
         val combinationsUi = toCombinationsUi(strings)
 
         return if (combinationsUi.isEmpty()) {
-            PresentationRequestInteractorPartialState.NoData(
-                relyingParty = relyingPartyDomain(NSLocale.currentLocale.languageCode),
-            )
+            PresentationRequestInteractorPartialState.NoData(relyingParty = relyingParty)
         } else {
             PresentationRequestInteractorPartialState.Success(
-                relyingParty = relyingPartyDomain(NSLocale.currentLocale.languageCode),
+                relyingParty = relyingParty,
                 combinationsUi = combinationsUi,
                 // multipaz builds the response from the claims the selection carries, so unticking a
                 // row really does keep it out of the response — see `CredentialPresentmentData.toSelection`.
@@ -402,23 +406,35 @@ internal class IosRemotePresentationCoordinator(
  * from the request object's `verifier_info` and judged against the same ETSI lists. Neither library is
  * needed for it; `rc-wrp+jwt` is the relying-party format and multipaz's own JWT, X.509 and
  * status-list primitives do the work.
+ *
+ * Built as Android's `buildRelyingParty` builds it. The name is resolved across both trust layers, so a
+ * verified registration's trade name outranks the access certificate's. Until 2026-10-02 this used the
+ * access-certificate name whatever the registration said, and left the registered identifier out.
+ *
+ * @param requesterName the access certificate's name when its chain is trusted, null otherwise — what
+ *   Android passes as `trustMetadata?.displayName`.
  */
-private fun IosPresentmentRequest.relyingPartyDomain(locale: String): RelyingPartyDomain = RelyingPartyDomain(
-    name = requesterName,
-    uniqueId = null,
-    hasTrustedAccessCertificate = requesterIsTrusted,
-    logoUri = null,
-    registration = relyingPartyRegistration.toDomain(locale),
-)
+internal fun relyingPartyDomain(
+    requesterName: String?,
+    requesterIsTrusted: Boolean,
+    registration: RelyingPartyRegistrationOutcome,
+    locale: String,
+): RelyingPartyDomain {
+    val registrationDomain = registration.toDomain(locale)
+    return RelyingPartyDomain(
+        name = registrationDomain.resolveRequesterName(accessCertificateName = requesterName),
+        uniqueId = registrationDomain.requesterUniqueIdOrNull(),
+        hasTrustedAccessCertificate = requesterIsTrusted,
+        logoUri = null,
+        registration = registrationDomain,
+    )
+}
+
+private fun IosPresentmentRequest.relyingPartyDomain(locale: String): RelyingPartyDomain =
+    relyingPartyDomain(requesterName, requesterIsTrusted, relyingPartyRegistration, locale)
 
 /** The same requester when nothing matched — built alike, so the two screens show the verifier alike. */
 private fun IosRemotePresentationState.NothingToShare.relyingPartyDomain(locale: String): RelyingPartyDomain =
-    RelyingPartyDomain(
-        name = requesterName,
-        uniqueId = null,
-        hasTrustedAccessCertificate = requesterIsTrusted,
-        logoUri = null,
-        registration = relyingPartyRegistration.toDomain(locale),
-    )
+    relyingPartyDomain(requesterName, requesterIsTrusted, relyingPartyRegistration, locale)
 
 private const val TAG = "IosRemotePresentationCoordinator"
