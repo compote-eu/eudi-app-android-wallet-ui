@@ -429,19 +429,25 @@ internal class KeychainWalletStorageTable(
         }
         return lock.withLock {
             val now = clock.now()
-            allItems()
+            // Names first, data only for the items asked for. multipaz lists a document's credentials
+            // as one partition of a table that holds every document's, and fetching the whole table
+            // with its data for each document read it once per document: 146 MB of Keychain data for
+            // 6.3 MB of credentials across 23 documents (measured 2026-10-02), more than the DC API
+            // extension's 220 MB limit allows with the rest of the process.
+            allAccounts()
                 // The Keychain returns items in no defined order, so the ordering the contract
-                // promises is imposed here. Cheap, because nothing that matters paginates: the
-                // only caller of afterKey/limit in multipaz is the event log.
+                // promises is imposed here.
                 .asSequence()
-                .filter { (account, _) -> decodePartition(account) == partitionId }
-                .map { (account, raw) -> decodeKey(account) to Record.decode(raw) }
-                .filter { (key, record) ->
-                    !record.expired(now) && (afterKey == null || key > afterKey)
-                }
+                .filter { account -> decodePartition(account) == partitionId }
+                .map { account -> decodeKey(account) to account }
+                .filter { (key, _) -> afterKey == null || key > afterKey }
                 .sortedBy { it.first }
+                .mapNotNull { (key, account) ->
+                    // Gone since the names were listed, or expired: neither is part of the answer.
+                    val record = copyData(account)?.let { Record.decode(it) } ?: return@mapNotNull null
+                    if (record.expired(now)) null else key to record.value
+                }
                 .take(limit)
-                .map { (key, record) -> key to record.value }
                 .toList()
         }
     }
@@ -539,7 +545,12 @@ internal class KeychainWalletStorageTable(
         }
     }
 
-    /** Every `(account, value)` in this table, in whatever order the Keychain feels like. */
+    /**
+     * Every `(account, value)` in this table, in whatever order the Keychain feels like.
+     *
+     * Only for [purgeExpired], which needs every record's expiry. Anything that needs some of the items
+     * lists [allAccounts] and reads those, because this reads the whole table's data.
+     */
     private fun allItems(): List<Pair<String, ByteArray>> = memScoped {
         withQuery { query ->
             CFDictionarySetValue(query, kSecMatchLimit, kSecMatchLimitAll)
@@ -568,7 +579,27 @@ internal class KeychainWalletStorageTable(
         }
     }
 
-    private fun allAccounts(): List<String> = allItems().map { it.first }
+    /** Every account name in this table, without the data: what a listing needs before it reads anything. */
+    private fun allAccounts(): List<String> = memScoped {
+        withQuery { query ->
+            CFDictionarySetValue(query, kSecMatchLimit, kSecMatchLimitAll)
+            CFDictionarySetValue(query, kSecReturnAttributes, kCFBooleanTrue)
+            val result = alloc<CFTypeRefVar>()
+            val status = SecItemCopyMatching(query, result.ptr)
+            if (status != errSecSuccess) {
+                check(status == errSecItemNotFound) { "SecItemCopyMatching(accounts) failed: $status" }
+                return@withQuery emptyList()
+            }
+            val items = CFBridgingRelease(result.value) as? NSArray ?: return@withQuery emptyList()
+            buildList {
+                for (i in 0uL until items.count) {
+                    // "acct" is the underlying string value of kSecAttrAccount; see [allItems].
+                    val account = (items.objectAtIndex(i) as? NSDictionary)?.objectForKey("acct") as? String
+                    if (account != null) add(account)
+                }
+            }
+        }
+    }
 
     /**
      * Builds the `(class, service)` query every call shares, runs [block] against it, and releases

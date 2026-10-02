@@ -22,6 +22,7 @@ import class SharedKit.IssuerRegistrationProbeKt
 import class SharedKit.X5ChainProbeKt
 import class SharedKit.DeferredIssuanceProbeKt
 import class SharedKit.WalletEngineProbeKt
+import class SharedKit.KeychainStorageProbeKt
 #endif
 import class SharedKit.IosFirstRunWipeKt
 import class SharedKit.IosDevicePasscodeKt
@@ -309,6 +310,14 @@ struct iOSApp: App {
                 sdJwt: arguments.contains("sdjwt")
             ) { line in
                 print("DEFERRED-PROBE: \(line)")
+            }
+            return
+        }
+
+        // multipaz's storage contract against the real Keychain, which a test binary cannot reach.
+        if arguments.contains("--keychain-storage-probe") {
+            KeychainStorageProbeKt.probeKeychainStorage { line in
+                print("KEYCHAIN-STORAGE: \(line)")
             }
             return
         }
