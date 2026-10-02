@@ -89,6 +89,14 @@ object IosDeepLinks {
     /** Takes the waiting offer, if any, and forgets it — reading it is what consumes it, as on Android. */
     fun takePending(): String? = pending.also { pending = null }
 
+    /**
+     * Takes the waiting link only if it is a verifier's request, and leaves an offer where it is for the
+     * screen that reads offers.
+     */
+    fun takePendingPresentation(): String? =
+        pending?.takeIf { it.substringBefore(':', missingDelimiterValue = "").lowercase() in PRESENTATION_SCHEMES }
+            ?.also { pending = null }
+
     /** Drops anything waiting, so a new session cannot pick up an old offer. */
     fun clear() {
         pending = null

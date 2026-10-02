@@ -54,6 +54,13 @@ import androidx.navigation3.runtime.NavKey
 import eu.europa.ec.shared.navigation.AppNavDisplay
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.DocumentDetailsRoute
+import eu.europa.ec.shared.navigation.DocumentOfferRoute
+import eu.europa.ec.corelogic.util.CoreActions
+import eu.europa.ec.shared.platform.IosBroadcasts
+import eu.europa.ec.shared.platform.PlatformIntent
+import eu.europa.ec.shared.wallet.multipaz.IosDeepLinks
 import eu.europa.ec.analyticslogic.controller.AnalyticsLogger
 import org.koin.mp.KoinPlatform
 
@@ -132,13 +139,13 @@ fun IosNavHost(
  * runs on the dashboard's *first* composition whenever the retrigger is non-zero, the read after this
  * pop does not depend on `ON_RESUME` firing again.
  *
- * 📌 **No exemption for the screens that read a link themselves**, though Android has one. There the
- * activity dispatches an OPENID4VP link *in place* when `AddDocumentRoute`, `DocumentOfferRoute` or
- * `DocumentDetailsRoute` is up. Our shared view-models cannot: `DocumentDetailsViewModel` and
- * `DocumentOfferViewModel` act on `EXTERNAL` only, and `AddDocumentViewModel` on `CREDENTIAL_OFFER` and
- * `EXTERNAL` with `else -> {}`. A presentation request handed to any of them is **consumed and
- * dropped**, `takePending()` being one-shot. Popping is therefore not a coarser rule than Android's
- * here, it is the only one that delivers the link — and it closes that silent drop as well.
+ * 📌 **One exemption, Android's:** a verifier's request that arrives while an issuance is under way goes to
+ * that issuance's screen instead ([handPresentationToIssuance]). Popping would end the issuance, so the
+ * authorization it is waiting for would arrive to nobody. The screens cannot take it through their
+ * pending-link read: `DocumentDetailsViewModel` and `DocumentOfferViewModel` act on `EXTERNAL` only, and
+ * `AddDocumentViewModel` on `CREDENTIAL_OFFER` and `EXTERNAL` with `else -> {}`, so a presentation request
+ * read that way is **consumed and dropped**. They do take it as Android's `VCI_DYNAMIC_PRESENTATION`
+ * broadcast. Every other link is popped to the dashboard, which is the only screen that reads it.
  *
  * A no-op when `DashboardRoute` is not on the stack at all, which is `popUpTo`'s own answer and exactly
  * Android's gate: `userIsLoggedInWithDocuments()` is itself just
@@ -159,9 +166,37 @@ private fun PopToDashboardOnDeepLink(navigator: AppNavigator) {
         // `> 0` for the same reason the dashboard's own read carries it: nothing has been delivered on
         // the initial composition, and popping then would move the user for no link.
         if (retrigger == 0) return@LaunchedEffect
+        if (handPresentationToIssuance(navigator)) return@LaunchedEffect
         popToDashboardForDeliveredLink(navigator)
     }
 }
+
+/**
+ * Android's dynamic presentation: an issuer that authenticates the user by asking for their PID sends
+ * the wallet a verifier's request in the middle of an issuance. Sent as `VCI_DYNAMIC_PRESENTATION`, it
+ * reaches the issuance screen, which presents and comes back to itself, so the issuance keeps waiting
+ * for its authorization instead of being ended by a pop.
+ *
+ * The condition is `EudiComponentActivity.handleDeepLink`'s: the link is a presentation request, the
+ * dashboard is on the stack, and so is `AddDocumentRoute`, `DocumentOfferRoute` or
+ * `DocumentDetailsRoute`. The link is taken only when all of that holds, so anything else stays pending
+ * for the dashboard.
+ *
+ * @return whether the link was handed over.
+ */
+internal fun handPresentationToIssuance(
+    navigator: AppNavigator,
+    takePresentation: () -> String? = IosDeepLinks::takePendingPresentation,
+    send: (PlatformIntent) -> Boolean = IosBroadcasts::send,
+): Boolean {
+    if (!navigator.isOnBackStack(DashboardRoute::class)) return false
+    if (ISSUANCE_ROUTES.none { navigator.isOnBackStack(it) }) return false
+    val link = takePresentation() ?: return false
+    send(PlatformIntent(action = CoreActions.VCI_DYNAMIC_PRESENTATION, stringExtras = mapOf("uri" to link)))
+    return true
+}
+
+private val ISSUANCE_ROUTES = listOf(AddDocumentRoute::class, DocumentOfferRoute::class, DocumentDetailsRoute::class)
 
 /**
  * The stack move [PopToDashboardOnDeepLink] performs, split out so it can be tested without a

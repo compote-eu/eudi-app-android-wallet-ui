@@ -39,6 +39,23 @@ class IosDeepLinksTest {
     fun tearDown() = IosDeepLinks.clear()
 
     @Test
+    fun a_presentation_request_can_be_taken_on_its_own() {
+        val request = "haip-vp://verifier.test?client_id=x&request_uri=https%3A%2F%2Fverifier.test%2Fr"
+        assertTrue(IosDeepLinks.deliver(request))
+
+        assertEquals(request, IosDeepLinks.takePendingPresentation())
+        assertNull(IosDeepLinks.takePending())
+    }
+
+    @Test
+    fun taking_a_presentation_request_leaves_an_offer_where_it_is() {
+        assertTrue(IosDeepLinks.deliver(offer))
+
+        assertNull(IosDeepLinks.takePendingPresentation())
+        assertEquals(offer, IosDeepLinks.takePending())
+    }
+
+    @Test
     fun an_offer_waits_until_a_screen_takes_it() {
         assertTrue(IosDeepLinks.deliver(offer))
 
