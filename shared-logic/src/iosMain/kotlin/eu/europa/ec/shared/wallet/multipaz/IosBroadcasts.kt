@@ -26,10 +26,6 @@ import org.multipaz.util.Logger
  * What Android's `RevocationWorkManager` broadcasts after a sweep, in the order it sends them: when
  * documents became revoked, the dashboard's message naming them and the details refresh; when anything
  * was flagged *or* cleared, the list refresh.
- *
- * 🪤 The details refresh reaches no one on either platform: `DocumentDetailsScreen` filters on its
- * action but its `when` branch compares against `REVOCATION_IDS_DETAILS_EXTRA`, an extra's name. It is
- * sent anyway, so the screen starts working on iOS the moment that branch is corrected.
  */
 internal fun revocationBroadcasts(refresh: RevocationRefresh): List<PlatformIntent> = buildList {
     val revoked = refresh.newlyRevoked

@@ -54,6 +54,7 @@ import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.platform.PlatformIntent
 import eu.europa.ec.shared.platform.platformAction
 import eu.europa.ec.shared.platform.platformStringExtra
 import eu.europa.ec.shared.platform.platformStringListExtra
@@ -160,32 +161,7 @@ fun DocumentDetailsScreen(
                 CoreActions.VCI_RESUME_ACTION,
                 CoreActions.VCI_DYNAMIC_PRESENTATION
             ),
-            callback = {
-                when (it?.platformAction()) {
-                    CoreActions.VCI_RESUME_ACTION -> it.platformStringExtra("uri")?.let { link ->
-                        viewModel.setEvent(Event.OnResumeIssuance(link))
-                    }
-
-                    CoreActions.VCI_DYNAMIC_PRESENTATION -> it.platformStringExtra("uri")
-                        ?.let { link ->
-                            viewModel.setEvent(Event.OnDynamicPresentation(link))
-                        }
-
-                    CoreActions.REVOCATION_IDS_DETAILS_EXTRA -> {
-                        val ids =
-                            it.platformStringListExtra(CoreActions.REVOCATION_IDS_DETAILS_EXTRA)
-
-                        viewModel.setEvent(Event.OnRevocationStatusChanged(ids))
-                    }
-
-                    CoreActions.RE_ISSUANCE_WORK_REFRESH_DETAILS_ACTION -> {
-                        val ids =
-                            it.platformStringListExtra(CoreActions.RE_ISSUANCE_IDS_DETAILS_EXTRA)
-
-                        viewModel.setEvent(Event.OnReIssuanceTriggered(ids))
-                    }
-                }
-            }
+            callback = { intent -> detailsEventFor(intent)?.let { viewModel.setEvent(it) } }
         )
     ) { paddingValues ->
         Content(
@@ -238,6 +214,33 @@ fun DocumentDetailsScreen(
         lifecycleEvent = Lifecycle.Event.ON_RESUME
     ) {
         viewModel.setEvent(Event.Init(pendingDeepLink()))
+    }
+}
+
+/**
+ * What the details screen does with a broadcast it listens for, or null for one it ignores.
+ *
+ * Each branch matches the broadcast's ACTION and reads its extras inside. The action and the extra
+ * carrying the ids have similar names (`REVOCATION_WORK_REFRESH_DETAILS_ACTION`,
+ * `REVOCATION_IDS_DETAILS_EXTRA`), and a branch keyed on the extra's name never fires.
+ */
+internal fun detailsEventFor(intent: PlatformIntent?): Event? {
+    if (intent == null) return null
+    return when (intent.platformAction()) {
+        CoreActions.VCI_RESUME_ACTION -> intent.platformStringExtra("uri")?.let { Event.OnResumeIssuance(it) }
+
+        CoreActions.VCI_DYNAMIC_PRESENTATION ->
+            intent.platformStringExtra("uri")?.let { Event.OnDynamicPresentation(it) }
+
+        CoreActions.REVOCATION_WORK_REFRESH_DETAILS_ACTION -> Event.OnRevocationStatusChanged(
+            intent.platformStringListExtra(CoreActions.REVOCATION_IDS_DETAILS_EXTRA)
+        )
+
+        CoreActions.RE_ISSUANCE_WORK_REFRESH_DETAILS_ACTION -> Event.OnReIssuanceTriggered(
+            intent.platformStringListExtra(CoreActions.RE_ISSUANCE_IDS_DETAILS_EXTRA)
+        )
+
+        else -> null
     }
 }
 
