@@ -25,12 +25,9 @@ import class SharedKit.WalletEngineProbeKt
 #endif
 import class SharedKit.IosFirstRunWipeKt
 import class SharedKit.IosDevicePasscodeKt
+import class SharedKit.IosForegroundChecks
 import class SharedKit.IosAuthorizationRedirects
 import class SharedKit.IosDeepLinks
-import class SharedKit.BackgroundReIssuanceSummary
-import class SharedKit.IosBackgroundReIssuanceKt
-import class SharedKit.IosBackgroundRevocationKt
-import class SharedKit.BackgroundRevocationSummary
 import class SharedKit.IosDocumentSigning
 import class SharedKit.IosDocumentRegistration
 
@@ -87,11 +84,11 @@ private let deferredSweepArgument = "--deferred-sweep"
 /// the path deep links have always arrived on. Both are wired, so whichever the system chooses works.
 final class AppDelegate: NSObject, UIApplicationDelegate {
 
-    /// Launch wiring: the revocation refresh, the document-registration seam, and the RQES signer.
+    /// Launch wiring: the foreground re-checks, the document-registration seam, and the RQES signer.
     ///
     /// 📌 A `BGProcessingTask` used to be registered here, because iOS requires every task identifier
     /// to be registered before this method returns. It was **removed 2026-09-04** so the wallet
-    /// database can carry `NSFileProtectionComplete` — see [refreshWalletOnLaunch].
+    /// database can carry `NSFileProtectionComplete` — see [observeForegroundChecks].
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -124,6 +121,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // Registered BEFORE the guard below, because it is also how a blocked launch recovers: it
         // re-checks the gate itself and stays inert until the block clears.
         observeActivation()
+        observeForegroundChecks()
 
         guard !IosDevicePasscodeKt.iosWalletBlockedByMissingPasscode() else {
             print("NO-PASSCODE: the Keychain will not hold documents and no passcode is set — "
@@ -131,8 +129,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                   + "after setting one recovers without a relaunch")
             return true
         }
-
-        refreshWalletOnLaunch()
 
         // Lets Kotlin tell us when the document set changes, so a deleted document leaves the system
         // credential picker instead of lingering in it. Registered before the first reconciliation
@@ -224,6 +220,43 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         }
     }
 
+    /// Re-issuance and revocation, re-checked while the wallet is in front — see `IosForegroundChecks`.
+    ///
+    /// **Only while active, by decision (2026-09-04).** A `BGProcessingTask` used to run both with the app
+    /// closed. It was removed so the wallet database can carry `NSFileProtectionComplete`: a file
+    /// unreadable while the device is locked is incompatible with any background work. The cost was
+    /// measured before it was accepted: iOS was never observed scheduling that task on its own (61
+    /// minutes, locked, on power), and every refresh driven by hand failed on an expired refresh token.
+    /// ⛔ **Do not add a background task back**; it would silently undo the protection class. The
+    /// official iOS wallet runs these two checks in the foreground too, and no background tasks.
+    ///
+    /// Until 2026-10-02 they ran once per launch, finishing half a second in, before the PIN screen
+    /// was passed, so the dashboard never heard about a revocation. Now the first run is 30 s after the
+    /// app becomes active, then every 15 minutes, as Android's workers repeat; resigning active stops
+    /// them. The same passcode gate as [observeActivation]: every path that opens the store would
+    /// terminate the process without one.
+    ///
+    /// 📌 `runBackgroundReIssuance` and `runBackgroundRevocation` keep "background" in their names
+    /// though nothing background is left; renaming both would churn two files, a summary type, nine
+    /// tests and the probe for no behavioural gain.
+    private func observeForegroundChecks() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            guard !IosDevicePasscodeKt.iosWalletBlockedByMissingPasscode() else { return }
+            IosForegroundChecks.shared.onActive()
+        }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            IosForegroundChecks.shared.onInactive()
+        }
+    }
+
     func application(
         _ app: UIApplication,
         open url: URL,
@@ -251,61 +284,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         return false
     }
 }
-
-@MainActor
-/// Tops credentials up and refreshes revocation status once per launch, without blocking startup.
-///
-/// **The only trigger for either sweep on iOS, by decision (2026-09-04).** A `BGProcessingTask` used to sweep
-/// re-issuance and revocation with the app closed. It was removed so the wallet database can carry
-/// `NSFileProtectionComplete`: a file unreadable while the device is locked is incompatible with any
-/// background work, which is exactly why that protection class had been rejected before. The wallet is
-/// closer to the official iOS app for it — that app runs no background tasks either, which is what lets
-/// it keep documents in the Keychain under a passcode-required class.
-///
-/// The cost was measured before it was accepted: iOS was never observed scheduling that task on its own
-/// (61 minutes, locked, on power, Low Power Mode off), and when it was driven by hand every real refresh
-/// failed because the issuer's refresh token had already expired. What was given up is a feature never
-/// seen working unattended; what was gained is a protection class measured working.
-///
-/// ⛔ Android keeps `RevocationWorkManager` every 15 minutes. **A deliberate per-platform divergence,
-/// not a gap — do not "restore parity" by adding the task back.**
-///
-/// Detached and unawaited on purpose: nothing on screen depends on the answer, and the Documents screen
-/// re-reads the store when it appears, so a flag set a second after launch still shows. Failure is
-/// already swallowed and logged inside each sweep.
-///
-/// Once per process rather than on every foreground, which keeps it free of any "last refreshed"
-/// bookkeeping while still guaranteeing the status is no older than the session the user is looking at.
-///
-/// **The two sweeps run in sequence, in one task, in the order the removed background handler used**:
-/// top up first, then check revocation, so the status is read on the credential set the user will
-/// actually present.
-///
-/// 📌 Naming: `runBackgroundReIssuance` and `runBackgroundRevocation` keep "background" in their names
-/// though nothing background is left. Not an oversight — revocation has been launch-only since
-/// `38bdb5c4`, long before the task was removed, so the mismatch predates this; renaming both would
-/// churn two files, a summary type, nine tests and the probe for no behavioural gain.
-private func refreshWalletOnLaunch() {
-    Task { @MainActor in
-        do {
-            // This was the `BGProcessingTask`'s work until 2026-09-04. It only ever succeeds inside the
-            // issuer's refresh-token window (1800 s at the EUDI dev issuer), which is why running it
-            // when the user opens the wallet is worth more than running it at a moment the system
-            // picks: a launch is at least a moment the user chose.
-            let topUp = try await IosBackgroundReIssuanceKt.runBackgroundReIssuance()
-            print("LAUNCH-REISSUANCE: \(topUp)")
-        } catch {
-            print("LAUNCH-REISSUANCE: failed — \(error)")
-        }
-        do {
-            let summary = try await IosBackgroundRevocationKt.runBackgroundRevocation()
-            print("LAUNCH-REVOCATION: \(summary)")
-        } catch {
-            print("LAUNCH-REVOCATION: failed — \(error)")
-        }
-    }
-}
-
 
 @main
 struct iOSApp: App {

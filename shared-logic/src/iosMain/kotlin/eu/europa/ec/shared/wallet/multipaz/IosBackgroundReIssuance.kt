@@ -96,8 +96,8 @@ internal fun summarize(
  * ⚠️ **"Background" is now a name, not a description.** This was iOS's counterpart of Android's
  * `ReIssuanceWorkManager` — a `BGProcessingTask` running with the app closed — until that task was
  * removed on 2026-09-04 so the wallet database could carry `NSFileProtectionComplete`. It is now driven
- * from `refreshWalletOnLaunch()` in `iOSApp.swift`, once per process. Android still enqueues its worker
- * every 15 minutes; the divergence is deliberate.
+ * by [IosForegroundChecks], every 15 minutes while the app is active, as Android's worker repeats;
+ * running only while active is the deliberate difference.
  *
  * 🚩 So nothing here runs while the device is locked, and nothing should be added that does: the
  * database is unreadable then, by design.

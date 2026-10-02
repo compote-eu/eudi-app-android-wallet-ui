@@ -50,10 +50,9 @@ import eu.europa.ec.businesslogic.config.AppFlavor
  * ## What deliberately stays out
  *
  *  - `config: EudiWalletConfig` and `rqesConfig: EudiRQESUiConfig` — SDK types, Android-only forever.
- *  - `revocationInterval` — iOS cannot honour a cadence. It once could not because `BGTaskScheduler`
- *    decided when the sweep ran; since 2026-09-04 there is no background sweep at all and revocation
- *    runs once per launch, so an interval has nothing to control. A documented divergence, not an
- *    omission.
+ *  - `revocationInterval` — iOS repeats its checks only while the app is active, on a fixed cadence of
+ *    its own (`IosForegroundChecks`, Android's 15 minutes). Hoisting the interval would make that cadence
+ *    configurable on iOS too; not done, because nothing configures it differently today.
  *  - `credentialBatchSize`, `statusTrustPolicy`, `logFileName` — iOS exposes these, Android hard-codes
  *    them (`numberOfCredentials` inside the `EudiWalletConfig` DSL, the status resolver's trust policy
  *    likewise, and `LOG_FILE_NAME` as a private const in `LogControllerImpl`). Hoisting them means

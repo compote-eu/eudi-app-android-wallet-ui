@@ -46,17 +46,15 @@ data class BackgroundRevocationSummary(
  * `WalletEngine.getRevokedDocumentIds` answered from a table that was never written and a revoked
  * credential kept displaying as valid. A mechanism with no trigger is not a shipped feature.
  *
- * ## Two triggers, because one is not enough
+ * ## When it runs
  *
- *  - **At launch**, once per process, from the app shell. This is the trigger that can be relied on: it
- *    guarantees the status is no older than the current session whenever the user is actually looking at
- *    their documents.
- *  - ⛔ **There used to be a second trigger, a `BGProcessingTask`** that ran with the app closed, the
+ *  - **While the app is active**, from [IosForegroundChecks]: 30 s after the app becomes active, then
+ *    every 15 minutes as Android's worker repeats, paired with the credential top-up. Until 2026-10-02 it
+ *    ran once per launch instead.
+ *  - ⛔ **There used to be a background trigger, a `BGProcessingTask`** that ran with the app closed, the
  *    way Android's worker does. It was removed on 2026-09-04 so the wallet database could carry
- *    `NSFileProtectionComplete` — a database unreadable while locked cannot be swept while locked. The
- *    launch trigger above is now the only one, paired with the credential top-up in
- *    `refreshWalletOnLaunch()`. **Do not add a background trigger back**; it would silently undo the
- *    protection class.
+ *    `NSFileProtectionComplete` — a database unreadable while locked cannot be swept while locked.
+ *    **Do not add a background trigger back**; it would silently undo the protection class.
  *
  * The earlier reasoning for staying off that task — that every check would "spend a request per document
  * to conclude `Unknown`" until the trust gate opens — **expired with `650e8c1e`**: a status list is now
@@ -69,10 +67,10 @@ data class BackgroundRevocationSummary(
  * they are sent. A screen composed later still sees the change, because the Documents screen re-reads
  * the store when it appears. The message is the exception: nothing shows it later.
  *
- * 🚩 So the message is heard only when this runs while the dashboard is on screen, and the launch trigger
- * never does. On an iPhone with four documents the sweep finished **0.52 s after the app's first log
- * line** (2026-10-01), long before anyone could get past the PIN screen. Android's worker runs again
- * every 15 minutes, so a later run can find the dashboard on screen.
+ * 🚩 So the message is heard only when this runs while the dashboard is on screen. The once-per-launch
+ * run this replaced never did: on an iPhone with four documents it finished **0.52 s after the app's
+ * first log line** (2026-10-01), long before anyone could get past the PIN screen. Hence the 30 s first
+ * delay in [IosForegroundChecks], and the runs every 15 minutes after it.
  *
  * No deletion. The flag/clear decision itself is `revocationAction` in commonMain, which both platforms
  * call.

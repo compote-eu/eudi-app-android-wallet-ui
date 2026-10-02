@@ -68,11 +68,11 @@ class IosWalletEngine : WalletEngine {
      * Re-checks every document against its status list and updates the cached flags, returning the
      * documents that *became* revoked.
      *
-     * **One host calls this, and until `38bdb5c4` none did.** See [runBackgroundRevocation]: once per
-     * process at launch, from `refreshWalletOnLaunch()`, beside the credential top-up. There was a
-     * second host — a `BGProcessingTask` that ran with the app closed — until 2026-09-04, when it was
-     * removed so the database could carry `NSFileProtectionComplete`. Android still runs the same body
-     * every 15 minutes through WorkManager; the divergence is deliberate.
+     * **One host calls this, and until `38bdb5c4` none did.** See [runBackgroundRevocation]: every 15
+     * minutes while the app is active, from [IosForegroundChecks], beside the credential top-up, as
+     * Android's WorkManager worker repeats. There was a second host — a `BGProcessingTask` that ran with
+     * the app closed — until 2026-09-04, when it was removed so the database could carry
+     * `NSFileProtectionComplete`; running only while active is the deliberate difference from Android.
      *
      * 🪤 **This KDoc previously said the opposite** — that revocation "deliberately does not ride"
      * the background task until the trust gate opens, because every check "would spend a request per
