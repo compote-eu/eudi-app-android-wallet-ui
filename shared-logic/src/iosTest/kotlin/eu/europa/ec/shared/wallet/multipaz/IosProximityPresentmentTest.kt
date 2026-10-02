@@ -17,7 +17,7 @@
 // Proximity presentation as far as a machine without a Bluetooth radio can take it.
 //
 // The iOS Simulator has neither BLE nor NFC, and those are multipaz's only mdoc transports, so the wire is
-// out of reach here. Everything *below* the wire is not: `mdocPresentment` takes a `DeviceRequest` and
+// out of reach here. Everything *below* the wire is not: `iosMdocPresentment` takes a `DeviceRequest` and
 // returns a response with no transport involved, so these cases feed a reader's request straight in and
 // check what comes back — that only the asked-for claims are released, that a refusal releases nothing,
 // and that the wallet's own credential domain is what bounds the offer.
@@ -37,6 +37,7 @@ import kotlinx.coroutines.test.runTest
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Simple
+import org.multipaz.cbor.Tstr
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
@@ -57,7 +58,6 @@ import org.multipaz.presentment.MdocResponse
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.presentment.SimplePresentmentSource
-import org.multipaz.presentment.mdocPresentment
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
@@ -70,6 +70,8 @@ import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
 private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
+private const val MDL_DOC_TYPE = "org.iso.18013.5.1.mDL"
+private const val MDL_NAMESPACE = "org.iso.18013.5.1"
 
 /** The claim's own name, i.e. the last segment of its path. */
 private fun ClaimPathDomain.leafName(): String = segments.last().toString()
@@ -142,7 +144,7 @@ class IosProximityPresentmentTest {
         store: MultipazWalletStore,
         request: DeviceRequest,
         consent: Consent = acceptEverything,
-    ) = mdocPresentment(
+    ) = iosMdocPresentment(
         deviceRequest = request,
         eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
         sessionTranscript = Simple.NULL,
@@ -150,7 +152,6 @@ class IosProximityPresentmentTest {
         keyAgreementPossible = listOf(EcCurve.P256),
         requesterAppId = null,
         requesterOrigin = null,
-        onDocumentsInFocus = {},
     )
 
     private fun MdocResponse.releasedClaims(): Set<String> =
@@ -211,6 +212,87 @@ class IosProximityPresentmentTest {
         }
     }
 
+    //region elements the PID does not hold — matched the way Android matches them
+
+    @Test
+    fun an_element_the_pid_lacks_is_left_out_rather_than_refusing_the_pid() = runTest {
+        val store = walletWithPid()
+        lateinit var view: IosPresentmentRequest
+
+        // The EU dev PID declares no `age_birth_year`, and neither does the fixture. A reader asking for it
+        // beside the names used to get "nothing to share" for the whole PID.
+        val response = present(
+            store = store,
+            request = readerRequest(
+                mapOf("given_name" to false, "family_name" to false, "age_birth_year" to false),
+            ),
+            consent = { data -> view = data.asConsentView(); acceptEverything(data) },
+        )
+
+        assertEquals(
+            setOf("given_name", "family_name"),
+            view.combinations.single().documents.single().claims.map { it.claim.leafName() }.toSet(),
+        )
+        assertEquals(setOf("given_name", "family_name"), response.releasedClaims())
+    }
+
+    @Test
+    fun a_request_for_nothing_the_pid_holds_is_refused() = runTest {
+        val store = walletWithPid()
+
+        assertFailsWith<PresentmentCannotSatisfyRequestException> {
+            present(
+                store = store,
+                request = readerRequest(mapOf("age_birth_year" to false, "nationality" to false)),
+            )
+        }
+    }
+
+    @Test
+    fun every_document_the_reader_asks_for_is_offered_not_only_the_first() = runTest {
+        val store = walletWithPid()
+        store.seedMdocDocument(
+            docType = MDL_DOC_TYPE,
+            displayName = "mDL",
+            namespace = MDL_NAMESPACE,
+            elements = listOf("family_name" to Tstr("Kotlin")),
+            policy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 1),
+        )
+        val encoded = DeviceRequestGenerator(encodedSessionTranscript = Cbor.encode(Simple.NULL))
+            .addDocumentRequest(
+                docType = PID_DOC_TYPE,
+                itemsToRequest = mapOf(PID_DOC_TYPE to mapOf("given_name" to false)),
+                requestInfo = null,
+                readerKey = null,
+                signatureAlgorithm = Algorithm.UNSET,
+                readerKeyCertificateChain = null,
+            )
+            .addDocumentRequest(
+                docType = MDL_DOC_TYPE,
+                itemsToRequest = mapOf(MDL_NAMESPACE to mapOf("family_name" to false)),
+                requestInfo = null,
+                readerKey = null,
+                signatureAlgorithm = Algorithm.UNSET,
+                readerKeyCertificateChain = null,
+            )
+            .generate()
+        val request = DeviceRequest.fromDataItem(Cbor.decode(encoded)).also { it.verifyReaderAuthentication(Simple.NULL) }
+        lateinit var view: IosPresentmentRequest
+
+        // Android answers both. multipaz reads only the first document request of an ISO 18013-5:2021
+        // request, so the mDL would have been dropped without a word.
+        val response = present(
+            store = store,
+            request = request,
+            consent = { data -> view = data.asConsentView(); acceptEverything(data) },
+        )
+
+        assertEquals(setOf("PID", "mDL"), view.combinations.single().documents.map { it.documentName }.toSet())
+        assertEquals(2, response.eventData.requestedDocuments.size)
+    }
+
+    //endregion
+
     @Test
     fun credentials_outside_the_wallets_own_domain_are_never_offered() = runTest {
         val store = walletWithPid()
@@ -230,7 +312,7 @@ class IosProximityPresentmentTest {
 
         // Same store, same request, wrong domain: nothing is offerable, so the request cannot be met.
         assertFailsWith<PresentmentCannotSatisfyRequestException> {
-            mdocPresentment(
+            iosMdocPresentment(
                 deviceRequest = readerRequest(mapOf("given_name" to false)),
                 eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
                 sessionTranscript = Simple.NULL,
@@ -238,7 +320,6 @@ class IosProximityPresentmentTest {
                 keyAgreementPossible = listOf(EcCurve.P256),
                 requesterAppId = null,
                 requesterOrigin = null,
-                onDocumentsInFocus = {},
             )
         }
     }
@@ -421,7 +502,7 @@ class IosProximityPresentmentTest {
 
     /** What the presenter's own source does with [request] — consent included, transport not. */
     private suspend fun presentThrough(presenter: IosProximityPresenter, store: MultipazWalletStore, request: DeviceRequest) =
-        mdocPresentment(
+        iosMdocPresentment(
             deviceRequest = request,
             eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
             sessionTranscript = Simple.NULL,
@@ -429,7 +510,6 @@ class IosProximityPresentmentTest {
             keyAgreementPossible = listOf(EcCurve.P256),
             requesterAppId = null,
             requesterOrigin = null,
-            onDocumentsInFocus = {},
         )
 
     @Test

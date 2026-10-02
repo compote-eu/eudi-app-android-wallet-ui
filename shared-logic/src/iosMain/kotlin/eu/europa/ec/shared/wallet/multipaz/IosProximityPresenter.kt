@@ -43,7 +43,6 @@ import org.multipaz.mdoc.transport.advertise
 import org.multipaz.mdoc.transport.waitForConnection
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
-import org.multipaz.presentment.Iso18013Presentment
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.request.Requester
@@ -84,8 +83,8 @@ sealed interface IosProximityState {
 /**
  * ISO 18013-5 proximity presentation on iOS: QR engagement, BLE, and the mdoc response.
  *
- * multipaz owns the protocol — `Iso18013Presentment` runs the exchange and `SimplePresentmentSource`
- * matches the reader's request against the wallet's documents. What this adds is the two things multipaz
+ * multipaz owns the protocol. [iosIso18013Presentment] (multipaz's `Iso18013Presentment`, copied so a request
+ * is matched the way Android matches it) runs the exchange. What this adds is the two things multipaz
  * deliberately leaves to the app: which credentials may be offered, and a consent step that waits for a
  * *person* rather than answering itself. [state] is what a screen renders; [accept] and [decline] are what
  * a screen calls back.
@@ -94,7 +93,7 @@ sealed interface IosProximityState {
  * there, but the iOS Simulator has no Bluetooth radio (nor NFC), and multipaz has no other mdoc transport —
  * so nothing between [startQrEngagement] and a connected reader can be exercised without a device and a
  * verifier. What *is* covered by tests is everything after the request arrives: matching, consent and the
- * response, which `mdocPresentment` performs with no transport involved. When a device is available, the
+ * response, which [iosMdocPresentment] performs with no transport involved. When a device is available, the
  * thing to watch is the connection, not the CBOR.
  */
 class IosProximityPresenter internal constructor(
@@ -254,7 +253,7 @@ class IosProximityPresenter internal constructor(
             val connected = transports.waitForConnection(eSenderKey = eDeviceKey.publicKey)
             transport = connected
 
-            Iso18013Presentment(
+            iosIso18013Presentment(
                 transport = connected,
                 eDeviceKey = eDeviceKey,
                 deviceEngagement = ByteString(engagement).toDataItem(),
@@ -293,7 +292,7 @@ class IosProximityPresenter internal constructor(
 
     /**
      * See [walletPresentmentSource], which holds every decision this shares with the other paths.
-     * `internal`, and given the store, so a test can run it through `mdocPresentment` over a seeded store —
+     * `internal`, and given the store, so a test can run it through [iosMdocPresentment] over a seeded store —
      * the half of the exchange that needs no transport.
      */
     internal suspend fun presentmentSource(store: MultipazWalletStore) = walletPresentmentSource(

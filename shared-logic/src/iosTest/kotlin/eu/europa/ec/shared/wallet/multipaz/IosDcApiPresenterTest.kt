@@ -534,5 +534,30 @@ class IosDcApiPresenterTest {
         assertFalse("given_name" in plaintext, "a claim the user dropped was sent anyway")
     }
 
+    /**
+     * An element the PID does not hold is left out of the response instead of refusing the PID, as
+     * Android answers it. Read from the decrypted response, so "left out" means not sent.
+     */
+    @Test
+    fun an_element_the_pid_lacks_is_left_out_rather_than_refusing_the_pid() = runTest {
+        val store = store()
+        store.seedPid()
+        val request = buildRequest(elements = mapOf("family_name" to false, "age_birth_year" to false))
+
+        val outcome = IosDcApiPresenter(store).present(
+            protocol = "org-iso-mdoc",
+            data = request.json,
+            origin = verifierOrigin,
+            onConsent = acceptEverything,
+        )
+
+        val sent = assertIs<IosDcApiOutcome.Sent>(outcome)
+        val plaintext = decryptResponse(sent.responseJson, request, verifierOrigin).decodeToString(
+            throwOnInvalidSequence = false,
+        )
+        assertTrue("family_name" in plaintext, "the held claim is missing from the response")
+        assertFalse("age_birth_year" in plaintext, "an element the PID does not hold appears in the response")
+    }
+
     //endregion
 }

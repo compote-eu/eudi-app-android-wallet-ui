@@ -23,7 +23,6 @@ import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
-import org.multipaz.presentment.digitalCredentialsPresentment
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.Logger
@@ -70,7 +69,8 @@ sealed interface IosDcApiOutcome {
  * our 0.99.0 pin, with its own tests, and it is the exact sibling of `uriSchemePresentment` — which
  * [IosRemotePresenter] has driven in production against the EUDI dev verifier since `8f4751dd`. So this
  * class is that presenter with the protocol function swapped: same [SimplePresentmentSource], same
- * consent seam, same three-way reading of the outcome.
+ * consent seam, same three-way reading of the outcome. Its `org-iso-mdoc` branch is our copy now
+ * ([iosDigitalCredentialsPresentment]), so a request is matched the way Android matches it.
  *
  * ⚠️ **Do not confuse this with `DigitalCredentials.defaultRequest`, which throws on iOS.** That is the
  * *relying-party* direction — a wallet asking someone else for credentials. It says nothing about
@@ -109,9 +109,10 @@ internal class IosDcApiPresenter(
      * @param protocol the `protocol` field of the request; `org-iso-mdoc` is what iOS sends for
      *   [org.multipaz.digitalcredentials.DigitalCredentials]' ISO 18013 scene, and the only one
      *   registration advertises.
-     * @param data the request's `data` field, as JSON text. The *string* overload of
-     *   `digitalCredentialsPresentment` is used on purpose — multipaz added it "for interoperability
-     *   with Swift", which is exactly the boundary this crosses.
+     * @param data the request's `data` field, as JSON text — the form multipaz's string overload of
+     *   `digitalCredentialsPresentment` takes "for interoperability with Swift", which is exactly the
+     *   boundary this crosses. [iosDigitalCredentialsPresentment] keeps it, and answers `org-iso-mdoc`
+     *   with the matching Android uses.
      * @param origin the requesting website's origin, or the app id for a native requester. Passed
      *   through unchanged: multipaz binds it into the session transcript, so inventing a value here
      *   would produce a response the verifier cannot validate.
@@ -133,14 +134,13 @@ internal class IosDcApiPresenter(
         var shared: List<String> = emptyList()
 
         return try {
-            val responseJson = digitalCredentialsPresentment(
+            // Nothing is preselected: iOS's picker preselects nothing that reaches us here. Android's
+            // Credential Manager can, which is why multipaz has the parameter at all.
+            val responseJson = iosDigitalCredentialsPresentment(
                 protocol = protocol,
                 data = data,
                 appId = appId,
                 origin = origin,
-                // Empty: iOS's picker preselects nothing that reaches us here. Android's Credential
-                // Manager can, which is why the parameter exists at all.
-                preselectedDocuments = emptyList(),
                 source = presentmentSource { requester, trustMetadata, presentmentData ->
                     // Before [onConsent], so the extension never shows the request.
                     if (isUntrustedReader(requester, trustMetadata)) throw UntrustedVerifierException()

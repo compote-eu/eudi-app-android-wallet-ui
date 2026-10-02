@@ -81,7 +81,8 @@ internal class MultipazWalletStore(
     /**
      * The wallet's transaction log.
      *
-     * multipaz writes to it *itself*: `Iso18013Presentment` and `uriSchemePresentment` both call
+     * The presentment functions write to it *themselves*: `iosIso18013Presentment` (our copy of
+     * multipaz's) and multipaz's `uriSchemePresentment` both call
      * `source.eventLogger?.addEventAsync(...)` once a response has gone out, and `ProvisioningModel`
      * logs a provisioning event when a document is issued. So the whole write side is this object
      * being handed to them rather than the null they were getting — which is also why only
