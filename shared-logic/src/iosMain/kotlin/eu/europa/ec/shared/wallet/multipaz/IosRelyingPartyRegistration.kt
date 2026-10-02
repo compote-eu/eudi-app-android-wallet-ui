@@ -16,7 +16,9 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -39,8 +41,12 @@ import kotlinx.serialization.json.jsonPrimitive
  *  - the excess runs the other way — **over-asking** (claims requested but not registered) rather than
  *    over-providing;
  *  - the certificate binds to whoever signed the **request object**, not the issuer metadata;
- *  - nothing is refused. Android displays the outcome and never blocks a presentation on it, so
- *    neither does this.
+ *  - the outcome refuses nothing. Android displays it, and a warning holds Share back until the user
+ *    accepts the risk, but no outcome blocks the presentation, so none does here.
+ *
+ * The one refusal is earlier and is about the request's *shape*, not the evaluation: with the check on,
+ * an `x509_hash` verifier must carry exactly one certificate, as openid4vp-kt requires — see
+ * [registrationCertificateRequirementFailure].
  */
 internal object RelyingPartyEntitlements {
     const val SERVICE_PROVIDER = "https://uri.etsi.org/19475/Entitlement/Service_Provider"
@@ -58,7 +64,13 @@ data class OverAskedClaim(
 
 sealed interface RelyingPartyRegistrationOutcome {
 
-    /** The request carries no registration certificate. Most verifiers publish none yet. */
+    /**
+     * Nothing could be evaluated: no request object was seen, or no ETSI trust source was configured.
+     *
+     * ⚠️ Not "the verifier sent no certificate" — since 2026-10-02 that is
+     * `Failed(IssuerRegistrationFailure.CERTIFICATE_ABSENT)`, as on Android, where wallet-core reports a
+     * missing certificate as a failed registration and the consent screen warns about it.
+     */
     data object NotOffered : RelyingPartyRegistrationOutcome
 
     /** The user has the registration check switched off, so the certificate was not looked at. */
@@ -76,12 +88,48 @@ sealed interface RelyingPartyRegistrationOutcome {
     ) : RelyingPartyRegistrationOutcome
 }
 
-/** The compact JWS in a request object's `verifier_info`, or null when it carries none. */
-internal fun relyingPartyCertificateIn(requestObject: JsonObject): String? =
-    requestObject["verifier_info"]?.jsonArray
-        ?.mapNotNull { runCatching { it.jsonObject }.getOrNull() }
-        ?.firstOrNull { it["format"]?.jsonPrimitive?.contentOrNull == "registration_cert" }
-        ?.get("data")?.jsonPrimitive?.contentOrNull
+/**
+ * The registration certificate in a request object's `verifier_info`, or null when there is not exactly
+ * one usable entry.
+ *
+ * Read as wallet-core's `extractRegistrationCertificate` reads it: the **single** `registration_cert`
+ * entry, carrying no `credential_ids`, whose `data` is a string. Two entries, or one scoped to particular
+ * credentials, count as none — which with the check switched on is a missing certificate.
+ */
+internal fun relyingPartyCertificateIn(requestObject: JsonObject): String? {
+    val entry = registrationCertificateEntriesIn(requestObject).singleOrNull() ?: return null
+    if (entry["credential_ids"] != null) return null
+    return (entry["data"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+}
+
+/**
+ * Why a request object fails the requirement openid4vp-kt places on an `x509_hash` verifier while a
+ * registration policy is installed, or null when it meets it.
+ *
+ * openid4vp-kt 0.15.1's `RegistrationCertificatePolicyEvaluator` asks an `x509_hash` client for
+ * `verifier_info` holding **exactly one** `registration_cert` entry with no `credential_ids` and a string
+ * `data`, and rejects the request otherwise (`MissingRequiredRegistrationCertificate`,
+ * `MultipleRegistrationCertificates`, `MalformedRegistrationCertificate`). wallet-core installs that
+ * policy whenever the user's registration check is on, so on Android this is what "on" means for such a
+ * verifier. Other client id prefixes are not asked.
+ */
+internal fun registrationCertificateRequirementFailure(requestObject: JsonObject): String? {
+    val entries = registrationCertificateEntriesIn(requestObject)
+    return when {
+        entries.isEmpty() -> "no registration certificate"
+        entries.size > 1 -> "more than one registration certificate"
+        entries.single()["credential_ids"] != null -> "a registration certificate scoped to credential_ids"
+        (entries.single()["data"] as? JsonPrimitive)?.isString != true -> "a registration certificate that is not a string"
+        else -> null
+    }
+}
+
+private fun registrationCertificateEntriesIn(requestObject: JsonObject): List<JsonObject> =
+    (requestObject["verifier_info"] as? JsonArray).orEmpty()
+        .mapNotNull { it as? JsonObject }
+        .filter { (it["format"] as? JsonPrimitive)?.contentOrNull == REGISTRATION_CERT_FORMAT }
+
+private const val REGISTRATION_CERT_FORMAT = "registration_cert"
 
 /** Every claim a DCQL query asks for, paired with the format and attestation type asking for it. */
 internal fun requestedClaimsIn(requestObject: JsonObject): List<OverAskedClaim> =

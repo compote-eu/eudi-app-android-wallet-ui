@@ -97,6 +97,14 @@ sealed interface IosRemotePresentationState {
      * blocked", reached at the same point and failing closed the same way.
      */
     data object VerifierNotTrusted : IosRemotePresentationState
+
+    /**
+     * Refused: with the registration check on, an `x509_hash` verifier sent no registration certificate, or
+     * more than one, or one in the wrong shape. The verifier was told `invalid_request`; nothing was matched
+     * or asked. Android reaches the same point through openid4vp-kt and shows its generic error, so the
+     * screen does too — see [registrationCertificateRequirementFailure].
+     */
+    data object RegistrationCertificateMissing : IosRemotePresentationState
 }
 
 /**
@@ -256,6 +264,7 @@ class IosRemotePresenter internal constructor(
                     httpClientEngineFactory = PresentationObservingEngineFactory(
                         notice = requestNotice,
                         isVerifierTrusted = ::isVerifierTrusted,
+                        isRegistrationCheckEnabled = isRegistrationCheckEnabled,
                     ),
                 )
                 Logger.i(
@@ -294,6 +303,11 @@ class IosRemotePresenter internal constructor(
                     else -> if (t.isUntrustedVerifierRefusal()) {
                         Logger.w(TAG, "blocked: the verifier's access certificate is not trusted")
                         mutableState.value = IosRemotePresentationState.VerifierNotTrusted
+                    } else if (t.isRegistrationCertificateRefusal()) {
+                        // Told first, as wallet-core dispatches the error before reporting it; the notice
+                        // already holds the verified request's `response_uri` and `state`.
+                        tellVerifier(INVALID_REQUEST)
+                        mutableState.value = IosRemotePresentationState.RegistrationCertificateMissing
                     } else {
                         fail(t)
                     }
@@ -354,19 +368,23 @@ class IosRemotePresenter internal constructor(
      * declined is finished either way, and multipaz never sent anything at all before this.
      */
     fun reject() {
+        tellVerifier(ACCESS_DENIED)
+        cancel()
+    }
+
+    /** Sends an OpenID4VP error response to the current request's verifier, if it named where to. */
+    private fun tellVerifier(error: String) {
         val notice = requestNotice
-        if (notice.canReject) {
-            // Its own scope: `cancel()` kills `presentmentJob`, and the POST must outlive that.
-            scope.launch {
-                val client = HttpClient(Darwin)
-                try {
-                    sendPresentationRejection(notice, client)
-                } finally {
-                    client.close()
-                }
+        if (!notice.canReject) return
+        // Its own scope: `cancel()` kills `presentmentJob`, and the POST must outlive that.
+        scope.launch {
+            val client = HttpClient(Darwin)
+            try {
+                sendPresentationRejection(notice, client, error)
+            } finally {
+                client.close()
             }
         }
-        cancel()
     }
 
     /**

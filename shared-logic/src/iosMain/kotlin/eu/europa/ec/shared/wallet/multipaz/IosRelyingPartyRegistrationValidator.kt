@@ -34,7 +34,8 @@ import kotlin.time.Duration
  * these claims?*, checks a different entitlement, binds to a different certificate, and — unlike the
  * issuer side — **refuses nothing**. Android displays the outcome on the consent screen and blocks no
  * presentation on it; a wallet that silently dropped requests would be worse than one that says who is
- * asking and lets the user decide.
+ * asking and lets the user decide. (The `x509_hash` shape rule is enforced before this runs, by the
+ * request observer — see [registrationCertificateRequirementFailure].)
  *
  * @param isChainTrusted the ETSI **WRPRC** list, the same one the issuer side consults — which reads
  *   oddly there and naturally here, since `rc-wrp+jwt` is the relying-party format.
@@ -53,8 +54,11 @@ internal class IosRelyingPartyRegistrationValidator(
         requestObject: JsonObject,
         requestSigner: X509Cert?,
     ): RelyingPartyRegistrationOutcome {
+        // A failure, not "nothing to evaluate": the user asked for registrations to be checked, and wallet-core
+        // answers a missing one with CERTIFICATE_ABSENT, which the consent screen warns about. The official iOS
+        // wallet stays silent here; Android is the reference this fork matches.
         val compact = relyingPartyCertificateIn(requestObject)
-            ?: return RelyingPartyRegistrationOutcome.NotOffered
+            ?: return RelyingPartyRegistrationOutcome.Failed(IssuerRegistrationFailure.CERTIFICATE_ABSENT)
 
         val declaredType = jwsHeader(compact)?.get("typ")?.jsonPrimitive?.contentOrNull
         if (declaredType != REGISTRATION_CERT_TYPE) {

@@ -27,8 +27,15 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.parseUrlEncodedParameters
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.Crypto
+import org.multipaz.util.toBase64Url
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -86,7 +93,7 @@ class PresentationRejectionTest {
                 ),
             )
         }
-        val observed = PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }) { engine }
+        val observed = PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }, isRegistrationCheckEnabled = { false }) { engine }
         // The body must still be readable downstream: multipaz parses the very response this observes.
         val client = HttpClient(observed.create {})
         assertEquals(body, client.request("https://verifier.test/request.jwt") { this.method = method }.bodyAsText())
@@ -146,7 +153,7 @@ class PresentationRejectionTest {
             val engine = MockEngine {
                 respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
             }
-            val client = HttpClient(PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }) { engine }.create {})
+            val client = HttpClient(PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }, isRegistrationCheckEnabled = { false }) { engine }.create {})
 
             // Refused before multipaz could read it, so the consent screen is never reached...
             assertFailsWith<ClientIdBindingException> {
@@ -166,7 +173,7 @@ class PresentationRejectionTest {
             val engine = MockEngine {
                 respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
             }
-            val client = HttpClient(PresentationObservingEngineFactory(notice, isVerifierTrusted = { false }) { engine }.create {})
+            val client = HttpClient(PresentationObservingEngineFactory(notice, isVerifierTrusted = { false }, isRegistrationCheckEnabled = { false }) { engine }.create {})
 
             // Android's "Untrusted x5c": refused before multipaz matches anything or asks anyone...
             assertFailsWith<UntrustedVerifierException> {
@@ -187,7 +194,7 @@ class PresentationRejectionTest {
             respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
         }
         val client = HttpClient(
-            PresentationObservingEngineFactory(notice, isVerifierTrusted = { asked += it; true }) { engine }.create {}
+            PresentationObservingEngineFactory(notice, isVerifierTrusted = { asked += it; true }, isRegistrationCheckEnabled = { false }) { engine }.create {}
         )
 
         client.request("https://verifier.test/request.jwt")
@@ -206,7 +213,7 @@ class PresentationRejectionTest {
             respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
         }
         val client = HttpClient(
-            PresentationObservingEngineFactory(notice, isVerifierTrusted = { asked = true; false }) { engine }.create {}
+            PresentationObservingEngineFactory(notice, isVerifierTrusted = { asked = true; false }, isRegistrationCheckEnabled = { false }) { engine }.create {}
         )
 
         // A malformed request is a failure, not a block: it is the binding that refuses it.
@@ -225,7 +232,7 @@ class PresentationRejectionTest {
                 respond(answer, status, io.ktor.http.headersOf("Content-Type", "application/json"))
             }
         }
-        val client = HttpClient(PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }) { engine }.create {})
+        val client = HttpClient(PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }, isRegistrationCheckEnabled = { false }) { engine }.create {})
         client.request("https://verifier.test/request.jwt")
         // multipaz reads the very answer this observes, so its body must survive being read here.
         assertEquals(answer, client.request(responseUri) { method = HttpMethod.Post }.bodyAsText())
@@ -307,5 +314,125 @@ class PresentationRejectionTest {
         val client = HttpClient(MockEngine { throw IllegalStateException("the network blinked") })
 
         assertFalse(sendPresentationRejection(notice, client))
+    }
+
+    // An x509_hash verifier and its registration certificate, while the user's check is on — the rule
+    // openid4vp-kt 0.15.1 applies on Android whenever wallet-core has installed a registration policy.
+
+    /** An `x509_hash` request object whose client_id is the hash of its own signer, as the binding requires. */
+    private suspend fun x509HashRequest(verifierInfo: JsonArray?): Pair<String, String> {
+        val signer = testVerifierCertificate(dnsNames = listOf("verifier.test"))
+        val hashClientId = "x509_hash:" + Crypto.digest(Algorithm.SHA256, signer.encoded.toByteArray()).toBase64Url()
+        val body = signedRequestObject(
+            claims = buildJsonObject {
+                put("client_id", hashClientId)
+                put("response_uri", responseUri)
+                put("state", "the-state")
+                put("nonce", "n-123")
+                verifierInfo?.let { put("verifier_info", it) }
+            },
+            signer = signer,
+        )
+        return hashClientId to body
+    }
+
+    /** Fetches an `x509_hash` request object through the observer; the failure, if any, is the result's. */
+    private suspend fun fetchX509Hash(
+        verifierInfo: JsonArray?,
+        checkEnabled: Boolean = true,
+    ): Pair<PresentationRequestNotice, Result<Unit>> {
+        val (hashClientId, body) = x509HashRequest(verifierInfo)
+        val notice = PresentationRequestNotice(linkClientId = hashClientId)
+        val engine = MockEngine {
+            respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
+        }
+        val client = HttpClient(
+            PresentationObservingEngineFactory(
+                notice,
+                isVerifierTrusted = { true },
+                isRegistrationCheckEnabled = { checkEnabled },
+            ) { engine }.create {}
+        )
+        return notice to runCatching { client.request("https://verifier.test/request.jwt"); Unit }
+    }
+
+    private fun registrationCert(data: String = "eyJ.a.b", scopedToCredentials: Boolean = false) = buildJsonObject {
+        put("format", "registration_cert")
+        put("data", data)
+        if (scopedToCredentials) putJsonArray("credential_ids") { add("pid") }
+    }
+
+    @Test
+    fun an_x509_hash_verifier_without_a_registration_certificate_is_refused_and_can_be_told_why() = runTest {
+        val (notice, fetched) = fetchX509Hash(verifierInfo = null)
+
+        assertTrue(fetched.exceptionOrNull()?.isRegistrationCertificateRefusal() == true, "$fetched")
+        // Refused after it proved who it is — unlike an untrusted verifier, this one is told `invalid_request`.
+        assertTrue(notice.canReject)
+    }
+
+    @Test
+    fun the_same_verifier_carrying_its_certificate_is_let_through() = runTest {
+        val (_, fetched) = fetchX509Hash(buildJsonArray { add(registrationCert()) })
+
+        assertTrue(fetched.isSuccess, "$fetched")
+    }
+
+    @Test
+    fun two_certificates_or_one_scoped_to_credentials_are_refused_as_openid4vp_kt_refuses_them() = runTest {
+        val shapes = listOf(
+            buildJsonArray { add(registrationCert()); add(registrationCert(data = "eyJ.c.d")) },
+            buildJsonArray { add(registrationCert(scopedToCredentials = true)) },
+        )
+        for (verifierInfo in shapes) {
+            val (_, fetched) = fetchX509Hash(verifierInfo)
+            assertTrue(fetched.exceptionOrNull()?.isRegistrationCertificateRefusal() == true, "$verifierInfo")
+        }
+    }
+
+    @Test
+    fun nothing_is_required_while_the_check_is_off() = runTest {
+        val (_, fetched) = fetchX509Hash(verifierInfo = null, checkEnabled = false)
+
+        assertTrue(fetched.isSuccess, "$fetched")
+    }
+
+    @Test
+    fun an_x509_san_dns_verifier_is_never_asked_for_one() = runTest {
+        // The fixtures' verifier is x509_san_dns, and openid4vp-kt asks only an x509_hash client.
+        val notice = PresentationRequestNotice(linkClientId = clientId)
+        val body = requestObjectJwt()
+        val engine = MockEngine {
+            respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
+        }
+        val client = HttpClient(
+            PresentationObservingEngineFactory(
+                notice,
+                isVerifierTrusted = { true },
+                isRegistrationCheckEnabled = { true },
+            ) { engine }.create {}
+        )
+
+        client.request("https://verifier.test/request.jwt")
+
+        assertTrue(notice.canReject)
+    }
+
+    @Test
+    fun a_refused_request_is_answered_with_invalid_request_and_its_state() = runTest {
+        val (notice, _) = fetchX509Hash(verifierInfo = null)
+        var posted: String? = null
+        val client = HttpClient(
+            MockEngine { request ->
+                posted = request.body.toByteArray().decodeToString()
+                respond("{}", HttpStatusCode.OK)
+            }
+        )
+
+        assertTrue(sendPresentationRejection(notice, client, INVALID_REQUEST))
+
+        val form = posted!!.parseUrlEncodedParameters()
+        assertEquals("invalid_request", form["error"])
+        assertEquals("the-state", form["state"])
     }
 }

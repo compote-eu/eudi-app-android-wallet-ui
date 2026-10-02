@@ -88,6 +88,7 @@ private fun IssuerRegistration.toDetails(locale: String) = RegistrationDetailsDo
  * whoever presented it.
  */
 private fun IssuerRegistrationFailure.toDomain(): RegistrationFailureReasonDomain = when (this) {
+    IssuerRegistrationFailure.CERTIFICATE_ABSENT -> RegistrationFailureReasonDomain.CERTIFICATE_ABSENT
     IssuerRegistrationFailure.MALFORMED -> RegistrationFailureReasonDomain.MALFORMED
     IssuerRegistrationFailure.SIGNATURE_INVALID -> RegistrationFailureReasonDomain.SIGNATURE_INVALID
     IssuerRegistrationFailure.UNTRUSTED_PROVIDER -> RegistrationFailureReasonDomain.UNTRUSTED_PROVIDER

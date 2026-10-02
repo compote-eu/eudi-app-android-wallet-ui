@@ -177,6 +177,13 @@ internal class IosRemotePresentationCoordinator(
                 is IosRemotePresentationState.VerifierNotTrusted ->
                     PresentationRequestInteractorPartialState.VerifierNotTrusted
 
+                // Android's words for it: openid4vp-kt's refusal carries no message, so its controller
+                // falls back to the generic error.
+                is IosRemotePresentationState.RegistrationCertificateMissing ->
+                    PresentationRequestInteractorPartialState.Failure(
+                        error = strings[Res.string.generic_error_message],
+                    )
+
                 // Resolving is the gap between the link and the request; the screen shows its own
                 // spinner meanwhile, and there is nothing truer to say than nothing.
                 is IosRemotePresentationState.Resolving,
@@ -263,6 +270,7 @@ internal class IosRemotePresentationCoordinator(
                 // answer belongs, and it has already given it.
                 is IosRemotePresentationState.NothingToShare,
                 is IosRemotePresentationState.VerifierNotTrusted,
+                is IosRemotePresentationState.RegistrationCertificateMissing,
                 is IosRemotePresentationState.Resolving,
                     -> Unit
             }

@@ -18,7 +18,9 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.revocation.StatusSignerTrustDomain
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -39,6 +41,7 @@ import kotlin.time.Duration.Companion.days
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -173,13 +176,55 @@ class IosRelyingPartyRegistrationTest {
     )
 
     @Test
-    fun a_request_with_no_verifier_info_is_not_evaluated() = runTest {
+    fun a_request_with_no_verifier_info_is_a_missing_certificate() = runTest {
         val bare = buildJsonObject { put("nonce", "n-1") }
 
         val outcome = validator().evaluate(bare, requestSigner())
 
-        // Most verifiers publish none yet; treating that as a failure would flag the whole ecosystem.
-        assertIs<RelyingPartyRegistrationOutcome.NotOffered>(outcome)
+        // Until 2026-10-02 this was NotOffered, and the consent screen said nothing. wallet-core answers it
+        // with CERTIFICATE_ABSENT, and Android's screen warns and holds Share back — watched that day.
+        val failed = assertIs<RelyingPartyRegistrationOutcome.Failed>(outcome)
+        assertEquals(IssuerRegistrationFailure.CERTIFICATE_ABSENT, failed.reason)
+        assertNull(failed.registration)
+    }
+
+    private fun withVerifierInfo(vararg entries: JsonObject) = buildJsonObject {
+        put("nonce", "n-1")
+        putJsonArray("verifier_info") { entries.forEach { add(it) } }
+    }
+
+    private fun entry(data: JsonElement = JsonPrimitive("eyJ.a.b"), credentialIds: Boolean = false) = buildJsonObject {
+        put("format", "registration_cert")
+        put("data", data)
+        if (credentialIds) putJsonArray("credential_ids") { add("pid") }
+    }
+
+    @Test
+    fun the_certificate_is_read_only_when_there_is_exactly_one_usable_entry() {
+        // wallet-core's `extractRegistrationCertificate`: anything else is no certificate at all.
+        assertEquals("eyJ.a.b", relyingPartyCertificateIn(withVerifierInfo(entry())))
+        assertNull(relyingPartyCertificateIn(withVerifierInfo(entry(), entry(JsonPrimitive("eyJ.c.d")))), "two")
+        assertNull(relyingPartyCertificateIn(withVerifierInfo(entry(credentialIds = true))), "scoped")
+        assertNull(relyingPartyCertificateIn(withVerifierInfo(entry(data = buildJsonObject {}))), "not a string")
+    }
+
+    @Test
+    fun the_x509_hash_requirement_names_what_is_wrong_and_passes_one_good_certificate() {
+        // openid4vp-kt's three refusals, and the one shape it accepts.
+        assertEquals("no registration certificate", registrationCertificateRequirementFailure(buildJsonObject {}))
+        assertEquals(
+            "more than one registration certificate",
+            registrationCertificateRequirementFailure(withVerifierInfo(entry(), entry())),
+        )
+        assertEquals(
+            "a registration certificate scoped to credential_ids",
+            registrationCertificateRequirementFailure(withVerifierInfo(entry(credentialIds = true))),
+        )
+        assertEquals(
+            "a registration certificate that is not a string",
+            registrationCertificateRequirementFailure(withVerifierInfo(entry(data = buildJsonObject {}))),
+        )
+        assertNull(registrationCertificateRequirementFailure(withVerifierInfo(entry())))
     }
 
     @Test

@@ -136,6 +136,12 @@ sealed interface IssuerRegistrationOutcome {
 }
 
 enum class IssuerRegistrationFailure {
+    /**
+     * A verifier sent no registration certificate while the user has the check switched on — Android's
+     * `RegistrationFailureReason.CERTIFICATE_ABSENT`. Only the relying-party side produces it: an issuer
+     * that publishes no `issuer_info` is [IssuerRegistrationOutcome.NotOffered], as on Android.
+     */
+    CERTIFICATE_ABSENT,
     MALFORMED,
     SIGNATURE_INVALID,
     UNTRUSTED_PROVIDER,

@@ -18,6 +18,10 @@
 // `buildRelyingParty` applies, held here because iOS builds the same object on its own.
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.commonfeature.ui.request.model.RegistrationWarningVariantUi
+import eu.europa.ec.commonfeature.ui.request.model.toRegistrationWarningUi
+import eu.europa.ec.corelogic.model.RegistrationFailureReasonDomain
+import eu.europa.ec.corelogic.model.RegistrationStatusDomain
 import eu.europa.ec.shared.wallet.multipaz.IssuerRegistration
 import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationFailure
 import eu.europa.ec.shared.wallet.multipaz.LocalizedText
@@ -25,6 +29,7 @@ import eu.europa.ec.shared.wallet.multipaz.RelyingPartyRegistrationOutcome
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -95,6 +100,20 @@ class IosRelyingPartyNamingTest {
         )
 
         assertEquals("Netcompany Verifier (DEV)", relyingParty.name)
+    }
+
+    @Test
+    fun a_missing_certificate_warns_as_on_android_and_drops_the_badge() {
+        // Watched on Android 2026-10-02 19:08: "registered information could not be obtained", Share held
+        // back until the switch was flipped, the verifier unbadged.
+        val relyingParty = relyingParty(RelyingPartyRegistrationOutcome.Failed(IssuerRegistrationFailure.CERTIFICATE_ABSENT))
+
+        val registration = assertIs<RegistrationStatusDomain.NotVerified>(relyingParty.registration)
+        assertEquals(RegistrationFailureReasonDomain.CERTIFICATE_ABSENT, registration.reason)
+        assertNull(registration.details)
+        assertEquals(RegistrationWarningVariantUi.NOT_VERIFIED, relyingParty.toRegistrationWarningUi()?.variant)
+        assertFalse(relyingParty.isFullyVerified)
+        assertEquals(accessCertificateName, relyingParty.name)
     }
 
     @Test
