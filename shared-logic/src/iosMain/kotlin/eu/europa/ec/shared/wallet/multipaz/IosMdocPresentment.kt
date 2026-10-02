@@ -422,6 +422,8 @@ internal suspend fun iosDigitalCredentialsPresentment(
     appId: String?,
     origin: String,
     source: PresentmentSource,
+    /** The `org-iso-mdoc` request once its reader authentication is checked; see [iosIso18013Presentment]. */
+    onDeviceRequest: (DeviceRequest) -> Unit = {},
 ): String = when (protocol) {
     "org.iso.mdoc", "org-iso-mdoc" -> Json.encodeToString(
         mdocDcApiPresentment(
@@ -430,6 +432,7 @@ internal suspend fun iosDigitalCredentialsPresentment(
             appId = appId,
             origin = origin,
             source = source,
+            onDeviceRequest = onDeviceRequest,
         )
     )
 
@@ -451,6 +454,7 @@ private suspend fun mdocDcApiPresentment(
     appId: String?,
     origin: String,
     source: PresentmentSource,
+    onDeviceRequest: (DeviceRequest) -> Unit,
 ): JsonObject {
     val deviceRequestBase64 = data["deviceRequest"]!!.jsonPrimitive.content
     val encryptionInfoBase64 = data["encryptionInfo"]!!.jsonPrimitive.content
@@ -476,6 +480,7 @@ private suspend fun mdocDcApiPresentment(
 
     val deviceRequest = DeviceRequest.fromDataItem(Cbor.decode(deviceRequestBase64.fromBase64Url()))
     deviceRequest.verifyReaderAuthentication(sessionTranscript)
+    onDeviceRequest(deviceRequest)
     val responseObject = iosMdocPresentment(
         deviceRequest = deviceRequest,
         eReaderKey = null,

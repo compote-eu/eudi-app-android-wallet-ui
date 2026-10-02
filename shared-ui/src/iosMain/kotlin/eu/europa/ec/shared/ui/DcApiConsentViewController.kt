@@ -17,6 +17,30 @@
 package eu.europa.ec.shared.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import eu.europa.ec.commonfeature.ui.request.ConsentStickyBottomSection
+import eu.europa.ec.commonfeature.ui.request.ConsentWarningSection
+import eu.europa.ec.commonfeature.ui.request.model.RegistrationWarningUi
+import eu.europa.ec.commonfeature.ui.request.model.RelyingPartyHeaderUi
+import eu.europa.ec.commonfeature.ui.request.model.toRegistrationWarningUi
+import eu.europa.ec.commonfeature.ui.request.model.toRelyingPartyHeaderUi
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.request_cancel_button_text
+import eu.europa.ec.shared.resources.request_intended_use_section_title
+import eu.europa.ec.shared.resources.request_privacy_policy_section_title
+import eu.europa.ec.shared.resources.request_registration_acknowledge_text
+import eu.europa.ec.shared.resources.request_registration_not_verified_warning_text
+import eu.europa.ec.shared.resources.request_registration_overasked_warning_text
+import eu.europa.ec.shared.resources.request_relying_party_default_name
+import eu.europa.ec.shared.resources.request_sticky_button_text
+import eu.europa.ec.shared.ui.di.relyingPartyDomain
+import eu.europa.ec.uilogic.component.InfoSection
+import eu.europa.ec.uilogic.component.RelyingParty
+import eu.europa.ec.uilogic.component.RelyingPartyLayout
+import eu.europa.ec.commonfeature.util.TestTag
+import platform.Foundation.NSLocale
+import platform.Foundation.currentLocale
+import platform.Foundation.languageCode
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +48,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,9 +69,6 @@ import eu.europa.ec.shared.ui.di.module as sharedUiDefinitions
 import eu.europa.ec.shared.ui.di.toCombinationsUi
 import eu.europa.ec.shared.wallet.multipaz.IosPresentmentDisclosure
 import eu.europa.ec.shared.wallet.multipaz.IosPresentmentRequest
-import eu.europa.ec.uilogic.component.wrap.ButtonConfig
-import eu.europa.ec.uilogic.component.wrap.ButtonType
-import eu.europa.ec.uilogic.component.wrap.WrapButton
 import eu.europa.ec.uilogic.component.wrap.WrapExpandableListItem
 import eu.europa.ec.uilogic.component.wrap.WrapSelectableCard
 import kotlinx.coroutines.runBlocking
@@ -140,11 +160,29 @@ private fun DcApiConsentScreen(
         mutableStateOf(combinations.map { it.documents })
     }
 
+    // Who is asking, built exactly as the app's remote and proximity screens build it — the registration
+    // included, so this screen warns where theirs do (see `relyingPartyDomain`).
+    val relyingParty = remember(request) {
+        relyingPartyDomain(
+            requesterName = request.requesterName,
+            requesterIsTrusted = request.requesterIsTrusted,
+            registration = request.relyingPartyRegistration,
+            locale = NSLocale.currentLocale.languageCode,
+        )
+    }
+    val header = remember(relyingParty) {
+        relyingParty.toRelyingPartyHeaderUi(fallbackName = UiText.Resource(Res.string.request_relying_party_default_name))
+    }
+    // Starts unacknowledged for every request, as `RequestViewModel`'s does.
+    var riskAccepted: Boolean by remember(request) { mutableStateOf(false) }
+    val registrationWarning = remember(relyingParty) { relyingParty.toRegistrationWarningUi() }
+        ?.copy(riskAccepted = riskAccepted)
+
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(text = request.requesterName ?: "")
+        VerifierHeader(header = header, strings = strings)
 
         Column(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
@@ -183,8 +221,43 @@ private fun DcApiConsentScreen(
         ShareAndCancel(
             combination = combinations.getOrNull(selected),
             documents = documentsPerCombination.getOrNull(selected).orEmpty(),
+            strings = strings,
+            registrationWarning = registrationWarning,
+            onRiskAcceptedChange = { riskAccepted = it },
             onDecision = onDecision,
         )
+    }
+}
+
+/**
+ * The requester, as the app's request screen shows it: name and badge, then the registration's privacy
+ * policy and intended use when a certificate was read.
+ *
+ * The privacy policy is shown as text rather than as the app's link: an extension cannot hand a URL to
+ * Safari, and a link that does nothing would be worse than an address the user can read.
+ */
+@Composable
+private fun VerifierHeader(header: RelyingPartyHeaderUi, strings: StringCatalog) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        RelyingParty(
+            modifier = Modifier.fillMaxWidth(),
+            relyingPartyData = header.relyingParty,
+            layout = RelyingPartyLayout.InlineStart,
+        )
+        header.privacyPolicyUrl?.let { url ->
+            InfoSection(
+                modifier = Modifier.fillMaxWidth(),
+                title = strings[Res.string.request_privacy_policy_section_title],
+                body = url,
+            )
+        }
+        header.intendedUse?.let { intendedUse ->
+            InfoSection(
+                modifier = Modifier.fillMaxWidth(),
+                title = strings[Res.string.request_intended_use_section_title],
+                body = intendedUse,
+            )
+        }
     }
 }
 
@@ -244,41 +317,46 @@ private fun DocumentRows(
 private fun ShareAndCancel(
     combination: RequestCombinationUi?,
     documents: List<RequestDocumentItemUi>,
+    strings: StringCatalog,
+    registrationWarning: RegistrationWarningUi?,
+    onRiskAcceptedChange: (Boolean) -> Unit,
     onDecision: (List<IosPresentmentDisclosure>?) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    // The app's consent bottom, warning included: Share stays disabled while a shown warning is
+    // unacknowledged, as `RequestState.allowShare` keeps it there.
+    ConsentStickyBottomSection(
+        modifier = Modifier.fillMaxWidth(),
+        paddingValues = PaddingValues(0.dp),
+        primaryButtonTestTag = TestTag.RequestScreen.PRIMARY_BUTTON,
+        cancelButtonTestTag = TestTag.RequestScreen.SECONDARY_BUTTON,
+        warningSection = ConsentWarningSection(
+            registrationWarning = registrationWarning,
+            notVerifiedWarningText = strings[Res.string.request_registration_not_verified_warning_text],
+            overaskedWarningText = strings[Res.string.request_registration_overasked_warning_text],
+            acknowledgeText = strings[Res.string.request_registration_acknowledge_text],
+            onAcknowledgeChange = onRiskAcceptedChange,
+        ),
+        primaryButtonText = strings[Res.string.request_sticky_button_text],
+        cancelButtonText = strings[Res.string.request_cancel_button_text],
+        primaryButtonEnabled = registrationWarning?.riskAccepted != false,
+        onPrimaryButtonClick = {
+            val kept = combination
+                ?.copy(documents = documents)
+                ?.keptDocuments()
+                .orEmpty()
 
-        WrapButton(
-            modifier = Modifier.fillMaxWidth(),
-            buttonConfig = ButtonConfig(
-                type = ButtonType.PRIMARY,
-                onClick = {
-                    val kept = combination
-                        ?.copy(documents = documents)
-                        ?.keptDocuments()
-                        .orEmpty()
-
-                    onDecision(
-                        kept.map { document ->
-                            IosPresentmentDisclosure(
-                                documentId = document.match.documentId,
-                                credentialId = document.match.credentialId,
-                                claims = document.payload.docClaimsDomain.map { it.path }.toSet(),
-                            )
-                        }.takeIf { it.isNotEmpty() },
+            onDecision(
+                kept.map { document ->
+                    IosPresentmentDisclosure(
+                        documentId = document.match.documentId,
+                        credentialId = document.match.credentialId,
+                        claims = document.payload.docClaimsDomain.map { it.path }.toSet(),
                     )
-                },
-            ),
-        ) { Text(text = "Share") }
-
-        WrapButton(
-            modifier = Modifier.fillMaxWidth(),
-            buttonConfig = ButtonConfig(
-                type = ButtonType.SECONDARY,
-                onClick = { onDecision(null) },
-            ),
-        ) { Text(text = "Cancel") }
-    }
+                }.takeIf { it.isNotEmpty() },
+            )
+        },
+        onCancelButtonClick = { onDecision(null) },
+    )
 }
 
 /** The extension's own graph. See [IosAppRoot] — same reasoning, different process. */

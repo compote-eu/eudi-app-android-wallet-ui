@@ -104,12 +104,13 @@ class IosDocumentProviderBridge private constructor(
             data = data,
             origin = origin,
             appId = appId,
-        ) { requester, trustMetadata, presentmentData ->
+        ) { requester, trustMetadata, presentmentData, registration ->
             val request = presentmentData.toPresentmentRequest(
                 // A name with nothing vouching for it is still worth showing, and is usually all there
                 // is: iOS tells the extension the origin, not who owns it.
                 requesterName = trustMetadata?.displayName ?: requester.certificateCommonName() ?: origin,
                 requesterIsTrusted = trustMetadata != null,
+                relyingPartyRegistration = registration,
             )
             consent.requestConsent(request)?.let { presentmentData.toSelection(it) }
         }

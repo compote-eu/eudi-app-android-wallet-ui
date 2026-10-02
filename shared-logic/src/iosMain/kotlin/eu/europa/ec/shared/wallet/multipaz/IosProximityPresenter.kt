@@ -344,7 +344,12 @@ class IosProximityPresenter internal constructor(
         // Before the request is published, so a screen never shows it. multipaz ends the session on the
         // way out and builds no response.
         if (isUntrustedReader(requester, trustMetadata)) throw UntrustedVerifierException()
-        val registration = readerRegistration(requester)
+        val registration = readerRegistrationOutcome(
+            isRegistrationCheckEnabled = isRegistrationCheckEnabled,
+            deviceRequest = deviceRequest,
+            readerTrust = readerTrust,
+            reader = requester.certChain?.certificates?.firstOrNull(),
+        )
 
         val consent = CompletableDeferred<CredentialPresentmentSelection?>()
         pendingConsent = consent
@@ -366,30 +371,6 @@ class IosProximityPresenter internal constructor(
             mutableState.value = IosProximityState.Sending
         }
         return selection
-    }
-
-    /**
-     * What the reader's registration certificate says, when the user has the check switched on — the
-     * proximity half of what wallet-core's request processor does on Android, in the same order.
-     *
-     * Off means not looked at, so nothing is fetched. Without an ETSI trust source there is nothing to
-     * judge against, which Android also answers by not evaluating. A request carrying two different
-     * certificates fails here, as Android's processor fails it; any other trouble judging it is logged and
-     * shown as not evaluated, so the user may still answer.
-     */
-    private suspend fun readerRegistration(requester: Requester): RelyingPartyRegistrationOutcome {
-        if (!isRegistrationCheckEnabled()) return RelyingPartyRegistrationOutcome.NotChecked
-        val request = deviceRequest ?: return RelyingPartyRegistrationOutcome.NotOffered
-        val etsi = readerTrust as? IosEtsiTrust ?: return RelyingPartyRegistrationOutcome.NotOffered
-        val certificate = request.readerRegistrationCertificate()
-        return runCatching {
-            withEtsiRegistrationValidator(etsi) {
-                evaluateReader(certificate, request.requestedClaims(), requester.certChain?.certificates?.firstOrNull())
-            }
-        }.getOrElse {
-            Logger.w(TAG, "the reader's registration could not be evaluated: ${it.message}")
-            RelyingPartyRegistrationOutcome.NotOffered
-        }
     }
 
     private fun fail(cause: Throwable) {

@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.shared.wallet.platform.IosRegistrationCheckSetting
 import platform.Foundation.NSUserDefaults
 
 /**
@@ -40,9 +41,6 @@ internal object IosPreferences {
     /** Same key string as Android's, so the two platforms' stores read alike even though they are separate. */
     private const val SHOW_BATCH_ISSUANCE_COUNTER = "ShowBatchIssuanceCounter"
 
-    /** Android's key too — `PrefKeys.getRegistrationCheckEnabled`. */
-    private const val REGISTRATION_CHECK_ENABLED = "RegistrationCheckEnabled"
-
     fun showBatchIssuanceCounter(): Boolean {
         val defaults = NSUserDefaults.standardUserDefaults
         if (defaults.objectForKey(SHOW_BATCH_ISSUANCE_COUNTER) == null) return true
@@ -61,10 +59,8 @@ internal object IosPreferences {
      * publishes `issuer_info` yet, and the checks fail closed — so a default of on would refuse most of
      * the ecosystem for something the user did not ask for.
      */
-    fun isRegistrationCheckEnabled(): Boolean =
-        NSUserDefaults.standardUserDefaults.boolForKey(REGISTRATION_CHECK_ENABLED)
+    fun isRegistrationCheckEnabled(): Boolean = IosRegistrationCheckSetting.isEnabled()
 
-    fun setRegistrationCheckEnabled(value: Boolean) {
-        NSUserDefaults.standardUserDefaults.setBool(value, REGISTRATION_CHECK_ENABLED)
-    }
+    /** Stored in the app group, where the Digital Credentials extension reads it — see [IosRegistrationCheckSetting]. */
+    fun setRegistrationCheckEnabled(value: Boolean) = IosRegistrationCheckSetting.setEnabled(value)
 }

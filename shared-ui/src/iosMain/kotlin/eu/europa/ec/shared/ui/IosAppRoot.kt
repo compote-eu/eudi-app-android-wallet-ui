@@ -45,6 +45,7 @@ import eu.europa.ec.shared.navigation.sharedAppEntries
 import eu.europa.ec.shared.ui.navigation.IosNavHost
 import eu.europa.ec.shared.ui.navigation.IosNavPlatformActions
 import kotlinx.coroutines.runBlocking
+import eu.europa.ec.shared.wallet.platform.IosRegistrationCheckSetting
 import org.koin.core.context.startKoin
 import org.koin.mp.KoinPlatform
 import eu.europa.ec.analyticslogic.controller.IosAnalytics
@@ -69,6 +70,9 @@ fun WalletViewController(): UIViewController {
     // Before Koin, so anything the graph logs while starting is captured. Android's equivalent is
     // `LogController`'s Timber tree, installed in `Application.onCreate`.
     IosLogFile.start()
+    // Read once at launch so a registration-check switch the user set before 2026-10-02 — in the app's own
+    // defaults — reaches the app group, where the Digital Credentials extension reads it.
+    IosRegistrationCheckSetting.isEnabled()
     startKoinIfNeeded()
     // After Koin, because a provider a deployment registered is registered from the graph; before
     // anything renders, so the first screen is reported. Android's equivalent is

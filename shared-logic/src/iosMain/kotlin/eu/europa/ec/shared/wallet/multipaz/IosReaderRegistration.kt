@@ -16,8 +16,11 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import org.multipaz.crypto.X509Cert
 import org.multipaz.mdoc.request.DeviceRequest
+import org.multipaz.util.Logger
 
 /**
  * A reader's registration certificate in an ISO 18013-5 request, read as Android's data-transfer
@@ -93,10 +96,41 @@ internal suspend fun IosRelyingPartyRegistrationValidator.evaluateReader(
     )
 }
 
+/**
+ * What a reader's registration certificate says, when the user has the check switched on — the half of
+ * Android's request processor that both mdoc paths share (proximity and the DC API), in its order.
+ *
+ * Off means not looked at, so nothing is fetched. Without an ETSI trust source there is nothing to judge
+ * against, which Android also answers by not evaluating. A request carrying two different certificates
+ * throws, as Android's processor fails it; any other trouble judging one is logged and reads as not
+ * evaluated, so the user may still answer.
+ *
+ * @param reader the certificate that authenticated the request, which the registration must name.
+ */
+internal suspend fun readerRegistrationOutcome(
+    isRegistrationCheckEnabled: suspend () -> Boolean,
+    deviceRequest: DeviceRequest?,
+    readerTrust: ReaderTrustSource?,
+    reader: X509Cert?,
+): RelyingPartyRegistrationOutcome {
+    if (!isRegistrationCheckEnabled()) return RelyingPartyRegistrationOutcome.NotChecked
+    val request = deviceRequest ?: return RelyingPartyRegistrationOutcome.NotOffered
+    val etsi = readerTrust as? IosEtsiTrust ?: return RelyingPartyRegistrationOutcome.NotOffered
+    val certificate = request.readerRegistrationCertificate()
+    return runCatching {
+        withEtsiRegistrationValidator(etsi) { evaluateReader(certificate, request.requestedClaims(), reader) }
+    }.getOrElse {
+        Logger.w(TAG, "the reader's registration could not be evaluated: ${it.message}")
+        RelyingPartyRegistrationOutcome.NotOffered
+    }
+}
+
 /** The `requestInfo` key ETSI TS 119 472-2 clause 5.3.2 carries the certificate under. */
 internal const val EU_WRPRC_REQUEST_INFO_KEY = "euWrprc"
 
 private const val MSO_MDOC = "mso_mdoc"
+
+private const val TAG = "ReaderRegistration"
 
 /** wallet-core's own test for a compact JWS. */
 private val COMPACT_JWS = Regex("^[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$")

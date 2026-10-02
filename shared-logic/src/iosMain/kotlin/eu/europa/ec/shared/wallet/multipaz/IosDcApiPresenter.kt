@@ -16,9 +16,11 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.platform.IosRegistrationCheckSetting
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import kotlinx.coroutines.CancellationException
+import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.presentment.CredentialPresentmentData
 import org.multipaz.presentment.CredentialPresentmentSelection
 import org.multipaz.presentment.PresentmentCanceledException
@@ -101,6 +103,11 @@ internal class IosDcApiPresenter(
      * constructor split to keep multipaz types off the Swift-facing API.
      */
     private val readerTrust: ReaderTrustSource? = IosEtsiTrust(),
+    /**
+     * The user's registration-check setting, read where the app writes it — the app group, which this
+     * process can see ([IosRegistrationCheckSetting]).
+     */
+    private val isRegistrationCheckEnabled: suspend () -> Boolean = { IosRegistrationCheckSetting.isEnabled() },
 ) {
 
     /**
@@ -117,8 +124,9 @@ internal class IosDcApiPresenter(
      *   through unchanged: multipaz binds it into the session transcript, so inventing a value here
      *   would produce a response the verifier cannot validate.
      * @param appId `<teamId>.<bundleId>` when a native app is asking, null for the web.
-     * @param onConsent the wallet's answer. Returning null — or a selection with no matches — is a
-     *   refusal, which is how multipaz reads it too.
+     * @param onConsent the wallet's answer, given what the reader's registration says (see
+     *   [readerRegistrationOutcome]). Returning null — or a selection with no matches — is a refusal,
+     *   which is how multipaz reads it too.
      */
     suspend fun present(
         protocol: String,
@@ -129,9 +137,11 @@ internal class IosDcApiPresenter(
             requester: Requester,
             trustMetadata: TrustMetadata?,
             data: CredentialPresentmentData,
+            registration: RelyingPartyRegistrationOutcome,
         ) -> CredentialPresentmentSelection?,
     ): IosDcApiOutcome {
         var shared: List<String> = emptyList()
+        var deviceRequest: DeviceRequest? = null
 
         return try {
             // Nothing is preselected: iOS's picker preselects nothing that reaches us here. Android's
@@ -141,11 +151,19 @@ internal class IosDcApiPresenter(
                 data = data,
                 appId = appId,
                 origin = origin,
+                onDeviceRequest = { deviceRequest = it },
                 source = presentmentSource { requester, trustMetadata, presentmentData ->
                     // Before [onConsent], so the extension never shows the request.
                     if (isUntrustedReader(requester, trustMetadata)) throw UntrustedVerifierException()
+                    // Two different certificates throw here and fail the request, as on Android.
+                    val registration = readerRegistrationOutcome(
+                        isRegistrationCheckEnabled = isRegistrationCheckEnabled,
+                        deviceRequest = deviceRequest,
+                        readerTrust = readerTrust,
+                        reader = requester.certChain?.certificates?.firstOrNull(),
+                    )
 
-                    onConsent(requester, trustMetadata, presentmentData)?.also { selection ->
+                    onConsent(requester, trustMetadata, presentmentData, registration)?.also { selection ->
                         shared = selection.matches
                             .map { it.credential.document.displayName ?: it.credential.document.identifier }
                             .distinct()

@@ -112,7 +112,8 @@ class IosDcApiPresenterTest {
         org.multipaz.request.Requester,
         org.multipaz.trustmanagement.TrustMetadata?,
         org.multipaz.presentment.CredentialPresentmentData,
-    ) -> org.multipaz.presentment.CredentialPresentmentSelection? = { _, _, _ ->
+        RelyingPartyRegistrationOutcome,
+    ) -> org.multipaz.presentment.CredentialPresentmentSelection? = { _, _, _, _ ->
         error("consent must not be reached for a request that cannot be answered")
     }
 
@@ -200,7 +201,7 @@ class IosDcApiPresenterTest {
             protocol = "org-iso-mdoc",
             data = """{"deviceRequest": "oA", "encryptionInfo": "oA"}""",
             origin = "https://verifier.example",
-            onConsent = { _, _, _ -> asked = true; null },
+            onConsent = { _, _, _, _ -> asked = true; null },
         )
 
         assertFalse(asked)
@@ -315,13 +316,45 @@ class IosDcApiPresenterTest {
         org.multipaz.request.Requester,
         org.multipaz.trustmanagement.TrustMetadata?,
         org.multipaz.presentment.CredentialPresentmentData,
-    ) -> CredentialPresentmentSelection? = { _, _, data ->
+        RelyingPartyRegistrationOutcome,
+    ) -> CredentialPresentmentSelection? = { _, _, data, _ ->
         CredentialPresentmentSelection(
             matches = data.credentialSets
                 .flatMap { it.options }
                 .flatMap { it.members }
                 .mapNotNull { it.matches.firstOrNull() },
         )
+    }
+
+    @Test
+    fun consent_hears_what_the_registration_check_made_of_the_reader() = runTest {
+        // This request carries no `euWrprc`, as no reader's does today. Off means not looked at; on, with the
+        // ETSI lists this wallet ships, it is a missing certificate — the consent screen's warning — and with
+        // no ETSI source there is nothing to judge against, which Android answers by not evaluating.
+        val cases = listOf(
+            Triple(false, null, RelyingPartyRegistrationOutcome.NotChecked),
+            Triple(true, null, RelyingPartyRegistrationOutcome.Failed(IssuerRegistrationFailure.CERTIFICATE_ABSENT)),
+            Triple(true, ReaderTrustSource { null }, RelyingPartyRegistrationOutcome.NotOffered),
+        )
+        for ((checkOn, readerTrust, expected) in cases) {
+            val store = store()
+            store.seedPid()
+            var heard: RelyingPartyRegistrationOutcome? = null
+            val presenter = if (readerTrust == null) {
+                IosDcApiPresenter(store, isRegistrationCheckEnabled = { checkOn })
+            } else {
+                IosDcApiPresenter(store, readerTrust = readerTrust, isRegistrationCheckEnabled = { checkOn })
+            }
+
+            presenter.present(
+                protocol = "org-iso-mdoc",
+                data = mdocApiRequest(),
+                origin = "https://verifier.example",
+                onConsent = { _, _, _, registration -> heard = registration; null },
+            )
+
+            assertEquals(expected, heard, "check on: $checkOn, trust: $readerTrust")
+        }
     }
 
     @Test
@@ -357,7 +390,7 @@ class IosDcApiPresenterTest {
             protocol = "org-iso-mdoc",
             data = mdocApiRequest(),
             origin = "https://verifier.example",
-            onConsent = { _, _, _ -> null },
+            onConsent = { _, _, _, _ -> null },
         )
 
         assertIs<IosDcApiOutcome.Declined>(outcome)
@@ -412,9 +445,9 @@ class IosDcApiPresenterTest {
             protocol = "org-iso-mdoc",
             data = buildRequest(reader = testReader()).json,
             origin = verifierOrigin,
-            onConsent = { requester, trustMetadata, data ->
+            onConsent = { requester, trustMetadata, data, registration ->
                 askedAsTrusted = requester.certChain != null && trustMetadata != null
-                acceptEverything(requester, trustMetadata, data)
+                acceptEverything(requester, trustMetadata, data, registration)
             },
         )
 
@@ -509,7 +542,7 @@ class IosDcApiPresenterTest {
             protocol = "org-iso-mdoc",
             data = request.json,
             origin = verifierOrigin,
-            onConsent = { _, _, data ->
+            onConsent = { _, _, data, _ ->
                 CredentialPresentmentSelection(
                     matches = data.credentialSets
                         .flatMap { it.options }
