@@ -100,7 +100,14 @@ class IosProximityPresenter internal constructor(
     private val walletEngine: IosWalletEngine,
     /** Where the wallet's own credentials live; anything else in the store is not offered. */
     private val credentialDomain: String,
-    private val scope: CoroutineScope,
+    /**
+     * Where the exchange runs. 🚩 **It must dispatch on the main thread.** multipaz's iOS BLE peripheral
+     * takes CoreBluetooth's callbacks on the main queue and hands them to its sender through one
+     * unsynchronized wait slot. Off the main thread, a "ready to write" callback can arrive before the
+     * sender waits for it, and the transfer then stalls for good. Watched 2026-10-02: a 23.8 KB response
+     * stopped after 25 of its 47 chunks, twice, while small responses never fill CoreBluetooth's queue.
+     */
+    internal val scope: CoroutineScope,
     /**
      * Who the verifier is. Null answers "unknown" without asking anyone — which is what a presentment
      * test wants, since a real check would make it pass or fail with the network.
@@ -121,7 +128,7 @@ class IosProximityPresenter internal constructor(
     constructor(
         walletEngine: IosWalletEngine,
         credentialDomain: String = MultipazWalletStore.DEFAULT_DOCUMENT_MANAGER_ID,
-        scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
+        scope: CoroutineScope = CoroutineScope(Dispatchers.Main),
     ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust())
 
     private val mutableState = MutableStateFlow<IosProximityState>(IosProximityState.Idle)

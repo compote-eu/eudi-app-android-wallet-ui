@@ -30,6 +30,7 @@ import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
@@ -60,6 +61,7 @@ import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.presentment.SimplePresentmentSource
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import kotlin.coroutines.ContinuationInterceptor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -438,6 +440,14 @@ class IosProximityPresentmentTest {
         )
         // Each choice is one document, not both at once.
         assertTrue(view.combinations.all { it.documents.size == 1 })
+    }
+
+    @Test
+    fun the_exchange_runs_on_the_main_thread_where_core_bluetooth_answers() {
+        // Off it, multipaz's BLE sender can miss CoreBluetooth's "ready to write" and stall mid-response.
+        val presenter = IosProximityPresenter(walletEngine = IosWalletEngine())
+
+        assertEquals<Any?>(Dispatchers.Main, presenter.scope.coroutineContext[ContinuationInterceptor])
     }
 
     @Test
