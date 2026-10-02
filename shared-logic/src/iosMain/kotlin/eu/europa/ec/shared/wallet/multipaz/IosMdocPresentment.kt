@@ -35,6 +35,7 @@ package eu.europa.ec.shared.wallet.multipaz
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -244,7 +245,11 @@ internal suspend fun iosMdocPresentment(
  * multipaz's `Iso18013Presentment`, answering each request with [iosMdocPresentment]. It serves requests
  * until the reader closes the connection.
  *
- * @throws Iso18013PresentmentTimeoutException if the reader sends nothing within [timeout].
+ * One change beyond the matching: sending is bounded by [sendTimeout] (see [sendResponse]), because a
+ * reader that goes away mid-response leaves multipaz's iOS BLE send waiting for ever.
+ *
+ * @throws Iso18013PresentmentTimeoutException if the reader sends nothing within [timeout], or the response
+ *   is not taken within [sendTimeout].
  * @throws PresentmentCanceledException if the user declined.
  * @throws PresentmentCannotSatisfyRequestException if no credential holds anything the reader asked for.
  */
@@ -257,6 +262,7 @@ internal suspend fun iosIso18013Presentment(
     keyAgreementPossible: List<EcCurve>,
     timeout: Duration? = 10.seconds,
     timeoutSubsequentRequests: Duration? = 30.seconds,
+    sendTimeout: Duration = 30.seconds,
     onSendingResponse: () -> Unit = {},
 ) {
     // Wait until state changes to CONNECTED, FAILED, or CLOSED
@@ -328,11 +334,13 @@ internal suspend fun iosIso18013Presentment(
                 requesterOrigin = null,
             )
             onSendingResponse()
-            transport.sendMessage(
-                sessionEncryption.encryptMessage(
+            sendResponse(
+                transport = transport,
+                message = sessionEncryption.encryptMessage(
                     messagePlaintext = Cbor.encode(responseObject.deviceResponse.toDataItem()),
                     statusCode = null,
-                )
+                ),
+                timeout = sendTimeout,
             )
             numRequestsServed += 1
 
@@ -356,19 +364,45 @@ internal suspend fun iosIso18013Presentment(
     }
 }
 
-/** The end of [iosIso18013Presentment]'s `finally`, apart so cancellation is rethrown outside it. */
-private suspend fun terminateSession(transport: MdocTransport) {
+/**
+ * Sends [message], or fails if the reader has not taken it within [timeout].
+ *
+ * multipaz's iOS BLE peripheral cannot tell that the reader went away. CoreBluetooth reports a central's
+ * departure only through `didUnsubscribeFrom`, which multipaz 0.99 does not handle. Neither does it read
+ * the reader's "end" on the State characteristic while it is sending. So a reader that leaves
+ * mid-response leaves the send waiting for a "ready to write" that never comes, and the screen showing
+ * "sharing" for ever. Ending the send here cancels it, and multipaz then fails the transport, so the
+ * cleanup that follows cannot hang on it too.
+ *
+ * @throws Iso18013PresentmentTimeoutException if [timeout] passes first.
+ */
+internal suspend fun sendResponse(transport: MdocTransport, message: ByteArray, timeout: Duration) {
+    withTimeoutOrNull(timeout) { transport.sendMessage(message) }
+        ?: throw Iso18013PresentmentTimeoutException("The reader stopped taking the response.")
+}
+
+/**
+ * The end of [iosIso18013Presentment]'s `finally`, apart so cancellation is rethrown outside it.
+ *
+ * Bounded by [timeout] for the same reason as [sendResponse]: a reader that is gone takes nothing, and a
+ * cleanup that waits for it would keep the exchange from ending.
+ */
+internal suspend fun terminateSession(transport: MdocTransport, timeout: Duration = TERMINATION_TIMEOUT) {
     Logger.i(TAG, "Sending session-termination")
     try {
-        transport.sendMessage(
-            SessionEncryption.encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
-        )
+        withTimeoutOrNull(timeout) {
+            transport.sendMessage(
+                SessionEncryption.encodeStatus(Constants.SESSION_DATA_STATUS_SESSION_TERMINATION)
+            )
+        } ?: Logger.w(TAG, "The reader did not take the session-termination; closing anyway")
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         Logger.w(TAG, "Caught error while sending session-termination", e)
     }
 }
+
+private val TERMINATION_TIMEOUT = 5.seconds
 
 /**
  * multipaz's `digitalCredentialsPresentment` with its `org-iso-mdoc` branch answered by
