@@ -41,8 +41,6 @@ import org.multipaz.util.Platform
 import platform.Foundation.NSURL
 import platform.UIKit.UIApplication
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
 
 /** How an issuance attempt ended, in the terms the add-document screen reasons about. */
 sealed interface IosIssuanceProgress {
@@ -119,8 +117,6 @@ class IosCredentialIssuer(
     /** The transport, injectable for tests. Defaults to Darwin behind the compatibility engine. */
     private val httpEngine: HttpClientEngine? = null,
     private val walletProviderBaseUrl: String = DEFAULT_WALLET_PROVIDER_URL,
-    /** How long to wait for the user to finish authorizing in the browser. */
-    private val authorizationTimeout: Duration = DEFAULT_AUTHORIZATION_TIMEOUT,
     /**
      * The seam that makes the sequencing above testable: how *one* configuration is issued. Null means
      * the real thing — drive multipaz. A full fake of this would otherwise have to mint issuer-signed
@@ -788,12 +784,10 @@ class IosCredentialIssuer(
                     Logger.i(TAG, "opening the authorization URL for challenge ${challenge.id}")
                     openAuthorizationUrl(challenge.url)
 
-                    val redirect = IosAuthorizationRedirects.await(timeout = authorizationTimeout)
-                    if (redirect == null) {
-                        // Leaving the flow hanging would leave the screen spinning; failing surfaces it
-                        // as an issuance failure, which is what a user who never logged in did.
-                        throw IllegalStateException("Authorization was not completed.")
-                    }
+                    // No time limit, as on Android: the issuer's login takes as long as it takes, and the
+                    // wait ends with this issuance if its screen goes away.
+                    val redirect = IosAuthorizationRedirects.await()
+                        ?: throw IllegalStateException("Authorization was not completed.")
 
                     model.provideAuthorizationResponse(
                         AuthorizationResponse.OAuth(
@@ -901,13 +895,6 @@ class IosCredentialIssuer(
          * on [IosVciIssuer] because it is a property of the *wallet*, not of an issuer.
          */
         val DEFAULT_WALLET_PROVIDER_URL: String get() = iosWalletConfig.walletProviderUrl
-
-        /**
-         * Long enough for a human to log in, and shorter than nothing: the PAR `request_uri` these
-         * redirects belong to expires about a minute after it is issued, so a slower login fails at the
-         * token endpoint anyway. This bound only stops the flow waiting forever.
-         */
-        val DEFAULT_AUTHORIZATION_TIMEOUT: Duration = 5.minutes
     }
 }
 

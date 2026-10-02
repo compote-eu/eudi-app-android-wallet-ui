@@ -21,11 +21,13 @@ import eu.europa.ec.shared.platform.IosBroadcasts
 import eu.europa.ec.shared.platform.PlatformIntent
 import kotlinx.atomicfu.locks.reentrantLock
 import kotlinx.atomicfu.locks.withLock
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.multipaz.util.Logger
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * The OAuth redirect hand-off between the iOS app shell and the provisioning flow.
@@ -52,6 +54,9 @@ object IosAuthorizationRedirects {
 
     /** How many [await] calls are in progress. Written by the flow, read by the app shell's thread. */
     private var waiters = 0
+
+    /** The coroutine of the newest [await], so a newer one can end it. Guarded by [lock]. */
+    private var newest: Job? = null
 
     /**
      * Called by the app shell when a URL is opened on the app. Safe to call from any thread, and safe
@@ -97,13 +102,24 @@ object IosAuthorizationRedirects {
     }
 
     /**
-     * Waits for the next authorization redirect, or null if none arrives within [timeout].
+     * Waits for the next authorization redirect, by default for as long as the caller lives, as Android's
+     * wallet-core does: the wait ends when the redirect arrives or when the issuance waiting for it is
+     * cancelled, as it is when its screen goes away. A login may take as long as the issuer allows.
      *
-     * The default allows for a human logging in. Note that the *server's* patience is shorter: the PAR
-     * `request_uri` these redirects belong to expires about a minute after it is issued, so a slow login
-     * fails at the token endpoint rather than here.
+     * A newer call ends one still waiting by cancelling its coroutine, as wallet-core's
+     * `BrowserAuthorizationHandler` cancels the previous authorization when a new one starts. Otherwise
+     * an issuance the user abandoned in the browser would still be waiting, and could take the code meant
+     * for the next one.
+     *
+     * @param timeout for tests; null is returned if it passes first.
      */
-    suspend fun await(timeout: Duration = DEFAULT_TIMEOUT): String? {
+    suspend fun await(timeout: Duration = Duration.INFINITE): String? {
+        val caller = currentCoroutineContext()[Job]
+        val previous = lock.withLock { newest.also { newest = caller } }
+        if (previous != null && previous !== caller && previous.isActive) {
+            Logger.i(TAG, "a newer authorization ends the one still waiting")
+            previous.cancel(CancellationException("superseded by a newer authorization"))
+        }
         val waiting = lock.withLock { ++waiters }
         Logger.i(TAG, "waiting for the authorization redirect (waiters=$waiting)")
         var redirect: String? = null
@@ -111,7 +127,10 @@ object IosAuthorizationRedirects {
             redirect = withTimeoutOrNull(timeout) { redirects.receive() }
             return redirect
         } finally {
-            val left = lock.withLock { --waiters }
+            val left = lock.withLock {
+                if (newest === caller) newest = null
+                --waiters
+            }
             Logger.i(TAG, "stopped waiting: ${if (redirect != null) "received" else "none"} (waiters=$left)")
         }
     }
@@ -131,8 +150,6 @@ object IosAuthorizationRedirects {
      * Info.plist that makes iOS hand the redirect to us at all.
      */
     const val REDIRECT_PREFIX = "eu.europa.ec.euidi://authorization"
-
-    private val DEFAULT_TIMEOUT = 180.seconds
 
     /** The extra the shared screens read the redirect from, as Android's `DeepLinkHelper` names it. */
     internal const val RESUME_URI_EXTRA = "uri"

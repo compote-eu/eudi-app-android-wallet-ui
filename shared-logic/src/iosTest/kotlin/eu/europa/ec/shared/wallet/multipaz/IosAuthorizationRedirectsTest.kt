@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -36,6 +38,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -83,6 +86,36 @@ class IosAuthorizationRedirectsTest {
             "${IosAuthorizationRedirects.REDIRECT_PREFIX}?code=new",
             IosAuthorizationRedirects.await(),
         )
+    }
+
+    @Test
+    fun a_slow_login_is_waited_for_as_long_as_it_takes() = runTest {
+        // Android's wallet-core waits without a limit too. The iOS wait used to end after five minutes,
+        // which lost an issuance whose user was still filling in the issuer's form.
+        val waiting = async { IosAuthorizationRedirects.await() }
+        advanceTimeBy(1.hours)
+
+        assertTrue(waiting.isActive)
+
+        val url = "${IosAuthorizationRedirects.REDIRECT_PREFIX}?code=late"
+        IosAuthorizationRedirects.deliver(url)
+        assertEquals(url, waiting.await())
+    }
+
+    @Test
+    fun a_newer_authorization_ends_the_one_still_waiting() = runTest {
+        // Abandoned in the browser, the first issuance would otherwise still be waiting, and could take the
+        // code that belongs to the second.
+        val first = async { IosAuthorizationRedirects.await() }
+        runCurrent()
+        val second = async { IosAuthorizationRedirects.await() }
+        runCurrent()
+
+        assertTrue(first.isCancelled)
+
+        val url = "${IosAuthorizationRedirects.REDIRECT_PREFIX}?code=2"
+        IosAuthorizationRedirects.deliver(url)
+        assertEquals(url, second.await())
     }
 
     @Test
@@ -166,7 +199,8 @@ class IosAuthorizationRedirectsTest {
 
         IosAuthorizationRedirects.deliver("${IosAuthorizationRedirects.REDIRECT_PREFIX}?code=late")
 
-        // The flow failed with "Authorization was not completed." — nothing is left to resume.
+        // The wait ended (here by a test timeout; in the app, by its issuance being cancelled), so nothing
+        // is left to resume.
         assertTrue(announced.isEmpty())
     }
 
