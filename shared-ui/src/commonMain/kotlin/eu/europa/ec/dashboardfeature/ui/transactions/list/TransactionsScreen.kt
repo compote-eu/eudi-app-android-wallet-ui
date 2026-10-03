@@ -378,7 +378,7 @@ private fun TransactionCategory(
 
                         val overlineTextColor = when (transactionUi?.uiStatus) {
                             TransactionStatusUi.Completed -> MaterialTheme.colorScheme.success
-                            TransactionStatusUi.Failed -> MaterialTheme.colorScheme.error
+                            TransactionStatusUi.NotCompleted -> MaterialTheme.colorScheme.error
                             null -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
 

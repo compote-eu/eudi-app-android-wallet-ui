@@ -14,35 +14,27 @@
  * governing permissions and limitations under the Licence.
  */
 
-// Phase 3b: the interactor *contract* moves to commonMain so `TransactionDetailsViewModel` can live
-// there, following the `SplashInteractor` pattern — the Android `TransactionDetailsInteractorImpl`
-// (wallet-core, ResourceProvider, UuidProvider) stays in :dashboard-feature along with its Koin
-// provider. Package unchanged.
+// The contract is shared, and so — since upstream 7a47e46a reads nothing but the shared transaction
+// log domain — is the one implementation (TransactionDetailsInteractorImpl.kt). Package unchanged.
 package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
 import kotlinx.coroutines.flow.Flow
-
 sealed class TransactionDetailsInteractorPartialState {
     data class Success(
         val transactionDetailsUi: TransactionDetailsUi,
     ) : TransactionDetailsInteractorPartialState()
 
-    data class Failure(val error: String) : TransactionDetailsInteractorPartialState()
+    data class Failure(
+        val error: String
+    ) : TransactionDetailsInteractorPartialState()
 }
 
-sealed class TransactionDetailsInteractorRequestDataDeletionPartialState {
-    data object Success : TransactionDetailsInteractorRequestDataDeletionPartialState()
+sealed class TransactionDetailsInteractorDeleteTransactionPartialState {
+    data object Success : TransactionDetailsInteractorDeleteTransactionPartialState()
     data class Failure(
         val errorMessage: String
-    ) : TransactionDetailsInteractorRequestDataDeletionPartialState()
-}
-
-sealed class TransactionDetailsInteractorReportSuspiciousTransactionPartialState {
-    data object Success : TransactionDetailsInteractorReportSuspiciousTransactionPartialState()
-    data class Failure(
-        val errorMessage: String
-    ) : TransactionDetailsInteractorReportSuspiciousTransactionPartialState()
+    ) : TransactionDetailsInteractorDeleteTransactionPartialState()
 }
 
 interface TransactionDetailsInteractor {
@@ -50,6 +42,6 @@ interface TransactionDetailsInteractor {
         transactionId: String
     ): Flow<TransactionDetailsInteractorPartialState>
 
-    fun requestDataDeletion(transactionId: String): Flow<TransactionDetailsInteractorRequestDataDeletionPartialState>
-    fun reportSuspiciousTransaction(transactionId: String): Flow<TransactionDetailsInteractorReportSuspiciousTransactionPartialState>
+    fun deleteTransaction(transactionId: String): Flow<TransactionDetailsInteractorDeleteTransactionPartialState>
+
 }

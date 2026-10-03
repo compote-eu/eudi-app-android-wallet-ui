@@ -18,21 +18,24 @@ package eu.europa.ec.dashboardfeature.ui.transactions.model
 
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.transaction_type_data_deletion_request
+import eu.europa.ec.shared.resources.transaction_type_dpa_report
 import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
-import eu.europa.ec.shared.resources.transactions_filter_item_status_failed
+import eu.europa.ec.shared.resources.transactions_filter_item_status_not_completed
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_deletion
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_issuance
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_presentation
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_reissuance
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_signing
 
 /**
  * The status's display label, resolved from the shared string catalog.
  *
- * The `ResourceProvider` overload of this stays in `:dashboard-feature` for the Android screens that
- * still use it; this is the form the now-shared transactions interactor needs.
+ * The form the shared transactions interactors need.
  */
 fun TransactionStatusUi.toUiText(strings: StringCatalog): String = when (this) {
     TransactionStatusUi.Completed -> strings[Res.string.transactions_filter_item_status_completed]
-    TransactionStatusUi.Failed -> strings[Res.string.transactions_filter_item_status_failed]
+    TransactionStatusUi.NotCompleted -> strings[Res.string.transactions_filter_item_status_not_completed]
 }
 
 /** The transaction type's display label, likewise from the catalog. */
@@ -43,6 +46,16 @@ fun TransactionTypeUi.toUiText(strings: StringCatalog): String = when (this) {
     TransactionTypeUi.PRESENTATION ->
         strings[Res.string.transactions_screen_filters_filter_by_transaction_type_presentation]
 
+    TransactionTypeUi.REISSUANCE ->
+        strings[Res.string.transactions_screen_filters_filter_by_transaction_type_reissuance]
+
+    TransactionTypeUi.DELETION ->
+        strings[Res.string.transactions_screen_filters_filter_by_transaction_type_deletion]
+
     TransactionTypeUi.SIGNING ->
         strings[Res.string.transactions_screen_filters_filter_by_transaction_type_signing]
+
+    TransactionTypeUi.DATA_DELETION_REQUEST -> strings[Res.string.transaction_type_data_deletion_request]
+
+    TransactionTypeUi.DPA_REPORT -> strings[Res.string.transaction_type_dpa_report]
 }

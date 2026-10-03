@@ -427,7 +427,7 @@ private fun SheetContent(
                     negativeButtonText = UiText.Resource(Res.string.document_details_bottom_sheet_delete_secondary_button_text),
                     isPositiveButtonWarning = true,
                 ),
-                leadingIcon = AppIcons.Delete,
+                leadingIcon = AppIcons.DeleteFilled,
                 leadingIconTint = MaterialTheme.colorScheme.error,
                 onPositiveClick = { onEventSent(Event.BottomSheet.Delete.PrimaryButtonPressed) },
                 positiveButtonTestTag = TestTag.DocumentDetailsScreen.BOTTOM_SHEET_DELETE_DOCUMENT_POSITIVE_BUTTON,

@@ -45,6 +45,12 @@ import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionsFilt
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.toUiText
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionTypeUi
+import eu.europa.ec.dashboardfeature.ui.transactions.model.isVisibleInTransactionList
+import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionPartyName
+import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionSearchTags
+import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionStatusUi
+import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionTitle
+import eu.europa.ec.dashboardfeature.ui.transactions.model.toTransactionTypeUi
 import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -63,14 +69,16 @@ import eu.europa.ec.shared.resources.StringCatalog
 import kotlinx.datetime.LocalDateTime
 import eu.europa.ec.shared.resources.transactions_filter_item_no_relying_party_transactions
 import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
-import eu.europa.ec.shared.resources.transactions_filter_item_status_failed
+import eu.europa.ec.shared.resources.transactions_filter_item_status_not_completed
 import eu.europa.ec.shared.resources.transactions_screen_0_minutes_ago_message
 import eu.europa.ec.shared.resources.transactions_screen_filter_by_date_period
 import eu.europa.ec.shared.resources.transactions_screen_filter_by_status
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_relying_party
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_deletion
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_issuance
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_presentation
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_reissuance
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_signing
 import eu.europa.ec.shared.resources.transactions_screen_filters_sort_by
 import eu.europa.ec.shared.resources.transactions_screen_filters_sort_transaction_date
@@ -184,18 +192,16 @@ class TransactionsInteractorImpl(
     override fun getTransactions(): Flow<TransactionInteractorGetTransactionsPartialState> =
         flow {
             val transactions = platform.getTransactionLogs()
+                .filter { transaction -> transaction.isVisibleInTransactionList() }
             val filterableItems = transactions.map { transaction ->
 
                 val trailingContentData = ListItemTrailingContentDataUi.TextWithIcon(
-                    // Resolved here rather than by the platform: the label is a string-catalog lookup
-                    // off the type enum, which is shared work.
-                    text = transaction.type.toUiText(strings),
+                    text = transaction.toTransactionTypeUi().toUiText(strings),
                     iconData = AppIcons.KeyboardArrowRight
                 )
 
-                val transactionName = transaction.name
-                val transactionStatus = transaction.status
-                val transactionDocumentNames = transaction.documentNames
+                val transactionName = transaction.toTransactionTitle(strings)
+                val transactionStatus = transaction.result.toTransactionStatusUi()
 
                 FilterableItem(
                     payload = TransactionUi(
@@ -205,32 +211,25 @@ class TransactionsInteractorImpl(
                                 mainContentData = ListItemMainContentDataUi.Text(text = transactionName),
                                 overlineText = transactionStatus.toUiText(strings),
                                 supportingContentData = ListItemSupportingContentDataUi.Text(
-                                    text = transaction.createdAt.toFormattedDisplayableDate(),
+                                    text = transaction.time.toFormattedDisplayableDate(),
                                 ),
                                 trailingContentData = trailingContentData
                             )
                         ),
-                        uiStatus = transaction.status,
-                        transactionCategoryUi = getTransactionCategory(
-                            dateTime = transaction.createdAt
-                        ),
+                        uiStatus = transactionStatus,
+                        transactionCategoryUi = getTransactionCategory(dateTime = transaction.time),
                     ),
                     attributes = TransactionsFilterableAttributes(
-                        searchTags = buildList {
-                            add(transactionName)
-                            if (transactionDocumentNames.isNotEmpty()) {
-                                addAll(transactionDocumentNames)
-                            }
-                        },
+                        searchTags = transaction.toTransactionSearchTags(),
                         transactionStatus = transactionStatus,
-                        transactionType = transaction.type,
-                        creationLocalDateTime = transaction.createdAt,
-                        relyingPartyName = transaction.relyingPartyName,
+                        transactionType = transaction.toTransactionTypeUi(),
+                        creationLocalDateTime = transaction.time,
+                        partyName = transaction.toTransactionPartyName()
                     )
                 )
             }
 
-            // Already kotlinx: the platform bridge converts at its boundary, so nothing to translate.
+            // Already kotlinx: the shared domain records kotlinx times, so nothing to translate.
             val creationDates = filterableItems
                 .mapNotNull {
                     (it.attributes as? TransactionsFilterableAttributes)
@@ -273,10 +272,11 @@ class TransactionsInteractorImpl(
         return filters.copy(
             filterGroups = filters.filterGroups.map { filterGroup ->
                 when (filterGroup.id) {
-                    TransactionFilterIds.FILTER_BY_RELYING_PARTY_GROUP_ID -> {
-                        filterGroup as FilterGroup.MultipleSelectionFilterGroup<*>
+                    TransactionFilterIds.FILTER_BY_PARTY_GROUP_ID -> {
+                        if (filterGroup !is FilterGroup.MultipleSelectionFilterGroup<*>)
+                            return@map filterGroup
                         filterGroup.copy(
-                            filters = addRelyingPartyFilter(transactions)
+                            filters = addPartyFilter(transactions)
                         )
                     }
 
@@ -326,8 +326,8 @@ class TransactionsInteractorImpl(
                         isDefault = true,
                     ),
                     FilterItem(
-                        id = TransactionFilterIds.FILTER_BY_STATUS_FAILED,
-                        name = strings.get(Res.string.transactions_filter_item_status_failed),
+                        id = TransactionFilterIds.FILTER_BY_STATUS_NOT_COMPLETED,
+                        name = strings.get(Res.string.transactions_filter_item_status_not_completed),
                         selected = true,
                         isDefault = true,
                     )
@@ -338,32 +338,24 @@ class TransactionsInteractorImpl(
                             attributes.transactionStatus == TransactionStatusUi.Completed
                         }
 
-                        TransactionFilterIds.FILTER_BY_STATUS_FAILED -> attributes.transactionStatus == TransactionStatusUi.Failed
+                        TransactionFilterIds.FILTER_BY_STATUS_NOT_COMPLETED -> attributes.transactionStatus == TransactionStatusUi.NotCompleted
 
                         else -> true
                     }
                 }
             ),
 
-            // Filter by Relying Party
+            // Filter by Party
             FilterGroup.MultipleSelectionFilterGroup(
-                id = TransactionFilterIds.FILTER_BY_RELYING_PARTY_GROUP_ID,
+                id = TransactionFilterIds.FILTER_BY_PARTY_GROUP_ID,
                 name = strings.get(Res.string.transactions_screen_filters_filter_by_relying_party),
                 filters = emptyList(),
                 filterableAction = FilterMultipleAction<TransactionsFilterableAttributes> { attributes, filter ->
-                    // Check if it is the "no relying party" filter
-                    if (filter.id == TransactionFilterIds.FILTER_BY_RELYING_PARTY_WITHOUT_NAME) {
-                        // Return true only for transactions with no relying party
-                        return@FilterMultipleAction attributes.relyingPartyName == null
+                    if (filter.id == TransactionFilterIds.FILTER_BY_PARTY_WITHOUT_NAME) {
+                        attributes.partyName == null
+                    } else {
+                        attributes.partyName != null && attributes.partyName == filter.name
                     }
-
-                    // Check if the transaction has a relying party and matches the filter name
-                    if (attributes.relyingPartyName != null) {
-                        return@FilterMultipleAction attributes.relyingPartyName == filter.name
-                    }
-
-                    // Default case: return false if no conditions are met
-                    return@FilterMultipleAction false
                 }
             ),
 
@@ -385,6 +377,18 @@ class TransactionsInteractorImpl(
                         isDefault = true,
                     ),
                     FilterItem(
+                        id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_REISSUANCE,
+                        name = strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_reissuance),
+                        selected = true,
+                        isDefault = true,
+                    ),
+                    FilterItem(
+                        id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_DELETION,
+                        name = strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_deletion),
+                        selected = true,
+                        isDefault = true,
+                    ),
+                    FilterItem(
                         id = TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_SIGNING,
                         name = strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_signing),
                         selected = true,
@@ -399,6 +403,14 @@ class TransactionsInteractorImpl(
 
                         TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_ISSUANCE -> {
                             attributes.transactionType == TransactionTypeUi.ISSUANCE
+                        }
+
+                        TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_REISSUANCE -> {
+                            attributes.transactionType == TransactionTypeUi.REISSUANCE
+                        }
+
+                        TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_DELETION -> {
+                            attributes.transactionType == TransactionTypeUi.DELETION
                         }
 
                         TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_SIGNING -> {
@@ -494,34 +506,29 @@ class TransactionsInteractorImpl(
         }.getOrDefault(this.toString())
     }
 
-    private fun addRelyingPartyFilter(transactions: FilterableList): List<FilterItem> {
-        val transactionsWithRelyingParty = transactions.items
-            .distinctBy { (it.attributes as TransactionsFilterableAttributes).relyingPartyName }
-            .mapNotNull { filterableItem ->
-                with(filterableItem.attributes as TransactionsFilterableAttributes) {
-                    if (relyingPartyName != null) {
-                        FilterItem(
-                            id = relyingPartyName,
-                            name = relyingPartyName,
-                            selected = true,
-                            isDefault = true,
-                        )
-                    } else {
-                        null
-                    }
-                }
+    private fun addPartyFilter(transactions: FilterableList): List<FilterItem> {
+        val partyFilters = transactions.items
+            .mapNotNull { item -> (item.attributes as? TransactionsFilterableAttributes)?.partyName }
+            .distinct()
+            .sortedBy { partyName -> partyName.lowercase() }
+            .map { partyName ->
+                FilterItem(
+                    // A party's name must not collide with the reserved no-party filter id.
+                    id = "party:$partyName",
+                    name = partyName,
+                    selected = true,
+                    isDefault = true,
+                )
             }
-            .sortedBy { it.name.lowercase() } // Sort by name
 
-        //Put the "Transactions without Relying Party" filter first in the list
         return listOf(
             FilterItem(
-                id = TransactionFilterIds.FILTER_BY_RELYING_PARTY_WITHOUT_NAME,
+                id = TransactionFilterIds.FILTER_BY_PARTY_WITHOUT_NAME,
                 name = strings.get(Res.string.transactions_filter_item_no_relying_party_transactions),
                 selected = true,
                 isDefault = true,
             )
-        ) + transactionsWithRelyingParty
+        ) + partyFilters
     }
 
     private fun isDateAttributeWithinFilterRange(

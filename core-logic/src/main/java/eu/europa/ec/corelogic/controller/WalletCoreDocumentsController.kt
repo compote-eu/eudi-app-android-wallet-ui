@@ -204,6 +204,9 @@ interface WalletCoreDocumentsController {
 
     suspend fun getTransactionLog(id: String): TransactionLogDataDomain?
 
+    /** Removes one entry from the 0.30.2 log; goes with it in the wallet-core 0.31.0 bump. */
+    suspend fun deleteTransactionLog(id: String)
+
     suspend fun isDocumentBookmarked(documentId: DocumentId): Boolean
 
     suspend fun storeBookmark(bookmarkId: String)
@@ -811,6 +814,11 @@ class WalletCoreDocumentsControllerImpl(
                         ?.parseTransactionLog()
                         ?.toTransactionLogData(transactionLog.identifier)
                 }
+        }
+
+    override suspend fun deleteTransactionLog(id: String) =
+        withContext(dispatcher) {
+            transactionLogDao.delete(id)
         }
 
     override suspend fun getTransactionLog(id: String): TransactionLogDataDomain? =

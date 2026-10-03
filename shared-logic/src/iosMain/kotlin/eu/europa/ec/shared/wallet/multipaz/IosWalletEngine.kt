@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.WalletEngine
 import io.ktor.client.HttpClient
@@ -126,7 +127,13 @@ class IosWalletEngine : WalletEngine {
      * `TransactionsPlatformBridge` instead. Public here only so that bridge, which is in :shared-ui and
      * must not name a multipaz type, can reach it.
      */
-    suspend fun getTransactions(): List<IosTransaction> = store().transactions()
+    suspend fun getTransactionLogs(): List<TransactionLogDomain> = store().transactionLogs()
+
+    /** One entry of that log, or null for an id it does not hold (an expired entry, or a bad link). */
+    suspend fun getTransactionLog(id: String): TransactionLogDomain? = store().transactionLog(id)
+
+    /** Removes one entry from the log. */
+    suspend fun deleteTransactionLog(id: String) = store().deleteTransactionLog(id)
 
     /**
      * Who issued a document and under which configuration, or null when the document is unknown or was

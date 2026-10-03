@@ -56,6 +56,7 @@ import eu.europa.ec.shared.resources.ic_check
 import eu.europa.ec.shared.resources.ic_clock_timer
 import eu.europa.ec.shared.resources.ic_contract
 import eu.europa.ec.shared.resources.ic_delete
+import eu.europa.ec.shared.resources.ic_delete_filled
 import eu.europa.ec.shared.resources.ic_documents
 import eu.europa.ec.shared.resources.ic_download
 import eu.europa.ec.shared.resources.ic_edit
@@ -107,6 +108,7 @@ val AppIconKey.drawableResource: DrawableResource?
         AppIconKey.Warning -> Res.drawable.ic_warning
         AppIconKey.Error -> Res.drawable.ic_error
         AppIconKey.Delete -> Res.drawable.ic_delete
+        AppIconKey.DeleteFilled -> Res.drawable.ic_delete_filled
         AppIconKey.TouchId -> Res.drawable.ic_touch_id
         AppIconKey.QR -> Res.drawable.ic_qr
         AppIconKey.NFC -> Res.drawable.ic_nfc

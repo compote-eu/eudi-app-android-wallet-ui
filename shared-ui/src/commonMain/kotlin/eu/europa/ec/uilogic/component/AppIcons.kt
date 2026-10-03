@@ -64,6 +64,7 @@ enum class AppIconKey {
     Error,
     ErrorFilled,
     Delete,
+    DeleteFilled,
     TouchId,
     QR,
     NFC,
@@ -129,6 +130,7 @@ object AppIcons {
     val Error: IconDataUi = IconDataUi(AppIconKey.Error)
     val ErrorFilled: IconDataUi = IconDataUi(AppIconKey.ErrorFilled)
     val Delete: IconDataUi = IconDataUi(AppIconKey.Delete)
+    val DeleteFilled: IconDataUi = IconDataUi(AppIconKey.DeleteFilled)
     val TouchId: IconDataUi = IconDataUi(AppIconKey.TouchId)
     val QR: IconDataUi = IconDataUi(AppIconKey.QR)
     val NFC: IconDataUi = IconDataUi(AppIconKey.NFC)

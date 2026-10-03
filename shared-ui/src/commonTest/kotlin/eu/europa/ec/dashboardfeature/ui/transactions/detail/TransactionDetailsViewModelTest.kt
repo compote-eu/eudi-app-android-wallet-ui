@@ -15,7 +15,7 @@
  */
 
 // TransactionDetailsViewModel touches no platform handle at all, so every branch is covered here and
-// runs on both targets.
+// runs on both targets. Upstream (7a47e46a) has no view-model tests for it.
 //
 // It loads from its `init` (not from an Init event), which is the process-death fix described in
 // HomeViewModel — but the `Event.Init` branch stays reachable because the error card's `onRetry`
@@ -24,23 +24,26 @@
 package eu.europa.ec.dashboardfeature.ui.transactions.detail
 
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorDeleteTransactionPartialState
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorPartialState
-import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorReportSuspiciousTransactionPartialState
-import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorRequestDataDeletionPartialState
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsBodyUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsCardUi
-import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsDataSharedHolderUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsFieldUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsGroupUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsMetadataUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsSectionUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -61,13 +64,12 @@ class TransactionDetailsViewModelTest {
 
     private class FakeTransactionDetailsInteractor(
         private val states: List<TransactionDetailsInteractorPartialState>,
+        private val deleteOutcome: TransactionDetailsInteractorDeleteTransactionPartialState =
+            TransactionDetailsInteractorDeleteTransactionPartialState.Success,
     ) : TransactionDetailsInteractor {
         var detailsCalls: Int = 0
             private set
-        var deletionRequestedFor: String? = null
-            private set
-        var reportedFor: String? = null
-            private set
+        val deletedIds = mutableListOf<String>()
 
         override fun getTransactionDetails(
             transactionId: String,
@@ -76,61 +78,72 @@ class TransactionDetailsViewModelTest {
             states.forEach { emit(it) }
         }
 
-        override fun requestDataDeletion(
+        override fun deleteTransaction(
             transactionId: String,
-        ): Flow<TransactionDetailsInteractorRequestDataDeletionPartialState> = flow {
-            deletionRequestedFor = transactionId
-            emit(TransactionDetailsInteractorRequestDataDeletionPartialState.Success)
-        }
-
-        override fun reportSuspiciousTransaction(
-            transactionId: String,
-        ): Flow<TransactionDetailsInteractorReportSuspiciousTransactionPartialState> = flow {
-            reportedFor = transactionId
-            emit(TransactionDetailsInteractorReportSuspiciousTransactionPartialState.Success)
+        ): Flow<TransactionDetailsInteractorDeleteTransactionPartialState> = flow {
+            deletedIds += transactionId
+            emit(deleteOutcome)
         }
     }
 
     private companion object {
         const val TX_ID = "tx-123"
+        const val LINK = "https://example.com/privacy"
 
-        fun sharedItem(itemId: String) = ExpandableListItemUi.NestedListItem(
+        fun group(itemId: String) = TransactionDetailsGroupUi(
             header = ListItemDataUi(
                 itemId = itemId,
-                mainContentData = ListItemMainContentDataUi.Text("group-$itemId"),
-                trailingContentData = ListItemTrailingContentDataUi.Icon(
-                    iconData = AppIcons.KeyboardArrowDown,
-                ),
+                mainContentData = ListItemMainContentDataUi.Text("credential-$itemId"),
+                trailingContentData = ListItemTrailingContentDataUi.Icon(iconData = AppIcons.KeyboardArrowDown),
             ),
-            nestedItems = listOf(
+            items = listOf(
                 ExpandableListItemUi.SingleListItem(
                     header = ListItemDataUi(
-                        itemId = "$itemId-claim",
-                        mainContentData = ListItemMainContentDataUi.Text("claim"),
+                        itemId = "$itemId:0",
+                        mainContentData = ListItemMainContentDataUi.Text("[\"ns\"][\"claim\"]"),
                     ),
                 ),
             ),
-            isExpanded = false,
         )
 
-        fun details(vararg sharedItems: ExpandableListItemUi.NestedListItem) = TransactionDetailsUi(
+        fun section(title: String, vararg groups: TransactionDetailsGroupUi) = TransactionDetailsSectionUi(
+            title = title,
+            items = emptyList(),
+            groups = groups.toList(),
+            emptyItem = null,
+        )
+
+        fun details(
+            vararg sharedGroups: TransactionDetailsGroupUi,
+            metadata: List<TransactionDetailsMetadataUi> = emptyList(),
+        ) = TransactionDetailsUi(
             transactionId = TX_ID,
             transactionDetailsCardUi = TransactionDetailsCardUi(
                 transactionTypeLabel = "Presentation",
                 transactionStatusLabel = "Completed",
                 transactionIsCompleted = true,
                 transactionDate = "06 Aug 2026",
-                relyingPartyName = "Acme",
-                relyingPartyIsVerified = true,
+                partyName = "Acme",
+                providerType = null,
+                nonCompletionReason = null,
+                metadata = metadata,
             ),
-            transactionDetailsDataShared = TransactionDetailsDataSharedHolderUi(
-                dataSharedItems = sharedItems.toList(),
+            body = TransactionDetailsBodyUi.Presentation(
+                requested = section("DATA REQUESTED", *sharedGroups),
+                shared = section("DATA SHARED", *sharedGroups),
             ),
-            transactionDetailsDataSigned = null,
         )
 
-        fun success(vararg sharedItems: ExpandableListItemUi.NestedListItem) =
-            TransactionDetailsInteractorPartialState.Success(details(*sharedItems))
+        fun success(
+            vararg sharedGroups: TransactionDetailsGroupUi,
+            metadata: List<TransactionDetailsMetadataUi> = emptyList(),
+        ) = TransactionDetailsInteractorPartialState.Success(details(*sharedGroups, metadata = metadata))
+
+        val policyMetadata = listOf(
+            TransactionDetailsMetadataUi(
+                fields = listOf(TransactionDetailsFieldUi("privacy:0", "Privacy policy", LINK, LINK)),
+            )
+        )
     }
 
     private val mainDispatcher = UnconfinedTestDispatcher()
@@ -146,9 +159,18 @@ class TransactionDetailsViewModelTest {
             fake to TransactionDetailsViewModel(fake, TX_ID)
         }
 
+    private fun CoroutineScope.collectEffects(viewModel: TransactionDetailsViewModel): MutableList<Effect> {
+        val effects = mutableListOf<Effect>()
+        launch { viewModel.effect.collect { effects += it } }
+        return effects
+    }
+
+    private fun TransactionDetailsViewModel.sharedGroup(): TransactionDetailsGroupUi =
+        (viewState.value.transactionDetailsUi!!.body as TransactionDetailsBodyUi.Presentation).shared.groups.single()
+
     @Test
     fun the_details_load_on_construction_not_on_an_event() = runTest(mainDispatcher) {
-        val (fake, viewModel) = viewModel(success(sharedItem("g1")))
+        val (fake, viewModel) = viewModel(success(group("g1")))
         advanceUntilIdle()
 
         // Loading from `init` is what survives process death; see HomeViewModel's note.
@@ -160,15 +182,14 @@ class TransactionDetailsViewModelTest {
     }
 
     @Test
-    fun a_successful_load_exposes_the_card_and_shared_data() = runTest(mainDispatcher) {
-        val (_, viewModel) = viewModel(success(sharedItem("g1"), sharedItem("g2")))
+    fun a_successful_load_exposes_the_card_and_the_sections() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(success(group("g1"), group("g2")))
         advanceUntilIdle()
 
         val details = assertNotNull(viewModel.viewState.value.transactionDetailsUi)
-        assertEquals("Acme", details.transactionDetailsCardUi.relyingPartyName)
+        assertEquals("Acme", details.transactionDetailsCardUi.partyName)
         assertTrue(details.transactionDetailsCardUi.transactionIsCompleted)
-        assertEquals(2, details.transactionDetailsDataShared.dataSharedItems.size)
-        assertNull(details.transactionDetailsDataSigned)
+        assertEquals(listOf("DATA REQUESTED", "DATA SHARED"), details.body.sections.map { it.title })
     }
 
     @Test
@@ -190,9 +211,7 @@ class TransactionDetailsViewModelTest {
 
     @Test
     fun dismissing_an_error_clears_it_without_reloading() = runTest(mainDispatcher) {
-        val (fake, viewModel) = viewModel(
-            TransactionDetailsInteractorPartialState.Failure("boom")
-        )
+        val (fake, viewModel) = viewModel(TransactionDetailsInteractorPartialState.Failure("boom"))
         advanceUntilIdle()
         assertNotNull(viewModel.viewState.value.error)
 
@@ -205,59 +224,52 @@ class TransactionDetailsViewModelTest {
 
     @Test
     fun popping_clears_the_error_and_navigates_back() = runTest(mainDispatcher) {
-        val (_, viewModel) = viewModel(
-            TransactionDetailsInteractorPartialState.Failure("boom")
-        )
+        val (_, viewModel) = viewModel(TransactionDetailsInteractorPartialState.Failure("boom"))
         advanceUntilIdle()
+        val effects = backgroundScope.collectEffects(viewModel)
 
-        val effect = async { viewModel.effect.first() }
         viewModel.setEvent(Event.Pop)
         advanceUntilIdle()
 
-        assertIs<Effect.Navigation.Pop>(effect.await())
+        assertIs<Effect.Navigation.Pop>(effects.single())
         assertNull(viewModel.viewState.value.error)
     }
 
     @Test
-    fun requesting_data_deletion_passes_this_transactions_id() = runTest(mainDispatcher) {
-        val (fake, viewModel) = viewModel(success(sharedItem("g1")))
-        advanceUntilIdle()
-
-        viewModel.setEvent(Event.RequestDataDeletionPressed)
-        advanceUntilIdle()
-
-        assertEquals(TX_ID, fake.deletionRequestedFor)
-    }
-
-    @Test
-    fun reporting_a_suspicious_transaction_passes_this_transactions_id() = runTest(mainDispatcher) {
-        val (fake, viewModel) = viewModel(success(sharedItem("g1")))
-        advanceUntilIdle()
-
-        viewModel.setEvent(Event.ReportSuspiciousTransactionPressed)
-        advanceUntilIdle()
-
-        assertEquals(TX_ID, fake.reportedFor)
-    }
-
-    @Test
-    fun expanding_a_shared_data_group_flips_its_chevron() = runTest(mainDispatcher) {
-        val (_, viewModel) = viewModel(success(sharedItem("g1")))
+    fun expanding_a_credential_group_flips_its_chevron_and_back() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(success(group("g1")))
         advanceUntilIdle()
 
         viewModel.setEvent(Event.ExpandOrCollapseGroupItem(itemId = "g1"))
         advanceUntilIdle()
-        assertTrue(
-            viewModel.viewState.value.transactionDetailsUi!!
-                .transactionDetailsDataShared.dataSharedItems.single().isExpanded
+        assertEquals(setOf("g1"), viewModel.viewState.value.expandedGroupIds)
+        assertEquals(
+            AppIcons.KeyboardArrowUp,
+            (viewModel.sharedGroup().header.trailingContentData as ListItemTrailingContentDataUi.Icon).iconData,
         )
 
         viewModel.setEvent(Event.ExpandOrCollapseGroupItem(itemId = "g1"))
         advanceUntilIdle()
-        assertFalse(
-            viewModel.viewState.value.transactionDetailsUi!!
-                .transactionDetailsDataShared.dataSharedItems.single().isExpanded
+        assertEquals(emptySet(), viewModel.viewState.value.expandedGroupIds)
+        assertEquals(
+            AppIcons.KeyboardArrowDown,
+            (viewModel.sharedGroup().header.trailingContentData as ListItemTrailingContentDataUi.Icon).iconData,
         )
+    }
+
+    @Test
+    fun a_reload_of_the_same_transaction_keeps_what_was_expanded() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(success(group("g1"), metadata = policyMetadata))
+        advanceUntilIdle()
+        viewModel.setEvent(Event.ExpandOrCollapseGroupItem(itemId = "g1"))
+        viewModel.setEvent(Event.ExpandOrCollapseCard)
+        advanceUntilIdle()
+
+        viewModel.setEvent(Event.Init)
+        advanceUntilIdle()
+
+        assertEquals(setOf("g1"), viewModel.viewState.value.expandedGroupIds)
+        assertTrue(viewModel.viewState.value.isCardExpanded)
     }
 
     @Test
@@ -267,8 +279,106 @@ class TransactionDetailsViewModelTest {
         advanceUntilIdle()
 
         viewModel.setEvent(Event.ExpandOrCollapseGroupItem(itemId = "g1"))
+        viewModel.setEvent(Event.ExpandOrCollapseCard)
         advanceUntilIdle()
 
         assertNull(viewModel.viewState.value.transactionDetailsUi)
+        assertFalse(viewModel.viewState.value.isCardExpanded)
+    }
+
+    @Test
+    fun the_card_expands_only_when_it_has_metadata() = runTest(mainDispatcher) {
+        val (_, bare) = viewModel(success(group("g1")))
+        advanceUntilIdle()
+        bare.setEvent(Event.ExpandOrCollapseCard)
+        assertFalse(bare.viewState.value.isCardExpanded)
+
+        val (_, withPolicy) = viewModel(success(group("g1"), metadata = policyMetadata))
+        advanceUntilIdle()
+        withPolicy.setEvent(Event.ExpandOrCollapseCard)
+        assertTrue(withPolicy.viewState.value.isCardExpanded)
+        withPolicy.setEvent(Event.ExpandOrCollapseCard)
+        assertFalse(withPolicy.viewState.value.isCardExpanded)
+    }
+
+    @Test
+    fun a_link_opens_externally_once_the_details_are_loaded() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(success(group("g1"), metadata = policyMetadata))
+        advanceUntilIdle()
+        val effects = backgroundScope.collectEffects(viewModel)
+
+        viewModel.setEvent(Event.OpenLink(LINK))
+        advanceUntilIdle()
+
+        assertEquals(LINK, assertIs<Effect.Navigation.OpenUrlExternally>(effects.single()).url)
+    }
+
+    @Test
+    fun delete_asks_for_confirmation_before_anything_is_deleted() = runTest(mainDispatcher) {
+        val (fake, viewModel) = viewModel(success(group("g1")))
+        advanceUntilIdle()
+        val effects = backgroundScope.collectEffects(viewModel)
+
+        viewModel.setEvent(Event.DeletePressed)
+        advanceUntilIdle()
+
+        assertIs<Effect.ShowBottomSheet>(effects.single())
+        assertTrue(fake.deletedIds.isEmpty())
+    }
+
+    @Test
+    fun delete_is_not_offered_while_the_details_are_missing() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(TransactionDetailsInteractorPartialState.Failure("boom"))
+        advanceUntilIdle()
+        val effects = backgroundScope.collectEffects(viewModel)
+
+        viewModel.setEvent(Event.DeletePressed)
+        advanceUntilIdle()
+
+        assertTrue(effects.isEmpty())
+    }
+
+    @Test
+    fun confirming_deletes_this_transaction_and_leaves_the_screen() = runTest(mainDispatcher) {
+        val (fake, viewModel) = viewModel(success(group("g1")))
+        advanceUntilIdle()
+        val effects = backgroundScope.collectEffects(viewModel)
+        viewModel.setEvent(Event.DeletePressed)
+        viewModel.setEvent(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
+        advanceUntilIdle()
+
+        viewModel.setEvent(Event.BottomSheet.Delete.PrimaryButtonPressed)
+        advanceUntilIdle()
+
+        assertEquals(listOf(TX_ID), fake.deletedIds)
+        assertIs<Effect.Navigation.Pop>(effects.last())
+    }
+
+    @Test
+    fun a_failed_deletion_shows_an_error_whose_retry_asks_again() = runTest(mainDispatcher) {
+        val fake = FakeTransactionDetailsInteractor(
+            states = listOf(success(group("g1"))),
+            deleteOutcome = TransactionDetailsInteractorDeleteTransactionPartialState.Failure("locked"),
+        )
+        val viewModel = TransactionDetailsViewModel(fake, TX_ID)
+        advanceUntilIdle()
+        val effects = backgroundScope.collectEffects(viewModel)
+        viewModel.setEvent(Event.DeletePressed)
+        viewModel.setEvent(Event.BottomSheet.UpdateBottomSheetState(isOpen = true))
+        viewModel.setEvent(Event.BottomSheet.Delete.PrimaryButtonPressed)
+        advanceUntilIdle()
+
+        val state = viewModel.viewState.value
+        assertFalse(state.isDeleting)
+        val error = assertNotNull(state.error)
+        assertNotNull(error.onRetry).invoke()
+        advanceUntilIdle()
+
+        // The sheet closed for the attempt; retry re-asks rather than deleting outright.
+        assertEquals(listOf(TX_ID), fake.deletedIds)
+        assertEquals(
+            listOf(Effect.ShowBottomSheet, Effect.CloseBottomSheet, Effect.ShowBottomSheet),
+            effects,
+        )
     }
 }

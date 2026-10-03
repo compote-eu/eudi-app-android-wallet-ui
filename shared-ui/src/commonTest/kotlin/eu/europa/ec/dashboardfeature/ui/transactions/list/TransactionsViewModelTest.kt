@@ -552,10 +552,12 @@ class TransactionsViewModelTest {
         job.cancel()
 
         assertEquals(1, interactor.resetFilterCalls)
-        // Reset means "show everything", and everything is expressed as the data's own bounds — not as
-        // an empty selection. The editing snapshot, on the other hand, IS cleared.
-        assertEquals(EARLIEST, viewModel.viewState.value.filterDateRangeSelectionUi.startDate)
-        assertEquals(LATEST, viewModel.viewState.value.filterDateRangeSelectionUi.endDate)
+        // Reset means "show everything", which upstream (7a47e46a) now expresses as an EMPTY selection:
+        // the data's bounds are kept apart in `datePickerLimits`, so a later deletion that moves them
+        // cannot leave a stale range selected. The editing snapshot is cleared too.
+        assertTrue(viewModel.viewState.value.filterDateRangeSelectionUi.isEmpty)
+        assertEquals(EARLIEST, viewModel.viewState.value.datePickerLimits.startDate)
+        assertEquals(LATEST, viewModel.viewState.value.datePickerLimits.endDate)
         assertNull(viewModel.viewState.value.snapshotFilterDateRangeSelectionUi.startDate)
         assertTrue(effects.any { it is Effect.CloseBottomSheet })
     }

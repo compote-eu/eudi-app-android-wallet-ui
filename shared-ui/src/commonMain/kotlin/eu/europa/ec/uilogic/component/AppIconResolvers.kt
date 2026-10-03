@@ -42,10 +42,12 @@ import eu.europa.ec.shared.resources.content_description_check_icon
 import eu.europa.ec.shared.resources.content_description_clock_timer_icon
 import eu.europa.ec.shared.resources.content_description_close_icon
 import eu.europa.ec.shared.resources.content_description_date_range_icon
+import eu.europa.ec.shared.resources.content_description_delete_filled_icon
 import eu.europa.ec.shared.resources.content_description_delete_icon
 import eu.europa.ec.shared.resources.content_description_documents_icon
 import eu.europa.ec.shared.resources.content_description_download_icon
 import eu.europa.ec.shared.resources.content_description_edit_icon
+import eu.europa.ec.shared.resources.content_description_error_filled_icon
 import eu.europa.ec.shared.resources.content_description_error_icon
 import eu.europa.ec.shared.resources.content_description_filters_icon
 import eu.europa.ec.shared.resources.content_description_handle_bar_icon
@@ -94,8 +96,9 @@ val AppIconKey.contentDescriptionRes: StringResource
         AppIconKey.VerticalMore -> Res.string.content_description_more_vert_icon
         AppIconKey.Warning -> Res.string.content_description_warning_icon
         AppIconKey.Error -> Res.string.content_description_error_icon
-        AppIconKey.ErrorFilled -> Res.string.content_description_error_icon
+        AppIconKey.ErrorFilled -> Res.string.content_description_error_filled_icon
         AppIconKey.Delete -> Res.string.content_description_delete_icon
+        AppIconKey.DeleteFilled -> Res.string.content_description_delete_filled_icon
         AppIconKey.TouchId -> Res.string.content_description_touch_id_icon
         AppIconKey.QR -> Res.string.content_description_qr_icon
         AppIconKey.NFC -> Res.string.content_description_nfc_icon

@@ -33,6 +33,7 @@ import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
@@ -159,15 +160,14 @@ fun provideIosDocumentDetailsInteractor(
 
 @Factory
 internal fun provideIosTransactionDetailsInteractor(
-    engine: IosWalletEngine,
+    platform: TransactionsPlatformBridge,
     strings: StringCatalog,
-): TransactionDetailsInteractor = IosTransactionDetailsInteractor(engine = engine, strings = strings)
+): TransactionDetailsInteractor = TransactionDetailsInteractorImpl(platform = platform, strings = strings)
 
 @Single
 internal fun provideIosTransactionsPlatformBridge(
     engine: IosWalletEngine,
-    strings: StringCatalog,
-): TransactionsPlatformBridge = IosTransactionsPlatformBridge(engine = engine, strings = strings)
+): TransactionsPlatformBridge = IosTransactionsPlatformBridge(engine = engine)
 
 @Factory
 fun provideIosTransactionsInteractor(

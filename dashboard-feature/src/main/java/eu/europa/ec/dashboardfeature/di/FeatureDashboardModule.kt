@@ -148,10 +148,8 @@ fun provideDocumentsInteractor(
 @Factory
 fun provideTransactionsPlatformBridge(
     walletCoreDocumentsController: WalletCoreDocumentsController,
-    resourceProvider: ResourceProvider,
 ): TransactionsPlatformBridge = AndroidTransactionsPlatformBridge(
     walletCoreDocumentsController = walletCoreDocumentsController,
-    resourceProvider = resourceProvider,
 )
 
 @Factory
@@ -210,14 +208,13 @@ fun provideDocumentDetailsInteractor(
         platform = platform,
     )
 
+/** The shared details interactor over Android's transaction-log reader. */
 @Factory
 fun provideTransactionDetailsInteractor(
-    walletCoreDocumentsController: WalletCoreDocumentsController,
-    resourceProvider: ResourceProvider,
-    uuidProvider: UuidProvider
+    platform: TransactionsPlatformBridge,
+    strings: StringCatalog,
 ): TransactionDetailsInteractor =
     TransactionDetailsInteractorImpl(
-        walletCoreDocumentsController,
-        resourceProvider,
-        uuidProvider
+        platform = platform,
+        strings = strings,
     )

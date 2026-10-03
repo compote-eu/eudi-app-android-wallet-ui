@@ -54,6 +54,7 @@
     <string name="generic_default_relying_party_name">Unknown Relying Party</string>
     <string name="generic_default_issuer_name">Issuer</string>
     <string name="generic_view_details">View details</string>
+    <string name="generic_hide_details">Hide details</string>
     <string name="generic_deferred_success_text">In progress!</string>
     <string name="generic_bottom_sheet_delete_title">Remove document?</string>
     <string name="generic_bottom_sheet_delete_subtitle">This document will be removed from your wallet and may affect access to services.</string>
@@ -80,6 +81,7 @@
     <string name="content_description_error_icon">Error</string>
     <string name="content_description_error_filled_icon">Error</string>
     <string name="content_description_delete_icon">Delete</string>
+    <string name="content_description_delete_filled_icon">Delete</string>
     <string name="content_description_touch_id_icon">Touch id</string>
     <string name="content_description_qr_icon">QR</string>
     <string name="content_description_qr_scanner_icon">QR Scanner</string>
@@ -363,11 +365,15 @@
     <string name="transactions_screen_filters_filter_by_transaction_type">Transaction Type</string>
     <string name="transactions_screen_filters_filter_by_transaction_type_presentation">Presentation</string>
     <string name="transactions_screen_filters_filter_by_transaction_type_issuance">Issuance</string>
+    <string name="transactions_screen_filters_filter_by_transaction_type_reissuance">Re-issuance</string>
+    <string name="transactions_screen_filters_filter_by_transaction_type_deletion">Deletion</string>
+    <string name="transaction_type_data_deletion_request">Data Deletion Requests</string>
+    <string name="transaction_type_dpa_report">Suspicious Transaction Reports</string>
     <string name="transactions_screen_filters_filter_by_transaction_type_signing">Signing</string>
     <string name="transactions_screen_filters_date_from">Date from</string>
     <string name="transactions_screen_filters_date_to">Date to</string>
     <string name="transactions_filter_item_status_completed">Completed</string>
-    <string name="transactions_filter_item_status_failed">Failed</string>
+    <string name="transactions_filter_item_status_not_completed">Not completed</string>
     <string name="transactions_filter_item_no_relying_party_transactions">No Relying Party</string>
     <string name="transactions_screen_filters_apply">Apply</string> <!-- upstream alias of generic_filters_apply -->
     <string name="transactions_screen_filters_reset">Reset all</string> <!-- upstream alias of generic_filters_reset -->
@@ -420,14 +426,40 @@
 
     <!-- region Transaction Details -->
     <string name="transaction_details_screen_title">Transaction information</string>
+    <string name="transaction_details_delete_button">Delete</string>
+    <string name="transaction_details_bottom_sheet_delete_title">Delete transaction?</string>
+    <string name="transaction_details_bottom_sheet_delete_subtitle">This transaction record will be permanently deleted from your wallet. Losing this record may make it harder to exercise your data protection rights, including requesting data deletion or reporting misuse.</string>
     <string name="transaction_details_screen_card_date_label">Date</string>
-    <string name="transaction_details_request_deletion_message">You can request to stop processing personal data linked to this transaction. This may affect your access to services.</string>
-    <string name="transaction_details_report_transaction_message">If you believe this relying party has unlawfully requested personal data, you can report this transaction to the authorities.</string>
-    <string name="transaction_details_request_deletion_button">Request data deletion</string>
-    <string name="transaction_details_report_transaction_button">Report suspicious transaction</string>
     <string name="transaction_details_data_shared_section_title">DATA SHARED</string>
     <string name="transaction_details_data_signed_section_title">DATA SIGNED</string>
     <string name="transaction_details_collapsed_supporting_text">View details</string> <!-- upstream alias of generic_view_details -->
+    <string name="transaction_details_data_requested_section_title">DATA REQUESTED</string>
+    <string name="transaction_details_relying_party_section_title">RELYING PARTY</string>
+    <string name="transaction_details_authority_section_title">DATA PROTECTION AUTHORITY</string>
+    <string name="transaction_details_credentials_section_title">CREDENTIALS</string>
+    <string name="transaction_details_credentials_issued_section_title">CREDENTIALS ISSUED</string>
+    <string name="transaction_details_data_deletion_section_title">DATA REQUESTED FOR DELETION</string>
+    <string name="transaction_details_no_data_requested">No data requested</string>
+    <string name="transaction_details_no_data_shared">No data shared</string>
+    <string name="transaction_details_no_claims">No attributes recorded</string>
+    <string name="transaction_details_no_information">No information recorded</string>
+    <string name="transaction_details_unknown_claim">Attribute identifier unavailable</string>
+    <string name="transaction_details_name_label">Name</string>
+    <string name="transaction_details_intermediary_name_label">Intermediary name</string>
+    <string name="transaction_details_identifier_label">Identifier</string>
+    <string name="transaction_details_identifier_scheme_label">Identifier scheme</string>
+    <string name="transaction_details_contact_label">Contact</string>
+    <string name="transaction_details_intermediary_contact_label">Intermediary contact</string>
+    <string name="transaction_details_country_label">Country</string>
+    <string name="transaction_details_purpose_label">Intended use</string>
+    <string name="transaction_details_privacy_policy_label">Privacy policy</string>
+    <string name="transaction_details_requested_count_label">Credentials requested</string>
+    <string name="transaction_details_issued_count_label">Credentials issued</string>
+    <string name="transaction_details_trigger_label">Initiated by</string>
+    <string name="transaction_details_requested_by_you">Wallet holder</string>
+    <string name="transaction_details_renewed_by_wallet">The Wallet</string>
+    <string name="transaction_details_filename_label">File name</string>
+    <string name="transaction_details_signing_identifier_label">Signing transaction identifier</string>
     <!--endregion-->
 
     <!-- region Proximity QR -->

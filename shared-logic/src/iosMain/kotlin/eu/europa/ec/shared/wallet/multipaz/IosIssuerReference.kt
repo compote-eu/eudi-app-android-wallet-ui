@@ -14,17 +14,14 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.dashboardfeature.ui.transactions.list.model
+package eu.europa.ec.shared.wallet.multipaz
 
-import eu.europa.ec.businesslogic.validator.model.FilterableAttributes
-import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
-import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionTypeUi
-import kotlinx.datetime.LocalDateTime
-
-data class TransactionsFilterableAttributes(
-    override val searchTags: List<String>,
-    val transactionStatus: TransactionStatusUi,
-    val transactionType: TransactionTypeUi,
-    val creationLocalDateTime: LocalDateTime?,
-    val partyName: String?,
-) : FilterableAttributes
+/**
+ * Who issued a document, and under which of that issuer's configurations.
+ *
+ * The two values re-issuance needs: something the app stored at issuance time and reads back later.
+ */
+data class IosIssuerReference(
+    val issuerId: String,
+    val documentConfigId: String,
+)

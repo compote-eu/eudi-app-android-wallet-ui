@@ -11,11 +11,11 @@
 package eu.europa.ec.shared.ui.harness
 
 import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.shared.ui.di.IosPreferences
 import eu.europa.ec.shared.ui.di.checkIssuerRegistration
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
-import eu.europa.ec.shared.wallet.multipaz.IosTransactionKind
 import eu.europa.ec.shared.wallet.multipaz.createIosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.runBackgroundReIssuance
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
@@ -732,17 +732,14 @@ private var lastPresentedDocumentId: String? = null
  */
 private suspend fun probeTransactionDetails(onResult: (String) -> Unit) {
     val koin = KoinPlatform.getKoin()
-    val transactions = koin.get<IosWalletEngine>().getTransactions()
+    val transactions = koin.get<IosWalletEngine>().getTransactionLogs()
     transactions.forEach { transaction ->
-        onResult(
-            "  logged: ${transaction.kind} at ${transaction.createdAt} " +
-                    "party=${transaction.relyingPartyName} documents=${transaction.documentNames}"
-        )
+        onResult("  logged: ${transaction::class.simpleName} at ${transaction.time} id=${transaction.id}")
     }
 
     // The newest *presentation*, not simply the newest: an issuance shares nothing, so opening one
     // would exercise the details screen without ever exercising the claims it exists to show.
-    val newest = transactions.firstOrNull { it.kind == IosTransactionKind.Presentation }
+    val newest = transactions.firstOrNull { it is TransactionLogDomain.Presentation }
         ?: transactions.firstOrNull()
     if (newest == null) {
         onResult("transaction details -> nothing logged yet")
@@ -757,11 +754,13 @@ private suspend fun probeTransactionDetails(onResult: (String) -> Unit) {
                 "getTransactionDetails -> ${details.transactionDetailsCardUi.transactionTypeLabel}" +
                         " / ${details.transactionDetailsCardUi.transactionStatusLabel}" +
                         " on ${details.transactionDetailsCardUi.transactionDate}" +
-                        " with ${details.transactionDetailsCardUi.relyingPartyName}"
+                        " with ${details.transactionDetailsCardUi.partyName}"
             )
-            details.transactionDetailsDataShared.dataSharedItems.forEach { document ->
-                val name = (document.header.mainContentData as? ListItemMainContentDataUi.Text)?.text
-                onResult("  shared $name: ${document.nestedItems.size} claim(s)")
+            details.body.sections.forEach { section ->
+                onResult(
+                    "  ${section.title}: ${section.groups.size} credential(s), " +
+                            "${section.groups.sumOf { it.items.size }} claim row(s), ${section.items.size} field(s)"
+                )
             }
         }
 
