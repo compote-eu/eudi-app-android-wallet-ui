@@ -63,7 +63,7 @@ internal class IosRelyingPartyRegistrationValidator(
         // answers a missing one with CERTIFICATE_ABSENT, which the consent screen warns about. The official iOS
         // wallet stays silent here; Android is the reference this fork matches.
         val compact = relyingPartyCertificateIn(requestObject)
-            ?: return RelyingPartyRegistrationOutcome.Failed(IssuerRegistrationFailure.CERTIFICATE_ABSENT)
+            ?: return RelyingPartyRegistrationOutcome.Failed(IssuerRegistrationFailure.CERTIFICATE_ABSENT).logged()
         return evaluateCertificate(compact, requestSigner, requestedClaimsIn(requestObject))
     }
 
@@ -77,6 +77,12 @@ internal class IosRelyingPartyRegistrationValidator(
      * @param requested every claim asked for, to find what the registration does not cover.
      */
     suspend fun evaluateCertificate(
+        compact: String,
+        presenter: X509Cert?,
+        requested: List<OverAskedClaim>,
+    ): RelyingPartyRegistrationOutcome = checkCertificate(compact, presenter, requested).logged()
+
+    private suspend fun checkCertificate(
         compact: String,
         presenter: X509Cert?,
         requested: List<OverAskedClaim>,
@@ -116,6 +122,7 @@ internal class IosRelyingPartyRegistrationValidator(
         if (!trusted) {
             return RelyingPartyRegistrationOutcome.Failed(IssuerRegistrationFailure.UNTRUSTED_PROVIDER)
         }
+        Logger.i(TAG, "registration certificate authenticated")
 
         val registration = issuerRegistrationFrom(verified)
 
@@ -180,6 +187,16 @@ internal class IosRelyingPartyRegistrationValidator(
             )
         }
         return RelyingPartyRegistrationOutcome.Verified(registration, overAsked)
+    }
+
+    /**
+     * Logs a failed evaluation with its reason, at INFO: the iOS log file keeps no debug lines, and most of
+     * the exits above return without a message. Android's wallet-core logs the same lines at debug.
+     */
+    private fun RelyingPartyRegistrationOutcome.logged(): RelyingPartyRegistrationOutcome = also { outcome ->
+        if (outcome is RelyingPartyRegistrationOutcome.Failed) {
+            Logger.i(TAG, "registration evaluation failed: ${outcome.reason}" + outcome.detail?.let { " ($it)" }.orEmpty())
+        }
     }
 
     private companion object {

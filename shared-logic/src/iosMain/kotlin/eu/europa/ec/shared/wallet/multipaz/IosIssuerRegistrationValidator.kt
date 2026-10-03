@@ -58,6 +58,12 @@ internal class IosIssuerRegistrationValidator(
         metadataPayload: JsonObject,
         metadataSigner: X509Cert?,
         offered: List<OfferedAttestation>,
+    ): IssuerRegistrationOutcome = check(metadataPayload, metadataSigner, offered).logged()
+
+    private suspend fun check(
+        metadataPayload: JsonObject,
+        metadataSigner: X509Cert?,
+        offered: List<OfferedAttestation>,
     ): IssuerRegistrationOutcome {
         val compact = issuerRegistrationCertificateIn(metadataPayload)
             ?: return IssuerRegistrationOutcome.NotOffered
@@ -106,6 +112,7 @@ internal class IosIssuerRegistrationValidator(
         if (!trusted) {
             return IssuerRegistrationOutcome.Failed(IssuerRegistrationFailure.UNTRUSTED_PROVIDER)
         }
+        Logger.i(TAG, "issuer registration certificate authenticated")
 
         val registration = issuerRegistrationFrom(verified)
 
@@ -171,6 +178,22 @@ internal class IosIssuerRegistrationValidator(
             registration = registration,
             overProvided = registration.overProvidedAmong(offered),
         )
+    }
+
+    /**
+     * Logs what the evaluation could not confirm, at INFO: the iOS log file keeps no debug lines, and most of
+     * the exits above return without a message. Android's wallet-core logs the same lines at debug.
+     */
+    private fun IssuerRegistrationOutcome.logged(): IssuerRegistrationOutcome = also { outcome ->
+        when (outcome) {
+            is IssuerRegistrationOutcome.Failed -> Logger.i(
+                TAG,
+                "issuer registration evaluation failed: ${outcome.reason}" + outcome.detail?.let { " ($it)" }.orEmpty(),
+            )
+
+            IssuerRegistrationOutcome.NotOffered -> Logger.i(TAG, "issuer metadata carries no registration certificate")
+            else -> Unit
+        }
     }
 
     private companion object {
