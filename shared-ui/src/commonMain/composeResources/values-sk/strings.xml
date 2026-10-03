@@ -54,6 +54,7 @@
     <string name="generic_default_relying_party_name">Overujúca strana</string>
     <string name="generic_default_issuer_name">Vydavateľ</string>
     <string name="generic_view_details">Zobraziť podrobnosti</string>
+    <string name="generic_hide_details">Skryť podrobnosti</string>
     <string name="generic_deferred_success_text">Prebieha!</string>
     <string name="generic_bottom_sheet_delete_title">Odstrániť dokument?</string>
     <string name="generic_bottom_sheet_delete_subtitle">Tento dokument bude odstránený z vašej peňaženky a môže to ovplyvniť prístup k službám.</string>
@@ -69,6 +70,21 @@
     <string name="generic_unknown_issuer">Neznámy</string>
     <!--endregion-->
 
+    <!-- region Trust Mark -->
+    <string name="trust_mark_about_title">O aplikácii EUDI Wallet</string>
+    <string name="trust_mark_welcome_title">Vitajte</string>
+    <string name="trust_mark_wallet_name">Peňaženka digitálnej identity EÚ</string>
+    <string name="trust_mark_image_description">Známka dôvery EUDI Wallet</string>
+    <string name="trust_mark_certification_description">Táto aplikácia peňaženky bola certifikovaná ako vyhovujúca požiadavkám EUDI Wallet na bezpečnosť a ochranu súkromia a je uvedená v %1$s.</string>
+    <string name="trust_mark_certified_wallets_link">dôveryhodnom zozname poskytovateľov EUDI Wallet</string>
+    <string name="trust_mark_certification_information_description">Podrobné informácie o certifikácii tejto peňaženky nájdete na %1$s.</string>
+    <string name="trust_mark_certification_information_link">stránke s informáciami o certifikácii</string>
+    <string name="trust_mark_loading">Načítavajú sa informácie o známke dôvery…</string>
+    <string name="trust_mark_load_error">Informácie o známke dôvery sa nepodarilo načítať. Skúste to znova.</string>
+    <string name="trust_mark_image_error">Obrázok známky dôvery sa nepodarilo načítať.</string>
+    <string name="trust_mark_browser_error">Tento odkaz sa nepodarilo otvoriť.</string>
+    <!--endregion-->
+
     <!-- region Content Description -->
     <string name="content_description_image_or_placeholder_icon">Ikona obrázka alebo zástupného symbolu</string>
     <string name="content_description_user_signature_icon">Podpis používateľa</string>
@@ -80,6 +96,7 @@
     <string name="content_description_error_icon">Chyba</string>
     <string name="content_description_error_filled_icon">Chyba</string>
     <string name="content_description_delete_icon">Odstrániť</string>
+    <string name="content_description_delete_filled_icon">Odstrániť</string>
     <string name="content_description_touch_id_icon">Touch id</string>
     <string name="content_description_qr_icon">QR</string>
     <string name="content_description_qr_scanner_icon">Skener QR</string>
@@ -225,6 +242,43 @@
     <string name="request_relying_party_description">žiada o nasledujúce</string>
     <string name="request_warning_text">Pred zdieľaním svojich údajov ich prosím pozorne skontrolujte.</string>
     <string name="request_collapsed_supporting_text">Zobraziť podrobnosti</string> <!-- upstream alias of generic_view_details -->
+    <string name="request_transaction_section_title">Údaje na podpis</string>
+    <string name="request_transaction_details_title">Podrobnosti podpisu</string>
+    <string name="request_transaction_trust_framework">Rámec dôvery</string>
+    <string name="request_transaction_trust_framework_value">eIDAS</string>
+    <string name="request_transaction_numbered">Transakcia %1$d</string>
+    <string name="request_transaction_type">Typ transakcie</string>
+    <string name="request_transaction_signature_type">Typ podpisu</string>
+    <string name="request_transaction_requested_credentials">Požadované osvedčenia</string>
+    <string name="request_transaction_signing_credential_id">ID podpisového osvedčenia</string>
+    <string name="request_transaction_signature_count">Počet podpisov</string>
+    <string name="request_transaction_document">Dokument</string>
+    <string name="request_transaction_document_numbered">Dokument %1$d</string>
+    <string name="request_transaction_document_location">Umiestnenie dokumentu</string>
+    <string name="request_transaction_open_document">Otvoriť dokument</string>
+    <string name="request_transaction_expected_checksum">Očakávaný kontrolný súčet dokumentu</string>
+    <string name="request_transaction_checksum_algorithm">Algoritmus kontrolného súčtu</string>
+    <string name="request_transaction_hash_representation">Reprezentácia hašu</string>
+    <string name="request_transaction_dtbsr_hash">Haš DTBSR</string>
+    <string name="request_transaction_dtbsr_algorithm">Hašovací algoritmus DTBSR</string>
+    <string name="request_transaction_sdr_hash">Haš SDR</string>
+    <string name="request_transaction_sdr_algorithm">Hašovací algoritmus SDR</string>
+    <string name="request_transaction_sodr_hash">Haš SODR</string>
+    <string name="request_transaction_sodr_algorithm">Hašovací algoritmus SODR</string>
+    <string name="request_transaction_document_hash">Haš dokumentu</string>
+    <string name="request_transaction_document_hash_algorithm">Hašovací algoritmus dokumentu</string>
+    <string name="request_transaction_signature_format">Formát podpisu</string>
+    <string name="request_transaction_conformance_level">Úroveň zhody</string>
+    <string name="request_transaction_signed_attributes">Podpísané atribúty</string>
+    <string name="request_transaction_otp">Jednorazové heslo (OTP)</string>
+    <string name="request_transaction_response_uri">URI odpovede</string>
+    <string name="request_transaction_unavailable">Podrobnosti tejto transakcie nie sú k dispozícii.</string>
+    <string name="request_transaction_qes">Kvalifikovaný elektronický podpis (KEP)</string>
+    <string name="request_transaction_qeseal">Kvalifikovaná elektronická pečať</string>
+    <string name="request_transaction_aes">Zdokonalený elektronický podpis</string>
+    <string name="request_transaction_aeseal">Zdokonalená elektronická pečať</string>
+    <string name="request_transaction_aesqc">Zdokonalený elektronický podpis založený na kvalifikovanom certifikáte</string>
+    <string name="request_transaction_aesealqc">Zdokonalená elektronická pečať založená na kvalifikovanom certifikáte</string>
     <string name="request_claim_not_registered_supporting_text">Neregistrované údaje</string>
     <string name="request_combination_option_title">Možnosť %1$d z %2$d</string>
     <string name="request_no_data">Požadovaný dokument nie je vo vašej EUDI Wallet dostupný. Ďalšie informácie vám poskytne autorizovaný vydavateľ.</string>
@@ -242,6 +296,7 @@
 
     <!-- region Loading Screen -->
     <string name="loading_header_description">Čakajte prosím…</string>
+    <string name="loading_rejection_description">Overujúca strana odpoveď odmietla.</string>
     <string name="loading_biometry_biometrics_enabled_description">Použite svoje biometrické údaje na schválenie transakcie.</string>
     <string name="loading_biometry_biometrics_not_enabled_description">Na schválenie transakcie musíte overiť svoju totožnosť.</string>
     <!--endregion-->
@@ -365,11 +420,15 @@
     <string name="transactions_screen_filters_filter_by_transaction_type">Typ transakcie</string>
     <string name="transactions_screen_filters_filter_by_transaction_type_presentation">Predloženie</string>
     <string name="transactions_screen_filters_filter_by_transaction_type_issuance">Vydanie</string>
+    <string name="transactions_screen_filters_filter_by_transaction_type_reissuance">Opätovné vydanie</string>
+    <string name="transactions_screen_filters_filter_by_transaction_type_deletion">Vymazanie</string>
+    <string name="transaction_type_data_deletion_request">Žiadosti o vymazanie údajov</string>
+    <string name="transaction_type_dpa_report">Hlásenia podozrivých transakcií</string>
     <string name="transactions_screen_filters_filter_by_transaction_type_signing">Podpisovanie</string>
     <string name="transactions_screen_filters_date_from">Dátum od</string>
     <string name="transactions_screen_filters_date_to">Dátum do</string>
     <string name="transactions_filter_item_status_completed">Dokončené</string>
-    <string name="transactions_filter_item_status_failed">Zlyhalo</string>
+    <string name="transactions_filter_item_status_not_completed">Nedokončené</string>
     <string name="transactions_filter_item_no_relying_party_transactions">Bez overujúcej strany</string>
     <string name="transactions_screen_filters_apply">Použiť</string> <!-- upstream alias of generic_filters_apply -->
     <string name="transactions_screen_filters_reset">Obnoviť všetko</string> <!-- upstream alias of generic_filters_reset -->
@@ -422,14 +481,54 @@
 
     <!-- region Transaction Details -->
     <string name="transaction_details_screen_title">Informácie o transakcii</string>
+    <string name="transaction_details_delete_button">Vymazať</string>
+    <string name="transaction_details_bottom_sheet_delete_title">Vymazať transakciu?</string>
+    <string name="transaction_details_bottom_sheet_delete_subtitle">Tento záznam o transakcii bude natrvalo vymazaný z vašej peňaženky. Bez neho môže byť ťažšie uplatniť vaše práva na ochranu údajov vrátane žiadosti o vymazanie údajov alebo nahlásenia zneužitia.</string>
     <string name="transaction_details_screen_card_date_label">Dátum</string>
-    <string name="transaction_details_request_deletion_message">Môžete požiadať o zastavenie spracúvania osobných údajov spojených s touto transakciou. Môže to ovplyvniť váš prístup k službám.</string>
-    <string name="transaction_details_report_transaction_message">Ak sa domnievate, že táto overujúca strana neoprávnene požiadala o osobné údaje, môžete túto transakciu nahlásiť príslušným orgánom.</string>
-    <string name="transaction_details_request_deletion_button">Požiadať o vymazanie údajov</string>
-    <string name="transaction_details_report_transaction_button">Nahlásiť podozrivú transakciu</string>
     <string name="transaction_details_data_shared_section_title">ZDIEĽANÉ ÚDAJE</string>
     <string name="transaction_details_data_signed_section_title">PODPÍSANÉ ÚDAJE</string>
+    <string name="transaction_details_signing_request_title">ŽIADOSŤ O PODPIS</string>
     <string name="transaction_details_collapsed_supporting_text">Zobraziť podrobnosti</string> <!-- upstream alias of generic_view_details -->
+    <string name="transaction_details_request_deletion_section_title">ŽIADOSŤ O VYMAZANIE ÚDAJOV</string>
+    <string name="transaction_details_report_transaction_section_title">NAHLÁSIŤ TÚTO TRANSAKCIU</string>
+    <string name="transaction_details_request_deletion_message">Môžete požiadať, aby táto overujúca strana prestala spracúvať vaše osobné údaje spojené s touto transakciou. Môže to však ovplyvniť váš prístup k službám.</string>
+    <string name="transaction_details_report_transaction_message">Ak sa domnievate, že táto overujúca strana neoprávnene požiadala o vaše osobné údaje, môžete ju nahlásiť dozornému orgánu pre ochranu údajov príslušného členského štátu.</string>
+    <string name="transaction_details_request_deletion_button">Podať žiadosť o vymazanie</string>
+    <string name="transaction_details_report_transaction_button">Podať hlásenie o transakcii</string>
+    <string name="transaction_details_action_unavailable">Táto akcia nie je k dispozícii. Nebol k nej zaznamenaný žiadny vhodný kontakt ani zdieľané údaje.</string>
+    <string name="transaction_details_action_open_failed">Tento kontakt sa nepodarilo otvoriť. Pokus nebol zaznamenaný. Skúste ho otvoriť znova alebo zrušte a vráťte sa k transakcii.</string>
+    <string name="transaction_details_action_save_failed">Externá aplikácia sa otvorila, ale tento pokus sa nepodarilo uložiť do histórie. Skúste ho uložiť znova bez opätovného otvorenia aplikácie.</string>
+    <string name="transaction_details_deletion_email_subject">Žiadosť o vymazanie osobných údajov podľa článku 17 — %1$s</string>
+    <string name="transaction_details_deletion_email_body">Podľa článku 17 GDPR žiadam o vymazanie všetkých osobných údajov zdieľaných s overujúcou stranou v nižšie uvedenej transakcii.\n\nOverujúca strana:\n%1$s\n\nDátum transakcie: %2$s\n\nProsím, dajte mi vedieť, ako túto žiadosť dokončiť.</string>
+    <string name="transaction_details_report_email_subject">Hlásenie potenciálne nezákonnej alebo podozrivej žiadosti o údaje — %1$s</string>
+    <string name="transaction_details_report_email_body">Týmto nahlasujem potenciálne nezákonnú alebo podozrivú žiadosť o osobné údaje od overujúcej strany uvedenej nižšie.\n\nOverujúca strana:\n%1$s\n\nDátum transakcie: %2$s\n\nProsím, prešetrite túto žiadosť. Na požiadanie poskytnem ďalšie podrobnosti o svojich obavách.</string>
+    <string name="transaction_details_data_requested_section_title">POŽADOVANÉ ÚDAJE</string>
+    <string name="transaction_details_relying_party_section_title">OVERUJÚCA STRANA</string>
+    <string name="transaction_details_authority_section_title">DOZORNÝ ORGÁN PRE OCHRANU ÚDAJOV</string>
+    <string name="transaction_details_credentials_section_title">OSVEDČENIA</string>
+    <string name="transaction_details_credentials_issued_section_title">VYDANÉ OSVEDČENIA</string>
+    <string name="transaction_details_data_deletion_section_title">ÚDAJE NA VYMAZANIE</string>
+    <string name="transaction_details_no_data_requested">Nepožadovali sa žiadne údaje</string>
+    <string name="transaction_details_no_data_shared">Nezdieľali sa žiadne údaje</string>
+    <string name="transaction_details_no_claims">Nezaznamenali sa žiadne atribúty</string>
+    <string name="transaction_details_no_information">Nezaznamenali sa žiadne informácie</string>
+    <string name="transaction_details_unknown_claim">Identifikátor atribútu nie je k dispozícii</string>
+    <string name="transaction_details_name_label">Názov</string>
+    <string name="transaction_details_intermediary_name_label">Názov sprostredkovateľa</string>
+    <string name="transaction_details_identifier_label">Identifikátor</string>
+    <string name="transaction_details_identifier_scheme_label">Schéma identifikátora</string>
+    <string name="transaction_details_contact_label">Kontakt</string>
+    <string name="transaction_details_intermediary_contact_label">Kontakt sprostredkovateľa</string>
+    <string name="transaction_details_country_label">Krajina</string>
+    <string name="transaction_details_purpose_label">Účel použitia</string>
+    <string name="transaction_details_privacy_policy_label">Zásady ochrany osobných údajov</string>
+    <string name="transaction_details_requested_count_label">Požadované osvedčenia</string>
+    <string name="transaction_details_issued_count_label">Vydané osvedčenia</string>
+    <string name="transaction_details_trigger_label">Iniciátor</string>
+    <string name="transaction_details_requested_by_you">Držiteľ peňaženky</string>
+    <string name="transaction_details_renewed_by_wallet">Peňaženka</string>
+    <string name="transaction_details_filename_label">Názov súboru</string>
+    <string name="transaction_details_signing_identifier_label">Identifikátor podpisovej transakcie</string>
     <!--endregion-->
 
     <!-- region Proximity QR -->
@@ -519,4 +618,51 @@
     <string name="transaction_category_this_week">TENTO TÝŽDEŇ</string>
     <string name="transaction_category_month_year">MESIAC</string>
     <!--endregion-->
+
+    <!-- region Privacy dashboard -->
+    <!-- Data deletion request -->
+    <string name="data_deletion_screen_title">Skôr než budete pokračovať</string>
+    <string name="data_deletion_relying_party_default_name">Overujúca strana</string>
+    <string name="data_deletion_website_description">Chystáte sa opustiť peňaženku a prejsť na webovú lokalitu %1$s, kde môžete vyplniť formulár so žiadosťou o vymazanie zdieľaných údajov.</string>
+    <string name="data_deletion_email_description">Otvorí sa vaša e-mailová aplikácia so správou pripravenou na odoslanie pre %1$s, aby ste mohli požiadať o vymazanie zdieľaných údajov.</string>
+    <string name="data_deletion_phone_description">Týmto priamo zavoláte %1$s, aby ste mohli požiadať o vymazanie zdieľaných údajov.</string>
+    <string name="data_deletion_website_responsibility">&lt;b>Peňaženka túto žiadosť za vás neodosiela ani nespravuje.&lt;/b> Keď budete vo formulári, jeho vyplnenie a odoslanie je na vás.</string>
+    <string name="data_deletion_email_responsibility">&lt;b>Peňaženka tento e-mail neodosiela ani za vás nespravuje žiadosť.&lt;/b> Budete ho musieť skontrolovať, doplniť a odoslať sami.</string>
+    <string name="data_deletion_phone_responsibility">&lt;b>Peňaženka túto žiadosť za vás nepodáva.&lt;/b> Počas hovoru budete musieť sami vysvetliť, o čo žiadate.</string>
+    <string name="data_deletion_retention_notice">Aj po vašej žiadosti môže mať %1$s zákonnú povinnosť uchovať niektoré vaše údaje. Informácie o výsledku vám poskytne priamo %1$s, nie peňaženka.</string>
+    <string name="data_deletion_website_button">Prejsť na webovú lokalitu %1$s</string>
+    <string name="data_deletion_email_button">Otvoriť e-mail pre %1$s</string>
+    <string name="data_deletion_phone_button">Zavolať %1$s</string>
+    <!-- DPA report -->
+    <string name="dpa_report_screen_title">Podať hlásenie o transakcii</string>
+    <string name="dpa_report_authority_label">Príslušný dozorný orgán pre ochranu údajov</string>
+    <string name="dpa_report_responsibility">&lt;b>Peňaženka toto hlásenie neodosiela ani nesleduje.&lt;/b> Ak chcete túto transakciu nahlásiť, kontaktujte priamo príslušný dozorný orgán pre ochranu údajov spôsobom, ktorý vám nižšie najviac vyhovuje.</string>
+    <string name="dpa_report_follow_up">Transakciu budete musieť opísať sami. Informácie o výsledku vám poskytne priamo dozorný orgán pre ochranu údajov, nie peňaženka.</string>
+    <string name="dpa_report_call_button">Zavolať</string>
+    <string name="dpa_report_email_button">Otvoriť e-mail</string>
+    <string name="dpa_report_website_button">Navštíviť webovú lokalitu</string>
+    <string name="transaction_details_report_email_intermediary">\n\nSprostredkovateľ:\n%1$s</string>
+    <string name="content_description_call_icon">Telefón</string>
+    <string name="content_description_email_icon">E-mail</string>
+    <string name="content_description_link_icon">Webová lokalita</string>
+    <!-- Transaction attempt history -->
+    <string name="privacy_history_deletion_link">Zobraziť predchádzajúce žiadosti o vymazanie údajov (%1$d)</string>
+    <string name="privacy_history_report_link">Zobraziť predchádzajúce hlásenia o transakcii (%1$d)</string>
+    <string name="privacy_history_loading">Načítavajú sa predchádzajúce pokusy…</string>
+    <string name="privacy_history_retry">Skúsiť znova načítať predchádzajúce pokusy</string>
+    <string name="privacy_history_deletion_title">Predchádzajúce žiadosti o vymazanie údajov: %1$s</string>
+    <string name="privacy_history_report_title">Predchádzajúce hlásenia o transakcii: %1$s</string>
+    <string name="privacy_history_relying_party_default_name">Overujúca strana</string>
+    <string name="privacy_history_deletion_disclaimer">Žiadosti o vymazanie údajov sa vybavujú mimo peňaženky, preto nie je možné sledovať ich konečný výsledok.</string>
+    <string name="privacy_history_report_disclaimer">Hlásenia o transakciách sa vybavujú mimo peňaženky, preto nie je možné sledovať ich konečný výsledok.</string>
+    <string name="privacy_history_deletion_intro">V minulosti ste sa pokúsili podať žiadosť o vymazanie údajov tejto overujúcej strane nasledujúcimi spôsobmi:</string>
+    <string name="privacy_history_report_intro">V minulosti ste sa pokúsili podať hlásenie o transakcii príslušnému dozornému orgánu pre ochranu údajov nasledujúcimi spôsobmi:</string>
+    <string name="privacy_history_deletion_empty">K tejto transakcii nie sú žiadne predchádzajúce pokusy o vymazanie údajov.</string>
+    <string name="privacy_history_report_empty">K tejto transakcii nie sú žiadne predchádzajúce pokusy o nahlásenie.</string>
+    <string name="privacy_history_method_web_form">Webový formulár</string>
+    <string name="privacy_history_method_website">Webová lokalita</string>
+    <string name="privacy_history_method_email">E-mail</string>
+    <string name="privacy_history_method_phone">Telefonát</string>
+    <!--endregion-->
+
 </resources>
