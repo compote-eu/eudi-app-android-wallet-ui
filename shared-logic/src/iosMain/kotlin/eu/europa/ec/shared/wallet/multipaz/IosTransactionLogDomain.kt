@@ -24,14 +24,20 @@ import eu.europa.ec.corelogic.model.ClaimPathSegment
 import eu.europa.ec.corelogic.model.ClaimRefDomain
 import eu.europa.ec.corelogic.model.CredentialClaimsDomain
 import eu.europa.ec.corelogic.model.CredentialRefDomain
+import eu.europa.ec.corelogic.model.DpaContactDomain
 import eu.europa.ec.corelogic.model.FormatType
 import eu.europa.ec.corelogic.model.InteractingPartyDomain
 import eu.europa.ec.corelogic.model.IssuanceDetailsDomain
 import eu.europa.ec.corelogic.model.LocalizedTextDomain
+import eu.europa.ec.corelogic.model.PresentationRegistrationDomain
+import eu.europa.ec.corelogic.model.QualifiedIdentifierDomain
 import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.corelogic.model.TransactionResultDomain
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import platform.Foundation.NSLocale
+import platform.Foundation.currentLocale
+import platform.Foundation.languageCode
 import org.multipaz.claim.Claim
 import org.multipaz.eventlogger.Event
 import org.multipaz.eventlogger.EventPresentment
@@ -72,6 +78,8 @@ internal suspend fun MultipazWalletStore.transactionLog(id: String): Transaction
 internal suspend fun MultipazWalletStore.deleteTransactionLog(id: String) {
     val logger = eventLogger()
     logger.getEvents().firstOrNull { event -> event.identifier == id }?.let { event -> logger.deleteEvent(event) }
+    // A presentation's deletion requests and reports go with it, as Android's cascade removes them.
+    deletePresentationActions(id)
 }
 
 private suspend fun MultipazWalletStore.documentFormatType(documentId: String): FormatType? =
@@ -85,6 +93,8 @@ private suspend fun MultipazWalletStore.documentFormatType(documentId: String): 
  */
 internal suspend fun Event.toTransactionLogDomain(
     formatOf: suspend (documentId: String) -> FormatType?,
+    /** The language a registered purpose is shown in, as Android picks it by the user's locale. */
+    languageCode: String = NSLocale.currentLocale.languageCode,
 ): TransactionLogDomain? {
     val time = timestamp.toLocalDateTime(TimeZone.currentSystemDefault())
 
@@ -93,24 +103,30 @@ internal suspend fun Event.toTransactionLogDomain(
             val presented = presentmentData.requestedDocuments.map { document ->
                 document.toCredentialClaims(formatOf)
             }
+            // What the relying party's registration certificate said, kept with the event when the
+            // registration check was on — see `IosPresentationParty.kt`. Absent, as on Android, when it
+            // was off: then there is no registration, no contact and no authority.
+            val party = presentationPartyRecord()
             TransactionLogDomain.Presentation(
                 id = identifier,
                 time = time,
                 result = TransactionResultDomain.Completed,
                 party = InteractingPartyDomain(
-                    // The certificate's name when multipaz recorded none: multipaz fills
-                    // `requesterName` only from trust metadata or a web origin, and
-                    // `uriSchemePresentment` passes `origin = ""`, so a URI-scheme presentation records
-                    // a blank name where the consent screen had named the verifier.
-                    name = (presentmentData.requesterName?.takeIf { it.isNotBlank() }
+                    // The registered name first, as wallet-core takes it; otherwise the certificate's
+                    // name when multipaz recorded none: multipaz fills `requesterName` only from trust
+                    // metadata or a web origin, and `uriSchemePresentment` passes `origin = ""`, so a
+                    // URI-scheme presentation records a blank name where the consent screen had named
+                    // the verifier.
+                    name = (party?.name?.takeIf { it.isNotBlank() }
+                        ?: presentmentData.requesterName?.takeIf { it.isNotBlank() }
                         ?: presentmentData.requesterCertChain.commonName())
                         ?.let { name -> LocalizedTextDomain(UNDETERMINED_LANGUAGE, name) },
-                    identifier = null,
-                    contacts = emptyList(),
+                    identifier = party?.identifier?.toDomain(),
+                    contacts = party?.contacts.orEmpty(),
                 ),
                 partyType = null,
-                intermediary = null,
-                registration = null,
+                intermediary = party?.intermediaryDomain(),
+                registration = party?.registrationDomain(languageCode),
                 // multipaz records what was shared, keyed by what was asked for, and nothing about
                 // requested claims that were not shared. So the request is recorded as what was shared.
                 claimsRequested = presented,
@@ -142,6 +158,34 @@ internal suspend fun Event.toTransactionLogDomain(
 
         is EventSimple -> null
     }
+}
+
+private fun QualifiedIdentifierRecord.toDomain() = QualifiedIdentifierDomain(schemeUri = schemeUri, value = value)
+
+/** Android's rule: an intermediary appears only when the certificate named one. */
+private fun PresentationPartyRecord.intermediaryDomain(): InteractingPartyDomain? = InteractingPartyDomain(
+    name = intermediaryName?.let { name -> LocalizedTextDomain(UNDETERMINED_LANGUAGE, name) },
+    identifier = intermediaryIdentifier?.toDomain(),
+    contacts = emptyList(),
+).takeIf { intermediary -> intermediary.name != null || intermediary.identifier != null }
+
+/** Android's `toPresentationRegistrationDomain`: null when the certificate declared none of it. */
+private fun PresentationPartyRecord.registrationDomain(languageCode: String): PresentationRegistrationDomain? {
+    val localizedPurpose = purpose.map { LocalizedText(it.language, it.value) }.forLocale(languageCode)
+    val authority = DpaContactDomain(
+        name = authorityName?.let { name -> LocalizedTextDomain(UNDETERMINED_LANGUAGE, name) },
+        country = null,
+        contacts = authorityContacts,
+    ).takeIf { dpa -> dpa.name != null || dpa.contacts.isNotEmpty() }
+    if (registrarUrl == null && localizedPurpose == null && privacyPolicyUrls.isEmpty() && authority == null) {
+        return null
+    }
+    return PresentationRegistrationDomain(
+        registrarUrl = registrarUrl,
+        purpose = localizedPurpose,
+        privacyPolicyUrls = privacyPolicyUrls,
+        dpa = authority,
+    )
 }
 
 private suspend fun EventPresentmentDataDocument.toCredentialClaims(

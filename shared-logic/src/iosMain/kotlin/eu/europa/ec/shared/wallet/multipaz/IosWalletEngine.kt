@@ -23,6 +23,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import eu.europa.ec.corelogic.model.CommunicationMethodDomain
+import eu.europa.ec.corelogic.model.DpaContactDomain
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlin.time.Instant
 
 /**
  * The iOS [WalletEngine] as something a DI container can construct: **not suspending to build**.
@@ -132,8 +138,38 @@ class IosWalletEngine : WalletEngine {
     /** One entry of that log, or null for an id it does not hold (an expired entry, or a bad link). */
     suspend fun getTransactionLog(id: String): TransactionLogDomain? = store().transactionLog(id)
 
-    /** Removes one entry from the log. */
+    /** Removes one entry from the log, with the deletion requests and reports recorded under it. */
     suspend fun deleteTransactionLog(id: String) = store().deleteTransactionLog(id)
+
+    /** The deletion requests and reports recorded under one presentation, kept current. */
+    fun observePresentationActions(presentationId: String): Flow<List<TransactionLogDomain.PresentationAction>> =
+        flow { emitAll(store().observePresentationActions(presentationId)) }
+
+    /** Records an opened data-deletion request about [presentation]; true once it is stored. */
+    suspend fun recordDataDeletionRequest(
+        id: String,
+        time: Instant,
+        presentation: TransactionLogDomain.Presentation,
+        communicationMethod: CommunicationMethodDomain,
+    ): Boolean = store().recordPresentationAction(
+        presentation.toDataDeletionRequestRecord(id = id, time = time, communicationMethod = communicationMethod)
+    )
+
+    /** Records an opened report to [authority] about the presentation [parentPresentationId]. */
+    suspend fun recordDpaReport(
+        id: String,
+        time: Instant,
+        parentPresentationId: String,
+        authority: DpaContactDomain,
+        communicationMethod: CommunicationMethodDomain,
+    ): Boolean = store().recordPresentationAction(
+        authority.toDpaReportRecord(
+            id = id,
+            time = time,
+            parentPresentationId = parentPresentationId,
+            communicationMethod = communicationMethod,
+        )
+    )
 
     /**
      * Who issued a document and under which configuration, or null when the document is unknown or was

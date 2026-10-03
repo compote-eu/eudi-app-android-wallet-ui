@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -81,6 +82,26 @@ data class IssuerRegistration(
     val expiresAt: Instant?,
     /** Present when the certificate is held by an intermediary presenting on the issuer's behalf. */
     val intermediaryIdentifier: String?,
+    /** `sub_gn` and `sub_fn` — a natural person's names, used when there is no [legalName]. */
+    val givenName: String? = null,
+    val familyName: String? = null,
+    /** `registry_uri` — where the registration can be looked up. */
+    val registryUri: String? = null,
+    /** `info_uri` and `support_uri` — the subject's own pages, which a user may contact it through. */
+    val infoUri: String? = null,
+    val supportUri: String? = null,
+    /** `supervisory_authority` — the data protection authority responsible for the subject. */
+    val supervisoryAuthority: SupervisoryAuthority? = null,
+    /** `intermediary.sname` — the intermediary's name; ETSI puts it in `sname`, not `name`. */
+    val intermediaryName: String? = null,
+)
+
+/** The `supervisory_authority` of a registration certificate: how to reach the data protection authority. */
+data class SupervisoryAuthority(
+    val name: String?,
+    val email: String?,
+    val phone: String?,
+    val uri: String?,
 )
 
 /** A certificate string carried once per language, as ETSI writes them. */
@@ -232,6 +253,22 @@ internal fun issuerRegistrationFrom(payload: JsonObject): IssuerRegistration {
             ?.let { Instant.fromEpochSeconds(it) },
         intermediaryIdentifier = payload["intermediary"]?.jsonObject
             ?.get("sub")?.jsonPrimitive?.contentOrNull,
+        givenName = str("sub_gn"),
+        familyName = str("sub_fn"),
+        registryUri = str("registry_uri"),
+        infoUri = str("info_uri"),
+        supportUri = str("support_uri"),
+        supervisoryAuthority = (payload["supervisory_authority"] as? JsonObject)?.let { authority ->
+            fun field(key: String) = (authority[key] as? JsonPrimitive)?.contentOrNull
+            SupervisoryAuthority(
+                name = field("name"),
+                email = field("email"),
+                phone = field("phone"),
+                uri = field("uri"),
+            )
+        },
+        intermediaryName = (payload["intermediary"] as? JsonObject)
+            ?.get("sname")?.let { (it as? JsonPrimitive)?.contentOrNull },
     )
 }
 

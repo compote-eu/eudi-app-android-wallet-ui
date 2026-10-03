@@ -440,6 +440,8 @@ class IosRemotePresenter internal constructor(
         Logger.i(TAG, "asking for consent (request $consentRequests of this exchange)")
         pendingConsent = consent
         pendingData = data
+        val registration = evaluateRelyingPartyRegistration()
+        rememberPartyRecord(registration)
         mutableState.value = IosRemotePresentationState.Requesting(
             request = data.toPresentmentRequest(
                 // A name without trust behind it is still worth showing. Unlike proximity there is
@@ -450,7 +452,7 @@ class IosRemotePresenter internal constructor(
                 // Read from the request object the observing engine already kept — `verifier_info` is
                 // another claim multipaz does not parse, and re-fetching a single-use `request_uri`
                 // to get it would risk the exchange.
-                relyingPartyRegistration = evaluateRelyingPartyRegistration(),
+                relyingPartyRegistration = registration,
             ),
         )
 
@@ -461,6 +463,21 @@ class IosRemotePresenter internal constructor(
             mutableState.value = IosRemotePresentationState.Sending
         }
         return selection
+    }
+
+    /**
+     * Leaves the relying party's registered details for the event this presentation logs once the verifier
+     * accepts it — see [PresentationPartyRecords]. Android records them whenever the certificate could be
+     * read, verified or not, and only while the registration check is on; so does this.
+     */
+    private suspend fun rememberPartyRecord(outcome: RelyingPartyRegistrationOutcome) {
+        val registration = when (outcome) {
+            is RelyingPartyRegistrationOutcome.Verified -> outcome.registration
+            is RelyingPartyRegistrationOutcome.Failed -> outcome.registration
+            RelyingPartyRegistrationOutcome.NotChecked, RelyingPartyRegistrationOutcome.NotOffered -> null
+        } ?: return
+        val signer = requestNotice.requestSigner ?: return
+        walletEngine.store().presentationPartyRecords.remember(signer, registration.toPresentationPartyRecord())
     }
 
     /**

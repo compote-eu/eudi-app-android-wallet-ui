@@ -24,6 +24,8 @@ import kotlinx.cinterop.alloc
 import kotlinx.cinterop.memScoped
 import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.multipaz.document.Document
@@ -78,6 +80,18 @@ internal class MultipazWalletStore(
     private val eventLoggerLock = Mutex()
     private var cachedEventLogger: SimpleEventLogger? = null
 
+    /** The relying party each consent saw, handed to the event its presentation logs. */
+    val presentationPartyRecords = PresentationPartyRecords()
+
+    /** Emits whenever a deletion request or report is recorded or removed — see `IosPresentationActions.kt`. */
+    val presentationActionChanges = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
+    /** The deletion requests and reports started from presentations, one partition per presentation. */
+    suspend fun presentationActionsTable(): StorageTable = appDataStorage.getTable(PresentationActionsTableSpec)
+
     /**
      * The wallet's transaction log.
      *
@@ -98,6 +112,9 @@ internal class MultipazWalletStore(
             // multipaz's own default, made explicit because it is a data-retention decision rather
             // than a tuning knob: entries older than this are dropped from the History tab.
             expireAfter = EVENT_RETENTION,
+            // What wallet-core records about the relying party with a presentation on Android, which
+            // multipaz's event lacks — see `IosPresentationParty.kt`.
+            onAddEvent = { event -> presentationPartyRecords.appDataFor(event) },
         ).also { cachedEventLogger = it }
     }
 
@@ -317,6 +334,12 @@ internal class MultipazWalletStore(
 
         /** How long a transaction stays in the log. multipaz's default, kept deliberately. */
         val EVENT_RETENTION = 60.days
+
+        private val PresentationActionsTableSpec = StorageTableSpec(
+            name = "EudiPresentationActions",
+            supportPartitions = true,
+            supportExpiration = true,
+        )
 
         private val BookmarksTableSpec = StorageTableSpec(
             name = "EudiDocumentBookmarks",
