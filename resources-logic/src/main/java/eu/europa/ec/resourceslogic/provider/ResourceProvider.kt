@@ -82,3 +82,16 @@ class ResourceProviderImpl(
 
     override fun getLocale(): Locale = Locale.getDefault()
 }
+
+/**
+ * This provider seen as a [StringCatalog], for shared code that takes one — the transaction-data
+ * transformer is shared with iOS, while Android's request transformer still holds a provider. Every
+ * lookup goes through the provider, so a test that mocks its strings mocks these too.
+ */
+fun ResourceProvider.asStringCatalog(): StringCatalog = object : StringCatalog {
+    override fun get(resource: StringResource): String = getString(resource)
+
+    override fun get(resource: StringResource, vararg args: Any): String = getString(resource, *args)
+
+    override suspend fun warm() = Unit
+}

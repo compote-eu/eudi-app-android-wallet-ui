@@ -117,6 +117,7 @@ class TestWalletCoreTransactionLogController {
     private fun TestScope.controller(dao: InMemoryTransactionLogDao) = WalletCoreTransactionLogControllerImpl(
         transactionLogDao = dao,
         resourceProvider = resourceProvider,
+        transactionDataTypes = emptyList(),
         dispatcher = UnconfinedTestDispatcher(testScheduler),
         coroutineScope = backgroundScope,
     )

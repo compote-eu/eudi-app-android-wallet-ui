@@ -74,7 +74,6 @@ import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
-import org.jetbrains.compose.resources.StringResource
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -130,6 +129,10 @@ import eu.europa.ec.shared.resources.transaction_details_deletion_email_subject
 import eu.europa.ec.shared.resources.transaction_details_report_email_body
 import eu.europa.ec.shared.resources.transaction_details_report_email_intermediary
 import eu.europa.ec.shared.resources.transaction_details_report_email_subject
+import eu.europa.ec.corelogic.model.PresentationTransactionDataDomain
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
+import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransactionDataStrings
+import eu.europa.ec.testfeature.util.mockedTransactionDataApproval
 
 class TestTransactionDetailsInteractor {
 
@@ -163,6 +166,7 @@ class TestTransactionDetailsInteractor {
 
         whenever(strings[Res.string.generic_error_message]).thenReturn(mockedGenericErrorMessage)
         mockTransactionDetailsStrings()
+        mockTransactionDataStrings(strings = strings)
         whenever(uuidProvider.provideUuid()).thenReturn(mockedAttemptId)
     }
 
@@ -3110,6 +3114,115 @@ class TestTransactionDetailsInteractor {
     }
     //endregion
 
+    //region recorded transaction data
+
+    // Case 1:
+    // 1. A presentation with privacy actions receives two recorded approval entries.
+    //
+    // Case 1 Expected Result:
+    // One collapsed group follows the claim sections; its data does not alter status or actions.
+    @Test
+    fun `Given recorded signing requests, When details are prepared, Then presentation behavior is preserved`() {
+        coroutineRule.runTest {
+            // Given
+            val baseline = mockedPresentationLogDomain.copy(
+                party = mockedTransactionPartyWithContacts,
+                registration = mockedTransactionRegistration,
+            )
+            mockGetTransactionLogCall(response = baseline)
+            lateinit var original: TransactionDetailsUi
+            interactor.getTransactionDetails(transactionId = baseline.id).runFlowTest {
+                original = (awaitItem() as TransactionDetailsInteractorPartialState.Success).transactionDetailsUi
+            }
+            val recorded = baseline.copy(
+                transactionData = List(2) { mockedTransactionDataApproval.copy(displayName = null) },
+            )
+            mockGetTransactionLogCall(response = recorded)
+
+            // When
+            interactor.getTransactionDetails(transactionId = recorded.id).runFlowTest {
+                // Then
+                val details = (awaitItem() as TransactionDetailsInteractorPartialState.Success).transactionDetailsUi
+                val body = details.body as TransactionDetailsBodyUi.Presentation
+                assertEquals(original.transactionDetailsCardUi, details.transactionDetailsCardUi)
+                assertEquals(original.body, body.copy(transactionData = null))
+                val section = body.transactionData!!
+                assertEquals(listOf(body.requested, body.shared, section), body.sections)
+                assertEquals("SIGNING REQUEST", section.title)
+                assertTrue(section.items.isEmpty())
+                val group = section.groups.single()
+                assertEquals("Signature details", group.header.textValue())
+                assertEquals(
+                    ListItemTrailingContentDataUi.Icon(iconData = AppIcons.KeyboardArrowDown),
+                    group.header.trailingContentData,
+                )
+                assertEquals(2, group.items.count { row -> row.header.overlineText == "Document" })
+                assertTrue(group.items.none { row -> row.header.overlineText == "Transaction type" })
+                assertTrue(group.items.all { row -> row.header.trailingContentData == null })
+                val groupIds = body.sections.flatMap { item -> item.groups }.map { item -> item.header.itemId }
+                assertEquals(groupIds.size, groupIds.distinct().size)
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 2:
+    // 1. An older presentation has no recorded transaction data.
+    //
+    // Case 2 Expected Result:
+    // Only its existing requested/shared sections remain.
+    @Test
+    fun `Given a presentation without transaction data, When details are prepared, Then no signing request section is added`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogCall(response = mockedPresentationLogDomain)
+
+            // When
+            interactor.getTransactionDetails(transactionId = mockedPresentationLogDomain.id).runFlowTest {
+                // Then
+                val body = (awaitItem() as TransactionDetailsInteractorPartialState.Success)
+                    .transactionDetailsUi.body as TransactionDetailsBodyUi.Presentation
+                assertNull(body.transactionData)
+                assertEquals(listOf(body.requested, body.shared), body.sections)
+            }
+        }
+    }
+
+    // Case 3:
+    // 1. A failed presentation contains one unavailable transaction-data entry and one valid approval.
+    //
+    // Case 3 Expected Result:
+    // Both entries are represented without changing the recorded failure or hiding shared claims.
+    @Test
+    fun `Given unavailable data in a failed presentation, When details are prepared, Then the remaining record stays visible`() {
+        coroutineRule.runTest {
+            // Given
+            val transaction = mockedPresentationLogDomain.copy(
+                result = TransactionResultDomain.NotCompleted(reason = mockedGenericErrorMessage),
+                transactionData = listOf(
+                    PresentationTransactionDataDomain.Unavailable,
+                    mockedTransactionDataApproval.copy(displayName = null),
+                ),
+            )
+            mockGetTransactionLogCall(response = transaction)
+
+            // When
+            interactor.getTransactionDetails(transactionId = transaction.id).runFlowTest {
+                // Then
+                val details = (awaitItem() as TransactionDetailsInteractorPartialState.Success).transactionDetailsUi
+                assertEquals(false, details.transactionDetailsCardUi.transactionIsCompleted)
+                assertEquals(mockedGenericErrorMessage, details.transactionDetailsCardUi.nonCompletionReason)
+                val body = details.body as TransactionDetailsBodyUi.Presentation
+                assertTrue(body.shared.groups.isNotEmpty())
+                val rows = body.transactionData!!.groups.single().items
+                assertTrue(rows.any { row -> row.header.textValue() == "Details for this transaction are unavailable." })
+                assertTrue(rows.any { row -> row.header.textValue() == mockedTransactionDataApproval.documentDigests.single().label })
+            }
+        }
+    }
+
+    //endregion
+
     //region helper functions
     private fun ListItemDataUi.textValue(): String =
         (mainContentData as ListItemMainContentDataUi.Text).text
@@ -3144,7 +3257,7 @@ class TestTransactionDetailsInteractor {
     }
 
     /**
-     * Upstream's `verifyNoInteractions(walletCoreTransactionRecordingController)`. Recording goes through the
+     * Upstream's `verifyNothingRecorded()`. Recording goes through the
      * same bridge as reading here, so the bridge cannot be checked for no interactions at all.
      */
     private suspend fun verifyNothingRecorded() {
@@ -3185,18 +3298,16 @@ class TestTransactionDetailsInteractor {
     }
 
     private fun mockTransactionDetailsStrings() {
+        // One stub per string, as upstream 2428c55d made it, so later suites (the transaction-data
+        // labels) can add theirs: stubbing calls the mock, and a catch-all answer would run and throw.
         // One catalog serves both: upstream's generic error comes from a separate
-        // ResourceProvider.genericErrorMessage(), ours from this same `get`, so it is answered here.
-        whenever(strings.get(any<StringResource>())).thenAnswer { invocation ->
-            val resource = invocation.getArgument<StringResource>(0)
-            if (resource == Res.string.generic_error_message) {
-                mockedGenericErrorMessage
-            } else {
-                (mockedTransactionDetailsStrings + mockedPrivacyActionStrings +
-                        (Res.string.transaction_details_action_unavailable to mockedActionUnavailable))
-                    .getValue(resource)
+        // ResourceProvider.genericErrorMessage(), ours from this same `get`, so it is stubbed here.
+        (mockedTransactionDetailsStrings + mockedPrivacyActionStrings +
+                (Res.string.transaction_details_action_unavailable to mockedActionUnavailable) +
+                (Res.string.generic_error_message to mockedGenericErrorMessage))
+            .forEach { (resource, value) ->
+                whenever(strings[resource]).thenReturn(value)
             }
-        }
         listOf(
             Res.string.data_deletion_website_description,
             Res.string.data_deletion_email_description,

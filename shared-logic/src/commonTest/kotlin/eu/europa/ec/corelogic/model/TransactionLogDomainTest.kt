@@ -142,6 +142,7 @@ class TransactionLogDomainTest {
         registration = null,
         claimsRequested = listOf(mockedCredentialClaims),
         claimsPresented = emptyList(),
+        transactionData = emptyList(),
     )
     //endregion
 }

@@ -124,6 +124,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.compose.resources.StringResource
+import eu.europa.ec.commonfeature.ui.request.transformer.TransactionDataTransformer
+import eu.europa.ec.corelogic.model.PresentationTransactionDataDomain
+import eu.europa.ec.shared.resources.transaction_details_signing_request_title
+import eu.europa.ec.shared.resources.request_transaction_details_title
+import eu.europa.ec.shared.resources.request_collapsed_supporting_text
 
 class TransactionDetailsInteractorImpl(
     private val platform: TransactionsPlatformBridge,
@@ -653,6 +658,7 @@ class TransactionDetailsInteractorImpl(
                 claims = claimsPresented,
                 emptyRes = Res.string.transaction_details_no_data_shared,
             ),
+            transactionData = transactionDataSection(transactions = transactionData),
             deletionContacts = actionContacts(TransactionDataProtectionAction.RequestDataDeletion),
             reportContacts = actionContacts(TransactionDataProtectionAction.ReportSuspiciousTransaction),
             actionCounts = PresentationActionCountsUiState.Loading,
@@ -708,6 +714,36 @@ class TransactionDetailsInteractorImpl(
                 country = dpaCountry,
                 contacts = emptyList()
             ).toAuthoritySection()
+        )
+    }
+
+    private fun transactionDataSection(
+        transactions: List<PresentationTransactionDataDomain>,
+    ): TransactionDetailsSectionUi? {
+        if (transactions.isEmpty()) return null
+        val sectionId = "transaction-data"
+        return TransactionDetailsSectionUi(
+            title = strings[Res.string.transaction_details_signing_request_title],
+            items = emptyList(),
+            groups = listOf(
+                TransactionDetailsGroupUi(
+                    header = ListItemDataUi(
+                        itemId = sectionId,
+                        mainContentData = ListItemMainContentDataUi.Text(
+                            text = strings[Res.string.request_transaction_details_title],
+                        ),
+                        supportingContentData = ListItemSupportingContentDataUi.Text(
+                            text = strings[Res.string.request_collapsed_supporting_text],
+                        ),
+                        trailingContentData = ListItemTrailingContentDataUi.Icon(
+                            iconData = AppIcons.KeyboardArrowDown,
+                        ),
+                    ),
+                    items = TransactionDataTransformer(strings = strings)
+                        .transformRecordedToUi(transactions = transactions, sectionId = sectionId),
+                )
+            ),
+            emptyItem = null,
         )
     }
 

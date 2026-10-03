@@ -180,6 +180,7 @@ class TransactionDetailsViewModelTest {
                 deletionContacts = deletionContacts,
                 reportContacts = reportContacts,
                 actionCounts = PresentationActionCountsUiState.Loading,
+                transactionData = null,
             ),
         )
 

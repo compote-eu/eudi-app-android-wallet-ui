@@ -249,6 +249,7 @@ private fun Content(
                             .fillMaxWidth(),
                         header = successItem.header,
                         data = successItem.nestedItems,
+                        isItemClickable = { true },
                         onItemClick = null,
                         onExpandedChange = { expandedItem ->
                             onEventSend(Event.ExpandOrCollapseSuccessDocumentItem(itemId = expandedItem.itemId))

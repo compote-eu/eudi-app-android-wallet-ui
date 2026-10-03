@@ -273,6 +273,7 @@ private fun DocumentRows(
                 modifier = Modifier.fillMaxWidth(),
                 header = document.headerUi.header,
                 data = document.headerUi.nestedItems,
+                isItemClickable = { true },
                 onItemClick = { item ->
                     onDocumentsChange(
                         documents.map { candidate ->

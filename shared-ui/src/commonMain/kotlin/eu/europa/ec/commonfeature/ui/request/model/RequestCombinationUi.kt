@@ -27,6 +27,8 @@ import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 data class RequestCombinationUi(
     val documents: List<RequestDocumentItemUi>,
     val matches: List<PresentationMatchDomain>,
+    /** The signature details the documents are asked to authorise, or null when there are none. */
+    val transactionData: RequestTransactionDataUi?,
 )
 
 data class RequestDocumentItemUi(

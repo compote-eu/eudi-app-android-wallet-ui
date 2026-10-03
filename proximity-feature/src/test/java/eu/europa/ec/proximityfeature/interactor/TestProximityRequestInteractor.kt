@@ -58,6 +58,11 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.net.URI
+import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransactionDataStrings
+import eu.europa.ec.testfeature.util.mockedTransactionDataApproval
+import eu.europa.ec.testfeature.util.mockedTransactionQueryId
+import eu.europa.ec.testfeature.util.mockedUuid
+import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 
 class TestProximityRequestInteractor {
 
@@ -361,6 +366,7 @@ class TestProximityRequestInteractor {
                                         claimsAreSelectable = mockedSelectableClaims,
                                     ),
                                     matches = listOf(mockedValidPidWithBasicFieldsRequestMatch),
+                                    transactionData = null,
                                 )
                             ),
                             claimsAreSelectable = mockedSelectableClaims,
@@ -428,6 +434,7 @@ class TestProximityRequestInteractor {
                                         claimsAreSelectable = mockedSelectableClaims,
                                     ),
                                     matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch),
+                                    transactionData = null,
                                 )
                             ),
                             claimsAreSelectable = mockedSelectableClaims,
@@ -511,6 +518,7 @@ class TestProximityRequestInteractor {
                                         mockedValidMdlWithBasicFieldsRequestMatch,
                                         mockedValidPidWithBasicFieldsRequestMatch,
                                     ),
+                                    transactionData = null,
                                 )
                             ),
                             claimsAreSelectable = mockedSelectableClaims,
@@ -594,6 +602,7 @@ class TestProximityRequestInteractor {
                                         mockedValidPidWithBasicFieldsRequestMatch,
                                         mockedValidMdlWithBasicFieldsRequestMatch,
                                     ),
+                                    transactionData = null,
                                 )
                             ),
                             claimsAreSelectable = mockedSelectableClaims,
@@ -825,6 +834,7 @@ class TestProximityRequestInteractor {
                                         claimsAreSelectable = mockedSelectableClaims,
                                     ),
                                     matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch),
+                                    transactionData = null,
                                 )
                             ),
                             claimsAreSelectable = mockedSelectableClaims,
@@ -871,6 +881,51 @@ class TestProximityRequestInteractor {
 
         assertEquals("DefaultPresentationScopeId", newInteractor.presentationScopeId)
     }
+    // Case 18:
+    // 1. A represented match has transaction data.
+    //
+    // Case 18 Expected Result:
+    // The shared transformer prepares a collapsed section with payload fields and no RP origin or identifier.
+    @Test
+    fun `Given Case 18, When getRequestDocuments is called, Then Case 18 Expected Result is returned`() =
+        coroutineRule.runTest {
+            // Given
+            mockTransformToUiItemsStrings(resourceProvider = resourceProvider)
+            mockTransactionDataStrings(resourceProvider = resourceProvider)
+            whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
+            mockGetAllIssuedDocumentsCall(response = listOf(getMockedPidWithBasicFields()))
+            mockIsDocumentRevoked(isRevoked = false)
+            val match = mockedValidPidWithBasicFieldsRequestMatch.copy(
+                queryId = mockedTransactionQueryId,
+                transactionData = listOf(mockedTransactionDataApproval),
+            )
+            mockWalletCorePresentationControllerEventEmission(
+                event = TransferEventPartialState.RequestReceived(
+                    combinationsDomain = listOf(PresentationCombinationDomain(matches = listOf(match))),
+                    relyingParty = mockedRelyingParty,
+                ),
+            )
+
+            // When
+            interactor.getRequestDocuments().runFlowTest {
+                // Then
+                val result = awaitItem() as ProximityRequestInteractorPartialState.Success
+                val section = result.combinationsUi.single().transactionData!!
+                assertEquals(false, section.details.isExpanded)
+                assertEquals(
+                    listOf(mockedTransactionQueryId),
+                    section.details.nestedItems.filter { item -> item.header.overlineText == "Requested credentials" }
+                        .map { item -> (item.header.mainContentData as ListItemMainContentDataUi.Text).text },
+                )
+                assertEquals(
+                    emptyList<String>(),
+                    section.details.nestedItems.filter { item ->
+                        item.header.overlineText == "RP origin" || item.header.overlineText == "RP identifier"
+                    }.map { item -> (item.header.mainContentData as ListItemMainContentDataUi.Text).text },
+                )
+            }
+        }
+
     //endregion
 
     //region stopPresentation
@@ -929,6 +984,7 @@ class TestProximityRequestInteractor {
                     claimsAreSelectable = mockedSelectableClaims,
                 ),
                 matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch),
+                transactionData = null,
             )
 
             // When

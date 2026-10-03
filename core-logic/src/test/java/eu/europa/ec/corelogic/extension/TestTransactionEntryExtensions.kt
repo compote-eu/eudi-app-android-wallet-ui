@@ -51,6 +51,13 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.ZoneId
 import java.util.Locale
+import eu.europa.ec.corelogic.model.PresentationTransactionDataDomain
+import eu.europa.ec.eudi.wallet.transactionLogging.model.TransactionalData
+import eu.europa.ec.eudi.wallet.transactionLogging.toTransactionEntryOrNull
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.TransactionDataType
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.transactionData.QesApprovalRequest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 
 class TestTransactionEntryExtensions {
 
@@ -83,7 +90,8 @@ class TestTransactionEntryExtensions {
             mockedTransactionId,
             mockedGreekLocale,
             parentPresentationId = null,
-            communicationMethod = null
+            communicationMethod = null,
+            transactionDataTypes = emptyList(),
         )
 
         // Then
@@ -108,6 +116,7 @@ class TestTransactionEntryExtensions {
                     )
                 ),
                 claimsPresented = emptyList(),
+                transactionData = emptyList(),
             ),
             result,
         )
@@ -131,7 +140,8 @@ class TestTransactionEntryExtensions {
             mockedTransactionId,
             mockedEnglishLocale,
             parentPresentationId = null,
-            communicationMethod = null
+            communicationMethod = null,
+            transactionDataTypes = emptyList(),
         ) as TransactionLogDomain.Presentation
 
         // Then
@@ -167,14 +177,16 @@ class TestTransactionEntryExtensions {
                 mockedTransactionId,
                 mockedEnglishLocale,
                 parentPresentationId = null,
-                communicationMethod = null
+                communicationMethod = null,
+                transactionDataTypes = emptyList(),
             )
         }
         val withoutIntermediary = mockedPresentation.toTransactionLogDomain(
             mockedTransactionId,
             mockedEnglishLocale,
             parentPresentationId = null,
-            communicationMethod = null
+            communicationMethod = null,
+            transactionDataTypes = emptyList(),
         ) as TransactionLogDomain.Presentation
 
         // Then
@@ -221,7 +233,8 @@ class TestTransactionEntryExtensions {
             mockedTransactionId,
             mockedEnglishLocale,
             parentPresentationId = null,
-            communicationMethod = null
+            communicationMethod = null,
+            transactionDataTypes = emptyList(),
         ) as TransactionLogDomain.Presentation
 
         // Then
@@ -285,7 +298,8 @@ class TestTransactionEntryExtensions {
                 mockedTransactionId,
                 mockedEnglishLocale,
                 parentPresentationId = null,
-                communicationMethod = null
+                communicationMethod = null,
+                transactionDataTypes = emptyList(),
             )
         }
 
@@ -337,7 +351,8 @@ class TestTransactionEntryExtensions {
             mockedTransactionId,
             mockedEnglishLocale,
             parentPresentationId = null,
-            communicationMethod = null
+            communicationMethod = null,
+            transactionDataTypes = emptyList(),
         ) as TransactionLogDomain.CredentialIssuance
 
         // Then
@@ -376,14 +391,16 @@ class TestTransactionEntryExtensions {
             mockedTransactionId,
             mockedEnglishLocale,
             parentPresentationId = null,
-            communicationMethod = null
+            communicationMethod = null,
+            transactionDataTypes = emptyList(),
         )
         val anonymous = entry.copy(credentialIssuerIdentifier = null, credentialIssuerName = null)
             .toTransactionLogDomain(
                 mockedTransactionId,
                 mockedEnglishLocale,
                 parentPresentationId = null,
-                communicationMethod = null
+                communicationMethod = null,
+                transactionDataTypes = emptyList(),
             ) as TransactionLogDomain.CredentialDeletion
 
         // Then
@@ -423,7 +440,8 @@ class TestTransactionEntryExtensions {
             mockedTransactionId,
             mockedEnglishLocale,
             parentPresentationId = null,
-            communicationMethod = null
+            communicationMethod = null,
+            transactionDataTypes = emptyList(),
         )
 
         // Then
@@ -460,7 +478,8 @@ class TestTransactionEntryExtensions {
                 mockedTransactionId,
                 mockedEnglishLocale,
                 parentPresentationId = null,
-                communicationMethod = null
+                communicationMethod = null,
+                transactionDataTypes = emptyList(),
             ) as TransactionLogDomain.SigningSealing
         }
 
@@ -495,14 +514,16 @@ class TestTransactionEntryExtensions {
             mockedActionId,
             mockedEnglishLocale,
             parentPresentationId = mockedTransactionId,
-            communicationMethod = mockedStoredMethod
+            communicationMethod = mockedStoredMethod,
+            transactionDataTypes = emptyList(),
         )
         val anonymous = entry.copy(interactingPartyIdentifier = null, interactingPartyName = null)
             .toTransactionLogDomain(
                 mockedActionId,
                 mockedEnglishLocale,
                 parentPresentationId = mockedTransactionId,
-                communicationMethod = mockedStoredMethod
+                communicationMethod = mockedStoredMethod,
+                transactionDataTypes = emptyList(),
             ) as TransactionLogDomain.DataDeletionRequest
 
         // Then
@@ -539,14 +560,16 @@ class TestTransactionEntryExtensions {
             mockedActionId,
             mockedEnglishLocale,
             parentPresentationId = mockedTransactionId,
-            communicationMethod = mockedStoredMethod
+            communicationMethod = mockedStoredMethod,
+            transactionDataTypes = emptyList(),
         )
         val anonymous = entry.copy(dpaName = null, dpaCountry = null)
             .toTransactionLogDomain(
                 mockedActionId,
                 mockedEnglishLocale,
                 parentPresentationId = mockedTransactionId,
-                communicationMethod = mockedStoredMethod
+                communicationMethod = mockedStoredMethod,
+                transactionDataTypes = emptyList(),
             ) as TransactionLogDomain.DpaReport
 
         // Then
@@ -581,7 +604,8 @@ class TestTransactionEntryExtensions {
             mockedTransactionId,
             Locale.FRENCH,
             parentPresentationId = null,
-            communicationMethod = null
+            communicationMethod = null,
+            transactionDataTypes = emptyList(),
         ) as TransactionLogDomain.Presentation
 
         // Then
@@ -616,7 +640,8 @@ class TestTransactionEntryExtensions {
             mockedTransactionId,
             mockedGreekLocale,
             parentPresentationId = null,
-            communicationMethod = null
+            communicationMethod = null,
+            transactionDataTypes = emptyList(),
         ) as TransactionLogDomain.Presentation
 
         // Then
@@ -653,7 +678,8 @@ class TestTransactionEntryExtensions {
                 mockedTransactionId,
                 mockedEnglishLocale,
                 parentPresentationId = null,
-                communicationMethod = null
+                communicationMethod = null,
+                transactionDataTypes = emptyList(),
             )
         }
 
@@ -749,7 +775,8 @@ class TestTransactionEntryExtensions {
                 mockedTransactionId,
                 locale,
                 parentPresentationId = null,
-                communicationMethod = null
+                communicationMethod = null,
+                transactionDataTypes = emptyList(),
             ) as TransactionLogDomain.Presentation
         }
 
@@ -784,7 +811,8 @@ class TestTransactionEntryExtensions {
                     mockedActionId,
                     mockedEnglishLocale,
                     parentPresentationId = parentId,
-                    communicationMethod = mockedStoredMethod
+                    communicationMethod = mockedStoredMethod,
+                    transactionDataTypes = emptyList(),
                 )
             }
         }
@@ -821,7 +849,8 @@ class TestTransactionEntryExtensions {
                     mockedActionId,
                     mockedEnglishLocale,
                     parentPresentationId = parentId,
-                    communicationMethod = mockedStoredMethod
+                    communicationMethod = mockedStoredMethod,
+                    transactionDataTypes = emptyList(),
                 ) as TransactionLogDomain.PresentationAction
             }
 
@@ -865,7 +894,8 @@ class TestTransactionEntryExtensions {
                 mockedTransactionId,
                 mockedEnglishLocale,
                 parentPresentationId = null,
-                communicationMethod = null
+                communicationMethod = null,
+                transactionDataTypes = emptyList(),
             ) as TransactionLogDomain.Presentation
         }
 
@@ -900,7 +930,8 @@ class TestTransactionEntryExtensions {
                 mockedTransactionId,
                 mockedEnglishLocale,
                 parentPresentationId = null,
-                communicationMethod = null
+                communicationMethod = null,
+                transactionDataTypes = emptyList(),
             ) as TransactionLogDomain.Presentation
         }
 
@@ -940,6 +971,7 @@ class TestTransactionEntryExtensions {
                     userLocale = mockedEnglishLocale,
                     parentPresentationId = mockedTransactionId,
                     communicationMethod = method,
+                    transactionDataTypes = emptyList(),
                 )
             }
         }
@@ -981,6 +1013,7 @@ class TestTransactionEntryExtensions {
                 userLocale = mockedEnglishLocale,
                 parentPresentationId = stored.parentPresentationId,
                 communicationMethod = stored.communicationMethod,
+                transactionDataTypes = emptyList(),
             ) as TransactionLogDomain.PresentationAction
 
             // Then
@@ -1179,7 +1212,8 @@ class TestTransactionEntryExtensions {
             stored.identifier,
             mockedEnglishLocale,
             stored.parentPresentationId,
-            stored.communicationMethod
+            stored.communicationMethod,
+            transactionDataTypes = emptyList(),
         ) as TransactionLogDomain.Presentation
 
         // Then
@@ -1249,6 +1283,7 @@ class TestTransactionEntryExtensions {
                 userLocale = mockedEnglishLocale,
                 parentPresentationId = stored.parentPresentationId,
                 communicationMethod = stored.communicationMethod,
+                transactionDataTypes = emptyList(),
             ) as TransactionLogDomain.PresentationAction
         }
 
@@ -1307,6 +1342,7 @@ class TestTransactionEntryExtensions {
                         userLocale = locale,
                         parentPresentationId = null,
                         communicationMethod = null,
+                        transactionDataTypes = emptyList(),
                     ) as TransactionLogDomain.Presentation
                 val actions = listOf(
                     presentation.toDataDeletionRequestEntry(mockedActionId, mockedActionTime),
@@ -1330,12 +1366,14 @@ class TestTransactionEntryExtensions {
                     userLocale = locale,
                     parentPresentationId = presentation.id,
                     communicationMethod = mockedStoredMethod,
+                    transactionDataTypes = emptyList(),
                 ) as TransactionLogDomain.DataDeletionRequest
                 val reportDomain = report.toTransactionLogDomain(
                     id = report.transactionIdentifier,
                     userLocale = locale,
                     parentPresentationId = presentation.id,
                     communicationMethod = mockedStoredMethod,
+                    transactionDataTypes = emptyList(),
                 ) as TransactionLogDomain.DpaReport
 
                 // Then
@@ -1348,6 +1386,61 @@ class TestTransactionEntryExtensions {
             }
         }
     }
+    //endregion
+
+    //region recorded transaction data
+
+    // Case 1:
+    // 1. A presentation with transaction data is serialized and read back for each result.
+    //
+    // Case 1 Expected Result:
+    // Recorded fields survive without changing its presentation kind, claims or result.
+    @Test
+    fun `Given a stored signing request, When restored, Then it remains a presentation with its recorded payload`() {
+        // Given
+        val mockedFileName = "contract.pdf"
+        val recorded = TransactionalData(
+            Json.parseToJsonElement(
+                """[{
+                    "type":"${QesApprovalRequest.TYPE}",
+                    "credential_ids":["query_0"],
+                    "credentialID":"signing-credential",
+                    "numSignatures":1,
+                    "documentDigests":[{"label":"$mockedFileName","hash":"AQID"}],
+                    "hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"
+                }]"""
+            ).jsonArray
+        )
+        val results = listOf(
+            TransactionResult.Completed to TransactionResultDomain.Completed,
+            TransactionResult.NotCompleted(mockedReason) to TransactionResultDomain.NotCompleted(mockedReason),
+        )
+
+        results.forEach { (outcome, expectedResult) ->
+            val entry = mockedPresentation.copy(transactionalData = recorded, transactionResult = outcome)
+
+            // When
+            val result = entry.toJson().toTransactionEntryOrNull()?.toTransactionLogDomain(
+                id = mockedTransactionId,
+                userLocale = mockedEnglishLocale,
+                parentPresentationId = null,
+                communicationMethod = null,
+                transactionDataTypes = listOf(TransactionDataType.QES_APPROVAL),
+            ) as TransactionLogDomain.Presentation
+
+            // Then
+            assertEquals(mockedTransactionId, result.id)
+            assertEquals(expectedResult, result.result)
+            assertEquals(mockedRawClaims, result.claimsRequested)
+            assertEquals(emptyList<CredentialClaimsDomain>(), result.claimsPresented)
+            val approval = result.transactionData.single() as PresentationTransactionDataDomain.QesApproval
+            assertNull(approval.displayName)
+            assertEquals(mockedFileName, approval.documentDigests.single().label)
+            assertEquals("AQID", approval.documentDigests.single().hash)
+            assertNull(approval.signatureQualifier)
+        }
+    }
+
     //endregion
 
     //region mocked objects
@@ -1443,6 +1536,7 @@ class TestTransactionEntryExtensions {
                 ),
             )
         ),
+        transactionData = emptyList(),
     )
     //endregion
 }

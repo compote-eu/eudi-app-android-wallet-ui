@@ -88,6 +88,7 @@ import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_trans
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_presentation
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_reissuance
 import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_signing
+import eu.europa.ec.shared.resources.transaction_details_signing_request_title
 
 internal const val mockedBookmarkId = "mockedBookmarkId"
 internal const val mockedChangeLogUrl = "https://example.com/changelog"
@@ -414,6 +415,7 @@ internal val mockedPresentationLogDomain = TransactionLogDomain.Presentation(
     registration = null,
     claimsRequested = mockedTransactionClaims,
     claimsPresented = mockedTransactionClaims,
+    transactionData = emptyList(),
 )
 internal val mockedIssuanceLogDomain = TransactionLogDomain.CredentialIssuance(
     id = "issuance",
@@ -655,6 +657,7 @@ internal val mockedNestedTransactionClaims = listOf(
 )
 
 internal val mockedTransactionDetailsStrings = mapOf(
+    Res.string.transaction_details_signing_request_title to "SIGNING REQUEST",
     Res.string.transaction_details_data_requested_section_title to "DATA REQUESTED",
     Res.string.transaction_details_relying_party_section_title to "RELYING PARTY",
     Res.string.transaction_details_authority_section_title to "DATA PROTECTION AUTHORITY",

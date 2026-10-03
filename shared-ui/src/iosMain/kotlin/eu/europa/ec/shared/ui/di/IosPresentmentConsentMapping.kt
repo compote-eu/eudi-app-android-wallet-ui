@@ -51,6 +51,7 @@ internal fun IosPresentmentRequest.toCombinationsUi(strings: StringCatalog): Lis
         .map { combination ->
             RequestCombinationUi(
                 documents = combination.documents.map { it.toItemUi(strings) },
+                transactionData = null,
                 matches = combination.documents.map { document ->
                     PresentationMatchDomain(
                         documentId = document.documentId,
@@ -60,6 +61,7 @@ internal fun IosPresentmentRequest.toCombinationsUi(strings: StringCatalog): Lis
                         // twice, and the id is what keeps those two cards — and their row ids — apart.
                         queryId = document.queryId,
                         requestedClaims = document.claims.map { it.claim },
+                        transactionData = emptyList(),
                     )
                 },
             )

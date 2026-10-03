@@ -70,6 +70,7 @@ fun WrapListItems(
                         modifier = itemModifier,
                         header = item.header,
                         data = item.nestedItems,
+                        isItemClickable = { true },
                         onItemClick = onItemClick,
                         onExpandedChange = onExpandedChange,
                         isExpanded = item.isExpanded,

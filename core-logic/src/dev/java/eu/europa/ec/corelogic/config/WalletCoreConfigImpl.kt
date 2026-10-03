@@ -34,6 +34,7 @@ import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
 import eu.europa.ec.eudi.wallet.issue.openid4vci.dpop.DPopConfig
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.ClientIdScheme
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.Format
+import eu.europa.ec.eudi.wallet.transfer.openId4vp.TransactionDataType
 import eu.europa.ec.eudi.wallet.registration.issuer.IssuerRegistrationPolicy
 import eu.europa.ec.eudi.wallet.registration.relyingparty.WrpRegistrationPolicy
 import eu.europa.ec.eudi.wallet.trust.TrustPolicy
@@ -78,6 +79,10 @@ internal class WalletCoreConfigImpl(
                         )
                         withFormats(
                             Format.MsoMdoc.ES256, Format.SdJwtVc.ES256
+                        )
+                        withTransactionDataTypes(
+                            TransactionDataType.QES_APPROVAL,
+                            TransactionDataType.QES
                         )
                     }
 

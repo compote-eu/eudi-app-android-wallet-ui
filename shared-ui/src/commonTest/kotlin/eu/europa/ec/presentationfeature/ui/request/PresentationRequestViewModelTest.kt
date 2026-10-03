@@ -191,7 +191,7 @@ class PresentationRequestViewModelTest {
                     registration = RegistrationStatusDomain.NotEvaluated,
                 ),
                 combinationsUi = listOf(
-                    RequestCombinationUi(documents = documents.toList(), matches = emptyList())
+                    RequestCombinationUi(documents = documents.toList(), matches = emptyList(), transactionData = null)
                 ),
                 claimsAreSelectable = true,
             )

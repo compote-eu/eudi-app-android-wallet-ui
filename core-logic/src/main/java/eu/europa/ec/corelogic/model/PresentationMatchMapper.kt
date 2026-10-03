@@ -25,6 +25,7 @@
 package eu.europa.ec.corelogic.model
 
 import eu.europa.ec.corelogic.extension.toClaimPath
+import eu.europa.ec.corelogic.extension.toPresentationTransactionDataDomain
 import org.multipaz.presentment.CredentialMatchSourceIso18013
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
@@ -40,13 +41,16 @@ fun PresentationMatchDomain.Companion.from(
         requestedClaims = match.claims.keys.map { requestedClaim ->
             requestedClaim.toClaimPath()
         },
+        transactionData = match.transactionData.map { transactionData ->
+            transactionData.toPresentationTransactionDataDomain()
+        },
     )
 }
 
 /**
  * Identity of a Wallet Core match as `(documentId, credentialId, queryId)` — the key the controller
  * re-pairs a [PresentationSelectionDomain] to its raw match by. `queryId` (the DCQL query id, null
- * for proximity and DC-API) separates two matches that hit the same credential via different queries.
+ * for proximity and mdoc DC-API) separates matches that hit the same credential via different queries.
  */
 internal val CredentialPresentmentSetOptionMemberMatch.identityKey: Triple<String, String, String?>
     get() = Triple(
@@ -55,7 +59,7 @@ internal val CredentialPresentmentSetOptionMemberMatch.identityKey: Triple<Strin
         when (val matchSource = source) {
             // OpenID4VP/DCQL — the query id is mandatory
             is CredentialMatchSourceOpenID4VP -> matchSource.credentialQuery.id
-            // BLE proximity and DC-API : no DCQL, no query id
+            // BLE proximity and mdoc DC-API have no query id
             is CredentialMatchSourceIso18013 -> null
         },
     )

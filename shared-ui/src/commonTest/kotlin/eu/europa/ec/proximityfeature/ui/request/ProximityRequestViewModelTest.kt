@@ -70,6 +70,9 @@ import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import eu.europa.ec.commonfeature.ui.request.model.RequestTransactionDataUi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.toList
 
 @OptIn(ExperimentalCoroutinesApi::class) // UnconfinedTestDispatcher, setMain, advanceUntilIdle
 class ProximityRequestViewModelTest {
@@ -158,7 +161,7 @@ class ProximityRequestViewModelTest {
         )
 
         fun combination(vararg documents: RequestDocumentItemUi) =
-            RequestCombinationUi(documents = documents.toList(), matches = emptyList())
+            RequestCombinationUi(documents = documents.toList(), matches = emptyList(), transactionData = null)
 
         fun success(
             vararg combinations: RequestCombinationUi,
@@ -591,4 +594,80 @@ class ProximityRequestViewModelTest {
         assertTrue(state.isBottomSheetOpen)
         assertFalse(state.bottomSheetClosingInProgress)
     }
+
+    // Upstream 2428c55d's two events, on the shared RequestViewModel. A document link may open only while
+    // the signature details are expanded and only for a row the transformer prepared as an action.
+
+    @Test
+    fun the_signature_details_expand_and_collapse_but_other_ids_change_nothing() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(success(signedCombination()))
+        viewModel.setEvent(Event.Init(intentAction = null))
+        advanceUntilIdle()
+
+        viewModel.setEvent(Event.TransactionDataExpansionToggled(sectionId = "other-section", itemId = "other-section"))
+        viewModel.setEvent(Event.TransactionDataExpansionToggled(sectionId = TX_SECTION, itemId = TX_OPEN))
+        assertFalse(viewModel.signatureDetails().isExpanded)
+
+        viewModel.setEvent(Event.TransactionDataExpansionToggled(sectionId = TX_SECTION, itemId = TX_SECTION))
+        assertTrue(viewModel.signatureDetails().isExpanded)
+
+        viewModel.setEvent(Event.TransactionDataExpansionToggled(sectionId = TX_SECTION, itemId = TX_SECTION))
+        assertFalse(viewModel.signatureDetails().isExpanded)
+    }
+
+    @Test
+    fun a_document_link_opens_only_when_visible_and_prepared() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(success(signedCombination()))
+        viewModel.setEvent(Event.Init(intentAction = null))
+        advanceUntilIdle()
+        val effects = mutableListOf<Effect>()
+        backgroundScope.launch { viewModel.effect.toList(effects) }
+
+        // Collapsed: the row is not on screen.
+        viewModel.setEvent(Event.TransactionDocumentClicked(sectionId = TX_SECTION, itemId = TX_OPEN))
+        viewModel.setEvent(Event.TransactionDataExpansionToggled(sectionId = TX_SECTION, itemId = TX_SECTION))
+        // Expanded, but a plain field rather than a prepared action.
+        viewModel.setEvent(Event.TransactionDocumentClicked(sectionId = TX_SECTION, itemId = TX_FIELD))
+        viewModel.setEvent(Event.TransactionDocumentClicked(sectionId = TX_SECTION, itemId = TX_OPEN))
+        advanceUntilIdle()
+
+        assertEquals(listOf<Effect>(Effect.Navigation.OpenUrlExternally(url = TX_URL)), effects)
+    }
+
+    private fun ProximityRequestViewModel.signatureDetails(): ExpandableListItemUi.NestedListItem =
+        viewState.value.requestDataUi.selectedCombination!!.transactionData!!.details
+
+    private fun signedCombination() = combination(document("d1", "c1", checked = true)).copy(
+        transactionData = RequestTransactionDataUi(
+            title = "Data to be signed",
+            details = ExpandableListItemUi.NestedListItem(
+                header = ListItemDataUi(
+                    itemId = TX_SECTION,
+                    mainContentData = ListItemMainContentDataUi.Text("Signature details"),
+                ),
+                nestedItems = listOf(
+                    ExpandableListItemUi.SingleListItem(
+                        header = ListItemDataUi(
+                            itemId = TX_FIELD,
+                            overlineText = "Document location",
+                            mainContentData = ListItemMainContentDataUi.Text(TX_URL),
+                        ),
+                    ),
+                    ExpandableListItemUi.SingleListItem(
+                        header = ListItemDataUi(
+                            itemId = TX_OPEN,
+                            mainContentData = ListItemMainContentDataUi.Text("Open document"),
+                        ),
+                    ),
+                ),
+                isExpanded = false,
+            ),
+            documentUrlsByItemId = mapOf(TX_OPEN to TX_URL),
+        ),
+    )
 }
+
+private const val TX_SECTION = "transaction-data:request:0"
+private const val TX_FIELD = "$TX_SECTION/transaction-0/document-0/location"
+private const val TX_OPEN = "$TX_SECTION/transaction-0/document-0/open"
+private const val TX_URL = "https://documents.example.org/contract.pdf"

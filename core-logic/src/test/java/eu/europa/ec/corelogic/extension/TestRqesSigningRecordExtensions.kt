@@ -260,6 +260,7 @@ class TestRqesSigningRecordExtensions {
             userLocale = mockedEnglishLocale,
             parentPresentationId = null,
             communicationMethod = null,
+            transactionDataTypes = emptyList(),
         )
 
         // Then

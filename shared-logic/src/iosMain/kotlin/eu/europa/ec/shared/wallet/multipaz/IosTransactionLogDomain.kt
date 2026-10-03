@@ -131,6 +131,9 @@ internal suspend fun Event.toTransactionLogDomain(
                 // requested claims that were not shared. So the request is recorded as what was shared.
                 claimsRequested = presented,
                 claimsPresented = presented,
+                // multipaz's event keeps no transaction data apart from the raw request, so the
+                // signing details of a past presentation are not shown on iOS.
+                transactionData = emptyList(),
             )
         }
 

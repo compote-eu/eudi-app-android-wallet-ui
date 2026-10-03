@@ -41,12 +41,15 @@ data class PresentationCombinationDomain(
  * @property credentialId Wallet Core's `Credential.identifier`.
  * @property requestedClaims the claim paths the verifier asked for and the wallet matched, as the
  * app's own [ClaimPathDomain].
+ * @property transactionData what this credential is asked to authorise alongside the disclosure —
+ * OpenID4VP `transaction_data`, such as a signing approval (upstream 2428c55d). Empty for most requests.
  */
 data class PresentationMatchDomain(
     val documentId: String,
     val credentialId: String,
     val queryId: String?,
     val requestedClaims: List<ClaimPathDomain>,
+    val transactionData: List<PresentationTransactionDataDomain>,
 ) {
     /** Empty, but kept so :core-logic's mapper can extend it and preserve the `from(…)` call site. */
     companion object

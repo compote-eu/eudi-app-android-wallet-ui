@@ -122,9 +122,11 @@ fun provideWalletCoreLogController(logController: LogController): WalletCoreLogC
 fun provideWalletCoreTransactionLogController(
     transactionLogDao: TransactionLogDao,
     resourceProvider: ResourceProvider,
+    walletCoreConfig: WalletCoreConfig,
 ): WalletCoreTransactionLogController = WalletCoreTransactionLogControllerImpl(
     transactionLogDao = transactionLogDao,
     resourceProvider = resourceProvider,
+    transactionDataTypes = walletCoreConfig.config.openId4VpConfig?.transactionDataTypes.orEmpty(),
 )
 
 @Single

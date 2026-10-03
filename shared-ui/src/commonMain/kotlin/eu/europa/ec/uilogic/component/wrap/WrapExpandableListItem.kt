@@ -47,6 +47,7 @@ fun WrapExpandableListItem(
     header: ListItemDataUi,
     data: List<ExpandableListItemUi>,
     onItemClick: ((item: ListItemDataUi) -> Unit)?,
+    isItemClickable: (ListItemDataUi) -> Boolean,
     hideSensitiveContent: Boolean = false,
     isExpanded: Boolean,
     onExpandedChange: ((item: ListItemDataUi) -> Unit)?,
@@ -65,22 +66,16 @@ fun WrapExpandableListItem(
         throttleClicks = throttleClicks,
         shape = shape,
         colors = colors,
-        onExpandedChange = { onExpandedChange?.invoke(header) },
+        onExpandedChange = null,
         cardCollapsedContent = {
-            WrapListItem(
+            ExpandableListItemHeader(
                 modifier = Modifier.fillMaxWidth(),
                 item = header,
-                onItemClick = onExpandedChange,
+                onExpandedChange = onExpandedChange,
                 throttleClicks = throttleClicks,
-                hideSensitiveContent = false,
                 mainContentVerticalPadding = collapsedMainContentVerticalPadding,
                 clickableAreas = collapsedClickableAreas,
-                shape = RectangleShape,
                 colors = colors,
-                mainContentTextStyle = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
             )
         },
         cardExpandedContent = {
@@ -90,7 +85,7 @@ fun WrapExpandableListItem(
                         WrapListItem(
                             modifier = Modifier.fillMaxWidth(),
                             item = listItem.header,
-                            onItemClick = onItemClick,
+                            onItemClick = onItemClick.takeIf { isItemClickable(listItem.header) },
                             throttleClicks = throttleClicks,
                             hideSensitiveContent = hideSensitiveContent,
                             mainContentVerticalPadding = expandedMainContentVerticalPadding,
@@ -106,6 +101,7 @@ fun WrapExpandableListItem(
                             header = listItem.header,
                             data = listItem.nestedItems,
                             onItemClick = onItemClick,
+                            isItemClickable = isItemClickable,
                             onExpandedChange = onExpandedChange,
                             throttleClicks = throttleClicks,
                             hideSensitiveContent = hideSensitiveContent,
@@ -125,6 +121,33 @@ fun WrapExpandableListItem(
                 }
             }
         }
+    )
+}
+
+@Composable
+private fun ExpandableListItemHeader(
+    modifier: Modifier,
+    item: ListItemDataUi,
+    onExpandedChange: ((ListItemDataUi) -> Unit)?,
+    throttleClicks: Boolean,
+    mainContentVerticalPadding: Dp?,
+    clickableAreas: List<ClickableArea>?,
+    colors: CardColors?,
+) {
+    WrapListItem(
+        modifier = modifier,
+        item = item,
+        onItemClick = onExpandedChange,
+        throttleClicks = throttleClicks,
+        hideSensitiveContent = false,
+        mainContentVerticalPadding = mainContentVerticalPadding,
+        clickableAreas = clickableAreas,
+        shape = RectangleShape,
+        colors = colors,
+        mainContentTextStyle = MaterialTheme.typography.bodyLarge.copy(
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+        ),
     )
 }
 
@@ -168,6 +191,7 @@ private fun WrapExpandableListItemPreview() {
             isExpanded = true,
             onExpandedChange = {},
             onItemClick = {},
+            isItemClickable = { true },
         )
     }
 }

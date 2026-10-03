@@ -306,6 +306,7 @@ internal class FakeActionInteractor(
             registration = null,
             claimsRequested = emptyList(),
             claimsPresented = emptyList(),
+            transactionData = emptyList(),
         )
     }
 }
