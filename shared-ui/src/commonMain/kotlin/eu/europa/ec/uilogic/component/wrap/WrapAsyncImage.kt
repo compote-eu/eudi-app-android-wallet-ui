@@ -22,10 +22,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import coil3.ImageLoader
+import coil3.annotation.ExperimentalCoilApi
 import coil3.PlatformContext
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import coil3.svg.Svg
 import coil3.svg.SvgDecoder
 import eu.europa.ec.uilogic.component.IconDataUi
 import eu.europa.ec.uilogic.component.drawableResource
@@ -111,9 +113,18 @@ fun WrapAsyncImage(
  * `AndroidCompose` convention plugin) and `coil-network-ktor3` on iOS (this module's iosMain). Without
  * one, every https logo ends in the `error` image, with nothing logged.
  */
+@OptIn(ExperimentalCoilApi::class) // `SvgDecoder.Factory(parser =)` takes the experimental `Svg.Parser`.
 internal fun walletImageLoader(context: PlatformContext): ImageLoader =
     ImageLoader.Builder(context)
         .components {
-            add(SvgDecoder.Factory())
+            add(SvgDecoder.Factory(parser = platformSvgParser))
         }
         .build()
+
+/**
+ * How [walletImageLoader] parses an SVG: Coil's own parser on Android, and on iOS one that first copies
+ * the drawing's class rules into its elements ([inlineSvgClassStyles]) — Skia, which Coil renders with
+ * there, ignores `<style>`, and a class-styled logo came out all black.
+ */
+@OptIn(ExperimentalCoilApi::class)
+internal expect val platformSvgParser: Svg.Parser
