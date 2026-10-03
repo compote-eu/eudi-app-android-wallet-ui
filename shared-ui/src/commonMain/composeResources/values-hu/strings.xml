@@ -54,6 +54,7 @@
     <string name="generic_default_relying_party_name">Ellenőrző fél</string>
     <string name="generic_default_issuer_name">Kibocsátó</string>
     <string name="generic_view_details">Részletek megtekintése</string>
+    <string name="generic_hide_details">Részletek elrejtése</string>
     <string name="generic_deferred_success_text">Folyamatban!</string>
     <string name="generic_bottom_sheet_delete_title">Eltávolítja a dokumentumot?</string>
     <string name="generic_bottom_sheet_delete_subtitle">Ez a dokumentum eltávolításra kerül a tárcájából, ami befolyásolhatja a szolgáltatásokhoz való hozzáférését.</string>
@@ -69,6 +70,21 @@
     <string name="generic_unknown_issuer">Ismeretlen</string>
     <!--endregion-->
 
+    <!-- region Trust Mark -->
+    <string name="trust_mark_about_title">Az EUDI Wallet névjegye</string>
+    <string name="trust_mark_welcome_title">Üdvözöljük</string>
+    <string name="trust_mark_wallet_name">EU digitális személyazonossági tárca</string>
+    <string name="trust_mark_image_description">Az EUDI Wallet bizalmi védjegye</string>
+    <string name="trust_mark_certification_description">Ez a tárcaalkalmazás tanúsítottan megfelel az EUDI Wallet biztonsági és adatvédelmi követelményeinek, és szerepel az %1$s.</string>
+    <string name="trust_mark_certified_wallets_link">EUDI Wallet-szolgáltatók megbízható listáján</string>
+    <string name="trust_mark_certification_information_description">A tárca részletes tanúsítási adatait a %1$s találja.</string>
+    <string name="trust_mark_certification_information_link">tanúsítási információs oldalon</string>
+    <string name="trust_mark_loading">A bizalmi védjegy adatainak betöltése…</string>
+    <string name="trust_mark_load_error">Nem sikerült betölteni a bizalmi védjegy adatait. Kérjük, próbálja újra.</string>
+    <string name="trust_mark_image_error">Nem sikerült betölteni a bizalmi védjegy képét.</string>
+    <string name="trust_mark_browser_error">Nem sikerült megnyitni ezt a hivatkozást.</string>
+    <!--endregion-->
+
     <!-- region Content Description -->
     <string name="content_description_image_or_placeholder_icon">Kép vagy helykitöltő ikon</string>
     <string name="content_description_user_signature_icon">Felhasználói aláírás</string>
@@ -80,6 +96,7 @@
     <string name="content_description_error_icon">Hiba</string>
     <string name="content_description_error_filled_icon">Hiba</string>
     <string name="content_description_delete_icon">Törlés</string>
+    <string name="content_description_delete_filled_icon">Törlés</string>
     <string name="content_description_touch_id_icon">Ujjlenyomat-azonosító</string>
     <string name="content_description_qr_icon">QR</string>
     <string name="content_description_qr_scanner_icon">QR-olvasó</string>
@@ -225,6 +242,43 @@
     <string name="request_relying_party_description">a következőket kéri</string>
     <string name="request_warning_text">Adatai megosztása előtt kérjük, gondosan tekintse át azokat.</string>
     <string name="request_collapsed_supporting_text">Részletek megtekintése</string> <!-- upstream alias of generic_view_details -->
+    <string name="request_transaction_section_title">Aláírandó adatok</string>
+    <string name="request_transaction_details_title">Aláírás részletei</string>
+    <string name="request_transaction_trust_framework">Bizalmi keretrendszer</string>
+    <string name="request_transaction_trust_framework_value">eIDAS</string>
+    <string name="request_transaction_numbered">%1$d. tranzakció</string>
+    <string name="request_transaction_type">Tranzakció típusa</string>
+    <string name="request_transaction_signature_type">Aláírás típusa</string>
+    <string name="request_transaction_requested_credentials">Kért igazolványok</string>
+    <string name="request_transaction_signing_credential_id">Aláíró igazolvány azonosítója</string>
+    <string name="request_transaction_signature_count">Aláírások száma</string>
+    <string name="request_transaction_document">Dokumentum</string>
+    <string name="request_transaction_document_numbered">%1$d. dokumentum</string>
+    <string name="request_transaction_document_location">Dokumentum helye</string>
+    <string name="request_transaction_open_document">Dokumentum megnyitása</string>
+    <string name="request_transaction_expected_checksum">A dokumentum várt ellenőrzőösszege</string>
+    <string name="request_transaction_checksum_algorithm">Ellenőrzőösszeg-algoritmus</string>
+    <string name="request_transaction_hash_representation">Hash-ábrázolás</string>
+    <string name="request_transaction_dtbsr_hash">DTBSR-hash</string>
+    <string name="request_transaction_dtbsr_algorithm">DTBSR-hashalgoritmus</string>
+    <string name="request_transaction_sdr_hash">SDR-hash</string>
+    <string name="request_transaction_sdr_algorithm">SDR-hashalgoritmus</string>
+    <string name="request_transaction_sodr_hash">SODR-hash</string>
+    <string name="request_transaction_sodr_algorithm">SODR-hashalgoritmus</string>
+    <string name="request_transaction_document_hash">Dokumentum hash-értéke</string>
+    <string name="request_transaction_document_hash_algorithm">Dokumentum hashalgoritmusa</string>
+    <string name="request_transaction_signature_format">Aláírás formátuma</string>
+    <string name="request_transaction_conformance_level">Megfelelőségi szint</string>
+    <string name="request_transaction_signed_attributes">Aláírt attribútumok</string>
+    <string name="request_transaction_otp">Egyszer használatos jelszó (OTP)</string>
+    <string name="request_transaction_response_uri">Válasz URI-ja</string>
+    <string name="request_transaction_unavailable">A tranzakció részletei nem érhetők el.</string>
+    <string name="request_transaction_qes">Minősített elektronikus aláírás (QES)</string>
+    <string name="request_transaction_qeseal">Minősített elektronikus bélyegző</string>
+    <string name="request_transaction_aes">Fokozott biztonságú elektronikus aláírás</string>
+    <string name="request_transaction_aeseal">Fokozott biztonságú elektronikus bélyegző</string>
+    <string name="request_transaction_aesqc">Minősített tanúsítványon alapuló fokozott biztonságú elektronikus aláírás</string>
+    <string name="request_transaction_aesealqc">Minősített tanúsítványon alapuló fokozott biztonságú elektronikus bélyegző</string>
     <string name="request_claim_not_registered_supporting_text">Nem regisztrált adatok</string>
     <string name="request_combination_option_title">%1$d. lehetőség a(z) %2$d közül</string>
     <string name="request_no_data">A kért dokumentum nem érhető el az EUDI Wallet tárcájában. További információért forduljon az illetékes kibocsátóhoz.</string>
@@ -242,6 +296,7 @@
 
     <!-- region Loading Screen -->
     <string name="loading_header_description">Kérjük, várjon…</string>
+    <string name="loading_rejection_description">Az ellenőrző fél elutasította a választ.</string>
     <string name="loading_biometry_biometrics_enabled_description">Használja biometrikus adatait a tranzakció jóváhagyásához.</string>
     <string name="loading_biometry_biometrics_not_enabled_description">A tranzakció jóváhagyásához igazolnia kell a személyazonosságát.</string>
     <!--endregion-->
@@ -363,11 +418,15 @@
     <string name="transactions_screen_filters_filter_by_transaction_type">Tranzakció típusa</string>
     <string name="transactions_screen_filters_filter_by_transaction_type_presentation">Bemutatás</string>
     <string name="transactions_screen_filters_filter_by_transaction_type_issuance">Kibocsátás</string>
+    <string name="transactions_screen_filters_filter_by_transaction_type_reissuance">Újrakibocsátás</string>
+    <string name="transactions_screen_filters_filter_by_transaction_type_deletion">Törlés</string>
+    <string name="transaction_type_data_deletion_request">Adattörlési kérelmek</string>
+    <string name="transaction_type_dpa_report">Gyanús tranzakciók bejelentései</string>
     <string name="transactions_screen_filters_filter_by_transaction_type_signing">Aláírás</string>
     <string name="transactions_screen_filters_date_from">Dátumtól</string>
     <string name="transactions_screen_filters_date_to">Dátumig</string>
     <string name="transactions_filter_item_status_completed">Befejezve</string>
-    <string name="transactions_filter_item_status_failed">Sikertelen</string>
+    <string name="transactions_filter_item_status_not_completed">Nincs befejezve</string>
     <string name="transactions_filter_item_no_relying_party_transactions">Nincs ellenőrző fél</string>
     <string name="transactions_screen_filters_apply">Alkalmaz</string> <!-- upstream alias of generic_filters_apply -->
     <string name="transactions_screen_filters_reset">Összes visszaállítása</string> <!-- upstream alias of generic_filters_reset -->
@@ -420,14 +479,54 @@
 
     <!-- region Transaction Details -->
     <string name="transaction_details_screen_title">Tranzakció adatai</string>
+    <string name="transaction_details_delete_button">Törlés</string>
+    <string name="transaction_details_bottom_sheet_delete_title">Törli a tranzakciót?</string>
+    <string name="transaction_details_bottom_sheet_delete_subtitle">Ez a tranzakciós rekord véglegesen törlődik a tárcájából. A rekord hiánya megnehezítheti adatvédelmi jogai gyakorlását, többek között az adattörlés kérését vagy a visszaélés bejelentését.</string>
     <string name="transaction_details_screen_card_date_label">Dátum</string>
-    <string name="transaction_details_request_deletion_message">Kérheti a tranzakcióhoz kapcsolódó személyes adatok feldolgozásának leállítását. Ez befolyásolhatja a szolgáltatásokhoz való hozzáférését.</string>
-    <string name="transaction_details_report_transaction_message">Ha úgy véli, hogy ez az ellenőrző fél jogtalanul kért személyes adatokat, bejelentheti ezt a tranzakciót a hatóságoknak.</string>
-    <string name="transaction_details_request_deletion_button">Adattörlés kérése</string>
-    <string name="transaction_details_report_transaction_button">Gyanús tranzakció bejelentése</string>
     <string name="transaction_details_data_shared_section_title">MEGOSZTOTT ADATOK</string>
     <string name="transaction_details_data_signed_section_title">ALÁÍRT ADATOK</string>
+    <string name="transaction_details_signing_request_title">ALÁÍRÁSI KÉRELEM</string>
     <string name="transaction_details_collapsed_supporting_text">Részletek megtekintése</string> <!-- upstream alias of generic_view_details -->
+    <string name="transaction_details_request_deletion_section_title">ADATTÖRLÉS KÉRÉSE</string>
+    <string name="transaction_details_report_transaction_section_title">TRANZAKCIÓ BEJELENTÉSE</string>
+    <string name="transaction_details_request_deletion_message">Kérheti, hogy ez az ellenőrző fél ne kezelje tovább a tranzakcióhoz kapcsolódó személyes adatait. Ez azonban befolyásolhatja a szolgáltatásokhoz való hozzáférését.</string>
+    <string name="transaction_details_report_transaction_message">Ha úgy véli, hogy ez az ellenőrző fél jogellenesen kérte a személyes adatait, bejelentheti az illetékes tagállami adatvédelmi hatóságnál.</string>
+    <string name="transaction_details_request_deletion_button">Törlési kérelem indítása</string>
+    <string name="transaction_details_report_transaction_button">Tranzakció bejelentésének indítása</string>
+    <string name="transaction_details_action_unavailable">Ez a művelet nem érhető el. Nem rögzítettek hozzá megfelelő elérhetőséget vagy megosztott adatot.</string>
+    <string name="transaction_details_action_open_failed">Ezt az elérhetőséget nem sikerült megnyitni. A kísérlet nem lett rögzítve. Próbálja újra megnyitni, vagy a Mégse gombbal térjen vissza a tranzakcióhoz.</string>
+    <string name="transaction_details_action_save_failed">A külső alkalmazás megnyílt, de ezt a kísérletet nem sikerült menteni az előzményekbe. Próbálja újra menteni az alkalmazás ismételt megnyitása nélkül.</string>
+    <string name="transaction_details_deletion_email_subject">Személyes adatok törlésére irányuló kérelem a 17. cikk alapján — %1$s</string>
+    <string name="transaction_details_deletion_email_body">A GDPR 17. cikke alapján kérem az alábbi tranzakcióban az ellenőrző féllel megosztott összes személyes adat törlését.\n\nEllenőrző fél:\n%1$s\n\nTranzakció dátuma: %2$s\n\nKérem, tájékoztasson arról, hogyan teljesíthetem ezt a kérelmet.</string>
+    <string name="transaction_details_report_email_subject">Bejelentés potenciálisan jogellenes vagy gyanús adatkérésről — %1$s</string>
+    <string name="transaction_details_report_email_body">Szeretnék bejelenteni egy potenciálisan jogellenes vagy gyanús személyesadat-kérést az alább megnevezett ellenőrző féltől.\n\nEllenőrző fél:\n%1$s\n\nTranzakció dátuma: %2$s\n\nKérem, vizsgálja ki ezt a kérést. Aggályaimról további részleteket is meg tudok adni.</string>
+    <string name="transaction_details_data_requested_section_title">KÉRT ADATOK</string>
+    <string name="transaction_details_relying_party_section_title">ELLENŐRZŐ FÉL</string>
+    <string name="transaction_details_authority_section_title">ADATVÉDELMI HATÓSÁG</string>
+    <string name="transaction_details_credentials_section_title">IGAZOLVÁNYOK</string>
+    <string name="transaction_details_credentials_issued_section_title">KIBOCSÁTOTT IGAZOLVÁNYOK</string>
+    <string name="transaction_details_data_deletion_section_title">TÖRLÉSRE KÉRT ADATOK</string>
+    <string name="transaction_details_no_data_requested">Nem kértek adatot</string>
+    <string name="transaction_details_no_data_shared">Nem osztottak meg adatot</string>
+    <string name="transaction_details_no_claims">Nincs rögzített attribútum</string>
+    <string name="transaction_details_no_information">Nincs rögzített információ</string>
+    <string name="transaction_details_unknown_claim">Az attribútum azonosítója nem érhető el</string>
+    <string name="transaction_details_name_label">Név</string>
+    <string name="transaction_details_intermediary_name_label">Közvetítő neve</string>
+    <string name="transaction_details_identifier_label">Azonosító</string>
+    <string name="transaction_details_identifier_scheme_label">Azonosítóséma</string>
+    <string name="transaction_details_contact_label">Elérhetőség</string>
+    <string name="transaction_details_intermediary_contact_label">Közvetítő elérhetősége</string>
+    <string name="transaction_details_country_label">Ország</string>
+    <string name="transaction_details_purpose_label">Felhasználás célja</string>
+    <string name="transaction_details_privacy_policy_label">Adatvédelmi szabályzat</string>
+    <string name="transaction_details_requested_count_label">Kért igazolványok</string>
+    <string name="transaction_details_issued_count_label">Kibocsátott igazolványok</string>
+    <string name="transaction_details_trigger_label">Kezdeményező</string>
+    <string name="transaction_details_requested_by_you">A tárca tulajdonosa</string>
+    <string name="transaction_details_renewed_by_wallet">A tárca</string>
+    <string name="transaction_details_filename_label">Fájlnév</string>
+    <string name="transaction_details_signing_identifier_label">Aláírási tranzakció azonosítója</string>
     <!--endregion-->
 
     <!-- region Proximity QR -->
@@ -517,4 +616,51 @@
     <string name="transaction_category_this_week">EZEN A HÉTEN</string>
     <string name="transaction_category_month_year">HÓNAP</string>
     <!--endregion-->
+
+    <!-- region Privacy dashboard -->
+    <!-- Data deletion request -->
+    <string name="data_deletion_screen_title">Mielőtt folytatná</string>
+    <string name="data_deletion_relying_party_default_name">Ellenőrző fél</string>
+    <string name="data_deletion_website_description">Hamarosan elhagyja a tárcát, és a(z) %1$s webhelyére lép, ahol egy űrlap kitöltésével kérheti a megosztott adatok törlését.</string>
+    <string name="data_deletion_email_description">Megnyílik az e-mail-alkalmazása egy a(z) %1$s részére elküldésre kész üzenettel, hogy kérhesse a megosztott adatok törlését.</string>
+    <string name="data_deletion_phone_description">Ezzel közvetlen hívást indít a következő félhez: %1$s, hogy kérhesse a megosztott adatok törlését.</string>
+    <string name="data_deletion_website_responsibility">&lt;b>A tárca nem küldi el és nem kezeli Ön helyett ezt a kérelmet.&lt;/b> Az űrlap kitöltése és beküldése az Ön feladata.</string>
+    <string name="data_deletion_email_responsibility">&lt;b>A tárca nem küldi el ezt az e-mailt, és nem kezeli Ön helyett a kérelmet.&lt;/b> Önnek kell átnéznie, kiegészítenie és elküldenie.</string>
+    <string name="data_deletion_phone_responsibility">&lt;b>A tárca nem nyújtja be Ön helyett ezt a kérelmet.&lt;/b> A hívás során Önnek kell elmagyaráznia, mit kér.</string>
+    <string name="data_deletion_retention_notice">Előfordulhat, hogy a(z) %1$s jogi okokból a kérelme után is köteles megőrizni egyes adatait. Az eredményről a(z) %1$s közvetlenül tájékoztatja Önt, nem a tárca.</string>
+    <string name="data_deletion_website_button">Tovább a(z) %1$s webhelyére</string>
+    <string name="data_deletion_email_button">E-mail megnyitása, címzett: %1$s</string>
+    <string name="data_deletion_phone_button">Hívás: %1$s</string>
+    <!-- DPA report -->
+    <string name="dpa_report_screen_title">Tranzakció bejelentésének indítása</string>
+    <string name="dpa_report_authority_label">Illetékes adatvédelmi hatóság</string>
+    <string name="dpa_report_responsibility">&lt;b>A tárca nem nyújtja be és nem követi nyomon ezt a bejelentést.&lt;/b> A tranzakció bejelentéséhez vegye fel a kapcsolatot közvetlenül az illetékes adatvédelmi hatósággal, az alábbi módok közül az Önnek legmegfelelőbbel.</string>
+    <string name="dpa_report_follow_up">A tranzakciót Önnek kell leírnia. Az eredményről az adatvédelmi hatóság közvetlenül tájékoztatja Önt, nem a tárca.</string>
+    <string name="dpa_report_call_button">Hívás</string>
+    <string name="dpa_report_email_button">E-mail megnyitása</string>
+    <string name="dpa_report_website_button">Webhely megnyitása</string>
+    <string name="transaction_details_report_email_intermediary">\n\nKözvetítő:\n%1$s</string>
+    <string name="content_description_call_icon">Telefon</string>
+    <string name="content_description_email_icon">E-mail</string>
+    <string name="content_description_link_icon">Webhely</string>
+    <!-- Transaction attempt history -->
+    <string name="privacy_history_deletion_link">Korábbi adattörlési kérelmek megtekintése (%1$d)</string>
+    <string name="privacy_history_report_link">Korábbi tranzakció-bejelentések megtekintése (%1$d)</string>
+    <string name="privacy_history_loading">Korábbi kísérletek betöltése…</string>
+    <string name="privacy_history_retry">Korábbi kísérletek újbóli betöltése</string>
+    <string name="privacy_history_deletion_title">Korábbi adattörlési kérelmek: %1$s</string>
+    <string name="privacy_history_report_title">Korábbi tranzakció-bejelentések: %1$s</string>
+    <string name="privacy_history_relying_party_default_name">Ellenőrző fél</string>
+    <string name="privacy_history_deletion_disclaimer">Az adattörlési kérelmek a tárcán kívül zajlanak, ezért a végső eredményük nem követhető nyomon.</string>
+    <string name="privacy_history_report_disclaimer">A tranzakció-bejelentések a tárcán kívül zajlanak, ezért a végső eredményük nem követhető nyomon.</string>
+    <string name="privacy_history_deletion_intro">Korábban a következő módokon próbált adattörlési kérelmet indítani ennél az ellenőrző félnél:</string>
+    <string name="privacy_history_report_intro">Korábban a következő módokon próbált tranzakció-bejelentést indítani az illetékes adatvédelmi hatóságnál:</string>
+    <string name="privacy_history_deletion_empty">Ehhez a tranzakcióhoz nincs korábbi adattörlési kísérlet.</string>
+    <string name="privacy_history_report_empty">Ehhez a tranzakcióhoz nincs korábbi bejelentési kísérlet.</string>
+    <string name="privacy_history_method_web_form">Webes űrlap</string>
+    <string name="privacy_history_method_website">Webhely</string>
+    <string name="privacy_history_method_email">E-mail</string>
+    <string name="privacy_history_method_phone">Telefonhívás</string>
+    <!--endregion-->
+
 </resources>
