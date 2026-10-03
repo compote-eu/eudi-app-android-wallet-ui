@@ -683,6 +683,7 @@ private suspend fun probeRemotePresentation(onResult: (String) -> Unit) {
         "observeResponse -> " + when (sent) {
             is PresentationLoadingObserveResponsePartialState.Success -> "Success"
             is PresentationLoadingObserveResponsePartialState.Redirect -> "Redirect(${sent.uri})"
+            is PresentationLoadingObserveResponsePartialState.Rejected -> "Rejected(${sent.redirectUri})"
             is PresentationLoadingObserveResponsePartialState.Failure -> "Failure(${sent.error})"
             is PresentationLoadingObserveResponsePartialState.UserAuthenticationRequired ->
                 "UserAuthenticationRequired"

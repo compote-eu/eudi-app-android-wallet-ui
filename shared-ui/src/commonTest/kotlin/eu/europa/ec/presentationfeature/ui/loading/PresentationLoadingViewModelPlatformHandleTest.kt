@@ -20,9 +20,10 @@
 // `PlatformContext`, and this interactor's `IntentToSend` state carries a `PlatformIntent`. Both are
 // `expect class` with no common constructor, so both come from the test factories.
 //
-// The interesting difference from proximity is that this stream has FIVE terminal-ish states rather
+// The interesting difference from proximity is that this stream has SIX terminal-ish states rather
 // than three, and three of them (`Success`, `Redirect`, `IntentToSend`) all funnel into the same
-// `onSuccess()`. Their payloads are deliberately unused here — the redirect URI is read later off
+// `onSuccess()`. `Rejected` is the one that stays on this screen: it shows the relying party's refusal
+// until the user closes it. Their payloads are deliberately unused here — the redirect URI is read later off
 // `PresentationSuccessInteractor` — so these tests pin that convergence explicitly, since a reader
 // could otherwise mistake the ignored payloads for a bug.
 package eu.europa.ec.presentationfeature.ui.loading
@@ -31,21 +32,31 @@ import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenti
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.commonfeature.ui.loading.Effect
 import eu.europa.ec.commonfeature.ui.loading.Event
+import eu.europa.ec.commonfeature.ui.loading.RejectionState
 import eu.europa.ec.corelogic.model.AuthenticationData
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingObserveResponsePartialState
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingSendRequestedDocumentPartialState
+import eu.europa.ec.shared.navigation.AppRouteCodec
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.PresentationSuccessRoute
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.platform.testPlatformContext
 import eu.europa.ec.shared.platform.testPlatformIntent
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.loading_rejection_description
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -59,6 +70,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PresentationLoadingViewModelPlatformHandleTest {
@@ -67,6 +79,8 @@ class PresentationLoadingViewModelPlatformHandleTest {
         private val responses: List<PresentationLoadingObserveResponsePartialState>,
         private val sendResult: PresentationLoadingSendRequestedDocumentPartialState =
             PresentationLoadingSendRequestedDocumentPartialState.Success,
+        override val initiatorRoute: String = AppRouteCodec.encode(DashboardRoute),
+        private val stream: Flow<PresentationLoadingObserveResponsePartialState>? = null,
     ) : PresentationLoadingInteractor {
         override var presentationScopeId: String = ""
             private set
@@ -81,7 +95,7 @@ class PresentationLoadingViewModelPlatformHandleTest {
         }
 
         override fun observeResponse(): Flow<PresentationLoadingObserveResponsePartialState> =
-            flow { responses.forEach { emit(it) } }
+            stream ?: flow { responses.forEach { emit(it) } }
 
         override suspend fun sendRequestedDocuments():
             PresentationLoadingSendRequestedDocumentPartialState {
@@ -117,7 +131,8 @@ class PresentationLoadingViewModelPlatformHandleTest {
         vararg responses: PresentationLoadingObserveResponsePartialState,
         sendResult: PresentationLoadingSendRequestedDocumentPartialState =
             PresentationLoadingSendRequestedDocumentPartialState.Success,
-    ) = FakePresentationLoadingInteractor(responses.toList(), sendResult).let { fake ->
+        initiatorRoute: String = AppRouteCodec.encode(DashboardRoute),
+    ) = FakePresentationLoadingInteractor(responses.toList(), sendResult, initiatorRoute).let { fake ->
         fake to PresentationLoadingViewModel(fake, SCOPE)
     }
 
@@ -258,5 +273,83 @@ class PresentationLoadingViewModelPlatformHandleTest {
         advanceUntilIdle()
 
         assertEquals(1, fake.sendCalls)
+    }
+
+    @Test
+    fun a_rejection_stays_on_this_screen_and_shows_the_refusal() = runTest(mainDispatcher) {
+        val initiator = DocumentDetailsRoute(documentId = "doc-1")
+        val (fake, viewModel) = viewModel(
+            PresentationLoadingObserveResponsePartialState.Rejected(redirectUri = "https://rp.test/after"),
+            initiatorRoute = AppRouteCodec.encode(initiator),
+        )
+        val effects = mutableListOf<Effect>()
+        backgroundScope.launch { viewModel.effect.toList(effects) }
+
+        viewModel.setEvent(Event.DoWork(context))
+        advanceUntilIdle()
+
+        val state = viewModel.viewState.value
+        assertEquals(RejectionState(initiator, "https://rp.test/after", isClosing = false), state.rejection)
+        assertEquals(UiText.Resource(Res.string.loading_rejection_description), state.headerConfig.mainText)
+        assertNull(state.headerConfig.description)
+        assertNull(state.error)
+        // Not the success screen: nothing navigates until the user closes it.
+        assertTrue(effects.isEmpty())
+        assertEquals(0, fake.sendCalls)
+    }
+
+    @Test
+    fun closing_a_rejection_returns_to_the_screen_that_started_the_presentation() =
+        runTest(mainDispatcher) {
+            val initiator = DocumentDetailsRoute(documentId = "doc-1")
+            val (_, viewModel) = viewModel(
+                PresentationLoadingObserveResponsePartialState.Rejected(redirectUri = null),
+                initiatorRoute = AppRouteCodec.encode(initiator),
+            )
+            viewModel.setEvent(Event.DoWork(context))
+            advanceUntilIdle()
+
+            val effect = async { viewModel.effect.first() }
+            viewModel.setEvent(Event.CloseRejection)
+            advanceUntilIdle()
+
+            assertEquals(Effect.Navigation.CloseRejection(initiator, redirectUri = null), effect.await())
+        }
+
+    @Test
+    fun a_rejection_with_an_unreadable_initiator_returns_to_the_dashboard() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(
+            PresentationLoadingObserveResponsePartialState.Rejected(redirectUri = null),
+            initiatorRoute = "not a route",
+        )
+
+        viewModel.setEvent(Event.DoWork(context))
+        advanceUntilIdle()
+
+        assertEquals(DashboardRoute, assertNotNull(viewModel.viewState.value.rejection).initiatorRoute)
+    }
+
+    @Test
+    fun retrying_replaces_the_observation_instead_of_adding_another() = runTest(mainDispatcher) {
+        var observers = 0
+        val fake = FakePresentationLoadingInteractor(
+            responses = emptyList(),
+            stream = flow {
+                observers++
+                try {
+                    awaitCancellation()
+                } finally {
+                    observers--
+                }
+            },
+        )
+        val viewModel = PresentationLoadingViewModel(fake, SCOPE)
+
+        viewModel.setEvent(Event.DoWork(context))
+        // "Try again" re-sends DoWork while the first observation is still collecting.
+        viewModel.setEvent(Event.DoWork(context))
+        advanceUntilIdle()
+
+        assertEquals(1, observers)
     }
 }

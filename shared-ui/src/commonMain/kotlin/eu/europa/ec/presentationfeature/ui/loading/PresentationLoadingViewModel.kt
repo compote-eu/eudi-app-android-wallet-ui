@@ -34,6 +34,7 @@ import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingObserveResponsePartialState
 import eu.europa.ec.presentationfeature.interactor.PresentationLoadingSendRequestedDocumentPartialState
 import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.AppRouteCodec
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.PresentationLoadingRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
@@ -44,6 +45,7 @@ import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.NavigationType
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -53,12 +55,15 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.loading_header_description
+import eu.europa.ec.shared.resources.loading_rejection_description
 
 @KoinViewModel
 class PresentationLoadingViewModel(
     private val interactor: PresentationLoadingInteractor,
     @InjectedParam private val presentationScopeId: String
 ) : LoadingViewModel() {
+
+    private var observationJob: Job? = null
 
     override fun getHeaderConfig(): ContentHeaderConfig {
         return ContentHeaderConfig(
@@ -98,18 +103,19 @@ class PresentationLoadingViewModel(
     override fun getCancellableTimeout(): Duration = 5.toDuration(DurationUnit.SECONDS)
 
     override fun doWork(context: PlatformContext?) {
-        viewModelScope.launch {
+        observationJob?.cancel()
+        observationJob = viewModelScope.launch {
 
             interactor.setScopeId(presentationScopeId)
 
-            interactor.observeResponse().collect {
-                when (it) {
+            interactor.observeResponse().collect { response ->
+                when (response) {
                     is PresentationLoadingObserveResponsePartialState.Failure -> {
                         setState {
                             copy(
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(Event.DoWork(context)) },
-                                    errorSubTitle = it.error.asUiText(),
+                                    errorSubTitle = response.error.asUiText(),
                                     onCancel = {
                                         setEvent(Event.DismissError)
                                         doNavigation(NavigationType.PopTo(getPreviousRoute()))
@@ -127,6 +133,19 @@ class PresentationLoadingViewModel(
                         onSuccess()
                     }
 
+                    is PresentationLoadingObserveResponsePartialState.Rejected -> {
+                        showRejection(
+                            headerConfig = ContentHeaderConfig(
+                                description = null,
+                                mainText = UiText.Resource(Res.string.loading_rejection_description),
+                            ),
+                            // The token cannot fail to decode unless it was never one of ours; the
+                            // dashboard is then the one screen a presentation can always return to.
+                            initiatorRoute = AppRouteCodec.decode(interactor.initiatorRoute) ?: DashboardRoute,
+                            redirectUri = response.redirectUri,
+                        )
+                    }
+
                     is PresentationLoadingObserveResponsePartialState.RequestReadyToBeSent -> {
                         sendRequestedDocuments(event = Event.DoWork(context))
                     }
@@ -140,7 +159,7 @@ class PresentationLoadingViewModel(
                         openAuthenticationPrompt(
                             context,
                             popEffect,
-                            it.authenticationData,
+                            response.authenticationData,
                             {
                                 sendRequestedDocuments(event = Event.DoWork(context))
                             }
@@ -230,21 +249,27 @@ class PresentationLoadingViewModel(
             notifyOnAuthenticationFailure = viewState.value.notifyOnAuthenticationFailure,
             resultHandler = DeviceAuthenticationResult(
                 onAuthenticationSuccess = {
-                    authenticationData.onAuthenticationSuccess()
-                    if (isFinalAuthentication) {
-                        sendRequestedDocumentsAction()
-                    } else {
-                        delay(500)
-                        openAuthenticationPrompt(
-                            context,
-                            popEffect,
-                            authenticationDataList,
-                            sendRequestedDocumentsAction,
-                            index + 1
-                        )
+                    viewModelScope.launch {
+                        authenticationData.onAuthenticationSuccess()
+                        if (isFinalAuthentication) {
+                            sendRequestedDocumentsAction()
+                        } else {
+                            delay(500)
+                            openAuthenticationPrompt(
+                                context,
+                                popEffect,
+                                authenticationDataList,
+                                sendRequestedDocumentsAction,
+                                index + 1
+                            )
+                        }
                     }
                 },
-                onAuthenticationError = { setEffect { popEffect } }
+                onAuthenticationError = {
+                    viewModelScope.launch {
+                        setEffect { popEffect }
+                    }
+                }
             )
         )
     }

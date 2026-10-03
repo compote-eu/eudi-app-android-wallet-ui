@@ -45,6 +45,7 @@ import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.uilogic.component.content.ContentErrorConfig
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.config.NavigationType
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.core.annotation.InjectedParam
@@ -60,6 +61,8 @@ class ProximityLoadingViewModel(
     private val interactor: ProximityLoadingInteractor,
     @InjectedParam private val presentationScopeId: String
 ) : LoadingViewModel() {
+
+    private var observationJob: Job? = null
 
     override fun getHeaderConfig(): ContentHeaderConfig {
         return ContentHeaderConfig(
@@ -82,18 +85,19 @@ class ProximityLoadingViewModel(
     override fun getCancellableTimeout(): Duration = 5.toDuration(DurationUnit.SECONDS)
 
     override fun doWork(context: PlatformContext?) {
-        viewModelScope.launch {
+        observationJob?.cancel()
+        observationJob = viewModelScope.launch {
 
             interactor.setScopeId(presentationScopeId)
 
-            interactor.observeResponse().collect {
-                when (it) {
+            interactor.observeResponse().collect { response ->
+                when (response) {
                     is ProximityLoadingObserveResponsePartialState.Failure -> {
                         setState {
                             copy(
                                 error = ContentErrorConfig(
                                     onRetry = { setEvent(Event.DoWork(context)) },
-                                    errorSubTitle = it.error.asUiText(),
+                                    errorSubTitle = response.error.asUiText(),
                                     onCancel = {
                                         setEvent(Event.DismissError)
                                         doNavigation(NavigationType.PopTo(getPreviousRoute()))
@@ -120,7 +124,7 @@ class ProximityLoadingViewModel(
                         openAuthenticationPrompt(
                             context,
                             popEffect,
-                            it.authenticationData,
+                            response.authenticationData,
                             {
                                 sendRequestedDocuments(event = Event.DoWork(context))
                             }
@@ -206,21 +210,27 @@ class ProximityLoadingViewModel(
             notifyOnAuthenticationFailure = viewState.value.notifyOnAuthenticationFailure,
             resultHandler = DeviceAuthenticationResult(
                 onAuthenticationSuccess = {
-                    authenticationData.onAuthenticationSuccess()
-                    if (isFinalAuthentication) {
-                        sendRequestedDocumentsAction()
-                    } else {
-                        delay(500)
-                        openAuthenticationPrompt(
-                            context,
-                            popEffect,
-                            authenticationDataList,
-                            sendRequestedDocumentsAction,
-                            index + 1
-                        )
+                    viewModelScope.launch {
+                        authenticationData.onAuthenticationSuccess()
+                        if (isFinalAuthentication) {
+                            sendRequestedDocumentsAction()
+                        } else {
+                            delay(500)
+                            openAuthenticationPrompt(
+                                context,
+                                popEffect,
+                                authenticationDataList,
+                                sendRequestedDocumentsAction,
+                                index + 1
+                            )
+                        }
                     }
                 },
-                onAuthenticationError = { setEffect { popEffect } }
+                onAuthenticationError = {
+                    viewModelScope.launch {
+                        setEffect { popEffect }
+                    }
+                }
             )
         )
     }

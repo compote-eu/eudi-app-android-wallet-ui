@@ -26,7 +26,7 @@ import eu.europa.ec.corelogic.controller.SendRequestedDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCorePartialState
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.map
 
 // Phase 3b: the contract and both partial states moved to :shared-ui/commonMain (same package).
 class PresentationLoadingInteractorImpl(
@@ -35,8 +35,11 @@ class PresentationLoadingInteractorImpl(
 ) : PresentationLoadingInteractor,
     ScopedPresentationInteractorDelegate(walletCorePresentationController) {
 
+    override val initiatorRoute: String
+        get() = walletCorePresentationController.initiatorRoute
+
     override fun observeResponse(): Flow<PresentationLoadingObserveResponsePartialState> =
-        walletCorePresentationController.observeSentDocumentsRequest().mapNotNull { response ->
+        walletCorePresentationController.observeSentDocumentsRequest().map { response ->
             when (response) {
                 is WalletCorePartialState.Failure -> PresentationLoadingObserveResponsePartialState.Failure(
                     error = response.error
@@ -48,11 +51,11 @@ class PresentationLoadingInteractorImpl(
                     uri = response.uri.toString()
                 )
 
-                // wallet-core 0.30.2 reported a verifier refusing the response as an error with this
-                // message; until the rejection screen arrives, it stays the failure it was.
-                is WalletCorePartialState.Rejected -> PresentationLoadingObserveResponsePartialState.Failure(
-                    error = "Verifier rejected the response"
-                )
+                is WalletCorePartialState.Rejected -> {
+                    PresentationLoadingObserveResponsePartialState.Rejected(
+                        redirectUri = response.redirectUri?.toString()
+                    )
+                }
 
                 is WalletCorePartialState.Success -> {
                     PresentationLoadingObserveResponsePartialState.Success

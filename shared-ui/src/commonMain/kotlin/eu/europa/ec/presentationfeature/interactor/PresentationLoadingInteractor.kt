@@ -27,7 +27,8 @@
 // NOTE both payloads are write-only in production: the implementation fills them in and
 // `PresentationLoadingViewModel` matches on the branch but reads neither, calling `onSuccess()` for both.
 // They are kept rather than dropped — this looks like an unfinished upstream feature, and the redirect is
-// read from `PresentationSuccessInteractor.redirectUri` on a different path.
+// read from `PresentationSuccessInteractor.redirectUri` on a different path. (`Rejected`'s redirect, by
+// contrast, is read: closing a rejection opens it.)
 package eu.europa.ec.presentationfeature.interactor
 
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
@@ -46,6 +47,7 @@ sealed class PresentationLoadingObserveResponsePartialState {
     data class Failure(val error: String) : PresentationLoadingObserveResponsePartialState()
     data object Success : PresentationLoadingObserveResponsePartialState()
     data class Redirect(val uri: String) : PresentationLoadingObserveResponsePartialState()
+    data class Rejected(val redirectUri: String?) : PresentationLoadingObserveResponsePartialState()
     data object RequestReadyToBeSent : PresentationLoadingObserveResponsePartialState()
     data class IntentToSend(val intent: PlatformIntent) :
         PresentationLoadingObserveResponsePartialState()
@@ -57,6 +59,11 @@ sealed class PresentationLoadingSendRequestedDocumentPartialState {
 }
 
 interface PresentationLoadingInteractor : ScopedPresentationInteractor {
+    /**
+     * The route that started this presentation, as `AppRouteCodec` encoded it for `:core-logic` — where
+     * closing a rejection returns to.
+     */
+    val initiatorRoute: String
     fun observeResponse(): Flow<PresentationLoadingObserveResponsePartialState>
     suspend fun sendRequestedDocuments(): PresentationLoadingSendRequestedDocumentPartialState
     fun handleUserAuthentication(

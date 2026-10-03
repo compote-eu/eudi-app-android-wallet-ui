@@ -35,8 +35,22 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration
 
+/**
+ * A relying party's refusal of the response, shown in place of the spinner until the user closes it.
+ *
+ * @param initiatorRoute where closing returns to: the screen that started the presentation.
+ * @param redirectUri the relying party's redirect, opened on close, when it sent one.
+ * @param isClosing set once Close is pressed, so a second press — or Back — cannot navigate twice.
+ */
+data class RejectionState(
+    val initiatorRoute: AppRoute,
+    val redirectUri: String?,
+    val isClosing: Boolean,
+)
+
 data class State(
     val error: ContentErrorConfig? = null,
+    val rejection: RejectionState? = null,
     val headerConfig: ContentHeaderConfig,
     val isCancellable: Boolean,
     val notifyOnAuthenticationFailure: Boolean = false
@@ -51,12 +65,18 @@ sealed class Event : ViewEvent {
     data class DoWork(val context: PlatformContext?) : Event()
     data object Initialize : Event()
     data object GoBack : Event()
+    data object CloseRejection : Event()
     data object DismissError : Event()
 }
 
 sealed class Effect : ViewSideEffect {
     sealed class Navigation : Effect() {
         data class SwitchScreen(val route: AppRoute) : Navigation()
+        data class CloseRejection(
+            val initiatorRoute: AppRoute,
+            val redirectUri: String?,
+        ) : Navigation()
+
         data class PopBackStackUpTo(
             val route: AppRoute,
             val inclusive: Boolean
@@ -135,6 +155,8 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
 
             is Event.DoWork -> doWork(event.context)
 
+            is Event.CloseRejection -> closeRejection()
+
             is Event.GoBack -> {
                 setState {
                     copy(error = null)
@@ -150,9 +172,40 @@ abstract class LoadingViewModel : MviViewModel<Event, State, Effect>() {
         }
     }
 
+    protected fun showRejection(
+        initiatorRoute: AppRoute,
+        redirectUri: String?,
+        headerConfig: ContentHeaderConfig,
+    ) {
+        setState {
+            copy(
+                error = null,
+                rejection = RejectionState(
+                    initiatorRoute = initiatorRoute,
+                    redirectUri = redirectUri,
+                    isClosing = false,
+                ),
+                headerConfig = headerConfig,
+            )
+        }
+    }
+
+    private fun closeRejection() {
+        val rejection = viewState.value.rejection ?: return
+        if (rejection.isClosing) return
+
+        setState { copy(rejection = rejection.copy(isClosing = true)) }
+        setEffect {
+            Effect.Navigation.CloseRejection(
+                initiatorRoute = rejection.initiatorRoute,
+                redirectUri = rejection.redirectUri,
+            )
+        }
+    }
+
     protected fun doNavigation(navigationType: NavigationType) {
         when (navigationType) {
-            is NavigationType.Pop, NavigationType.Finish -> {
+            is NavigationType.Pop, is NavigationType.Finish -> {
                 setEffect {
                     Effect.Navigation.PopBackStackUpTo(
                         route = getPreviousRoute(),

@@ -102,6 +102,9 @@ internal class IosPresentationLoadingInteractor(
     private val coordinator: IosRemotePresentationCoordinator,
 ) : IosScopedRemotePresentationInteractor(), PresentationLoadingInteractor {
 
+    /** Where closing a rejection returns — see the coordinator, which encodes it. */
+    override val initiatorRoute: String get() = coordinator.initiatorRoute
+
     override fun observeResponse(): Flow<PresentationLoadingObserveResponsePartialState> =
         coordinator.sendEvents()
 

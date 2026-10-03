@@ -24,7 +24,8 @@
 //   * the cancellable timeout, which is what stops a user cancelling a presentation mid-flight;
 //   * the once-per-instance guard on `startInitialWork`;
 //   * the navigation mapping, which collapses Pop/Finish onto the *previous* route rather than an
-//     ordinary back step.
+//     ordinary back step;
+//   * a relying party's rejection, and that closing it navigates exactly once.
 package eu.europa.ec.commonfeature.ui.loading
 
 import eu.europa.ec.shared.navigation.AppRoute
@@ -39,6 +40,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -51,6 +54,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration
@@ -94,6 +98,9 @@ class LoadingViewModelTest {
         fun navigate(navigationType: NavigationType) = doNavigation(navigationType)
 
         fun setError(config: ContentErrorConfig) = setState { copy(error = config) }
+
+        fun reject(initiator: AppRoute, redirect: String?, header: ContentHeaderConfig) =
+            showRejection(initiatorRoute = initiator, redirectUri = redirect, headerConfig = header)
     }
 
     private val mainDispatcher = UnconfinedTestDispatcher()
@@ -255,5 +262,54 @@ class LoadingViewModelTest {
             UiText.Raw("loading"),
             viewModel.viewState.value.headerConfig.description,
         )
+    }
+
+    private val rejectionHeader =
+        ContentHeaderConfig(description = null, mainText = UiText.Raw("rejected"))
+
+    @Test
+    fun a_rejection_replaces_the_error_and_the_header() = runTest(mainDispatcher) {
+        val viewModel = TestLoadingViewModel(timeout = 5.seconds)
+        viewModel.setError(ContentErrorConfig(errorSubTitle = UiText.Raw("boom"), onCancel = {}))
+
+        viewModel.reject(DashboardRoute, "https://rp.test/after", rejectionHeader)
+
+        val state = viewModel.viewState.value
+        assertNull(state.error)
+        assertEquals(RejectionState(DashboardRoute, "https://rp.test/after", isClosing = false), state.rejection)
+        assertEquals(rejectionHeader, state.headerConfig)
+    }
+
+    @Test
+    fun closing_a_rejection_navigates_once_to_the_initiator_with_the_redirect() = runTest(mainDispatcher) {
+        val initiator = ProximityRequestRoute("initiator")
+        val viewModel = TestLoadingViewModel(timeout = 5.seconds)
+        viewModel.reject(initiator, "https://rp.test/after", rejectionHeader)
+        val effects = mutableListOf<Effect>()
+        backgroundScope.launch { viewModel.effect.toList(effects) }
+
+        viewModel.setEvent(Event.CloseRejection)
+        // A second press — or Back — while the first is still navigating.
+        viewModel.setEvent(Event.CloseRejection)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf<Effect>(Effect.Navigation.CloseRejection(initiator, "https://rp.test/after")),
+            effects,
+        )
+        assertTrue(assertNotNull(viewModel.viewState.value.rejection).isClosing)
+    }
+
+    @Test
+    fun closing_with_no_rejection_shown_does_nothing() = runTest(mainDispatcher) {
+        val viewModel = TestLoadingViewModel(timeout = 5.seconds)
+        val effects = mutableListOf<Effect>()
+        backgroundScope.launch { viewModel.effect.toList(effects) }
+
+        viewModel.setEvent(Event.CloseRejection)
+        advanceUntilIdle()
+
+        assertTrue(effects.isEmpty())
+        assertNull(viewModel.viewState.value.rejection)
     }
 }
