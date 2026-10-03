@@ -16,8 +16,6 @@
 
 package eu.europa.ec.corelogic.model
 
-typealias FormatType = String
-
 sealed interface DocumentIdentifier {
     val formatType: FormatType
 
