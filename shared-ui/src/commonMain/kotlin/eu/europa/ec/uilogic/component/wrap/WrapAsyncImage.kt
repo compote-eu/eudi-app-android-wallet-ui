@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import coil3.ImageLoader
+import coil3.PlatformContext
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
@@ -49,13 +50,7 @@ fun WrapAsyncImage(
     val context = LocalPlatformContext.current
     // Remembered, unlike before: an `ImageLoader` owns a memory and disk cache, so building one per
     // recomposition gave every pass a fresh empty cache and re-fetched the same image repeatedly.
-    val imageLoader = remember(context) {
-        ImageLoader.Builder(context)
-            .components {
-                add(SvgDecoder.Factory())
-            }
-            .build()
-    }
+    val imageLoader = remember(context) { walletImageLoader(context) }
 
     AsyncImage(
         modifier = modifier,
@@ -70,3 +65,18 @@ fun WrapAsyncImage(
         placeholder = placeholder?.drawableResource?.let { painterResource(it) }
     )
 }
+
+/**
+ * The loader behind [WrapAsyncImage]: SVG on top of Coil's defaults.
+ *
+ * Coil itself fetches nothing over the network. Its network fetcher comes from a separate artifact
+ * that registers itself when it is on the classpath — `coil-network-okhttp` on Android (added by the
+ * `AndroidCompose` convention plugin) and `coil-network-ktor3` on iOS (this module's iosMain). Without
+ * one, every https logo ends in the `error` image, with nothing logged.
+ */
+internal fun walletImageLoader(context: PlatformContext): ImageLoader =
+    ImageLoader.Builder(context)
+        .components {
+            add(SvgDecoder.Factory())
+        }
+        .build()

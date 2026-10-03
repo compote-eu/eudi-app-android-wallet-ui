@@ -228,9 +228,17 @@ kotlin {
                 kotlin.srcDir("src/iosProbeMain/kotlin")
             }
         }
-        // No iosMain.dependencies block: iOS adds nothing of its own any more. The Compose UI
-        // artifacts moved to commonMain with the first shared screen, and the navigation host's
-        // pieces followed when `AppNavDisplay` became shared.
+        // iOS adds only Coil's network fetcher. The Compose UI artifacts moved to commonMain with the
+        // first shared screen, and the navigation host's pieces followed when `AppNavDisplay` became
+        // shared — but Coil fetches nothing over the network by itself: Android gets
+        // `coil-network-okhttp` from the `AndroidCompose` convention plugin, and without this iOS had
+        // no fetcher at all, so every https issuer or relying-party logo fell back to its error icon
+        // (pinned by `WalletImageLoaderTest`). The fetcher registers itself; Ktor's Darwin engine is
+        // the one `:shared-logic` already uses, declared here so the dependency is not an accident.
+        iosMain.dependencies {
+            implementation(libs.coil.kt.network.ktor3)
+            implementation(libs.ktor.client.darwin)
+        }
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)

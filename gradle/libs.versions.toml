@@ -199,6 +199,7 @@ androidx-camera-view = { group = "androidx.camera", name = "camera-view", versio
 coil-kt = { group = "io.coil-kt.coil3", name = "coil", version.ref = "coil" }
 coil-kt-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
 coil-kt-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
+coil-kt-network-ktor3 = { group = "io.coil-kt.coil3", name = "coil-network-ktor3", version.ref = "coil" }
 coil-kt-svg = { group = "io.coil-kt.coil3", name = "coil-svg", version.ref = "coil" }
 
 # Ktor (networking)
