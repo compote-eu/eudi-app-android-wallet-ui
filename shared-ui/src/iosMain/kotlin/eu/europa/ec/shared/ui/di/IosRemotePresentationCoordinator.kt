@@ -189,6 +189,7 @@ internal class IosRemotePresentationCoordinator(
                 is IosRemotePresentationState.Resolving,
                 is IosRemotePresentationState.Sending,
                 is IosRemotePresentationState.Sent,
+                is IosRemotePresentationState.Rejected,
                     -> null
             }
 
@@ -253,6 +254,9 @@ internal class IosRemotePresentationCoordinator(
 
                 is IosRemotePresentationState.Failed ->
                     emit(PresentationLoadingObserveResponsePartialState.Failure(error = state.message))
+
+                is IosRemotePresentationState.Rejected ->
+                    emit(PresentationLoadingObserveResponsePartialState.Rejected(redirectUri = state.redirectUri))
 
                 // Idle mid-send means the exchange ended without a response — the verifier went away, or
                 // a refusal the presenter turned into one. Before the send it is simply not our turn.

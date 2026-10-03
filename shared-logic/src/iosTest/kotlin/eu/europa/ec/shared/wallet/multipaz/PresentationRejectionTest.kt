@@ -222,14 +222,18 @@ class PresentationRejectionTest {
     }
 
     /** Fetches the request object, then posts a response the verifier answers with [status] and [answer]. */
-    private suspend fun noticeAfterResponding(status: HttpStatusCode, answer: String): PresentationRequestNotice {
+    private suspend fun noticeAfterResponding(
+        status: HttpStatusCode,
+        answer: String,
+        contentType: String = "application/json",
+    ): PresentationRequestNotice {
         val notice = PresentationRequestNotice(linkClientId = clientId)
         val requestObject = requestObjectJwt()
         val engine = MockEngine { request ->
             if (request.method == HttpMethod.Get) {
                 respond(requestObject, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
             } else {
-                respond(answer, status, io.ktor.http.headersOf("Content-Type", "application/json"))
+                respond(answer, status, io.ktor.http.headersOf("Content-Type", contentType))
             }
         }
         val client = HttpClient(PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }, isRegistrationCheckEnabled = { false }) { engine }.create {})
@@ -264,6 +268,58 @@ class PresentationRejectionTest {
             "502 Bad Gateway upstream timed out",
             noticeAfterResponding(HttpStatusCode.BadGateway, "upstream timed out").verifierRefusal,
         )
+    }
+
+    @Test
+    fun a_refused_response_naming_a_redirect_is_a_rejection_with_it() = runTest {
+        val notice = noticeAfterResponding(
+            HttpStatusCode.BadRequest,
+            """{"error":"InvalidVpToken","redirect_uri":"https://rp.test/after?outcome=rejected"}""",
+        )
+
+        assertEquals(VerifierRejection(redirectUri = "https://rp.test/after?outcome=rejected"), notice.verifierRejection)
+    }
+
+    @Test
+    fun the_eudi_verifiers_refusal_is_a_rejection_without_a_redirect() = runTest {
+        val notice = noticeAfterResponding(
+            HttpStatusCode.BadRequest,
+            """{"error":"InvalidVpToken","description":"vp_token is not valid","cause":null}""",
+        )
+
+        assertEquals(VerifierRejection(redirectUri = null), notice.verifierRejection)
+    }
+
+    @Test
+    fun a_refusal_that_is_not_json_stays_an_ordinary_failure() = runTest {
+        // openid4vp-kt cannot read either body, throws, and Android shows its generic error.
+        assertNull(noticeAfterResponding(HttpStatusCode.BadGateway, "upstream timed out", "text/plain").verifierRejection)
+        assertNull(noticeAfterResponding(HttpStatusCode.BadRequest, "not json").verifierRejection)
+        assertNull(noticeAfterResponding(HttpStatusCode.BadRequest, """{"redirect_uri":"https://rp.test/x"}""", "text/plain").verifierRejection)
+    }
+
+    @Test
+    fun a_redirect_openid4vp_kt_would_refuse_leaves_no_rejection() = runTest {
+        assertNull(noticeAfterResponding(HttpStatusCode.BadRequest, """{"redirect_uri":5}""").verifierRejection)
+        // java.net.URI refuses a space, so openid4vp-kt throws here too.
+        assertNull(noticeAfterResponding(HttpStatusCode.BadRequest, """{"redirect_uri":"https://rp.test/a b"}""").verifierRejection)
+    }
+
+    @Test
+    fun an_accepted_response_is_no_rejection_even_with_a_redirect() = runTest {
+        assertNull(noticeAfterResponding(HttpStatusCode.OK, """{"redirect_uri":"https://rp.test/done"}""").verifierRejection)
+    }
+
+    @Test
+    fun json_is_recognised_as_ktor_recognises_it() {
+        val problem = io.ktor.http.ContentType.parse("application/problem+json")
+        val withCharset = io.ktor.http.ContentType.parse("application/json; charset=utf-8")
+        assertEquals(VerifierRejection(redirectUri = null), verifierRejectionOf(problem, "{}"))
+        assertEquals(VerifierRejection(redirectUri = null), verifierRejectionOf(withCharset, "{}"))
+        // A JSON null reads as an absent body, which openid4vp-kt also turns into a rejection.
+        assertEquals(VerifierRejection(redirectUri = null), verifierRejectionOf(withCharset, "null"))
+        assertNull(verifierRejectionOf(withCharset, "[]"))
+        assertNull(verifierRejectionOf(null, "{}"))
     }
 
     @Test

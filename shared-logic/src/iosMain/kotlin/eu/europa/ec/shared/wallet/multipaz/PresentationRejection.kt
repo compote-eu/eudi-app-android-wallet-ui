@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.businesslogic.util.ParsedUri
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.HttpClientEngineBase
@@ -38,6 +39,7 @@ import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.readBuffer
 import kotlinx.io.readByteArray
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -97,6 +99,14 @@ internal class PresentationRequestNotice(
     var verifierRefusal: String? = null
         private set
 
+    /**
+     * The verifier's refusal of the response when it is a *rejection* as Android reads one — see
+     * [verifierRejectionOf]. Null for a refusal of any other shape, which stays an ordinary failure, as it
+     * does on Android.
+     */
+    var verifierRejection: VerifierRejection? = null
+        private set
+
     /** True once a request object has been seen and it named somewhere to answer. */
     val canReject: Boolean get() = responseUri != null
 
@@ -111,10 +121,41 @@ internal class PresentationRequestNotice(
         this.requestSignerChain = signerChain
     }
 
-    fun rememberRefusal(refusal: String) {
+    fun rememberRefusal(refusal: String, rejection: VerifierRejection? = null) {
         verifierRefusal = refusal
+        verifierRejection = rejection
     }
 }
+
+/**
+ * The verifier turned the response down, and said so in the shape OpenID4VP gives it.
+ *
+ * @param redirectUri where the verifier asked the user to be sent instead; null when it named nowhere.
+ */
+internal data class VerifierRejection(val redirectUri: String?)
+
+/**
+ * A refused response read as openid4vp-kt reads it on Android (`DefaultDispatcherOverHttp.parseRedirectUri`),
+ * where it becomes wallet-core's `TransferEvent.Rejected` and the rejection screen.
+ *
+ * The body must be JSON — content negotiation reads it only under a JSON media type — and either `null` or an
+ * object, whose `redirect_uri`, when present, must be a string `java.net.URI` accepts. Anything else throws
+ * there, which wallet-core reports as an ordinary error; null here keeps it one on this side too.
+ */
+internal fun verifierRejectionOf(contentType: ContentType?, body: String): VerifierRejection? {
+    if (contentType?.isJson() != true) return null
+    val element = runCatching { Json.parseToJsonElement(body) }.getOrNull() ?: return null
+    if (element is JsonNull) return VerifierRejection(redirectUri = null)
+    val fields = element as? JsonObject ?: return null
+    val redirect = fields["redirect_uri"] ?: return VerifierRejection(redirectUri = null)
+    if (redirect !is JsonPrimitive || !redirect.isString) return null
+    return ParsedUri.parseOrNull(redirect.content)?.let { VerifierRejection(redirectUri = redirect.content) }
+}
+
+/** Ktor's `JsonContentTypeMatcher`: `application/json`, or any `application/…+json`. */
+private fun ContentType.isJson(): Boolean =
+    match(ContentType.Application.Json) ||
+        (contentType == "application" && contentSubtype.endsWith("+json"))
 
 /**
  * A request object refused because nothing this wallet trusts vouches for the verifier that signed it.
@@ -208,14 +249,16 @@ private class PresentationObservingEngine(
         // response down — the one answer whose body multipaz discards.
         if (data.method == HttpMethod.Post && notice.responseUri != null && !response.statusCode.isSuccess()) {
             val (bytes, replayable) = response.replayableBody()
-            notice.rememberRefusal(refusalOf(response.statusCode, bytes.decodeToString()))
+            val body = bytes.decodeToString()
+            notice.rememberRefusal(
+                refusal = refusalOf(response.statusCode, body),
+                rejection = verifierRejectionOf(response.contentType(), body),
+            )
             return replayable
         }
         // Spotted the way multipaz accepts one — by its media type, whatever the method: with
         // `request_uri_method=post` the request object is the answer to a POST.
-        val contentType = response.headers[HttpHeaders.ContentType]
-            ?.let { runCatching { ContentType.parse(it) }.getOrNull() }
-        if (contentType?.match(REQUEST_OBJECT) != true) return response
+        if (response.contentType()?.match(REQUEST_OBJECT) != true) return response
         val (bytes, replayable) = response.replayableBody()
         val compact = bytes.decodeToString().trim()
         val claims = runCatching { compact.jwsClaims() }.getOrNull() ?: return replayable
@@ -249,6 +292,9 @@ private class PresentationObservingEngine(
 }
 
 private const val X509_HASH_PREFIX = "x509_hash:"
+
+private fun HttpResponseData.contentType(): ContentType? =
+    headers[HttpHeaders.ContentType]?.let { runCatching { ContentType.parse(it) }.getOrNull() }
 
 @OptIn(ExperimentalEncodingApi::class)
 private fun String.jwsClaims(): JsonObject {

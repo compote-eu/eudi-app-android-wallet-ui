@@ -69,6 +69,16 @@ sealed interface IosRemotePresentationState {
     data class Failed(val message: String) : IosRemotePresentationState
 
     /**
+     * The verifier rejected the response — a refusal in the shape Android's openid4vp-kt calls a
+     * rejection ([verifierRejectionOf]), which wallet-core reports as `TransferEvent.Rejected`.
+     *
+     * Not a [Failed]: the exchange reached its end and the relying party said no, so the screen says that
+     * and offers Close, not a Retry that would send the same response again. [redirectUri] is where the
+     * verifier asked the user to be sent instead — null when it named nowhere.
+     */
+    data class Rejected(val redirectUri: String?) : IosRemotePresentationState
+
+    /**
      * The verifier asked for something this wallet does not hold.
      *
      * ⚠️ **Not a [Failed].** Nothing went wrong: the request was understood, answered as far as it
@@ -290,7 +300,9 @@ class IosRemotePresenter internal constructor(
                         tellVerifier(INVALID_REQUEST)
                         mutableState.value = IosRemotePresentationState.RegistrationCertificateMissing
                     } else {
-                        fail(t)
+                        // multipaz's bare `check(...)` on the answer's status is what threw; the engine
+                        // read the body it discarded.
+                        requestNotice.verifierRejection?.let(::rejected) ?: fail(t)
                     }
                 }
             }
@@ -460,6 +472,11 @@ class IosRemotePresenter internal constructor(
      * Showing either that string or the exception's class name would be worse than a plain sentence.
      * The verifier's own explanation is logged instead — see [PresentationRequestNotice.verifierRefusal].
      */
+    private fun rejected(rejection: VerifierRejection) {
+        Logger.w(TAG, "the verifier rejected the response: ${requestNotice.verifierRefusal}")
+        mutableState.value = IosRemotePresentationState.Rejected(redirectUri = rejection.redirectUri)
+    }
+
     private fun fail(cause: Throwable) {
         Logger.w(TAG, "remote presentation failed: ${cause::class.simpleName}: ${cause.message}")
         requestNotice.verifierRefusal?.let { Logger.w(TAG, "the verifier refused the response: $it") }
