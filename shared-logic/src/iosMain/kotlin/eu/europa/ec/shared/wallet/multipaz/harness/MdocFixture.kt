@@ -32,12 +32,15 @@ import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.Uint
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.cose.Cose
+import org.multipaz.cose.CoseLabel
+import org.multipaz.cose.CoseNumberLabel
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPublicKey
+import org.multipaz.crypto.X509CertChain
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.issuersigned.IssuerNamespaces
 import org.multipaz.mdoc.issuersigned.IssuerSignedItem
@@ -238,6 +241,12 @@ internal suspend fun issuerSignedDataFor(
     validFrom: Instant,
     validUntil: Instant,
     revocationStatus: RevocationStatus? = null,
+    /**
+     * The issuer's certificate chain, carried in the `x5chain` header a real issuer puts there. Only
+     * carried: nothing ties it to the throwaway signing key below, so it serves a check that reads the
+     * chain — who signed — and not one that verifies the signature.
+     */
+    issuerCertChain: X509CertChain? = null,
 ): ByteString {
     val mso = MobileSecurityObjectGenerator(
         digestAlgorithm = Algorithm.SHA256,
@@ -277,7 +286,9 @@ internal suspend fun issuerSignedDataFor(
         message = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso))),
         includeMessageInPayload = true,
         protectedHeaders = emptyMap(),
-        unprotectedHeaders = emptyMap(),
+        unprotectedHeaders = issuerCertChain
+            ?.let { mapOf<CoseLabel, DataItem>(CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN) to it.toDataItem()) }
+            .orEmpty(),
     )
 
     return ByteString(

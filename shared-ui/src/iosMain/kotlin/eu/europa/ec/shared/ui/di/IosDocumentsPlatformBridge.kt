@@ -166,6 +166,7 @@ internal class IosDocumentsPlatformBridge(
                 // ever. Watched on the simulator 2026-09-17 before this was added.
                 is DeferredCollection.Abandoned,
                 is DeferredCollection.AuthorizationExpired,
+                is DeferredCollection.IssuerNotTrusted,
                     -> {
                     failed += documentId
                     Logger.w(TAG, "removing $documentId: it can never be collected ($outcome)")

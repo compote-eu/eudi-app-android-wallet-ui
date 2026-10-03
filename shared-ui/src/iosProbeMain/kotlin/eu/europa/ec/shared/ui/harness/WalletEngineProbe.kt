@@ -814,6 +814,7 @@ private suspend fun probeIssuance(onResult: (String) -> Unit) {
                     "ISSUED ${progress.documentIds} failures=${progress.failures}"
 
                 is IosIssuanceProgress.Failure -> "ISSUANCE FAILED: ${progress.message}"
+                is IosIssuanceProgress.IssuerNotTrusted -> "ISSUER NOT TRUSTED: ${progress.message}"
             }
         )
     }
@@ -1121,6 +1122,8 @@ private suspend fun probeReIssuance(onResult: (String) -> Unit) {
         }
 
         is IosIssuanceProgress.Failure -> onResult("refreshCredentials -> Failure(${progress.message})")
+        is IosIssuanceProgress.IssuerNotTrusted ->
+            onResult("refreshCredentials -> IssuerNotTrusted(${progress.message})")
         null -> onResult("refreshCredentials -> nothing within $RE_ISSUANCE_PROBE_TIMEOUT")
     }
 

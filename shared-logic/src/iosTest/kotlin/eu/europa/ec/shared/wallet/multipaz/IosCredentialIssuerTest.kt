@@ -46,6 +46,7 @@ class IosCredentialIssuerTest {
 
     private fun issuerWith(
         answers: Map<String, Result<String>>,
+        wholeOffer: Result<String> = Result.success("doc-whole-offer"),
     ) = IosCredentialIssuer(
         walletEngine = IosWalletEngine(),
         issuers = listOf(issuer),
@@ -55,7 +56,7 @@ class IosCredentialIssuerTest {
         },
         issueWholeOffer = { offer, _ ->
             offersTakenWhole += offer.offerUri
-            Result.success("doc-whole-offer")
+            wholeOffer
         },
     )
 
@@ -303,5 +304,48 @@ class IosCredentialIssuerTest {
         val issued = assertIs<IosIssuanceProgress.Issued>(progress)
         assertEquals(listOf("doc-mdoc"), issued.documentIds)
         assertEquals(setOf("loyalty_mdoc"), issued.failures.keys)
+    }
+
+    // ---- an issuer the EU trust lists do not vouch for --------------------------------------------
+
+    @Test
+    fun a_refusal_for_trust_with_nothing_issued_is_its_own_outcome_not_a_failure() = runTest {
+        val issuing = issuerWith(
+            answers = mapOf("pid_mdoc" to Result.failure(IssuerNotTrustedException("not a PID provider"))),
+        )
+
+        val progress = issuing.issue(issuer.issuerUrl, listOf("pid_mdoc", "pid_sd_jwt")).first()
+
+        // The screen shows the "issuer not trusted" sheet for this, as Android does, not an error card.
+        assertEquals("not a PID provider", assertIs<IosIssuanceProgress.IssuerNotTrusted>(progress).message)
+        assertEquals(listOf("pid_mdoc"), attempted)
+    }
+
+    @Test
+    fun a_configuration_refused_for_trust_after_one_was_issued_is_named_as_untrusted() = runTest {
+        val issuing = issuerWith(
+            answers = mapOf(
+                "loyalty_mdoc" to Result.success("doc-loyalty"),
+                "pid_mdoc" to Result.failure(IssuerNotTrustedException("not a PID provider")),
+            ),
+        )
+
+        val progress = issuing.issue(issuer.issuerUrl, listOf("loyalty_mdoc", "pid_mdoc")).first()
+
+        val issued = assertIs<IosIssuanceProgress.Issued>(progress)
+        assertEquals(listOf("doc-loyalty"), issued.documentIds)
+        assertEquals(setOf("pid_mdoc"), issued.untrusted)
+    }
+
+    @Test
+    fun an_offer_taken_whole_and_refused_for_trust_is_reported_as_untrusted() = runTest {
+        val issuing = issuerWith(
+            answers = emptyMap(),
+            wholeOffer = Result.failure(IssuerNotTrustedException("not a PID provider")),
+        )
+
+        val progress = issuing.issueOffer(offer = offer(listOf("pid_mdoc")), txCode = null).first()
+
+        assertIs<IosIssuanceProgress.IssuerNotTrusted>(progress)
     }
 }

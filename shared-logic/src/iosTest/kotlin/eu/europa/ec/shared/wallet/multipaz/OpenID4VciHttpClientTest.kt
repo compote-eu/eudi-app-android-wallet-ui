@@ -26,13 +26,17 @@ import io.ktor.client.engine.mock.toByteArray
 import io.ktor.client.request.get
 import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readRawBytes
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import io.ktor.http.ContentType
 import io.ktor.http.headersOf
 import io.ktor.http.parametersOf
 import io.ktor.http.parseUrlEncodedParameters
 import kotlinx.coroutines.test.runTest
+import org.multipaz.crypto.X509CertChain
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
@@ -106,7 +110,8 @@ class OpenID4VciHttpClientTest {
             issuerTrust = { _, _ -> TrustVerdict.NOT_TRUSTED },
         )
 
-        val failure = assertFailsWith<IllegalStateException> { client.get(metadataUrl) }
+        // Typed, so the screen shows the "issuer not trusted" sheet Android shows for it.
+        val failure = assertFailsWith<IssuerNotTrustedException> { client.get(metadataUrl) }
         assertTrue(
             "not a recognised access certificate" in failure.message.orEmpty(),
             "unexpected: ${failure.message}",
@@ -690,6 +695,69 @@ class OpenID4VciHttpClientTest {
         // 202 alone means nothing here; the transaction handle is what makes it a deferred issuance.
         assertEquals("""{"queued":true}""", client.post("https://issuer.test/credential").bodyAsText())
         assertFalse(notice.wasDeferred)
+    }
+
+    // ---- refusing a PID whose signer is not a recognised PID provider ----------------------------
+
+    private val jsonContent = headersOf("Content-Type", "application/json")
+
+    private suspend fun HttpClient.postCredentialRequest(url: String, configurationId: String) = post(url) {
+        contentType(ContentType.Application.Json)
+        setBody("""{"credential_configuration_id":"$configurationId"}""")
+    }
+
+    @Test
+    fun a_credential_response_carrying_a_pid_from_an_unrecognised_signer_is_refused() = runTest {
+        val credential = testMdocCredential("eu.europa.ec.eudi.pid.1", X509CertChain(listOf(testSignerCertificate())))
+        val client = openID4VciHttpClient(
+            engine = MockEngine { respond("""{"credentials":[{"credential":"$credential"}]}""", HttpStatusCode.OK, jsonContent) },
+            issuerTrust = { _, _ -> TrustVerdict.NOT_TRUSTED },
+        )
+
+        // Thrown here, before multipaz certifies anything — so the document it was for is cleaned up.
+        assertFailsWith<IssuerNotTrustedException> {
+            client.postCredentialRequest("https://issuer.test/credential", "pid_mdoc")
+        }
+    }
+
+    @Test
+    fun a_credential_response_from_a_recognised_pid_signer_reaches_multipaz_unchanged() = runTest {
+        val credential = testMdocCredential("eu.europa.ec.eudi.pid.1", X509CertChain(listOf(testSignerCertificate())))
+        val body = """{"credentials":[{"credential":"$credential"}]}"""
+        val client = openID4VciHttpClient(
+            engine = MockEngine { respond(body, HttpStatusCode.OK, jsonContent) },
+            issuerTrust = { _, _ -> TrustVerdict.TRUSTED },
+        )
+
+        val response = client.postCredentialRequest("https://issuer.test/credential", "pid_mdoc")
+
+        // The body was read to check it, so it must have been handed on whole.
+        assertEquals(body, response.bodyAsText())
+    }
+
+    @Test
+    fun a_configuration_the_issuer_publishes_as_a_pid_is_checked_whatever_its_credential_claims() = runTest {
+        val endpoint = "https://pid-config.test/credential"
+        val metadata = """
+            {"credential_issuer":"https://pid-config.test","credential_endpoint":"$endpoint",
+             "credential_configurations_supported":{
+               "pid_mdoc":{"format":"mso_mdoc","doctype":"eu.europa.ec.eudi.pid.1","scope":"pid"}}}
+        """.trimIndent()
+        // Typed as a driving licence, though the configuration it answers is a PID.
+        val credential = testMdocCredential("org.iso.18013.5.1.mDL", X509CertChain(listOf(testSignerCertificate())))
+        val client = openID4VciHttpClient(
+            engine = MockEngine { request ->
+                if (request.url.encodedPath.contains(".well-known")) {
+                    respond(metadata, HttpStatusCode.OK, jsonContent)
+                } else {
+                    respond("""{"credentials":[{"credential":"$credential"}]}""", HttpStatusCode.OK, jsonContent)
+                }
+            },
+            issuerTrust = { _, _ -> TrustVerdict.NOT_TRUSTED },
+        )
+        client.get("https://pid-config.test/.well-known/openid-credential-issuer").readRawBytes()
+
+        assertFailsWith<IssuerNotTrustedException> { client.postCredentialRequest(endpoint, "pid_mdoc") }
     }
 
     // ---- the scope-instead-of-authorization_details workaround ---------------------------------

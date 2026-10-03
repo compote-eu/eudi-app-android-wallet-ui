@@ -70,7 +70,9 @@ internal enum class RefreshOutcome { Refreshed, Failed, NothingToFetch }
  * failures is the genuinely bad case and counts as [RefreshOutcome.Failed].
  */
 internal fun refreshOutcomeOf(progress: IosIssuanceProgress): RefreshOutcome = when (progress) {
-    is IosIssuanceProgress.Failure -> RefreshOutcome.Failed
+    is IosIssuanceProgress.Failure,
+    is IosIssuanceProgress.IssuerNotTrusted,
+        -> RefreshOutcome.Failed
     is IosIssuanceProgress.Issued -> when {
         progress.credentialsFetched > 0 -> RefreshOutcome.Refreshed
         progress.failures.isNotEmpty() -> RefreshOutcome.Failed

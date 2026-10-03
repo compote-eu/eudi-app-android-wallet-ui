@@ -61,9 +61,22 @@ sealed interface IosIssuanceProgress {
          * stays until its replacement certifies, so it does not move.
          */
         val credentialsFetched: Int = 0,
+        /**
+         * The configurations among [failures] refused because the issuer is not trusted for them, which
+         * the screen tells apart from the rest as Android's `PartialSuccessWithUntrustedIssuer` does.
+         */
+        val untrusted: Set<String> = emptySet(),
     ) : IosIssuanceProgress
 
     data class Failure(val message: String) : IosIssuanceProgress
+
+    /**
+     * Nothing was issued, and something was refused because the issuer is not trusted for it — a PID
+     * whose signer the EU list of PID providers does not name, or signed metadata from a signer the
+     * access-certificate list does not. Android's `IssuerNotTrusted`, which its screens show as a sheet
+     * of its own rather than as an error.
+     */
+    data class IssuerNotTrusted(val message: String) : IosIssuanceProgress
 }
 
 /**
@@ -256,6 +269,8 @@ class IosCredentialIssuer(
             if (deferred.parkedDocumentId != null) {
                 Logger.i(TAG, "the issuer deferred the refresh of $documentId; it will be collected later")
                 IosIssuanceProgress.Issued(documentIds = listOf(documentId), credentialsFetched = 0)
+            } else if (t.isIssuerNotTrusted()) {
+                IosIssuanceProgress.IssuerNotTrusted(message = t.message ?: ISSUER_NOT_TRUSTED)
             } else {
                 IosIssuanceProgress.Failure(message = refreshFailureMessage(refusal, deferred, t))
             }
@@ -285,6 +300,7 @@ class IosCredentialIssuer(
 
         val documentIds = mutableListOf<String>()
         val failures = mutableMapOf<String, String>()
+        val untrusted = mutableSetOf<String>()
 
         // ⛔ Every offered configuration is attempted, including a `_deferred` twin sharing the plain
         // one's authorization scope. There used to be a guard skipping those, and it was right when it
@@ -300,25 +316,20 @@ class IosCredentialIssuer(
         if (issueConfiguration == null && configurationIds.size > 1) {
             val together = runCatching { provisionTogether(issuer, configurationIds) }
             together
-                .onSuccess { (issued, failed) ->
+                .onSuccess { (issued, failed, refused) ->
                     documentIds += issued
                     failures += failed
+                    untrusted += refused
                 }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     Logger.w(TAG, "issuing ${configurationIds.size} configurations failed: ${error.message}")
                     failures[configurationIds.first()] =
                         error.message ?: error::class.simpleName ?: "Issuance failed."
+                    if (error.isIssuerNotTrusted()) untrusted += configurationIds.first()
                 }
 
-            emit(
-                when {
-                    documentIds.isNotEmpty() -> IosIssuanceProgress.Issued(documentIds, failures)
-                    else -> IosIssuanceProgress.Failure(
-                        failures.values.firstOrNull() ?: "Nothing was issued."
-                    )
-                }
-            )
+            emit(outcomeOf(documentIds, failures, untrusted))
             return@flow
         }
 
@@ -333,19 +344,13 @@ class IosCredentialIssuer(
                     Logger.w(TAG, "issuing '$configurationId' failed: ${error.message}")
                     failures[configurationId] =
                         error.message ?: error::class.simpleName ?: "Issuance failed."
+                    if (error.isIssuerNotTrusted()) untrusted += configurationId
                 }
 
             if (failures.isNotEmpty()) break
         }
 
-        emit(
-            when {
-                documentIds.isNotEmpty() -> IosIssuanceProgress.Issued(documentIds, failures)
-                else -> IosIssuanceProgress.Failure(
-                    failures.values.firstOrNull() ?: "Nothing was issued."
-                )
-            }
-        )
+        emit(outcomeOf(documentIds, failures, untrusted))
     }
 
     /**
@@ -389,9 +394,12 @@ class IosCredentialIssuer(
                     onFailure = { error ->
                         if (error is CancellationException) throw error
                         Logger.w(TAG, "issuing the offer failed: ${error.message}")
-                        IosIssuanceProgress.Failure(
-                            error.message ?: error::class.simpleName ?: "Issuance failed."
-                        )
+                        val message = error.message ?: error::class.simpleName ?: "Issuance failed."
+                        if (error.isIssuerNotTrusted()) {
+                            IosIssuanceProgress.IssuerNotTrusted(message)
+                        } else {
+                            IosIssuanceProgress.Failure(message)
+                        }
                     },
                 )
             )
@@ -403,6 +411,7 @@ class IosCredentialIssuer(
         val issuer = issuers.firstOrNull { it.issuerUrl == offer.issuerUrl } ?: issuers.first()
         val documentIds = mutableListOf<String>()
         val failures = mutableMapOf<String, String>()
+        val untrusted = mutableSetOf<String>()
 
         for (configurationId in configurationIds) {
             val outcome = issueConfiguration?.invoke(issuer, configurationId)
@@ -417,19 +426,34 @@ class IosCredentialIssuer(
                     Logger.w(TAG, "issuing '$configurationId' from the offer failed: ${error.message}")
                     failures[configurationId] =
                         error.message ?: error::class.simpleName ?: "Issuance failed."
+                    if (error.isIssuerNotTrusted()) untrusted += configurationId
                 }
 
             if (failures.isNotEmpty()) break
         }
 
-        emit(
-            when {
-                documentIds.isNotEmpty() -> IosIssuanceProgress.Issued(documentIds, failures)
-                else -> IosIssuanceProgress.Failure(
-                    failures.values.firstOrNull() ?: "Nothing was issued."
-                )
-            }
+        emit(outcomeOf(documentIds, failures, untrusted))
+    }
+
+    /**
+     * What a run of configurations amounted to.
+     *
+     * Nothing issued with something refused for trust is [IosIssuanceProgress.IssuerNotTrusted], whatever
+     * else failed — Android's rule. ⚠️ Android decides on the documents actually issued and counts a
+     * deferred one apart; here a parked document is among [documentIds], so a deferred configuration
+     * attempted *before* the refused one makes this a partial success. Both runs stop at the first
+     * failure, so nothing after the refused one changes the outcome.
+     */
+    private fun outcomeOf(
+        documentIds: List<String>,
+        failures: Map<String, String>,
+        untrusted: Set<String>,
+    ): IosIssuanceProgress = when {
+        documentIds.isNotEmpty() -> IosIssuanceProgress.Issued(documentIds, failures, untrusted = untrusted)
+        untrusted.isNotEmpty() -> IosIssuanceProgress.IssuerNotTrusted(
+            failures[untrusted.first()] ?: ISSUER_NOT_TRUSTED
         )
+        else -> IosIssuanceProgress.Failure(failures.values.firstOrNull() ?: "Nothing was issued.")
     }
 
     /**
@@ -454,7 +478,7 @@ class IosCredentialIssuer(
         issuer: IosVciIssuer,
         configurationIds: List<String>,
         issuerUrl: String = issuer.issuerUrl,
-    ): Pair<List<String>, Map<String, String>> {
+    ): BatchOutcome {
         val walletStore = walletEngine.store()
         IosAuthorizationRedirects.clear()
 
@@ -492,6 +516,7 @@ class IosCredentialIssuer(
 
         val documentIds = mutableListOf<String>()
         val failures = mutableMapOf<String, String>()
+        val untrusted = mutableSetOf<String>()
 
         try {
             for (configurationId in configurationIds) {
@@ -550,6 +575,7 @@ class IosCredentialIssuer(
                                 Logger.w(TAG, "issuing '$configurationId' failed: ${t.message}")
                                 failures[configurationId] = deferred.asFailureOr(t).message
                                     ?: t::class.simpleName ?: "Issuance failed."
+                                if (t.isIssuerNotTrusted()) untrusted += configurationId
                             }
                         } finally {
                             authorizing.cancel()
@@ -575,8 +601,15 @@ class IosCredentialIssuer(
             authorizationHttpClient.close()
         }
 
-        return documentIds to failures
+        return BatchOutcome(issued = documentIds, failed = failures, untrusted = untrusted)
     }
+
+    /** What [provisionTogether] issued, what failed and why, and which of those failed for trust. */
+    private data class BatchOutcome(
+        val issued: List<String>,
+        val failed: Map<String, String>,
+        val untrusted: Set<String>,
+    )
 
     /**
      * Moves each document onto its own DPoP key, leaving it alone if the server will not re-bind.
@@ -886,6 +919,9 @@ class IosCredentialIssuer(
 
         internal const val AUTHORIZATION_EXPIRED =
             "This document's authorization has expired. Add it again to get new credentials."
+
+        /** Only when a refusal carried no message of its own; the screens show their own text for it. */
+        private const val ISSUER_NOT_TRUSTED = "The issuer is not trusted."
 
         /** OAuth's name for a refresh token that is spent, revoked or past its expiry. */
         private const val INVALID_GRANT = "invalid_grant"

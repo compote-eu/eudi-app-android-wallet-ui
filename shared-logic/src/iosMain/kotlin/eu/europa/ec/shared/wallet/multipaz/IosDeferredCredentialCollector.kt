@@ -395,6 +395,13 @@ sealed interface DeferredCollection {
     /** The refresh token has expired — the document has to be added again. */
     data object AuthorizationExpired : DeferredCollection
 
+    /**
+     * The issuer minted it, and it is a PID whose signer is not a recognised PID provider, so it was not
+     * stored. Android's `IssuerNotTrusted` for a deferred document: reported failed, and the document
+     * removed.
+     */
+    data object IssuerNotTrusted : DeferredCollection
+
     /** The issuer stopped advertising the endpoint; nothing to do but say so. */
     data class Unsupported(val reason: String) : DeferredCollection
 

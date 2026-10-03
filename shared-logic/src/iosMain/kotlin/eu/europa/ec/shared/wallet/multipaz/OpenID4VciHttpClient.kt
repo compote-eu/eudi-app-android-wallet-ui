@@ -49,6 +49,7 @@ import kotlinx.io.readByteArray
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -271,6 +272,7 @@ internal class OpenID4VciCompatibilityEngine(
 
         val isTokenExchange = isTokenRequest(data)
         val isRefreshExchange = isTokenExchange && isRefreshGrant(data)
+        val credentialRequest = credentialRequestOf(data)
         if (isTokenExchange) traceTokenRequest(data)
 
         val response = try {
@@ -301,8 +303,50 @@ internal class OpenID4VciCompatibilityEngine(
                 noteAndMaybeArm(readable)
 
             isDeferredIssuance(readable) -> noteDeferredIssuance(readable)
+            credentialRequest != null && readable.statusCode == HttpStatusCode.OK ->
+                checkedPidSigners(data, credentialRequest, readable)
+
             else -> readable
         }
+    }
+
+    /** The JSON body of a credential request, or null when [data] is not one. */
+    private fun credentialRequestOf(data: HttpRequestData): JsonObject? {
+        if (data.method != HttpMethod.Post) return null
+        val body = (data.body as? OutgoingContent.ByteArrayContent)?.bytes() ?: return null
+        val json = runCatching { Json.parseToJsonElement(body.decodeToString()).jsonObject }.getOrNull()
+        return json?.takeIf { "credential_configuration_id" in it || "credential_identifier" in it }
+    }
+
+    /**
+     * Passes a credential response on only if every PID in it is signed by a recognised PID provider.
+     *
+     * Here, before multipaz certifies anything, because this is the one place every issuance path
+     * meets: multipaz's own client for a single configuration, an offer and a refresh, and
+     * [IosOpenID4VciProvisioningClient] for a batch. A refusal thrown here fails the request, and
+     * multipaz cleans up as for any failed request — a new document is deleted, and a refresh drops
+     * only the credentials it was adding. Android checks at the same point, before `storeIssuedDocument`.
+     *
+     * Null [issuerTrust] skips it, as it does the metadata check, for the tests that serve credentials
+     * from a `MockEngine`.
+     */
+    private suspend fun checkedPidSigners(
+        data: HttpRequestData,
+        request: JsonObject,
+        response: HttpResponseData,
+    ): HttpResponseData {
+        val trust = issuerTrust ?: return response
+        val (bytes, replayable) = replayableBody(response)
+        val credentials = runCatching {
+            Json.parseToJsonElement(bytes.decodeToString()).jsonObject["credentials"]?.jsonArray?.mapNotNull {
+                ((it as? JsonObject)?.get("credential") as? JsonPrimitive)?.contentOrNull
+            }
+        }.getOrNull().orEmpty()
+        val configurationId = (request["credential_configuration_id"] as? JsonPrimitive)?.contentOrNull
+        val requestedPid = configurationId != null &&
+            PidConfigurationRegistry.isPid(data.url.toString(), configurationId)
+        trust.enforcePidSigners(credentials, requestedPid)
+        return replayable
     }
 
     /** The encryption this POST needs, begun; null when it is not one the issuer asked to encrypt. */
@@ -487,6 +531,7 @@ internal class OpenID4VciCompatibilityEngine(
                 pushedAuthorizationRequestEndpoint = it
             }
             json["token_endpoint"]?.jsonPrimitive?.content?.let { tokenEndpoint = it }
+            PidConfigurationRegistry.record(json)
             CredentialEncryptionRegistry.record(json)?.let { offer ->
                 offer.onSuccess { if (it.isActive) Logger.i(TAG, "the issuer takes encrypted credential exchanges: $it") }
                     .onFailure { Logger.w(TAG, "the issuer's credential encryption is unusable: ${it.message}") }
@@ -861,9 +906,10 @@ internal class OpenID4VciCompatibilityEngine(
     /**
      * Rejects signed metadata whose signer the EU trust lists do **not** recognise.
      *
-     * Android's equivalent is
-     * `configureIssuerTrust { policy { default(ENFORCE) }; requireSignedMetadata() }`, so a definite
-     * "not trusted" is a hard failure here too.
+     * Android's equivalent is `requireSignedMetadata()` in `configureIssuerTrust`, which hands
+     * openid4vci an `IssuerMetadataPolicy.RequireSigned` over the same trust lists — outside the trust
+     * policy, so a definite "not trusted" is a hard failure there whatever the policy's default. It is
+     * typed ([IssuerNotTrustedException]) because Android shows its "issuer not trusted" sheet for it.
      *
      * ⛔ **The context is `WalletRelyingPartyAccessCertificate`, not `PID`** — metadata signing
      * certificates belong to the WRPAC list; the PID list is for the certificates that sign PID
@@ -902,7 +948,7 @@ internal class OpenID4VciCompatibilityEngine(
             TrustVerdict.TRUSTED ->
                 Logger.i(TAG, "the signer of $issuer's metadata is on the EU access-certificate list")
 
-            TrustVerdict.NOT_TRUSTED -> throw IllegalStateException(
+            TrustVerdict.NOT_TRUSTED -> throw IssuerNotTrustedException(
                 "the signer of $issuer's signed metadata is not a recognised access certificate"
             )
 

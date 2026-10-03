@@ -17,6 +17,8 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.io.bytestring.ByteString
@@ -64,6 +66,8 @@ internal class IosDeferredDocumentCompleter(
     private val httpClient: HttpClient,
     private val walletProviderBaseUrl: String,
     private val issuers: List<IosVciIssuer> = IosIssuerCatalog.issuers,
+    /** Who may sign a PID, per the EU trust lists; see [enforcePidSigners]. */
+    private val issuerTrust: IssuerTrustSource = IosEtsiTrust(),
 ) {
 
     /**
@@ -152,6 +156,11 @@ internal class IosDeferredDocumentCompleter(
         }
         if (collected == null) return DeferredCollection.AuthorizationExpired
 
+        // Checked before anything is certified, as the first issuance is: a PID from a signer the EU list
+        // does not name never reaches the store.
+        if (collected is DeferredCollection.Issued && !isTrustedIssuance(document, collected.credentials)) {
+            return DeferredCollection.IssuerNotTrusted
+        }
         when (collected) {
             is DeferredCollection.Issued -> store(document, collected.credentials)
             // Defensive, not observed: the dev issuer echoes the SAME handle (measured 2026-09-16),
@@ -181,6 +190,16 @@ internal class IosDeferredDocumentCompleter(
     }.getOrElse {
         Logger.w(TAG, "the DPoP key $alias is no longer in the secure area")
         null
+    }
+
+    /** False, logged, when [credentials] hold a PID whose signer is not a recognised PID provider. */
+    private suspend fun isTrustedIssuance(document: Document, credentials: List<String>): Boolean = try {
+        val requestedPid = document.eudiMetadata?.format?.identifier in PidFormatTypes
+        issuerTrust.enforcePidSigners(credentials, requestedPid)
+        true
+    } catch (refused: IssuerNotTrustedException) {
+        Logger.w(TAG, "not storing ${document.identifier}'s deferred credentials: ${refused.message}")
+        false
     }
 
     /** Stores the refresh token a rotating server handed back; the one presented is spent. */

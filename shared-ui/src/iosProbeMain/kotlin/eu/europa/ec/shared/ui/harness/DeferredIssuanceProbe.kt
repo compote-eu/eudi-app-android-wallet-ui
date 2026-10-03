@@ -104,6 +104,11 @@ private suspend fun runDeferredIssuanceProbe(onResult: (String) -> Unit, sdJwt: 
                 onResult("ISSUANCE FAILED: ${progress.message}")
                 null
             }
+
+            is IosIssuanceProgress.IssuerNotTrusted -> {
+                onResult("ISSUER NOT TRUSTED: ${progress.message}")
+                null
+            }
         }
     }
     if (documentId == null) return
@@ -151,6 +156,10 @@ private suspend fun runDeferredIssuanceProbe(onResult: (String) -> Unit, sdJwt: 
 
             is DeferredCollection.AuthorizationExpired -> {
                 onResult("AUTHORIZATION EXPIRED"); break
+            }
+
+            is DeferredCollection.IssuerNotTrusted -> {
+                onResult("ISSUER NOT TRUSTED: the PID's signer is not a recognised PID provider"); break
             }
 
             is DeferredCollection.Unsupported -> {

@@ -29,10 +29,13 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
+import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
+import eu.europa.ec.shared.wallet.trust.TrustVerdict
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.crypto.X509CertChain
 import org.multipaz.document.Document
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
@@ -145,6 +148,8 @@ class IosDeferredDocumentCompleterTest {
             deviceKey = pending.secureArea.getKeyInfo(pending.alias).publicKey,
             validFrom = Clock.System.now() - 1.days,
             validUntil = Clock.System.now() + 30.days,
+            // A PID is stored only with a signer chain to check, as an issuer's always carries.
+            issuerCertChain = X509CertChain(listOf(testSignerCertificate())),
         )
         return data.toByteArray().toBase64Url()
     }
@@ -161,6 +166,8 @@ class IosDeferredDocumentCompleterTest {
         tokenBody: String = """{"access_token":"the-token"}""",
         /** A token the deferred endpoint refuses with `invalid_token`, as an expired one would be. */
         refusedToken: String? = null,
+        /** Trusts every signer unless told otherwise: most cases here are about collecting, not trust. */
+        issuerTrust: IssuerTrustSource = IssuerTrustSource { _, _ -> TrustVerdict.TRUSTED },
     ): IosDeferredDocumentCompleter {
         val engine = MockEngine { request ->
             val url = request.url.toString()
@@ -199,6 +206,7 @@ class IosDeferredDocumentCompleterTest {
             httpClient = HttpClient(engine),
             walletProviderBaseUrl = "https://wallet-provider.test",
             issuers = listOf(issuer),
+            issuerTrust = issuerTrust,
         )
     }
 
@@ -226,6 +234,25 @@ class IosDeferredDocumentCompleterTest {
         // And the handle is cleared, so nothing polls for it again.
         assertNull(assertNotNull(document.eudiMetadata).deferredTransactionId)
         assertTrue(document.getPendingCredentials().isEmpty())
+    }
+
+    @Test
+    fun a_collected_pid_whose_signer_is_not_a_recognised_pid_provider_is_not_stored() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val document = store.parkWithPendingCredential()
+        val credential = issuedCredentialFor(document)
+
+        val result = completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.OK,
+            deferredBody = """{"credentials":[{"credential":"$credential"}]}""",
+            issuerTrust = { _, _ -> TrustVerdict.NOT_TRUSTED },
+        ).complete(document)
+
+        // Android's deferred `IssuerNotTrusted`: the sweep reports it failed and removes the document.
+        assertEquals(DeferredCollection.IssuerNotTrusted, result)
+        assertTrue(document.getCertifiedCredentials().isEmpty(), "nothing is certified with a refused PID")
+        assertNull(assertNotNull(document.eudiMetadata).issuedAt)
     }
 
     @Test

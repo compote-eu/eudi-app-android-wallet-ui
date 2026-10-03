@@ -32,6 +32,7 @@ import eu.europa.ec.corelogic.model.ClaimPathSegment
 import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.corelogic.model.isPid
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import eu.europa.ec.shared.wallet.document.DocumentDeletionScope
 import eu.europa.ec.shared.wallet.document.documentDeletionScope
@@ -224,6 +225,11 @@ internal class IosDocumentDetailsPlatformBridge(
                 is IosIssuanceProgress.Failure -> DocumentDetailsInteractorIssuancePartialState.Failure(
                     errorMessage = progress.message,
                 )
+
+                is IosIssuanceProgress.IssuerNotTrusted ->
+                    DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted(
+                        reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE,
+                    )
             }
         )
     }

@@ -23,6 +23,7 @@ import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.model.isPid
 import eu.europa.ec.corelogic.model.ScopedDocumentDomain
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
 import eu.europa.ec.shared.platform.PlatformContext
@@ -88,8 +89,19 @@ internal class IosAddDocumentPlatformBridge(
                 is IosIssuanceProgress.Failure ->
                     IssueDocumentsPartialState.Failure(errorMessage = progress.message)
 
+                // ACCESS_CERTIFICATE for both refusals, as Android's `toUntrustedIssuerReasonOrNull` reads
+                // an untrusted credential signer and untrusted signed metadata alike.
+                is IosIssuanceProgress.IssuerNotTrusted -> IssueDocumentsPartialState.IssuerNotTrusted(
+                    reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE,
+                )
+
                 is IosIssuanceProgress.Issued -> if (progress.failures.isEmpty()) {
                     IssueDocumentsPartialState.Success(documentIds = progress.documentIds)
+                } else if (progress.untrusted.isNotEmpty()) {
+                    IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+                        issuedDocumentIds = progress.documentIds,
+                        untrustedDocuments = progress.failures.filterKeys { it in progress.untrusted },
+                    )
                 } else {
                     // Android reaches this state when an issuer refuses some of a batch; here it is
                     // reached when the second of two configurations fails, which is the same thing from
