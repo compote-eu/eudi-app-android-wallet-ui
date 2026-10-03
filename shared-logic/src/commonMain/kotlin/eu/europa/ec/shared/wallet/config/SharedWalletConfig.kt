@@ -17,6 +17,7 @@
 package eu.europa.ec.shared.wallet.config
 
 import eu.europa.ec.businesslogic.config.AppFlavor
+import eu.europa.ec.corelogic.model.TrustMarkInformationDomain
 
 /**
  * The settings whose *meaning* is the same on both platforms, declared once.
@@ -80,6 +81,19 @@ interface SharedWalletConfig {
      * only Android knows how to talk to them.
      */
     val issuerUrls: List<String>
+
+    /**
+     * Where this wallet's Trust Mark lives. Upstream (bf514519) declares these as a default on Android's
+     * `WalletCoreConfig`: a development resource and the EC's certified-wallets pages, with a
+     * `WALLET_SOLUTION_ID` placeholder that a release replaces (GO_LIVE). A default here, unlike the other
+     * members, because it is one value for every flavour on both platforms — so they cannot drift apart.
+     */
+    val trustMarkInformation: TrustMarkInformationDomain
+        get() = TrustMarkInformationDomain(
+            resourceUrl = "https://gist.githubusercontent.com/sraptis-scy/025334375fe26177d9a7bcb60fd8a93f/raw/TrustMarkResource.json",
+            certifiedWalletsUrl = "https://eidas.ec.europa.eu/efda/wallet/certified",
+            walletSolutionUrl = "https://eidas.ec.europa.eu/efda/wallet/certified?id=WALLET_SOLUTION_ID",
+        )
 }
 
 /**

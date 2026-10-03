@@ -91,6 +91,12 @@ import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import org.koin.core.annotation.Factory
 import org.koin.core.annotation.Single
+import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkController
+import eu.europa.ec.businesslogic.controller.storage.TrustMarkIntroductionStore
+import eu.europa.ec.shared.wallet.trustmark.IosTrustMarkController
+import eu.europa.ec.shared.wallet.trustmark.IosTrustMarkIntroductionStore
+import eu.europa.ec.commonfeature.interactor.TrustMarkInteractor
+import eu.europa.ec.commonfeature.interactor.TrustMarkInteractorImpl
 
 /**
  * The iOS half of the DI graph, alongside the shared definitions in `SharedUiModule`.
@@ -370,6 +376,25 @@ fun provideIosSharedAppConfig(): SharedAppConfig = iosWalletConfig
 @Single
 fun provideIosAuthenticationConfig(): AuthenticationConfig = WalletAuthenticationConfig
 
+/** The Trust Mark, fetched from the URLs every build shares — see `SharedWalletConfig.trustMarkInformation`. */
+@Factory
+fun provideIosTrustMarkController(): WalletCoreTrustMarkController =
+    IosTrustMarkController(information = iosWalletConfig.trustMarkInformation)
+
+@Single
+fun provideIosTrustMarkIntroductionStore(): TrustMarkIntroductionStore = IosTrustMarkIntroductionStore()
+
+@Factory
+fun provideIosTrustMarkInteractor(
+    controller: WalletCoreTrustMarkController,
+    introductionStore: TrustMarkIntroductionStore,
+    strings: StringCatalog,
+): TrustMarkInteractor = TrustMarkInteractorImpl(
+    walletCoreTrustMarkController = controller,
+    introductionStore = introductionStore,
+    strings = strings,
+)
+
 /**
  * The login gate. The PIN policy is shared; what iOS brings is where the verifier lives (the Keychain) and
  * how long a wrong PIN costs (`NSUserDefaults`, since a lockout is not a secret).
@@ -430,10 +455,14 @@ fun provideIosSplashInteractor(
     quickPinInteractor: QuickPinInteractor,
     walletEngine: WalletEngine,
     appConfig: SharedAppConfig,
+    introductionStore: TrustMarkIntroductionStore,
+    strings: StringCatalog,
 ): SplashInteractor = SplashInteractorImpl(
     quickPinInteractor = quickPinInteractor,
     walletEngine = walletEngine,
     appConfig = appConfig,
+    introductionStore = introductionStore,
+    strings = strings,
 )
 
 /**

@@ -16,7 +16,9 @@
 
 package eu.europa.ec.startupfeature.di
 
+import eu.europa.ec.businesslogic.controller.storage.TrustMarkIntroductionStore
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
+import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.config.SharedAppConfig
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
@@ -38,8 +40,12 @@ fun provideSplashInteractor(
     quickPinInteractor: QuickPinInteractor,
     walletEngine: WalletEngine,
     appConfig: SharedAppConfig,
+    introductionStore: TrustMarkIntroductionStore,
+    strings: StringCatalog,
 ): SplashInteractor = SplashInteractorImpl(
     quickPinInteractor = quickPinInteractor,
     walletEngine = walletEngine,
     appConfig = appConfig,
+    introductionStore = introductionStore,
+    strings = strings,
 )

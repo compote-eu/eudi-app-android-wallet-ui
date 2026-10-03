@@ -24,6 +24,8 @@ import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkInformation
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkSource
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -117,4 +119,18 @@ interface WalletCoreConfig : SharedWalletConfig {
      * per-issuer `OpenId4VciManager.Config`; the URLs themselves are shared.
      */
     override val issuerUrls: List<String> get() = issuersConfig.map { it.issuerUrl }
+
+    /**
+     * Provides the information used to display the wallet's Trust Mark and link to its
+     * certification page and the list of certified wallets — upstream's default, built from the
+     * shared [trustMarkInformation] so iOS reads the same URLs.
+     */
+    val trustMarkSource: TrustMarkSource
+        get() = TrustMarkSource.Static(
+            information = TrustMarkInformation(
+                trustMarkResourceURL = trustMarkInformation.resourceUrl,
+                listOfCertifiedWalletsURL = trustMarkInformation.certifiedWalletsUrl,
+                walletSolutionInfoPageURL = trustMarkInformation.walletSolutionUrl,
+            )
+        )
 }

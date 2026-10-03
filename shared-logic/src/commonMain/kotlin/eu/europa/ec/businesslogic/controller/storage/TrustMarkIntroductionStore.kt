@@ -14,17 +14,12 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.dashboardfeature.ui.dashboard.model
+// Whether the Trust Mark welcome has been completed — upstream bf514519 keeps it in Android's `PrefKeys`.
+// Shared so the splash and the Trust Mark screen, both shared, can ask it on either platform. The method
+// names are upstream's, so Android's `PrefKeys` answers it as it is.
+package eu.europa.ec.businesslogic.controller.storage
 
-import eu.europa.ec.uilogic.component.ListItemDataUi
-
-data class SideMenuItemUi(
-    val type: SideMenuTypeUi,
-    val data: ListItemDataUi,
-)
-
-enum class SideMenuTypeUi(val itemId: String) {
-    CHANGE_PIN("changePinId"),
-    SETTINGS("settingsId"),
-    ABOUT("aboutId"),
+interface TrustMarkIntroductionStore {
+    suspend fun getTrustMarkIntroductionCompleted(): Boolean
+    suspend fun setTrustMarkIntroductionCompleted(value: Boolean)
 }

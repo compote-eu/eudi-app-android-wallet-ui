@@ -28,7 +28,9 @@ package eu.europa.ec.startupfeature.ui.splash
 import androidx.lifecycle.viewModelScope
 import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
+import eu.europa.ec.startupfeature.interactor.SplashRoutePartialState
 import eu.europa.ec.uilogic.mvi.MviViewModel
+import eu.europa.ec.uilogic.mvi.ViewEvent
 import eu.europa.ec.uilogic.mvi.ViewSideEffect
 import eu.europa.ec.uilogic.mvi.ViewState
 import kotlinx.coroutines.delay
@@ -36,20 +38,33 @@ import kotlinx.coroutines.launch
 import org.koin.core.annotation.KoinViewModel
 
 data class State(
-    val logoAnimationDuration: Int = 1500
+    val logoAnimationDuration: Int = 1500,
+    val isLoading: Boolean = false,
+    val error: String? = null,
 ) : ViewState
+
+/**
+ * Only the error screen's two buttons (upstream bf514519). There is still no `Initialize`: entering the
+ * application stays in `init` (see there), and an event that could start it a second time is exactly
+ * what the old double-navigation bug was.
+ */
+sealed class Event : ViewEvent {
+    data object Retry : Event()
+    data object Cancel : Event()
+}
 
 sealed class Effect : ViewSideEffect {
 
     sealed class Navigation : Effect() {
         data class SwitchScreen(val route: AppRoute) : Navigation()
+        data object Finish : Navigation()
     }
 }
 
 @KoinViewModel
 class SplashViewModel(
     private val interactor: SplashInteractor,
-) : MviViewModel<Nothing, State, Effect>() {
+) : MviViewModel<Event, State, Effect>() {
 
     init {
         // Must be tied to the ViewModel's lifetime, not the composition's. This is the only thing
@@ -57,27 +72,45 @@ class SplashViewModel(
         // `OneTimeLaunchedEffect`, whose "already ran" flag is `rememberSaveable` — so if the
         // process died while the splash was showing, the restored flag suppressed the event and the
         // app hung on the splash forever.
-        enterApplication()
+        enterApplication(animateLogo = true)
     }
 
     override fun setInitialState(): State = State()
 
-    /**
-     * The splash screen has no interactions — it shows a logo and leaves. Since the move to `init`
-     * above, an event could only re-run [enterApplication] and navigate twice, which is exactly the
-     * bug the stale test caught, so the event type is [Nothing]: `setEvent` now takes an argument no
-     * caller can construct, making "there are no events" a compile-time guarantee instead of a
-     * convention. If the splash ever does need one (skipping the animation, say), declare a
-     * `sealed class Event : ViewEvent` and widen this type argument back.
-     */
-    override fun handleEvents(event: Nothing) = Unit
+    override fun handleEvents(event: Event) {
+        when (event) {
+            is Event.Retry -> enterApplication(animateLogo = false)
+            is Event.Cancel -> setEffect { Effect.Navigation.Finish }
+        }
+    }
 
-    private fun enterApplication() {
+    private fun enterApplication(animateLogo: Boolean) {
+        if (viewState.value.isLoading) return
+
+        setState {
+            copy(
+                isLoading = true,
+                error = null
+            )
+        }
         viewModelScope.launch {
-            delay((viewState.value.logoAnimationDuration + 500).toLong())
-            val route = interactor.getAfterSplashRoute()
-            setEffect {
-                Effect.Navigation.SwitchScreen(route)
+            if (animateLogo) {
+                delay((viewState.value.logoAnimationDuration + 500).toLong())
+            }
+
+            when (val result = interactor.getAfterSplashRoute()) {
+                is SplashRoutePartialState.Success -> {
+                    setEffect { Effect.Navigation.SwitchScreen(result.route) }
+                }
+
+                is SplashRoutePartialState.Failure -> {
+                    setState {
+                        copy(
+                            isLoading = false,
+                            error = result.error
+                        )
+                    }
+                }
             }
         }
     }

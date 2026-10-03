@@ -19,11 +19,15 @@
 // through ResourceProvider and reads ConfigLogic/QuickPinInteractor.
 package eu.europa.ec.startupfeature.interactor
 
+import eu.europa.ec.businesslogic.controller.storage.TrustMarkIntroductionStore
+import eu.europa.ec.businesslogic.extension.ioDispatcher
 import eu.europa.ec.commonfeature.config.BiometricMode
 import eu.europa.ec.commonfeature.config.BiometricUiConfig
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
+import eu.europa.ec.commonfeature.config.TrustMarkMode
+import eu.europa.ec.commonfeature.config.TrustMarkUiConfig
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.shared.navigation.AddDocumentRoute
@@ -31,6 +35,7 @@ import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.BiometricRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
+import eu.europa.ec.shared.navigation.TrustMarkRoute
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.uilogic.config.ConfigNavigation
@@ -39,7 +44,10 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.biometric_login_biometrics_enabled_subtitle
 import eu.europa.ec.shared.resources.biometric_login_biometrics_not_enabled_subtitle
 import eu.europa.ec.shared.resources.biometric_login_title
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.wallet.config.SharedAppConfig
+import kotlinx.coroutines.withContext
 
 /**
  * Where the app goes after the splash: to create a PIN, or to unlock with the one it has.
@@ -61,6 +69,8 @@ class SplashInteractorImpl(
      * different seams.
      */
     private val appConfig: SharedAppConfig,
+    private val introductionStore: TrustMarkIntroductionStore,
+    private val strings: StringCatalog,
 ) : SplashInteractor {
 
     private suspend fun hasDocuments(): Boolean =
@@ -69,15 +79,33 @@ class SplashInteractorImpl(
     private suspend fun shouldActivateWithPid(): Boolean =
         appConfig.forcePidActivation && !hasDocuments()
 
-    override suspend fun getAfterSplashRoute(): AppRoute = when (quickPinInteractor.hasPin()) {
-        true -> {
-            getBiometricsConfig()
+    /**
+     * Until the Trust Mark introduction is completed, the welcome comes first and carries the PIN or
+     * unlock route on as its continuation (upstream bf514519). Upstream's failure for a configuration
+     * that does not serialize has no counterpart: the route is typed, not a base64 argument.
+     */
+    override suspend fun getAfterSplashRoute(): SplashRoutePartialState =
+        withContext(ioDispatcher) {
+            runCatching<SplashRoutePartialState> {
+                val continuationRoute = if (quickPinInteractor.hasPin()) {
+                    getBiometricsConfig()
+                } else {
+                    getQuickPinConfig()
+                }
+                val route = if (introductionStore.getTrustMarkIntroductionCompleted()) {
+                    continuationRoute
+                } else {
+                    TrustMarkRoute(
+                        config = TrustMarkUiConfig(
+                            mode = TrustMarkMode.Welcome(continuationRoute = continuationRoute)
+                        )
+                    )
+                }
+                SplashRoutePartialState.Success(route = route)
+            }.getOrElse {
+                SplashRoutePartialState.Failure(error = strings[Res.string.generic_error_message])
+            }
         }
-
-        false -> {
-            getQuickPinConfig()
-        }
-    }
 
     private suspend fun getQuickPinConfig(): AppRoute {
         return QuickPinRoute(

@@ -14,17 +14,13 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.dashboardfeature.ui.dashboard.model
+// The contract of upstream bf514519's controller, shared: Android implements it over wallet-core's
+// `trustMarkManager` (`WalletCoreTrustMarkControllerImpl`), iOS by fetching the resource itself
+// (`IosTrustMarkController`).
+package eu.europa.ec.corelogic.controller
 
-import eu.europa.ec.uilogic.component.ListItemDataUi
+import eu.europa.ec.corelogic.model.TrustMarkDomain
 
-data class SideMenuItemUi(
-    val type: SideMenuTypeUi,
-    val data: ListItemDataUi,
-)
-
-enum class SideMenuTypeUi(val itemId: String) {
-    CHANGE_PIN("changePinId"),
-    SETTINGS("settingsId"),
-    ABOUT("aboutId"),
+interface WalletCoreTrustMarkController {
+    suspend fun getTrustMark(): Result<TrustMarkDomain>
 }

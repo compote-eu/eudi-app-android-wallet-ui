@@ -25,6 +25,8 @@ import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
+import eu.europa.ec.commonfeature.config.TrustMarkMode
+import eu.europa.ec.commonfeature.config.TrustMarkUiConfig
 import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
@@ -269,6 +271,61 @@ class AppRouteTest {
             UiText.Resource(Res.string.biometric_login_title),
             assertIs<BiometricMode.Login>(restored.config.mode).title,
         )
+    }
+
+    /**
+     * Upstream bf514519's `TestTrustMarkUiConfig` cases 1 and 2, on the typed route: the welcome keeps its
+     * whole continuation (a config-carrying route), and About comes back without any welcome state.
+     */
+    @Test
+    fun the_trust_mark_welcome_round_trips_its_continuation() {
+        val route = TrustMarkRoute(
+            TrustMarkUiConfig(
+                mode = TrustMarkMode.Welcome(
+                    continuationRoute = BiometricRoute(
+                        BiometricUiConfig(
+                            mode = BiometricMode.Login(
+                                title = UiText.Resource(Res.string.biometric_login_title),
+                                subTitleWhenBiometricsEnabled = UiText.Resource(
+                                    Res.string.biometric_login_biometrics_enabled_subtitle
+                                ),
+                                subTitleWhenBiometricsNotEnabled = UiText.Resource(
+                                    Res.string.biometric_login_biometrics_not_enabled_subtitle
+                                ),
+                            ),
+                            isPreAuthorization = true,
+                            shouldInitializeBiometricAuthOnCreate = true,
+                            onSuccessNavigation = ConfigNavigation(NavigationType.PushRoute(DashboardRoute)),
+                            onBackNavigationConfig = OnBackNavigationConfig(
+                                onBackNavigation = ConfigNavigation(NavigationType.Finish),
+                                hasToolbarBackIcon = false,
+                            ),
+                        )
+                    )
+                )
+            )
+        )
+
+        val restored = Json.decodeFromString(
+            TrustMarkRoute.serializer(),
+            Json.encodeToString(TrustMarkRoute.serializer(), route),
+        )
+
+        assertEquals(route, restored)
+        assertIs<BiometricRoute>(assertIs<TrustMarkMode.Welcome>(restored.config.mode).continuationRoute)
+    }
+
+    @Test
+    fun the_trust_mark_about_round_trips_without_a_welcome() {
+        val route = TrustMarkRoute(TrustMarkUiConfig(mode = TrustMarkMode.About))
+
+        val restored = Json.decodeFromString(
+            TrustMarkRoute.serializer(),
+            Json.encodeToString(TrustMarkRoute.serializer(), route),
+        )
+
+        assertEquals(route, restored)
+        assertEquals("TRUST_MARK", restored.analyticsName)
     }
 
     @Test

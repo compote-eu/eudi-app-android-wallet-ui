@@ -22,6 +22,11 @@ package eu.europa.ec.startupfeature.interactor
 
 import eu.europa.ec.shared.navigation.AppRoute
 
+sealed interface SplashRoutePartialState {
+    data class Success(val route: AppRoute) : SplashRoutePartialState
+    data class Failure(val error: String) : SplashRoutePartialState
+}
+
 interface SplashInteractor {
-    suspend fun getAfterSplashRoute(): AppRoute
+    suspend fun getAfterSplashRoute(): SplashRoutePartialState
 }

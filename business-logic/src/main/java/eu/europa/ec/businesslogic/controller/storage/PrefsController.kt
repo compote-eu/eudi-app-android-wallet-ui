@@ -178,7 +178,8 @@ class PrefsControllerImpl(
     }
 }
 
-interface PrefKeys {
+/** Also the shared [TrustMarkIntroductionStore]: its two members are declared there, with upstream's names. */
+interface PrefKeys : TrustMarkIntroductionStore {
     suspend fun getShowBatchIssuanceCounter(): Boolean
     suspend fun setShowBatchIssuanceCounter(value: Boolean)
 
@@ -236,5 +237,13 @@ class PrefKeysImpl(
     override suspend fun getDbKey(): ByteArray? {
         val encoded = prefsController.getString("dbKey", "").ifBlank { return null }
         return encoded.decodeFromBase64(flags = Base64.NO_WRAP)
+    }
+
+    override suspend fun getTrustMarkIntroductionCompleted(): Boolean {
+        return prefsController.getBool("TrustMarkIntroductionCompleted", false)
+    }
+
+    override suspend fun setTrustMarkIntroductionCompleted(value: Boolean) {
+        prefsController.setBool("TrustMarkIntroductionCompleted", value)
     }
 }

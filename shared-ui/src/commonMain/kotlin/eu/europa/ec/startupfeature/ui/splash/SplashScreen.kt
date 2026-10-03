@@ -49,7 +49,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.content_description_logo_icon
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.ic_logo_icon
+import eu.europa.ec.uilogic.component.content.ContentErrorConfig
+import eu.europa.ec.uilogic.component.content.ContentScreen
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
 import eu.europa.ec.uilogic.navigation.helper.navigateReplacingCurrent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
@@ -63,13 +67,17 @@ fun SplashScreen(
     viewModel: SplashViewModel
 ) {
     val state: State by viewModel.viewState.collectAsStateWithLifecycle()
+    val platformActions = rememberPlatformScreenActions()
+
     Content(
         state = state,
         effectFlow = viewModel.effect,
-        onNavigationRequested = {
-            when (it) {
+        onEventSend = viewModel::setEvent,
+        onNavigationRequested = { navigationEffect ->
+            when (navigationEffect) {
+                is Effect.Navigation.Finish -> platformActions.finishApp()
                 is Effect.Navigation.SwitchScreen -> {
-                    navigator.navigateReplacingCurrent(it.route)
+                    navigator.navigateReplacingCurrent(navigationEffect.route)
                 }
             }
         }
@@ -81,6 +89,7 @@ fun SplashScreen(
 private fun Content(
     state: State,
     effectFlow: Flow<Effect>,
+    onEventSend: (Event) -> Unit,
     onNavigationRequested: (navigationEffect: Effect.Navigation) -> Unit
 ) {
     val visibilityState = remember {
@@ -88,28 +97,38 @@ private fun Content(
             targetState = true
         }
     }
-    Scaffold { paddingValues ->
-        Box(
-            Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.surface),
-            contentAlignment = Alignment.Center
-        ) {
-            AnimatedVisibility(
-                visibleState = visibilityState,
-                enter = fadeIn(animationSpec = tween(state.logoAnimationDuration)),
-                exit = fadeOut(animationSpec = tween(state.logoAnimationDuration)),
+    if (state.error != null) {
+        ContentScreen(
+            contentErrorConfig = ContentErrorConfig(
+                errorSubTitle = state.error.asUiText(),
+                onCancel = { onEventSend(Event.Cancel) },
+                onRetry = { onEventSend(Event.Retry) },
+            )
+        ) { }
+    } else {
+        Scaffold { paddingValues ->
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
             ) {
-                // Straight from compose-resources rather than through `AppIcons`/`WrapImage`: the
-                // icon system still resolves keys to Android `R.drawable` ids in :ui-logic, so it
-                // cannot serve a shared screen yet. Migrating that corpus (53 vector XMLs, which
-                // compose-resources can consume as-is) is its own piece of work; this screen was the
-                // only consumer of `AppIcons.LogoIcon`.
-                Image(
-                    painter = painterResource(Res.drawable.ic_logo_icon),
-                    contentDescription = stringResource(Res.string.content_description_logo_icon),
-                )
+                AnimatedVisibility(
+                    visibleState = visibilityState,
+                    enter = fadeIn(animationSpec = tween(state.logoAnimationDuration)),
+                    exit = fadeOut(animationSpec = tween(state.logoAnimationDuration)),
+                ) {
+                    // Straight from compose-resources rather than through `AppIcons`/`WrapImage`: the
+                    // icon system still resolves keys to Android `R.drawable` ids in :ui-logic, so it
+                    // cannot serve a shared screen yet. Migrating that corpus (53 vector XMLs, which
+                    // compose-resources can consume as-is) is its own piece of work; this screen was the
+                    // only consumer of `AppIcons.LogoIcon`.
+                    Image(
+                        painter = painterResource(Res.drawable.ic_logo_icon),
+                        contentDescription = stringResource(Res.string.content_description_logo_icon),
+                    )
+                }
             }
         }
     }

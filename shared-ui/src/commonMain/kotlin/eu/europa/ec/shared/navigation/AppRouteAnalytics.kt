@@ -39,6 +39,7 @@ val AppRoute.analyticsName: String
         is SuccessRoute -> "SUCCESS"
         is BiometricRoute -> "BIOMETRIC"
         is QuickPinRoute -> "QUICK_PIN"
+        is TrustMarkRoute -> "TRUST_MARK"
         is QrScanRoute -> "QR_SCAN"
 
         is PresentationRequestRoute -> "PRESENTATION_REQUEST"
@@ -79,7 +80,7 @@ val AppRoute.analyticsParams: Map<String, String>
         is ProximitySuccessRoute -> mapOf("scopeId" to scopeId)
 
         SplashRoute, DashboardRoute, SettingsRoute, DocumentSignRoute,
-        is SuccessRoute, is BiometricRoute, is QrScanRoute,
+        is SuccessRoute, is BiometricRoute, is QrScanRoute, is TrustMarkRoute,
         is PresentationRequestRoute, is ProximityQrRoute,
         is AddDocumentRoute, is DocumentOfferRoute, is DocumentOfferCodeRoute,
         is DocumentIssuanceSuccessRoute,

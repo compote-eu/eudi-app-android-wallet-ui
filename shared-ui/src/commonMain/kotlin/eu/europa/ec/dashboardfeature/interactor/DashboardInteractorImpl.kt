@@ -22,6 +22,7 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog
 import eu.europa.ec.shared.resources.dashboard_side_menu_option_change_pin
 import eu.europa.ec.shared.resources.dashboard_side_menu_option_settings
+import eu.europa.ec.shared.resources.trust_mark_about_title
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
@@ -69,6 +70,24 @@ class DashboardInteractorImpl(
                             iconData = AppIcons.KeyboardArrowRight
                         )
                     )
+                )
+            )
+
+            add(
+                SideMenuItemUi(
+                    type = SideMenuTypeUi.ABOUT,
+                    data = ListItemDataUi(
+                        itemId = SideMenuTypeUi.ABOUT.itemId,
+                        mainContentData = ListItemMainContentDataUi.Text(
+                            text = strings.get(Res.string.trust_mark_about_title)
+                        ),
+                        leadingContentData = ListItemLeadingContentDataUi.Icon(
+                            iconData = AppIcons.Info
+                        ),
+                        trailingContentData = ListItemTrailingContentDataUi.Icon(
+                            iconData = AppIcons.KeyboardArrowRight
+                        ),
+                    ),
                 )
             )
         }

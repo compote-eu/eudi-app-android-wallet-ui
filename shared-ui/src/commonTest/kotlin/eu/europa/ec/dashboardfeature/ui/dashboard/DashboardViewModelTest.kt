@@ -21,6 +21,8 @@
 package eu.europa.ec.dashboardfeature.ui.dashboard
 
 import eu.europa.ec.commonfeature.config.PresentationMode
+import eu.europa.ec.commonfeature.config.TrustMarkMode
+import eu.europa.ec.commonfeature.config.TrustMarkUiConfig
 import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
@@ -32,6 +34,7 @@ import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.navigation.SettingsRoute
+import eu.europa.ec.shared.navigation.TrustMarkRoute
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.config.NavigationType
@@ -163,6 +166,20 @@ class DashboardViewModelTest {
         assertEquals(SideMenuAnimation.FADE, viewModel.viewState.value.sideMenuAnimation)
         val switch = assertIs<Effect.Navigation.SwitchScreen>(effects.single())
         assertEquals(SettingsRoute, switch.route)
+    }
+
+    @Test
+    fun choosing_about_fades_the_menu_away_and_opens_the_trust_mark() = runTest(mainDispatcher) {
+        val viewModel = viewModel()
+
+        val (effects, job) = collectEffects(viewModel)
+        viewModel.setEvent(Event.SideMenu.ItemClicked(SideMenuTypeUi.ABOUT))
+        advanceUntilIdle()
+        job.cancel()
+
+        assertEquals(SideMenuAnimation.FADE, viewModel.viewState.value.sideMenuAnimation)
+        val switch = assertIs<Effect.Navigation.SwitchScreen>(effects.single())
+        assertEquals(TrustMarkRoute(TrustMarkUiConfig(mode = TrustMarkMode.About)), switch.route)
     }
 
     //endregion

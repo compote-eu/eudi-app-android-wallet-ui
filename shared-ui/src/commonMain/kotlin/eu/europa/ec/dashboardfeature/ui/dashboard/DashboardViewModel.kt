@@ -19,6 +19,8 @@ package eu.europa.ec.dashboardfeature.ui.dashboard
 import eu.europa.ec.commonfeature.config.OfferUiConfig
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.RequestUriConfig
+import eu.europa.ec.commonfeature.config.TrustMarkMode
+import eu.europa.ec.commonfeature.config.TrustMarkUiConfig
 import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.corelogic.model.RevokedDocumentDataDomain
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
@@ -31,6 +33,7 @@ import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.shared.navigation.SettingsRoute
+import eu.europa.ec.shared.navigation.TrustMarkRoute
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.dashboard_side_menu_title
@@ -260,6 +263,15 @@ class DashboardViewModel(
             SideMenuTypeUi.SETTINGS -> {
                 hideSideMenu()
                 setEffect { Effect.Navigation.SwitchScreen(route = SettingsRoute) }
+            }
+
+            SideMenuTypeUi.ABOUT -> {
+                val nextRoute = TrustMarkRoute(
+                    config = TrustMarkUiConfig(mode = TrustMarkMode.About)
+                )
+
+                hideSideMenu()
+                setEffect { Effect.Navigation.SwitchScreen(route = nextRoute) }
             }
         }
     }

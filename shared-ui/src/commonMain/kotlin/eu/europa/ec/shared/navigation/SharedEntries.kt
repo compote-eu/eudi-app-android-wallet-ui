@@ -24,6 +24,7 @@ import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessScreen
 import eu.europa.ec.commonfeature.ui.pin.PinScreen
 import eu.europa.ec.commonfeature.ui.qr_scan.QrScanScreen
 import eu.europa.ec.commonfeature.ui.success.SuccessScreen
+import eu.europa.ec.commonfeature.ui.trustmark.TrustMarkScreen
 import eu.europa.ec.dashboardfeature.ui.dashboard.DashboardScreen
 import eu.europa.ec.dashboardfeature.ui.document_sign.DocumentSignScreen
 import eu.europa.ec.dashboardfeature.ui.documents.detail.DocumentDetailsScreen
@@ -50,7 +51,7 @@ import eu.europa.ec.dashboardfeature.ui.transactions.history.TransactionHistoryS
 /**
  * Every destination in the app, bound once for both platforms.
  *
- * These 21 entries used to be written twice — six `router/Entries.kt` files in the Android feature
+ * Twenty-one of these entries used to be written twice — six `router/Entries.kt` files in the Android feature
  * modules and one block inside `IosAppRoot` — even though they call the same screens from commonMain.
  * Two things kept them apart, and both are gone:
  *
@@ -94,6 +95,10 @@ fun EntryProviderScope<NavKey>.sharedAppEntries(navigator: AppNavigator) {
                 }
             },
         )
+    }
+
+    entry<TrustMarkRoute> { route ->
+        TrustMarkScreen(navigator, koinViewModel { parametersOf(route.config) })
     }
 
     entry<SuccessRoute> { route ->

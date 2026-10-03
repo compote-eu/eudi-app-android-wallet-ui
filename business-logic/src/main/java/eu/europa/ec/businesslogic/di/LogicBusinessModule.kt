@@ -31,6 +31,7 @@ import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.controller.storage.PrefKeysImpl
 import eu.europa.ec.businesslogic.controller.storage.PrefsController
 import eu.europa.ec.businesslogic.controller.storage.PrefsControllerImpl
+import eu.europa.ec.businesslogic.controller.storage.TrustMarkIntroductionStore
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.provider.UuidProviderImpl
 import eu.europa.ec.businesslogic.validator.FilterValidator
@@ -85,7 +86,7 @@ fun provideLogController(context: Context): LogController =
 fun providePrefsController(resourceProvider: ResourceProvider): PrefsController =
     PrefsControllerImpl(resourceProvider)
 
-@Single
+@Single(binds = [TrustMarkIntroductionStore::class])
 fun providePrefKeys(prefsController: PrefsController): PrefKeys =
     PrefKeysImpl(prefsController)
 

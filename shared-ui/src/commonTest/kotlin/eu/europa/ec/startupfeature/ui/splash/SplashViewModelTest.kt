@@ -21,6 +21,7 @@ import eu.europa.ec.shared.navigation.AppRoute
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.QuickPinRoute
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
+import eu.europa.ec.startupfeature.interactor.SplashRoutePartialState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -29,12 +30,14 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /**
  * Phase 3b: the first *view-model* test that runs on both platforms — the point of moving the VM to
@@ -46,9 +49,10 @@ import kotlin.test.assertEquals
  * so that a process death on the splash screen cannot leave the app stranded there (the `Event.Init`
  * that used to drive it came from an `OneTimeLaunchedEffect` whose "already ran" flag is
  * `rememberSaveable`). An earlier version of these tests still sent the by-then-emitterless
- * `Event.Initialize`, which ran the flow a second time and made `invocations` come back as 2. The
- * event type is now `Nothing`, so that mistake is no longer expressible — `assertEquals(1, …)` below
- * is a real check that construction starts the flow exactly once.
+ * `Event.Initialize`, which ran the flow a second time and made `invocations` come back as 2. There is
+ * still no such event — the only ones are the error screen's Retry and Cancel (upstream bf514519), and a
+ * Retry while the first resolution is under way is ignored — so `assertEquals(1, …)` below is a real
+ * check that construction starts the flow exactly once.
  *
  * `Dispatchers.setMain` is required because `viewModelScope` dispatches on Main; the test dispatcher
  * is shared with `runTest` so the VM's `delay` runs on the same virtual clock (the same wiring the
@@ -57,13 +61,16 @@ import kotlin.test.assertEquals
 @OptIn(ExperimentalCoroutinesApi::class) // UnconfinedTestDispatcher, setMain, advanceTimeBy/UntilIdle
 class SplashViewModelTest {
 
-    private class FakeSplashInteractor(private val route: AppRoute) : SplashInteractor {
+    /** Answers [results] in order, then keeps answering the last one. */
+    private class FakeSplashInteractor(private vararg val results: SplashRoutePartialState) : SplashInteractor {
+        constructor(route: AppRoute) : this(SplashRoutePartialState.Success(route))
+
         var invocations = 0
             private set
 
-        override suspend fun getAfterSplashRoute(): AppRoute {
+        override suspend fun getAfterSplashRoute(): SplashRoutePartialState {
             invocations++
-            return route
+            return results[minOf(invocations, results.size) - 1]
         }
     }
 
@@ -82,7 +89,8 @@ class SplashViewModelTest {
     @Test
     fun initial_state_carries_the_logo_animation_duration() {
         val viewModel = SplashViewModel(FakeSplashInteractor(DashboardRoute))
-        assertEquals(State(), viewModel.viewState.value)
+        // Loading already: construction is what starts the resolution.
+        assertEquals(State(isLoading = true), viewModel.viewState.value)
     }
 
     @Test
@@ -120,5 +128,53 @@ class SplashViewModelTest {
             advanceUntilIdle()
 
             assertEquals(Effect.Navigation.SwitchScreen(route), effect.await())
+        }
+
+    @Test
+    fun a_failure_shows_its_error_and_retry_resolves_again_without_the_logo_delay() =
+        runTest(mainDispatcher) {
+            val interactor = FakeSplashInteractor(
+                SplashRoutePartialState.Failure(error = "Something went wrong"),
+                SplashRoutePartialState.Success(DashboardRoute),
+            )
+            val viewModel = SplashViewModel(interactor)
+            advanceUntilIdle()
+
+            assertEquals("Something went wrong", viewModel.viewState.value.error)
+            assertEquals(false, viewModel.viewState.value.isLoading)
+
+            val effect = async { viewModel.effect.first() }
+            viewModel.setEvent(Event.Retry)
+            runCurrent()
+
+            assertEquals(2, interactor.invocations)
+            assertEquals(Effect.Navigation.SwitchScreen(DashboardRoute), effect.await())
+            assertNull(viewModel.viewState.value.error)
+        }
+
+    @Test
+    fun a_retry_while_the_route_is_still_resolving_is_ignored() =
+        runTest(mainDispatcher) {
+            val interactor = FakeSplashInteractor(DashboardRoute)
+            val viewModel = SplashViewModel(interactor)
+
+            viewModel.setEvent(Event.Retry)
+            advanceUntilIdle()
+
+            assertEquals(1, interactor.invocations)
+        }
+
+    @Test
+    fun cancel_asks_to_leave_the_app() =
+        runTest(mainDispatcher) {
+            val viewModel = SplashViewModel(
+                FakeSplashInteractor(SplashRoutePartialState.Failure(error = "Something went wrong"))
+            )
+            advanceUntilIdle()
+            val effect = async { viewModel.effect.first() }
+
+            viewModel.setEvent(Event.Cancel)
+
+            assertEquals(Effect.Navigation.Finish, effect.await())
         }
 }

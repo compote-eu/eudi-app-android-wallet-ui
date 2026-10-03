@@ -25,6 +25,7 @@ import eu.europa.ec.commonfeature.config.OfferUiConfig
 import eu.europa.ec.commonfeature.config.QrScanUiConfig
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
+import eu.europa.ec.commonfeature.config.TrustMarkUiConfig
 import eu.europa.ec.commonfeature.model.PinFlow
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDataProtectionAction
 import kotlinx.serialization.SerialName
@@ -106,6 +107,11 @@ data class BiometricRoute(val config: BiometricUiConfig) : AppRoute
 @Serializable
 @SerialName("QuickPin")
 data class QuickPinRoute(val pinFlow: PinFlow) : AppRoute
+
+/** The wallet's Trust Mark: the one-off welcome after the splash, or "About EUDI Wallet". */
+@Serializable
+@SerialName("TrustMark")
+data class TrustMarkRoute(val config: TrustMarkUiConfig) : AppRoute
 
 @Serializable
 @SerialName("QrScan")
