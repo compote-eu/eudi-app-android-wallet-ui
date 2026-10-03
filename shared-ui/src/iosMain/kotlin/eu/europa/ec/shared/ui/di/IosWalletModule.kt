@@ -119,7 +119,13 @@ fun provideIosWalletEngineImpl(): IosWalletEngine = IosWalletEngine()
 @Single
 fun provideIosWalletEngine(engine: IosWalletEngine): WalletEngine = engine
 
-@Single
+/**
+ * One per list, as Android's `@Factory`: a validator holds one list, one set of filter groups and one
+ * result stream. As a single instance it served the Documents and History tabs at once, so each tab's
+ * reload reached the other — History turned the documents into an empty list and said "No transactions
+ * found" until its own next load.
+ */
+@Factory
 fun provideIosFilterValidator(): FilterValidator = FilterValidatorImpl()
 
 @Single
