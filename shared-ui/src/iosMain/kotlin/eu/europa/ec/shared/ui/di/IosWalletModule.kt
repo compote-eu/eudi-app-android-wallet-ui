@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.businesslogic.provider.UuidProviderImpl
 import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOffer
 import eu.europa.ec.shared.wallet.multipaz.IosIssuerRegistrationChecker
@@ -34,6 +35,8 @@ import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
@@ -162,12 +165,24 @@ fun provideIosDocumentDetailsInteractor(
 internal fun provideIosTransactionDetailsInteractor(
     platform: TransactionsPlatformBridge,
     strings: StringCatalog,
-): TransactionDetailsInteractor = TransactionDetailsInteractorImpl(platform = platform, strings = strings)
+): TransactionDetailsInteractor = TransactionDetailsInteractorImpl(
+    platform = platform,
+    strings = strings,
+    // Not a Koin binding on iOS: nothing else there needs one, and this has no state to share.
+    uuidProvider = UuidProviderImpl(),
+)
+
+@Factory
+internal fun provideIosTransactionHistoryInteractor(
+    platform: TransactionsPlatformBridge,
+    strings: StringCatalog,
+): TransactionHistoryInteractor = TransactionHistoryInteractorImpl(platform = platform, strings = strings)
 
 @Single
 internal fun provideIosTransactionsPlatformBridge(
     engine: IosWalletEngine,
-): TransactionsPlatformBridge = IosTransactionsPlatformBridge(engine = engine)
+    strings: StringCatalog,
+): TransactionsPlatformBridge = IosTransactionsPlatformBridge(engine = engine, strings = strings)
 
 @Factory
 fun provideIosTransactionsInteractor(

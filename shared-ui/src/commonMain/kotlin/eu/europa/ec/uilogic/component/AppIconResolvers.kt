@@ -30,6 +30,9 @@ import eu.europa.ec.shared.resources.content_description_add_document_from_list_
 import eu.europa.ec.shared.resources.content_description_add_document_from_qr_icon
 import eu.europa.ec.shared.resources.content_description_add_icon
 import eu.europa.ec.shared.resources.content_description_arrow_back_icon
+import eu.europa.ec.shared.resources.content_description_call_icon
+import eu.europa.ec.shared.resources.content_description_email_icon
+import eu.europa.ec.shared.resources.content_description_link_icon
 import eu.europa.ec.shared.resources.content_description_arrow_down_icon
 import eu.europa.ec.shared.resources.content_description_arrow_right_icon
 import eu.europa.ec.shared.resources.content_description_arrow_up_icon
@@ -92,6 +95,9 @@ import org.jetbrains.compose.resources.StringResource
 val AppIconKey.contentDescriptionRes: StringResource
     get() = when (this) {
         AppIconKey.ArrowBack -> Res.string.content_description_arrow_back_icon
+        AppIconKey.Call -> Res.string.content_description_call_icon
+        AppIconKey.Email -> Res.string.content_description_email_icon
+        AppIconKey.Link -> Res.string.content_description_link_icon
         AppIconKey.Close -> Res.string.content_description_close_icon
         AppIconKey.VerticalMore -> Res.string.content_description_more_vert_icon
         AppIconKey.Warning -> Res.string.content_description_warning_icon

@@ -15,7 +15,7 @@
  */
 
 // TransactionDetailsViewModel touches no platform handle at all, so every branch is covered here and
-// runs on both targets. Upstream (7a47e46a) has no view-model tests for it.
+// runs on both targets. Upstream (7a47e46a, 23b98be0) has no view-model tests for it.
 //
 // It loads from its `init` (not from an Init event), which is the process-death fix described in
 // HomeViewModel — but the `Event.Init` branch stays reachable because the error card's `onRetry`
@@ -23,9 +23,17 @@
 // silently break retry.
 package eu.europa.ec.dashboardfeature.ui.transactions.detail
 
+import eu.europa.ec.corelogic.controller.RecordTransactionPartialState
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorDataDeletionPartialState
+import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorDataProtectionPartialState
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorDeleteTransactionPartialState
+import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorDpaReportPartialState
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorPartialState
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PendingTransactionActionUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PresentationActionCountsUiState
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionContactUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDataProtectionAction
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsBodyUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsCardUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsFieldUi
@@ -33,6 +41,9 @@ import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDet
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsMetadataUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsSectionUi
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
+import eu.europa.ec.shared.navigation.DataDeletionRequestRoute
+import eu.europa.ec.shared.navigation.DpaReportRoute
+import eu.europa.ec.shared.navigation.TransactionHistoryRoute
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -42,7 +53,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -84,6 +97,35 @@ class TransactionDetailsViewModelTest {
             deletedIds += transactionId
             emit(deleteOutcome)
         }
+
+        /** What the action-count stream emits; each subscription is counted. */
+        var counts: Flow<PresentationActionCountsUiState> =
+            flowOf(PresentationActionCountsUiState.Content(dataDeletionRequests = 0, dpaReports = 0))
+        var countSubscriptions: Int = 0
+            private set
+
+        override fun observePresentationActionCounts(
+            presentationId: String,
+        ): Flow<PresentationActionCountsUiState> = flow {
+            countSubscriptions++
+            emitAll(counts)
+        }
+
+        // The action screens' own calls; this view model never makes them.
+        override fun getDataDeletionRequest(transactionId: String) =
+            flowOf(TransactionDetailsInteractorDataDeletionPartialState.Failure("not used here"))
+
+        override fun getDpaReport(transactionId: String) =
+            flowOf(TransactionDetailsInteractorDpaReportPartialState.Failure("not used here"))
+
+        override fun prepareDataProtectionAction(
+            transactionId: String,
+            action: TransactionDataProtectionAction,
+            contactUrl: String,
+        ) = flowOf(TransactionDetailsInteractorDataProtectionPartialState.Failure("not used here"))
+
+        override fun recordDataProtectionAction(pendingAction: PendingTransactionActionUi) =
+            flowOf(RecordTransactionPartialState.Failure("not used here"))
     }
 
     private companion object {
@@ -113,9 +155,13 @@ class TransactionDetailsViewModelTest {
             emptyItem = null,
         )
 
+        val contact = TransactionContactUi(label = LINK, url = LINK)
+
         fun details(
             vararg sharedGroups: TransactionDetailsGroupUi,
             metadata: List<TransactionDetailsMetadataUi> = emptyList(),
+            deletionContacts: List<TransactionContactUi> = listOf(contact),
+            reportContacts: List<TransactionContactUi> = listOf(contact),
         ) = TransactionDetailsUi(
             transactionId = TX_ID,
             transactionDetailsCardUi = TransactionDetailsCardUi(
@@ -131,6 +177,9 @@ class TransactionDetailsViewModelTest {
             body = TransactionDetailsBodyUi.Presentation(
                 requested = section("DATA REQUESTED", *sharedGroups),
                 shared = section("DATA SHARED", *sharedGroups),
+                deletionContacts = deletionContacts,
+                reportContacts = reportContacts,
+                actionCounts = PresentationActionCountsUiState.Loading,
             ),
         )
 
@@ -380,5 +429,107 @@ class TransactionDetailsViewModelTest {
             listOf(Effect.ShowBottomSheet, Effect.CloseBottomSheet, Effect.ShowBottomSheet),
             effects,
         )
+    }
+
+    private fun TransactionDetailsViewModel.actionCounts(): PresentationActionCountsUiState =
+        (viewState.value.transactionDetailsUi!!.body as TransactionDetailsBodyUi.Presentation).actionCounts
+
+    @Test
+    fun the_action_counts_arrive_once_the_details_have_loaded() = runTest(mainDispatcher) {
+        val fake = FakeTransactionDetailsInteractor(listOf(success(group("g1"))))
+        fake.counts = flowOf(PresentationActionCountsUiState.Content(dataDeletionRequests = 2, dpaReports = 1))
+        val viewModel = TransactionDetailsViewModel(fake, TX_ID)
+        advanceUntilIdle()
+
+        assertEquals(1, fake.countSubscriptions)
+        assertEquals(PresentationActionCountsUiState.Content(2, 1), viewModel.actionCounts())
+    }
+
+    @Test
+    fun retrying_the_counts_subscribes_again() = runTest(mainDispatcher) {
+        val fake = FakeTransactionDetailsInteractor(listOf(success(group("g1"))))
+        fake.counts = flowOf(PresentationActionCountsUiState.Failure("could not load"))
+        val viewModel = TransactionDetailsViewModel(fake, TX_ID)
+        advanceUntilIdle()
+        assertIs<PresentationActionCountsUiState.Failure>(viewModel.actionCounts())
+
+        fake.counts = flowOf(PresentationActionCountsUiState.Content(0, 3))
+        viewModel.setEvent(Event.RetryPresentationActionCounts)
+        advanceUntilIdle()
+
+        assertEquals(2, fake.countSubscriptions)
+        assertEquals(PresentationActionCountsUiState.Content(0, 3), viewModel.actionCounts())
+    }
+
+    @Test
+    fun each_action_opens_its_own_screen_for_this_transaction() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(success(group("g1")))
+        advanceUntilIdle()
+        val effects = backgroundScope.collectEffects(viewModel)
+
+        viewModel.setEvent(Event.RequestDataDeletionPressed)
+        viewModel.setEvent(Event.ReportSuspiciousTransactionPressed)
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf<Effect>(
+                Effect.Navigation.SwitchScreen(DataDeletionRequestRoute(transactionId = TX_ID)),
+                Effect.Navigation.SwitchScreen(DpaReportRoute(transactionId = TX_ID)),
+            ),
+            effects,
+        )
+    }
+
+    @Test
+    fun an_action_without_a_contact_goes_nowhere() = runTest(mainDispatcher) {
+        val (_, viewModel) = viewModel(
+            TransactionDetailsInteractorPartialState.Success(
+                details(group("g1"), deletionContacts = emptyList(), reportContacts = emptyList())
+            )
+        )
+        advanceUntilIdle()
+        val effects = backgroundScope.collectEffects(viewModel)
+
+        viewModel.setEvent(Event.RequestDataDeletionPressed)
+        viewModel.setEvent(Event.ReportSuspiciousTransactionPressed)
+        advanceUntilIdle()
+
+        assertTrue(effects.isEmpty())
+    }
+
+    @Test
+    fun a_history_link_opens_only_when_there_is_history_for_that_action() = runTest(mainDispatcher) {
+        val fake = FakeTransactionDetailsInteractor(listOf(success(group("g1"))))
+        fake.counts = flowOf(PresentationActionCountsUiState.Content(dataDeletionRequests = 1, dpaReports = 0))
+        val viewModel = TransactionDetailsViewModel(fake, TX_ID)
+        advanceUntilIdle()
+        val effects = backgroundScope.collectEffects(viewModel)
+
+        viewModel.setEvent(Event.HistoryPressed(TransactionDataProtectionAction.ReportSuspiciousTransaction))
+        viewModel.setEvent(Event.HistoryPressed(TransactionDataProtectionAction.RequestDataDeletion))
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf<Effect>(
+                Effect.Navigation.SwitchScreen(
+                    TransactionHistoryRoute(TX_ID, TransactionDataProtectionAction.RequestDataDeletion)
+                ),
+            ),
+            effects,
+        )
+    }
+
+    @Test
+    fun a_history_link_goes_nowhere_while_the_counts_are_loading() = runTest(mainDispatcher) {
+        val fake = FakeTransactionDetailsInteractor(listOf(success(group("g1"))))
+        fake.counts = flowOf(PresentationActionCountsUiState.Loading)
+        val viewModel = TransactionDetailsViewModel(fake, TX_ID)
+        advanceUntilIdle()
+        val effects = backgroundScope.collectEffects(viewModel)
+
+        viewModel.setEvent(Event.HistoryPressed(TransactionDataProtectionAction.RequestDataDeletion))
+        advanceUntilIdle()
+
+        assertTrue(effects.isEmpty())
     }
 }

@@ -16,15 +16,24 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
+import eu.europa.ec.corelogic.controller.RecordTransactionPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
+import eu.europa.ec.corelogic.model.CommunicationMethodDomain
+import eu.europa.ec.corelogic.model.DpaContactDomain
 import eu.europa.ec.corelogic.model.TransactionLogDomain
+import kotlinx.coroutines.flow.Flow
+import kotlin.time.Instant
+import kotlin.time.toJavaInstant
 
 /**
  * Android's [TransactionsPlatformBridge]: wallet-core's TS10 transaction log, which
- * [WalletCoreTransactionLogController] already maps into the shared domain.
+ * [WalletCoreTransactionLogController] already maps into the shared domain, and
+ * [WalletCoreTransactionRecordingController], which records the user's privacy actions in it.
  */
 class AndroidTransactionsPlatformBridge(
     private val walletCoreTransactionLogController: WalletCoreTransactionLogController,
+    private val walletCoreTransactionRecordingController: WalletCoreTransactionRecordingController,
 ) : TransactionsPlatformBridge {
 
     override suspend fun getTransactionLogs(): List<TransactionLogDomain> =
@@ -35,4 +44,35 @@ class AndroidTransactionsPlatformBridge(
 
     override suspend fun deleteTransactionLog(id: String) =
         walletCoreTransactionLogController.deleteTransactionLog(id)
+
+    override fun observePresentationActions(
+        presentationId: String,
+    ): Flow<List<TransactionLogDomain.PresentationAction>> =
+        walletCoreTransactionLogController.observePresentationActions(presentationId = presentationId)
+
+    override suspend fun recordDataDeletionRequest(
+        id: String,
+        time: Instant,
+        presentation: TransactionLogDomain.Presentation,
+        communicationMethod: CommunicationMethodDomain,
+    ): RecordTransactionPartialState = walletCoreTransactionRecordingController.recordDataDeletionRequest(
+        id = id,
+        time = time.toJavaInstant(),
+        presentation = presentation,
+        communicationMethod = communicationMethod,
+    )
+
+    override suspend fun recordDpaReport(
+        id: String,
+        time: Instant,
+        parentPresentationId: String,
+        authority: DpaContactDomain,
+        communicationMethod: CommunicationMethodDomain,
+    ): RecordTransactionPartialState = walletCoreTransactionRecordingController.recordDpaReport(
+        id = id,
+        time = time.toJavaInstant(),
+        parentPresentationId = parentPresentationId,
+        authority = authority,
+        communicationMethod = communicationMethod,
+    )
 }

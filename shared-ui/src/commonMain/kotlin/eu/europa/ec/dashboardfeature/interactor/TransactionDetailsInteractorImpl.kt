@@ -17,6 +17,44 @@
 package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.businesslogic.extension.safeAsync
+import eu.europa.ec.businesslogic.provider.UuidProvider
+import eu.europa.ec.businesslogic.util.ParsedUri
+import eu.europa.ec.businesslogic.util.formUrlEncode
+import eu.europa.ec.corelogic.controller.RecordTransactionPartialState
+import eu.europa.ec.corelogic.extension.preferredDataDeletionContact
+import eu.europa.ec.corelogic.extension.toPrivacyContacts
+import eu.europa.ec.corelogic.model.PrivacyContactDomain
+import eu.europa.ec.dashboardfeature.ui.transactions.data_deletion.model.DataDeletionRequestUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PendingTransactionActionUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PresentationActionCountsUiState
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionContactUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDataProtectionAction
+import eu.europa.ec.dashboardfeature.ui.transactions.dpa_report.model.DpaReportContactUi
+import eu.europa.ec.dashboardfeature.ui.transactions.dpa_report.model.DpaReportUi
+import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
+import eu.europa.ec.uilogic.component.wrap.ColorKey
+import eu.europa.ec.shared.resources.data_deletion_email_button
+import eu.europa.ec.shared.resources.data_deletion_email_description
+import eu.europa.ec.shared.resources.data_deletion_email_responsibility
+import eu.europa.ec.shared.resources.data_deletion_phone_button
+import eu.europa.ec.shared.resources.data_deletion_phone_description
+import eu.europa.ec.shared.resources.data_deletion_phone_responsibility
+import eu.europa.ec.shared.resources.data_deletion_relying_party_default_name
+import eu.europa.ec.shared.resources.data_deletion_retention_notice
+import eu.europa.ec.shared.resources.data_deletion_website_button
+import eu.europa.ec.shared.resources.data_deletion_website_description
+import eu.europa.ec.shared.resources.data_deletion_website_responsibility
+import eu.europa.ec.shared.resources.dpa_report_call_button
+import eu.europa.ec.shared.resources.dpa_report_email_button
+import eu.europa.ec.shared.resources.dpa_report_follow_up
+import eu.europa.ec.shared.resources.dpa_report_responsibility
+import eu.europa.ec.shared.resources.dpa_report_website_button
+import eu.europa.ec.shared.resources.transaction_details_action_unavailable
+import eu.europa.ec.shared.resources.transaction_details_deletion_email_body
+import eu.europa.ec.shared.resources.transaction_details_deletion_email_subject
+import eu.europa.ec.shared.resources.transaction_details_report_email_body
+import eu.europa.ec.shared.resources.transaction_details_report_email_intermediary
+import eu.europa.ec.shared.resources.transaction_details_report_email_subject
 import eu.europa.ec.businesslogic.util.FULL_DATETIME_PATTERN
 import eu.europa.ec.businesslogic.util.formatLocalDateTime
 import eu.europa.ec.corelogic.extension.toPrivacyContactOrNull
@@ -90,6 +128,7 @@ import org.jetbrains.compose.resources.StringResource
 class TransactionDetailsInteractorImpl(
     private val platform: TransactionsPlatformBridge,
     private val strings: StringCatalog,
+    private val uuidProvider: UuidProvider,
 ) : TransactionDetailsInteractor {
 
     private val genericErrorMsg
@@ -139,6 +178,169 @@ class TransactionDetailsInteractorImpl(
             )
         }
 
+    override fun getDataDeletionRequest(
+        transactionId: String,
+    ): Flow<TransactionDetailsInteractorDataDeletionPartialState> = flow {
+        val presentation = platform.getTransactionLog(id = transactionId)
+                as? TransactionLogDomain.Presentation
+
+        val contact = presentation
+            ?.takeIf { parent -> parent.canRequestDataDeletion }
+            ?.party
+            ?.contacts
+            ?.toPrivacyContacts()
+            ?.preferredDataDeletionContact()
+
+        if (presentation == null || contact == null) {
+            emit(
+                TransactionDetailsInteractorDataDeletionPartialState.Failure(
+                    errorMessage = strings[Res.string.transaction_details_action_unavailable],
+                )
+            )
+            return@flow
+        }
+        emit(
+            TransactionDetailsInteractorDataDeletionPartialState.Success(
+                request = contact.toDataDeletionRequestUi(
+                    relyingPartyName = presentation.party.name?.text
+                        ?.takeIf { name -> name.isNotBlank() }
+                        ?: strings[Res.string.data_deletion_relying_party_default_name],
+                )
+            )
+        )
+    }.safeAsync {
+        TransactionDetailsInteractorDataDeletionPartialState.Failure(
+            errorMessage = it.message ?: genericErrorMsg,
+        )
+    }
+
+    override fun getDpaReport(
+        transactionId: String,
+    ): Flow<TransactionDetailsInteractorDpaReportPartialState> = flow {
+        val presentation = platform.getTransactionLog(id = transactionId)
+                as? TransactionLogDomain.Presentation
+
+        val authority = presentation?.registration?.dpa
+
+        val contacts = authority?.contacts.orEmpty().toPrivacyContacts().sortedBy { contact ->
+            when (contact.method) {
+                CommunicationMethodDomain.Phone -> 0
+                CommunicationMethodDomain.Email -> 1
+                CommunicationMethodDomain.Website -> 2
+            }
+        }
+
+        if (contacts.isEmpty()) {
+            emit(
+                TransactionDetailsInteractorDpaReportPartialState.Failure(
+                    errorMessage = strings[Res.string.transaction_details_action_unavailable],
+                )
+            )
+            return@flow
+        }
+
+        emit(
+            TransactionDetailsInteractorDpaReportPartialState.Success(
+                report = DpaReportUi(
+                    authority = authority?.name?.text?.takeIf { name -> name.isNotBlank() },
+                    responsibility = strings[Res.string.dpa_report_responsibility],
+                    followUp = strings[Res.string.dpa_report_follow_up],
+                    contacts = contacts.map { contact -> contact.toDpaReportContactUi() },
+                )
+            )
+        )
+    }.safeAsync {
+        TransactionDetailsInteractorDpaReportPartialState.Failure(
+            errorMessage = it.message ?: genericErrorMsg,
+        )
+    }
+
+    private fun PrivacyContactDomain.toDataDeletionRequestUi(
+        relyingPartyName: String,
+    ): DataDeletionRequestUi {
+        val (descriptionRes, responsibilityRes, buttonRes) = when (method) {
+            CommunicationMethodDomain.Website -> Triple(
+                Res.string.data_deletion_website_description,
+                Res.string.data_deletion_website_responsibility,
+                Res.string.data_deletion_website_button,
+            )
+
+            CommunicationMethodDomain.Email -> Triple(
+                Res.string.data_deletion_email_description,
+                Res.string.data_deletion_email_responsibility,
+                Res.string.data_deletion_email_button,
+            )
+
+            CommunicationMethodDomain.Phone -> Triple(
+                Res.string.data_deletion_phone_description,
+                Res.string.data_deletion_phone_responsibility,
+                Res.string.data_deletion_phone_button,
+            )
+        }
+        return DataDeletionRequestUi(
+            description = strings.get(descriptionRes, relyingPartyName),
+            responsibility = strings[responsibilityRes],
+            retentionNotice = strings.get(
+                Res.string.data_deletion_retention_notice,
+                relyingPartyName,
+            ),
+            buttonText = strings.get(buttonRes, relyingPartyName),
+            contactUrl = url,
+        )
+    }
+
+    private fun PrivacyContactDomain.toDpaReportContactUi(): DpaReportContactUi {
+        val (icon, actionTextRes) = when (method) {
+            CommunicationMethodDomain.Phone -> AppIcons.Call to Res.string.dpa_report_call_button
+            CommunicationMethodDomain.Email -> AppIcons.Email to Res.string.dpa_report_email_button
+            CommunicationMethodDomain.Website -> AppIcons.Link to Res.string.dpa_report_website_button
+        }
+        return DpaReportContactUi(
+            item = ListItemDataUi(
+                itemId = url,
+                mainContentData = ListItemMainContentDataUi.Text(text = displayValue),
+                leadingContentData = ListItemLeadingContentDataUi.Icon(
+                    iconData = icon,
+                    tint = ColorKey.OnSurfaceVariant,
+                ),
+                trailingContentData = ListItemTrailingContentDataUi.TextWithIcon(
+                    text = strings[actionTextRes],
+                    iconData = AppIcons.KeyboardArrowRight,
+                ),
+            ),
+            url = url,
+        )
+    }
+
+    override fun observePresentationActionCounts(
+        presentationId: String,
+    ): Flow<PresentationActionCountsUiState> = flow {
+        emit(PresentationActionCountsUiState.Loading)
+
+        platform.observePresentationActions(presentationId = presentationId)
+            .collect { actions ->
+                var dataDeletionRequests = 0
+                var dpaReports = 0
+                actions.forEach { action ->
+                    when (action) {
+                        is TransactionLogDomain.DataDeletionRequest -> dataDeletionRequests++
+                        is TransactionLogDomain.DpaReport -> dpaReports++
+                    }
+                }
+
+                emit(
+                    PresentationActionCountsUiState.Content(
+                        dataDeletionRequests = dataDeletionRequests,
+                        dpaReports = dpaReports,
+                    )
+                )
+            }
+    }.safeAsync {
+        PresentationActionCountsUiState.Failure(
+            errorMessage = it.message ?: genericErrorMsg
+        )
+    }
+
     override fun deleteTransaction(transactionId: String): Flow<TransactionDetailsInteractorDeleteTransactionPartialState> =
         flow {
             platform.deleteTransactionLog(id = transactionId)
@@ -148,6 +350,185 @@ class TransactionDetailsInteractorImpl(
                 errorMessage = it.message ?: genericErrorMsg
             )
         }
+
+    override fun prepareDataProtectionAction(
+        transactionId: String,
+        action: TransactionDataProtectionAction,
+        contactUrl: String,
+    ): Flow<TransactionDetailsInteractorDataProtectionPartialState> = flow {
+        val presentation = platform.getTransactionLog(id = transactionId)
+                as? TransactionLogDomain.Presentation
+
+        if (presentation == null
+            || presentation
+                .actionContacts(action)
+                .none { transactionContactUi ->
+                    transactionContactUi.url == contactUrl
+                }
+        ) {
+            emit(
+                TransactionDetailsInteractorDataProtectionPartialState.Failure(
+                    errorMessage = strings[Res.string.transaction_details_action_unavailable],
+                )
+            )
+            return@flow
+        }
+
+        val communicationMethod = when (ParsedUri.parseOrNull(contactUrl)?.scheme?.lowercase()) {
+            "http", "https" -> CommunicationMethodDomain.Website
+            "mailto" -> CommunicationMethodDomain.Email
+            "tel" -> CommunicationMethodDomain.Phone
+            else -> {
+                emit(
+                    TransactionDetailsInteractorDataProtectionPartialState.Failure(
+                        errorMessage = strings[Res.string.transaction_details_action_unavailable],
+                    )
+                )
+                return@flow
+            }
+        }
+
+        emit(
+            TransactionDetailsInteractorDataProtectionPartialState.Success(
+                pendingAction = PendingTransactionActionUi(
+                    id = uuidProvider.provideUuid(),
+                    presentation = presentation,
+                    action = action,
+                    contactUrl = contactUrl,
+                    launchUrl = presentation.actionUrl(action = action, contactUrl = contactUrl),
+                    communicationMethod = communicationMethod,
+                    authority = if (action == TransactionDataProtectionAction.ReportSuspiciousTransaction) {
+                        presentation.registration?.dpa
+                    } else {
+                        null
+                    },
+                    launchedAt = null,
+                ),
+            )
+        )
+    }.safeAsync {
+        TransactionDetailsInteractorDataProtectionPartialState.Failure(
+            errorMessage = it.message ?: genericErrorMsg,
+        )
+    }
+
+    override fun recordDataProtectionAction(
+        pendingAction: PendingTransactionActionUi,
+    ): Flow<RecordTransactionPartialState> = flow {
+        val launchedAt = pendingAction.launchedAt
+        if (launchedAt == null) {
+            emit(RecordTransactionPartialState.Failure(genericErrorMsg))
+            return@flow
+        }
+
+        val result = when (pendingAction.action) {
+            TransactionDataProtectionAction.RequestDataDeletion ->
+                platform.recordDataDeletionRequest(
+                    id = pendingAction.id,
+                    time = launchedAt,
+                    presentation = pendingAction.presentation,
+                    communicationMethod = pendingAction.communicationMethod,
+                )
+
+            TransactionDataProtectionAction.ReportSuspiciousTransaction -> {
+                val authority = pendingAction.authority
+                if (authority == null) {
+                    emit(RecordTransactionPartialState.Failure(genericErrorMsg))
+                    return@flow
+                }
+
+                platform.recordDpaReport(
+                    id = pendingAction.id,
+                    time = launchedAt,
+                    parentPresentationId = pendingAction.presentation.id,
+                    authority = authority,
+                    communicationMethod = pendingAction.communicationMethod,
+                )
+            }
+        }
+
+        emit(result)
+    }.safeAsync {
+        RecordTransactionPartialState.Failure(it.message ?: genericErrorMsg)
+    }
+
+    private fun TransactionLogDomain.Presentation.actionContacts(
+        action: TransactionDataProtectionAction,
+    ): List<TransactionContactUi> {
+        val contacts = when (action) {
+            TransactionDataProtectionAction.RequestDataDeletion ->
+                if (canRequestDataDeletion) party.contacts else emptyList()
+
+            TransactionDataProtectionAction.ReportSuspiciousTransaction ->
+                registration?.dpa?.contacts.orEmpty()
+        }
+        return contacts.mapNotNull { contact ->
+            contact.toContactUrlOrNull()?.let { url ->
+                TransactionContactUi(label = contact.trim(), url = url)
+            }
+        }.distinctBy { contact -> contact.url }
+    }
+
+    private fun TransactionLogDomain.Presentation.actionUrl(
+        action: TransactionDataProtectionAction,
+        contactUrl: String,
+    ): String {
+        if (!contactUrl.startsWith("mailto:")) return contactUrl
+
+        val partyName = party.name?.text?.takeIf { name -> name.isNotBlank() }
+            ?: party.identifier?.value?.takeIf { identifier -> identifier.isNotBlank() }
+            ?: strings[Res.string.transaction_details_no_information]
+
+        val subjectRes = when (action) {
+            TransactionDataProtectionAction.RequestDataDeletion ->
+                Res.string.transaction_details_deletion_email_subject
+
+            TransactionDataProtectionAction.ReportSuspiciousTransaction ->
+                Res.string.transaction_details_report_email_subject
+        }
+
+        val bodyRes = when (action) {
+            TransactionDataProtectionAction.RequestDataDeletion ->
+                Res.string.transaction_details_deletion_email_body
+
+            TransactionDataProtectionAction.ReportSuspiciousTransaction ->
+                Res.string.transaction_details_report_email_body
+        }
+
+        val subject = strings.get(
+            subjectRes, partyName.replace(Regex("[\\r\\n]+"), " "),
+        )
+
+        val identity = listOfNotNull(
+            party.name?.text?.takeIf { name -> name.isNotBlank() },
+            party.identifier?.value?.takeIf { identifier -> identifier.isNotBlank() },
+            party.identifier?.schemeUri?.takeIf { scheme -> scheme.isNotBlank() },
+        ).joinToString(separator = "\n")
+            .ifBlank { partyName }
+
+        val body = buildString {
+            append(
+                strings.get(
+                    bodyRes, identity, time.formatLocalDateTime(pattern = FULL_DATETIME_PATTERN),
+                )
+            )
+            if (action == TransactionDataProtectionAction.ReportSuspiciousTransaction) {
+                intermediary?.name?.text?.takeIf { name -> name.isNotBlank() }?.let { name ->
+                    append(
+                        strings.get(
+                            Res.string.transaction_details_report_email_intermediary,
+                            name
+                        )
+                    )
+                }
+            }
+        }
+
+        return "$contactUrl?subject=${subject.encodeMailParameter()}&body=${body.encodeMailParameter()}"
+    }
+
+    private fun String.encodeMailParameter(): String =
+        formUrlEncode(this).replace("+", "%20")
 
     private fun TransactionLogDomain.toProviderType(): String? {
         return when (this) {
@@ -272,6 +653,9 @@ class TransactionDetailsInteractorImpl(
                 claims = claimsPresented,
                 emptyRes = Res.string.transaction_details_no_data_shared,
             ),
+            deletionContacts = actionContacts(TransactionDataProtectionAction.RequestDataDeletion),
+            reportContacts = actionContacts(TransactionDataProtectionAction.ReportSuspiciousTransaction),
+            actionCounts = PresentationActionCountsUiState.Loading,
         )
 
         is TransactionLogDomain.CredentialIssuance -> TransactionDetailsBodyUi.Issuance(

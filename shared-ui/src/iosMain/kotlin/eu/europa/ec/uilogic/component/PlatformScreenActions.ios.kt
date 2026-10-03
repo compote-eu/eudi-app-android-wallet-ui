@@ -24,6 +24,8 @@ import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 import platform.UIKit.UIViewController
 import platform.UIKit.popoverPresentationController
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 /**
  * Three of the actions are real on iOS — opening a URL, opening app settings, and sharing files — and
@@ -55,6 +57,8 @@ actual fun rememberPlatformScreenActions(): PlatformScreenActions = remember {
         override fun openBluetoothSettings() = log("openBluetoothSettings")
 
         override fun openUrlExternally(url: String) = openIosUrlExternally(url)
+
+        override suspend fun tryOpenExternally(url: String): Boolean = tryOpenIosUrlExternally(url)
 
         /**
          * A real share sheet, over `UIActivityViewController`.
@@ -126,6 +130,22 @@ private const val TAG = "PlatformScreenActions"
  * composition needs it. That caller is `IosNavPlatformActions.parkAndReturn`, which has to follow the
  * verifier's post-presentation redirect, and cannot reach a `@Composable` factory's object.
  */
+/**
+ * [openIosUrlExternally] that reports the outcome: `openURL`'s completion handler says whether an app
+ * took the link. `mailto:` with no mail account set up and `tel:` on a device that cannot call — every
+ * simulator — answer false.
+ */
+internal suspend fun tryOpenIosUrlExternally(url: String): Boolean {
+    val nsUrl = NSURL.URLWithString(url) ?: return false
+    return suspendCancellableCoroutine { continuation ->
+        UIApplication.sharedApplication.openURL(
+            url = nsUrl,
+            options = emptyMap<Any?, Any>(),
+            completionHandler = { opened -> continuation.resume(opened) },
+        )
+    }
+}
+
 internal fun openIosUrlExternally(url: String) {
     // `NSURL.URLWithString` returns null for anything it cannot parse, which is the iOS counterpart of
     // the Android side swallowing `ActivityNotFoundException`.

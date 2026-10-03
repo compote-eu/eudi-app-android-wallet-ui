@@ -36,6 +36,12 @@ const val DAY_MONTH_YEAR_FULL_PATTERN: String = "dd MMMM yyyy"
 /** Date and time, as the transactions list shows for anything older than today. */
 const val FULL_DATETIME_PATTERN: String = "dd MMM yyyy hh:mm a"
 
+/**
+ * Date and 24-hour time, as the document details and a transaction's previous privacy actions show them.
+ * Moved here from `:business-logic`'s `DateUtils` (same package) for the shared history screen.
+ */
+const val FULL_DATETIME_PATTERN_24H_SEPARATED_BY_DASH: String = "dd MMMM yyyy - HH:mm"
+
 /** Clock time alone, which is all the transactions list shows for today's entries. */
 const val HOURS_MINUTES_DATETIME_PATTERN: String = "hh:mm a"
 

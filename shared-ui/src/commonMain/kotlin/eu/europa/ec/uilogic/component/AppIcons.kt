@@ -58,6 +58,9 @@ data class IconDataUi(val iconKey: AppIconKey)
 @Serializable
 enum class AppIconKey {
     ArrowBack,
+    Call,
+    Email,
+    Link,
     Close,
     VerticalMore,
     Warning,
@@ -124,6 +127,9 @@ enum class AppIconKey {
  */
 object AppIcons {
     val ArrowBack: IconDataUi = IconDataUi(AppIconKey.ArrowBack)
+    val Call: IconDataUi = IconDataUi(AppIconKey.Call)
+    val Email: IconDataUi = IconDataUi(AppIconKey.Email)
+    val Link: IconDataUi = IconDataUi(AppIconKey.Link)
     val Close: IconDataUi = IconDataUi(AppIconKey.Close)
     val VerticalMore: IconDataUi = IconDataUi(AppIconKey.VerticalMore)
     val Warning: IconDataUi = IconDataUi(AppIconKey.Warning)

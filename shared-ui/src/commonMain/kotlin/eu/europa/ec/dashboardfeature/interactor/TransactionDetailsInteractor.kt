@@ -18,8 +18,15 @@
 // log domain — is the one implementation (TransactionDetailsInteractorImpl.kt). Package unchanged.
 package eu.europa.ec.dashboardfeature.interactor
 
+import eu.europa.ec.corelogic.controller.RecordTransactionPartialState
+import eu.europa.ec.dashboardfeature.ui.transactions.data_deletion.model.DataDeletionRequestUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PendingTransactionActionUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PresentationActionCountsUiState
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDataProtectionAction
 import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDetailsUi
+import eu.europa.ec.dashboardfeature.ui.transactions.dpa_report.model.DpaReportUi
 import kotlinx.coroutines.flow.Flow
+
 sealed class TransactionDetailsInteractorPartialState {
     data class Success(
         val transactionDetailsUi: TransactionDetailsUi,
@@ -37,11 +44,56 @@ sealed class TransactionDetailsInteractorDeleteTransactionPartialState {
     ) : TransactionDetailsInteractorDeleteTransactionPartialState()
 }
 
+sealed class TransactionDetailsInteractorDataProtectionPartialState {
+    data class Success(
+        val pendingAction: PendingTransactionActionUi
+    ) : TransactionDetailsInteractorDataProtectionPartialState()
+
+    data class Failure(
+        val errorMessage: String
+    ) : TransactionDetailsInteractorDataProtectionPartialState()
+}
+
+sealed class TransactionDetailsInteractorDataDeletionPartialState {
+    data class Success(
+        val request: DataDeletionRequestUi
+    ) : TransactionDetailsInteractorDataDeletionPartialState()
+
+    data class Failure(
+        val errorMessage: String
+    ) : TransactionDetailsInteractorDataDeletionPartialState()
+}
+
+sealed class TransactionDetailsInteractorDpaReportPartialState {
+    data class Success(
+        val report: DpaReportUi
+    ) : TransactionDetailsInteractorDpaReportPartialState()
+
+    data class Failure(
+        val errorMessage: String
+    ) : TransactionDetailsInteractorDpaReportPartialState()
+}
+
 interface TransactionDetailsInteractor {
     fun getTransactionDetails(
         transactionId: String
     ): Flow<TransactionDetailsInteractorPartialState>
 
+    fun getDataDeletionRequest(transactionId: String): Flow<TransactionDetailsInteractorDataDeletionPartialState>
+
+    fun getDpaReport(transactionId: String): Flow<TransactionDetailsInteractorDpaReportPartialState>
+
+    fun observePresentationActionCounts(presentationId: String): Flow<PresentationActionCountsUiState>
+
     fun deleteTransaction(transactionId: String): Flow<TransactionDetailsInteractorDeleteTransactionPartialState>
 
+    fun prepareDataProtectionAction(
+        transactionId: String,
+        action: TransactionDataProtectionAction,
+        contactUrl: String,
+    ): Flow<TransactionDetailsInteractorDataProtectionPartialState>
+
+    fun recordDataProtectionAction(
+        pendingAction: PendingTransactionActionUi,
+    ): Flow<RecordTransactionPartialState>
 }

@@ -37,7 +37,6 @@ private val dtoDateFormatters = listOf(
 )
 
 private const val DAY_MONTH_YEAR_SHORT_PATTERN = "dd MMM yyyy"
-const val FULL_DATETIME_PATTERN_24H_SEPARATED_BY_DASH = "dd MMMM yyyy - HH:mm"
 private const val DAY_MONTH_YEAR_TEXT_FIELD_PATTERN = "dd/MM/yyyy"
 
 val fullDateTimeFormatter: DateTimeFormatter = DateTimeFormatter

@@ -14,18 +14,12 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.businesslogic.provider
+// Declared beside `WalletCoreTransactionRecordingController` upstream; here in shared code, same package,
+// because the shared transaction-details interactor and the screens it serves read it on both platforms.
+package eu.europa.ec.corelogic.controller
 
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
-
-interface UuidProvider {
-    fun provideUuid(): String
-}
-
-class UuidProviderImpl() : UuidProvider {
-    @OptIn(ExperimentalUuidApi::class)
-    override fun provideUuid(): String {
-        return Uuid.random().toString()
-    }
+/** Whether a data-deletion request or a transaction report was saved in the wallet's transaction history. */
+sealed interface RecordTransactionPartialState {
+    data object Success : RecordTransactionPartialState
+    data class Failure(val errorMessage: String) : RecordTransactionPartialState
 }

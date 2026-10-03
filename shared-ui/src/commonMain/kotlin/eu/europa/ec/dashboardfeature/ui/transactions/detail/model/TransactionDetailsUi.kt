@@ -43,12 +43,25 @@ data class TransactionDetailsMetadataUi(
     val fields: List<TransactionDetailsFieldUi>,
 )
 
+sealed interface PresentationActionCountsUiState {
+    data object Loading : PresentationActionCountsUiState
+    data class Content(
+        val dataDeletionRequests: Int,
+        val dpaReports: Int,
+    ) : PresentationActionCountsUiState
+
+    data class Failure(val errorMessage: String) : PresentationActionCountsUiState
+}
+
 sealed interface TransactionDetailsBodyUi {
     val sections: List<TransactionDetailsSectionUi>
 
     data class Presentation(
         val requested: TransactionDetailsSectionUi,
         val shared: TransactionDetailsSectionUi,
+        val deletionContacts: List<TransactionContactUi>,
+        val reportContacts: List<TransactionContactUi>,
+        val actionCounts: PresentationActionCountsUiState,
     ) : TransactionDetailsBodyUi {
         override val sections: List<TransactionDetailsSectionUi> = listOf(requested, shared)
     }

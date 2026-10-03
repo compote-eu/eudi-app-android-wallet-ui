@@ -32,6 +32,9 @@ val AppRoute.analyticsName: String
         DocumentSignRoute -> "DOCUMENT_SIGN"
         is DocumentDetailsRoute -> "DOCUMENT_DETAILS"
         is TransactionDetailsRoute -> "TRANSACTION_DETAILS"
+        is DataDeletionRequestRoute -> "DATA_DELETION_REQUEST"
+        is DpaReportRoute -> "DPA_REPORT"
+        is TransactionHistoryRoute -> "TRANSACTION_HISTORY"
 
         is SuccessRoute -> "SUCCESS"
         is BiometricRoute -> "BIOMETRIC"
@@ -64,6 +67,9 @@ val AppRoute.analyticsParams: Map<String, String>
     get() = when (this) {
         is DocumentDetailsRoute -> mapOf("documentId" to documentId)
         is TransactionDetailsRoute -> mapOf("transactionId" to transactionId)
+        is DataDeletionRequestRoute -> mapOf("transactionId" to transactionId)
+        is DpaReportRoute -> mapOf("transactionId" to transactionId)
+        is TransactionHistoryRoute -> mapOf("transactionId" to transactionId, "actionType" to action.name)
         is QuickPinRoute -> mapOf("pinFlow" to pinFlow.name)
 
         is PresentationLoadingRoute -> mapOf("scopeId" to scopeId)

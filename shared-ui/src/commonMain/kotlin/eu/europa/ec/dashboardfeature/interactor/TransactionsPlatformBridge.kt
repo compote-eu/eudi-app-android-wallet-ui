@@ -16,10 +16,16 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
+import eu.europa.ec.corelogic.controller.RecordTransactionPartialState
+import eu.europa.ec.corelogic.model.CommunicationMethodDomain
+import eu.europa.ec.corelogic.model.DpaContactDomain
 import eu.europa.ec.corelogic.model.TransactionLogDomain
+import kotlinx.coroutines.flow.Flow
+import kotlin.time.Instant
 
 /**
- * The one thing the transactions feature cannot do in shared code: read the wallet's transaction log.
+ * The one thing the transactions feature cannot do in shared code: read and write the wallet's
+ * transaction log.
  *
  * Each platform hands over the shared [TransactionLogDomain] — Android from wallet-core's log, iOS from
  * multipaz's events — so the mapping, filtering and grouping above it are shared.
@@ -34,4 +40,27 @@ interface TransactionsPlatformBridge {
 
     /** Removes one entry from the log; an unknown id is not an error. */
     suspend fun deleteTransactionLog(id: String)
+
+    /**
+     * The data-deletion requests and transaction reports recorded under the presentation [presentationId],
+     * re-emitted whenever one is recorded or removed.
+     */
+    fun observePresentationActions(presentationId: String): Flow<List<TransactionLogDomain.PresentationAction>>
+
+    /** Records that the user opened a data-deletion request about [presentation], by [communicationMethod]. */
+    suspend fun recordDataDeletionRequest(
+        id: String,
+        time: Instant,
+        presentation: TransactionLogDomain.Presentation,
+        communicationMethod: CommunicationMethodDomain,
+    ): RecordTransactionPartialState
+
+    /** Records that the user opened a report to [authority] about the presentation [parentPresentationId]. */
+    suspend fun recordDpaReport(
+        id: String,
+        time: Instant,
+        parentPresentationId: String,
+        authority: DpaContactDomain,
+        communicationMethod: CommunicationMethodDomain,
+    ): RecordTransactionPartialState
 }

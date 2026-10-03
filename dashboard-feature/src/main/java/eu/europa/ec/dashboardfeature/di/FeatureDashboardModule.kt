@@ -20,6 +20,7 @@ import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
 import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.validator.FilterValidator
@@ -49,6 +50,8 @@ import eu.europa.ec.dashboardfeature.interactor.SettingsInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
 import eu.europa.ec.dashboardfeature.interactor.AndroidTransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
@@ -149,8 +152,10 @@ fun provideDocumentsInteractor(
 @Factory
 fun provideTransactionsPlatformBridge(
     walletCoreTransactionLogController: WalletCoreTransactionLogController,
+    walletCoreTransactionRecordingController: WalletCoreTransactionRecordingController,
 ): TransactionsPlatformBridge = AndroidTransactionsPlatformBridge(
     walletCoreTransactionLogController = walletCoreTransactionLogController,
+    walletCoreTransactionRecordingController = walletCoreTransactionRecordingController,
 )
 
 @Factory
@@ -209,13 +214,25 @@ fun provideDocumentDetailsInteractor(
         platform = platform,
     )
 
+/** The shared presentation-history interactor over Android's transaction log. */
+@Factory
+fun provideTransactionHistoryInteractor(
+    platform: TransactionsPlatformBridge,
+    strings: StringCatalog,
+): TransactionHistoryInteractor = TransactionHistoryInteractorImpl(
+    platform = platform,
+    strings = strings,
+)
+
 /** The shared details interactor over Android's transaction-log reader. */
 @Factory
 fun provideTransactionDetailsInteractor(
     platform: TransactionsPlatformBridge,
     strings: StringCatalog,
+    uuidProvider: UuidProvider,
 ): TransactionDetailsInteractor =
     TransactionDetailsInteractorImpl(
         platform = platform,
         strings = strings,
+        uuidProvider = uuidProvider,
     )

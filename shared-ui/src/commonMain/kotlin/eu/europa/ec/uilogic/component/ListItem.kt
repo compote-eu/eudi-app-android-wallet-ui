@@ -99,7 +99,9 @@ enum class ClickableArea {
  * @param onItemClick An optional lambda function that is invoked when a clickable area of the item is clicked.
  * @param modifier A [Modifier] that can be used to customize the appearance of the list item.
  * @param hideSensitiveContent A boolean flag indicating whether to hide sensitive content by blurring it. Defaults to false.
- * @param mainContentVerticalPadding An optional value specifying the vertical padding */
+ * @param mainContentVerticalPadding An optional value specifying the vertical padding
+ * @param contentHorizontalPadding Horizontal row padding; null keeps the default 16.dp.
+ */
 @Composable
 fun ListItem(
     item: ListItemDataUi,
@@ -107,6 +109,7 @@ fun ListItem(
     modifier: Modifier = Modifier,
     hideSensitiveContent: Boolean = false,
     mainContentVerticalPadding: Dp? = null,
+    contentHorizontalPadding: Dp? = null,
     clickableAreas: List<ClickableArea> = listOf(TRAILING_CONTENT),
     overlineTextStyle: TextStyle = MaterialTheme.typography.labelMedium.copy(
         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -154,7 +157,7 @@ fun ListItem(
             } else {
                 Modifier
             }.then(
-                other = modifier.padding(horizontal = SPACING_MEDIUM.dp)
+                other = modifier.padding(horizontal = contentHorizontalPadding ?: SPACING_MEDIUM.dp)
             ),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically

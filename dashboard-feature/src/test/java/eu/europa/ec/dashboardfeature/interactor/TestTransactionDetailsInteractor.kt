@@ -88,6 +88,48 @@ import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.datetime.LocalDateTime
+import eu.europa.ec.businesslogic.provider.UuidProvider
+import eu.europa.ec.corelogic.controller.RecordTransactionPartialState
+import eu.europa.ec.corelogic.model.CommunicationMethodDomain
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PendingTransactionActionUi
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.PresentationActionCountsUiState
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDataProtectionAction
+import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.doThrow
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.never
+import org.mockito.kotlin.verifyNoInteractions
+import java.net.URI
+import java.net.URLDecoder
+import kotlin.time.Instant
+import java.util.Locale
+import eu.europa.ec.shared.resources.data_deletion_email_button
+import eu.europa.ec.shared.resources.data_deletion_email_description
+import eu.europa.ec.shared.resources.data_deletion_email_responsibility
+import eu.europa.ec.shared.resources.data_deletion_phone_button
+import eu.europa.ec.shared.resources.data_deletion_phone_description
+import eu.europa.ec.shared.resources.data_deletion_phone_responsibility
+import eu.europa.ec.shared.resources.data_deletion_relying_party_default_name
+import eu.europa.ec.shared.resources.data_deletion_retention_notice
+import eu.europa.ec.shared.resources.data_deletion_website_button
+import eu.europa.ec.shared.resources.data_deletion_website_description
+import eu.europa.ec.shared.resources.data_deletion_website_responsibility
+import eu.europa.ec.shared.resources.dpa_report_call_button
+import eu.europa.ec.shared.resources.dpa_report_email_button
+import eu.europa.ec.shared.resources.dpa_report_follow_up
+import eu.europa.ec.shared.resources.dpa_report_responsibility
+import eu.europa.ec.shared.resources.dpa_report_website_button
+import eu.europa.ec.shared.resources.transaction_details_action_unavailable
+import eu.europa.ec.shared.resources.transaction_details_deletion_email_body
+import eu.europa.ec.shared.resources.transaction_details_deletion_email_subject
+import eu.europa.ec.shared.resources.transaction_details_report_email_body
+import eu.europa.ec.shared.resources.transaction_details_report_email_intermediary
+import eu.europa.ec.shared.resources.transaction_details_report_email_subject
 
 class TestTransactionDetailsInteractor {
 
@@ -99,6 +141,9 @@ class TestTransactionDetailsInteractor {
 
     @Mock
     private lateinit var strings: StringCatalog
+
+    @Mock
+    private lateinit var uuidProvider: UuidProvider
 
     private lateinit var interactor: TransactionDetailsInteractor
 
@@ -113,10 +158,12 @@ class TestTransactionDetailsInteractor {
         interactor = TransactionDetailsInteractorImpl(
             platform = platform,
             strings = strings,
+            uuidProvider = uuidProvider,
         )
 
         whenever(strings[Res.string.generic_error_message]).thenReturn(mockedGenericErrorMessage)
         mockTransactionDetailsStrings()
+        whenever(uuidProvider.provideUuid()).thenReturn(mockedAttemptId)
     }
 
     @After
@@ -476,7 +523,7 @@ class TestTransactionDetailsInteractor {
     // 1. A presentation carries complete party, registration and authority metadata.
     //
     // Case 11 Expected Result:
-    // Only approved metadata is in the card, in order.
+    // Only approved metadata is in the card, in order; authority contacts remain available to reporting.
     @Test
     fun `Given Case 11, When getTransactionDetails is called, Then Case 11 Expected Result is returned`() {
         coroutineRule.runTest {
@@ -509,6 +556,14 @@ class TestTransactionDetailsInteractor {
                 assertEquals(
                     mockedTransactionRegistration.privacyPolicyUrls,
                     groups[1].fields.map { field -> field.url })
+                assertEquals(
+                    listOf(
+                        "mailto:authority@example.com",
+                        "tel:+302101234567",
+                        "https://example.com/authority"
+                    ),
+                    body.reportContacts.map { contact -> contact.url },
+                )
                 assertEquals(listOf(body.requested, body.shared), body.sections)
             }
         }
@@ -1116,7 +1171,7 @@ class TestTransactionDetailsInteractor {
     // 2. The relying party and authority have no action contacts.
     //
     // Case 24 Expected Result:
-    // Names and contacts display independently with intermediary labels; identifier-only metadata stays hidden.
+    // Names and contacts display independently with intermediary labels; identifier-only metadata stays hidden and supplies no action contacts.
     @Test
     fun `Given partial intermediary details, When getTransactionDetails is called, Then available fields are shown independently`() {
         coroutineRule.runTest {
@@ -1166,6 +1221,8 @@ class TestTransactionDetailsInteractor {
                         expectedFields,
                         details.transactionDetailsCardUi.metadata.flatMap { group -> group.fields })
                     assertEquals(listOf(body.requested, body.shared), body.sections)
+                    assertTrue(body.deletionContacts.isEmpty())
+                    assertTrue(body.reportContacts.isEmpty())
                 }
             }
         }
@@ -1214,7 +1271,7 @@ class TestTransactionDetailsInteractor {
     // 1. Presentation and both issuance types have repeated contacts, including plain EU text.
     //
     // Case 26 Expected Result:
-    // Display order and duplicates remain intact.
+    // Display order and duplicates remain intact; action contacts retain their independent deduplication.
     @Test
     fun `Given duplicate contacts, When getTransactionDetails is called, Then display preserves all occurrences`() {
         coroutineRule.runTest {
@@ -1255,6 +1312,9 @@ class TestTransactionDetailsInteractor {
                             mockedActionMailUrl,
                             mockedActionPhoneUrl
                         ), fields.map { field -> field.url })
+                    (details.body as? TransactionDetailsBodyUi.Presentation)?.let { body ->
+                        assertEquals(3, body.deletionContacts.size)
+                    }
                 }
             }
         }
@@ -1294,6 +1354,7 @@ class TestTransactionDetailsInteractor {
                     listOf(TransactionDetailsFieldUi("party:contact:0", "Contact", "EU", null)),
                     card.metadata.single().fields,
                 )
+                assertTrue((details.body as TransactionDetailsBodyUi.Presentation).reportContacts.isNotEmpty())
             }
         }
     }
@@ -1545,9 +1606,1566 @@ class TestTransactionDetailsInteractor {
     }
     //endregion
 
+    //region action availability
+    // Case 1:
+    // 1. Recorded contacts mix supported channels, duplicates, country text and unsafe links.
+    //
+    // Case 1 Expected Result:
+    // Both actions expose valid, distinct channels; loading details does not record an action.
+    @Test
+    fun `Given Case 1, When action availability is loaded, Then Case 1 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val transaction = mockedActionPresentation.copy(
+                party = mockedActionPresentation.party.copy(contacts = mockedMixedContacts),
+                registration = mockedTransactionRegistration.copy(
+                    dpa = mockedTransactionRegistration.dpa!!.copy(contacts = mockedMixedContacts),
+                ),
+            )
+            mockGetTransactionLogCall(transaction)
+
+            // When
+            interactor.getTransactionDetails(transaction.id).runFlowTest {
+                // Then
+                val body = (awaitItem() as TransactionDetailsInteractorPartialState.Success)
+                    .transactionDetailsUi.body as TransactionDetailsBodyUi.Presentation
+                val expectedUrls = listOf(
+                    mockedActionWebUrl, mockedActionMailUrl, mockedActionPhoneUrl,
+                    "mailto:o%27connor@example.com",
+                )
+                assertEquals(expectedUrls, body.deletionContacts.map { contact -> contact.url })
+                assertEquals(expectedUrls, body.reportContacts.map { contact -> contact.url })
+                verifyNothingRecorded()
+                awaitComplete()
+            }
+        }
+    }
+
+    // Case 2:
+    // 1. A failed presentation has no shared data but has an authority contact.
+    //
+    // Case 2 Expected Result:
+    // Deletion is unavailable; reporting remains available.
+    @Test
+    fun `Given Case 2, When action availability is loaded, Then Case 2 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val transaction = mockedActionPresentation.copy(
+                result = TransactionResultDomain.NotCompleted("Declined"),
+                claimsPresented = emptyList(),
+            )
+            mockGetTransactionLogCall(transaction)
+
+            // When
+            interactor.getTransactionDetails(transaction.id).runFlowTest {
+                // Then
+                val body = (awaitItem() as TransactionDetailsInteractorPartialState.Success)
+                    .transactionDetailsUi.body as TransactionDetailsBodyUi.Presentation
+                assertTrue(body.deletionContacts.isEmpty())
+                assertEquals(
+                    listOf(mockedActionWebUrl, mockedActionMailUrl, mockedActionPhoneUrl),
+                    body.reportContacts.map { contact -> contact.url },
+                )
+                awaitComplete()
+            }
+        }
+    }
+
+    // Case 3:
+    // 1. Contacts are missing or invalid; registrar and privacy-policy links may exist.
+    //
+    // Case 3 Expected Result:
+    // Neither action has a channel; unrelated registration links are not substituted.
+    @Test
+    fun `Given Case 3, When action availability is loaded, Then Case 3 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val transactions = listOf(
+                mockedActionPresentation.copy(
+                    party = mockedActionPresentation.party.copy(contacts = emptyList()),
+                    registration = null,
+                ),
+                mockedActionPresentation.copy(
+                    party = mockedActionPresentation.party.copy(contacts = mockedInvalidActionContacts),
+                    registration = mockedTransactionRegistration.copy(
+                        dpa = mockedTransactionRegistration.dpa!!.copy(contacts = mockedInvalidActionContacts),
+                    ),
+                ),
+            )
+            transactions.forEach { transaction ->
+                mockGetTransactionLogCall(transaction)
+
+                // When
+                interactor.getTransactionDetails(transaction.id).runFlowTest {
+                    // Then
+                    val body = (awaitItem() as TransactionDetailsInteractorPartialState.Success)
+                        .transactionDetailsUi.body as TransactionDetailsBodyUi.Presentation
+                    assertTrue(body.deletionContacts.isEmpty())
+                    assertTrue(body.reportContacts.isEmpty())
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 4:
+    // 1. Disclosed data and one DDR contact exist without a registration certificate.
+    // 2. Each method is checked for completed and interrupted presentations.
+    //
+    // Case 4 Expected Result:
+    // Only DDR is available, including a short phone number.
+    @Test
+    fun `Given Case 4, When action availability is loaded, Then Case 4 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val results = listOf(
+                TransactionResultDomain.Completed,
+                TransactionResultDomain.NotCompleted("Interrupted"),
+            )
+            val contacts = listOf(mockedActionWebUrl, mockedActionMailUrl, "tel:1234")
+            results.forEach { result ->
+                contacts.forEach { contact ->
+                    val transaction = mockedActionPresentation.copy(
+                        result = result,
+                        registration = null,
+                        party = mockedActionPresentation.party.copy(contacts = listOf(contact)),
+                    )
+                    mockGetTransactionLogCall(transaction)
+
+                    // When
+                    interactor.getTransactionDetails(transaction.id).runFlowTest {
+                        // Then
+                        val body = (awaitItem() as TransactionDetailsInteractorPartialState.Success)
+                            .transactionDetailsUi.body as TransactionDetailsBodyUi.Presentation
+                        assertEquals(
+                            listOf(contact),
+                            body.deletionContacts.map { channel -> channel.url })
+                        assertTrue(body.reportContacts.isEmpty())
+                        awaitComplete()
+                    }
+                }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 5:
+    // 1. Only a DPA contact exists; the authority has no optional name or country.
+    //
+    // Case 5 Expected Result:
+    // Reporting is available for the interrupted presentation; DDR does not borrow its contact.
+    @Test
+    fun `Given Case 5, When action availability is loaded, Then Case 5 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val transaction = mockedActionPresentation.copy(
+                result = TransactionResultDomain.NotCompleted("Interrupted"),
+                party = mockedActionPresentation.party.copy(contacts = emptyList()),
+                registration = mockedTransactionRegistration.copy(
+                    dpa = DpaContactDomain(
+                        name = null,
+                        country = null,
+                        contacts = listOf(mockedActionMailUrl),
+                    ),
+                ),
+            )
+            mockGetTransactionLogCall(transaction)
+
+            // When
+            interactor.getTransactionDetails(transaction.id).runFlowTest {
+                // Then
+                val body = (awaitItem() as TransactionDetailsInteractorPartialState.Success)
+                    .transactionDetailsUi.body as TransactionDetailsBodyUi.Presentation
+                assertTrue(body.deletionContacts.isEmpty())
+                assertEquals(
+                    listOf(mockedActionMailUrl),
+                    body.reportContacts.map { channel -> channel.url })
+                awaitComplete()
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 6:
+    // 1. Credential groups contain no disclosed claims, although both actions have contacts.
+    //
+    // Case 6 Expected Result:
+    // DDR is unavailable and reporting remains available regardless of the result.
+    @Test
+    fun `Given Case 6, When action availability is loaded, Then Case 6 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val results = listOf(
+                TransactionResultDomain.Completed,
+                TransactionResultDomain.NotCompleted("Interrupted"),
+            )
+            results.forEach { result ->
+                val transaction = mockedActionPresentation.copy(
+                    result = result,
+                    claimsPresented = listOf(
+                        mockedTransactionClaims.first().copy(claims = emptyList())
+                    ),
+                )
+                mockGetTransactionLogCall(transaction)
+
+                // When
+                interactor.getTransactionDetails(transaction.id).runFlowTest {
+                    // Then
+                    val body = (awaitItem() as TransactionDetailsInteractorPartialState.Success)
+                        .transactionDetailsUi.body as TransactionDetailsBodyUi.Presentation
+                    assertTrue(body.deletionContacts.isEmpty())
+                    assertEquals(
+                        listOf(mockedActionWebUrl, mockedActionMailUrl, mockedActionPhoneUrl),
+                        body.reportContacts.map { channel -> channel.url },
+                    )
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+        }
+    }
+    //endregion
+
+
+    //region getDataDeletionRequest
+
+    // Case 1:
+    // 1. DDR contacts contain multiple methods, invalid values or repeated websites.
+    //
+    // Case 1 Expected Result:
+    // Website precedes email, then phone; matching copy is prepared without recording an attempt.
+    @Test
+    fun `Given Case 1, When getDataDeletionRequest is called, Then Case 1 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val cases = listOf(
+                listOf(
+                    mockedActionPhoneUrl,
+                    mockedActionMailUrl,
+                    mockedActionWebUrl,
+                    mockedActionWebUrl + "/other"
+                ) to (mockedActionWebUrl to "Website"),
+                listOf(
+                    "https://",
+                    mockedActionPhoneUrl,
+                    mockedActionMailUrl
+                ) to (mockedActionMailUrl to "Email"),
+                listOf("GR", mockedActionPhoneUrl) to (mockedActionPhoneUrl to "Phone"),
+            )
+            cases.forEach { (contacts, expected) ->
+                val (expectedUrl, expectedMethod) = expected
+                val presentation = mockedActionPresentation.copy(
+                    party = mockedActionPresentation.party.copy(contacts = contacts),
+                )
+                mockGetTransactionLogCall(presentation)
+
+                // When
+                interactor.getDataDeletionRequest(presentation.id).runFlowTest {
+                    // Then
+                    val request =
+                        (awaitItem() as TransactionDetailsInteractorDataDeletionPartialState.Success).request
+                    assertEquals(expectedUrl, request.contactUrl)
+                    assertEquals(
+                        "$expectedMethod description for ${presentation.party.name?.text}",
+                        request.description,
+                    )
+                    assertEquals(
+                        "$expectedMethod action for ${presentation.party.name?.text}",
+                        request.buttonText,
+                    )
+                    assertEquals(
+                        "Retention for ${presentation.party.name?.text}",
+                        request.retentionNotice,
+                    )
+                    assertEquals(
+                        "<b>$expectedMethod responsibility.</b> Continue outside.",
+                        request.responsibility,
+                    )
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 2:
+    // 1. The requested parent is missing or is another transaction type.
+    //
+    // Case 2 Expected Result:
+    // The explanation is unavailable and nothing is recorded.
+    @Test
+    fun `Given Case 2, When getDataDeletionRequest is called, Then Case 2 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val transactions = listOf(null) +
+                    mockedTransactionLogDomains.filterNot { transaction -> transaction is TransactionLogDomain.Presentation }
+            transactions.forEach { transaction ->
+                whenever(platform.getTransactionLog(mockedTransactionId))
+                    .thenReturn(transaction)
+
+                // When
+                interactor.getDataDeletionRequest(mockedTransactionId).runFlowTest {
+                    // Then
+                    assertEquals(
+                        TransactionDetailsInteractorDataDeletionPartialState.Failure(
+                            mockedActionUnavailable
+                        ),
+                        awaitItem(),
+                    )
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 3:
+    // 1. DDR contacts or actual disclosed claims are absent, although DPA contacts exist.
+    //
+    // Case 3 Expected Result:
+    // A stale route is unavailable; empty groups and DPA contacts cannot enable DDR.
+    @Test
+    fun `Given Case 3, When getDataDeletionRequest is called, Then Case 3 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val presentations = listOf(
+                mockedActionPresentation.copy(claimsPresented = emptyList()),
+                mockedActionPresentation.copy(
+                    claimsPresented = listOf(
+                        mockedTransactionClaims.first().copy(claims = emptyList())
+                    ),
+                ),
+                mockedActionPresentation.copy(
+                    party = mockedActionPresentation.party.copy(contacts = emptyList()),
+                ),
+                mockedActionPresentation.copy(
+                    party = mockedActionPresentation.party.copy(contacts = mockedInvalidActionContacts),
+                ),
+            )
+            presentations.forEach { presentation ->
+                mockGetTransactionLogCall(presentation)
+
+                // When
+                interactor.getDataDeletionRequest(presentation.id).runFlowTest {
+                    // Then
+                    assertEquals(
+                        TransactionDetailsInteractorDataDeletionPartialState.Failure(
+                            mockedActionUnavailable
+                        ),
+                        awaitItem(),
+                    )
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 4:
+    // 1. An interrupted presentation disclosed claims and has a short phone number, without registration.
+    //
+    // Case 4 Expected Result:
+    // The recorded contact enables DDR independently of completion or certificate presence.
+    @Test
+    fun `Given Case 4, When getDataDeletionRequest is called, Then Case 4 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val presentation = mockedActionPresentation.copy(
+                result = TransactionResultDomain.NotCompleted("Interrupted"),
+                registration = null,
+                party = mockedActionPresentation.party.copy(contacts = listOf("1234")),
+            )
+            mockGetTransactionLogCall(presentation)
+
+            // When
+            interactor.getDataDeletionRequest(presentation.id).runFlowTest {
+                // Then
+                val request =
+                    (awaitItem() as TransactionDetailsInteractorDataDeletionPartialState.Success).request
+                assertEquals(
+                    "Phone action for ${presentation.party.name?.text}",
+                    request.buttonText
+                )
+                assertEquals("tel:1234", request.contactUrl)
+                awaitComplete()
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 5:
+    // 1. RP identity has Unicode, no name, or neither a name nor an identifier.
+    //
+    // Case 5 Expected Result:
+    // The display preserves literal recorded names and uses a neutral label when absent, never the identifier.
+    @Test
+    fun `Given Case 5, When getDataDeletionRequest is called, Then Case 5 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val defaultName = "Relying party"
+            doReturn(defaultName).whenever(strings)
+                .get(Res.string.data_deletion_relying_party_default_name)
+            val parties = listOf(
+                mockedActionPresentation.party.copy(
+                    name = LocalizedTextDomain(
+                        "el",
+                        "Ταξίδι & <Travel>"
+                    )
+                ) to "Ταξίδι & <Travel>",
+                mockedActionPresentation.party.copy(
+                    name = LocalizedTextDomain(
+                        mockedTransactionLanguageTag,
+                        " "
+                    )
+                ) to defaultName,
+                mockedActionPresentation.party.copy(name = null) to defaultName,
+                mockedActionPresentation.party.copy(name = null, identifier = null) to defaultName,
+            )
+            parties.forEach { (party, expectedName) ->
+                val presentation = mockedActionPresentation.copy(party = party)
+                mockGetTransactionLogCall(presentation)
+
+                // When
+                interactor.getDataDeletionRequest(presentation.id).runFlowTest {
+                    // Then
+                    val request =
+                        (awaitItem() as TransactionDetailsInteractorDataDeletionPartialState.Success).request
+                    assertEquals("Website description for $expectedName", request.description)
+                    assertEquals("Website action for $expectedName", request.buttonText)
+                    assertEquals("Retention for $expectedName", request.retentionNotice)
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 6:
+    // 1. Loading the parent throws, with or without a message.
+    //
+    // Case 6 Expected Result:
+    // The ViewModel receives a failure state; loading has no recording side effects.
+    @Test
+    fun `Given Case 6, When getDataDeletionRequest is called, Then Case 6 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            listOf(mockedExceptionWithMessage, mockedExceptionWithNoMessage).forEach { exception ->
+                doThrow(exception).whenever(platform)
+                    .getTransactionLog(mockedTransactionId)
+
+                // When
+                interactor.getDataDeletionRequest(mockedTransactionId).runFlowTest {
+                    // Then
+                    assertEquals(
+                        TransactionDetailsInteractorDataDeletionPartialState.Failure(
+                            exception.localizedMessage ?: mockedGenericErrorMessage
+                        ),
+                        awaitItem(),
+                    )
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    //endregion
+
+    //region getDpaReport
+
+    // Case 1:
+    // 1. The DPA has mixed, repeated and unsupported contacts; the RP has a different contact.
+    //
+    // Case 1 Expected Result:
+    // All distinct DPA contacts are shown in Phone, Email, Website order.
+    @Test
+    fun `Given Case 1, When getDpaReport is called, Then Case 1 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val authority = DpaContactDomain(
+                name = LocalizedTextDomain("el", "Αρχή & <Authority>"),
+                country = LocalizedTextDomain(mockedTransactionLanguageTag, "GR"),
+                contacts = listOf(
+                    mockedActionWebUrl, "first@example.com", "+30 (210) 123-4567",
+                    "mailto:second@example.com", mockedActionWebUrl, mockedActionPhoneUrl,
+                ) + mockedInvalidActionContacts,
+            )
+            val presentation = mockedActionPresentation.copy(
+                party = mockedActionPresentation.party.copy(contacts = listOf("https://rp.example.com")),
+                registration = mockedTransactionRegistration.copy(dpa = authority),
+            )
+            mockGetTransactionLogCall(presentation)
+
+            // When
+            interactor.getDpaReport(presentation.id).runFlowTest {
+                // Then
+                val report =
+                    (awaitItem() as TransactionDetailsInteractorDpaReportPartialState.Success).report
+                assertEquals(authority.name?.text, report.authority)
+                assertEquals(
+                    listOf(
+                        mockedActionPhoneUrl to "+30 (210) 123-4567",
+                        "mailto:first@example.com" to "first@example.com",
+                        "mailto:second@example.com" to "second@example.com",
+                        mockedActionWebUrl to mockedActionWebUrl,
+                    ),
+                    report.contacts.map { contact -> contact.url to contact.item.textValue() },
+                )
+                assertEquals(
+                    listOf(AppIcons.Call, AppIcons.Email, AppIcons.Email, AppIcons.Link),
+                    report.contacts.map { contact ->
+                        (contact.item.leadingContentData as ListItemLeadingContentDataUi.Icon).iconData
+                    },
+                )
+                assertEquals(
+                    listOf("Call", "Open email", "Open email", "Visit website"),
+                    report.contacts.map { contact ->
+                        (contact.item.trailingContentData as ListItemTrailingContentDataUi.TextWithIcon).text
+                    },
+                )
+                report.contacts.forEach { contact ->
+                    assertEquals(contact.url, contact.item.itemId)
+                    assertEquals(
+                        AppIcons.KeyboardArrowRight,
+                        (contact.item.trailingContentData as ListItemTrailingContentDataUi.TextWithIcon).iconData,
+                    )
+                }
+                assertEquals(
+                    "<b>Report responsibility.</b> Continue outside.",
+                    report.responsibility,
+                )
+                assertEquals("Authority follows up.", report.followUp)
+                awaitComplete()
+            }
+            verify(platform).getTransactionLog(presentation.id)
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 2:
+    // 1. An interrupted presentation has no disclosed claims or RP contacts, but one DPA contact.
+    // 2. DPA identity is missing or only its name/country is available.
+    //
+    // Case 2 Expected Result:
+    // Each supported method remains available; only the nonblank DPA name is displayed.
+    @Test
+    fun `Given Case 2, When getDpaReport is called, Then Case 2 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val recordedName =
+                LocalizedTextDomain(mockedTransactionLanguageTag, "Recorded authority")
+            val recordedCountry = LocalizedTextDomain(mockedTransactionLanguageTag, "PT")
+            val blankIdentity = LocalizedTextDomain(mockedTransactionLanguageTag, " ")
+            listOf(
+                Triple(null, null, null),
+                Triple(blankIdentity, blankIdentity, null),
+                Triple(null, recordedCountry, null),
+                Triple(blankIdentity, recordedCountry, null),
+                Triple(recordedName, null, recordedName.text),
+                Triple(recordedName, blankIdentity, recordedName.text),
+            ).forEach { (name, country, expectedAuthority) ->
+                listOf(
+                    mockedActionPhoneUrl,
+                    mockedActionMailUrl,
+                    mockedActionWebUrl
+                ).forEach { contact ->
+                    val presentation = mockedActionPresentation.copy(
+                        result = TransactionResultDomain.NotCompleted("Interrupted"),
+                        claimsPresented = emptyList(),
+                        party = mockedActionPresentation.party.copy(contacts = emptyList()),
+                        registration = mockedTransactionRegistration.copy(
+                            dpa = DpaContactDomain(
+                                name,
+                                country,
+                                listOf(contact)
+                            ),
+                        ),
+                    )
+                    mockGetTransactionLogCall(presentation)
+
+                    // When
+                    interactor.getDpaReport(presentation.id).runFlowTest {
+                        // Then
+                        val report =
+                            (awaitItem() as TransactionDetailsInteractorDpaReportPartialState.Success).report
+                        assertEquals(expectedAuthority, report.authority)
+                        assertEquals(
+                            listOf(contact),
+                            report.contacts.map { availableContact -> availableContact.url })
+                        awaitComplete()
+                    }
+                }
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 3:
+    // 1. The requested parent is missing or is another transaction type.
+    //
+    // Case 3 Expected Result:
+    // Reporting is unavailable without any recording or ID allocation.
+    @Test
+    fun `Given Case 3, When getDpaReport is called, Then Case 3 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val transactions = listOf(null) +
+                    mockedTransactionLogDomains.filterNot { transaction -> transaction is TransactionLogDomain.Presentation }
+            transactions.forEach { transaction ->
+                whenever(platform.getTransactionLog(mockedTransactionId))
+                    .thenReturn(transaction)
+
+                // When
+                interactor.getDpaReport(mockedTransactionId).runFlowTest {
+                    // Then
+                    assertEquals(
+                        TransactionDetailsInteractorDpaReportPartialState.Failure(
+                            mockedActionUnavailable
+                        ),
+                        awaitItem(),
+                    )
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 4:
+    // 1. RP contacts exist, but DPA registration or usable DPA contacts are absent.
+    //
+    // Case 4 Expected Result:
+    // Reporting is unavailable; no RP or replacement authority contact is used.
+    @Test
+    fun `Given Case 4, When getDpaReport is called, Then Case 4 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val registrations = listOf(
+                null,
+                mockedTransactionRegistration.copy(dpa = null),
+                mockedTransactionRegistration.copy(
+                    dpa = DpaContactDomain(
+                        LocalizedTextDomain(mockedTransactionLanguageTag, "Authority"),
+                        LocalizedTextDomain(mockedTransactionLanguageTag, "GR"),
+                        emptyList(),
+                    )
+                ),
+                mockedTransactionRegistration.copy(
+                    dpa = DpaContactDomain(
+                        LocalizedTextDomain(mockedTransactionLanguageTag, "Authority"),
+                        LocalizedTextDomain(mockedTransactionLanguageTag, "GR"),
+                        mockedInvalidActionContacts,
+                    )
+                ),
+            )
+            registrations.forEach { registration ->
+                val presentation = mockedActionPresentation.copy(registration = registration)
+                mockGetTransactionLogCall(presentation)
+
+                // When
+                interactor.getDpaReport(presentation.id).runFlowTest {
+                    // Then
+                    assertEquals(
+                        TransactionDetailsInteractorDpaReportPartialState.Failure(
+                            mockedActionUnavailable
+                        ),
+                        awaitItem(),
+                    )
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 5:
+    // 1. Loading the parent throws, with or without a message.
+    //
+    // Case 5 Expected Result:
+    // The ViewModel receives a failure state with no recording side effects.
+    @Test
+    fun `Given Case 5, When getDpaReport is called, Then Case 5 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            listOf(mockedExceptionWithMessage, mockedExceptionWithNoMessage).forEach { exception ->
+                doThrow(exception).whenever(platform)
+                    .getTransactionLog(mockedTransactionId)
+
+                // When
+                interactor.getDpaReport(mockedTransactionId).runFlowTest {
+                    // Then
+                    assertEquals(
+                        TransactionDetailsInteractorDpaReportPartialState.Failure(
+                            exception.localizedMessage ?: mockedGenericErrorMessage
+                        ),
+                        awaitItem(),
+                    )
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 6:
+    // 1. The DPA contact disappears after the reporting screen loads.
+    //
+    // Case 6 Expected Result:
+    // Preparation rechecks availability and refuses the stale selection.
+    @Test
+    fun `Given Case 6, When preparing a stale DPA contact, Then Case 6 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogCall(mockedActionPresentation)
+            interactor.getDpaReport(mockedActionPresentation.id).runFlowTest {
+                assertTrue(awaitItem() is TransactionDetailsInteractorDpaReportPartialState.Success)
+                awaitComplete()
+            }
+            mockGetTransactionLogCall(
+                mockedActionPresentation.copy(
+                    registration = mockedTransactionRegistration.copy(
+                        dpa = DpaContactDomain(
+                            LocalizedTextDomain(mockedTransactionLanguageTag, "Authority"),
+                            LocalizedTextDomain(mockedTransactionLanguageTag, "GR"),
+                            emptyList(),
+                        ),
+                    ),
+                )
+            )
+
+            // When
+            interactor.prepareDataProtectionAction(
+                transactionId = mockedActionPresentation.id,
+                action = TransactionDataProtectionAction.ReportSuspiciousTransaction,
+                contactUrl = mockedActionMailUrl,
+            ).runFlowTest {
+                // Then
+                assertEquals(
+                    TransactionDetailsInteractorDataProtectionPartialState.Failure(
+                        mockedActionUnavailable
+                    ),
+                    awaitItem(),
+                )
+                awaitComplete()
+            }
+            verifyNothingRecorded()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    //endregion
+
+    //region prepareDataProtectionAction
+
+    // Case 1:
+    // 1. Both action types are prepared for each supported communication method.
+    //
+    // Case 1 Expected Result:
+    // The selected method, parent, target and ID are captured without any recording.
+    @Test
+    fun `Given Case 1, When preparing contacts, Then no attempt is recorded`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogCall(mockedActionPresentation)
+            val contacts = mapOf(
+                mockedActionWebUrl to CommunicationMethodDomain.Website,
+                mockedActionMailUrl to CommunicationMethodDomain.Email,
+                mockedActionPhoneUrl to CommunicationMethodDomain.Phone,
+            )
+            TransactionDataProtectionAction.entries.forEach { action ->
+                contacts.forEach { (url, method) ->
+                    // When
+                    interactor.prepareDataProtectionAction(mockedActionPresentation.id, action, url)
+                        .runFlowTest {
+                            // Then
+                            val pending =
+                                (awaitItem() as TransactionDetailsInteractorDataProtectionPartialState.Success).pendingAction
+                            assertEquals(mockedAttemptId, pending.id)
+                            assertEquals(mockedActionPresentation, pending.presentation)
+                            assertEquals(action, pending.action)
+                            assertEquals(method, pending.communicationMethod)
+                            assertEquals(url, pending.contactUrl)
+                            assertEquals(url, pending.launchUrl.substringBefore('?'))
+                            assertNull(pending.launchedAt)
+                            assertEquals(
+                                if (action == TransactionDataProtectionAction.ReportSuspiciousTransaction) mockedActionPresentation.registration?.dpa else null,
+                                pending.authority,
+                            )
+                        }
+                }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 2:
+    // 1. Email identity contains Unicode, line breaks and query delimiters.
+    //
+    // Case 2 Expected Result:
+    // Recipient, subject and body remain independently encoded without writing a history row.
+    @Test
+    fun `Given Case 2, When preparing email, Then the draft is encoded safely`() {
+        coroutineRule.runTest {
+            // Given
+            val presentation = mockedActionPresentation.copy(
+                party = mockedActionPresentation.party.copy(
+                    name = LocalizedTextDomain(
+                        "el",
+                        "Αρχή & Services +\r\nbcc=other@example.com"
+                    )
+                ),
+            )
+            mockGetTransactionLogCall(presentation)
+            TransactionDataProtectionAction.entries.forEach { action ->
+                // When
+                interactor.prepareDataProtectionAction(presentation.id, action, mockedActionMailUrl)
+                    .runFlowTest {
+                        // Then
+                        val url =
+                            (awaitItem() as TransactionDetailsInteractorDataProtectionPartialState.Success).pendingAction.launchUrl
+                        assertEquals(mockedActionMailUrl, url.substringBefore("?"))
+                        assertEquals(url, URI(url).toASCIIString())
+                        val parameters = decodeMailParameters(url)
+                        assertEquals(setOf("subject", "body"), parameters.keys)
+                        val prefix =
+                            if (action == TransactionDataProtectionAction.RequestDataDeletion) "Erasure" else "Report"
+                        assertEquals(
+                            prefix + ": Αρχή & Services + bcc=other@example.com",
+                            parameters["subject"]
+                        )
+                        assertEquals(
+                            "Party:\n" + presentation.party.name?.text + "\n" + mockedTransactionQualifiedIdentifier.value +
+                                    "\n" + mockedTransactionQualifiedIdentifier.schemeUri + "\nDate: " +
+                                    presentation.time.formatLocalDateTime(pattern = FULL_DATETIME_PATTERN),
+                            parameters["body"],
+                        )
+                    }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 3:
+    // 1. The parent is missing or is another transaction type.
+    //
+    // Case 3 Expected Result:
+    // Preparation fails without recording.
+    @Test
+    fun `Given Case 3, When preparing an invalid parent, Then the action is unavailable`() {
+        coroutineRule.runTest {
+            // Given
+            val transactions = listOf(null) +
+                    mockedTransactionLogDomains.filterNot { transaction -> transaction is TransactionLogDomain.Presentation }
+            transactions.forEach { transaction ->
+                whenever(platform.getTransactionLog(mockedTransactionId)).thenReturn(
+                    transaction
+                )
+                TransactionDataProtectionAction.entries.forEach { action ->
+                    // When
+                    interactor.prepareDataProtectionAction(
+                        mockedTransactionId,
+                        action,
+                        mockedActionWebUrl
+                    ).runFlowTest {
+                        // Then
+                        assertEquals(
+                            TransactionDetailsInteractorDataProtectionPartialState.Failure(
+                                mockedActionUnavailable
+                            ),
+                            awaitItem(),
+                        )
+                    }
+                }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 4:
+    // 1. A contact has disappeared or the DDR presentation has no disclosed data.
+    //
+    // Case 4 Expected Result:
+    // Stale or ineligible actions cannot launch or record.
+    @Test
+    fun `Given Case 4, When preparing a stale action, Then the action is unavailable`() {
+        coroutineRule.runTest {
+            // Given
+            val cases = listOf(
+                mockedActionPresentation.copy(claimsPresented = emptyList()) to TransactionDataProtectionAction.RequestDataDeletion,
+                mockedActionPresentation.copy(
+                    claimsPresented = listOf(
+                        mockedTransactionClaims.first().copy(claims = emptyList())
+                    ),
+                ) to TransactionDataProtectionAction.RequestDataDeletion,
+                mockedActionPresentation.copy(party = mockedActionPresentation.party.copy(contacts = emptyList())) to TransactionDataProtectionAction.RequestDataDeletion,
+                mockedActionPresentation.copy(registration = null) to TransactionDataProtectionAction.ReportSuspiciousTransaction,
+            )
+            cases.forEach { (presentation, action) ->
+                mockGetTransactionLogCall(presentation)
+                // When
+                interactor.prepareDataProtectionAction(presentation.id, action, mockedActionWebUrl)
+                    .runFlowTest {
+                        // Then
+                        assertEquals(
+                            TransactionDetailsInteractorDataProtectionPartialState.Failure(
+                                mockedActionUnavailable
+                            ),
+                            awaitItem(),
+                        )
+                    }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 5:
+    // 1. Loading the parent throws, with or without a message.
+    //
+    // Case 5 Expected Result:
+    // The interactor returns a failure state without recording.
+    @Test
+    fun `Given Case 5, When preparing fails, Then an error state is returned`() {
+        coroutineRule.runTest {
+            // Given
+            listOf(mockedExceptionWithMessage, mockedExceptionWithNoMessage).forEach { exception ->
+                doThrow(exception).whenever(platform)
+                    .getTransactionLog(mockedTransactionId)
+                TransactionDataProtectionAction.entries.forEach { action ->
+                    // When
+                    interactor.prepareDataProtectionAction(
+                        mockedTransactionId,
+                        action,
+                        mockedActionWebUrl
+                    ).runFlowTest {
+                        // Then
+                        assertEquals(
+                            TransactionDetailsInteractorDataProtectionPartialState.Failure(
+                                exception.localizedMessage ?: mockedGenericErrorMessage
+                            ),
+                            awaitItem(),
+                        )
+                    }
+                }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 6:
+    // 1. Presentation data changes after details load; the user then starts two distinct attempts.
+    //
+    // Case 6 Expected Result:
+    // Each preparation reloads the parent and receives its own attempt ID.
+    @Test
+    fun `Given Case 6, When preparing separate attempts, Then fresh data and distinct IDs are used`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogCall(mockedActionPresentation)
+            interactor.getTransactionDetails(mockedActionPresentation.id)
+                .runFlowTest { awaitItem() }
+            val updated =
+                mockedActionPresentation.copy(claimsPresented = mockedNestedTransactionClaims)
+            mockGetTransactionLogCall(updated)
+            val ids = listOf(mockedAttemptId, mockedAttemptId + "-next")
+            whenever(uuidProvider.provideUuid()).thenReturn(ids[0], ids[1])
+            ids.forEach { id ->
+                // When
+                interactor.prepareDataProtectionAction(
+                    updated.id,
+                    TransactionDataProtectionAction.RequestDataDeletion,
+                    mockedActionWebUrl
+                ).runFlowTest {
+                    // Then
+                    val pending =
+                        (awaitItem() as TransactionDetailsInteractorDataProtectionPartialState.Success).pendingAction
+                    assertEquals(id, pending.id)
+                    assertEquals(updated, pending.presentation)
+                }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 7:
+    // 1. Available intermediary names contain Unicode and URI delimiters, or are missing.
+    //
+    // Case 7 Expected Result:
+    // Only DPAR drafts include a nonblank intermediary name, encoded inside the body.
+    @Test
+    fun `Given Case 7, When preparing email with an intermediary, Then Case 7 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            listOf(
+                null,
+                " ",
+                "Μεσάζων & Service +\r\nbcc=other@example.com"
+            ).forEach { intermediaryName ->
+                val presentation = mockedActionPresentation.copy(
+                    intermediary = mockedTransactionIntermediary.copy(name = intermediaryName?.let { name ->
+                        LocalizedTextDomain("el", name)
+                    }),
+                )
+                mockGetTransactionLogCall(presentation)
+                TransactionDataProtectionAction.entries.forEach { action ->
+                    // When
+                    interactor.prepareDataProtectionAction(
+                        presentation.id,
+                        action,
+                        mockedActionMailUrl
+                    ).runFlowTest {
+                        // Then
+                        val url =
+                            (awaitItem() as TransactionDetailsInteractorDataProtectionPartialState.Success).pendingAction.launchUrl
+                        assertEquals(mockedActionMailUrl, url.substringBefore("?"))
+                        assertEquals(url, URI(url).toASCIIString())
+                        val parameters = decodeMailParameters(url)
+                        assertEquals(setOf("subject", "body"), parameters.keys)
+                        val prefix =
+                            if (action == TransactionDataProtectionAction.RequestDataDeletion) "Erasure" else "Report"
+                        assertEquals(
+                            prefix + ": " + presentation.party.name?.text,
+                            parameters["subject"]
+                        )
+                        val intermediary =
+                            if (action == TransactionDataProtectionAction.ReportSuspiciousTransaction &&
+                                !intermediaryName.isNullOrBlank()
+                            ) "\n\nIntermediary:\n$intermediaryName" else ""
+                        assertEquals(
+                            "Party:\n" + presentation.party.name?.text + "\n" + mockedTransactionQualifiedIdentifier.value +
+                                    "\n" + mockedTransactionQualifiedIdentifier.schemeUri + "\nDate: " +
+                                    presentation.time.formatLocalDateTime(pattern = FULL_DATETIME_PATTERN) + intermediary,
+                            parameters["body"],
+                        )
+                        awaitComplete()
+                    }
+                }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 8:
+    // 1. The recorded email contact contains encoded mailbox characters.
+    //
+    // Case 8 Expected Result:
+    // Both actions accept the normalized target and preserve the recipient in the prepared draft.
+    @Test
+    fun `Given Case 8, When prepareDataProtectionAction is called, Then Case 8 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val contacts = listOf("MAILTO:privacy%2Bwallet%2frequests%3ddelete@EXAMPLE.COM")
+            val expectedRecipient = "mailto:privacy+wallet%2Frequests%3Ddelete@example.com"
+            val presentation = mockedActionPresentation.copy(
+                party = mockedActionPresentation.party.copy(contacts = contacts),
+                registration = mockedTransactionRegistration.copy(
+                    dpa = mockedTransactionRegistration.dpa!!.copy(contacts = contacts),
+                ),
+            )
+            mockGetTransactionLogCall(presentation)
+
+            TransactionDataProtectionAction.entries.forEach { action ->
+                // When
+                interactor.prepareDataProtectionAction(
+                    transactionId = presentation.id,
+                    action = action,
+                    contactUrl = expectedRecipient,
+                ).runFlowTest {
+                    // Then
+                    val pending =
+                        (awaitItem() as TransactionDetailsInteractorDataProtectionPartialState.Success).pendingAction
+                    assertEquals(CommunicationMethodDomain.Email, pending.communicationMethod)
+                    assertEquals(expectedRecipient, pending.contactUrl)
+                    assertEquals(expectedRecipient, pending.launchUrl.substringBefore('?'))
+                    assertEquals(
+                        "privacy+wallet/requests=delete@example.com",
+                        URI(pending.launchUrl.substringBefore('?')).schemeSpecificPart,
+                    )
+                    assertEquals(
+                        setOf("subject", "body"),
+                        decodeMailParameters(pending.launchUrl).keys
+                    )
+                    assertNull(pending.launchedAt)
+                    awaitComplete()
+                }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    //endregion
+
+    //region recordDataProtectionAction
+
+    // Case 1:
+    // 1. An action was prepared but no successful launch was acknowledged.
+    //
+    // Case 1 Expected Result:
+    // No history row is recorded for a cancelled or failed launch.
+    @Test
+    fun `Given Case 1, When saving an unlaunched action, Then recording is refused`() {
+        coroutineRule.runTest {
+            // Given
+            val pending = mockedPendingAction.copy(launchedAt = null)
+            // When
+            interactor.recordDataProtectionAction(pending).runFlowTest {
+                // Then
+                assertEquals(
+                    RecordTransactionPartialState.Failure(mockedGenericErrorMessage),
+                    awaitItem()
+                )
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 2:
+    // 1. Both actions launch through each supported method.
+    //
+    // Case 2 Expected Result:
+    // The selected method, stable ID and launch instant reach the recorder.
+    @Test
+    fun `Given Case 2, When saving launched actions, Then exact attempt data reaches the recorder`() {
+        coroutineRule.runTest {
+            // Given
+            mockRecordActionCall(RecordTransactionPartialState.Success)
+            CommunicationMethodDomain.entries.forEach { method ->
+                // When
+                val deletion = mockedPendingAction.copy(communicationMethod = method)
+                val report = deletion.copy(
+                    action = TransactionDataProtectionAction.ReportSuspiciousTransaction,
+                    authority = mockedActionPresentation.registration?.dpa,
+                )
+                listOf(deletion, report).forEach { pending ->
+                    interactor.recordDataProtectionAction(pending).runFlowTest {
+                        // Then
+                        assertEquals(RecordTransactionPartialState.Success, awaitItem())
+                    }
+                }
+                verify(platform).recordDataDeletionRequest(
+                    id = mockedAttemptId,
+                    time = mockedLaunchTime,
+                    presentation = mockedActionPresentation,
+                    communicationMethod = method,
+                )
+                verify(platform).recordDpaReport(
+                    id = mockedAttemptId,
+                    time = mockedLaunchTime,
+                    parentPresentationId = mockedActionPresentation.id,
+                    authority = mockedActionPresentation.registration!!.dpa!!,
+                    communicationMethod = method,
+                )
+            }
+            verifyNothingRead()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 3:
+    // 1. Saving fails; the caller retries the same launched action.
+    //
+    // Case 3 Expected Result:
+    // Both writes use identical ID, time and snapshot; no fresh ID or parent lookup occurs.
+    @Test
+    fun `Given Case 3, When retrying a failed save, Then the original attempt is reused`() {
+        coroutineRule.runTest {
+            // Given
+            val failure = RecordTransactionPartialState.Failure(mockedGenericErrorMessage)
+            whenever(
+                platform.recordDataDeletionRequest(
+                    any(),
+                    any(),
+                    any(),
+                    any()
+                )
+            )
+                .thenReturn(failure, RecordTransactionPartialState.Success)
+            listOf(failure, RecordTransactionPartialState.Success).forEach { expected ->
+                // When
+                interactor.recordDataProtectionAction(mockedPendingAction).runFlowTest {
+                    // Then
+                    assertEquals(expected, awaitItem())
+                }
+            }
+            verify(
+                platform,
+                org.mockito.kotlin.times(2)
+            ).recordDataDeletionRequest(
+                id = mockedAttemptId,
+                time = mockedLaunchTime,
+                presentation = mockedActionPresentation,
+                communicationMethod = CommunicationMethodDomain.Website,
+            )
+            verifyNothingRead()
+            verifyNoInteractions(uuidProvider)
+        }
+    }
+
+    // Case 4:
+    // 1. The selected authority differs from the authority recorded in the presentation.
+    //
+    // Case 4 Expected Result:
+    // Reporting stores the selected authority.
+    @Test
+    fun `Given Case 4, When saving a report, Then the selected authority is recorded`() {
+        coroutineRule.runTest {
+            // Given
+            mockRecordActionCall(RecordTransactionPartialState.Success)
+            val authority = DpaContactDomain(
+                LocalizedTextDomain(mockedTransactionLanguageTag, "Selected authority"),
+                LocalizedTextDomain(mockedTransactionLanguageTag, "Selected country"),
+                emptyList(),
+            )
+            val pending = mockedPendingAction.copy(
+                action = TransactionDataProtectionAction.ReportSuspiciousTransaction,
+                authority = authority,
+            )
+            // When
+            interactor.recordDataProtectionAction(pending).runFlowTest {
+                // Then
+                assertEquals(RecordTransactionPartialState.Success, awaitItem())
+            }
+            verify(platform).recordDpaReport(
+                id = mockedAttemptId,
+                time = mockedLaunchTime,
+                parentPresentationId = mockedActionPresentation.id,
+                authority = authority,
+                communicationMethod = CommunicationMethodDomain.Website,
+            )
+        }
+    }
+
+    // Case 5:
+    // 1. Recording throws, with or without a message.
+    //
+    // Case 5 Expected Result:
+    // The interactor maps the exception to Failure.
+    @Test
+    fun `Given Case 5, When the recorder throws, Then an error state is returned`() {
+        coroutineRule.runTest {
+            // Given
+            listOf(mockedExceptionWithMessage, mockedExceptionWithNoMessage).forEach { exception ->
+                whenever(
+                    platform.recordDataDeletionRequest(
+                        any(),
+                        any(),
+                        any(),
+                        any()
+                    )
+                )
+                    .thenThrow(exception)
+                // When
+                interactor.recordDataProtectionAction(mockedPendingAction).runFlowTest {
+                    // Then
+                    assertEquals(
+                        RecordTransactionPartialState.Failure(
+                            exception.localizedMessage ?: mockedGenericErrorMessage
+                        ),
+                        awaitItem(),
+                    )
+                }
+            }
+        }
+    }
+
+    // Case 6:
+    // 1. Recording is pending.
+    //
+    // Case 6 Expected Result:
+    // Success is emitted only after the recorder acknowledges storage.
+    @Test
+    fun `Given Case 6, When saving is pending, Then success waits for acknowledgement`() {
+        coroutineRule.runTest {
+            // Given
+            val started = CompletableDeferred<Unit>()
+            val finished = CompletableDeferred<Unit>()
+            whenever(
+                platform.recordDataDeletionRequest(
+                    any(),
+                    any(),
+                    any(),
+                    any()
+                )
+            )
+                .doSuspendableAnswer {
+                    started.complete(Unit)
+                    finished.await()
+                    RecordTransactionPartialState.Success
+                }
+            // When
+            interactor.recordDataProtectionAction(mockedPendingAction).runFlowTest {
+                started.await()
+                // Then
+                expectNoEvents()
+                finished.complete(Unit)
+                assertEquals(RecordTransactionPartialState.Success, awaitItem())
+            }
+        }
+    }
+
+    // Case 7:
+    // 1. A report has no selected authority.
+    //
+    // Case 7 Expected Result:
+    // The missing authority produces a failure without recording.
+    @Test
+    fun `Given Case 7, When saving a report without an authority, Then recording is refused`() {
+        coroutineRule.runTest {
+            // Given
+            val pending =
+                mockedPendingAction.copy(action = TransactionDataProtectionAction.ReportSuspiciousTransaction)
+            // When
+            interactor.recordDataProtectionAction(pending).runFlowTest {
+                // Then
+                assertEquals(
+                    RecordTransactionPartialState.Failure(mockedGenericErrorMessage),
+                    awaitItem()
+                )
+            }
+            verifyNothingRecorded()
+        }
+    }
+    //endregion
+
+    //region observePresentationActionCounts
+
+    // Case 1: No related actions returns loading followed by both zero counts.
+    @Test
+    fun `Given Case 1, When observePresentationActionCounts is called, Then Case 1 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            mockObservePresentationActionsCall(flowOf(emptyList()))
+
+            // When
+            interactor.observePresentationActionCounts(mockedPresentationLogDomain.id).runFlowTest {
+                // Then
+                assertEquals(PresentationActionCountsUiState.Loading, awaitItem())
+                assertEquals(PresentationActionCountsUiState.Content(0, 0), awaitItem())
+                awaitComplete()
+            }
+            verify(platform).observePresentationActions(
+                mockedPresentationLogDomain.id
+            )
+            verifyNoMoreInteractions(platform)
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 2: Both action types are counted regardless of their recorded outcome.
+    @Test
+    fun `Given Case 2, When observePresentationActionCounts is called, Then Case 2 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            mockObservePresentationActionsCall(
+                flowOf(
+                    listOf(
+                        mockedDataDeletionLogDomain,
+                        mockedDataDeletionLogDomain.copy(
+                            id = "second-ddr",
+                            result = TransactionResultDomain.NotCompleted(reason = null),
+                        ),
+                        mockedDpaReportLogDomain,
+                        mockedDpaReportLogDomain.copy(
+                            id = "second-dpar",
+                            result = TransactionResultDomain.NotCompleted(reason = mockedGenericErrorMessage),
+                        ),
+                    )
+                )
+            )
+
+            // When
+            interactor.observePresentationActionCounts(mockedPresentationLogDomain.id).runFlowTest {
+                // Then
+                assertEquals(PresentationActionCountsUiState.Loading, awaitItem())
+                assertEquals(PresentationActionCountsUiState.Content(2, 2), awaitItem())
+                awaitComplete()
+            }
+        }
+    }
+
+    // Case 3: Each new snapshot replaces the counts, including removals and an empty history.
+    @Test
+    fun `Given Case 3, When observePresentationActionCounts is called, Then Case 3 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            mockObservePresentationActionsCall(
+                flowOf(
+                    listOf(mockedDataDeletionLogDomain),
+                    listOf(mockedDataDeletionLogDomain, mockedDpaReportLogDomain),
+                    listOf(mockedDpaReportLogDomain),
+                    emptyList(),
+                )
+            )
+
+            // When
+            interactor.observePresentationActionCounts(mockedPresentationLogDomain.id).runFlowTest {
+                // Then
+                assertEquals(PresentationActionCountsUiState.Loading, awaitItem())
+                assertEquals(PresentationActionCountsUiState.Content(1, 0), awaitItem())
+                assertEquals(PresentationActionCountsUiState.Content(1, 1), awaitItem())
+                assertEquals(PresentationActionCountsUiState.Content(0, 1), awaitItem())
+                assertEquals(PresentationActionCountsUiState.Content(0, 0), awaitItem())
+                awaitComplete()
+            }
+        }
+    }
+
+    // Case 4: A later read failure returns an error instead of zero counts or another recording.
+    @Test
+    fun `Given Case 4, When observePresentationActionCounts is called, Then Case 4 Expected Result is returned`() {
+        coroutineRule.runTest {
+            listOf(mockedExceptionWithMessage, mockedExceptionWithNoMessage).forEach { exception ->
+                // Given
+                mockObservePresentationActionsCall(
+                    flow {
+                        emit(listOf(mockedDataDeletionLogDomain))
+                        throw exception
+                    }
+                )
+
+                // When
+                interactor.observePresentationActionCounts(mockedPresentationLogDomain.id)
+                    .runFlowTest {
+                        // Then
+                        assertEquals(PresentationActionCountsUiState.Loading, awaitItem())
+                        assertEquals(PresentationActionCountsUiState.Content(1, 0), awaitItem())
+                        assertEquals(
+                            PresentationActionCountsUiState.Failure(
+                                exception.localizedMessage ?: mockedGenericErrorMessage
+                            ),
+                            awaitItem(),
+                        )
+                        awaitComplete()
+                    }
+            }
+            verifyNothingRecorded()
+        }
+    }
+
+    // Case 5: Failing to start observation returns the same typed failure.
+    @Test
+    fun `Given Case 5, When observePresentationActionCounts is called, Then Case 5 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(
+                platform.observePresentationActions(
+                    mockedPresentationLogDomain.id
+                )
+            )
+                .thenThrow(mockedExceptionWithMessage)
+
+            // When
+            interactor.observePresentationActionCounts(mockedPresentationLogDomain.id).runFlowTest {
+                // Then
+                assertEquals(PresentationActionCountsUiState.Loading, awaitItem())
+                assertEquals(
+                    PresentationActionCountsUiState.Failure(
+                        mockedExceptionWithMessage.localizedMessage ?: mockedGenericErrorMessage,
+                    ),
+                    awaitItem(),
+                )
+                awaitComplete()
+            }
+        }
+    }
+
+    // Case 6: Cancelling the consumer cancels the active observation.
+    @Test
+    fun `Given Case 6, When observePresentationActionCounts is called, Then Case 6 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val observationStopped = CompletableDeferred<Unit>()
+            mockObservePresentationActionsCall(
+                flow {
+                    try {
+                        emit(listOf(mockedDpaReportLogDomain))
+                        awaitCancellation()
+                    } finally {
+                        observationStopped.complete(Unit)
+                    }
+                }
+            )
+
+            // When
+            interactor.observePresentationActionCounts(mockedPresentationLogDomain.id).runFlowTest {
+                // Then
+                assertEquals(PresentationActionCountsUiState.Loading, awaitItem())
+                assertEquals(PresentationActionCountsUiState.Content(0, 1), awaitItem())
+                cancelAndIgnoreRemainingEvents()
+            }
+            observationStopped.await()
+            verifyNothingRecorded()
+        }
+    }
+    //endregion
+
     //region helper functions
     private fun ListItemDataUi.textValue(): String =
         (mainContentData as ListItemMainContentDataUi.Text).text
+
+    private fun mockObservePresentationActionsCall(actions: Flow<List<TransactionLogDomain.PresentationAction>>) {
+        whenever(
+            platform.observePresentationActions(
+                mockedPresentationLogDomain.id
+            )
+        )
+            .thenReturn(actions)
+    }
+
+    private suspend fun mockRecordActionCall(result: RecordTransactionPartialState) {
+        whenever(
+            platform.recordDataDeletionRequest(
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        ).thenReturn(result)
+        whenever(
+            platform.recordDpaReport(
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+            )
+        ).thenReturn(result)
+    }
+
+    /**
+     * Upstream's `verifyNoInteractions(walletCoreTransactionRecordingController)`. Recording goes through the
+     * same bridge as reading here, so the bridge cannot be checked for no interactions at all.
+     */
+    private suspend fun verifyNothingRecorded() {
+        verify(platform, never()).recordDataDeletionRequest(any(), any(), any(), any())
+        verify(platform, never()).recordDpaReport(any(), any(), any(), any(), any())
+    }
+
+    /** Upstream's `verifyNoInteractions(walletCoreTransactionLogController)`: the log is neither read nor changed. */
+    private suspend fun verifyNothingRead() {
+        verify(platform, never()).getTransactionLogs()
+        verify(platform, never()).getTransactionLog(any())
+        verify(platform, never()).observePresentationActions(any())
+        verify(platform, never()).deleteTransactionLog(any())
+    }
+
+    private fun decodeMailParameters(url: String): Map<String, String> {
+        return url.substringAfter("?").split("&").associate { parameter ->
+            parameter.substringBefore("=") to
+                    URLDecoder.decode(parameter.substringAfter("="), Charsets.UTF_8.name())
+        }
+    }
 
     private suspend fun mockDeleteTransactionLogCall(transactionId: String) {
         whenever(platform.deleteTransactionLog(id = transactionId)).thenReturn(
@@ -1574,16 +3192,116 @@ class TestTransactionDetailsInteractor {
             if (resource == Res.string.generic_error_message) {
                 mockedGenericErrorMessage
             } else {
-                mockedTransactionDetailsStrings.getValue(resource)
+                (mockedTransactionDetailsStrings + mockedPrivacyActionStrings +
+                        (Res.string.transaction_details_action_unavailable to mockedActionUnavailable))
+                    .getValue(resource)
             }
         }
+        listOf(
+            Res.string.data_deletion_website_description,
+            Res.string.data_deletion_email_description,
+            Res.string.data_deletion_phone_description,
+            Res.string.data_deletion_website_button,
+            Res.string.data_deletion_email_button,
+            Res.string.data_deletion_phone_button,
+            Res.string.data_deletion_retention_notice,
+        ).forEach { resource ->
+            whenever(strings.get(eq(resource), any<String>()))
+                .thenAnswer { invocation ->
+                    String.format(
+                        Locale.ROOT,
+                        mockedPrivacyActionStrings.getValue(resource),
+                        invocation.getArgument<String>(1),
+                    )
+                }
+        }
+        listOf(
+            Res.string.transaction_details_deletion_email_subject to "Erasure",
+            Res.string.transaction_details_report_email_subject to "Report",
+        ).forEach { (resource, prefix) ->
+            whenever(strings.get(eq(resource), any<String>()))
+                .thenAnswer { invocation -> prefix + ": " + invocation.getArgument<String>(1) }
+        }
+        listOf(
+            Res.string.transaction_details_deletion_email_body,
+            Res.string.transaction_details_report_email_body,
+        ).forEach { resource ->
+            whenever(strings.get(eq(resource), any<String>(), any<String>()))
+                .thenAnswer { invocation ->
+                    "Party:\n" + invocation.getArgument<String>(1) + "\nDate: " + invocation.getArgument<String>(
+                        2
+                    )
+                }
+        }
+        whenever(
+            strings.get(
+                eq(Res.string.transaction_details_report_email_intermediary),
+                any<String>()
+            )
+        )
+            .thenAnswer { invocation -> "\n\nIntermediary:\n" + invocation.getArgument<String>(1) }
     }
     //endregion
 
     //region mocked objects
+    private val mockedPrivacyActionStrings = mapOf(
+        Res.string.data_deletion_relying_party_default_name to "Relying party",
+        Res.string.data_deletion_website_description to "Website description for %1\$s",
+        Res.string.data_deletion_email_description to "Email description for %1\$s",
+        Res.string.data_deletion_phone_description to "Phone description for %1\$s",
+        Res.string.data_deletion_website_responsibility to "<b>Website responsibility.</b> Continue outside.",
+        Res.string.data_deletion_email_responsibility to "<b>Email responsibility.</b> Continue outside.",
+        Res.string.data_deletion_phone_responsibility to "<b>Phone responsibility.</b> Continue outside.",
+        Res.string.data_deletion_retention_notice to "Retention for %1\$s",
+        Res.string.data_deletion_website_button to "Website action for %1\$s",
+        Res.string.data_deletion_email_button to "Email action for %1\$s",
+        Res.string.data_deletion_phone_button to "Phone action for %1\$s",
+        Res.string.dpa_report_responsibility to "<b>Report responsibility.</b> Continue outside.",
+        Res.string.dpa_report_follow_up to "Authority follows up.",
+        Res.string.dpa_report_call_button to "Call",
+        Res.string.dpa_report_email_button to "Open email",
+        Res.string.dpa_report_website_button to "Visit website",
+    )
+
     private val mockedActionWebUrl = "https://example.com/contact"
     private val mockedActionMailUrl = "mailto:privacy+wallet@example.com"
     private val mockedActionPhoneUrl = "tel:+302101234567"
+    private val mockedActionUnavailable = "Action unavailable"
+    private val mockedInvalidActionContacts = listOf(
+        "GR", "", "javascript:alert(1)", "intent://launch", "file:///private", "https://",
+        "mailto:authority@example.com?bcc=other@example.com", "authority@example.com#fragment",
+        "authority%0d%0a@example.com", "https://user:password@example.com",
+        "tel:+302101234567;ext=99", "mailto:authority@example.com\r\nbcc:other@example.com",
+    )
+    private val mockedMixedContacts = listOf(
+        " " + mockedActionWebUrl + " ", "privacy+wallet@example.com", "+30 (210) 123-4567",
+        mockedActionWebUrl, "MAILTO:privacy+wallet@example.com", "TEL:+302101234567",
+        "o'connor@example.com",
+    ) + mockedInvalidActionContacts
+    private val mockedActionPresentation = mockedDetailedPresentationLogDomain.copy(
+        party = mockedTransactionPartyWithContacts.copy(
+            contacts = listOf(mockedActionWebUrl, mockedActionMailUrl, mockedActionPhoneUrl),
+        ),
+        registration = mockedTransactionRegistration.copy(
+            dpa = mockedTransactionRegistration.dpa!!.copy(
+                contacts = listOf(mockedActionWebUrl, mockedActionMailUrl, mockedActionPhoneUrl),
+            ),
+        ),
+    )
+
+    private val mockedAttemptId = "privacy-attempt"
+    private val mockedLaunchTime = Instant.parse("2026-09-17T08:30:00Z")
+    private val mockedPendingAction = PendingTransactionActionUi(
+        id = mockedAttemptId,
+        presentation = mockedActionPresentation,
+        action = TransactionDataProtectionAction.RequestDataDeletion,
+        contactUrl = mockedActionWebUrl,
+        launchUrl = mockedActionWebUrl,
+        communicationMethod = CommunicationMethodDomain.Website,
+        authority = null,
+        launchedAt = mockedLaunchTime,
+    )
+
     private val mockedTransactionId = "mockedTransactionId"
     private val mockedCreationLocalDateTime: LocalDateTime =
         LocalDateTime(2026, 3, 15, 14, 30, 0)

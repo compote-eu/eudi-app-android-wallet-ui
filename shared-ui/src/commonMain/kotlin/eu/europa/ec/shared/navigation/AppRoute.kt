@@ -26,6 +26,7 @@ import eu.europa.ec.commonfeature.config.QrScanUiConfig
 import eu.europa.ec.commonfeature.config.RequestUriConfig
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
 import eu.europa.ec.commonfeature.model.PinFlow
+import eu.europa.ec.dashboardfeature.ui.transactions.detail.model.TransactionDataProtectionAction
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -74,6 +75,24 @@ data class DocumentDetailsRoute(val documentId: String) : AppRoute
 @Serializable
 @SerialName("TransactionDetails")
 data class TransactionDetailsRoute(val transactionId: String) : AppRoute
+
+/** Before a data-deletion request about the presentation [transactionId] leaves the wallet. */
+@Serializable
+@SerialName("DataDeletionRequest")
+data class DataDeletionRequestRoute(val transactionId: String) : AppRoute
+
+/** Reporting the presentation [transactionId] to its data protection authority. */
+@Serializable
+@SerialName("DpaReport")
+data class DpaReportRoute(val transactionId: String) : AppRoute
+
+/** The previous attempts at [action] for the presentation [transactionId]. */
+@Serializable
+@SerialName("TransactionHistory")
+data class TransactionHistoryRoute(
+    val transactionId: String,
+    val action: TransactionDataProtectionAction,
+) : AppRoute
 
 // --- Common (reusable screens) ---
 @Serializable

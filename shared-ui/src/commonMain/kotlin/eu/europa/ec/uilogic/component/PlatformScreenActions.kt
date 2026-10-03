@@ -51,6 +51,17 @@ interface PlatformScreenActions {
     fun openUrlExternally(url: String)
 
     /**
+     * Hands [url] to the app that handles it — the mail app for `mailto:`, the dialler for `tel:`, the
+     * browser or the app claiming the link for anything else — and reports whether one opened.
+     *
+     * Unlike [openUrlExternally] the answer matters to the caller: a privacy action is recorded in the
+     * transaction history only once its contact really opened (upstream 23b98be0), and a link that does
+     * not open is reported rather than ignored. Suspends because iOS learns the outcome from `openURL`'s
+     * completion handler.
+     */
+    suspend fun tryOpenExternally(url: String): Boolean
+
+    /**
      * Offers [intent] to the user's choice of app, under [title] — Android's share sheet.
      *
      * ⚠️ **Superseded for file sharing, and currently unreachable.** Its only caller was the settings

@@ -126,9 +126,13 @@ fun provideWalletCoreTransactionLogManager(
 fun provideWalletCoreTransactionRecordingController(
     uuidProvider: UuidProvider,
     transactionLogManager: TransactionLogManager,
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
+    resourceProvider: ResourceProvider,
 ): WalletCoreTransactionRecordingController = WalletCoreTransactionRecordingControllerImpl(
     uuidProvider = uuidProvider,
     transactionLogManager = transactionLogManager,
+    walletCoreTransactionLogController = walletCoreTransactionLogController,
+    resourceProvider = resourceProvider,
 )
 
 @Factory

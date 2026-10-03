@@ -80,6 +80,19 @@ actual fun rememberPlatformScreenActions(): PlatformScreenActions {
                 }
             }
 
+            // Upstream's `Context.openTransactionAction`: the action follows the scheme, and anything
+            // that stops the launch — no app for it, an unparseable url — answers false.
+            override suspend fun tryOpenExternally(url: String): Boolean = runCatching {
+                val uri = url.toUri()
+                val action = when (uri.scheme?.lowercase()) {
+                    "mailto" -> Intent.ACTION_SENDTO
+                    "tel" -> Intent.ACTION_DIAL
+                    else -> Intent.ACTION_VIEW
+                }
+                context.startActivity(Intent(action, uri))
+                true
+            }.getOrDefault(false)
+
             override fun shareFiles(paths: List<String>, title: String?) {
                 if (paths.isEmpty()) return
                 val uris = paths.mapNotNull { path ->

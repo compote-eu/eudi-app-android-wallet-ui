@@ -43,6 +43,9 @@ import eu.europa.ec.proximityfeature.ui.success.ProximitySuccessViewModel
 import eu.europa.ec.startupfeature.ui.splash.SplashScreen
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import eu.europa.ec.dashboardfeature.ui.transactions.data_deletion.DataDeletionRequestScreen
+import eu.europa.ec.dashboardfeature.ui.transactions.dpa_report.DpaReportScreen
+import eu.europa.ec.dashboardfeature.ui.transactions.history.TransactionHistoryScreen
 
 /**
  * Every destination in the app, bound once for both platforms.
@@ -146,6 +149,28 @@ fun EntryProviderScope<NavKey>.sharedAppEntries(navigator: AppNavigator) {
         TransactionDetailsScreen(
             navigator = navigator,
             viewModel = koinViewModel { parametersOf(route.transactionId) },
+        )
+    }
+
+    entry<DataDeletionRequestRoute> { route ->
+        DataDeletionRequestScreen(
+            navigator = navigator,
+            viewModel = koinViewModel { parametersOf(route.transactionId) },
+        )
+    }
+
+    entry<DpaReportRoute> { route ->
+        DpaReportScreen(
+            navigator = navigator,
+            viewModel = koinViewModel { parametersOf(route.transactionId) },
+        )
+    }
+
+    entry<TransactionHistoryRoute> { route ->
+        TransactionHistoryScreen(
+            navigator = navigator,
+            // The view model takes the action by name, as upstream's navigation argument carried it.
+            viewModel = koinViewModel { parametersOf(route.transactionId, route.action.name) },
         )
     }
 
