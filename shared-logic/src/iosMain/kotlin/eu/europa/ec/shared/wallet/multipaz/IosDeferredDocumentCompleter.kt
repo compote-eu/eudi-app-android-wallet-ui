@@ -29,6 +29,10 @@ import org.multipaz.document.Document
 import org.multipaz.securearea.CreateKeySettings
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
+import org.multipaz.credential.SecureAreaBoundCredential
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.mdoc.mso.MobileSecurityObject
+import org.multipaz.sdjwt.SdJwt
 
 /**
  * Finishes a document the issuer promised to mint later.
@@ -207,14 +211,28 @@ internal class IosDeferredDocumentCompleter(
             return
         }
         val isMdoc = document.eudiMetadata?.format is StoredDocumentFormat.MsoMdoc
-        // Zipped: an issuer may return fewer than were asked for, and certifying a credential with
-        // another one's data would be worse than leaving it pending.
-        pending.zip(credentials).forEach { (credential, value) ->
+        val issued = credentials.map { value ->
             val issuerData = if (isMdoc) {
                 ByteString(*value.fromBase64Url())
             } else {
                 value.encodeToByteString()
             }
+            issuerData to runCatching { boundKeyOf(issuerData, isMdoc) }.getOrNull()
+        }
+        // Paired by the key each credential is bound to, never by position. The issuer answers in the
+        // order the proofs were sent when the request was deferred, and the store does not list the
+        // waiting credentials in that order: paired by position, 5 of a deferred PID's 7 credentials were
+        // certified onto another credential's key (measured on the simulator, 2026-10-03), and every
+        // presentation that picked one failed. One the issuer bound to no waiting key stays uncertified,
+        // since certifying a credential with another one's data is worse than leaving it pending.
+        val waiting = pending.mapNotNull { credential ->
+            (credential as? SecureAreaBoundCredential)?.let { it to it.secureArea.getKeyInfo(it.alias).publicKey }
+        }
+        val paired = pairByBoundKey(waiting = waiting, issued = issued)
+        if (paired.size < issued.size) {
+            Logger.w(TAG, "${issued.size - paired.size} of ${issued.size} collected credentials match no waiting key")
+        }
+        paired.forEach { (credential, issuerData) ->
             runCatching { credential.certify(issuerData) }.onFailure {
                 Logger.w(TAG, "could not certify a credential: ${it::class.simpleName}: ${it.message}")
             }
@@ -245,6 +263,31 @@ internal data class StoredOpenID4VciAuthorization(
     val dpopKeyAlias: String,
     val refreshToken: String,
 )
+
+/**
+ * Each issued credential with the waiting credential holding the key it is bound to.
+ *
+ * A credential bound to no waiting key — or to one already claimed — is left out rather than paired with
+ * whatever is next, so a mismatch can only leave a credential uncertified, never certify it wrongly.
+ */
+internal fun <C, D> pairByBoundKey(
+    waiting: List<Pair<C, EcPublicKey>>,
+    issued: List<Pair<D, EcPublicKey?>>,
+): List<Pair<C, D>> {
+    val unclaimed = waiting.toMutableList()
+    return issued.mapNotNull { (data, key) ->
+        val index = if (key == null) -1 else unclaimed.indexOfFirst { (_, waitingKey) -> waitingKey == key }
+        if (index < 0) null else unclaimed.removeAt(index).first to data
+    }
+}
+
+/** The public key [issuerData] is bound to: an mdoc's MSO `deviceKey`, an SD-JWT VC's `cnf` key. */
+internal suspend fun boundKeyOf(issuerData: ByteString, isMdoc: Boolean): EcPublicKey? = if (isMdoc) {
+    val issuerAuth = Cbor.decode(issuerData.toByteArray())["issuerAuth"].asCoseSign1
+    MobileSecurityObject.fromDataItem(Cbor.decode(Cbor.decode(issuerAuth.payload!!).asTagged.asBstr)).deviceKey
+} else {
+    SdJwt.fromCompactSerialization(issuerData.toByteArray().decodeToString()).kbKey
+}
 
 internal fun ByteString.openID4VciAuthorization(): StoredOpenID4VciAuthorization? {
     val map = runCatching { Cbor.decode(toByteArray()) }.getOrNull() as? CborMap ?: return null

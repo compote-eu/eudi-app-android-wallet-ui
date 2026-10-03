@@ -92,6 +92,8 @@ class IosDeferredDocumentCompleterTest {
         /** Null for an issuer that grants none: then multipaz stores no authorization data at all. */
         refreshToken: String? = "the-refresh-token",
         resume: DeferredResume? = null,
+        /** How many credentials wait, each with its own key, as a batch issuance leaves them. */
+        pendingCredentials: Int = 1,
     ): Document {
         keySecureArea.createKey(dpopAlias, SoftwareCreateKeySettings.Builder().build())
         val document = documentStore.createDocument(
@@ -118,20 +120,25 @@ class IosDeferredDocumentCompleterTest {
             )
             document.edit { authorizationData = ByteString(*authorization) }
         }
-        MdocCredential.create(
-            document = document,
-            asReplacementForIdentifier = null,
-            domain = documentManagerId,
-            secureArea = keySecureArea,
-            docType = docType,
-            createKeySettings = SoftwareCreateKeySettings.Builder().build(),
-        )
+        repeat(pendingCredentials) {
+            MdocCredential.create(
+                document = document,
+                asReplacementForIdentifier = null,
+                domain = documentManagerId,
+                secureArea = keySecureArea,
+                docType = docType,
+                createKeySettings = SoftwareCreateKeySettings.Builder().build(),
+            )
+        }
         return document
     }
 
     /** The bytes an issuer would return for [document]'s waiting credential, base64url as on the wire. */
-    private suspend fun issuedCredentialFor(document: Document): String {
-        val pending = document.getPendingCredentials().single() as MdocCredential
+    private suspend fun issuedCredentialFor(document: Document): String =
+        issuedCredentialFor(document.getPendingCredentials().single() as MdocCredential)
+
+    /** The bytes an issuer would return for [pending], bound to its key. */
+    private suspend fun issuedCredentialFor(pending: MdocCredential): String {
         val data = issuerSignedDataFor(
             docType = docType,
             issuerNamespaces = issuerNamespacesOf(docType, samplePidElements(), Random.Default),
@@ -422,5 +429,33 @@ class IosDeferredDocumentCompleterTest {
             .openID4VciAuthorization()
         assertEquals("the-rotated-refresh-token", assertNotNull(stored).refreshToken)
         assertEquals(dpopAlias, stored.dpopKeyAlias, "only the refresh token changes")
+    }
+
+    @Test
+    fun each_collected_credential_is_certified_onto_the_key_it_was_issued_for() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val document = store.parkWithPendingCredential(pendingCredentials = 3)
+        val waiting = document.getPendingCredentials().map { it as MdocCredential }
+        // The issuer answers in the order the proofs were sent when the request was deferred, which need
+        // not be the order the store lists the waiting credentials in. Reversed is one such order.
+        val answered = waiting.reversed().map { issuedCredentialFor(it) }
+
+        val result = completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.OK,
+            deferredBody = """{"credentials":[${answered.joinToString { """{"credential":"$it"}""" }}]}""",
+        ).complete(document)
+
+        assertIs<DeferredCollection.Issued>(result)
+        val certified = store.documentStore.lookupDocument(document.identifier)!!
+            .getCertifiedCredentials().map { it as MdocCredential }
+        assertEquals(3, certified.size)
+        certified.forEach { credential ->
+            assertEquals(
+                credential.secureArea.getKeyInfo(credential.alias).publicKey,
+                credential.mso.deviceKey,
+                "credential ${credential.identifier} holds a key other than the one its data is bound to",
+            )
+        }
     }
 }
