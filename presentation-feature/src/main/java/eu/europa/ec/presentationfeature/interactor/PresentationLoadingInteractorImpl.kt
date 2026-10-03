@@ -48,6 +48,12 @@ class PresentationLoadingInteractorImpl(
                     uri = response.uri.toString()
                 )
 
+                // wallet-core 0.30.2 reported a verifier refusing the response as an error with this
+                // message; until the rejection screen arrives, it stays the failure it was.
+                is WalletCorePartialState.Rejected -> PresentationLoadingObserveResponsePartialState.Failure(
+                    error = "Verifier rejected the response"
+                )
+
                 is WalletCorePartialState.Success -> {
                     PresentationLoadingObserveResponsePartialState.Success
                 }

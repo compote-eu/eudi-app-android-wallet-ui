@@ -28,10 +28,7 @@ import eu.europa.ec.corelogic.di.WalletCoreScope
 import eu.europa.ec.corelogic.di.getOrCreateKoinScope
 import eu.europa.ec.corelogic.extension.documentIdentifier
 import eu.europa.ec.corelogic.extension.getLocalizedDisplayName
-import eu.europa.ec.corelogic.extension.parseTransactionLog
-import eu.europa.ec.corelogic.extension.toCoreTransactionLog
 import eu.europa.ec.corelogic.extension.toIssuerRegistrationDomain
-import eu.europa.ec.corelogic.extension.toTransactionLogData
 import eu.europa.ec.corelogic.extension.isTerminalDeferredFailure
 import eu.europa.ec.corelogic.extension.toUntrustedIssuerReasonOrNull
 import eu.europa.ec.corelogic.model.DeferredDocumentDataDomain
@@ -42,7 +39,6 @@ import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
 import eu.europa.ec.corelogic.model.ScopedDocumentDomain
 import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.corelogic.model.isBlockedForIssuance
-import eu.europa.ec.corelogic.model.TransactionLogDataDomain
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.eudi.openid4vci.CredentialIssuerMetadata
 import eu.europa.ec.eudi.openid4vci.MsoMdocCredential
@@ -69,7 +65,6 @@ import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.storagelogic.dao.BookmarkDao
 import eu.europa.ec.storagelogic.dao.FailedReIssuedDocumentDao
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
-import eu.europa.ec.storagelogic.dao.TransactionLogDao
 import eu.europa.ec.storagelogic.model.Bookmark
 import eu.europa.ec.storagelogic.model.FailedReIssuedDocument
 import kotlinx.coroutines.CoroutineDispatcher
@@ -200,13 +195,6 @@ interface WalletCoreDocumentsController {
 
     suspend fun resolveDocumentStatus(document: IssuedDocument): Result<Status>
 
-    suspend fun getTransactionLogs(): List<TransactionLogDataDomain>
-
-    suspend fun getTransactionLog(id: String): TransactionLogDataDomain?
-
-    /** Removes one entry from the 0.30.2 log; goes with it in the wallet-core 0.31.0 bump. */
-    suspend fun deleteTransactionLog(id: String)
-
     suspend fun isDocumentBookmarked(documentId: DocumentId): Boolean
 
     suspend fun storeBookmark(bookmarkId: String)
@@ -224,7 +212,6 @@ class WalletCoreDocumentsControllerImpl(
     private val resourceProvider: ResourceProvider,
     private val walletCoreConfig: WalletCoreConfig,
     private val bookmarkDao: BookmarkDao,
-    private val transactionLogDao: TransactionLogDao,
     private val revokedDocumentDao: RevokedDocumentDao,
     private val failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
     private val prefKeys: PrefKeys,
@@ -804,30 +791,6 @@ class WalletCoreDocumentsControllerImpl(
     override fun getAllDocumentCategories(): DocumentCategories {
         return walletCoreConfig.documentCategories
     }
-
-    override suspend fun getTransactionLogs(): List<TransactionLogDataDomain> =
-        withContext(dispatcher) {
-            transactionLogDao.retrieveAll()
-                .mapNotNull { transactionLog ->
-                    transactionLog
-                        .toCoreTransactionLog()
-                        ?.parseTransactionLog()
-                        ?.toTransactionLogData(transactionLog.identifier)
-                }
-        }
-
-    override suspend fun deleteTransactionLog(id: String) =
-        withContext(dispatcher) {
-            transactionLogDao.delete(id)
-        }
-
-    override suspend fun getTransactionLog(id: String): TransactionLogDataDomain? =
-        withContext(dispatcher) {
-            transactionLogDao.retrieve(id)
-                ?.toCoreTransactionLog()
-                ?.parseTransactionLog()
-                ?.toTransactionLogData(id)
-        }
 
     override suspend fun isDocumentBookmarked(documentId: DocumentId): Boolean =
         bookmarkDao.retrieve(documentId) != null

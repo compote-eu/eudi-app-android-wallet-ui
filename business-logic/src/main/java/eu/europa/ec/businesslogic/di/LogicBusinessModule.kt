@@ -17,6 +17,8 @@
 package eu.europa.ec.businesslogic.di
 
 import android.content.Context
+import eu.europa.ec.businesslogic.BuildConfig
+import eu.europa.ec.businesslogic.config.AppBuildType
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.config.ConfigLogicImpl
 import eu.europa.ec.businesslogic.controller.crypto.CryptoController
@@ -35,6 +37,7 @@ import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.businesslogic.validator.FilterValidatorImpl
 import eu.europa.ec.businesslogic.validator.FormValidator
 import eu.europa.ec.businesslogic.validator.FormValidatorImpl
+import eu.europa.ec.eudi.rqes.core.RqesSigningLogger
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.wallet.config.SharedAppConfig
 import org.koin.core.annotation.ComponentScan
@@ -49,7 +52,13 @@ import org.koin.core.annotation.Single
 class LogicBusinessModule
 
 @Single
-fun provideConfigLogic(context: Context): ConfigLogic = ConfigLogicImpl(context)
+fun provideConfigLogic(
+    context: Context,
+    signingLogger: RqesSigningLogger,
+): ConfigLogic = ConfigLogicImpl(
+    context = context,
+    signingLogger = signingLogger,
+)
 
 /**
  * The same instance under the supertype shared code asks for.
@@ -63,8 +72,14 @@ fun provideConfigLogic(context: Context): ConfigLogic = ConfigLogicImpl(context)
 fun provideSharedAppConfig(configLogic: ConfigLogic): SharedAppConfig = configLogic
 
 @Single
-fun provideLogController(context: Context, configLogic: ConfigLogic): LogController =
-    LogControllerImpl(context, configLogic)
+// The tag is built here rather than read from ConfigLogic: ConfigLogic now needs the RQES signing
+// logger, whose chain reaches the encrypted database and from there this controller, so depending
+// on ConfigLogic here would be a cycle.
+fun provideLogController(context: Context): LogController =
+    LogControllerImpl(
+        context = context,
+        tag = "EUDI Wallet ${BuildConfig.FLAVOR.uppercase()}-${AppBuildType.getType()}",
+    )
 
 @Single
 fun providePrefsController(resourceProvider: ResourceProvider): PrefsController =

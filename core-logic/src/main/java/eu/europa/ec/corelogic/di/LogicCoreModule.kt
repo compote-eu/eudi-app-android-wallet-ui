@@ -31,11 +31,16 @@ import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogControllerImpl
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingControllerImpl
 import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.corelogic.provider.RegistrationCheckProviderImpl
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProvider
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProviderImpl
 import eu.europa.ec.corelogic.wallet.WalletEngineImpl
+import eu.europa.ec.eudi.rqes.core.RqesSigningLogger
+import eu.europa.ec.eudi.wallet.transactionLogging.DefaultTransactionLogManager
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.networklogic.repository.WalletAttestationRepository
@@ -99,13 +104,31 @@ fun provideWalletCoreConfig(
 fun provideWalletCoreLogController(logController: LogController): WalletCoreLogController =
     WalletCoreLogControllerImpl(logController)
 
-@Factory
+// Single, not a factory: the controller owns the queue that keeps transaction writes in order, so
+// a second instance would be a second queue writing the same rows.
+@Single
 fun provideWalletCoreTransactionLogController(
     transactionLogDao: TransactionLogDao,
-    uuidProvider: UuidProvider
+    resourceProvider: ResourceProvider,
 ): WalletCoreTransactionLogController = WalletCoreTransactionLogControllerImpl(
     transactionLogDao = transactionLogDao,
-    uuidProvider = uuidProvider
+    resourceProvider = resourceProvider,
+)
+
+@Single
+fun provideWalletCoreTransactionLogManager(
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
+): TransactionLogManager = DefaultTransactionLogManager(
+    storage = walletCoreTransactionLogController,
+)
+
+@Single(binds = [RqesSigningLogger::class])
+fun provideWalletCoreTransactionRecordingController(
+    uuidProvider: UuidProvider,
+    transactionLogManager: TransactionLogManager,
+): WalletCoreTransactionRecordingController = WalletCoreTransactionRecordingControllerImpl(
+    uuidProvider = uuidProvider,
+    transactionLogManager = transactionLogManager,
 )
 
 @Factory
@@ -130,7 +153,6 @@ fun provideWalletCoreDocumentsController(
     resourceProvider: ResourceProvider,
     walletCoreConfig: WalletCoreConfig,
     bookmarkDao: BookmarkDao,
-    transactionLogDao: TransactionLogDao,
     revokedDocumentDao: RevokedDocumentDao,
     failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
     prefKeys: PrefKeys,
@@ -140,7 +162,6 @@ fun provideWalletCoreDocumentsController(
         resourceProvider,
         walletCoreConfig,
         bookmarkDao,
-        transactionLogDao,
         revokedDocumentDao,
         failedReIssuedDocumentDao,
         prefKeys,

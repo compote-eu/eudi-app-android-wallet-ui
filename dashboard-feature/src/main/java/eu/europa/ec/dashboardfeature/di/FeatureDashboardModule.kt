@@ -19,6 +19,7 @@ package eu.europa.ec.dashboardfeature.di
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
 import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.validator.FilterValidator
@@ -147,9 +148,9 @@ fun provideDocumentsInteractor(
 /** Android's transaction-log reader; see `AndroidTransactionsPlatformBridge` for the mapping. */
 @Factory
 fun provideTransactionsPlatformBridge(
-    walletCoreDocumentsController: WalletCoreDocumentsController,
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
 ): TransactionsPlatformBridge = AndroidTransactionsPlatformBridge(
-    walletCoreDocumentsController = walletCoreDocumentsController,
+    walletCoreTransactionLogController = walletCoreTransactionLogController,
 )
 
 @Factory

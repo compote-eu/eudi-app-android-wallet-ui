@@ -14,25 +14,19 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.businesslogic.config
+package eu.europa.ec.corelogic.util
 
-import android.content.Context
-import eu.europa.ec.eudi.rqes.core.RqesSigningLogger
-import eu.europa.ec.eudi.rqesui.infrastructure.config.EudiRQESUiConfig
+import eu.europa.ec.corelogic.model.ClaimPathSegment
+import java.time.Instant
+import java.util.Locale
 
-class ConfigLogicImpl(
-    val context: Context,
-    private val signingLogger: RqesSigningLogger,
-) : ConfigLogic {
-    override val appFlavor: AppFlavor
-        get() = AppFlavor.DEV
-
-    override val rqesConfig: EudiRQESUiConfig
-        get() = RQESConfigImpl(
-            context = context,
-            signingLogger = signingLogger,
-        )
-
-    override val changelogUrl: String?
-        get() = null
-}
+internal const val mockedTransactionId = "transaction-id"
+internal val mockedTransactionTime: Instant = Instant.parse("2026-09-08T12:30:00Z")
+internal val mockedEnglishLocale: Locale = Locale.ENGLISH
+internal val mockedGreekLocale: Locale = Locale.forLanguageTag("el-GR")
+internal const val mockedCredentialType = "eu.europa.ec.eudi.pid.1"
+internal const val mockedClaimName = "family_name"
+internal val mockedClaimSegments = listOf(
+    ClaimPathSegment.Key(mockedCredentialType),
+    ClaimPathSegment.Key(mockedClaimName),
+)

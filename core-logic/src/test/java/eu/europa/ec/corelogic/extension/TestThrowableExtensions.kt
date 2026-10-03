@@ -44,7 +44,7 @@ class TestThrowableExtensions {
     @Test
     fun `an untrusted issuer chain is an access-certificate refusal`() {
         // Given
-        val failure = IssuerNotTrustedException(cause = RuntimeException("untrusted chain"))
+        val failure = mockedIssuerNotTrustedException
 
         // When
         val reason = failure.toUntrustedIssuerReasonOrNull()
@@ -110,7 +110,7 @@ class TestThrowableExtensions {
             "outer",
             IllegalStateException(
                 "inner",
-                IssuerNotTrustedException(cause = RuntimeException("untrusted chain")),
+                mockedIssuerNotTrustedException,
             ),
         )
 
@@ -235,8 +235,17 @@ class TestThrowableExtensions {
         assertFalse(IllegalStateException("server_error").isTerminalDeferredFailure())
         assertFalse(java.io.IOException("connection reset").isTerminalDeferredFailure())
         // Trust is its own outcome, decided before this one.
-        assertFalse(IssuerNotTrustedException(cause = RuntimeException("untrusted chain")).isTerminalDeferredFailure())
+        assertFalse(mockedIssuerNotTrustedException.isTerminalDeferredFailure())
     }
+
+    //endregion
+
+    //region Mocked objects needed for tests.
+
+    private val mockedIssuerNotTrustedException = IssuerNotTrustedException(
+        message = "Issuer certificate chain is not trusted",
+        cause = RuntimeException("untrusted chain"),
+    )
 
     //endregion
 }

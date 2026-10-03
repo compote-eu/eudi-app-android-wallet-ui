@@ -18,7 +18,6 @@ package eu.europa.ec.businesslogic.controller.log
 
 import android.content.Context
 import android.util.Log
-import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.util.FileLoggerTree
 import timber.log.Timber
 import java.io.File
@@ -47,7 +46,7 @@ class LogControllerImpl(
     // It held a `val` while `retrieveLogFileUris` built FileProvider Uris here; that moved to
     // `PlatformScreenActions.shareFiles`, which is the only place a provider authority belongs.
     context: Context,
-    configLogic: ConfigLogic
+    private val tag: String,
 ) : LogController {
 
     companion object {
@@ -70,8 +69,6 @@ class LogControllerImpl(
     init {
         Timber.plant(Timber.DebugTree(), fileLoggerTree)
     }
-
-    private val tag: String = "EUDI Wallet ${configLogic.appFlavor}-${configLogic.appBuildType}"
 
     override fun d(tag: String, message: () -> String) {
         Timber.tag(tag).d(message())
