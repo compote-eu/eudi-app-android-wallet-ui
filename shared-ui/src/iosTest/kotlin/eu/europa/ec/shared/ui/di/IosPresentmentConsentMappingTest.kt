@@ -42,6 +42,11 @@ import org.jetbrains.compose.resources.StringResource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import eu.europa.ec.corelogic.model.PresentationTransactionDataDomain
+import eu.europa.ec.corelogic.model.QesDocumentDigestDomain
+import eu.europa.ec.businesslogic.provider.UuidProvider
+import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import kotlin.test.assertNull
 
 private const val PID_NAMESPACE = "eu.europa.ec.eudi.pid.1"
 
@@ -275,5 +280,55 @@ class IosPresentmentConsentMappingTest {
         // consent the wallet has already given on the user's behalf.
         assertTrue(checkbox.checkboxData.enabled)
         assertTrue(combination.untick("portrait").keptDocuments().isEmpty())
+    }
+
+    // Upstream 2428c55d's signature details: built from what the documents carry, by the shared transformer.
+
+    @Test
+    fun a_document_with_transaction_data_gets_its_signature_details_under_one_section_per_request() {
+        val approval = PresentationTransactionDataDomain.QesApproval(
+            displayName = "QES approval",
+            credentialIds = listOf("pid"),
+            credentialId = "signing-credential",
+            signatureQualifier = null,
+            numSignatures = 1,
+            hashAlgorithmOid = "2.16.840.1.101.3.4.2.1",
+            documentDigests = listOf(
+                QesDocumentDigestDomain(
+                    label = "contract.pdf",
+                    hash = "AQID",
+                    hashType = "dtbsr",
+                    signedProperties = null,
+                    href = null,
+                    checksum = null,
+                    oneTimePassword = null,
+                )
+            ),
+        )
+        val request = IosPresentmentRequest(
+            requesterName = "Signer",
+            requesterIsTrusted = true,
+            combinations = listOf(
+                IosPresentmentRequest.Combination(documents = listOf(pid(queryId = "pid").copy(transactionData = listOf(approval)))),
+                IosPresentmentRequest.Combination(documents = listOf(pid(documentId = "doc-2", queryId = "pid"))),
+            ),
+        )
+
+        val (signed, plain) = request.toCombinationsUi(strings, uuidProvider = FixedUuid)
+
+        val section = signed.transactionData!!
+        assertEquals("transaction-data:request-1:0", section.details.header.itemId)
+        assertEquals(false, section.details.isExpanded)
+        assertEquals(listOf(approval), signed.matches.single().transactionData)
+        assertTrue(
+            section.details.nestedItems.any { item ->
+                (item.header.mainContentData as ListItemMainContentDataUi.Text).text == "contract.pdf"
+            }
+        )
+        assertNull(plain.transactionData)
+    }
+
+    private object FixedUuid : UuidProvider {
+        override fun provideUuid(): String = "request-1"
     }
 }

@@ -25,6 +25,7 @@
 // its path is a claim the user ticks and the wallet never sends.
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.corelogic.model.PresentationTransactionDataDomain
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimPathSegment
 import eu.europa.ec.corelogic.model.ClaimType
@@ -87,6 +88,11 @@ data class IosPresentmentRequest(
          */
         val queryId: String?,
         val claims: List<RequestedClaimInfo>,
+        /**
+         * What answering with this credential would also authorise — OpenID4VP `transaction_data`, such as
+         * a signing approval. multipaz attaches each entry to every credential its `credential_ids` names.
+         */
+        val transactionData: List<PresentationTransactionDataDomain> = emptyList(),
     )
 
     data class RequestedClaimInfo(
@@ -177,6 +183,7 @@ private fun MemberMatch.toRequestedDocument(): IosPresentmentRequest.RequestedDo
         },
         queryId = (source as? CredentialMatchSourceOpenID4VP)?.credentialQuery?.id,
         claims = claims.map { (requested, claim) -> toClaimInfo(requested, claim) },
+        transactionData = transactionData.map { it.toPresentationTransactionDataDomain() },
     )
 }
 

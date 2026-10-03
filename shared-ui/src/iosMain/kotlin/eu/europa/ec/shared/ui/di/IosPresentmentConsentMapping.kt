@@ -44,29 +44,44 @@ import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import eu.europa.ec.businesslogic.provider.UuidProvider
+import eu.europa.ec.businesslogic.provider.UuidProviderImpl
+import eu.europa.ec.commonfeature.ui.request.transformer.TransactionDataTransformer
 
 /** What the request screen renders: one card per document, in one card set per alternative. */
-internal fun IosPresentmentRequest.toCombinationsUi(strings: StringCatalog): List<RequestCombinationUi> =
-    combinations
-        .map { combination ->
+internal fun IosPresentmentRequest.toCombinationsUi(
+    strings: StringCatalog,
+    uuidProvider: UuidProvider = UuidProviderImpl(),
+): List<RequestCombinationUi> {
+    // One id per request, as Android's `RequestTransformer` takes one, so the sections of two requests
+    // never share row ids.
+    val requestId = uuidProvider.provideUuid()
+    return combinations
+        .mapIndexed { combinationIndex, combination ->
+            val matches = combination.documents.map { document ->
+                PresentationMatchDomain(
+                    documentId = document.documentId,
+                    credentialId = document.credentialId,
+                    // DCQL only; null under ISO 18013-5, which has no query ids. It is carried
+                    // rather than dropped because one DCQL query may name the same document type
+                    // twice, and the id is what keeps those two cards — and their row ids — apart.
+                    queryId = document.queryId,
+                    requestedClaims = document.claims.map { it.claim },
+                    transactionData = document.transactionData,
+                )
+            }
             RequestCombinationUi(
                 documents = combination.documents.map { it.toItemUi(strings) },
-                transactionData = null,
-                matches = combination.documents.map { document ->
-                    PresentationMatchDomain(
-                        documentId = document.documentId,
-                        credentialId = document.credentialId,
-                        // DCQL only; null under ISO 18013-5, which has no query ids. It is carried
-                        // rather than dropped because one DCQL query may name the same document type
-                        // twice, and the id is what keeps those two cards — and their row ids — apart.
-                        queryId = document.queryId,
-                        requestedClaims = document.claims.map { it.claim },
-                        transactionData = emptyList(),
-                    )
-                },
+                // Upstream 2428c55d's section, built by the same shared transformer as Android's.
+                transactionData = TransactionDataTransformer(strings = strings).transformToUi(
+                    matches = matches,
+                    sectionId = "transaction-data:$requestId:$combinationIndex",
+                ),
+                matches = matches,
             )
         }
         .filter { it.documents.isNotEmpty() }
+}
 
 /**
  * The inverse: the cards as the user left them, back to the credentials and claims they kept.

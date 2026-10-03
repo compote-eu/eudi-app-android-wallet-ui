@@ -104,13 +104,18 @@ internal fun isUntrustedReader(requester: Requester, trustMetadata: TrustMetadat
     requester.certChain != null && trustMetadata == null
 
 /**
- * Empty on purpose. Localized claim names live in multipaz's separate `multipaz-doctypes` artifact;
- * without it a claim shows its data-element identifier, which is exactly what iOS already does on the
- * documents and details screens. Adding the artifact for the consent screens alone would make
+ * No document types on purpose. Localized claim names live in multipaz's separate `multipaz-doctypes`
+ * artifact; without it a claim shows its data-element identifier, which is exactly what iOS already does
+ * on the documents and details screens. Adding the artifact for the consent screens alone would make
  * presentment the only place iOS speaks in display names — the fix is to give the whole app localized
  * claim names at once, not to special-case consent.
+ *
+ * It does hold the transaction types the wallet answers ([walletTransactionTypes]): multipaz looks up an
+ * OpenID4VP `transaction_data` entry here, and refuses the whole request when its type is missing.
  *
  * One instance, because it holds no per-request state and each presenter previously kept an identical
  * copy of both the object and this comment.
  */
-private val documentTypeRepository = DocumentTypeRepository()
+private val documentTypeRepository = DocumentTypeRepository().apply {
+    walletTransactionTypes.forEach(::addTransactionType)
+}

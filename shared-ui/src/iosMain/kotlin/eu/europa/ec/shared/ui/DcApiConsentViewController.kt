@@ -75,6 +75,9 @@ import kotlinx.coroutines.runBlocking
 import org.koin.core.context.startKoin
 import org.koin.mp.KoinPlatform
 import platform.UIKit.UIViewController
+import eu.europa.ec.commonfeature.ui.request.model.RequestTransactionDataUi
+import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
+import eu.europa.ec.commonfeature.ui.request.TransactionDataSection
 
 /**
  * The consent screen the **document-provider extension** shows, as a `UIViewController` Swift can host.
@@ -159,6 +162,16 @@ private fun DcApiConsentScreen(
     var documentsPerCombination: List<List<RequestDocumentItemUi>> by remember(combinations) {
         mutableStateOf(combinations.map { it.documents })
     }
+    // Each option's signature details (upstream 2428c55d), expanded and collapsed here as the app's
+    // request screen does through its view model.
+    var transactionDataPerCombination: List<RequestTransactionDataUi?> by remember(combinations) {
+        mutableStateOf(combinations.map { it.transactionData?.withoutDocumentActions() })
+    }
+    val onTransactionExpansionChange: (Int, String) -> Unit = { option, itemId ->
+        transactionDataPerCombination = transactionDataPerCombination.mapIndexed { at, section ->
+            if (at == option) section?.toggled(itemId) else section
+        }
+    }
 
     // Who is asking, built exactly as the app's remote and proximity screens build it — the registration
     // included, so this screen warns where theirs do (see `relyingPartyDomain`).
@@ -208,12 +221,20 @@ private fun DcApiConsentScreen(
                                 }
                             },
                         )
+                        TransactionDetails(
+                            section = transactionDataPerCombination[option],
+                            onExpansionChange = { itemId -> onTransactionExpansionChange(option, itemId) },
+                        )
                     }
                 }
             } else {
                 DocumentRows(
                     documents = documentsPerCombination.firstOrNull().orEmpty(),
                     onDocumentsChange = { updated -> documentsPerCombination = listOf(updated) },
+                )
+                TransactionDetails(
+                    section = transactionDataPerCombination.firstOrNull(),
+                    onExpansionChange = { itemId -> onTransactionExpansionChange(0, itemId) },
                 )
             }
         }
@@ -260,6 +281,41 @@ private fun VerifierHeader(header: RelyingPartyHeaderUi, strings: StringCatalog)
         }
     }
 }
+
+/** The signature details of one option, under its documents, when the request carries any. */
+@Composable
+private fun TransactionDetails(
+    section: RequestTransactionDataUi?,
+    onExpansionChange: (String) -> Unit,
+) {
+    section ?: return
+    TransactionDataSection(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        transactionData = section,
+        titleStartPadding = 0.dp,
+        onExpansionChange = onExpansionChange,
+        onDocumentClick = {},
+    )
+}
+
+/**
+ * The section without its "Open document" rows: an extension cannot hand a URL to Safari (see
+ * [VerifierHeader]), and a link that does nothing would be worse than the location the section already
+ * shows as text.
+ */
+private fun RequestTransactionDataUi.withoutDocumentActions(): RequestTransactionDataUi = copy(
+    details = details.copy(
+        nestedItems = details.nestedItems.filterNot { item -> item.header.itemId in documentUrlsByItemId },
+    ),
+    documentUrlsByItemId = emptyMap(),
+)
+
+/** [this] with [itemId] expanded or collapsed, by the request model's own rule. */
+private fun RequestTransactionDataUi.toggled(itemId: String): RequestTransactionDataUi =
+    RequestDataUi.Single(
+        combination = RequestCombinationUi(documents = emptyList(), matches = emptyList(), transactionData = this),
+    ).toggleTransactionDataExpansion(sectionId = details.header.itemId, itemId = itemId)
+        .selectedCombination?.transactionData ?: this
 
 /** The document rows of one option, with their claim checkboxes. */
 @Composable
