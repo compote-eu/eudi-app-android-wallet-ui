@@ -2,7 +2,7 @@
 
 Copied from
 [`eudi-lib-kmp-etsi-1196x2`](https://github.com/eu-digital-identity-wallet/eudi-lib-kmp-etsi-1196x2)
-at tag **`v0.4.0-alpha.2`**, path `ios/cinterop/Sources/PKIXBridge`. Apache-2.0, same as upstream. The
+at tag **`v0.4.0-alpha.3`**, path `ios/cinterop/Sources/PKIXBridge`. Apache-2.0, same as upstream. The
 Swift sources are byte-identical to that tag.
 
 **Revocation is switched off by the caller, not by this copy.** Since `v0.4.0-alpha.2` (#158)

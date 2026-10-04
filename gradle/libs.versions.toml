@@ -65,7 +65,7 @@ rqesUiSDK = "0.4.1"
 eudiLibKmpEtsi1196x2 = "0.4.0-alpha.3"
 # The ETSI trust library for iOS alone. iOS has no wallet-core, so it moves on its own; what holds it
 # is iosApp/PKIXBridge, vendored from the etsi sources, which must match this version.
-eudiLibKmpEtsi1196x2Ios = "0.4.0-alpha.2"
+eudiLibKmpEtsi1196x2Ios = "0.4.0-alpha.3"
 # Multipaz for iOS alone: the iOS document layer reads its DocumentStore directly (there is no KMP
 # wallet-core or document manager). Android gets its own multipaz-android through wallet-core —
 # 0.101.0 under wallet-core 0.31.0 — and nothing on Android requests this key, so the two platforms

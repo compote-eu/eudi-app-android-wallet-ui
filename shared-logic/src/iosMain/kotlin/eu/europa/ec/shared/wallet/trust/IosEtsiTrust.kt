@@ -28,6 +28,7 @@ import eu.europa.ec.eudi.etsi119602.consultation.eudiwIos
 import eu.europa.ec.eudi.etsi119602.datamodel.Uri
 import eu.europa.ec.eudi.etsi1196x2.consultation.CertificationChainValidation
 import eu.europa.ec.eudi.etsi1196x2.consultation.SupportedLists
+import eu.europa.ec.eudi.etsi1196x2.consultation.ValidateCertificateChainUsingDirectTrustIos
 import eu.europa.ec.eudi.etsi1196x2.consultation.ValidateCertificateChainUsingPKIXIos
 import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
 import eu.europa.ec.eudi.etsi1196x2.consultation.pkix.PKIXConfiguration
@@ -145,6 +146,8 @@ internal class IosEtsiTrust(
                 ),
                 // ⛔ `SupportedLists.eu()` as published — end-entity profiles included. See the class note.
                 svcTypePerCtx = SupportedLists.eu(),
+                // The library's own default until v0.4.0-alpha.3, which made the argument required.
+                directTrust = ValidateCertificateChainUsingDirectTrustIos,
                 // Android's `relaxPkixRevocation()`; stated rather than left to the default. See the class note.
                 pkix = ValidateCertificateChainUsingPKIXIos(PKIXConfiguration(isRevocationEnabled = false)),
             )
