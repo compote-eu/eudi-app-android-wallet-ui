@@ -20,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -47,6 +49,13 @@ import platform.posix.memcpy
  * with no interpolation, which is what keeps the modules crisp squares rather than a blur. The result goes
  * through PNG bytes into a Skia image: that is the one conversion Compose Multiplatform offers from a
  * `UIImage`, and a QR is small enough that the encode costs nothing worth optimising.
+ *
+ * The image is [size] converted to pixels with the screen's density, as Android's zxing bitmap is: a bitmap
+ * painter is drawn at its pixel size, so an image [size] pixels across came out a half or a third of the
+ * intended size on a 2× or 3× screen.
+ *
+ * CoreImage keeps a one-module white border that zxing, asked for no margin, does not, so the code itself is a
+ * few percent smaller than Android's. That border is left in: it is quiet zone, which helps a reader find the code.
  */
 @OptIn(ExperimentalForeignApi::class)
 @Composable
@@ -54,18 +63,25 @@ actual fun rememberQrPainter(
     content: String,
     size: Dp,
     padding: Dp,
-): Painter = remember(content, size) {
-    val bitmap = qrImageBitmap(content = content, sizePoints = size.value.toDouble())
-    if (bitmap == null) {
-        // A blank painter: the screen shows an empty square rather than dying mid-presentation.
-        BitmapPainter(Image.makeFromEncoded(TRANSPARENT_PNG).toComposeImageBitmap())
-    } else {
-        BitmapPainter(bitmap)
+): Painter {
+    val sizePixels = qrSizePixels(size, LocalDensity.current)
+    return remember(content, sizePixels) {
+        val bitmap = qrImageBitmap(content = content, sizePixels = sizePixels.toDouble())
+        if (bitmap == null) {
+            // A blank painter: the screen shows an empty square rather than dying mid-presentation.
+            BitmapPainter(Image.makeFromEncoded(TRANSPARENT_PNG).toComposeImageBitmap())
+        } else {
+            BitmapPainter(bitmap)
+        }
     }
 }
 
+/** [size] in pixels on a screen of [density] — the size the image is drawn at. */
+internal fun qrSizePixels(size: Dp, density: Density): Float = with(density) { size.toPx() }
+
+/** The QR code for [content] as an image [sizePixels] pixels square, or null when it cannot be encoded. */
 @OptIn(ExperimentalForeignApi::class)
-private fun qrImageBitmap(content: String, sizePoints: Double) = runCatching {
+private fun qrImageBitmap(content: String, sizePixels: Double) = runCatching {
     val data = (content as platform.Foundation.NSString).dataUsingEncoding(NSUTF8StringEncoding)
     val filter = CIFilter.filterWithName("CIQRCodeGenerator") ?: return@runCatching null
     filter.setValue(data, forKey = "inputMessage")
@@ -73,7 +89,7 @@ private fun qrImageBitmap(content: String, sizePoints: Double) = runCatching {
     filter.setValue("M", forKey = "inputCorrectionLevel")
 
     val output = filter.outputImage ?: return@runCatching null
-    val scale = sizePoints / CGRectGetWidth(output.extent())
+    val scale = sizePixels / CGRectGetWidth(output.extent())
     val scaled = output.imageByApplyingTransform(CGAffineTransformMakeScale(scale, scale))
 
     val cgImage = CIContext().createCGImage(scaled, fromRect = scaled.extent())
