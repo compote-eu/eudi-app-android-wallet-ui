@@ -93,7 +93,7 @@ sealed interface IosIssuanceProgress {
  * request instead (multiple scopes), which is nicer but is wallet-core's doing, not something this can
  * imitate without forking multipaz.
  *
- * 📌 **Read in multipaz's own source, 0.99.0 and `main` alike (2026-09-18):** `CredentialOffer`
+ * 📌 **Read in multipaz's own source, 0.99.0, 0.101.0 and `main` alike (2026-09-18):** `CredentialOffer`
  * declares `abstract val configurationId: String`, the pushed authorization request appends a single
  * `scope` — or a single `authorization_details` entry naming one `credential_configuration_id` — and
  * `ProvisioningModel.launch` resolves to one `Deferred<Document>`. There is no list anywhere on the
@@ -360,7 +360,7 @@ class IosCredentialIssuer(
      *
      * 🚩 **multipaz reads only the first configuration an offer names.**
      * `CredentialOffer.parseJson` does `credentialConfigurationIds[0]`, under its own comment
-     * *"Right now only use the first configuration id"* — unchanged in 0.99.0 and on `main`
+     * *"Right now only use the first configuration id"* — unchanged in 0.99.0, 0.101.0 and on `main`
      * (read 2026-09-18), and reported as multipaz#2026. Nothing is logged, so an offer naming several
      * credentials would quietly yield one where the screen promised several.
      * ✅ Measured by `MultipazOfferTruncationTest`, which drives multipaz's real client: the pushed

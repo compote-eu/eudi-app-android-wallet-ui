@@ -18,6 +18,7 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
+import eu.europa.ec.shared.wallet.trust.certChain
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,12 +43,13 @@ import org.multipaz.mdoc.transport.MdocTransportFactory
 import org.multipaz.mdoc.transport.MdocTransportOptions
 import org.multipaz.mdoc.transport.advertise
 import org.multipaz.mdoc.transport.waitForConnection
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.ConsentData
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.request.Requester
-import org.multipaz.trustmanagement.TrustMetadata
+import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.util.Logger
 import org.multipaz.util.UUID
 import org.multipaz.util.toBase64Url
@@ -144,10 +146,10 @@ class IosProximityPresenter internal constructor(
 
     private var presentmentJob: Job? = null
     private var transport: MdocTransport? = null
-    private var pendingConsent: CompletableDeferred<CredentialPresentmentSelection?>? = null
+    private var pendingConsent: CompletableDeferred<CredentialSelection?>? = null
 
     /** The request being consented to, kept so [accept] can turn the app's answer back into matches. */
-    private var pendingData: CredentialPresentmentData? = null
+    private var pendingData: CredentialQueryResult? = null
 
     /** What the user agreed to share, remembered so the success state can name it. */
     private var sharedDocuments: List<String> = emptyList()
@@ -321,10 +323,10 @@ class IosProximityPresenter internal constructor(
         readerTrust = readerTrust,
         // ISO 18013-5 has no SD-JWT, so there is nothing to offer.
         offersSdJwt = false,
-        showConsent = { requester, trustMetadata, data ->
+        showConsent = { requester, trustedRequesterIdentity, data ->
             awaitConsent(
                 requester = requester,
-                trustMetadata = trustMetadata,
+                trustedRequesterIdentity = trustedRequesterIdentity,
                 data = data,
             )
         },
@@ -338,12 +340,12 @@ class IosProximityPresenter internal constructor(
      */
     private suspend fun awaitConsent(
         requester: Requester,
-        trustMetadata: TrustMetadata?,
-        data: CredentialPresentmentData,
-    ): CredentialPresentmentSelection? {
+        trustedRequesterIdentity: TrustedRequesterIdentity?,
+        data: ConsentData,
+    ): CredentialSelection? {
         // Before the request is published, so a screen never shows it. multipaz ends the session on the
         // way out and builds no response.
-        if (isUntrustedReader(requester, trustMetadata)) throw UntrustedVerifierException()
+        if (isUntrustedReader(requester, trustedRequesterIdentity)) throw UntrustedVerifierException()
         val registration = readerRegistrationOutcome(
             isRegistrationCheckEnabled = isRegistrationCheckEnabled,
             deviceRequest = deviceRequest,
@@ -351,15 +353,15 @@ class IosProximityPresenter internal constructor(
             reader = requester.certChain?.certificates?.firstOrNull(),
         )
 
-        val consent = CompletableDeferred<CredentialPresentmentSelection?>()
+        val consent = CompletableDeferred<CredentialSelection?>()
         pendingConsent = consent
-        pendingData = data
+        pendingData = data.credentialQueryResult
         mutableState.value = IosProximityState.Requesting(
-            request = data.toPresentmentRequest(
+            request = data.credentialQueryResult.toPresentmentRequest(
                 // A name without trust behind it is still worth showing — but only the trust decision
                 // marks it verified, and over BLE there is usually neither.
-                requesterName = trustMetadata?.displayName ?: requester.appId,
-                requesterIsTrusted = trustMetadata != null,
+                requesterName = trustedRequesterIdentity?.trustMetadata?.displayName ?: requester.appId,
+                requesterIsTrusted = trustedRequesterIdentity != null,
                 relyingPartyRegistration = registration,
             ),
         )

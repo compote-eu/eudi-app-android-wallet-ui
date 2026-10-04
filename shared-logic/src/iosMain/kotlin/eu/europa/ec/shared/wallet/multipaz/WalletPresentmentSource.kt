@@ -17,12 +17,13 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
+import eu.europa.ec.shared.wallet.trust.certChain
 import org.multipaz.documenttype.DocumentTypeRepository
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.ConsentData
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.SimplePresentmentSource
 import org.multipaz.request.Requester
-import org.multipaz.trustmanagement.TrustMetadata
+import org.multipaz.request.TrustedRequesterIdentity
 
 /**
  * The wallet's answer to *"what may be presented, does the user agree, and who is asking"* — one
@@ -66,9 +67,9 @@ internal suspend fun walletPresentmentSource(
     offersSdJwt: Boolean,
     showConsent: suspend (
         requester: Requester,
-        trustMetadata: TrustMetadata?,
-        data: CredentialPresentmentData,
-    ) -> CredentialPresentmentSelection?,
+        trustedRequesterIdentity: TrustedRequesterIdentity?,
+        data: ConsentData,
+    ) -> CredentialSelection?,
 ): SimplePresentmentSource = SimplePresentmentSource(
     documentStore = store.documentStore,
     documentTypeRepository = documentTypeRepository,
@@ -76,12 +77,21 @@ internal suspend fun walletPresentmentSource(
     // once the response is out, so supplying the logger *is* the whole write side.
     eventLogger = store.eventLogger(),
     // Reader trust, matching Android's `readerAuthPolicy(EnforceIfPresent)`. multipaz's default is
-    // `{ null }`, which reads as "not trusted" for every verifier that ever asks.
-    resolveTrustFn = { requester -> readerTrust?.trustMetadataFor(requester) },
+    // `{ null }`, which reads as "not trusted" for every verifier that ever asks. The identity vouched for
+    // is the one whose chain the trust source judged (see [certChain]).
+    resolveTrustFn = { requester ->
+        val identity = requester.requesterIdentities.firstOrNull()
+        val trustMetadata = readerTrust?.trustMetadataFor(requester)
+        if (identity != null && trustMetadata != null) {
+            TrustedRequesterIdentity(identity = identity, trustMetadata = trustMetadata)
+        } else {
+            null
+        }
+    },
     domainsMdocSignature = listOf(credentialDomain),
     domainsKeyBoundSdJwt = if (offersSdJwt) listOf(credentialDomain) else emptyList(),
-    showConsentPromptFn = { requester, trustMetadata, data, _, _ ->
-        showConsent(requester, trustMetadata, data)
+    showConsentPromptFn = { requester, trustedRequesterIdentity, data, _, _ ->
+        showConsent(requester, trustedRequesterIdentity, data)
     },
 )
 
@@ -100,8 +110,8 @@ internal suspend fun walletPresentmentSource(
  * 🪤 multipaz resolves trust only after it has matched the request, so a reader asking for something the
  * wallet does not hold gets "nothing to share" rather than this refusal. Nothing is released either way.
  */
-internal fun isUntrustedReader(requester: Requester, trustMetadata: TrustMetadata?): Boolean =
-    requester.certChain != null && trustMetadata == null
+internal fun isUntrustedReader(requester: Requester, trusted: TrustedRequesterIdentity?): Boolean =
+    requester.certChain != null && trusted == null
 
 /**
  * No document types on purpose. Localized claim names live in multipaz's separate `multipaz-doctypes`

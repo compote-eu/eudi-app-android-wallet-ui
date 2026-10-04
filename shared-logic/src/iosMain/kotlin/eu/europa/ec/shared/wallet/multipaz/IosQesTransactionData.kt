@@ -21,10 +21,13 @@ import eu.europa.ec.corelogic.model.PresentationTransactionDataDomain
 import eu.europa.ec.corelogic.model.QesDocumentDigestDomain
 import eu.europa.ec.corelogic.model.QesSignatureRequestDomain
 import eu.europa.ec.corelogic.model.SigningAttributeDomain
+import kotlinx.io.bytestring.ByteString
+import kotlinx.io.bytestring.decodeToString
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -35,35 +38,35 @@ import org.multipaz.credential.Credential
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.documenttype.TransactionType
+import org.multipaz.documenttype.TransactionUserInput
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.presentment.TransactionData
-import org.multipaz.presentment.TransactionDataJson
+import org.multipaz.presentment.TransactionProtocol
 import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.util.fromBase64Url
 import kotlin.io.encoding.Base64
 
 /*
  * OpenID4VP `transaction_data` on iOS: the two Cloud Signature Consortium types Android enables through
- * wallet-core 0.31.0 (`withTransactionDataTypes(QES_APPROVAL, QES)`, upstream 2428c55d), as multipaz 0.99
+ * wallet-core 0.31.0 (`withTransactionDataTypes(QES_APPROVAL, QES)`, upstream 2428c55d), as multipaz
  * transaction types. Without them multipaz cannot even parse a request that carries transaction data —
- * it fails with "Problem processing transaction(s)" before consent — which is what a signing service
- * now sends with its second presentation.
+ * it refuses it as an unknown transaction type before consent — which is what a signing service now
+ * sends with its second presentation.
  *
  * The payload rules are wallet-core's (`QesTransactionData.kt` and `QesTransactionTypes.kt` in 0.31.0):
  * the same JSON names, unknown fields refused, and the same constraints. A payload that breaks them makes
  * its type inapplicable, so multipaz reports the request as one this wallet cannot satisfy. Where wallet-core
- * answers `invalid_transaction_data` instead, that is the difference.
- *
- * ⚠️ multipaz 0.101 replaces this API with `TransactionData<PayloadT>`; the move belongs to that upgrade.
+ * answers `invalid_transaction_data` instead, that is the difference. That is why the payload multipaz holds
+ * is the decoded JSON rather than a parsed object: parsing it there would fail the whole request instead.
  */
 
 /** The transaction types this wallet answers, for the presentment source's repository. */
-internal val walletTransactionTypes: List<TransactionType> =
+internal val walletTransactionTypes: List<TransactionType<*>> =
     listOf(IosQesApprovalTransactionType, IosQesRequestTransactionType)
 
 /** What [this] asks to authorise, for the consent screen; [PresentationTransactionDataDomain.Unavailable] when unreadable. */
-internal fun TransactionData.toPresentationTransactionDataDomain(): PresentationTransactionDataDomain {
-    val json = (this as? TransactionDataJson)?.decodedJson() ?: return PresentationTransactionDataDomain.Unavailable
+internal fun TransactionData<*>.toPresentationTransactionDataDomain(): PresentationTransactionDataDomain {
+    val json = payload as? String ?: return PresentationTransactionDataDomain.Unavailable
     return runCatching {
         when (type.identifier) {
             QES_APPROVAL_TYPE -> qesJson.decodeFromString(QesApprovalPayload.serializer(), json)
@@ -78,69 +81,116 @@ internal fun TransactionData.toPresentationTransactionDataDomain(): Presentation
 }
 
 /**
+ * A CSC transaction type, holding its transaction data as the decoded JSON (see the note at the top).
+ *
+ * `transaction_data_hashes_alg` is read here because multipaz leaves it to the type: the first algorithm
+ * this wallet supports is the one `transaction_data_hashes` are computed with, SHA-256 when it is absent,
+ * and a list naming none the wallet supports is refused, as multipaz 0.99 refused it.
+ */
+internal abstract class IosQesTransactionType(
+    displayName: String,
+    identifier: String,
+    kbJwtResponseClaimName: String = identifier,
+    openId4VpMdocResponseNamespace: String = identifier,
+) : TransactionType<String>(
+    displayName = displayName,
+    identifier = identifier,
+    kbJwtResponseClaimName = kbJwtResponseClaimName,
+    openId4VpMdocResponseNamespace = openId4VpMdocResponseNamespace,
+) {
+    override fun parseOpenId4VpRequest(jsonString: String): String = jsonString
+
+    override fun parseJson(serialized: ByteString): TransactionData<String> {
+        val json = serialized.decodeToString().fromBase64Url().decodeToString()
+        return TransactionData(
+            type = this,
+            payload = json,
+            protocol = TransactionProtocol.OPENID4VP,
+            rawBytes = serialized,
+            hashAlgorithms = hashAlgorithmsOf(json),
+        )
+    }
+}
+
+/**
  * A relying party's request to approve a signature it has already prepared, answered with a
  * `qesApproval` digest — CSC Data Model Bindings clause 7.2.1.
+ *
+ * ⚠️ In an SD-JWT VC's Key Binding JWT the approval is `org.cloudsignatureconsortium.dm.1` → `qesApproval`,
+ * where wallet-core sends one flat claim, `org.cloudsignatureconsortium.dm.1.qesApproval`. multipaz puts
+ * whatever a type answers under a single claim of the type's own, so the flat form cannot be produced
+ * through it. No EUDI service reads either form: the verifier checks `transaction_data_hashes`, which
+ * multipaz computes as before.
  */
-internal object IosQesApprovalTransactionType : TransactionType(
+internal object IosQesApprovalTransactionType : IosQesTransactionType(
     displayName = "QES approval",
     identifier = QES_APPROVAL_TYPE,
-    attributes = emptyList(),
-    kbJwtResponseClaimName = QES_APPROVAL_CLAIM,
-    mdocRequestInfoKeyName = QES_APPROVAL_TYPE,
-    mdocResponseNamespace = QES_APPROVAL_NAMESPACE,
+    kbJwtResponseClaimName = QES_APPROVAL_NAMESPACE,
+    openId4VpMdocResponseNamespace = QES_APPROVAL_NAMESPACE,
 ) {
     /** An SD-JWT VC answers with a Key Binding JWT claim, an mdoc with a device-signed element; both need a valid payload. */
-    override suspend fun isApplicable(transactionData: TransactionData, credential: Credential): Boolean =
+    override suspend fun isApplicable(transactionData: TransactionData<String>, credential: Credential): Boolean =
         (credential is SdJwtVcCredential || credential is MdocCredential) &&
-                transactionData.approvalOrNull() != null
+                approvalOrNull(transactionData.payload) != null
 
     /**
      * Clause 7.2.1.1: SHA-256 over the base64url-decoded transaction data, as the digest itself, under
-     * [QES_APPROVAL_NAMESPACE]. multipaz adds its `transaction_data_hash` beside it; wallet-core does not.
+     * [QES_APPROVAL_NAMESPACE]. multipaz adds its `transactionDataHash` beside it; wallet-core does not.
      */
-    override suspend fun applyCbor(
-        transactionData: TransactionData,
+    override suspend fun generateMdocResponseElements(
+        transactionData: TransactionData<String>,
         credential: Credential,
-    ): Map<String, DataItem>? {
-        val raw = (transactionData as TransactionDataJson).base64UrlEncodedJson
-        return mapOf(QES_APPROVAL_ELEMENT to Bstr(Crypto.digest(Algorithm.SHA256, raw.fromBase64Url())))
+        userInput: TransactionUserInput?,
+        docRequestId: Int?,
+    ): Map<String, DataItem> = buildMap {
+        putAll(super.generateMdocResponseElements(transactionData, credential, userInput, docRequestId))
+        val decoded = transactionData.rawBytes.decodeToString().fromBase64Url()
+        put(QES_APPROVAL_ELEMENT, Bstr(Crypto.digest(Algorithm.SHA256, decoded)))
     }
 
     /**
      * Clause 7.2.1.2: the digest of the transaction data string exactly as it was received (not decoded),
      * with the algorithm the request names in `hashAlgorithmOID`, base64 with padding (CSC Data Model 5.2).
      */
-    override suspend fun applyJson(transactionData: TransactionData, credential: Credential): JsonElement? {
-        val approval = transactionData.approvalOrNull()
+    override suspend fun generateSdJwtResponseClaims(
+        transactionData: TransactionData<String>,
+        credential: Credential,
+        userInput: TransactionUserInput?,
+        docRequestId: Int?,
+    ): Map<String, JsonElement> = buildMap {
+        putAll(super.generateSdJwtResponseClaims(transactionData, credential, userInput, docRequestId))
+        val approval = approvalOrNull(transactionData.payload)
             ?: throw IllegalArgumentException("Transaction data of type '$identifier' does not hold a valid approval")
-        val raw = (transactionData as TransactionDataJson).base64UrlEncodedJson
-        val digest = Crypto.digest(hashAlgorithmOf(approval.hashAlgorithmOid), raw.encodeToByteArray())
-        return JsonPrimitive(Base64.Default.encode(digest))
+        val digest = Crypto.digest(hashAlgorithmOf(approval.hashAlgorithmOid), transactionData.rawBytes.toByteArray())
+        put(QES_APPROVAL_ELEMENT, JsonPrimitive(Base64.Default.encode(digest)))
     }
 }
 
 /** A relying party's request to have documents signed. Nothing is returned for it but multipaz's hashes. */
-internal object IosQesRequestTransactionType : TransactionType(
+internal object IosQesRequestTransactionType : IosQesTransactionType(
     displayName = "QES request",
     identifier = QES_REQUEST_TYPE,
-    attributes = emptyList(),
 ) {
     /** SD-JWT VC only, as wallet-core applies it: it has no mdoc binding. */
-    override suspend fun isApplicable(transactionData: TransactionData, credential: Credential): Boolean =
+    override suspend fun isApplicable(transactionData: TransactionData<String>, credential: Credential): Boolean =
         credential is SdJwtVcCredential &&
                 runCatching {
-                    qesJson.decodeFromString(
-                        QesRequestPayload.serializer(),
-                        (transactionData as TransactionDataJson).decodedJson(),
-                    )
+                    qesJson.decodeFromString(QesRequestPayload.serializer(), transactionData.payload)
                 }.isSuccess
 }
 
-private fun TransactionData.approvalOrNull(): QesApprovalPayload? = runCatching {
-    qesJson.decodeFromString(QesApprovalPayload.serializer(), (this as TransactionDataJson).decodedJson())
-}.getOrNull()
+private fun approvalOrNull(json: String): QesApprovalPayload? =
+    runCatching { qesJson.decodeFromString(QesApprovalPayload.serializer(), json) }.getOrNull()
 
-private fun TransactionDataJson.decodedJson(): String = base64UrlEncodedJson.fromBase64Url().decodeToString()
+private fun hashAlgorithmsOf(json: String): List<Algorithm>? {
+    val named = qesJson.parseToJsonElement(json).jsonObject["transaction_data_hashes_alg"] as? JsonArray
+        ?: return null
+    val supported = named.mapNotNull { name ->
+        (name as? JsonPrimitive)?.let { runCatching { Algorithm.fromHashAlgorithmIdentifier(it.content) }.getOrNull() }
+    }
+    require(supported.isNotEmpty()) { "No supported algorithms in transaction_data_hashes_alg" }
+    return supported
+}
 
 private fun hashAlgorithmOf(oid: String): Algorithm = when (oid) {
     "2.16.840.1.101.3.4.2.1" -> Algorithm.SHA256
@@ -153,7 +203,6 @@ internal const val QES_APPROVAL_TYPE = "https://cloudsignatureconsortium.org/202
 internal const val QES_REQUEST_TYPE = "https://cloudsignatureconsortium.org/2025/qes"
 private const val QES_APPROVAL_NAMESPACE = "org.cloudsignatureconsortium.dm.1"
 private const val QES_APPROVAL_ELEMENT = "qesApproval"
-internal const val QES_APPROVAL_CLAIM = "$QES_APPROVAL_NAMESPACE.$QES_APPROVAL_ELEMENT"
 
 /** OpenID4VP treats a known type with an unknown field as invalid, so unknown fields are refused. */
 private val qesJson = Json { ignoreUnknownKeys = false }

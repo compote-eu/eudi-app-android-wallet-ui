@@ -40,9 +40,9 @@ import kotlin.random.Random
  * OpenID4VCI 1.0 credential request and response encryption, as one issuer's metadata offers it
  * (`credential_request_encryption` and `credential_response_encryption`).
  *
- * multipaz 0.99.0 implements neither: its credential request is always plain JSON, so an issuer that sets
- * `encryption_required` refuses it with `400 invalid_credential_request: "Credential request encryption
- * is required"`. Measured against Plaut's dev PID issuer, 2026-09-28.
+ * multipaz implements neither, in 0.99.0 or 0.101.0: its credential request is always plain JSON, so an
+ * issuer that sets `encryption_required` refuses it with `400 invalid_credential_request: "Credential
+ * request encryption is required"`. Measured against Plaut's dev PID issuer, 2026-09-28.
  *
  * ### The same rules as Android
  *
@@ -208,9 +208,9 @@ internal class CredentialExchange internal constructor(
             claimsSet = withResponseKey,
             recipientPublicKey = key.publicKey,
             encAlg = key.method,
-            // 🚨 EMPTY, never null. multipaz 0.99.0's `encrypt` leaves a null apu/apv out of the Concat KDF
-            // entirely, while RFC 7518 §4.6.2 — and multipaz's own `decrypt` — encode an absent one as a
-            // four-byte zero length. The two derive different keys, so a null here produces a JWE that no
+            // 🚨 EMPTY, never null. multipaz's `encrypt` (0.99.0 and 0.101.0) leaves a null apu/apv out of the
+            // Concat KDF entirely, while RFC 7518 §4.6.2 — and multipaz's own `decrypt` — encode an absent one
+            // as a four-byte zero length. The two derive different keys, so a null here produces a JWE that no
             // conformant issuer can open; caught by this module's round-trip test. An empty value is
             // encoded the RFC's way on both sides.
             apu = ByteString(),

@@ -43,7 +43,7 @@ import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.mdoc.request.DeviceRequestGenerator
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
@@ -110,10 +110,10 @@ class IosDcApiPresenterTest {
     /** Fails the test if consent is reached; every case here should end before it. */
     private val refuseToBeAsked: suspend (
         org.multipaz.request.Requester,
-        org.multipaz.trustmanagement.TrustMetadata?,
-        org.multipaz.presentment.CredentialPresentmentData,
+        org.multipaz.request.TrustedRequesterIdentity?,
+        org.multipaz.presentment.ConsentData,
         RelyingPartyRegistrationOutcome,
-    ) -> org.multipaz.presentment.CredentialPresentmentSelection? = { _, _, _, _ ->
+    ) -> CredentialSelection? = { _, _, _, _ ->
         error("consent must not be reached for a request that cannot be answered")
     }
 
@@ -314,12 +314,12 @@ class IosDcApiPresenterTest {
     /** Everything the request matched — what a user who unchecks nothing agrees to. */
     private val acceptEverything: suspend (
         org.multipaz.request.Requester,
-        org.multipaz.trustmanagement.TrustMetadata?,
-        org.multipaz.presentment.CredentialPresentmentData,
+        org.multipaz.request.TrustedRequesterIdentity?,
+        org.multipaz.presentment.ConsentData,
         RelyingPartyRegistrationOutcome,
-    ) -> CredentialPresentmentSelection? = { _, _, data, _ ->
-        CredentialPresentmentSelection(
-            matches = data.credentialSets
+    ) -> CredentialSelection? = { _, _, data, _ ->
+        CredentialSelection(
+            matches = data.credentialQueryResult.credentialSets
                 .flatMap { it.options }
                 .flatMap { it.members }
                 .mapNotNull { it.matches.firstOrNull() },
@@ -445,9 +445,9 @@ class IosDcApiPresenterTest {
             protocol = "org-iso-mdoc",
             data = buildRequest(reader = testReader()).json,
             origin = verifierOrigin,
-            onConsent = { requester, trustMetadata, data, registration ->
-                askedAsTrusted = requester.certChain != null && trustMetadata != null
-                acceptEverything(requester, trustMetadata, data, registration)
+            onConsent = { requester, trusted, data, registration ->
+                askedAsTrusted = requester.requesterIdentities.isNotEmpty() && trusted != null
+                acceptEverything(requester, trusted, data, registration)
             },
         )
 
@@ -543,8 +543,8 @@ class IosDcApiPresenterTest {
             data = request.json,
             origin = verifierOrigin,
             onConsent = { _, _, data, _ ->
-                CredentialPresentmentSelection(
-                    matches = data.credentialSets
+                CredentialSelection(
+                    matches = data.credentialQueryResult.credentialSets
                         .flatMap { it.options }
                         .flatMap { it.members }
                         .mapNotNull { member ->

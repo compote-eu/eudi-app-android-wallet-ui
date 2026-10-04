@@ -97,6 +97,8 @@ internal class IosDocumentProvisioningHandler(
         credentialMetadata: CredentialMetadata,
         issuerMetadata: ProvisioningMetadata,
         documentAuthorizationData: ByteString?,
+        // Application data for the document, which this wallet never supplies when it starts provisioning.
+        appData: ByteString?,
     ): Document {
         val format = credentialMetadata.format.toStoredFormat()
         // The issuer's advertised batch size wins over the wallet's preference: asking for 20 when the
@@ -267,8 +269,8 @@ internal class IosDocumentProvisioningHandler(
      */
     override suspend fun getDocumentProvisioningSettings(
         document: Document,
-        credentialMetadata: CredentialMetadata,
-        issuerMetadata: ProvisioningMetadata,
+        credentialMetadata: CredentialMetadata?,
+        issuerMetadata: ProvisioningMetadata?,
     ): DocumentProvisioningSettings =
         document.eudiMetadata?.credentialPolicy
             ?.let { settingsForPolicy(store, it) }

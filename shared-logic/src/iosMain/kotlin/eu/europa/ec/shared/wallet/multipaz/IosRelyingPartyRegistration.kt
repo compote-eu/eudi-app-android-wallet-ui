@@ -30,7 +30,7 @@ import kotlinx.serialization.json.jsonPrimitive
  * `rc-wrp+jwt`, *wallet relying party*. The issuer side was the borrowed case.
  *
  * Read from `verifier_info` in the signed request object — a claim multipaz does not parse (zero
- * occurrences at 0.99.0, exactly like `issuer_info` and `deferred_credential_endpoint`), inside a JWS
+ * occurrences at 0.99.0 and 0.101.0, exactly like `issuer_info` and `deferred_credential_endpoint`), inside a JWS
  * this wallet already opens for `response_uri` and `state`. Measured against the live EU dev verifier
  * on 2026-09-17: a real transaction's request object carries
  * `verifier_info: [{"format":"registration_cert","data":"<rc-wrp+jwt>"}]`.

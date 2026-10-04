@@ -51,7 +51,7 @@ import kotlin.time.Instant
  * | ETSI `IsChainTrustedForEUDIW` | the same library, through our own ETSI trust |
  * | `statium` status lists | [org.multipaz.revocation.StatusList] |
  *
- * ⛔ **multipaz does not surface `issuer_info` at all** — zero occurrences at 0.99.0, and
+ * ⛔ **multipaz does not surface `issuer_info` at all** — zero occurrences at 0.99.0 and 0.101.0, and
  * `IssuerConfiguration` parses only the endpoints it needs. That is the same omission as
  * `deferred_credential_endpoint`, so it is closed the same way: the field is read from the metadata
  * document this wallet already fetches for itself.

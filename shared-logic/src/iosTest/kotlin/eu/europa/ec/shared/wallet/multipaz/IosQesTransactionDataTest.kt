@@ -35,8 +35,9 @@ import org.multipaz.credential.Credential
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.openid.dcql.DcqlCredentialQueryException
 import org.multipaz.openid.dcql.DcqlQuery
+import org.multipaz.crypto.Algorithm
 import org.multipaz.presentment.SimplePresentmentSource
-import org.multipaz.presentment.TransactionDataJson
+import org.multipaz.presentment.TransactionData
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.util.toBase64Url
@@ -88,8 +89,12 @@ class IosQesTransactionDataTest {
         """
     )
 
-    private fun transactionData(vararg base64UrlJson: String) =
-        TransactionDataJson.parse(base64UrlEncodedJson = base64UrlJson.toList(), documentTypeRepository = repository)
+    private fun transactionData(vararg base64UrlJson: String) = repository.parseJsonTransactions(base64UrlJson.toList())
+
+    /** The one transaction data item [base64UrlJson] holds for the `pid` query, as the QES types hold it. */
+    @Suppress("UNCHECKED_CAST")
+    private fun pidTransaction(base64UrlJson: String): TransactionData<String> =
+        transactionData(base64UrlJson).getValue("pid").single() as TransactionData<String>
 
     private fun json(text: String) = text.trimIndent().replace("\n", "").encodeToByteArray().toBase64Url()
 
@@ -142,25 +147,35 @@ class IosQesTransactionDataTest {
 
         // hashAlgorithmOID SHA-256, then SHA-384: the claim follows the request's algorithm.
         assertEquals(
-            JsonPrimitive("I8iZ9UPuv+sPRAxLA7samXUbbwJ94LCsygaiE+QnmBI="),
-            IosQesApprovalTransactionType.applyJson(transactionData(APPROVAL_SHA256).getValue("pid").single(), credential),
+            mapOf("qesApproval" to JsonPrimitive("I8iZ9UPuv+sPRAxLA7samXUbbwJ94LCsygaiE+QnmBI=")),
+            IosQesApprovalTransactionType.generateSdJwtResponseClaims(
+                pidTransaction(APPROVAL_SHA256),
+                credential,
+                null,
+            ),
         )
         assertEquals(
-            JsonPrimitive("Yxdu44AdlruIvoXGBcRVM5UK8T3c1BfoFAoKnLjF7rWr9YHXJNXNDy5J2obkGx7C"),
-            IosQesApprovalTransactionType.applyJson(transactionData(APPROVAL_SHA384).getValue("pid").single(), credential),
+            mapOf("qesApproval" to JsonPrimitive("Yxdu44AdlruIvoXGBcRVM5UK8T3c1BfoFAoKnLjF7rWr9YHXJNXNDy5J2obkGx7C")),
+            IosQesApprovalTransactionType.generateSdJwtResponseClaims(
+                pidTransaction(APPROVAL_SHA384),
+                credential,
+                null,
+            ),
         )
-        assertEquals("org.cloudsignatureconsortium.dm.1.qesApproval", IosQesApprovalTransactionType.kbJwtResponseClaimName)
+        // multipaz puts a type's claims under one claim of its own, so this is the object the approval is in.
+        assertEquals("org.cloudsignatureconsortium.dm.1", IosQesApprovalTransactionType.kbJwtResponseClaimName)
     }
 
     @Test
     fun the_mdoc_approval_is_the_sha256_of_the_decoded_data() = runTest {
-        val element = IosQesApprovalTransactionType.applyCbor(
-            transactionData(APPROVAL_SHA256).getValue("pid").single(),
+        val element = IosQesApprovalTransactionType.generateMdocResponseElements(
+            pidTransaction(APPROVAL_SHA256),
             pidCredential(),
-        )!!.getValue("qesApproval") as Bstr
+            null,
+        ).getValue("qesApproval") as Bstr
 
         assertEquals("5ef6ed9be1e4966f061f827f0cc43937d5a414bf231027d3b9b87b26ff42463d", element.value.toHex())
-        assertEquals("org.cloudsignatureconsortium.dm.1", IosQesApprovalTransactionType.mdocResponseNamespace)
+        assertEquals("org.cloudsignatureconsortium.dm.1", IosQesApprovalTransactionType.openId4VpMdocResponseNamespace)
     }
 
     @Test
@@ -186,7 +201,7 @@ class IosQesTransactionDataTest {
             "href":"https://documents.example.org/contract.pdf","checksum":{"value":"Y2hlY2s=",
             "algorithmOID":"2.16.840.1.101.3.4.2.1"},"access":{"type":"OTP","oneTimePassword":"000123"}}]}"""
         )
-        val data = transactionData(request).getValue("pid").single()
+        val data = pidTransaction(request)
 
         assertFalse(IosQesRequestTransactionType.isApplicable(data, pidCredential()))
         val qes = data.toPresentationTransactionDataDomain() as PresentationTransactionDataDomain.Qes
@@ -209,6 +224,29 @@ class IosQesTransactionDataTest {
             PresentationTransactionDataDomain.Unavailable,
             transactionData(both).getValue("pid").single().toPresentationTransactionDataDomain(),
         )
+    }
+
+    @Test
+    fun the_hashes_use_the_first_algorithm_the_wallet_supports() {
+        val named = json(
+            """{"type":"$QES_APPROVAL_TYPE","credential_ids":["pid"],
+            "transaction_data_hashes_alg":["md5","sha-384"],"credentialID":"c","numSignatures":1,
+            "documentDigests":[{"hash":"AQID"}],"hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"}"""
+        )
+
+        assertEquals(listOf(Algorithm.SHA384), pidTransaction(named).hashAlgorithms)
+        assertEquals(null, pidTransaction(APPROVAL_SHA256).hashAlgorithms)
+    }
+
+    @Test
+    fun hashes_named_only_in_algorithms_the_wallet_lacks_are_refused() {
+        val unsupported = json(
+            """{"type":"$QES_APPROVAL_TYPE","credential_ids":["pid"],
+            "transaction_data_hashes_alg":["md5"],"credentialID":"c","numSignatures":1,
+            "documentDigests":[{"hash":"AQID"}],"hashAlgorithmOID":"2.16.840.1.101.3.4.2.1"}"""
+        )
+
+        assertFailsWith<IllegalArgumentException> { transactionData(unsupported) }
     }
 
     private companion object {

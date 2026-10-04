@@ -25,7 +25,9 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
+import org.multipaz.request.Iso18013RequesterIdentity
 import org.multipaz.request.Requester
+import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
@@ -74,14 +76,18 @@ class WalletPresentmentSourceTest {
             validFrom = Clock.System.now() - 1.days,
             validUntil = Clock.System.now() + 30.days,
         ).build()
-        return Requester(certChain = X509CertChain(listOf(certificate)))
+        return Requester(
+            requesterIdentities = listOf(
+                Iso18013RequesterIdentity(certChain = X509CertChain(listOf(certificate))),
+            ),
+        )
     }
 
     private fun neverAsked(): suspend (
         Requester,
-        TrustMetadata?,
-        org.multipaz.presentment.CredentialPresentmentData,
-    ) -> org.multipaz.presentment.CredentialPresentmentSelection? = { _, _, _ ->
+        TrustedRequesterIdentity?,
+        org.multipaz.presentment.ConsentData,
+    ) -> org.multipaz.presentment.CredentialSelection? = { _, _, _ ->
         error("consent is not part of this test")
     }
 
@@ -130,9 +136,10 @@ class WalletPresentmentSourceTest {
 
         source.resolveTrust(requester)
 
-        assertEquals(1, seen?.certChain?.certificates?.size)
+        val seenChain = seen?.requesterIdentities?.firstOrNull()?.certChain
+        assertEquals(1, seenChain?.certificates?.size)
         assertTrue(
-            seen?.certChain?.certificates?.first()?.subject?.name?.contains("Test Verifier") == true,
+            seenChain?.certificates?.first()?.subject?.name?.contains("Test Verifier") == true,
             "the trust source was handed a different certificate",
         )
     }
@@ -157,18 +164,23 @@ class WalletPresentmentSourceTest {
 
     @Test
     fun a_reader_that_authenticated_with_an_untrusted_certificate_is_refused() = runTest {
-        assertTrue(isUntrustedReader(requesterWithCertificate(), trustMetadata = null))
+        assertTrue(isUntrustedReader(requesterWithCertificate(), trusted = null))
     }
 
     @Test
     fun a_reader_that_authenticated_with_a_trusted_certificate_is_allowed() = runTest {
-        assertFalse(isUntrustedReader(requesterWithCertificate(), trustMetadata = TrustMetadata()))
+        val requester = requesterWithCertificate()
+        val trusted = TrustedRequesterIdentity(
+            identity = requester.requesterIdentities.single(),
+            trustMetadata = TrustMetadata(),
+        )
+        assertFalse(isUntrustedReader(requester, trusted = trusted))
     }
 
     @Test
     fun a_reader_that_did_not_authenticate_is_allowed() {
         // Nothing vouches for it either, but there is nothing to check: Android lets it through too.
-        assertFalse(isUntrustedReader(Requester(), trustMetadata = null))
+        assertFalse(isUntrustedReader(Requester(requesterIdentities = emptyList()), trusted = null))
     }
 
     //endregion

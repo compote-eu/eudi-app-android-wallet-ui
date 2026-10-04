@@ -28,13 +28,22 @@ import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
 import eu.europa.ec.shared.wallet.trust.TrustVerdict
 import eu.europa.ec.shared.wallet.trust.toTrustChain
 import org.multipaz.crypto.X509CertChain
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import org.multipaz.revocation.RevocationStatus
 import org.multipaz.revocation.StatusList
+import org.multipaz.util.fromBase64Url
 import org.multipaz.webtoken.WebTokenCheck
 import org.multipaz.webtoken.basicCertificateChainValidator
 import org.multipaz.webtoken.validateJwt
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 /**
  * What a status check concluded about one credential.
@@ -188,17 +197,37 @@ internal class MultipazRevocationChecker(
             "status list at ${status.uri} could not be fetched"
         )
 
-        // ISO mdoc's `status_list` `certificate` field. When the issuer put a key there it is the
+        // ISO mdoc's `status_list` `certificate` field. When the issuer put one there it is the
         // strongest binding available, because it arrives inside data the issuer signed.
-        val signerKey = status.certificate?.ecPublicKey
+        val signerCert = status.certificate
 
         val read = try {
-            if (signerKey != null) {
-                // `require(publicKey == null || certificateChainValidator == null)` in `validateJwt`:
-                // the two are mutually exclusive, so this branch cannot also consult the lists.
-                // It does not need to — a key the issuer itself named is the stronger binding.
+            if (signerCert != null) {
+                // Signed by the key the issuer named, with or without an `x5c` of the token's own.
+                // `StatusList.fromJwt` cannot say that: it anchors an `x5c` at a root, and has no key
+                // to check a token without one. So `validateJwt` is called directly — with the key
+                // when there is no `x5c`, and otherwise accepting the chain only when its first
+                // certificate is the named one, whose key then checks the signature.
+                val hasEmbeddedChain = token.split('.').getOrNull(0)
+                    ?.fromBase64Url()?.decodeToString()
+                    ?.let { Json.parseToJsonElement(it).jsonObject }
+                    ?.containsKey("x5c") == true
+                val body = validateJwt(
+                    jwt = token,
+                    jwtName = "Status List",
+                    checks = mapOf(WebTokenCheck.TYP to STATUS_LIST_TYP),
+                    maxValidity = STATUS_LIST_MAX_VALIDITY,
+                    publicKey = signerCert.ecPublicKey.takeIf { !hasEmbeddedChain },
+                    certificateChainValidator = if (hasEmbeddedChain) {
+                        { chain, _ -> chain.certificates.firstOrNull()?.ecPublicKey == signerCert.ecPublicKey }
+                    } else {
+                        null
+                    },
+                )
+                val statusList = body[STATUS_LIST_CLAIM]?.jsonObject
+                    ?: throw IllegalArgumentException("missing required '$STATUS_LIST_CLAIM' claim")
                 ReadList(
-                    list = StatusList.fromJwt(jwt = token, publicKey = signerKey),
+                    list = StatusList.fromJson(statusList, expirationTime = expirationTimeOf(body)),
                     signerTrust = StatusSignerTrustDomain.Trusted,
                 )
             } else {
@@ -283,7 +312,24 @@ internal class MultipazRevocationChecker(
         )
         val statusList = body[STATUS_LIST_CLAIM]?.jsonObject
             ?: throw IllegalArgumentException("missing required '$STATUS_LIST_CLAIM' claim")
-        return ReadList(list = StatusList.fromJson(statusList), signerTrust = signerTrust)
+        return ReadList(
+            list = StatusList.fromJson(statusList, expirationTime = expirationTimeOf(body)),
+            signerTrust = signerTrust,
+        )
+    }
+
+    /**
+     * The list's expiry, which `StatusList.fromJson` takes, derived from the token's claims as
+     * multipaz's own `CompressedStatusList.fromJwt` derives it: `exp`, else `iat` + `ttl`, else 20 minutes.
+     */
+    private fun expirationTimeOf(body: JsonObject): Instant {
+        body["exp"]?.jsonPrimitive?.longOrNull?.let { return Instant.fromEpochSeconds(it) }
+        body["ttl"]?.jsonPrimitive?.longOrNull?.let { ttl ->
+            val issuedAt = body["iat"]?.jsonPrimitive?.longOrNull?.let { Instant.fromEpochSeconds(it) }
+                ?: Clock.System.now()
+            return issuedAt + ttl.seconds
+        }
+        return Clock.System.now() + 20.minutes
     }
 
     /**

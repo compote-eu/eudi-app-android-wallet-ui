@@ -39,7 +39,7 @@ import org.multipaz.util.Logger
  *
  * ⛔ **The metadata is fetched again here rather than taken from the offer read.** multipaz's
  * `OpenID4VCI.getMetadata` parses only the endpoints it needs and drops `issuer_info` entirely (zero
- * occurrences at 0.99.0, exactly like `deferred_credential_endpoint`), so the parsed object cannot
+ * occurrences at 0.99.0 and 0.101.0, exactly like `deferred_credential_endpoint`), so the parsed object cannot
  * answer this. One extra GET of a document the wallet already understands is the cheaper half of that
  * trade.
  */
@@ -158,11 +158,11 @@ fun offeredAttestationsIn(
 /**
  * The current status of a registration certificate, whichever side issued it.
  *
- * 🪤 `StatusList.fromJwt(token)` on its own throws `IllegalArgumentException: Failed requirement.` —
- * multipaz's `validateJwt` demands `publicKey != null || caValidated`, and its basic chain validator
- * cannot anchor a self-contained `x5c`. So the signer is checked by the caller, against the EU list
- * meant for exactly this, and its key is handed in. wallet-core's status verifier does the same thing
- * for the same reason.
+ * 🪤 multipaz's `validateJwt` needs a key or an anchor before it checks a signature, and cannot anchor a
+ * self-contained `x5c` itself. So the token's chain is anchored at its own top certificate — the signature
+ * is then checked with the first certificate's key — and whether that signer is trusted is decided by the
+ * caller, against the EU list meant for exactly this. wallet-core's status verifier also judges the signer
+ * itself, for the same reason.
  *
  * Shared by the issuer and relying-party validators because the mechanism is identical and the trap
  * above is worth having in one place rather than two.
@@ -173,14 +173,15 @@ internal suspend fun registrationStatusOf(
     isSignerTrusted: suspend (X509CertChain) -> Boolean,
 ): RevocationOutcome = runCatching {
     val token = httpClient.get(reference.uri).bodyAsText().trim()
-    val signer = jwsCertificateChain(token)?.certificates?.firstOrNull()
+    val chain = jwsCertificateChain(token)?.certificates?.takeIf { it.isNotEmpty() }
         ?: return RevocationOutcome.Unknown("status list token carries no x5c")
+    val signer = chain.first()
     val signerTrust = if (isSignerTrusted(X509CertChain(listOf(signer)))) {
         StatusSignerTrustDomain.Trusted
     } else {
         StatusSignerTrustDomain.NotTrusted
     }
-    when (StatusList.fromJwt(token, publicKey = signer.ecPublicKey)[reference.index]) {
+    when (StatusList.fromJwt(token, trustedRootCert = chain.last())[reference.index]) {
         0 -> RevocationOutcome.Valid(signerTrust)
         else -> RevocationOutcome.Invalid(signerTrust)
     }

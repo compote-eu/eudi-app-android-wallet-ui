@@ -17,6 +17,8 @@
 package eu.europa.ec.shared.wallet.trust
 
 import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
+import org.multipaz.crypto.X509CertChain
+import org.multipaz.request.Iso18013RequesterIdentity
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustMetadata
 import platform.Foundation.NSData
@@ -58,3 +60,18 @@ internal fun interface IssuerTrustSource {
 internal fun interface ReaderTrustSource {
     suspend fun trustMetadataFor(requester: Requester): TrustMetadata?
 }
+
+/**
+ * The chain that signed the request, or null when nothing did: the first of [Requester.requesterIdentities]
+ * — for ISO 18013-5 the `readerAuthAll` signature, else the first document request's; for OpenID4VP the
+ * request object's signer.
+ */
+internal val Requester.certChain: X509CertChain?
+    get() = requesterIdentities.firstOrNull()?.certChain
+
+/**
+ * A requester known only by the chain that signed its request, which is all a [ReaderTrustSource] reads.
+ * The identity's protocol plays no part in the verdict.
+ */
+internal fun requesterSignedBy(chain: X509CertChain): Requester =
+    Requester(requesterIdentities = listOf(Iso18013RequesterIdentity(certChain = chain)))

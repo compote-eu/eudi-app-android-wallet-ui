@@ -69,8 +69,8 @@ eudiLibKmpEtsi1196x2Ios = "0.4.0-alpha.3"
 # Multipaz for iOS alone: the iOS document layer reads its DocumentStore directly (there is no KMP
 # wallet-core or document manager). Android gets its own multipaz-android through wallet-core —
 # 0.101.0 under wallet-core 0.31.0 — and nothing on Android requests this key, so the two platforms
-# can differ; the iOS upgrade is a separate decision (see the 0.101 probe in the project notes).
-multipaz = "0.99.0"
+# can differ. Kept on the version wallet-core uses, so both platforms present with the same library.
+multipaz = "0.101.0"
 
 # Logging
 slf4j = "2.0.20"

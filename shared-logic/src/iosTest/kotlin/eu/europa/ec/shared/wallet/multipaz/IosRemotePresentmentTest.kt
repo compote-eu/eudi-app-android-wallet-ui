@@ -44,6 +44,7 @@ import org.multipaz.crypto.X509CertChain
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.openid.dcql.DcqlQuery
 import org.multipaz.presentment.SimplePresentmentSource
+import org.multipaz.request.Iso18013RequesterIdentity
 import org.multipaz.request.Requester
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
@@ -211,12 +212,16 @@ class IosRemotePresentmentTest {
             validUntil = Clock.System.now() + 30.days,
         ).build()
 
-        val requester = Requester(certChain = X509CertChain(listOf(certificate)))
+        val requester = Requester(
+            requesterIdentities = listOf(
+                Iso18013RequesterIdentity(certChain = X509CertChain(listOf(certificate))),
+            ),
+        )
 
         assertEquals("Verifier Signer dev", requester.certificateCommonName())
         // Nothing to name when the request was unsigned; the screen then shows its own fallback rather
         // than an empty relying party.
-        assertNull(Requester(certChain = null).certificateCommonName())
+        assertNull(Requester(requesterIdentities = emptyList()).certificateCommonName())
     }
 
     @Test

@@ -94,7 +94,7 @@ import kotlin.time.Instant
  * ## What the contract needed, measured rather than assumed
  *
  * Two objections carried against this design for months did not survive being read from multipaz
- * 0.99.0, and this class is where that shows:
+ * 0.99.0 (its `StorageTable` is unchanged in 0.101.0), and this class is where that shows:
  *
  *  - **No transactions are required**, because [org.multipaz.storage.StorageTable] has none to
  *    implement — eight methods, no batch, no savepoint. A document and its credentials are written by

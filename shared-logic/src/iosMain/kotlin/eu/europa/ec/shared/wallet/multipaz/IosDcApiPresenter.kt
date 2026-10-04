@@ -19,14 +19,15 @@ package eu.europa.ec.shared.wallet.multipaz
 import eu.europa.ec.shared.wallet.platform.IosRegistrationCheckSetting
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
+import eu.europa.ec.shared.wallet.trust.certChain
 import kotlinx.coroutines.CancellationException
 import org.multipaz.mdoc.request.DeviceRequest
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.ConsentData
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.request.Requester
-import org.multipaz.trustmanagement.TrustMetadata
+import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.util.Logger
 
 /**
@@ -68,7 +69,7 @@ sealed interface IosDcApiOutcome {
  * ## Why this is small, and what that says about the earlier scoping
  *
  * **multipaz already implements the protocol.** `digitalCredentialsPresentment` is in `commonMain` at
- * our 0.99.0 pin, with its own tests, and it is the exact sibling of `uriSchemePresentment` — which
+ * our pin, with its own tests, and it is the exact sibling of `uriSchemePresentment` — which
  * [IosRemotePresenter] has driven in production against the EUDI dev verifier since `8f4751dd`. So this
  * class is that presenter with the protocol function swapped: same [SimplePresentmentSource], same
  * consent seam, same three-way reading of the outcome. Its `org-iso-mdoc` branch is our copy now
@@ -135,10 +136,10 @@ internal class IosDcApiPresenter(
         appId: String? = null,
         onConsent: suspend (
             requester: Requester,
-            trustMetadata: TrustMetadata?,
-            data: CredentialPresentmentData,
+            trustedRequesterIdentity: TrustedRequesterIdentity?,
+            data: ConsentData,
             registration: RelyingPartyRegistrationOutcome,
-        ) -> CredentialPresentmentSelection?,
+        ) -> CredentialSelection?,
     ): IosDcApiOutcome {
         var shared: List<String> = emptyList()
         var deviceRequest: DeviceRequest? = null
@@ -152,9 +153,9 @@ internal class IosDcApiPresenter(
                 appId = appId,
                 origin = origin,
                 onDeviceRequest = { deviceRequest = it },
-                source = presentmentSource { requester, trustMetadata, presentmentData ->
+                source = presentmentSource { requester, trustedRequesterIdentity, consentData ->
                     // Before [onConsent], so the extension never shows the request.
-                    if (isUntrustedReader(requester, trustMetadata)) throw UntrustedVerifierException()
+                    if (isUntrustedReader(requester, trustedRequesterIdentity)) throw UntrustedVerifierException()
                     // Two different certificates throw here and fail the request, as on Android.
                     val registration = readerRegistrationOutcome(
                         isRegistrationCheckEnabled = isRegistrationCheckEnabled,
@@ -163,7 +164,7 @@ internal class IosDcApiPresenter(
                         reader = requester.certChain?.certificates?.firstOrNull(),
                     )
 
-                    onConsent(requester, trustMetadata, presentmentData, registration)?.also { selection ->
+                    onConsent(requester, trustedRequesterIdentity, consentData, registration)?.also { selection ->
                         shared = selection.matches
                             .map { it.credential.document.displayName ?: it.credential.document.identifier }
                             .distinct()
@@ -204,9 +205,9 @@ internal class IosDcApiPresenter(
     private suspend fun presentmentSource(
         showConsent: suspend (
             requester: Requester,
-            trustMetadata: TrustMetadata?,
-            data: CredentialPresentmentData,
-        ) -> CredentialPresentmentSelection?,
+            trustedRequesterIdentity: TrustedRequesterIdentity?,
+            data: ConsentData,
+        ) -> CredentialSelection?,
     ) = walletPresentmentSource(
         store = store,
         credentialDomain = credentialDomain,

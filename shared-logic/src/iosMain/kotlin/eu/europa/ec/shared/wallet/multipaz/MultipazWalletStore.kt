@@ -407,7 +407,7 @@ internal class MultipazWalletStore(
          *    backed up. Our exclusion worked by accident. [WalletSqliteStorage] sets it on the file.
          *
          * ⚠️ **This is placement and backup hygiene, not encryption.** The file is still plain SQLite.
-         * There is no encrypted `Storage` in multipaz 0.99.0 — `SqliteStorage`, `IosStorage`,
+         * There is no encrypted `Storage` in multipaz, 0.99.0 or 0.101.0 — `SqliteStorage`, `IosStorage`,
          * `EphemeralStorage` and `WebStorage` are all plaintext — so at-rest protection for *app data*
          * rests entirely on the file's data-protection class, which is `NSFileProtectionComplete` as of
          * 2026-09-04 rather than the `…UntilFirstUserAuthentication` default (see [storeFileUrl]).

@@ -18,6 +18,8 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
+import eu.europa.ec.shared.wallet.trust.certChain
+import eu.europa.ec.shared.wallet.trust.requesterSignedBy
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import kotlinx.coroutines.CompletableDeferred
@@ -31,12 +33,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.multipaz.asn1.OID
 import org.multipaz.crypto.X509CertChain
-import org.multipaz.presentment.CredentialPresentmentData
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.ConsentData
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.presentment.uriSchemePresentment
 import org.multipaz.request.Requester
+import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.Logger
 import kotlin.coroutines.cancellation.CancellationException
@@ -207,10 +211,10 @@ class IosRemotePresenter internal constructor(
     val state: StateFlow<IosRemotePresentationState> = mutableState.asStateFlow()
 
     private var presentmentJob: Job? = null
-    private var pendingConsent: CompletableDeferred<CredentialPresentmentSelection?>? = null
+    private var pendingConsent: CompletableDeferred<CredentialSelection?>? = null
 
     /** The request being consented to, kept so [accept] can turn the app's answer back into matches. */
-    private var pendingData: CredentialPresentmentData? = null
+    private var pendingData: CredentialQueryResult? = null
 
     /** What the user agreed to share, remembered so the success state can name it. */
     private var sharedDocuments: List<String> = emptyList()
@@ -386,7 +390,7 @@ class IosRemotePresenter internal constructor(
      * so a presenter built without one refuses rather than waves everything through.
      */
     private suspend fun isVerifierTrusted(chain: X509CertChain): Boolean =
-        readerTrust?.trustMetadataFor(Requester(certChain = chain)) != null
+        readerTrust?.trustMetadataFor(requesterSignedBy(chain)) != null
 
     /** Abandons the exchange — the back button, and every teardown. */
     fun cancel() {
@@ -413,10 +417,10 @@ class IosRemotePresenter internal constructor(
         credentialDomain = credentialDomain,
         readerTrust = readerTrust,
         offersSdJwt = true,
-        showConsent = { requester, trustMetadata, data ->
+        showConsent = { requester, trustedRequesterIdentity, data ->
             awaitConsent(
                 requester = requester,
-                trustMetadata = trustMetadata,
+                trustedRequesterIdentity = trustedRequesterIdentity,
                 data = data,
             )
         },
@@ -430,25 +434,25 @@ class IosRemotePresenter internal constructor(
      */
     private suspend fun awaitConsent(
         requester: Requester,
-        trustMetadata: TrustMetadata?,
-        data: CredentialPresentmentData,
-    ): CredentialPresentmentSelection? {
-        val consent = CompletableDeferred<CredentialPresentmentSelection?>()
+        trustedRequesterIdentity: TrustedRequesterIdentity?,
+        data: ConsentData,
+    ): CredentialSelection? {
+        val consent = CompletableDeferred<CredentialSelection?>()
         // Counted, because multipaz may ask more than once for one exchange and a repeat looks
         // identical to the user — it is the same screen a second time.
         consentRequests += 1
         Logger.i(TAG, "asking for consent (request $consentRequests of this exchange)")
         pendingConsent = consent
-        pendingData = data
+        pendingData = data.credentialQueryResult
         val registration = evaluateRelyingPartyRegistration()
         rememberPartyRecord(registration)
         mutableState.value = IosRemotePresentationState.Requesting(
-            request = data.toPresentmentRequest(
+            request = data.credentialQueryResult.toPresentmentRequest(
                 // A name without trust behind it is still worth showing. Unlike proximity there is
                 // usually *something* here: an OpenID4VP request over a URI scheme must be signed, so
                 // the verifier's certificate is present even when nothing vouches for it.
-                requesterName = requesterName(trustMetadata, requester.certChain),
-                requesterIsTrusted = trustMetadata != null,
+                requesterName = requesterName(trustedRequesterIdentity?.trustMetadata, requester.certChain),
+                requesterIsTrusted = trustedRequesterIdentity != null,
                 // Read from the request object the observing engine already kept — `verifier_info` is
                 // another claim multipaz does not parse, and re-fetching a single-use `request_uri`
                 // to get it would risk the exchange.
@@ -548,7 +552,7 @@ internal suspend fun nothingToShare(
     registration: RelyingPartyRegistrationOutcome,
 ): IosRemotePresentationState.NothingToShare {
     val chain = notice.requestSignerChain
-    val trustMetadata = chain?.let { runCatching { readerTrust?.trustMetadataFor(Requester(certChain = it)) }.getOrNull() }
+    val trustMetadata = chain?.let { runCatching { readerTrust?.trustMetadataFor(requesterSignedBy(it)) }.getOrNull() }
     return IosRemotePresentationState.NothingToShare(
         requesterName = requesterName(trustMetadata, chain),
         requesterIsTrusted = trustMetadata != null,

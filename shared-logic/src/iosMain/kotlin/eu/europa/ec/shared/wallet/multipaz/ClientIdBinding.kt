@@ -42,8 +42,8 @@ internal class ClientIdBindingException(val reason: String) : IllegalStateExcept
 /**
  * Refuses a request object whose `client_id` its signing certificate does not prove.
  *
- * OpenID4VP 1.0 §5.9.3 makes this the wallet's job, and multipaz does not do it: 0.99 verifies the signature
- * against `x5c[0]` and never compares that certificate with `client_id` (nor does its `main` as of 2026-09-30,
+ * OpenID4VP 1.0 §5.9.3 makes this the wallet's job, and multipaz does not do it: 0.99 and 0.101 verify the
+ * signature against `x5c[0]` and never compare that certificate with `client_id` (nor does its `main` as of 2026-09-30,
  * which only carries the two side by side). The rules here are Android's, from openid4vp-kt 0.15.1, so both
  * platforms refuse the same requests:
  * - the link's `client_id` is present and identical to the request object's, prefix included;

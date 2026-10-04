@@ -44,6 +44,7 @@ import org.multipaz.eventlogger.EventPresentment
 import org.multipaz.eventlogger.EventPresentmentDataDocument
 import org.multipaz.eventlogger.EventProvisioning
 import org.multipaz.eventlogger.EventSimple
+import org.multipaz.eventlogger.EventVerification
 import org.multipaz.request.JsonRequestedClaim
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.RequestedClaim
@@ -160,6 +161,9 @@ internal suspend fun Event.toTransactionLogDomain(
         }
 
         is EventSimple -> null
+
+        // A verifier's record; this wallet only presents, so it writes none.
+        is EventVerification -> null
     }
 }
 

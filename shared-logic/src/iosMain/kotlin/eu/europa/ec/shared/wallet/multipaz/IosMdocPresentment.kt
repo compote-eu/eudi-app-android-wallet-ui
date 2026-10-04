@@ -14,19 +14,22 @@
  * governing permissions and limitations under the Licence.
  */
 
-// multipaz 0.99's ISO mdoc presentment — `Iso18013Presentment`, `mdocPresentment` and the `org-iso-mdoc`
-// branch of `digitalCredentialsPresentment` — copied with ONE change: how a reader's request is matched.
+// multipaz 0.101's ISO mdoc presentment — the consent step `mdocPresentmentObtainConsent`, the `Iso18013Presentment`
+// loop and the `org-iso-mdoc` branch of `digitalCredentialsPresentment` — copied with ONE change: how a reader's
+// request is matched.
 //
 // multipaz drops a credential that lacks any one requested element (`DeviceRequest.findBestMatchingClaims`),
 // so a reader asking for 29 PID elements of which the PID holds 26 got "nothing to share". Android matches
 // softly instead: wallet-core's `DeviceRequestProcessor` offers a credential that holds at least one of the
 // requested elements and leaves the rest out, which is ISO 18013-5's partial response. The official iOS wallet
-// answers the same way. The strict check runs inside `DeviceRequest.execute`, which `mdocPresentment` calls
-// and the other two call through it, so there was no hook short of copying them.
+// answers the same way. The strict check runs inside `DeviceRequest.execute`, which the consent step calls and
+// the other two reach through it, so there was no hook short of copying them. The response itself is built by
+// multipaz's public `mdocPresentmentGenerateResponse`, which takes the selection, so that part is not copied.
 //
 // Everything else is multipaz's code, trimmed of what this wallet never supplies: preselected documents,
-// the focus and waiting callbacks, and zero-knowledge proofs (the presentment source has no
-// `ZkSystemRepository`, so multipaz's own copy would send a plain document too).
+// the focus and waiting callbacks, and the loop's NFC paths — waiting for a re-tap, re-deriving the session
+// after one, and re-using the consent given before it. This wallet engages over a QR code and Bluetooth only,
+// so each request is asked about, as it was before 0.101.
 //
 // ⛔ Delete this file once multipaz matches partially, or once a multipaz upgrade changes the functions it
 // copies — re-copy rather than patch, and keep the one change.
@@ -58,33 +61,31 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.Hpke
-import org.multipaz.eventlogger.EventPresentmentData
 import org.multipaz.eventlogger.EventPresentmentDigitalCredentialsMdocApi
 import org.multipaz.eventlogger.EventPresentmentIso18013Proximity
 import org.multipaz.mdoc.credential.MdocCredential
-import org.multipaz.mdoc.devicesigned.buildDeviceNamespaces
 import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.mdoc.request.DocRequest
-import org.multipaz.mdoc.response.DeviceResponse
 import org.multipaz.mdoc.response.Iso18015ResponseException
-import org.multipaz.mdoc.response.MdocDocument
-import org.multipaz.mdoc.response.buildDeviceResponse
 import org.multipaz.mdoc.role.MdocRole
 import org.multipaz.mdoc.sessionencryption.EReaderKey
 import org.multipaz.mdoc.sessionencryption.SessionEncryption
 import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.presentment.CredentialMatchSourceIso18013
-import org.multipaz.presentment.CredentialPresentmentData
+import org.multipaz.presentment.ConsentData
 import org.multipaz.presentment.CredentialPresentmentSet
 import org.multipaz.presentment.CredentialPresentmentSetOption
 import org.multipaz.presentment.CredentialPresentmentSetOptionMember
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
+import org.multipaz.presentment.CredentialQueryResult
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.Iso18013PresentmentTimeoutException
-import org.multipaz.presentment.MdocResponse
+import org.multipaz.presentment.Iso18013Response
 import org.multipaz.presentment.PresentmentCanceledException
 import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.presentment.PresentmentSource
 import org.multipaz.presentment.digitalCredentialsPresentment
+import org.multipaz.presentment.mdocPresentmentGenerateResponse
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.RequestedClaim
 import org.multipaz.request.Requester
@@ -113,7 +114,7 @@ import kotlin.time.Duration.Companion.seconds
 internal suspend fun DeviceRequest.matchHeldElements(
     source: PresentmentSource,
     keyAgreementPossible: List<EcCurve>,
-): CredentialPresentmentData {
+): CredentialQueryResult {
     val credentialSets = docRequests.mapNotNull { it.matchHeldElements(source, keyAgreementPossible) }
     if (credentialSets.isEmpty()) {
         throw PresentmentCannotSatisfyRequestException(
@@ -121,7 +122,7 @@ internal suspend fun DeviceRequest.matchHeldElements(
             Iso18015ResponseException("No matching credentials"),
         )
     }
-    return CredentialPresentmentData(credentialSets)
+    return CredentialQueryResult(credentialSets)
 }
 
 private suspend fun DocRequest.matchHeldElements(
@@ -181,7 +182,8 @@ private suspend fun candidatesFor(docType: String, source: PresentmentSource): L
         .sortedBy { it.document.displayName }
 
 /**
- * multipaz's `mdocPresentment`, matching with [matchHeldElements].
+ * multipaz's `mdocPresentment`: consent asked with [iosMdocPresentmentObtainConsent], the response built by
+ * multipaz's own `mdocPresentmentGenerateResponse`.
  *
  * @throws PresentmentCanceledException if the user declined.
  * @throws PresentmentCannotSatisfyRequestException if no credential holds anything the reader asked for.
@@ -194,51 +196,54 @@ internal suspend fun iosMdocPresentment(
     keyAgreementPossible: List<EcCurve>,
     requesterAppId: String?,
     requesterOrigin: String?,
-): MdocResponse {
-    lateinit var eventData: EventPresentmentData
-
-    val deviceResponse = buildDeviceResponse(
-        sessionTranscript = sessionTranscript,
-        status = DeviceResponse.STATUS_OK,
+): Iso18013Response {
+    val selection = iosMdocPresentmentObtainConsent(
+        deviceRequest = deviceRequest,
+        source = source,
+        keyAgreementPossible = keyAgreementPossible,
+        requesterAppId = requesterAppId,
+        requesterOrigin = requesterOrigin,
+    )
+    return mdocPresentmentGenerateResponse(
+        selection = selection,
+        deviceRequest = deviceRequest,
         eReaderKey = eReaderKey,
-    ) {
-        val presentmentData = deviceRequest.matchHeldElements(source, keyAgreementPossible)
-        val requester = Requester(
-            certChain = deviceRequest.getRequester(),
-            appId = requesterAppId,
-            origin = requesterOrigin,
-        )
-        val trustMetadata = source.resolveTrust(requester)
-        val selection = source.showConsentPrompt(
-            requester = requester,
-            trustMetadata = trustMetadata,
-            credentialPresentmentData = presentmentData,
-            preselectedDocuments = emptyList(),
-            onDocumentsInFocus = {},
-        ) ?: throw PresentmentCanceledException("User canceled consent prompt")
+        sessionTranscript = sessionTranscript,
+        source = source,
+        requesterAppId = requesterAppId,
+        requesterOrigin = requesterOrigin,
+    )
+}
 
-        for (match in selection.matches) {
-            addDocument(
-                MdocDocument.fromPresentment(
-                    sessionTranscript = sessionTranscript,
-                    eReaderKey = eReaderKey,
-                    credential = match.credential as MdocCredential,
-                    requestedClaims = match.claims.keys.filterIsInstance<MdocRequestedClaim>(),
-                    // multipaz fills this from the match's transaction data, and a soft match carries none.
-                    deviceNamespaces = buildDeviceNamespaces {},
-                    errors = mapOf(),
-                )
-            )
-            match.credential.increaseUsageCount()
-        }
-
-        eventData = EventPresentmentData.fromPresentmentSelection(
-            selection = selection,
-            requester = requester,
-            trustMetadata = trustMetadata,
-        )
-    }
-    return MdocResponse(deviceResponse = deviceResponse, eventData = eventData)
+/**
+ * multipaz's `mdocPresentmentObtainConsent`, matching with [matchHeldElements].
+ *
+ * @throws PresentmentCanceledException if the user declined.
+ * @throws PresentmentCannotSatisfyRequestException if no credential holds anything the reader asked for.
+ */
+private suspend fun iosMdocPresentmentObtainConsent(
+    deviceRequest: DeviceRequest,
+    source: PresentmentSource,
+    keyAgreementPossible: List<EcCurve>,
+    requesterAppId: String?,
+    requesterOrigin: String?,
+): CredentialSelection {
+    val credentialQueryResult = deviceRequest.matchHeldElements(source, keyAgreementPossible)
+    val requester = Requester(
+        requesterIdentities = deviceRequest.getRequesterIdentities(),
+        appId = requesterAppId,
+        origin = requesterOrigin,
+    )
+    return source.showConsentPrompt(
+        requester = requester,
+        trustedRequesterIdentity = source.resolveTrust(requester),
+        consentData = ConsentData.fromCredentialQueryResult(
+            credentialQueryResult = credentialQueryResult,
+            source = source,
+        ),
+        preselectedDocuments = emptyList(),
+        onDocumentsInFocus = {},
+    ) ?: throw PresentmentCanceledException("User canceled consent prompt")
 }
 
 /**
@@ -260,7 +265,7 @@ internal suspend fun iosIso18013Presentment(
     handover: DataItem,
     source: PresentmentSource,
     keyAgreementPossible: List<EcCurve>,
-    timeout: Duration? = 10.seconds,
+    timeout: Duration? = 15.seconds,
     timeoutSubsequentRequests: Duration? = 30.seconds,
     sendTimeout: Duration = 30.seconds,
     onSendingResponse: () -> Unit = {},
@@ -278,7 +283,7 @@ internal suspend fun iosIso18013Presentment(
             it == MdocTransport.State.CLOSED
     }
     if (transport.state.value != MdocTransport.State.CONNECTED) {
-        throw Error("Expected state CONNECTED but found ${transport.state.value}")
+        throw IllegalStateException("Expected state CONNECTED but found ${transport.state.value}")
     }
     var numRequestsServed = 0
     var sendSessionTermination = true
@@ -328,7 +333,11 @@ internal suspend fun iosIso18013Presentment(
                 break
             }
 
-            val deviceRequest = DeviceRequest.fromDataItem(Cbor.decode(encodedDeviceRequest!!))
+            if (encodedDeviceRequest == null) {
+                throw IllegalStateException("No data in message from reader")
+            }
+
+            val deviceRequest = DeviceRequest.fromDataItem(Cbor.decode(encodedDeviceRequest))
             deviceRequest.verifyReaderAuthentication(sessionTranscript)
             onDeviceRequest(deviceRequest)
             val responseObject = iosMdocPresentment(
@@ -375,8 +384,8 @@ internal suspend fun iosIso18013Presentment(
  * Sends [message], or fails if the reader has not taken it within [timeout].
  *
  * multipaz's iOS BLE peripheral cannot tell that the reader went away. CoreBluetooth reports a central's
- * departure only through `didUnsubscribeFrom`, which multipaz 0.99 does not handle. Neither does it read
- * the reader's "end" on the State characteristic while it is sending. So a reader that leaves
+ * departure only through `didUnsubscribeFrom`, which multipaz does not handle, in 0.101 as in 0.99. Neither
+ * does it read the reader's "end" on the State characteristic while it is sending. So a reader that leaves
  * mid-response leaves the send waiting for a "ready to write" that never comes, and the screen showing
  * "sharing" for ever. Ending the send here cancels it, and multipaz then fails the transport, so the
  * cleanup that follows cannot hang on it too.

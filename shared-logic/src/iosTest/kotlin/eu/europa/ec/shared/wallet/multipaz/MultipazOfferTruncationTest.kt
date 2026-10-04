@@ -19,7 +19,7 @@
 // The offer screen lists what [IosCredentialOfferReader] finds, and that reader honours the whole
 // `credential_configuration_ids` array. multipaz does not: `CredentialOffer.parseJson` keeps
 // `credentialConfigurationIds[0]` and discards the rest, under its own comment "Right now only use the
-// first configuration id" — 0.99.0 and `main` alike. So the screen can promise two documents and the
+// first configuration id" — 0.99.0, 0.101.0 and `main` alike. So the screen can promise two documents and the
 // wallet can request one, with nothing logged in between.
 //
 // These cases pin that difference on multipaz's REAL parser and its REAL pushed authorization request,

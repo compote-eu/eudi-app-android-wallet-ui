@@ -72,11 +72,11 @@ suspend fun revocationFixtureToken(revoked: Boolean): String =
     StatusList.Builder(bitsPerItem = 1)
         .apply { if (revoked) addStatus(REVOCATION_FIXTURE_INDEX, 1) }
         .build()
-        .compress()
+        // The token's validity comes from the compressed list's time to live.
+        .compress(timeToLive = 120.minutes)
         .serializeAsJwt(
             key = AsymmetricKey.AnonymousExplicit(privateKey = fixtureSigningKey),
             subject = REVOCATION_FIXTURE_URI,
-            expiresIn = 120.minutes,
         )
 
 /** The certificate the fixture document pins its status list to — the public half of the key above. */
