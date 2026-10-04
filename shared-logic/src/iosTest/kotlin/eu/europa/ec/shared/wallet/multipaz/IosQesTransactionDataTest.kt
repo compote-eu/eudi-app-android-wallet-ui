@@ -48,12 +48,14 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 
 private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
+private const val QES_NAMESPACE = "org.cloudsignatureconsortium.dm.1"
 
 class IosQesTransactionDataTest {
 
     private val repository = DocumentTypeRepository().apply { walletTransactionTypes.forEach(::addTransactionType) }
 
-    private suspend fun walletWithPid(): MultipazWalletStore {
+    /** A wallet holding an mdoc PID; [signsApprovals] is whether its issuer authorized the device key for them. */
+    private suspend fun walletWithPid(signsApprovals: Boolean = true): MultipazWalletStore {
         val storage = EphemeralStorage()
         val store = MultipazWalletStore.build(
             storage = storage,
@@ -65,6 +67,7 @@ class IosQesTransactionDataTest {
             namespace = PID_DOC_TYPE,
             elements = samplePidElements(),
             policy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 1),
+            deviceKeyAuthorizedNamespaces = if (signsApprovals) listOf(QES_NAMESPACE) else emptyList(),
         )
         return store
     }
@@ -176,6 +179,22 @@ class IosQesTransactionDataTest {
 
         assertEquals("5ef6ed9be1e4966f061f827f0cc43937d5a414bf231027d3b9b87b26ff42463d", element.value.toHex())
         assertEquals("org.cloudsignatureconsortium.dm.1", IosQesApprovalTransactionType.openId4VpMdocResponseNamespace)
+    }
+
+    @Test
+    fun an_mdoc_whose_issuer_did_not_authorize_approvals_cannot_answer_one() = runTest {
+        val unauthorized = DcqlQuery.fromJson(pidQuery).execute(
+            presentmentSource = source(walletWithPid(signsApprovals = false)),
+            transactionDataMap = emptyMap(),
+        ).credentialSets.first().options.first().members.first().matches.first().credential
+
+        assertFalse(IosQesApprovalTransactionType.isApplicable(pidTransaction(APPROVAL_SHA256), unauthorized))
+        assertFailsWith<DcqlCredentialQueryException> {
+            DcqlQuery.fromJson(pidQuery).execute(
+                presentmentSource = source(walletWithPid(signsApprovals = false)),
+                transactionDataMap = transactionData(APPROVAL_SHA256),
+            )
+        }
     }
 
     @Test

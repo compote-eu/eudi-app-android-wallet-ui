@@ -128,10 +128,16 @@ internal object IosQesApprovalTransactionType : IosQesTransactionType(
     kbJwtResponseClaimName = QES_APPROVAL_NAMESPACE,
     openId4VpMdocResponseNamespace = QES_APPROVAL_NAMESPACE,
 ) {
-    /** An SD-JWT VC answers with a Key Binding JWT claim, an mdoc with a device-signed element; both need a valid payload. */
+    /**
+     * An SD-JWT VC answers with a Key Binding JWT claim, an mdoc with a device-signed element, and both need a
+     * valid payload. An mdoc also needs its issuer to have authorized the device key to sign
+     * [QES_APPROVAL_NAMESPACE] — multipaz's own check, which wallet-core applies too: a verifier refuses
+     * device-signed elements the issuer did not authorize.
+     */
     override suspend fun isApplicable(transactionData: TransactionData<String>, credential: Credential): Boolean =
         (credential is SdJwtVcCredential || credential is MdocCredential) &&
-                approvalOrNull(transactionData.payload) != null
+                approvalOrNull(transactionData.payload) != null &&
+                super.isApplicable(transactionData, credential)
 
     /**
      * Clause 7.2.1.1: SHA-256 over the base64url-decoded transaction data, as the digest itself, under

@@ -91,6 +91,8 @@ internal suspend fun MultipazWalletStore.seedMdocDocument(
      * without it a document simply has no status to check.
      */
     revocationStatus: RevocationStatus? = null,
+    /** Name spaces the issuer lets the device key sign, as a CSC signing approval needs. */
+    deviceKeyAuthorizedNamespaces: List<String> = emptyList(),
 ): String {
     val metadata = EudiDocumentMetadata.create(
         documentManagerId = documentManagerId,
@@ -126,6 +128,7 @@ internal suspend fun MultipazWalletStore.seedMdocDocument(
                 validFrom = validFrom,
                 validUntil = validUntil,
                 revocationStatus = revocationStatus,
+                deviceKeyAuthorizedNamespaces = deviceKeyAuthorizedNamespaces,
             ),
         )
     }
@@ -247,6 +250,7 @@ internal suspend fun issuerSignedDataFor(
      * chain — who signed — and not one that verifies the signature.
      */
     issuerCertChain: X509CertChain? = null,
+    deviceKeyAuthorizedNamespaces: List<String> = emptyList(),
 ): ByteString {
     val mso = MobileSecurityObjectGenerator(
         digestAlgorithm = Algorithm.SHA256,
@@ -263,14 +267,19 @@ internal suspend fun issuerSignedDataFor(
         )
         .generate()
         .let { generated ->
-            // `MobileSecurityObjectGenerator` has no way to set the `status` element, so it is spliced
-            // in afterwards: parse what the generator produced, copy it with the status, re-encode.
+            // `MobileSecurityObjectGenerator` has no way to set the `status` element or the device key's
+            // authorizations, so they are spliced in afterwards: parse what the generator produced, copy
+            // it with them, re-encode.
             // Going through multipaz's own parser and `toDataItem` — rather than hand-writing CBOR —
             // means the value digests are never touched and the result is exactly what the read path
             // will parse back out.
-            if (revocationStatus == null) generated else Cbor.encode(
+            val spliced = revocationStatus != null || deviceKeyAuthorizedNamespaces.isNotEmpty()
+            if (!spliced) generated else Cbor.encode(
                 MobileSecurityObject.fromDataItem(Cbor.decode(generated))
-                    .copy(revocationStatus = revocationStatus)
+                    .copy(
+                        revocationStatus = revocationStatus,
+                        deviceKeyAuthorizedNamespaces = deviceKeyAuthorizedNamespaces,
+                    )
                     .toDataItem()
             )
         }
