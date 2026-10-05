@@ -19,6 +19,7 @@ package eu.europa.ec.shared.wallet.multipaz.harness
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import eu.europa.ec.shared.wallet.multipaz.EudiDocumentMetadata
+import eu.europa.ec.shared.wallet.multipaz.IssuerPartyRecord
 import eu.europa.ec.shared.wallet.multipaz.MultipazWalletStore
 import eu.europa.ec.shared.wallet.multipaz.StoredDocumentFormat
 import eu.europa.ec.shared.wallet.multipaz.eudiMetadata
@@ -94,12 +95,15 @@ internal suspend fun MultipazWalletStore.seedMdocDocument(
     revocationStatus: RevocationStatus? = null,
     /** Name spaces the issuer lets the device key sign, as a CSC signing approval needs. */
     deviceKeyAuthorizedNamespaces: List<String> = emptyList(),
+    /** Who its issuance recorded as the issuer, as the provisioning handler stamps it. */
+    issuerParty: IssuerPartyRecord? = null,
 ): String {
     val metadata = EudiDocumentMetadata.create(
         documentManagerId = documentManagerId,
         format = StoredDocumentFormat.MsoMdoc(docType),
         credentialPolicy = policy,
         issuerMetadata = issuerMetadata,
+        issuerParty = issuerParty,
     )
 
     val document = documentStore.createDocument(

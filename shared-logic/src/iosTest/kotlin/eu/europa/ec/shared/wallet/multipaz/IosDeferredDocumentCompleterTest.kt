@@ -98,6 +98,8 @@ class IosDeferredDocumentCompleterTest {
         resume: DeferredResume? = null,
         /** How many credentials wait, each with its own key, as a batch issuance leaves them. */
         pendingCredentials: Int = 1,
+        issuerParty: IssuerPartyRecord? = null,
+        userTriggered: Boolean? = null,
     ): Document {
         keySecureArea.createKey(dpopAlias, SoftwareCreateKeySettings.Builder().build())
         val document = documentStore.createDocument(
@@ -111,6 +113,8 @@ class IosDeferredDocumentCompleterTest {
                     documentConfigurationIdentifier = "mso_mdoc",
                     credentialIssuerIdentifier = issuerUrl,
                 ),
+                issuerParty = issuerParty,
+                userTriggered = userTriggered,
             ).also { it.park(transactionId, resume) },
         )
         // The CBOR multipaz writes. Only the two members this flow reads are set; the rest is absent,
@@ -584,5 +588,28 @@ class IosDeferredDocumentCompleterTest {
         assertEquals(TransactionResultDomain.Completed, issuance.result)
         // Nothing recorded whether the user asked; the fixture's issuer publishes no display name.
         assertNull(issuance.details.isUserTriggered)
+    }
+
+    @Test
+    fun a_session_that_deferred_everything_still_names_its_issuer_when_collected() = runTest {
+        // No awaiting row exists then, so the document's own record of its issuance names the issuer —
+        // as wallet-core reads the registration it stored with the deferred document.
+        val store = storeOver(EphemeralStorage())
+        val document = store.parkWithPendingCredential(
+            issuerParty = IssuerPartyRecord(name = "Fixture Issuer s.r.o.", type = "PIDProvider"),
+            userTriggered = true,
+        )
+        val credential = issuedCredentialFor(document)
+
+        completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.OK,
+            deferredBody = """{"credentials":[{"credential":"$credential"}]}""",
+        ).complete(document)
+
+        val issuance = assertIs<TransactionLogDomain.CredentialIssuance>(store.transactionLogs().single())
+        assertEquals("Fixture Issuer s.r.o.", issuance.details.issuer.name?.text)
+        assertEquals("PIDProvider", issuance.details.issuerType)
+        assertEquals(true, issuance.details.isUserTriggered)
     }
 }

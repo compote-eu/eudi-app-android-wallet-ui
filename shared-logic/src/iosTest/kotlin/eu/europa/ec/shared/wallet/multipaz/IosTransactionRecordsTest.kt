@@ -18,6 +18,7 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.corelogic.model.CredentialRefDomain
 import eu.europa.ec.corelogic.model.LocalizedTextDomain
+import eu.europa.ec.corelogic.model.QualifiedIdentifierDomain
 import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.corelogic.model.TransactionResultDomain
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
@@ -52,7 +53,11 @@ class IosTransactionRecordsTest {
         )
     }
 
-    private suspend fun MultipazWalletStore.seedPid(issued: Boolean = true, withIssuer: Boolean = true): String =
+    private suspend fun MultipazWalletStore.seedPid(
+        issued: Boolean = true,
+        withIssuer: Boolean = true,
+        issuerParty: IssuerPartyRecord? = null,
+    ): String =
         seedMdocDocument(
             docType = MDOC_PID_DOC_TYPE,
             displayName = "PID MSO MDoc",
@@ -61,6 +66,7 @@ class IosTransactionRecordsTest {
             policy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 1),
             issuerMetadata = sampleIssuerMetadata(MDOC_PID_DOC_TYPE).takeIf { withIssuer },
             markIssued = issued,
+            issuerParty = issuerParty,
         )
 
     private val now = Clock.System.now()
@@ -125,6 +131,28 @@ class IosTransactionRecordsTest {
         val deletion = assertIs<TransactionLogDomain.CredentialDeletion>(store.transactionLogs().single())
         assertNull(deletion.issuer.name)
         assertEquals(CredentialRefDomain(MDOC_PID_DOC_TYPE), deletion.credential)
+    }
+
+    @Test
+    fun an_issuer_whose_registration_was_verified_is_named_by_it_on_deletion() = runTest {
+        // wallet-core keeps the registered issuer from the issuance (`IssuanceMetadata`) for this row.
+        val store = store()
+        val documentId = store.seedPid(
+            issuerParty = IssuerPartyRecord(
+                name = "Fixture Issuer s.r.o.",
+                identifier = QualifiedIdentifierRecord("http://data.europa.eu/eudi/id/LEI", "123456789"),
+                type = "PIDProvider",
+            ),
+        )
+
+        MultipazWalletEngine(store).deleteDocument(documentId)
+
+        val deletion = assertIs<TransactionLogDomain.CredentialDeletion>(store.transactionLogs().single())
+        assertEquals(LocalizedTextDomain("und", "Fixture Issuer s.r.o."), deletion.issuer.name)
+        assertEquals(
+            QualifiedIdentifierDomain("http://data.europa.eu/eudi/id/LEI", "123456789"),
+            deletion.issuer.identifier,
+        )
     }
 
     @Test

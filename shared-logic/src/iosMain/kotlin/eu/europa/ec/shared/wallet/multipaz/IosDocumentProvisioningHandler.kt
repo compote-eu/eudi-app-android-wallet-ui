@@ -131,6 +131,8 @@ internal class IosDocumentProvisioningHandler(
                         numberOfCredentials = credentialCount,
                     ),
                 issuerMetadata = issuerMetadataFrom(credentialMetadata, issuerMetadata),
+                issuerParty = issuanceLog?.issuerParty(),
+                userTriggered = issuanceLog?.userTriggered,
             ),
         )
     }

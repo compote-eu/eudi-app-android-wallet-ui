@@ -44,7 +44,7 @@ internal class IosIssuanceLog(
     private val store: suspend () -> MultipazWalletStore,
     private val reissuance: Boolean,
     /** TS10 §3.5 `isUserTriggered`: false for an offer and for a background renewal. */
-    private val userTriggered: Boolean,
+    val userTriggered: Boolean,
     private val requested: Int,
     /** The issuer's verified registration, which names it; null when the check was off or found none. */
     private val registration: IssuerRegistration?,
@@ -136,6 +136,9 @@ internal class IosIssuanceLog(
         write(rows)
     }
 
+    /** Who issued, as the rows name them — kept with each document too; see [EudiDocumentMetadata.issuerParty]. */
+    suspend fun issuerParty(): IssuerPartyRecord = mutex.withLock { party() }
+
     private fun party() = registration.toIssuerPartyRecord(fallbackName = issuerName, fallbackLanguage = issuerNameLanguage)
 
     private fun entry(completed: Boolean, reason: String?, requestedCount: Int = requested) =
@@ -191,6 +194,8 @@ internal suspend fun MultipazWalletStore.recordDeferredResolution(
         val awaiting = transactionRecord(id) as? IosTransactionRecord.Issuance
         val metadata = document.eudiMetadata
         val issuerDisplay = metadata?.issuerMetadata?.issuerDisplay?.firstOrNull()
+        // A session that deferred everything wrote no awaiting row; the document kept what it would have
+        // said, as wallet-core keeps the registration with a deferred document.
         recordTransaction(
             IosTransactionRecord.Issuance(
                 id = id,
@@ -200,8 +205,9 @@ internal suspend fun MultipazWalletStore.recordDeferredResolution(
                 requestedCount = 1,
                 issuedCount = if (completed) 1 else 0,
                 credentialIdentifiers = listOfNotNull(metadata?.format?.identifier.takeIf { completed }),
-                userTriggered = awaiting?.userTriggered,
+                userTriggered = awaiting?.userTriggered ?: metadata?.userTriggered,
                 issuer = awaiting?.issuer
+                    ?: metadata?.issuerParty
                     ?: IssuerPartyRecord(name = issuerDisplay?.name, nameLanguage = issuerDisplay?.locale),
             )
         )

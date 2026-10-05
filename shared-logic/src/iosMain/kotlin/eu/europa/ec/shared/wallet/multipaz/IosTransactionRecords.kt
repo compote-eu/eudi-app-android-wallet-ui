@@ -67,6 +67,7 @@ internal sealed interface IosTransactionRecord {
         val credentialIdentifier: String,
         val issuerName: String? = null,
         val issuerNameLanguage: String? = null,
+        val issuerIdentifier: QualifiedIdentifierRecord? = null,
     ) : IosTransactionRecord
 
     /**
@@ -196,7 +197,7 @@ internal fun IosTransactionRecord.toDomain(): TransactionLogDomain {
                 name = issuerName?.let { name ->
                     LocalizedTextDomain(issuerNameLanguage ?: UNDETERMINED_LANGUAGE, name)
                 },
-                identifier = null,
+                identifier = issuerIdentifier?.let { QualifiedIdentifierDomain(it.schemeUri, it.value) },
                 contacts = emptyList(),
             ),
         )
@@ -206,19 +207,23 @@ internal fun IosTransactionRecord.toDomain(): TransactionLogDomain {
 /**
  * The deletion row for this document, still marked completed, or null when there is none to write:
  * wallet-core logs a deletion only for an *issued* document, so deleting a pending or deferred one leaves
- * no row. The issuer is named as wallet-core names it, by the first name the issuer's metadata gives.
+ * no row. The issuer is named as wallet-core names it: as its issuance recorded them — the registered
+ * name and identifier when its registration was verified — and otherwise by the first name the issuer's
+ * metadata gives.
  */
 @OptIn(ExperimentalUuidApi::class)
 internal fun Document.deletionRecord(at: Instant): IosTransactionRecord.Deletion? {
     val metadata = eudiMetadata?.takeIf { it.issuedAt != null } ?: return null
+    val party = metadata.issuerParty
     val issuerDisplay = metadata.issuerMetadata?.issuerDisplay?.firstOrNull()
     return IosTransactionRecord.Deletion(
         id = Uuid.random().toString(),
         timeEpochMillis = at.toEpochMilliseconds(),
         completed = true,
         credentialIdentifier = metadata.format.identifier,
-        issuerName = issuerDisplay?.name,
-        issuerNameLanguage = issuerDisplay?.locale,
+        issuerName = party?.name ?: issuerDisplay?.name,
+        issuerNameLanguage = if (party?.name != null) party.nameLanguage else issuerDisplay?.locale,
+        issuerIdentifier = party?.identifier,
     )
 }
 

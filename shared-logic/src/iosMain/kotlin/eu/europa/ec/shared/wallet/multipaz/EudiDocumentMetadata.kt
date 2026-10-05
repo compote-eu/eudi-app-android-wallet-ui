@@ -19,6 +19,7 @@ package eu.europa.ec.shared.wallet.multipaz
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.json.Json
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.DataItem
@@ -74,6 +75,18 @@ internal class EudiDocumentMetadata private constructor(
     val deferredResume: DeferredResume? get() = data.deferredResume
 
     /**
+     * Who issued this document, as its issuance named them for the History — the verified registration's
+     * party, or the issuer's display name. Kept with the document as wallet-core keeps the registered
+     * issuer (`IssuanceMetadata`) and a deferred document's registration: a deletion row and a deferred
+     * collection row name the issuer from it after the issuance session is gone. Null on a document
+     * issued before it was kept.
+     */
+    val issuerParty: IssuerPartyRecord? get() = data.issuerParty
+
+    /** Whether the user started this document's issuance (TS10 §3.5); null when it was not recorded. */
+    val userTriggered: Boolean? get() = data.userTriggered
+
+    /**
      * Marks the document issued, stamping [issuedAt]. Mirrors `ApplicationMetadata.issue`, including
      * its contract: the caller is responsible for persisting the change via `Document.edit`.
      */
@@ -105,6 +118,8 @@ internal class EudiDocumentMetadata private constructor(
         val issuedAt: Instant? = null,
         val deferredTransactionId: String? = null,
         val deferredResume: DeferredResume? = null,
+        val issuerParty: IssuerPartyRecord? = null,
+        val userTriggered: Boolean? = null,
     ) {
 
         fun toCbor(): ByteString = ByteString(
@@ -124,6 +139,8 @@ internal class EudiDocumentMetadata private constructor(
                         put("deferredDpopKeyAlias", resume.dpopKeyAlias)
                         resume.expiresAt?.let { put("deferredAccessTokenExpiresAtEpochSeconds", it.epochSeconds) }
                     }
+                    issuerParty?.let { put("issuerParty", partyJson.encodeToString(IssuerPartyRecord.serializer(), it)) }
+                    userTriggered?.let { put("userTriggered", it) }
                 },
             ),
         )
@@ -155,8 +172,14 @@ internal class EudiDocumentMetadata private constructor(
                             )
                         }
                     },
+                    issuerParty = item.optional("issuerParty") {
+                        runCatching { partyJson.decodeFromString(IssuerPartyRecord.serializer(), it.asTstr) }.getOrNull()
+                    },
+                    userTriggered = item.optional("userTriggered") { it.asBoolean },
                 )
             }
+
+            private val partyJson = Json { ignoreUnknownKeys = true }
         }
     }
 
@@ -172,6 +195,8 @@ internal class EudiDocumentMetadata private constructor(
             credentialPolicy: WalletCredentialPolicy,
             issuerMetadata: IssuerMetadata? = null,
             deferredTransactionId: String? = null,
+            issuerParty: IssuerPartyRecord? = null,
+            userTriggered: Boolean? = null,
         ): EudiDocumentMetadata = EudiDocumentMetadata(
             Data(
                 documentManagerId = documentManagerId,
@@ -179,6 +204,8 @@ internal class EudiDocumentMetadata private constructor(
                 credentialPolicy = credentialPolicy,
                 issuerMetadata = issuerMetadata,
                 deferredTransactionId = deferredTransactionId,
+                issuerParty = issuerParty,
+                userTriggered = userTriggered,
             ),
         )
 
