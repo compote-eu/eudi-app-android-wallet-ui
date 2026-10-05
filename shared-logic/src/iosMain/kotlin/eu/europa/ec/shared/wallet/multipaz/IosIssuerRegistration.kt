@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -238,7 +239,7 @@ internal fun issuerRegistrationFrom(payload: JsonObject): IssuerRegistration {
             ?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty(),
         privacyPolicyUri = str("privacy_policy"),
         purpose = payload["purpose"].toLocalizedText(),
-        serviceDescription = payload["srv_description"].toLocalizedText(),
+        serviceDescription = payload["srv_description"].toServiceDescription(),
         providedAttestations = payload["provides_attestations"]?.jsonArray
             ?.mapNotNull { it.jsonObject.toRegisteredAttestation() }.orEmpty(),
         registeredCredentials = payload["credentials"]?.jsonArray
@@ -273,14 +274,28 @@ internal fun issuerRegistrationFrom(payload: JsonObject): IssuerRegistration {
 }
 
 private fun kotlinx.serialization.json.JsonElement?.toLocalizedText(): List<LocalizedText> =
+    runCatching { this?.jsonArray?.mapNotNull { entry -> entry.toLocalizedTextOrNull() } }.getOrNull().orEmpty()
+
+/**
+ * `srv_description`, in either shape. ETSI TS 119 475 V1.1.1 makes it an array of arrays — one localised
+ * list per service (Annex B.2.1; Annex C's example is `[[{"lang":"en-US",…},{"lang":"de-DE",…}]]`) — while
+ * earlier certificates carry one flat list. Both are read and the services' texts flattened in order, as
+ * Wallet Kit reads it since 0.54.5. Read flat only, a conformant certificate showed no description at all.
+ */
+private fun kotlinx.serialization.json.JsonElement?.toServiceDescription(): List<LocalizedText> =
     runCatching {
-        this?.jsonArray?.mapNotNull { entry ->
-            val obj = entry.jsonObject
-            val lang = obj["lang"]?.jsonPrimitive?.contentOrNull
-            val value = obj["value"]?.jsonPrimitive?.contentOrNull
-            if (lang != null && value != null) LocalizedText(lang, value) else null
+        this?.jsonArray?.flatMap { entry ->
+            if (entry is JsonArray) entry.mapNotNull { it.toLocalizedTextOrNull() } else listOfNotNull(entry.toLocalizedTextOrNull())
         }
     }.getOrNull().orEmpty()
+
+/** One `{lang, value}` entry (ETSI's MultiLangString), or null for anything else. */
+private fun kotlinx.serialization.json.JsonElement.toLocalizedTextOrNull(): LocalizedText? {
+    val obj = this as? JsonObject ?: return null
+    val lang = obj["lang"]?.jsonPrimitive?.contentOrNull
+    val value = obj["value"]?.jsonPrimitive?.contentOrNull
+    return if (lang != null && value != null) LocalizedText(lang, value) else null
+}
 
 private fun JsonObject.toRegisteredAttestation(): RegisteredAttestation? {
     val format = this["format"]?.jsonPrimitive?.contentOrNull ?: return null
