@@ -28,6 +28,7 @@ import eu.europa.ec.shared.wallet.revocation.RevocationActionDomain
 import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
 import eu.europa.ec.shared.wallet.revocation.revocationAction
 import org.multipaz.storage.KeyExistsStorageException
+import kotlin.time.Clock
 
 /**
  * The iOS [WalletEngine], reading multipaz's `DocumentStore` in Kotlin.
@@ -117,24 +118,40 @@ internal class MultipazWalletEngine(
      * Deletes [documentId] and its credentials, and drops any bookmark it had — the bookmark table is
      * keyed by document id, so leaving the row would silently re-apply to a future document that reused
      * the id.
+     *
+     * An issued document's deletion is recorded for the History tab, completed or not, as wallet-core's
+     * `CredentialDeletionLogger` records it on Android. What the row says is read first, since it goes with
+     * the document; a failure to record is logged and never fails the deletion.
      */
-    suspend fun deleteDocument(documentId: String): Result<Unit> = runCatching {
-        store.documentStore.deleteDocument(documentId)
-        deleteBookmark(documentId)
-    }.onSuccess {
-        // Tell iOS's document-provider registry, or the registration outlives the document and the
-        // system credential picker keeps offering something that can no longer be presented.
-        //
-        // Here rather than on `IosWalletEngine`, which is the host-facing wrapper: this is where the
-        // document actually goes, so no caller can delete around the notification. Putting it on the
-        // wrapper first is what the deletion test caught.
-        //
-        // 📌 **The reference iOS wallet gets this wrong twice, so do not "align" it back.** Its
-        // `deleteDocument(with:status:)` never unregisters at all, and its `clearAllDocuments()` asks
-        // for the ids to unregister *after* deleting every document, so that list is empty and the
-        // call removes nothing. Their registration API is mirrored on our Swift side; their wiring
-        // of it is not.
-        IosDocumentRegistration.registry?.documentsChanged()
+    suspend fun deleteDocument(documentId: String): Result<Unit> {
+        val deletion = runCatching {
+            store.documentStore.lookupDocument(documentId)
+                ?.takeIf { it.eudiMetadata?.documentManagerId == store.documentManagerId }
+                ?.deletionRecord(at = Clock.System.now())
+        }.onFailure { Logger.w(TAG, "could not read the document to record its deletion", it) }.getOrNull()
+        return runCatching {
+            store.documentStore.deleteDocument(documentId)
+            deleteBookmark(documentId)
+        }.also { outcome ->
+            deletion?.let { record ->
+                runCatching { store.recordTransaction(record.after(outcome)) }
+                    .onFailure { Logger.w(TAG, "could not record the deletion", it) }
+            }
+        }.onSuccess {
+            // Tell iOS's document-provider registry, or the registration outlives the document and the
+            // system credential picker keeps offering something that can no longer be presented.
+            //
+            // Here rather than on `IosWalletEngine`, which is the host-facing wrapper: this is where the
+            // document actually goes, so no caller can delete around the notification. Putting it on the
+            // wrapper first is what the deletion test caught.
+            //
+            // 📌 **The reference iOS wallet gets this wrong twice, so do not "align" it back.** Its
+            // `deleteDocument(with:status:)` never unregisters at all, and its `clearAllDocuments()` asks
+            // for the ids to unregister *after* deleting every document, so that list is empty and the
+            // call removes nothing. Their registration API is mirrored on our Swift side; their wiring
+            // of it is not.
+            IosDocumentRegistration.registry?.documentsChanged()
+        }
     }
 
     /** The document's mdoc claims with their namespaces, for the details screen. */

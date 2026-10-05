@@ -95,6 +95,9 @@ internal class MultipazWalletStore(
     /** Documents signed, or not, through the RQES flow, one row per document — see `IosSigningRecords.kt`. */
     suspend fun signingRecordsTable(): StorageTable = appDataStorage.getTable(SigningRecordsTableSpec)
 
+    /** The transactions the wallet records itself, one row per transaction — see `IosTransactionRecords.kt`. */
+    suspend fun transactionRecordsTable(): StorageTable = appDataStorage.getTable(TransactionRecordsTableSpec)
+
     /**
      * The wallet's transaction log.
      *
@@ -346,6 +349,12 @@ internal class MultipazWalletStore(
 
         private val SigningRecordsTableSpec = StorageTableSpec(
             name = "EudiSigningRecords",
+            supportPartitions = false,
+            supportExpiration = true,
+        )
+
+        private val TransactionRecordsTableSpec = StorageTableSpec(
+            name = "EudiTransactionRecords",
             supportPartitions = false,
             supportExpiration = true,
         )
