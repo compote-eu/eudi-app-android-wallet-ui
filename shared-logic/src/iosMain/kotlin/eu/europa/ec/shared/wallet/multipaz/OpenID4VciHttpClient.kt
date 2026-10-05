@@ -64,6 +64,9 @@ import org.multipaz.crypto.JsonWebSignature
 import org.multipaz.crypto.X509Cert
 import org.multipaz.util.Logger
 import kotlin.io.encoding.Base64
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 /**
@@ -94,11 +97,21 @@ class DeferredIssuanceNotice {
         internal set
 
     /**
-     * How the parked document can be collected later when there is no refresh token, set by the batch
-     * client just before its credential request. Null when a refresh token exists — the stored
-     * authorization is the way back then — and in multipaz's own flows, whose token stays private to it.
+     * How the parked document can be collected later with this session's own access token, set by the
+     * batch client just before its credential request. Null in multipaz's own flows, whose client keeps
+     * the token to itself — for those, [sessionAccessToken] is what the engine saw instead.
      */
     internal var resume: DeferredResume? = null
+
+    /**
+     * The access token the session's token response carried, and when it expires, as this engine saw them
+     * — for multipaz's own flows, whose client never hands its token out. The handler pairs it with the DPoP
+     * key named in the document's stored authorization when it parks the document. Without it, a deferral
+     * there could be collected only by refreshing, and a refused refresh (Plaut's Keycloak,
+     * `invalid_grant: Session not active`, 2026-10-05) lost a document whose access token was still valid.
+     */
+    internal var sessionAccessToken: String? = null
+    internal var sessionAccessTokenExpiresAt: Instant? = null
 
     /** True once the issuer has deferred this attempt. */
     val wasDeferred: Boolean get() = transactionId != null
@@ -306,12 +319,18 @@ internal class OpenID4VciCompatibilityEngine(
         }
 
         if (isTokenExchange) traceTokenResponse(response)
+        val tokenResponse =
+            if (isTokenExchange && deferredNotice != null && response.statusCode == HttpStatusCode.OK) {
+                noteSessionAccessToken(response)
+            } else {
+                response
+            }
 
         // Decrypted before anything else reads it, so the deferral note below sees the issuer's JSON.
         // Only a success is a JWE: an issuer does not encrypt an error to a key it may not trust.
         val readable =
             if (exchange != null && response.statusCode.isSuccess()) decryptedCredentialResponse(response, exchange)
-            else response
+            else tokenResponse
 
         return when {
             isWellKnown(data) -> rememberEndpoints(data, readable)
@@ -447,6 +466,18 @@ internal class OpenID4VciCompatibilityEngine(
      */
     private fun isDeferredIssuance(response: HttpResponseData): Boolean =
         deferredNotice != null && response.statusCode == HttpStatusCode.Accepted
+
+    /** Records the session's access token on [deferredNotice] — see its `sessionAccessToken` — and passes the response on. */
+    private suspend fun noteSessionAccessToken(response: HttpResponseData): HttpResponseData {
+        val (bytes, replayable) = replayableBody(response)
+        val body = runCatching { Json.parseToJsonElement(bytes.decodeToString()).jsonObject }.getOrNull()
+        val token = (body?.get("access_token") as? JsonPrimitive)?.contentOrNull ?: return replayable
+        deferredNotice?.sessionAccessToken = token
+        deferredNotice?.sessionAccessTokenExpiresAt = (body["expires_in"] as? JsonPrimitive)?.contentOrNull
+            ?.toLongOrNull()
+            ?.let { seconds -> Clock.System.now() + seconds.seconds }
+        return replayable
+    }
 
     /**
      * Records the deferred handle and passes the response through **unchanged**.

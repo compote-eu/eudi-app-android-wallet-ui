@@ -316,6 +316,15 @@ internal fun ByteString.openID4VciAuthorization(): StoredOpenID4VciAuthorization
     return StoredOpenID4VciAuthorization(dpopKeyAlias = alias, refreshToken = refresh)
 }
 
+/**
+ * The DPoP key the stored authorization's tokens are bound to — whether or not a refresh token came with
+ * it, unlike [openID4VciAuthorization]: a session's access token is bound to the same key.
+ */
+internal fun ByteString.openID4VciDpopKeyAlias(): String? {
+    val map = runCatching { Cbor.decode(toByteArray()) }.getOrNull() as? CborMap ?: return null
+    return (map.items[Tstr(DPOP_KEY_ALIAS_KEY)] as? Tstr)?.value?.takeIf { it.isNotBlank() }
+}
+
 private const val DPOP_KEY_ALIAS_KEY = "dpopKeyAlias"
 private const val REFRESH_TOKEN_KEY = "refreshToken"
 

@@ -153,13 +153,14 @@ internal class IosDocumentProvisioningHandler(
             super.cleanupDocumentOnError(document, err)
             return
         }
-        metadata.park(transactionId, resume = deferred.resume)
+        val resume = deferred.resumeFor(document)
+        metadata.park(transactionId, resume = resume)
         document.edit { this.metadata = metadata }
         deferred.parkedDocumentId = document.identifier
         Logger.i(
             TAG,
             "the issuer deferred ${document.identifier}; parked it with transaction $transactionId" +
-                if (deferred.resume != null) " (resumable with the session's access token)" else ""
+                if (resume != null) " (resumable with the session's access token)" else ""
         )
     }
 
@@ -184,10 +185,28 @@ internal class IosDocumentProvisioningHandler(
         val transactionId = deferred?.transactionId ?: return
         val document = pendingCredentials.firstOrNull()?.document ?: return
         val metadata = document.eudiMetadata ?: return
-        metadata.park(transactionId)
+        // A resume already stored with the document is kept when this session offers none, as before.
+        val resume = deferred.resumeFor(document) ?: metadata.deferredResume
+        metadata.park(transactionId, resume = resume)
         document.edit { this.metadata = metadata }
         deferred.parkedDocumentId = document.identifier
-        Logger.i(TAG, "a refresh of ${document.identifier} was deferred; parked transaction $transactionId")
+        Logger.i(
+            TAG,
+            "a refresh of ${document.identifier} was deferred; parked transaction $transactionId" +
+                if (resume != null) " (resumable with the session's access token)" else ""
+        )
+    }
+
+    /**
+     * How [document] can be collected with this session's access token: the batch client's own resume, or
+     * — in multipaz's flows — the token the engine saw, bound to the DPoP key the document's stored
+     * authorization names. Null when neither is known; the refresh token is then the only way back.
+     */
+    private fun DeferredIssuanceNotice.resumeFor(document: Document): DeferredResume? {
+        resume?.let { return it }
+        val token = sessionAccessToken ?: return null
+        val alias = document.authorizationData?.openID4VciDpopKeyAlias() ?: return null
+        return DeferredResume(accessToken = token, dpopKeyAlias = alias, expiresAt = sessionAccessTokenExpiresAt)
     }
 
     /**

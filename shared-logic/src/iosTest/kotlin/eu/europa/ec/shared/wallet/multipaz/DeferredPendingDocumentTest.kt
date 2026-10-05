@@ -19,16 +19,23 @@ package eu.europa.ec.shared.wallet.multipaz
 import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import eu.europa.ec.shared.wallet.multipaz.harness.certifyWithFixtureIssuer
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.Tstr
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.document.Document
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 
 /**
  * Can this wallet **park a document that the issuer has not issued yet, and finish it later?**
@@ -188,6 +195,65 @@ class DeferredPendingDocumentTest {
 
         val kept = assertNotNull(store.documentStore.lookupDocument(document.identifier))
         assertEquals(resume, assertNotNull(kept.eudiMetadata).deferredResume)
+    }
+
+    /** A document about to be deferred in multipaz's own flow, with the stored authorization multipaz wrote. */
+    private suspend fun MultipazWalletStore.documentAuthorizedWith(dpopKeyAlias: String?): Document {
+        val document = documentStore.createDocument(
+            displayName = "eDiploma (about to be deferred)",
+            metadata = EudiDocumentMetadata.create(
+                documentManagerId = documentManagerId,
+                format = StoredDocumentFormat.MsoMdoc(docType),
+                credentialPolicy = policy,
+            ),
+        )
+        if (dpopKeyAlias != null) {
+            // No refresh token, on purpose: the session's access token matters most when there is none.
+            val authorization = Cbor.encode(buildCborMap { put("dpopKeyAlias", Tstr(dpopKeyAlias)) })
+            document.edit { authorizationData = ByteString(*authorization) }
+        }
+        return document
+    }
+
+    @Test
+    fun a_deferral_in_multipazs_own_flow_is_parked_with_the_access_token_the_engine_saw() = runTest {
+        // Watched 2026-10-05: a deferred eDiploma from multipaz's own flow was parked with nothing but a
+        // refresh token, the refresh was refused, and the document was deleted with its token still valid.
+        val store = storeOver(EphemeralStorage())
+        val expiresAt = Clock.System.now() + 300.seconds
+        val notice = DeferredIssuanceNotice().apply {
+            transactionId = "txn-from-the-issuer"
+            sessionAccessToken = "at-session"
+            sessionAccessTokenExpiresAt = expiresAt
+        }
+        val handler = IosDocumentProvisioningHandler(store, deferred = notice)
+        val document = store.documentAuthorizedWith(dpopKeyAlias = "vci-dpop-7")
+
+        handler.cleanupDocumentOnError(document, IllegalStateException("202 Accepted"))
+
+        val kept = assertNotNull(store.documentStore.lookupDocument(document.identifier))
+        assertEquals(
+            DeferredResume(accessToken = "at-session", dpopKeyAlias = "vci-dpop-7", expiresAt = expiresAt),
+            assertNotNull(kept.eudiMetadata).deferredResume,
+        )
+    }
+
+    @Test
+    fun without_the_key_the_token_is_bound_to_no_resume_is_kept() = runTest {
+        // A token that cannot be presented is no way back; the refresh token stays the only one.
+        val store = storeOver(EphemeralStorage())
+        val notice = DeferredIssuanceNotice().apply {
+            transactionId = "txn-from-the-issuer"
+            sessionAccessToken = "at-session"
+        }
+        val handler = IosDocumentProvisioningHandler(store, deferred = notice)
+        val document = store.documentAuthorizedWith(dpopKeyAlias = null)
+
+        handler.cleanupDocumentOnError(document, IllegalStateException("202 Accepted"))
+
+        val kept = assertNotNull(store.documentStore.lookupDocument(document.identifier))
+        assertNull(assertNotNull(kept.eudiMetadata).deferredResume)
+        assertEquals("txn-from-the-issuer", kept.eudiMetadata?.deferredTransactionId)
     }
 
     /** The control: an ordinary failure must still delete, or every failed issuance leaves a husk. */

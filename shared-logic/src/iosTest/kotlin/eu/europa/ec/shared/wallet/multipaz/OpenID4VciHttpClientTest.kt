@@ -50,6 +50,8 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Metadata as an issuer really signs it: [chain] in the `x5c` header, and an ES256 signature by
@@ -615,6 +617,51 @@ class OpenID4VciHttpClientTest {
 
         assertNull(refused.headers["OAuth-Client-Attestation-Challenge"])
         assertEquals(HttpStatusCode.Unauthorized, refused.status)
+    }
+
+    // ---- the session's access token, for a deferral in multipaz's own flow ----------------------
+
+    private fun engineIssuingToken(body: String, status: HttpStatusCode = HttpStatusCode.OK) = MockEngine { request ->
+        when (request.url.toString()) {
+            asMetadataUrl -> respond(asMetadata, headers = headersOf("Content-Type", "application/json"))
+            tokenEndpoint -> respond(body, status, headersOf("Content-Type", "application/json"))
+            else -> respond("", HttpStatusCode.OK)
+        }
+    }
+
+    @Test
+    fun the_sessions_access_token_is_noted_and_still_reaches_multipaz() = runTest {
+        // multipaz's client keeps its token to itself; without this, a deferral there could be collected
+        // only by refreshing, and a refused refresh lost a document whose token was still valid.
+        val notice = DeferredIssuanceNotice()
+        val body = """{"access_token":"at-session","token_type":"DPoP","expires_in":300,"refresh_token":"rt"}"""
+        val client = openID4VciHttpClient(engineIssuingToken(body), deferredNotice = notice)
+        client.get(asMetadataUrl).readRawBytes()
+        val before = Clock.System.now()
+
+        val response = client.submitForm(
+            url = tokenEndpoint,
+            formParameters = parametersOf("grant_type", "authorization_code"),
+        )
+
+        assertEquals(body, response.bodyAsText())
+        assertEquals("at-session", notice.sessionAccessToken)
+        val expiresAt = assertNotNull(notice.sessionAccessTokenExpiresAt)
+        assertTrue(expiresAt >= before + 300.seconds && expiresAt <= Clock.System.now() + 300.seconds)
+    }
+
+    @Test
+    fun a_refused_token_exchange_notes_no_access_token() = runTest {
+        val notice = DeferredIssuanceNotice()
+        val client = openID4VciHttpClient(
+            engineIssuingToken("""{"error":"invalid_grant"}""", HttpStatusCode.BadRequest),
+            deferredNotice = notice,
+        )
+        client.get(asMetadataUrl).readRawBytes()
+
+        client.submitForm(url = tokenEndpoint, formParameters = parametersOf("grant_type", "authorization_code"))
+
+        assertNull(notice.sessionAccessToken)
     }
 
     // ---- keeping the issuer's per-claim display names --------------------------------------------
