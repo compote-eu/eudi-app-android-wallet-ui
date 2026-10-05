@@ -16,8 +16,10 @@
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
-import org.gradle.process.CommandLineArgumentProvider
 import org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable
+import java.net.URI
+import java.security.MessageDigest
+import java.util.zip.ZipInputStream
 
 // KMP business/presentation LOGIC shared by both platforms — deliberately Compose-UI-free
 // (no compose-ui/foundation/material on the classpath) so a future partial native-SwiftUI iOS
@@ -61,6 +63,77 @@ private enum class IosAppFlavor(val directorySuffix: String) {
     }
 }
 
+/**
+ * Where [downloadPkixBridge] unpacks `PKIXBridge.xcframework`.
+ *
+ * Separate from the task so `linkerOpts` can name the directory without realising the task.
+ */
+private val pkixBridgeFramework: Provider<Directory> = layout.buildDirectory.dir("pkix-bridge")
+
+/**
+ * Downloads PKIXBridge, the Swift half of the ETSI consultation library's cinterop, for the
+ * Kotlin/Native **test** binaries, which have to link it themselves (see the note in `kotlin {}`).
+ *
+ * The app does not use this: Xcode gets the same framework from the local package in
+ * `iosApp/PKIXBridge`. This task reads that package's `Package.swift` for the URL and the SHA-256
+ * rather than keeping its own copy, so a test binary links exactly the bytes the app does.
+ *
+ * 📌 It also refuses a URL whose release is not `eudiLibKmpEtsi1196x2Ios`. The klib and the framework
+ * have to come from the same release, and a mismatch can link without complaint: alpha.1's Swift
+ * under alpha.2's klib did, and silently kept the old revocation default. The Xcode build cannot check
+ * this; every iOS test run does.
+ */
+private val downloadPkixBridge = tasks.register("downloadPkixBridge") {
+    description = "Downloads the PKIXBridge xcframework that iosApp/PKIXBridge/Package.swift names."
+    val manifestPath = "iosApp/PKIXBridge/Package.swift"
+    val manifest = providers.fileContents(layout.projectDirectory.file("../$manifestPath")).asText
+    fun field(name: String) = manifest.map { text ->
+        Regex("""\b$name:\s*"([^"]+)"""").find(text)?.groupValues?.get(1)
+            ?: error("No `$name:` in $manifestPath")
+    }
+    val url = field("url")
+    val checksum = field("checksum")
+    val klibVersion = libs.versions.eudiLibKmpEtsi1196x2Ios
+    val output = pkixBridgeFramework
+    inputs.property("url", url)
+    inputs.property("checksum", checksum)
+    inputs.property("klibVersion", klibVersion)
+    outputs.dir(output).withPropertyName("xcframework")
+    outputs.cacheIf { true }
+    doLast {
+        check("/download/v${klibVersion.get()}/" in url.get()) {
+            "$manifestPath points at ${url.get()}, but eudiLibKmpEtsi1196x2Ios is ${klibVersion.get()}. " +
+                    "Move both together: the klib and PKIXBridge must come from the same release."
+        }
+        val connection = URI(url.get()).toURL().openConnection().apply {
+            connectTimeout = 30_000
+            readTimeout = 60_000
+        }
+        val zip = connection.getInputStream().use { it.readBytes() }
+        val actual = MessageDigest.getInstance("SHA-256").digest(zip)
+            .joinToString("") { "%02x".format(it) }
+        check(actual == checksum.get()) {
+            "${url.get()} has SHA-256 $actual; $manifestPath expects ${checksum.get()}."
+        }
+        val root = output.get().asFile.apply { deleteRecursively(); mkdirs() }.canonicalFile
+        ZipInputStream(zip.inputStream()).use { entries ->
+            generateSequence { entries.nextEntry }.forEach { entry ->
+                val file = File(root, entry.name).canonicalFile
+                check(file.toPath().startsWith(root.toPath())) { "Zip entry outside the target: ${entry.name}" }
+                if (entry.isDirectory) {
+                    file.mkdirs()
+                } else {
+                    file.parentFile.mkdirs()
+                    file.outputStream().use { entries.copyTo(it) }
+                }
+            }
+        }
+        check(File(root, "PKIXBridge.xcframework/Info.plist").isFile) {
+            "${url.get()} did not unpack to PKIXBridge.xcframework"
+        }
+    }
+}
+
 kotlin {
     // AGP 9's KMP-aware Android target. NB: `android {}`, NOT `androidLibrary {}` — the latter is
     // deprecated as of AGP 9.3.x ("Please use 'android' instead").
@@ -94,8 +167,9 @@ kotlin {
     //    certificate path validation through cinterop: its published klib *records* the Swift symbols
     //    (`PKIXValidator`, `PKIXConfiguration`, `PKIXCertificateInspector`) and carries no
     //    implementation, expecting the consuming Xcode target to supply them. The app target does, via
-    //    the vendored SPM package in `iosApp/PKIXBridge`. A Kotlin/Native test binary has no Xcode target
-    //    to borrow from, so it compiles the same vendored sources itself — see [buildPkixBridge].
+    //    the package in `iosApp/PKIXBridge` (upstream's prebuilt xcframework). A Kotlin/Native test
+    //    binary has no Xcode target to borrow from, so it links the same framework itself — see
+    //    [downloadPkixBridge].
     //
     //    🪤 This is why iOS trust was recorded as blocked for weeks. The undefined-symbol failure
     //    (`_OBJC_CLASS_$__TtC10PKIXBridge13PKIXValidator`) reads like a packaging problem in the library
@@ -106,12 +180,24 @@ kotlin {
     //    unreferenced code, so merely adding the dependency and the classes links fine. The first test
     //    that exercises a trust decision is what surfaces it.
     targets.withType(KotlinNativeTarget::class.java).configureEach {
-        val pkixBridge = registerPkixBridgeBuild(this)
+        val (slice, sdk) = pkixBridgeSlice(targetName)
         binaries.withType(TestExecutable::class.java).configureEach {
             linkerOpts("-lsqlite3")
-            linkerOpts("-L${pkixBridgeDirectory(targetName).get().asFile.absolutePath}", "-lPKIXBridge")
-            // An input, not just a dependency: a re-vendored archive must relink the test binary.
-            linkTaskProvider.configure { inputs.files(pkixBridge).withPropertyName("pkixBridgeLibrary") }
+            linkerOpts(
+                "-F${pkixBridgeFramework.get().asFile.absolutePath}/PKIXBridge.xcframework/$slice",
+                "-framework", "PKIXBridge",
+            )
+            linkTaskProvider.configure {
+                // An input, not just a dependency: a new framework must relink the test binary.
+                inputs.files(downloadPkixBridge).withPropertyName("pkixBridgeFramework")
+                // Upstream builds the framework for iOS 13, so its objects autolink Swift's
+                // back-deployment libraries (`swiftCompatibility56` …), which the toolchain holds and
+                // the Kotlin/Native linker does not search. Without this: `Undefined symbols …
+                // __swift_FORCE_LOAD_$_swiftCompatibility56`. A provider, so only an iOS link asks Xcode.
+                toolOptions.freeCompilerArgs.addAll(
+                    swiftToolchainLibraries(sdk).map { listOf("-linker-option", "-L$it") }
+                )
+            }
         }
     }
 
@@ -201,72 +287,24 @@ kotlin {
 }
 
 /**
- * Where [registerPkixBridgeBuild] leaves `libPKIXBridge.a` for a native target.
+ * The slice of `PKIXBridge.xcframework` and the SDK for a native target.
  *
- * Separate from the task so `linkerOpts` can name the directory without realising it — a
- * `TaskProvider.get()` inside `configureEach` would force the task to be configured for every build,
- * including Android-only ones.
+ * Only the two targets this module declares. An unmapped one fails loudly rather than silently
+ * linking the wrong platform, which would surface as a confusing link error much later.
  */
-fun pkixBridgeDirectory(targetName: String): Provider<Directory> =
-    layout.buildDirectory.dir("pkix-bridge/$targetName")
+fun pkixBridgeSlice(targetName: String): Pair<String, String> = when (targetName) {
+    "iosSimulatorArm64" -> "ios-arm64_x86_64-simulator" to "iphonesimulator"
+    "iosArm64" -> "ios-arm64" to "iphoneos"
+    else -> error("No PKIXBridge slice for '$targetName'; add one above.")
+}
 
 /**
- * Compiles the vendored PKIXBridge Swift sources into a static library the Kotlin/Native **test**
- * linker can consume.
+ * The selected toolchain's `usr/lib/swift/<sdk>`, where Swift's back-deployment libraries live.
  *
- * The app does not use this: Xcode builds the same sources as an SPM package (see
- * `iosApp/project.yml`), and an app target can auto-link the framework the cinterop asks for. A test
- * binary has no Xcode target, so it needs the symbols as a plain archive instead.
- *
- * 📌 The **module name is load-bearing** and must stay `PKIXBridge`: the cinterop `.def` in the
- * published klib says `modules = PKIXBridge`, and the symbols it records are mangled accordingly
- * (`_OBJC_CLASS_$__TtC10PKIXBridge13PKIXValidator` — the `10` is the length of the module name).
- * Compiling the same files under any other module name produces an archive that satisfies nothing.
- *
- * 🪤 Keep the sources in step with `eudiLibKmpEtsi1196x2Ios` in `libs.versions.toml`; they are a copy of
- * that tag's `ios/cinterop/Sources/PKIXBridge`. See `iosApp/PKIXBridge/VENDORED.md`.
+ * Asked of `xcrun` — the same lookup the Kotlin/Native linker makes — so it follows `xcode-select`
+ * and `DEVELOPER_DIR`. Evaluated only when a link task that needs it runs.
  */
-fun registerPkixBridgeBuild(target: KotlinNativeTarget): TaskProvider<Exec> {
-    val targetName = target.targetName
-    // Only the two targets this module declares. An unmapped one fails loudly rather than silently
-    // building for the wrong platform, which would surface as a confusing link error much later.
-    val (sdk, triple) = when (targetName) {
-        "iosSimulatorArm64" -> "iphonesimulator" to "arm64-apple-ios17.0-simulator"
-        "iosArm64" -> "iphoneos" to "arm64-apple-ios17.0"
-        else -> error("No PKIXBridge platform mapping for '$targetName'; add one above.")
-    }
-    val sources = layout.projectDirectory.dir("../iosApp/PKIXBridge/Sources/PKIXBridge")
-    val library = pkixBridgeDirectory(targetName).map { it.file("libPKIXBridge.a") }
-
-    return tasks.register<Exec>(
-        "buildPkixBridge" + targetName.replaceFirstChar { it.uppercase() }
-    ) {
-        description = "Compiles the vendored PKIXBridge Swift sources for $targetName."
-        inputs.dir(sources).withPropertyName("swiftSources")
-        outputs.file(library).withPropertyName("staticLibrary")
-        outputs.cacheIf { true }
-        executable = "xcrun"
-        // Resolved at execution time so the file list is not baked into the configuration cache.
-        argumentProviders.add(
-            CommandLineArgumentProvider {
-                val swiftFiles = sources.asFileTree
-                    .matching { include("**/*.swift") }
-                    .files
-                    // Sorted so the archive is reproducible; `FileTree` order is not defined.
-                    .sortedBy { it.absolutePath }
-                    .map { it.absolutePath }
-                check(swiftFiles.isNotEmpty()) {
-                    "No Swift sources under $sources — is iosApp/PKIXBridge still vendored?"
-                }
-                listOf(
-                    "-sdk", sdk, "swiftc",
-                    "-emit-library", "-static",
-                    "-module-name", "PKIXBridge",
-                    "-target", triple,
-                    "-o", library.get().asFile.absolutePath,
-                ) + swiftFiles
-            }
-        )
-        doFirst { library.get().asFile.parentFile.mkdirs() }
-    }
-}
+fun swiftToolchainLibraries(sdk: String): Provider<String> =
+    providers.exec { commandLine("xcrun", "--sdk", sdk, "--find", "swiftc") }
+        .standardOutput.asText
+        .map { File(it.trim()).parentFile.parentFile.resolve("lib/swift/$sdk").absolutePath }

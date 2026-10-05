@@ -9,6 +9,9 @@ DerivedData/
 xcuserdata/
 *.xcuserstate
 *.xcscmblueprint
+# SwiftPM's own build folder, which an editor's SourceKit-LSP creates inside a local package (e.g.
+# PKIXBridge/) when it indexes it.
+.build/
 
 # Info.plist is generated from project.yml by XcodeGen (see the `info:` block there).
 Info.plist

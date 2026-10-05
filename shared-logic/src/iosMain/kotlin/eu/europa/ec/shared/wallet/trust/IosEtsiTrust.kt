@@ -78,7 +78,7 @@ import kotlin.time.Duration.Companion.hours
  *   `WalletProviderAttestation` carries a profile but nothing validates in it. If a future issuer or
  *   verifier is rejected on profile grounds, this is the decision to revisit, and
  *   [probeLoteTrustLists] is what measures it.
- * - **`relaxPkixRevocation()`** → an explicit `PKIXConfiguration(isRevocationEnabled = false)`. The vendored
+ * - **`relaxPkixRevocation()`** → an explicit `PKIXConfiguration(isRevocationEnabled = false)`. Upstream's
  *   PKIXBridge enables revocation checking by default since `v0.4.0-alpha.2` (#158); without this the iOS
  *   validator would start fetching revocation data during chain validation, which Android's flavours
  *   switch off.

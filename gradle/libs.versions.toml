@@ -63,9 +63,10 @@ rqesUiSDK = "0.4.1"
 # upstream pins it — a mismatch fails at runtime, not at build time (alpha.2 under wallet-core 0.30.2
 # lost a LoadLoTEAndPointers constructor), and WalletCoreEtsiAlignment checks the two agree.
 eudiLibKmpEtsi1196x2 = "0.4.0-alpha.3"
-# The ETSI trust library for iOS alone. iOS has no wallet-core, so it moves on its own; what holds it
-# is iosApp/PKIXBridge, vendored from the etsi sources, which must match this version.
-eudiLibKmpEtsi1196x2Ios = "0.4.0-alpha.3"
+# The ETSI trust library for iOS alone. iOS has no wallet-core, so it moves on its own. Its Swift half,
+# PKIXBridge, is that release's prebuilt xcframework, named in iosApp/PKIXBridge/Package.swift — move
+# the URL and checksum there with this; :shared-logic's build fails while the two disagree.
+eudiLibKmpEtsi1196x2Ios = "0.4.0-alpha.4"
 # Multipaz for iOS alone: the iOS document layer reads its DocumentStore directly (there is no KMP
 # wallet-core or document manager). Android gets its own multipaz-android through wallet-core —
 # 0.101.0 under wallet-core 0.31.0 — and nothing on Android requests this key, so the two platforms

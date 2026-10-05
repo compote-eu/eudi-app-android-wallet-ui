@@ -84,22 +84,31 @@ kotlin {
         // defaults to `IosEtsiTrust`, and the whole module stopped linking with
         // `Undefined symbols … _TtC10PKIXBridge13PKIXValidator`.
         //
-        // The archive is the one :shared-logic already builds from the vendored Swift sources: the
-        // module name is load-bearing (`PKIXBridge`), so a second copy under another name would
-        // satisfy nothing, and a second copy under the same name would be pure duplication.
-        val pkixTask = ":shared-logic:buildPkixBridge" +
-                iosTarget.targetName.replaceFirstChar { it.uppercase() }
-        val pkixDirectory = project(":shared-logic").layout.buildDirectory
-            .dir("pkix-bridge/${iosTarget.targetName}")
+        // The framework is the one :shared-logic already downloads (`downloadPkixBridge`), and the
+        // slice and toolchain lookups below are the same as there; see that build file.
+        val (pkixSlice, pkixSdk) = when (iosTarget.targetName) {
+            "iosSimulatorArm64" -> "ios-arm64_x86_64-simulator" to "iphonesimulator"
+            "iosArm64" -> "ios-arm64" to "iphoneos"
+            else -> error("No PKIXBridge slice for '${iosTarget.targetName}'; add one above.")
+        }
+        val pkixFramework = project(":shared-logic").layout.buildDirectory
+            .dir("pkix-bridge/PKIXBridge.xcframework")
+        val swiftToolchainLibraries = providers
+            .exec { commandLine("xcrun", "--sdk", pkixSdk, "--find", "swiftc") }
+            .standardOutput.asText
+            .map { File(it.trim()).parentFile.parentFile.resolve("lib/swift/$pkixSdk").absolutePath }
         iosTarget.binaries.withType(
             org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable::class.java
         ).configureEach {
             linkerOpts("-lsqlite3")
-            linkerOpts("-L${pkixDirectory.get().asFile.absolutePath}", "-lPKIXBridge")
+            linkerOpts("-F${pkixFramework.get().asFile.absolutePath}/$pkixSlice", "-framework", "PKIXBridge")
             linkTaskProvider.configure {
-                dependsOn(pkixTask)
-                // Tracked as well, so a re-vendored archive relinks; see the same line in :shared-logic.
-                inputs.file(pkixDirectory.map { it.file("libPKIXBridge.a") }).withPropertyName("pkixBridgeLibrary")
+                dependsOn(":shared-logic:downloadPkixBridge")
+                // Tracked as well, so a new framework relinks; see the same line in :shared-logic.
+                inputs.dir(pkixFramework).withPropertyName("pkixBridgeFramework")
+                toolOptions.freeCompilerArgs.addAll(
+                    swiftToolchainLibraries.map { listOf("-linker-option", "-L$it") }
+                )
             }
         }
     }
