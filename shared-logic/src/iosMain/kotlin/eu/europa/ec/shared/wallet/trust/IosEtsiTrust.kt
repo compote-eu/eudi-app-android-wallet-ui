@@ -72,9 +72,11 @@ import kotlin.time.Duration.Companion.hours
  *   verifier access certificate: profiles APPLIED → TRUSTED
  *   ```
  *   ⚠️ This is a **deliberate divergence from Android**, which still calls `relaxCertificateProfiles()`.
- *   It makes this side stricter, not looser, and WRPAC is the only profiled context reached here —
- *   `PID` and `WalletProviderAttestation` carry profiles but nothing validates in them. If a future
- *   issuer or verifier is rejected on profile grounds, this is the decision to revisit, and
+ *   It makes this side stricter, not looser. Two profiled contexts are reached here: WRPAC (issuer
+ *   metadata signers, verifiers) and, since the PID issuer-trust check, `PID` — every PID's signer is
+ *   validated against `pidSigningCertificateProfile()`, which Android never applies.
+ *   `WalletProviderAttestation` carries a profile but nothing validates in it. If a future issuer or
+ *   verifier is rejected on profile grounds, this is the decision to revisit, and
  *   [probeLoteTrustLists] is what measures it.
  * - **`relaxPkixRevocation()`** → an explicit `PKIXConfiguration(isRevocationEnabled = false)`. The vendored
  *   PKIXBridge enables revocation checking by default since `v0.4.0-alpha.2` (#158); without this the iOS
