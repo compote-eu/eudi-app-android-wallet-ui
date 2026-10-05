@@ -28,9 +28,11 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.asn1.ASN1Integer
+import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
@@ -44,11 +46,17 @@ import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
 
-/** A self-signed certificate standing in for an issuer's document signer. */
-internal suspend fun testSignerCertificate(name: String = "CN=Document Signer"): X509Cert {
+/** An issuer's document signer: its private key, and the self-signed certificate naming it. */
+internal class TestSigner(val key: EcPrivateKey, val certificate: X509Cert) {
+    /** This signer alone, as an issuer's chain usually is. */
+    val chain: X509CertChain get() = X509CertChain(listOf(certificate))
+}
+
+/** A fresh document signer. */
+internal suspend fun testSigner(name: String = "CN=Document Signer"): TestSigner {
     val key = Crypto.createEcPrivateKey(EcCurve.P256)
     val subject = X500Name.fromName(name)
-    return X509Cert.Builder(
+    val certificate = X509Cert.Builder(
         publicKey = key.publicKey,
         signingKey = AsymmetricKey.AnonymousExplicit(privateKey = key),
         serialNumber = ASN1Integer(1L),
@@ -57,17 +65,33 @@ internal suspend fun testSignerCertificate(name: String = "CN=Document Signer"):
         validFrom = Clock.System.now() - 1.days,
         validUntil = Clock.System.now() + 30.days,
     ).build()
+    return TestSigner(key, certificate)
 }
 
-/** An mdoc as an issuer sends it: base64url `IssuerSigned`, with [chain] in its `x5chain` header. */
-internal suspend fun testMdocCredential(docType: String, chain: X509CertChain?): String = issuerSignedDataFor(
+/** A self-signed certificate standing in for an issuer's document signer. */
+internal suspend fun testSignerCertificate(name: String = "CN=Document Signer"): X509Cert = testSigner(name).certificate
+
+/**
+ * An mdoc as an issuer sends it: base64url `IssuerSigned`, with [chain] in its `x5chain` header, signed
+ * with [signingKey] — a throwaway key no chain vouches for, when null.
+ */
+internal suspend fun testMdocCredential(
+    docType: String,
+    chain: X509CertChain?,
+    signingKey: EcPrivateKey? = null,
+): String = issuerSignedDataFor(
     docType = docType,
     issuerNamespaces = issuerNamespacesOf(docType, samplePidElements(), Random.Default),
     deviceKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
     validFrom = Clock.System.now() - 1.days,
     validUntil = Clock.System.now() + 30.days,
     issuerCertChain = chain,
+    issuerSigningKey = signingKey,
 ).toByteArray().toBase64Url()
+
+/** An mdoc as an honest issuer sends it: signed by [signer], carrying [signer]'s chain. */
+internal suspend fun testMdocCredential(docType: String, signer: TestSigner): String =
+    testMdocCredential(docType, signer.chain, signer.key)
 
 /**
  * The PID issuer-trust rule, Android's `forContext(PID, ENFORCE)`: a PID is stored only when the EU list
@@ -78,20 +102,20 @@ class PidIssuerTrustTest {
     private val pidDocType = "eu.europa.ec.eudi.pid.1"
     private val mdlDocType = "org.iso.18013.5.1.mDL"
 
-    /** An SD-JWT VC as an issuer sends it. The signature is not read here, so it is not a real one. */
-    private fun sdJwt(vct: String, chain: X509CertChain): String {
+    /** An SD-JWT VC as an issuer sends it, carrying [signer]'s chain and signed with [signingKey]. */
+    private suspend fun sdJwt(vct: String, signer: TestSigner, signingKey: EcPrivateKey = signer.key): String {
         val header = buildJsonObject {
             put("alg", "ES256")
             put("typ", "dc+sd-jwt")
-            put("x5c", chain.toX5c(excludeRoot = false))
+            put("x5c", signer.chain.toX5c(excludeRoot = false))
         }
         val body = buildJsonObject {
             put("iss", "https://issuer.test")
             put("vct", vct)
         }
-        return listOf(header, body)
-            .joinToString(".") { it.toString().encodeToByteArray().toBase64Url() } +
-            ".${"signature".encodeToByteArray().toBase64Url()}~"
+        val signingInput = listOf(header, body).joinToString(".") { it.toString().encodeToByteArray().toBase64Url() }
+        val signature = Crypto.sign(signingKey, Algorithm.ES256, signingInput.encodeToByteArray())
+        return "$signingInput.${signature.toCoseEncoded().toBase64Url()}~"
     }
 
     private class Asked(val chainSize: Int, val context: VerificationContext)
@@ -105,10 +129,11 @@ class PidIssuerTrustTest {
     @Test
     fun a_pid_whose_signer_is_on_the_list_is_let_through_after_asking_in_the_pid_context() = runTest {
         val asked = mutableListOf<Asked>()
-        val chain = X509CertChain(listOf(testSignerCertificate("CN=Leaf"), testSignerCertificate("CN=Root")))
+        val leaf = testSigner("CN=Leaf")
+        val chain = X509CertChain(listOf(leaf.certificate, testSignerCertificate("CN=Root")))
 
         trustAnswering(TrustVerdict.TRUSTED, asked)
-            .enforcePidSigners(listOf(testMdocCredential(pidDocType, chain)), requestedPid = true)
+            .enforcePidSigners(listOf(testMdocCredential(pidDocType, chain, leaf.key)), requestedPid = true)
 
         // The whole chain, as PKIX needs it, and the context whose list names PID providers.
         assertEquals(1, asked.size)
@@ -118,7 +143,7 @@ class PidIssuerTrustTest {
 
     @Test
     fun a_pid_whose_signer_is_not_on_the_list_is_refused() = runTest {
-        val credential = testMdocCredential(pidDocType, X509CertChain(listOf(testSignerCertificate())))
+        val credential = testMdocCredential(pidDocType, testSigner())
 
         assertFailsWith<IssuerNotTrustedException> {
             trustAnswering(TrustVerdict.NOT_TRUSTED).enforcePidSigners(listOf(credential), requestedPid = true)
@@ -130,7 +155,7 @@ class PidIssuerTrustTest {
         // The opposite of the metadata check, on purpose: Android's ENFORCE fails closed, so an
         // unreachable list must not let an unchecked PID into the wallet. If this starts passing, that
         // decision was reversed by accident.
-        val credential = testMdocCredential(pidDocType, X509CertChain(listOf(testSignerCertificate())))
+        val credential = testMdocCredential(pidDocType, testSigner())
 
         assertFailsWith<IssuerNotTrustedException> {
             trustAnswering(TrustVerdict.UNDETERMINED).enforcePidSigners(listOf(credential), requestedPid = true)
@@ -151,7 +176,7 @@ class PidIssuerTrustTest {
     @Test
     fun a_document_that_is_not_a_pid_is_never_asked_about() = runTest {
         val asked = mutableListOf<Asked>()
-        val credential = testMdocCredential(mdlDocType, X509CertChain(listOf(testSignerCertificate())))
+        val credential = testMdocCredential(mdlDocType, testSigner())
 
         // Android's policy is INFORM for everything but a PID: nothing would act on the answer.
         trustAnswering(TrustVerdict.NOT_TRUSTED, asked).enforcePidSigners(listOf(credential), requestedPid = false)
@@ -162,7 +187,7 @@ class PidIssuerTrustTest {
     @Test
     fun a_credential_requested_as_a_pid_is_checked_whatever_type_it_claims() = runTest {
         // An issuer could otherwise fill a PID document with a credential typed as something else.
-        val credential = testMdocCredential(mdlDocType, X509CertChain(listOf(testSignerCertificate())))
+        val credential = testMdocCredential(mdlDocType, testSigner())
 
         assertFailsWith<IssuerNotTrustedException> {
             trustAnswering(TrustVerdict.NOT_TRUSTED).enforcePidSigners(listOf(credential), requestedPid = true)
@@ -171,7 +196,7 @@ class PidIssuerTrustTest {
 
     @Test
     fun a_pid_is_checked_even_when_the_request_did_not_say_it_was_one() = runTest {
-        val credential = testMdocCredential(pidDocType, X509CertChain(listOf(testSignerCertificate())))
+        val credential = testMdocCredential(pidDocType, testSigner())
 
         assertFailsWith<IssuerNotTrustedException> {
             trustAnswering(TrustVerdict.NOT_TRUSTED).enforcePidSigners(listOf(credential), requestedPid = false)
@@ -181,7 +206,7 @@ class PidIssuerTrustTest {
     @Test
     fun an_sd_jwt_pid_is_judged_by_its_x5c_and_its_vct() = runTest {
         val asked = mutableListOf<Asked>()
-        val credential = sdJwt("urn:eudi:pid:1", X509CertChain(listOf(testSignerCertificate())))
+        val credential = sdJwt("urn:eudi:pid:1", testSigner())
 
         assertFailsWith<IssuerNotTrustedException> {
             trustAnswering(TrustVerdict.NOT_TRUSTED, asked).enforcePidSigners(listOf(credential), requestedPid = false)
@@ -192,12 +217,50 @@ class PidIssuerTrustTest {
     @Test
     fun a_batch_from_one_signer_is_asked_about_once() = runTest {
         val asked = mutableListOf<Asked>()
-        val chain = X509CertChain(listOf(testSignerCertificate()))
-        val batch = List(5) { testMdocCredential(pidDocType, chain) }
+        val signer = testSigner()
+        val batch = List(5) { testMdocCredential(pidDocType, signer) }
 
         trustAnswering(TrustVerdict.TRUSTED, asked).enforcePidSigners(batch, requestedPid = true)
 
         assertEquals(1, asked.size)
+    }
+
+    @Test
+    fun a_pid_carrying_a_recognised_chain_but_signed_by_another_key_is_refused_without_asking() = runTest {
+        // A provider's chain is public: anyone can paste it into a credential they signed themselves.
+        // The list would vouch for the chain, so only the signature can tell — and it is checked first.
+        val asked = mutableListOf<Asked>()
+        val provider = testSigner()
+        val forged = testMdocCredential(pidDocType, provider.chain, signingKey = Crypto.createEcPrivateKey(EcCurve.P256))
+
+        val failure = assertFailsWith<IssuerNotTrustedException> {
+            trustAnswering(TrustVerdict.TRUSTED, asked).enforcePidSigners(listOf(forged), requestedPid = true)
+        }
+        assertTrue("not signed by the certificate chain" in failure.message.orEmpty(), "unexpected: ${failure.message}")
+        assertTrue(asked.isEmpty(), "a chain the credential was not signed with says nothing about who signed it")
+    }
+
+    @Test
+    fun an_sd_jwt_pid_carrying_a_recognised_chain_but_signed_by_another_key_is_refused_without_asking() = runTest {
+        val asked = mutableListOf<Asked>()
+        val forged = sdJwt("urn:eudi:pid:1", testSigner(), signingKey = Crypto.createEcPrivateKey(EcCurve.P256))
+
+        assertFailsWith<IssuerNotTrustedException> {
+            trustAnswering(TrustVerdict.TRUSTED, asked).enforcePidSigners(listOf(forged), requestedPid = false)
+        }
+        assertTrue(asked.isEmpty())
+    }
+
+    @Test
+    fun one_forged_credential_in_a_batch_from_one_signer_refuses_the_batch() = runTest {
+        // The chain is asked about once for the batch, but every credential carries its own signature.
+        val provider = testSigner()
+        val batch = List(4) { testMdocCredential(pidDocType, provider) } +
+            testMdocCredential(pidDocType, provider.chain, signingKey = Crypto.createEcPrivateKey(EcCurve.P256))
+
+        assertFailsWith<IssuerNotTrustedException> {
+            trustAnswering(TrustVerdict.TRUSTED).enforcePidSigners(batch, requestedPid = true)
+        }
     }
 
     @Test

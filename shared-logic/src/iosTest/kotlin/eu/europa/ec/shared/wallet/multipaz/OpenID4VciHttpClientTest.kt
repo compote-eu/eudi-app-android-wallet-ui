@@ -36,7 +36,11 @@ import io.ktor.http.headersOf
 import io.ktor.http.parametersOf
 import io.ktor.http.parseUrlEncodedParameters
 import kotlinx.coroutines.test.runTest
-import org.multipaz.crypto.X509CertChain
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.X509Cert
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
@@ -76,6 +80,24 @@ class OpenID4VciHttpClientTest {
         ).joinToString(".")
     }
 
+    /**
+     * Metadata as an issuer really signs it: [chain] in the `x5c` header, and an ES256 signature by
+     * [signingKey] — by default [signer]'s, so the JWS verifies with the chain's first certificate.
+     */
+    private suspend fun signedJwtOf(
+        payload: String,
+        signer: TestSigner,
+        chain: List<X509Cert> = listOf(signer.certificate),
+        signingKey: EcPrivateKey = signer.key,
+    ): String {
+        val b64 = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
+        val x5c = chain.joinToString(",") { "\"${Base64.Default.encode(it.encoded.toByteArray())}\"" }
+        val signingInput = listOf("""{"typ":"JWT","alg":"ES256","x5c":[$x5c]}""", payload)
+            .joinToString(".") { b64.encode(it.encodeToByteArray()) }
+        val signature = Crypto.sign(signingKey, Algorithm.ES256, signingInput.encodeToByteArray())
+        return "$signingInput.${b64.encode(signature.toCoseEncoded())}"
+    }
+
     @Test
     fun signed_metadata_is_unwrapped_to_the_jwt_payload() = runTest {
         val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
@@ -100,10 +122,11 @@ class OpenID4VciHttpClientTest {
     @Test
     fun signed_metadata_from_an_untrusted_signer_is_refused() = runTest {
         val metadata = """{"credential_issuer":"https://issuer.test"}"""
+        val jwt = signedJwtOf(metadata, testSigner())
         val client = openID4VciHttpClient(
             MockEngine {
                 respond(
-                    content = jwtOf(metadata),
+                    content = jwt,
                     headers = headersOf("Content-Type", "application/jwt"),
                 )
             },
@@ -125,10 +148,11 @@ class OpenID4VciHttpClientTest {
         // could not add a document offline. If this ever starts throwing, that decision was reversed
         // by accident.
         val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
+        val jwt = signedJwtOf(metadata, testSigner())
         val client = openID4VciHttpClient(
             MockEngine {
                 respond(
-                    content = jwtOf(metadata),
+                    content = jwt,
                     headers = headersOf("Content-Type", "application/jwt"),
                 )
             },
@@ -146,10 +170,12 @@ class OpenID4VciHttpClientTest {
         var seenChainSize: Int? = null
         var seenContext: VerificationContext? = null
         val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
+        val leaf = testSigner("CN=Metadata Signer")
+        val jwt = signedJwtOf(metadata, leaf, chain = listOf(leaf.certificate, testSignerCertificate("CN=Root")))
         val client = openID4VciHttpClient(
             MockEngine {
                 respond(
-                    content = jwtOf(metadata, x5c = listOf("Zm9v", "YmFy")),
+                    content = jwt,
                     headers = headersOf("Content-Type", "application/jwt"),
                 )
             },
@@ -168,6 +194,28 @@ class OpenID4VciHttpClientTest {
         // EUDI specification". Getting this wrong applies `pidSigningCertificateProfile()`, whose
         // `mandatoryQcType` rejects every EU dev metadata signer for carrying no `qcStatements`.
         assertEquals(VerificationContext.WalletRelyingPartyAccessCertificate, seenContext)
+    }
+
+    @Test
+    fun signed_metadata_carrying_a_recognised_chain_but_signed_by_another_key_is_refused_without_asking() = runTest {
+        // An issuer's chain is public; pasted into metadata someone else signed, it must not lend them
+        // the issuer's standing. The lists would vouch for the chain, so they are not asked.
+        var asked = false
+        val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
+        val jwt = signedJwtOf(metadata, testSigner(), signingKey = Crypto.createEcPrivateKey(EcCurve.P256))
+        val client = openID4VciHttpClient(
+            MockEngine {
+                respond(
+                    content = jwt,
+                    headers = headersOf("Content-Type", "application/jwt"),
+                )
+            },
+            issuerTrust = { _, _ -> asked = true; TrustVerdict.TRUSTED },
+        )
+
+        val failure = assertFailsWith<IssuerNotTrustedException> { client.get(metadataUrl) }
+        assertTrue("not signed by the certificate chain" in failure.message.orEmpty(), "unexpected: ${failure.message}")
+        assertFalse(asked, "a chain the metadata was not signed with says nothing about who signed it")
     }
 
     @Test
@@ -708,7 +756,7 @@ class OpenID4VciHttpClientTest {
 
     @Test
     fun a_credential_response_carrying_a_pid_from_an_unrecognised_signer_is_refused() = runTest {
-        val credential = testMdocCredential("eu.europa.ec.eudi.pid.1", X509CertChain(listOf(testSignerCertificate())))
+        val credential = testMdocCredential("eu.europa.ec.eudi.pid.1", testSigner())
         val client = openID4VciHttpClient(
             engine = MockEngine { respond("""{"credentials":[{"credential":"$credential"}]}""", HttpStatusCode.OK, jsonContent) },
             issuerTrust = { _, _ -> TrustVerdict.NOT_TRUSTED },
@@ -722,7 +770,7 @@ class OpenID4VciHttpClientTest {
 
     @Test
     fun a_credential_response_from_a_recognised_pid_signer_reaches_multipaz_unchanged() = runTest {
-        val credential = testMdocCredential("eu.europa.ec.eudi.pid.1", X509CertChain(listOf(testSignerCertificate())))
+        val credential = testMdocCredential("eu.europa.ec.eudi.pid.1", testSigner())
         val body = """{"credentials":[{"credential":"$credential"}]}"""
         val client = openID4VciHttpClient(
             engine = MockEngine { respond(body, HttpStatusCode.OK, jsonContent) },
@@ -744,7 +792,7 @@ class OpenID4VciHttpClientTest {
                "pid_mdoc":{"format":"mso_mdoc","doctype":"eu.europa.ec.eudi.pid.1","scope":"pid"}}}
         """.trimIndent()
         // Typed as a driving licence, though the configuration it answers is a PID.
-        val credential = testMdocCredential("org.iso.18013.5.1.mDL", X509CertChain(listOf(testSignerCertificate())))
+        val credential = testMdocCredential("org.iso.18013.5.1.mDL", testSigner())
         val client = openID4VciHttpClient(
             engine = MockEngine { request ->
                 if (request.url.encodedPath.contains(".well-known")) {

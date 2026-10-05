@@ -39,7 +39,6 @@ import io.ktor.http.parseUrlEncodedParameters
 import io.ktor.http.Url
 import io.ktor.client.utils.EmptyContent
 import io.ktor.util.Attributes
-import kotlinx.cinterop.BetaInteropApi
 import kotlinx.coroutines.Job
 import io.ktor.utils.io.InternalAPI
 import io.ktor.util.date.GMTDate
@@ -59,11 +58,13 @@ import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
 import eu.europa.ec.shared.wallet.trust.TrustVerdict
+import eu.europa.ec.shared.wallet.trust.toTrustChain
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.JsonWebSignature
+import org.multipaz.crypto.X509Cert
 import org.multipaz.util.Logger
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
-import platform.Foundation.NSData
-import platform.Foundation.create
 
 /**
  * What an issuer said when it deferred an issuance instead of performing it.
@@ -897,7 +898,7 @@ internal class OpenID4VciCompatibilityEngine(
                 "signed metadata from ${data.url} describes '$issuer', not '$expected'"
             )
         }
-        enforceIssuerTrust(parts[0], issuer)
+        enforceIssuerTrust(jwt.trim(), issuer)
         Logger.i(TAG, "unwrapped signed metadata for $issuer (signer: ${signerOf(parts[0])})")
 
         return response.replacingBody(payload.encodeToByteArray(), asJson = true)
@@ -936,15 +937,23 @@ internal class OpenID4VciCompatibilityEngine(
      * 📌 Note this is the **opposite** choice from reader trust, where undetermined shows as
      * untrusted. The asymmetry is the point: there, being wrong means vouching for a stranger; here,
      * it means a wallet that cannot add a document on a train.
+     *
+     * ⛔ **The `x5c` chain is asked about only once the JWS verifies with its first certificate.** A
+     * chain is public; without this, anyone could paste a recognised issuer's into metadata they signed
+     * themselves. A signature that does not verify is refused whatever the lists would say, undetermined
+     * included: it is no list's to answer. Android's `RequireSigned` verifies the JWS too.
      */
-    private suspend fun enforceIssuerTrust(encodedHeader: String, issuer: String?) {
+    private suspend fun enforceIssuerTrust(jwt: String, issuer: String?) {
         val trust = issuerTrust ?: return
-        val chain = certificateChainOf(encodedHeader)
+        val chain = certificateChainOf(jwt.substringBefore('.'))
         if (chain.isEmpty()) {
             Logger.w(TAG, "signed metadata for $issuer carries no x5c; cannot check its signer")
             return
         }
-        when (trust.verdict(chain, VerificationContext.WalletRelyingPartyAccessCertificate)) {
+        if (!isSignedBy(chain.first()) { key -> JsonWebSignature.verify(jwt, key) }) {
+            throw IssuerNotTrustedException("$issuer's signed metadata is not signed by the certificate chain it carries")
+        }
+        when (trust.verdict(chain.toTrustChain(), VerificationContext.WalletRelyingPartyAccessCertificate)) {
             TrustVerdict.TRUSTED ->
                 Logger.i(TAG, "the signer of $issuer's metadata is on the EU access-certificate list")
 
@@ -959,17 +968,17 @@ internal class OpenID4VciCompatibilityEngine(
         }
     }
 
-    /** The `x5c` chain from a JWS header, as DER in `NSData`. */
-    @OptIn(ExperimentalEncodingApi::class, BetaInteropApi::class)
-    private fun certificateChainOf(encodedHeader: String): List<NSData> = runCatching {
+    /** The `x5c` chain from a JWS header; empty when there is none, or it will not decode. */
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun certificateChainOf(encodedHeader: String): List<X509Cert> = runCatching {
         val header = Json.parseToJsonElement(
             Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL)
                 .decode(encodedHeader)
                 .decodeToString()
         ).jsonObject
         // `x5c` is standard-alphabet base64 (RFC 7515 §4.1.6), unlike the JWS segments around it.
-        header["x5c"]?.jsonArray?.mapNotNull {
-            NSData.create(base64EncodedString = it.jsonPrimitive.content, options = 0uL)
+        header["x5c"]?.jsonArray?.map {
+            X509Cert(ByteString(Base64.Default.decode(it.jsonPrimitive.content)))
         }.orEmpty()
     }.getOrElse { emptyList() }
 

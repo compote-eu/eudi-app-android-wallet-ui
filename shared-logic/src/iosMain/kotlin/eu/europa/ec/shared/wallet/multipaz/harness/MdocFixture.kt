@@ -39,6 +39,7 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.mdoc.credential.MdocCredential
@@ -245,12 +246,17 @@ internal suspend fun issuerSignedDataFor(
     validUntil: Instant,
     revocationStatus: RevocationStatus? = null,
     /**
-     * The issuer's certificate chain, carried in the `x5chain` header a real issuer puts there. Only
-     * carried: nothing ties it to the throwaway signing key below, so it serves a check that reads the
-     * chain — who signed — and not one that verifies the signature.
+     * The issuer's certificate chain, carried in the `x5chain` header a real issuer puts there. Nothing
+     * ties it to the signature unless [issuerSigningKey] is the private key of its first certificate.
      */
     issuerCertChain: X509CertChain? = null,
     deviceKeyAuthorizedNamespaces: List<String> = emptyList(),
+    /**
+     * Signs `issuerAuth`, as an issuer's document-signer key does; a throwaway key when null. Pass the
+     * key of [issuerCertChain]'s first certificate for a credential whose signature verifies against
+     * its own chain, as the PID issuer-trust check requires.
+     */
+    issuerSigningKey: EcPrivateKey? = null,
 ): ByteString {
     val mso = MobileSecurityObjectGenerator(
         digestAlgorithm = Algorithm.SHA256,
@@ -284,10 +290,10 @@ internal suspend fun issuerSignedDataFor(
             )
         }
 
-    // Stands in for an issuer's document-signer key. Anonymous and ephemeral: the read path never
-    // verifies this signature, and minting a fake IACA/DS chain would add nothing to verify.
+    // Stands in for an issuer's document-signer key. Anonymous and ephemeral unless the caller supplies
+    // one: the read path never verifies this signature; only the PID issuer-trust check does.
     val fakeIssuerKey = AsymmetricKey.AnonymousExplicit(
-        privateKey = Crypto.createEcPrivateKey(EcCurve.P256),
+        privateKey = issuerSigningKey ?: Crypto.createEcPrivateKey(EcCurve.P256),
     )
 
     val issuerAuth = Cose.coseSign1Sign(
