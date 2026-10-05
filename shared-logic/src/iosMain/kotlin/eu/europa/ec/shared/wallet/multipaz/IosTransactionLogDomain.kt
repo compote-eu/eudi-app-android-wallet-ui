@@ -54,31 +54,34 @@ import org.multipaz.request.RequestedClaim
 private const val UNDETERMINED_LANGUAGE = "und"
 
 /**
- * Every transaction the wallet has recorded, newest first, as the shared domain.
+ * Every transaction the wallet has recorded, newest first, as the shared domain: multipaz's event log,
+ * and beside it the documents signed through the RQES flow, which multipaz does not log.
  *
  * The log's own order is chronological by storage key, oldest first, so it is reversed *before* a stable
  * sort: events recorded in the same instant — one presentation can log an event per credential — still
  * come back newest-first.
  */
 internal suspend fun MultipazWalletStore.transactionLogs(): List<TransactionLogDomain> =
-    eventLogger().getEvents()
-        .mapNotNull { event -> event.toTransactionLogDomain(formatOf = ::documentFormatType) }
-        .asReversed()
-        .sortedByDescending { transaction -> transaction.time }
+    (
+        eventLogger().getEvents()
+            .mapNotNull { event -> event.toTransactionLogDomain(formatOf = ::documentFormatType) }
+            .asReversed() + signingTransactions()
+    ).sortedByDescending { transaction -> transaction.time }
 
 /** One transaction by id, or null when the log has no such entry. */
 internal suspend fun MultipazWalletStore.transactionLog(id: String): TransactionLogDomain? =
     transactionLogs().firstOrNull { transaction -> transaction.id == id }
 
 /**
- * Removes one event from the log. multipaz deletes by the stored event, so it is looked up first; an id
- * the log no longer holds — already deleted, or expired — leaves nothing to do.
+ * Removes one entry: an event from the log, or a signing record. multipaz deletes by the stored event, so
+ * it is looked up first; an id nothing holds — already deleted, or expired — leaves nothing to do.
  */
 internal suspend fun MultipazWalletStore.deleteTransactionLog(id: String) {
     val logger = eventLogger()
     logger.getEvents().firstOrNull { event -> event.identifier == id }?.let { event -> logger.deleteEvent(event) }
     // A presentation's deletion requests and reports go with it, as Android's cascade removes them.
     deletePresentationActions(id)
+    deleteSigningRecord(id)
 }
 
 private suspend fun MultipazWalletStore.documentFormatType(documentId: String): FormatType? =

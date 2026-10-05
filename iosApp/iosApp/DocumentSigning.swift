@@ -15,11 +15,13 @@
  */
 
 import EudiRQESUi
+import MdocDataModel18013
 import RqesKit
 import SwiftUI
 import UniformTypeIdentifiers
 import class SharedKit.IosDocumentSigning
 import protocol SharedKit.IosDocumentSigner
+import class SharedKit.IosSigningRecord
 import class SharedKit.KotlinBoolean
 
 /// The signing service the wallet offers, mirroring Android's `RQESConfigImpl`.
@@ -56,6 +58,38 @@ struct RQESConfig: EudiRQESUiConfig {
         #else
         false
         #endif
+    }
+
+    /// Where the SDK records each signed document — the wallet's History, as Android's `RQESConfigImpl`
+    /// hands wallet-core's `RqesSigningLogger` the same records.
+    var transactionLogger: (any TransactionLogger)? { SigningTransactionLogger.shared }
+}
+
+/// Hands each document the signing SDK reports to the wallet's History, which Kotlin keeps
+/// (`IosDocumentSigning.recordSigning`).
+///
+/// The SDK logs one `signingSealing` entry per document and attempt, completed or not, and the same
+/// `transactionIdentifier` again replaces the entry; every other kind of entry is someone else's.
+/// An actor because `TransactionLogger` requires one. It holds no state of its own.
+actor SigningTransactionLogger: TransactionLogger {
+
+    static let shared = SigningTransactionLogger()
+
+    func log(transaction: TransactionEntry) async throws {
+        guard case let .signingSealing(entry) = transaction else { return }
+        IosDocumentSigning.shared.recordSigning(record: IosSigningRecord(
+            id: entry.transactionIdentifier,
+            signingTransactionId: entry.signingTransactionIdentifier,
+            timeEpochMillis: Int64(entry.time.timeIntervalSince1970 * 1000),
+            completed: entry.transactionResult == .completed,
+            reason: entry.reasonOfNoncompletion,
+            certificateIdentifier: entry.certificateIdentifier,
+            dtbsr: entry.dtbsr,
+            fileName: entry.fileName,
+            fileSize: entry.fileSize,
+            serviceName: entry.interactingPartyName?.content,
+            serviceNameLanguage: entry.interactingPartyName?.lang
+        ))
     }
 }
 

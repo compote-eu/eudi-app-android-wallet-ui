@@ -92,6 +92,9 @@ internal class MultipazWalletStore(
     /** The deletion requests and reports started from presentations, one partition per presentation. */
     suspend fun presentationActionsTable(): StorageTable = appDataStorage.getTable(PresentationActionsTableSpec)
 
+    /** Documents signed, or not, through the RQES flow, one row per document — see `IosSigningRecords.kt`. */
+    suspend fun signingRecordsTable(): StorageTable = appDataStorage.getTable(SigningRecordsTableSpec)
+
     /**
      * The wallet's transaction log.
      *
@@ -338,6 +341,12 @@ internal class MultipazWalletStore(
         private val PresentationActionsTableSpec = StorageTableSpec(
             name = "EudiPresentationActions",
             supportPartitions = true,
+            supportExpiration = true,
+        )
+
+        private val SigningRecordsTableSpec = StorageTableSpec(
+            name = "EudiSigningRecords",
+            supportPartitions = false,
             supportExpiration = true,
         )
 

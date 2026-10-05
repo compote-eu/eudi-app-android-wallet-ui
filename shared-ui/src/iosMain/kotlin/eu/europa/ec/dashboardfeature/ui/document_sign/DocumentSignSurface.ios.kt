@@ -20,6 +20,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import eu.europa.ec.shared.wallet.multipaz.IosSigningRecord
+import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import org.koin.mp.KoinPlatform
+import org.multipaz.util.Logger
 
 /**
  * The Swift half of document signing, supplied by the app at launch.
@@ -44,6 +52,27 @@ object IosDocumentSigning {
      * stale one cannot outlive the screen that caused it.
      */
     var signer: IosDocumentSigner? = null
+
+    /**
+     * Records one document the signing SDK reports, for the History tab — called from Swift's
+     * `TransactionLogger`, once per document and attempt, completed or not.
+     *
+     * Returns at once and stores on its own: the SDK calls its logger from a background task, and a Kotlin
+     * `suspend` function exported to Swift may only be started on the main thread. A failure to store is
+     * logged and goes no further, as the SDK wants — it must not replace the signing result.
+     */
+    fun recordSigning(record: IosSigningRecord) {
+        recordingScope.launch {
+            val recorded = runCatching { KoinPlatform.getKoin().get<IosWalletEngine>().recordSigning(record) }
+                .onFailure { Logger.w(TAG, "could not record signing ${record.id}", it) }
+                .getOrDefault(false)
+            if (recorded) Logger.i(TAG, "recorded signing ${record.id} (completed=${record.completed})")
+        }
+    }
+
+    private val recordingScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private const val TAG = "IosDocumentSigning"
 }
 
 /**

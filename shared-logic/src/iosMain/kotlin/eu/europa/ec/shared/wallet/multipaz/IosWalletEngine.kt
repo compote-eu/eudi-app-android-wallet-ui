@@ -126,7 +126,7 @@ class IosWalletEngine : WalletEngine {
         }
 
     /**
-     * What the wallet has done: presentations and issuances, newest first.
+     * What the wallet has done: presentations, issuances and signed documents, newest first.
      *
      * Not on the [WalletEngine] contract, because Android answers the same question from wallet-core's
      * own transaction log rather than from this engine — the shared side meets them at
@@ -140,6 +140,14 @@ class IosWalletEngine : WalletEngine {
 
     /** Removes one entry from the log, with the deletion requests and reports recorded under it. */
     suspend fun deleteTransactionLog(id: String) = store().deleteTransactionLog(id)
+
+    /**
+     * Records one document signed, or not, through the RQES flow, replacing an entry with the same id.
+     *
+     * Public for the same reason as [getTransactionLogs]: the signing SDK is Swift and reports from there,
+     * through `IosDocumentSigning`, which is in :shared-ui.
+     */
+    suspend fun recordSigning(record: IosSigningRecord): Boolean = store().recordSigning(record)
 
     /** The deletion requests and reports recorded under one presentation, kept current. */
     fun observePresentationActions(presentationId: String): Flow<List<TransactionLogDomain.PresentationAction>> =
