@@ -214,7 +214,8 @@ internal class IosDocumentDetailsPlatformBridge(
         issuerId: String,
     ): Flow<DocumentDetailsInteractorIssuancePartialState> = flow {
         emit(
-            when (val progress = engine.refreshCredentials(documentId)) {
+            // The user asked for it, unlike the background renewal: Android's allowAuthorizationFallback.
+            when (val progress = engine.refreshCredentials(documentId, userTriggered = true)) {
                 // `Success` carries nothing: the screen reloads the document, and the refresh wrote
                 // into the one it already has.
                 is IosIssuanceProgress.Issued -> DocumentDetailsInteractorIssuancePartialState.Success

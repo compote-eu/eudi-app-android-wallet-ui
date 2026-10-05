@@ -202,11 +202,16 @@ class IosCredentialIssuer(
      * one-time credentials. multipaz keeps the authorization from the original issuance on the document
      * for exactly this, so a refresh needs no browser and no consent — the user already gave it.
      *
+     * A refresh that fetched credentials, was deferred or failed past the token exchange is a
+     * re-issuance in the History, as wallet-core records one. One that fetched nothing, or whose refresh
+     * token was refused, leaves no row: on Android that refusal comes before the issuance starts.
+     *
+     * @param userTriggered whether the user asked for it, as opposed to a background renewal (TS10 §3.5).
      * @return [IosIssuanceProgress.Issued] naming the same document it started with, or a failure that
      *   says which thing went wrong: nothing stored to authorize with, an authorization that has since
      *   expired, or the issuer refusing for a reason only it knows.
      */
-    suspend fun refreshCredentials(documentId: String): IosIssuanceProgress {
+    suspend fun refreshCredentials(documentId: String, userTriggered: Boolean = false): IosIssuanceProgress {
         val store = walletStore()
         val document = store.documentStore.lookupDocument(documentId)
             ?: return IosIssuanceProgress.Failure(message = NO_SUCH_DOCUMENT)
@@ -233,7 +238,8 @@ class IosCredentialIssuer(
         // Android checks the registration before every re-issuance, user-asked or background, so a
         // refusal leaves the document as it is. After the local refusals above, which need no network.
         val configurationId = document.eudiMetadata?.issuerMetadata?.documentConfigurationIdentifier
-        preflightRefusal(issuer.issuerUrl, setOfNotNull(configurationId))?.let { return it }
+        val preflight = preflight(issuer.issuerUrl, setOfNotNull(configurationId))
+        preflight.refusal()?.let { return it }
 
         // Ask *before* opening a session.
         //
@@ -268,8 +274,17 @@ class IosCredentialIssuer(
             httpClient = httpClient,
             promptModel = Platform.promptModel,
             authorizationSecureArea = store.keySecureArea,
-            eventLogger = store.eventLogger(),
+            // No event logger: [log] writes the re-issuance row, by the rules above.
         )
+        val log = IosIssuanceLog(
+            store = { store },
+            reissuance = true,
+            userTriggered = userTriggered,
+            requested = 1,
+            registration = preflight.registration,
+        )
+        val issuerDisplay = document.eudiMetadata?.issuerMetadata?.issuerDisplay?.firstOrNull()
+        val credentialIdentifier = document.eudiMetadata?.format?.identifier
 
         return try {
             // Synchronous on purpose: there is no authorization step to answer, so none of `issue`'s
@@ -289,6 +304,11 @@ class IosCredentialIssuer(
             // reporting that as a failure would put an error on the screen for a wallet that is
             // already in exactly the state the user asked for.
             Logger.i(TAG, "refreshed $documentId with $fetched new credential(s)")
+            if (fetched > 0) {
+                log.started(issuerDisplay?.name, issuerDisplay?.locale)
+                credentialIdentifier?.let { log.issued(it) }
+                log.finish()
+            }
             IosIssuanceProgress.Issued(
                 documentIds = listOf(documentId),
                 credentialsFetched = fetched,
@@ -296,6 +316,11 @@ class IosCredentialIssuer(
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
+            if (refusal.error == null) {
+                log.started(issuerDisplay?.name, issuerDisplay?.locale)
+                if (deferred.parkedDocumentId != null) log.deferred(documentId) else log.failed(t)
+                log.finish()
+            }
             // A deferred refresh is not a failure either: the document keeps the credentials it
             // already had, and the handle now on it lets the sweep claim the new ones later.
             if (deferred.parkedDocumentId != null) {
@@ -331,10 +356,18 @@ class IosCredentialIssuer(
         }
         // Wallet-initiated issuance has no approval screen, so the registration is checked before the
         // browser opens, as Android does; an offer is checked on its own screen instead.
-        preflightRefusal(issuer.issuerUrl, configurationIds.toSet())?.let { refusal ->
+        val preflight = preflight(issuer.issuerUrl, configurationIds.toSet())
+        preflight.refusal()?.let { refusal ->
             emit(refusal)
             return@flow
         }
+        val log = IosIssuanceLog(
+            store = walletStore,
+            reissuance = false,
+            userTriggered = true,
+            requested = configurationIds.size,
+            registration = preflight.registration,
+        )
 
         val documentIds = mutableListOf<String>()
         val failures = mutableMapOf<String, String>()
@@ -352,12 +385,13 @@ class IosCredentialIssuer(
         // ONCE, by [IosVciAuthorizationSession], instead of once per configuration as multipaz does
         // (multipaz#2026). "PID Combined" is four configurations and one browser confirmation.
         if (issueConfiguration == null && configurationIds.size > 1) {
-            val together = runCatching { provisionTogether(issuer, configurationIds) }
+            val together = runCatching { provisionTogether(issuer, configurationIds, log = log) }
             together
                 .onSuccess { (issued, failed, refused) ->
                     documentIds += issued
                     failures += failed
                     untrusted += refused
+                    log.finish()
                 }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
@@ -365,6 +399,7 @@ class IosCredentialIssuer(
                     failures[configurationIds.first()] =
                         error.message ?: error::class.simpleName ?: "Issuance failed."
                     if (error.isIssuerNotTrusted()) untrusted += configurationIds.first()
+                    log.finish(overallError = error)
                 }
 
             emit(outcomeOf(documentIds, failures, untrusted))
@@ -373,21 +408,26 @@ class IosCredentialIssuer(
 
         for (configurationId in configurationIds) {
             val outcome = issueConfiguration?.invoke(issuer, configurationId)
-                ?: runCatching { provision(issuer, configurationId) }
+                ?: runCatching { provision(issuer, configurationId, log = log) }
 
             outcome
-                .onSuccess { documentIds += it }
+                .onSuccess { documentId ->
+                    documentIds += documentId
+                    log.documentFinished(documentId)
+                }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     Logger.w(TAG, "issuing '$configurationId' failed: ${error.message}")
                     failures[configurationId] =
                         error.message ?: error::class.simpleName ?: "Issuance failed."
                     if (error.isIssuerNotTrusted()) untrusted += configurationId
+                    log.failed(error)
                 }
 
             if (failures.isNotEmpty()) break
         }
 
+        log.finish()
         emit(outcomeOf(documentIds, failures, untrusted))
     }
 
@@ -420,12 +460,24 @@ class IosCredentialIssuer(
      * @param txCode the transaction code the issuer asked for, already collected by the offer-code screen.
      *   Null when the offer wanted none; a pre-authorized offer that wants one and does not get it fails.
      */
-    fun issueOffer(offer: IosCredentialOffer, txCode: String?): Flow<IosIssuanceProgress> = flow {
+    fun issueOffer(
+        offer: IosCredentialOffer,
+        txCode: String?,
+        /** The issuer's registration as the offer screen verified it, which names it in the History. */
+        registration: IssuerRegistration? = null,
+    ): Flow<IosIssuanceProgress> = flow {
         val configurationIds = offer.configurationIds
         val mustUseOfferFlow = offer.isPreAuthorized || offer.issuerState != null
+        // An offer comes from the issuer, so it is not user-triggered (TS10 §3.5), as wallet-core records it.
         if (mustUseOfferFlow || configurationIds.size <= 1) {
+            // multipaz's own offer flow issues one credential, whatever the offer names.
+            val log = IosIssuanceLog(walletStore, reissuance = false, userTriggered = false, requested = 1, registration)
             val outcome = issueWholeOffer?.invoke(offer, txCode)
-                ?: runCatching { provision(offerUri = offer.offerUri, txCode = txCode) }
+                ?: runCatching { provision(offerUri = offer.offerUri, txCode = txCode, log = log) }
+            outcome
+                .onSuccess { documentId -> log.documentFinished(documentId) }
+                .onFailure { error -> if (error !is CancellationException) log.failed(error) }
+            log.finish()
             emit(
                 outcome.fold(
                     onSuccess = { IosIssuanceProgress.Issued(documentIds = listOf(it)) },
@@ -450,46 +502,63 @@ class IosCredentialIssuer(
         val documentIds = mutableListOf<String>()
         val failures = mutableMapOf<String, String>()
         val untrusted = mutableSetOf<String>()
+        val log = IosIssuanceLog(
+            store = walletStore,
+            reissuance = false,
+            userTriggered = false,
+            requested = configurationIds.size,
+            registration = registration,
+        )
 
         for (configurationId in configurationIds) {
             val outcome = issueConfiguration?.invoke(issuer, configurationId)
                 ?: runCatching {
-                    provision(issuer, configurationId, issuerUrl = offer.issuerUrl)
+                    provision(issuer, configurationId, issuerUrl = offer.issuerUrl, log = log)
                 }
 
             outcome
-                .onSuccess { documentIds += it }
+                .onSuccess { documentId ->
+                    documentIds += documentId
+                    log.documentFinished(documentId)
+                }
                 .onFailure { error ->
                     if (error is CancellationException) throw error
                     Logger.w(TAG, "issuing '$configurationId' from the offer failed: ${error.message}")
                     failures[configurationId] =
                         error.message ?: error::class.simpleName ?: "Issuance failed."
                     if (error.isIssuerNotTrusted()) untrusted += configurationId
+                    log.failed(error)
                 }
 
             if (failures.isNotEmpty()) break
         }
 
+        log.finish()
         emit(outcomeOf(documentIds, failures, untrusted))
     }
 
     /**
-     * The outcome refusing or failing an issuance before it starts, or null to go ahead — always null
-     * while the registration check is off, which also skips the check itself.
+     * The registration check before an issuance with no approval screen — always a go-ahead with no
+     * registration while the check is off, which also skips the check itself.
      */
-    private suspend fun preflightRefusal(issuerUrl: String, configurationIds: Set<String>): IosIssuanceProgress? =
-        when (val preflight = registrationPreflight(isRegistrationCheckEnabled) {
-            checkRegistration(issuerUrl, configurationIds)
-        }) {
-            is RegistrationPreflight.Proceed -> null
-            RegistrationPreflight.Refused -> IosIssuanceProgress.IssuerNotTrusted(
-                message = REGISTRATION_REFUSED,
-                certificate = IosIssuanceProgress.UntrustedCertificate.Registration,
-            )
-            is RegistrationPreflight.Unavailable -> IosIssuanceProgress.Failure(
-                message = REGISTRATION_UNAVAILABLE + (preflight.detail?.let { ": $it" } ?: ""),
-            )
-        }
+    private suspend fun preflight(issuerUrl: String, configurationIds: Set<String>): RegistrationPreflight =
+        registrationPreflight(isRegistrationCheckEnabled) { checkRegistration(issuerUrl, configurationIds) }
+
+    /** The outcome refusing or failing an issuance before it starts, or null to go ahead. */
+    private fun RegistrationPreflight.refusal(): IosIssuanceProgress? = when (this) {
+        is RegistrationPreflight.Proceed -> null
+        RegistrationPreflight.Refused -> IosIssuanceProgress.IssuerNotTrusted(
+            message = REGISTRATION_REFUSED,
+            certificate = IosIssuanceProgress.UntrustedCertificate.Registration,
+        )
+        is RegistrationPreflight.Unavailable -> IosIssuanceProgress.Failure(
+            message = REGISTRATION_UNAVAILABLE + (detail?.let { ": $it" } ?: ""),
+        )
+    }
+
+    /** The verified registration a go-ahead carries, which names the issuer in the History. */
+    private val RegistrationPreflight.registration: IssuerRegistration?
+        get() = (this as? RegistrationPreflight.Proceed)?.registration
 
     /**
      * What a run of configurations amounted to.
@@ -534,6 +603,7 @@ class IosCredentialIssuer(
         issuer: IosVciIssuer,
         configurationIds: List<String>,
         issuerUrl: String = issuer.issuerUrl,
+        log: IosIssuanceLog? = null,
     ): BatchOutcome {
         val walletStore = walletEngine.store()
         IosAuthorizationRedirects.clear()
@@ -589,11 +659,13 @@ class IosCredentialIssuer(
                         claimDisplay = claimDisplay,
                         reusePolicy = reusePolicy,
                         deferred = deferred,
+                        issuanceLog = log,
                     ),
                     httpClient = httpClient,
                     promptModel = Platform.promptModel,
                     authorizationSecureArea = walletStore.keySecureArea,
-                    eventLogger = walletStore.eventLogger(),
+                    // No event logger: the History row of this issuance is [log]'s, one per session as
+                    // wallet-core writes it, where multipaz would write one per document and only on success.
                 )
 
                 val environment = IosProvisioningEnvironment(
@@ -619,7 +691,9 @@ class IosCredentialIssuer(
                     coroutineScope {
                         val authorizing = launch { answerAuthorizationChallenges(model) }
                         try {
-                            documentIds += document.await().identifier
+                            val issued = document.await().identifier
+                            documentIds += issued
+                            log?.documentFinished(issued)
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (t: Throwable) {
@@ -627,11 +701,14 @@ class IosCredentialIssuer(
                             val parked = deferred.parkedDocumentId
                             if (parked != null) {
                                 documentIds += parked
+                                log?.documentFinished(parked)
                             } else {
                                 Logger.w(TAG, "issuing '$configurationId' failed: ${t.message}")
-                                failures[configurationId] = deferred.asFailureOr(t).message
+                                val failure = deferred.asFailureOr(t)
+                                failures[configurationId] = failure.message
                                     ?: t::class.simpleName ?: "Issuance failed."
                                 if (t.isIssuerNotTrusted()) untrusted += configurationId
+                                log?.failed(failure)
                             }
                         } finally {
                             authorizing.cancel()
@@ -713,6 +790,7 @@ class IosCredentialIssuer(
         configurationId: String,
         /** The issuer to talk to, which for an offer is the offering issuer rather than the catalogue's. */
         issuerUrl: String = issuer.issuerUrl,
+        log: IosIssuanceLog? = null,
     ): String {
         val deferred = DeferredIssuanceNotice()
         val claimDisplay = IssuerClaimDisplayNotice()
@@ -734,14 +812,13 @@ class IosCredentialIssuer(
                 reusePolicy = reusePolicy,
                 // So a `202 Accepted` parks the document instead of deleting it.
                 deferred = deferred,
+                issuanceLog = log,
             ),
             httpClient = httpClient,
             promptModel = Platform.promptModel,
             authorizationSecureArea = walletStore.keySecureArea,
-            // Puts a successful issuance in the History tab; multipaz writes the event itself once
-            // the credentials are certified. Note it logs *per document*, so a configuration that
-            // yields several produces several entries — which is what the user did, several times.
-            eventLogger = walletStore.eventLogger(),
+            // No event logger: the History row of this issuance is [log]'s, one per session as
+            // wallet-core writes it, where multipaz would write one per document and only on success.
         )
 
         try {
@@ -786,7 +863,7 @@ class IosCredentialIssuer(
      * and from the wallet's own otherwise — an offer may legitimately come from an unknown issuer, and
      * `clientId`/`redirectUrl` are the wallet's identity rather than the issuer's.
      */
-    private suspend fun provision(offerUri: String, txCode: String?): String {
+    private suspend fun provision(offerUri: String, txCode: String?, log: IosIssuanceLog? = null): String {
         val deferred = DeferredIssuanceNotice()
         val claimDisplay = IssuerClaimDisplayNotice()
         val reusePolicy = IssuerReusePolicyNotice()
@@ -806,14 +883,13 @@ class IosCredentialIssuer(
                 reusePolicy = reusePolicy,
                 // So a `202 Accepted` parks the document instead of deleting it.
                 deferred = deferred,
+                issuanceLog = log,
             ),
             httpClient = httpClient,
             promptModel = Platform.promptModel,
             authorizationSecureArea = walletStore.keySecureArea,
-            // Puts a successful issuance in the History tab; multipaz writes the event itself once
-            // the credentials are certified. Note it logs *per document*, so a configuration that
-            // yields several produces several entries — which is what the user did, several times.
-            eventLogger = walletStore.eventLogger(),
+            // No event logger: the History row of this issuance is [log]'s, one per session as
+            // wallet-core writes it, where multipaz would write one per document and only on success.
         )
 
         try {

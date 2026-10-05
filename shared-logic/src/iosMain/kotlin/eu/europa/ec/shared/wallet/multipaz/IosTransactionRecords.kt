@@ -22,7 +22,9 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.corelogic.model.CredentialRefDomain
 import eu.europa.ec.corelogic.model.InteractingPartyDomain
+import eu.europa.ec.corelogic.model.IssuanceDetailsDomain
 import eu.europa.ec.corelogic.model.LocalizedTextDomain
+import eu.europa.ec.corelogic.model.QualifiedIdentifierDomain
 import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.corelogic.model.TransactionResultDomain
 import kotlinx.datetime.TimeZone
@@ -66,6 +68,71 @@ internal sealed interface IosTransactionRecord {
         val issuerName: String? = null,
         val issuerNameLanguage: String? = null,
     ) : IosTransactionRecord
+
+    /**
+     * An issuance or a re-issuance — wallet-core's `CredentialIssuance` and `CredentialReissuance`, as its
+     * `CredentialIssuanceLogger` writes them: one row per session, counting the credentials asked for and
+     * the ones issued. A deferred credential gets a row of its own, keyed `deferred:<documentId>`, which
+     * its collection later brings up to date.
+     */
+    @Serializable
+    @SerialName("issuance")
+    data class Issuance(
+        override val id: String,
+        override val timeEpochMillis: Long,
+        override val completed: Boolean,
+        override val reason: String? = null,
+        val reissuance: Boolean = false,
+        val requestedCount: Int,
+        val issuedCount: Int,
+        val credentialIdentifiers: List<String> = emptyList(),
+        /** False for an offer or a background renewal, as TS10 §3.5 keeps it; null when unknown. */
+        val userTriggered: Boolean? = null,
+        val issuer: IssuerPartyRecord = IssuerPartyRecord(),
+    ) : IosTransactionRecord
+}
+
+/**
+ * Who issued, as wallet-core names the interacting party of an issuance: from the issuer's registration
+ * certificate when one was verified, otherwise by the name its metadata displays.
+ */
+@Serializable
+internal data class IssuerPartyRecord(
+    val name: String? = null,
+    val nameLanguage: String? = null,
+    val identifier: QualifiedIdentifierRecord? = null,
+    /** wallet-core's provider type — `PIDProvider`, `QEAAProvider`, `PubEEAProvider` or `NonQEAAProvider`. */
+    val type: String? = null,
+    val contacts: List<String> = emptyList(),
+)
+
+/**
+ * wallet-core 0.31.0's `CredentialIssuanceLogger.toInteractingParty`: the registered name (legal name,
+ * then a natural person's names, then the name), identifier, provider type and contacts when the issuer's
+ * registration was verified; [fallbackName] alone otherwise.
+ */
+internal fun IssuerRegistration?.toIssuerPartyRecord(
+    fallbackName: String?,
+    fallbackLanguage: String?,
+): IssuerPartyRecord {
+    if (this == null) return IssuerPartyRecord(name = fallbackName, nameLanguage = fallbackLanguage)
+    val registeredName = legalName
+        ?: listOfNotNull(givenName, familyName).joinToString(" ").ifBlank { null }
+        ?: name
+    return IssuerPartyRecord(
+        name = registeredName ?: fallbackName,
+        nameLanguage = if (registeredName != null) null else fallbackLanguage,
+        identifier = subject?.toQualifiedIdentifierOrNull(),
+        type = when {
+            IssuerEntitlements.PID in entitlements -> "PIDProvider"
+            IssuerEntitlements.QEAA in entitlements -> "QEAAProvider"
+            // Spelled as wallet-core spells it, so the two platforms record the same value.
+            IssuerEntitlements.PUB_EAA in entitlements -> "PubEEAProvider"
+            IssuerEntitlements.NON_Q_EAA in entitlements -> "NonQEAAProvider"
+            else -> null
+        },
+        contacts = listOfNotNull(country, supportUri, infoUri),
+    )
 }
 
 /** Stores [record], replacing the row with the same id. Kept as long as the event log keeps its events. */
@@ -85,6 +152,10 @@ internal suspend fun MultipazWalletStore.recordedTransactions(): List<Transactio
     transactionRecordsTable().enumerateWithData()
         .mapNotNull { (_, data) -> data.toTransactionRecordOrNull()?.toDomain() }
 
+/** The recorded transaction [id], or null when there is none or it cannot be read. */
+internal suspend fun MultipazWalletStore.transactionRecord(id: String): IosTransactionRecord? =
+    transactionRecordsTable().get(key = id)?.toTransactionRecordOrNull()
+
 /** Removes the recorded transaction [id], if there is one. */
 internal suspend fun MultipazWalletStore.deleteTransactionRecord(id: String) {
     transactionRecordsTable().delete(key = id)
@@ -94,6 +165,28 @@ internal fun IosTransactionRecord.toDomain(): TransactionLogDomain {
     val time = Instant.fromEpochMilliseconds(timeEpochMillis).toLocalDateTime(TimeZone.currentSystemDefault())
     val result = if (completed) TransactionResultDomain.Completed else TransactionResultDomain.NotCompleted(reason)
     return when (this) {
+        is IosTransactionRecord.Issuance -> {
+            val details = IssuanceDetailsDomain(
+                issuer = InteractingPartyDomain(
+                    name = issuer.name?.let { name ->
+                        LocalizedTextDomain(issuer.nameLanguage ?: UNDETERMINED_LANGUAGE, name)
+                    },
+                    identifier = issuer.identifier?.let { QualifiedIdentifierDomain(it.schemeUri, it.value) },
+                    contacts = issuer.contacts,
+                ),
+                issuerType = issuer.type,
+                requestedCount = requestedCount,
+                issuedCount = issuedCount,
+                credentials = credentialIdentifiers.map(::CredentialRefDomain),
+                isUserTriggered = userTriggered,
+            )
+            if (reissuance) {
+                TransactionLogDomain.CredentialReissuance(id, time, result, details)
+            } else {
+                TransactionLogDomain.CredentialIssuance(id, time, result, details)
+            }
+        }
+
         is IosTransactionRecord.Deletion -> TransactionLogDomain.CredentialDeletion(
             id = id,
             time = time,

@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.corelogic.model.TransactionLogDomain
+import eu.europa.ec.corelogic.model.TransactionResultDomain
 import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
@@ -486,5 +488,101 @@ class IosDeferredDocumentCompleterTest {
                 "credential ${credential.identifier} holds a key other than the one its data is bound to",
             )
         }
+    }
+
+    // ---- the History row ----------------------------------------------------------------------------
+    //
+    // wallet-core's `deferredResolutionEntry`: a collection that ended brings the credential's
+    // "awaiting" row up to date — the same row, so the History does not grow a second one.
+
+    private suspend fun MultipazWalletStore.recordAwaiting(document: Document) = recordTransaction(
+        IosTransactionRecord.Issuance(
+            id = deferredRowId(document.identifier),
+            timeEpochMillis = (Clock.System.now() - 5.minutes).toEpochMilliseconds(),
+            completed = false,
+            reason = REASON_ISSUANCE_DEFERRED,
+            requestedCount = 1,
+            issuedCount = 0,
+            userTriggered = true,
+            issuer = IssuerPartyRecord(name = "Test PID Provider", type = "PIDProvider"),
+        )
+    )
+
+    @Test
+    fun a_collected_credential_completes_its_awaiting_row() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val document = store.parkWithPendingCredential()
+        store.recordAwaiting(document)
+        val credential = issuedCredentialFor(document)
+
+        completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.OK,
+            deferredBody = """{"credentials":[{"credential":"$credential"}]}""",
+        ).complete(document)
+
+        val row = assertIs<IosTransactionRecord.Issuance>(store.transactionRecord(deferredRowId(document.identifier)))
+        assertTrue(row.completed)
+        assertEquals(1, row.issuedCount)
+        assertEquals(listOf(docType), row.credentialIdentifiers)
+        // Who issued it, and whether the user asked, are the awaiting row's.
+        assertEquals("Test PID Provider", row.issuer.name)
+        assertEquals(true, row.userTriggered)
+        assertEquals(1, store.transactionLogs().size)
+    }
+
+    @Test
+    fun an_issuer_still_working_on_it_leaves_the_row_awaiting() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val document = store.parkWithPendingCredential()
+        store.recordAwaiting(document)
+
+        completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.BadRequest,
+            deferredBody = """{"error":"issuance_pending","interval":5}""",
+        ).complete(document)
+
+        val row = assertIs<IosTransactionRecord.Issuance>(store.transactionRecord(deferredRowId(document.identifier)))
+        assertEquals(false, row.completed)
+        assertEquals(REASON_ISSUANCE_DEFERRED, row.reason)
+    }
+
+    @Test
+    fun a_collection_that_can_never_succeed_closes_the_row_as_not_completed() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val document = store.parkWithPendingCredential()
+        store.recordAwaiting(document)
+        val credential = issuedCredentialFor(document)
+
+        completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.OK,
+            deferredBody = """{"credentials":[{"credential":"$credential"}]}""",
+            issuerTrust = { _, _ -> TrustVerdict.NOT_TRUSTED },
+        ).complete(document)
+
+        val row = assertIs<IosTransactionRecord.Issuance>(store.transactionRecord(deferredRowId(document.identifier)))
+        assertEquals(false, row.completed)
+        assertEquals("$REASON_DEFERRED_COLLECTION_FAILED: the issuer is not trusted", row.reason)
+        assertEquals(0, row.issuedCount)
+    }
+
+    @Test
+    fun a_credential_parked_before_rows_were_kept_still_gets_one_when_collected() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val document = store.parkWithPendingCredential()
+        val credential = issuedCredentialFor(document)
+
+        completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.OK,
+            deferredBody = """{"credentials":[{"credential":"$credential"}]}""",
+        ).complete(document)
+
+        val issuance = assertIs<TransactionLogDomain.CredentialIssuance>(store.transactionLogs().single())
+        assertEquals(TransactionResultDomain.Completed, issuance.result)
+        // Nothing recorded whether the user asked; the fixture's issuer publishes no display name.
+        assertNull(issuance.details.isUserTriggered)
     }
 }

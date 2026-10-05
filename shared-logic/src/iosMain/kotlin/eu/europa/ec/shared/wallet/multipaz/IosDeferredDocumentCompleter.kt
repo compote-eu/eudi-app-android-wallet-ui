@@ -76,8 +76,30 @@ internal class IosDeferredDocumentCompleter(
      * Returns what happened, so the caller can tell "ask again later" from "this will never arrive" —
      * a distinction the documents screen needs, since one keeps the document and the other should stop
      * showing a spinner.
+     *
+     * A collection that ended — issued, or never to arrive — updates the credential's History row, as
+     * wallet-core's `deferredResolutionEntry` does; one to be asked again leaves it awaiting.
      */
-    suspend fun complete(document: Document): DeferredCollection {
+    suspend fun complete(document: Document): DeferredCollection =
+        collect(document).also { outcome -> recordResolution(document, outcome) }
+
+    private suspend fun recordResolution(document: Document, outcome: DeferredCollection) {
+        val reason = when (outcome) {
+            is DeferredCollection.Issued -> null
+            // The issuer no longer holds the transaction: wallet-core's `DocumentExpired`.
+            DeferredCollection.Abandoned -> "Deferred credential expired"
+            DeferredCollection.AuthorizationExpired -> "$REASON_DEFERRED_COLLECTION_FAILED: the authorization has expired"
+            DeferredCollection.IssuerNotTrusted -> "$REASON_DEFERRED_COLLECTION_FAILED: the issuer is not trusted"
+            // Asked again later; the row stays awaiting.
+            is DeferredCollection.StillPending,
+            is DeferredCollection.Failed,
+            is DeferredCollection.Unsupported,
+                -> return
+        }
+        store.recordDeferredResolution(document, completed = outcome is DeferredCollection.Issued, reason = reason)
+    }
+
+    private suspend fun collect(document: Document): DeferredCollection {
         val metadata = document.eudiMetadata
             ?: return DeferredCollection.Failed("the document carries no wallet metadata")
         val transactionId = metadata.deferredTransactionId

@@ -29,6 +29,8 @@ import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOffer
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
 import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
+import eu.europa.ec.shared.wallet.multipaz.IssuerRegistration
+import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationOutcome
 import eu.europa.ec.shared.wallet.multipaz.IosOfferResolution
 import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.coroutines.flow.Flow
@@ -78,7 +80,7 @@ internal class IosDocumentOfferPlatformBridge(
      * `Undefined symbols … _TtC10PKIXBridge13PKIXValidator`, and no test in it runs. Kotlin/Native
      * drops unreferenced code, so keeping the reference in the DI module keeps the tests linkable.
      */
-    private val checkRegistration: suspend (IosCredentialOffer, String) -> IssuerRegistrationDomain,
+    private val checkRegistration: suspend (IosCredentialOffer) -> IssuerRegistrationOutcome,
 ) : DocumentOfferPlatformBridge {
 
     private val resolvedOffers: MutableMap<String, IosCredentialOffer> = mutableMapOf()
@@ -89,6 +91,9 @@ internal class IosDocumentOfferPlatformBridge(
      * configurations and so reach a different answer.
      */
     private val registrationOutcomes: MutableMap<String, IssuerRegistrationDomain> = mutableMapOf()
+
+    /** The verified registration behind each offer, which names the issuer in the History row. */
+    private val verifiedRegistrations: MutableMap<String, IssuerRegistration> = mutableMapOf()
 
     override fun localeTag(): String = iosUserLanguage()
 
@@ -106,14 +111,12 @@ internal class IosDocumentOfferPlatformBridge(
                 resolvedOffers[offerUri] = resolution.offer
 
                 val checkEnabled = isRegistrationCheckEnabled()
-                val registration = if (checkEnabled) {
-                    checkRegistration(resolution.offer, locale)
-                } else {
-                    // Not "we looked and found nothing" — "we did not look". The shared rule reads
-                    // this together with the settings flag, never on its own.
-                    IssuerRegistrationDomain.NotEvaluated
-                }
+                val outcome = if (checkEnabled) checkRegistration(resolution.offer) else null
+                // Null — the check off — is not "we looked and found nothing" but "we did not look". The
+                // shared rule reads it together with the settings flag, never on its own.
+                val registration = outcome?.toDomain(locale) ?: IssuerRegistrationDomain.NotEvaluated
                 registrationOutcomes[offerUri] = registration
+                (outcome as? IssuerRegistrationOutcome.Verified)?.let { verifiedRegistrations[offerUri] = it.registration }
 
                 if (registration.refusesIssuance(checkEnabled)) {
                     // Android refuses here rather than on the offer screen, and the shared UI already
@@ -157,7 +160,11 @@ internal class IosDocumentOfferPlatformBridge(
         // resumed flow can reach here without one. Android gates in its controller for the same reason.
         val registration = registrationOutcomes[offerUri] ?: IssuerRegistrationDomain.NotEvaluated
 
-        val issuance = credentialIssuer.issueOffer(offer = offer, txCode = txCode).map { progress ->
+        val issuance = credentialIssuer.issueOffer(
+            offer = offer,
+            txCode = txCode,
+            registration = verifiedRegistrations[offerUri],
+        ).map { progress ->
             when (progress) {
                 is IosIssuanceProgress.Failure ->
                     IssueDocumentsPartialState.Failure(errorMessage = progress.message)

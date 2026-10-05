@@ -17,9 +17,9 @@
 package eu.europa.ec.shared.ui.di
 
 import eu.europa.ec.businesslogic.provider.UuidProviderImpl
-import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOffer
 import eu.europa.ec.shared.wallet.multipaz.IosIssuerRegistrationChecker
+import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationOutcome
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import eu.europa.ec.businesslogic.validator.FilterValidator
@@ -339,13 +339,11 @@ fun provideIosDocumentOfferPlatformBridge(
  */
 internal suspend fun checkIssuerRegistration(
     offer: IosCredentialOffer,
-    locale: String,
-): IssuerRegistrationDomain = HttpClient(Darwin).use { client ->
+): IssuerRegistrationOutcome = HttpClient(Darwin).use { client ->
     IosIssuerRegistrationChecker(client)
         // Only what this offer contains: an issuer may publish more than it is offering, and judging
         // it on the rest would refuse it for something the user was never shown.
         .check(issuerUrl = offer.issuerUrl, configurationIds = offer.configurationIds.toSet())
-        .toDomain(locale)
 }
 
 @Factory

@@ -210,8 +210,8 @@ class IosWalletEngine : WalletEngine {
     }
 
     /** Refreshes a document's credentials in place; see [IosCredentialIssuer.refreshCredentials]. */
-    suspend fun refreshCredentials(documentId: String): IosIssuanceProgress =
-        IosCredentialIssuer(walletEngine = this).refreshCredentials(documentId)
+    suspend fun refreshCredentials(documentId: String, userTriggered: Boolean = false): IosIssuanceProgress =
+        IosCredentialIssuer(walletEngine = this).refreshCredentials(documentId, userTriggered = userTriggered)
 
     override suspend fun getAllDocuments(): List<WalletDocument> =
         delegate().getAllDocuments()

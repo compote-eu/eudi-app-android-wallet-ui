@@ -85,6 +85,11 @@ internal class IosDocumentProvisioningHandler(
      * [cleanupDocumentOnError].
      */
     private val deferred: DeferredIssuanceNotice? = null,
+    /**
+     * The History rows of this issuance. multipaz creates a document only once the user has authorized,
+     * so [createDocument] is where the session counts as started — see [IosIssuanceLog.started].
+     */
+    private val issuanceLog: IosIssuanceLog? = null,
 ) : DocumentProvisioningHandler(
     secureArea = store.keySecureArea,
     documentStore = store.documentStore,
@@ -107,6 +112,7 @@ internal class IosDocumentProvisioningHandler(
             ?.numberOfCredentials
             ?: min(credentialMetadata.maxBatchSize, batchSize)
 
+        issuanceLog?.started(issuerName = issuerMetadata.display.text.takeIf { it.isNotBlank() })
         return documentStore.createDocument(
             displayName = credentialMetadata.display.text,
             typeDisplayName = credentialMetadata.display.text,

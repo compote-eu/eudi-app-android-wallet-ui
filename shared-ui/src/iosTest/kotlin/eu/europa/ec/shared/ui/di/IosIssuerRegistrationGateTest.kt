@@ -18,14 +18,17 @@ package eu.europa.ec.shared.ui.di
 
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
-import eu.europa.ec.corelogic.model.RegistrationDetailsDomain
-import eu.europa.ec.corelogic.model.RegistrationFailureReasonDomain
 import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.issuancefeature.interactor.PlatformOfferResolution
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
 import eu.europa.ec.shared.wallet.multipaz.IosVciIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
+import eu.europa.ec.shared.wallet.multipaz.IssuerEntitlements
+import eu.europa.ec.shared.wallet.multipaz.IssuerRegistration
+import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationFailure
+import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationOutcome
+import eu.europa.ec.shared.wallet.multipaz.OfferedAttestation
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
@@ -64,18 +67,25 @@ class IosIssuerRegistrationGateTest {
              "display":[{"name":"PID (MSO MDoc)","locale":"en"}]}}}
     """.trimIndent()
 
-    private val details = RegistrationDetailsDomain(
-        tradeName = "Test PID Provider",
-        uniqueId = "LEIXG-123456789",
-        logoUri = null,
-        intendedUse = null,
-        privacyPolicyUrl = null,
-        serviceDescription = null,
+    private val registration = IssuerRegistration(
+        subject = "LEIXG-123456789",
+        name = "Test PID Provider",
+        legalName = null,
+        country = null,
+        entitlements = listOf(IssuerEntitlements.PID),
+        privacyPolicyUri = null,
+        purpose = emptyList(),
+        serviceDescription = emptyList(),
+        providedAttestations = emptyList(),
+        registeredCredentials = emptyList(),
+        status = null,
+        expiresAt = null,
+        intermediaryIdentifier = null,
     )
 
     private fun bridge(
         checkEnabled: Boolean,
-        outcome: IssuerRegistrationDomain,
+        outcome: IssuerRegistrationOutcome,
         onChecked: () -> Unit = {},
     ): IosDocumentOfferPlatformBridge {
         val engine = MockEngine { request ->
@@ -101,7 +111,7 @@ class IosIssuerRegistrationGateTest {
             // proceed cases stop at the assertion rather than running a real flow.
             credentialIssuer = IosCredentialIssuer(walletEngine = IosWalletEngine()),
             isRegistrationCheckEnabled = { checkEnabled },
-            checkRegistration = { _, _ -> onChecked(); outcome },
+            checkRegistration = { _ -> onChecked(); outcome },
         )
     }
 
@@ -109,9 +119,10 @@ class IosIssuerRegistrationGateTest {
     fun a_blocked_issuer_never_reaches_the_offer_screen_at_all() = runTest {
         val bridge = bridge(
             checkEnabled = true,
-            outcome = IssuerRegistrationDomain.Blocked(
-                reason = IssuerRegistrationDomain.BlockedReasonDomain.ATTESTATION_OVER_PROVIDED,
-                details = details,
+            // Offering more than it registered, which the mapping turns into Blocked(ATTESTATION_OVER_PROVIDED).
+            outcome = IssuerRegistrationOutcome.Verified(
+                registration,
+                overProvided = listOf(OfferedAttestation(format = "mso_mdoc", doctype = "eu.europa.ec.eudi.pid.1")),
             ),
         )
 
@@ -128,10 +139,7 @@ class IosIssuerRegistrationGateTest {
     fun a_blocked_issuer_cannot_issue_either_even_if_something_reached_issuance() = runTest {
         val bridge = bridge(
             checkEnabled = true,
-            outcome = IssuerRegistrationDomain.NotVerified(
-                reason = RegistrationFailureReasonDomain.REVOKED,
-                details = details,
-            ),
+            outcome = IssuerRegistrationOutcome.Failed(IssuerRegistrationFailure.REVOKED, registration),
         )
         bridge.resolveOffer(offerUri, locale = "en")
 
@@ -148,7 +156,7 @@ class IosIssuerRegistrationGateTest {
         var checked = false
         val bridge = bridge(
             checkEnabled = false,
-            outcome = IssuerRegistrationDomain.Verified(details),
+            outcome = IssuerRegistrationOutcome.Verified(registration, overProvided = emptyList()),
             onChecked = { checked = true },
         )
 
@@ -172,7 +180,7 @@ class IosIssuerRegistrationGateTest {
         // What the checker answers for an issuer with no `issuer_info`. Android refuses it at resolve
         // ("refuse like any unverified outcome"); this gate once let it through by testing for
         // `NotEvaluated` rather than for the setting.
-        val bridge = bridge(checkEnabled = true, outcome = IssuerRegistrationDomain.NotEvaluated)
+        val bridge = bridge(checkEnabled = true, outcome = IssuerRegistrationOutcome.NotOffered)
 
         val resolution = bridge.resolveOffer(offerUri, locale = "en")
 
@@ -184,7 +192,10 @@ class IosIssuerRegistrationGateTest {
 
     @Test
     fun a_verified_issuer_reaches_the_screen_and_is_not_blocked() = runTest {
-        val bridge = bridge(checkEnabled = true, outcome = IssuerRegistrationDomain.Verified(details))
+        val bridge = bridge(
+            checkEnabled = true,
+            outcome = IssuerRegistrationOutcome.Verified(registration, overProvided = emptyList()),
+        )
 
         val resolution = bridge.resolveOffer(offerUri, locale = "en")
 
@@ -198,7 +209,10 @@ class IosIssuerRegistrationGateTest {
 
     @Test
     fun an_offer_nobody_resolved_is_refused_before_the_registration_is_even_consulted() = runTest {
-        val bridge = bridge(checkEnabled = true, outcome = IssuerRegistrationDomain.Verified(details))
+        val bridge = bridge(
+            checkEnabled = true,
+            outcome = IssuerRegistrationOutcome.Verified(registration, overProvided = emptyList()),
+        )
 
         val state = bridge.issueResolvedOffer("openid-credential-offer://?never-seen", txCode = null)
             .first()
