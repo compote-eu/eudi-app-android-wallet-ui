@@ -26,14 +26,12 @@ import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import eu.europa.ec.shared.wallet.multipaz.DeferredCollection
 import eu.europa.ec.shared.wallet.document.DocumentDeletionScope
 import eu.europa.ec.shared.wallet.document.documentDeletionOutcome
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import platform.Foundation.NSLocale
-import platform.Foundation.currentLocale
 import org.multipaz.util.Logger
-import platform.Foundation.languageCode
 
 /**
  * iOS's [DocumentsPlatformBridge]. Deliberately thin — the document-list mapping and the filter
@@ -78,7 +76,7 @@ internal class IosDocumentsPlatformBridge(
 
     /** The device locale's language, which is all the issuer-display lookup matches on. */
     override fun localeTag(): String =
-        NSLocale.currentLocale.languageCode
+        iosUserLanguage()
 
     /**
      * The user's own choice, from the same store the settings screen's switch writes to — so flipping

@@ -30,12 +30,10 @@ import eu.europa.ec.shared.wallet.multipaz.IosCredentialOffer
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
 import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
 import eu.europa.ec.shared.wallet.multipaz.IosOfferResolution
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import platform.Foundation.NSLocale
-import platform.Foundation.currentLocale
-import platform.Foundation.languageCode
 
 /**
  * Whether a registration outcome refuses this issuance.
@@ -89,7 +87,7 @@ internal class IosDocumentOfferPlatformBridge(
      */
     private val registrationOutcomes: MutableMap<String, IssuerRegistrationDomain> = mutableMapOf()
 
-    override fun localeTag(): String = NSLocale.currentLocale.languageCode
+    override fun localeTag(): String = iosUserLanguage()
 
     override suspend fun resolveOffer(offerUri: String, locale: String): PlatformOfferResolution =
         when (val resolution = offers.resolve(offerUri = offerUri, locale = locale)) {

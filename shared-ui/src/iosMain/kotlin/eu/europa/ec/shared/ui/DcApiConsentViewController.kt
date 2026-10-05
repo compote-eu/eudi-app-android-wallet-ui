@@ -34,13 +34,11 @@ import eu.europa.ec.shared.resources.request_registration_overasked_warning_text
 import eu.europa.ec.shared.resources.request_relying_party_default_name
 import eu.europa.ec.shared.resources.request_sticky_button_text
 import eu.europa.ec.shared.ui.di.relyingPartyDomain
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import eu.europa.ec.uilogic.component.InfoSection
 import eu.europa.ec.uilogic.component.RelyingParty
 import eu.europa.ec.uilogic.component.RelyingPartyLayout
 import eu.europa.ec.commonfeature.util.TestTag
-import platform.Foundation.NSLocale
-import platform.Foundation.currentLocale
-import platform.Foundation.languageCode
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -180,7 +178,7 @@ private fun DcApiConsentScreen(
             requesterName = request.requesterName,
             requesterIsTrusted = request.requesterIsTrusted,
             registration = request.relyingPartyRegistration,
-            locale = NSLocale.currentLocale.languageCode,
+            locale = iosUserLanguage(),
         )
     }
     val header = remember(relyingParty) {

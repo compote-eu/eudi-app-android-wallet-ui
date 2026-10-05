@@ -24,20 +24,18 @@ import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkController
 import eu.europa.ec.corelogic.extension.localizedTrustMarkText
 import eu.europa.ec.corelogic.model.TrustMarkDomain
 import eu.europa.ec.corelogic.model.TrustMarkInformationDomain
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.darwin.Darwin
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import platform.Foundation.NSLocale
-import platform.Foundation.currentLocale
-import platform.Foundation.languageCode
 
 class IosTrustMarkController(
     private val information: TrustMarkInformationDomain,
     /** The user's language, as Android takes it from its resource provider's locale. */
-    private val userLanguageTag: () -> String = { NSLocale.currentLocale.languageCode },
+    private val userLanguageTag: () -> String = { iosUserLanguage() },
     private val httpClient: () -> HttpClient = { HttpClient(Darwin) },
 ) : WalletCoreTrustMarkController {
 

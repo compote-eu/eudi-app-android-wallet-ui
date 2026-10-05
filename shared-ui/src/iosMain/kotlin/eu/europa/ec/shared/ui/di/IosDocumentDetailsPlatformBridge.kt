@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.JsonPrimitive
 import eu.europa.ec.shared.wallet.multipaz.StoredJsonClaim
@@ -50,9 +51,6 @@ import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.StoredMdocClaim
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import platform.Foundation.NSLocale
-import platform.Foundation.currentLocale
-import platform.Foundation.languageCode
 
 /**
  * iOS's [DocumentDetailsPlatformBridge], building the claim tree from multipaz's mdoc claims.
@@ -70,7 +68,7 @@ internal class IosDocumentDetailsPlatformBridge(
     private val engine: IosWalletEngine,
 ) : DocumentDetailsPlatformBridge {
 
-    override fun localeTag(): String = NSLocale.currentLocale.languageCode
+    override fun localeTag(): String = iosUserLanguage()
 
     /** The same store the settings switch writes to, as on Android and as the documents list reads. */
     override suspend fun showBatchIssuanceCounter(): Boolean =

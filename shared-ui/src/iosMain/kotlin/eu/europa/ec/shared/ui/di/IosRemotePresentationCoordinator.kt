@@ -16,10 +16,8 @@
 
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import org.multipaz.util.Logger
-import platform.Foundation.languageCode
-import platform.Foundation.currentLocale
-import platform.Foundation.NSLocale
 import eu.europa.ec.shared.resources.document_success_banner_text
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.corelogic.model.RelyingPartyDomain
@@ -167,7 +165,7 @@ internal class IosRemotePresentationCoordinator(
                 // this, and the shared screen renders it with `error = null`.
                 is IosRemotePresentationState.NothingToShare ->
                     PresentationRequestInteractorPartialState.NoData(
-                        relyingParty = state.relyingPartyDomain(NSLocale.currentLocale.languageCode),
+                        relyingParty = state.relyingPartyDomain(iosUserLanguage()),
                     )
 
                 // The user backed out, or the exchange was abandoned before anything was asked.
@@ -385,7 +383,7 @@ internal class IosRemotePresentationCoordinator(
     private fun IosPresentmentRequest.toPartialState(): PresentationRequestInteractorPartialState {
         // Both identity values are taken off the object the consent screen renders, as Android's
         // controller does: the success screen names the verifier as consent did.
-        val relyingParty = relyingPartyDomain(NSLocale.currentLocale.languageCode)
+        val relyingParty = relyingPartyDomain(iosUserLanguage())
         verifierName = relyingParty.name
         verifierIsFullyVerified = relyingParty.isFullyVerified
 

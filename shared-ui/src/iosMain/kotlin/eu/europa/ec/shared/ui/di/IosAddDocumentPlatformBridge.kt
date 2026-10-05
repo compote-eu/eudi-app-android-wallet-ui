@@ -31,11 +31,9 @@ import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
 import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
 import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
 import eu.europa.ec.shared.wallet.multipaz.OfferableCredentialsResult
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import platform.Foundation.NSLocale
-import platform.Foundation.currentLocale
-import platform.Foundation.languageCode
 
 /**
  * iOS's [AddDocumentPlatformBridge]: a real catalogue, and an issuance step that is still missing.
@@ -55,7 +53,7 @@ internal class IosAddDocumentPlatformBridge(
     private val credentialIssuer: IosCredentialIssuer,
 ) : AddDocumentPlatformBridge {
 
-    override fun localeTag(): String = NSLocale.currentLocale.languageCode
+    override fun localeTag(): String = iosUserLanguage()
 
     override suspend fun getScopedDocuments(locale: String): FetchScopedDocumentsPartialState =
         when (val result = offerableCredentials.read(locale)) {

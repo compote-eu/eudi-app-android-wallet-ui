@@ -39,6 +39,7 @@ import eu.europa.ec.shared.wallet.multipaz.IosPresentmentDisclosure
 import eu.europa.ec.shared.wallet.multipaz.IosProximityPresenter
 import eu.europa.ec.shared.wallet.multipaz.IosPresentmentRequest
 import eu.europa.ec.shared.wallet.multipaz.IosProximityState
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -48,9 +49,6 @@ import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import kotlinx.coroutines.flow.Flow
-import platform.Foundation.NSLocale
-import platform.Foundation.currentLocale
-import platform.Foundation.languageCode
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.transformWhile
 
@@ -302,7 +300,7 @@ internal class IosProximityCoordinator(
             requesterName = requesterName,
             requesterIsTrusted = requesterIsTrusted,
             registration = relyingPartyRegistration,
-            locale = NSLocale.currentLocale.languageCode,
+            locale = iosUserLanguage(),
         )
         verifierName = relyingParty.name
         verifierIsFullyVerified = relyingParty.isFullyVerified

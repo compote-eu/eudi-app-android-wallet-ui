@@ -33,11 +33,9 @@ import eu.europa.ec.corelogic.model.PresentationRegistrationDomain
 import eu.europa.ec.corelogic.model.QualifiedIdentifierDomain
 import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.corelogic.model.TransactionResultDomain
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import platform.Foundation.NSLocale
-import platform.Foundation.currentLocale
-import platform.Foundation.languageCode
 import org.multipaz.claim.Claim
 import org.multipaz.eventlogger.Event
 import org.multipaz.eventlogger.EventPresentment
@@ -95,7 +93,7 @@ private suspend fun MultipazWalletStore.documentFormatType(documentId: String): 
 internal suspend fun Event.toTransactionLogDomain(
     formatOf: suspend (documentId: String) -> FormatType?,
     /** The language a registered purpose is shown in, as Android picks it by the user's locale. */
-    languageCode: String = NSLocale.currentLocale.languageCode,
+    languageCode: String = iosUserLanguage(),
 ): TransactionLogDomain? {
     val time = timestamp.toLocalDateTime(TimeZone.currentSystemDefault())
 
