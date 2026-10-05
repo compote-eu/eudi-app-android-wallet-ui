@@ -33,6 +33,8 @@ import org.multipaz.provisioning.openid4vci.OpenID4VCI
 import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
 import org.multipaz.rpc.backend.BackendEnvironment
 import kotlin.coroutines.cancellation.CancellationException
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
 import kotlin.reflect.KClass
 import kotlinx.coroutines.withContext
 import io.ktor.client.HttpClient
@@ -75,6 +77,13 @@ sealed interface IosOfferResolution {
     ) : IosOfferResolution
 
     data class Failure(val message: String) : IosOfferResolution
+
+    /**
+     * The issuer's signed metadata was refused: its signer is not one the EU trust lists vouch for.
+     * Typed so the screen shows the "issuer not trusted" sheet, as Android does for the same refusal
+     * when it resolves an offer, instead of a generic error.
+     */
+    data class IssuerNotTrusted(val message: String) : IosOfferResolution
 }
 
 /**
@@ -91,13 +100,24 @@ sealed interface IosOfferResolution {
  *
  * @param engine the transport, injectable for tests.
  */
-class IosCredentialOfferReader(
-    private val engine: HttpClientEngine? = null,
-    private val issuers: List<IosVciIssuer> = IosIssuerCatalog.issuers,
+class IosCredentialOfferReader internal constructor(
+    private val engine: HttpClientEngine?,
+    private val issuers: List<IosVciIssuer>,
+    /** Who may sign issuer metadata; injectable so a test can refuse a signer without the network. */
+    private val issuerTrust: IssuerTrustSource?,
 ) {
 
+    constructor(
+        engine: HttpClientEngine? = null,
+        issuers: List<IosVciIssuer> = IosIssuerCatalog.issuers,
+    ) : this(engine, issuers, IosEtsiTrust())
+
     suspend fun resolve(offerUri: String, locale: String): IosOfferResolution {
-        val httpClient = if (engine != null) openID4VciHttpClient(engine) else openID4VciHttpClient()
+        val httpClient = if (engine != null) {
+            openID4VciHttpClient(engine, issuerTrust = issuerTrust)
+        } else {
+            openID4VciHttpClient(issuerTrust = issuerTrust)
+        }
 
         return try {
             val offer = parse(offerUri, httpClient)
@@ -132,9 +152,12 @@ class IosCredentialOfferReader(
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
-            IosOfferResolution.Failure(
-                t.message ?: t::class.simpleName ?: "The credential offer could not be read."
-            )
+            val message = t.message ?: t::class.simpleName ?: "The credential offer could not be read."
+            if (t.isIssuerNotTrusted()) {
+                IosOfferResolution.IssuerNotTrusted(message)
+            } else {
+                IosOfferResolution.Failure(message)
+            }
         } finally {
             httpClient.close()
         }

@@ -52,6 +52,25 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
+ * Metadata as an issuer really signs it: [chain] in the `x5c` header, and an ES256 signature by
+ * [signingKey] — by default [signer]'s, so the JWS verifies with the chain's first certificate.
+ */
+@OptIn(ExperimentalEncodingApi::class)
+internal suspend fun testSignedJwt(
+    payload: String,
+    signer: TestSigner,
+    chain: List<X509Cert> = listOf(signer.certificate),
+    signingKey: EcPrivateKey = signer.key,
+): String {
+    val b64 = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
+    val x5c = chain.joinToString(",") { "\"${Base64.Default.encode(it.encoded.toByteArray())}\"" }
+    val signingInput = listOf("""{"typ":"JWT","alg":"ES256","x5c":[$x5c]}""", payload)
+        .joinToString(".") { b64.encode(it.encodeToByteArray()) }
+    val signature = Crypto.sign(signingKey, Algorithm.ES256, signingInput.encodeToByteArray())
+    return "$signingInput.${b64.encode(signature.toCoseEncoded())}"
+}
+
+/**
  * The three compatibility rules the iOS OpenID4VCI client applies, against a `MockEngine` standing in
  * for the network.
  *
@@ -80,23 +99,6 @@ class OpenID4VciHttpClientTest {
         ).joinToString(".")
     }
 
-    /**
-     * Metadata as an issuer really signs it: [chain] in the `x5c` header, and an ES256 signature by
-     * [signingKey] — by default [signer]'s, so the JWS verifies with the chain's first certificate.
-     */
-    private suspend fun signedJwtOf(
-        payload: String,
-        signer: TestSigner,
-        chain: List<X509Cert> = listOf(signer.certificate),
-        signingKey: EcPrivateKey = signer.key,
-    ): String {
-        val b64 = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
-        val x5c = chain.joinToString(",") { "\"${Base64.Default.encode(it.encoded.toByteArray())}\"" }
-        val signingInput = listOf("""{"typ":"JWT","alg":"ES256","x5c":[$x5c]}""", payload)
-            .joinToString(".") { b64.encode(it.encodeToByteArray()) }
-        val signature = Crypto.sign(signingKey, Algorithm.ES256, signingInput.encodeToByteArray())
-        return "$signingInput.${b64.encode(signature.toCoseEncoded())}"
-    }
 
     @Test
     fun signed_metadata_is_unwrapped_to_the_jwt_payload() = runTest {
@@ -122,7 +124,7 @@ class OpenID4VciHttpClientTest {
     @Test
     fun signed_metadata_from_an_untrusted_signer_is_refused() = runTest {
         val metadata = """{"credential_issuer":"https://issuer.test"}"""
-        val jwt = signedJwtOf(metadata, testSigner())
+        val jwt = testSignedJwt(metadata, testSigner())
         val client = openID4VciHttpClient(
             MockEngine {
                 respond(
@@ -148,7 +150,7 @@ class OpenID4VciHttpClientTest {
         // could not add a document offline. If this ever starts throwing, that decision was reversed
         // by accident.
         val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
-        val jwt = signedJwtOf(metadata, testSigner())
+        val jwt = testSignedJwt(metadata, testSigner())
         val client = openID4VciHttpClient(
             MockEngine {
                 respond(
@@ -171,7 +173,7 @@ class OpenID4VciHttpClientTest {
         var seenContext: VerificationContext? = null
         val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
         val leaf = testSigner("CN=Metadata Signer")
-        val jwt = signedJwtOf(metadata, leaf, chain = listOf(leaf.certificate, testSignerCertificate("CN=Root")))
+        val jwt = testSignedJwt(metadata, leaf, chain = listOf(leaf.certificate, testSignerCertificate("CN=Root")))
         val client = openID4VciHttpClient(
             MockEngine {
                 respond(
@@ -202,7 +204,7 @@ class OpenID4VciHttpClientTest {
         // the issuer's standing. The lists would vouch for the chain, so they are not asked.
         var asked = false
         val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
-        val jwt = signedJwtOf(metadata, testSigner(), signingKey = Crypto.createEcPrivateKey(EcCurve.P256))
+        val jwt = testSignedJwt(metadata, testSigner(), signingKey = Crypto.createEcPrivateKey(EcCurve.P256))
         val client = openID4VciHttpClient(
             MockEngine {
                 respond(

@@ -96,6 +96,11 @@ internal class IosDocumentOfferPlatformBridge(
             is IosOfferResolution.Failure ->
                 PlatformOfferResolution.Failure(errorMessage = resolution.message)
 
+            // Android's `toUntrustedIssuerReasonOrNull()`: refused signed metadata is the access-certificate
+            // layer, and the shared UI answers it with the "issuer not trusted" sheet.
+            is IosOfferResolution.IssuerNotTrusted ->
+                PlatformOfferResolution.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE)
+
             is IosOfferResolution.Resolved -> {
                 resolvedOffers[offerUri] = resolution.offer
 

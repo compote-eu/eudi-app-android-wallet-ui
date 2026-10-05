@@ -19,6 +19,7 @@
 // the PIN screen — a wrong length there is a screen the user cannot complete.
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.trust.TrustVerdict
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
@@ -73,17 +74,16 @@ class IosCredentialOfferReaderTest {
         }
     }
 
-    private fun reader(engine: MockEngine) = IosCredentialOfferReader(
-        engine = engine,
-        issuers = listOf(
-            IosVciIssuer(
-                issuerUrl = issuerUrl,
-                clientId = "eudiw-abca",
-                redirectUri = "eu.europa.ec.euidi://authorization",
-                order = 0,
-            )
-        ),
+    private val catalogue = listOf(
+        IosVciIssuer(
+            issuerUrl = issuerUrl,
+            clientId = "eudiw-abca",
+            redirectUri = "eu.europa.ec.euidi://authorization",
+            order = 0,
+        )
     )
+
+    private fun reader(engine: MockEngine) = IosCredentialOfferReader(engine = engine, issuers = catalogue)
 
     @Test
     fun an_offer_carrying_its_own_document_resolves_to_the_issuers_names() = runTest {
@@ -197,6 +197,44 @@ class IosCredentialOfferReaderTest {
         val resolution = reader(unreachable).resolve(offerLink(), locale = "en")
 
         assertIs<IosOfferResolution.Failure>(resolution)
+    }
+
+    // ---- an issuer the trust lists do not vouch for --------------------------------------------
+
+    /** Serves the issuer metadata signed by [signer], as an issuer that signs it does. */
+    private suspend fun signedMetadataEngine(signer: TestSigner): MockEngine {
+        val jwt = testSignedJwt(issuerMetadata, signer)
+        return MockEngine { request ->
+            if (request.url.toString() == "$issuerUrl/.well-known/openid-credential-issuer") {
+                respond(jwt, headers = headersOf("Content-Type", "application/jwt"))
+            } else {
+                respondError(HttpStatusCode.NotFound)
+            }
+        }
+    }
+
+    private fun reader(engine: MockEngine, verdict: TrustVerdict) = IosCredentialOfferReader(
+        engine = engine,
+        issuers = catalogue,
+        issuerTrust = { _, _ -> verdict },
+    )
+
+    @Test
+    fun an_issuer_whose_signed_metadata_is_refused_is_reported_as_not_trusted() = runTest {
+        // Android shows its "issuer not trusted" sheet for this refusal when it resolves the offer; a
+        // generic failure would show the generic error screen instead.
+        val resolution = reader(signedMetadataEngine(testSigner()), TrustVerdict.NOT_TRUSTED)
+            .resolve(offerLink(), locale = "en")
+
+        assertIs<IosOfferResolution.IssuerNotTrusted>(resolution, "$resolution")
+    }
+
+    @Test
+    fun an_issuer_whose_signed_metadata_is_trusted_resolves_as_before() = runTest {
+        val resolution = reader(signedMetadataEngine(testSigner()), TrustVerdict.TRUSTED)
+            .resolve(offerLink(), locale = "en")
+
+        assertEquals(listOf("PID (MSO MDoc)"), assertIs<IosOfferResolution.Resolved>(resolution, "$resolution").documentNames)
     }
 
     // ---- the grant facts that decide how an offer is issued -----------------------------------
