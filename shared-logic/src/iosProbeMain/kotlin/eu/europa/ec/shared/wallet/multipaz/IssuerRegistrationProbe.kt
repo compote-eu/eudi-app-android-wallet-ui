@@ -124,6 +124,7 @@ private suspend fun runIssuerRegistrationProbe(issuerUrl: String, onResult: (Str
 
     when (outcome) {
         is IssuerRegistrationOutcome.NotOffered -> say("RESULT: no certificate offered")
+        is IssuerRegistrationOutcome.Unavailable -> say("RESULT: not evaluated (${outcome.detail})")
         is IssuerRegistrationOutcome.Failed ->
             say("RESULT: FAILED ${outcome.reason}${outcome.detail?.let { " ($it)" } ?: ""}")
 

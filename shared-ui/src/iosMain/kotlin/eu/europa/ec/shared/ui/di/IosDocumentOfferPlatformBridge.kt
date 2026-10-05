@@ -168,7 +168,7 @@ internal class IosDocumentOfferPlatformBridge(
                     IssueDocumentsPartialState.Failure(errorMessage = progress.message)
 
                 is IosIssuanceProgress.IssuerNotTrusted -> IssueDocumentsPartialState.IssuerNotTrusted(
-                    reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE,
+                    reason = progress.certificate.toUntrustedIssuerReason(),
                 )
 
                 is IosIssuanceProgress.Issued -> if (progress.untrusted.isNotEmpty()) {

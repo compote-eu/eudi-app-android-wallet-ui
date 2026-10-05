@@ -66,10 +66,7 @@ class IosIssuerRegistrationChecker internal constructor(
             httpClient.get("${issuerUrl.trimEnd('/')}/$ISSUER_METADATA_PATH").bodyAsText().trim()
         }.getOrElse {
             Logger.w(TAG, "issuer metadata could not be read: ${it.message}")
-            return IssuerRegistrationOutcome.Failed(
-                IssuerRegistrationFailure.MALFORMED,
-                detail = "issuer metadata could not be read",
-            )
+            return IssuerRegistrationOutcome.Unavailable(detail = "issuer metadata could not be read")
         }
 
         // Unsigned metadata has no signer, and the certificate's whole binding is to that signer. Say so

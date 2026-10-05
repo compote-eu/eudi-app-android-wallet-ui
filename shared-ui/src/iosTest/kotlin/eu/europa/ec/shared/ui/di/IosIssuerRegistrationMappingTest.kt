@@ -152,6 +152,16 @@ class IosIssuerRegistrationMappingTest {
     }
 
     @Test
+    fun an_issuer_whose_metadata_could_not_be_fetched_reads_as_it_always_has_on_the_offer_screen() {
+        // Kept apart from the failure reasons for the pre-flight's sake only; the offer screen is unchanged.
+        val domain = IssuerRegistrationOutcome.Unavailable(detail = "issuer metadata could not be read").toDomain("en")
+
+        val notVerified = assertIs<IssuerRegistrationDomain.NotVerified>(domain)
+        assertEquals(RegistrationFailureReasonDomain.MALFORMED, notVerified.reason)
+        assertEquals(null, notVerified.details)
+    }
+
+    @Test
     fun every_failure_reason_maps_to_one_of_its_own() {
         // A new reason must not quietly land on a neighbour's meaning; this fails to compile-or-pass
         // the moment the two enums drift.

@@ -46,6 +46,13 @@ internal fun IssuerRegistrationOutcome.toDomain(locale: String): IssuerRegistrat
     when (this) {
         is IssuerRegistrationOutcome.NotOffered -> IssuerRegistrationDomain.NotEvaluated
 
+        // How the offer screen has always shown an issuer whose metadata could not be fetched; only the
+        // pre-flight, which has no screen of its own, tells it apart.
+        is IssuerRegistrationOutcome.Unavailable -> IssuerRegistrationDomain.NotVerified(
+            reason = RegistrationFailureReasonDomain.MALFORMED,
+            details = null,
+        )
+
         is IssuerRegistrationOutcome.Verified ->
             if (overProvided.isEmpty()) {
                 IssuerRegistrationDomain.Verified(details = registration.toDetails(locale))

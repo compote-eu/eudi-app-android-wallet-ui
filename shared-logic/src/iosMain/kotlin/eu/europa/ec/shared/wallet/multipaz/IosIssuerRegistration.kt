@@ -162,6 +162,13 @@ sealed interface IssuerRegistrationOutcome {
         val registration: IssuerRegistration? = null,
         val detail: String? = null,
     ) : IssuerRegistrationOutcome
+
+    /**
+     * Nothing was evaluated: the issuer's metadata could not be fetched. Not a registration failure —
+     * on Android it is an ordinary error, which is how a flow with no approval screen reports it; see
+     * [registrationPreflight].
+     */
+    data class Unavailable(val detail: String?) : IssuerRegistrationOutcome
 }
 
 enum class IssuerRegistrationFailure {

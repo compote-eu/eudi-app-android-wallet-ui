@@ -44,9 +44,14 @@ class IosCredentialIssuerTest {
      */
     private val offersTakenWhole = mutableListOf<String>()
 
+    /** The registration checks asked for, as issuer URL and configurations. */
+    private val registrationChecks = mutableListOf<Pair<String, Set<String>>>()
+
     private fun issuerWith(
         answers: Map<String, Result<String>>,
         wholeOffer: Result<String> = Result.success("doc-whole-offer"),
+        registrationCheck: Boolean = false,
+        registration: IssuerRegistrationOutcome = IssuerRegistrationOutcome.NotOffered,
     ) = IosCredentialIssuer(
         walletEngine = IosWalletEngine(),
         issuers = listOf(issuer),
@@ -57,6 +62,11 @@ class IosCredentialIssuerTest {
         issueWholeOffer = { offer, _ ->
             offersTakenWhole += offer.offerUri
             wholeOffer
+        },
+        isRegistrationCheckEnabled = { registrationCheck },
+        checkRegistration = { issuerUrl, configurationIds ->
+            registrationChecks += issuerUrl to configurationIds
+            registration
         },
     )
 
@@ -348,4 +358,81 @@ class IosCredentialIssuerTest {
 
         assertIs<IosIssuanceProgress.IssuerNotTrusted>(progress)
     }
+
+    // --- The registration pre-flight -----------------------------------------------------------------
+    //
+    // Android's `preflightRegistrationRefusalOrNull`: a wallet-initiated issuance has no approval screen,
+    // so the registration is checked before the browser opens, and only while the user has it on.
+
+    @Test
+    fun with_the_registration_check_off_no_check_is_made_and_the_issuance_goes_ahead() = runTest {
+        val issuing = issuerWith(answers = mapOf("pid_mdoc" to Result.success("doc-mdoc")))
+
+        val progress = issuing.issue(issuer.issuerUrl, listOf("pid_mdoc")).first()
+
+        assertIs<IosIssuanceProgress.Issued>(progress)
+        assertTrue(registrationChecks.isEmpty())
+    }
+
+    @Test
+    fun a_refused_registration_stops_the_issuance_before_anything_is_attempted() = runTest {
+        val issuing = issuerWith(
+            answers = mapOf("pid_mdoc" to Result.success("doc-mdoc")),
+            registrationCheck = true,
+            registration = IssuerRegistrationOutcome.NotOffered,
+        )
+
+        val progress = issuing.issue(issuer.issuerUrl, listOf("pid_mdoc", "pid_sd_jwt")).first()
+
+        val refused = assertIs<IosIssuanceProgress.IssuerNotTrusted>(progress)
+        assertEquals(IosIssuanceProgress.UntrustedCertificate.Registration, refused.certificate)
+        assertTrue(attempted.isEmpty(), "a refusal opens no browser")
+        // Judged on what is being issued, as Android resolves it for the configurations asked for.
+        assertEquals(listOf(issuer.issuerUrl to setOf("pid_mdoc", "pid_sd_jwt")), registrationChecks)
+    }
+
+    @Test
+    fun a_verified_registration_lets_the_issuance_go_ahead() = runTest {
+        val issuing = issuerWith(
+            answers = mapOf("pid_mdoc" to Result.success("doc-mdoc")),
+            registrationCheck = true,
+            registration = IssuerRegistrationOutcome.Verified(verifiedRegistration, overProvided = emptyList()),
+        )
+
+        val progress = issuing.issue(issuer.issuerUrl, listOf("pid_mdoc")).first()
+
+        assertEquals(listOf("doc-mdoc"), assertIs<IosIssuanceProgress.Issued>(progress).documentIds)
+        assertEquals(1, registrationChecks.size)
+    }
+
+    @Test
+    fun an_issuer_whose_registration_could_not_be_checked_fails_rather_than_being_refused() = runTest {
+        val issuing = issuerWith(
+            answers = mapOf("pid_mdoc" to Result.success("doc-mdoc")),
+            registrationCheck = true,
+            registration = IssuerRegistrationOutcome.Unavailable(detail = "issuer metadata could not be read"),
+        )
+
+        val progress = issuing.issue(issuer.issuerUrl, listOf("pid_mdoc")).first()
+
+        val failure = assertIs<IosIssuanceProgress.Failure>(progress)
+        assertTrue(failure.message.startsWith(IosCredentialIssuer.REGISTRATION_UNAVAILABLE))
+        assertTrue(attempted.isEmpty())
+    }
+
+    private val verifiedRegistration = IssuerRegistration(
+        subject = "NTRSK-12345678",
+        name = "Fixture Issuer",
+        legalName = null,
+        country = null,
+        entitlements = listOf(IssuerEntitlements.PID),
+        privacyPolicyUri = null,
+        purpose = emptyList(),
+        serviceDescription = emptyList(),
+        providedAttestations = emptyList(),
+        registeredCredentials = emptyList(),
+        status = null,
+        expiresAt = null,
+        intermediaryIdentifier = null,
+    )
 }

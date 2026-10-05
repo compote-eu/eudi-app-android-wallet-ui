@@ -30,6 +30,7 @@ import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Tstr
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
+import eu.europa.ec.shared.wallet.platform.IosRegistrationCheckSetting
 import org.multipaz.crypto.Algorithm
 import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
@@ -72,11 +73,25 @@ sealed interface IosIssuanceProgress {
 
     /**
      * Nothing was issued, and something was refused because the issuer is not trusted for it — a PID
-     * whose signer the EU list of PID providers does not name, or signed metadata from a signer the
-     * access-certificate list does not. Android's `IssuerNotTrusted`, which its screens show as a sheet
-     * of its own rather than as an error.
+     * whose signer the EU list of PID providers does not name, signed metadata from a signer the
+     * access-certificate list does not, or a registration certificate that does not cover the issuance.
+     * Android's `IssuerNotTrusted`, which its screens show as a sheet of its own rather than as an error.
+     *
+     * @property certificate which certificate refused it, which picks the sheet's wording as Android's
+     *   `UntrustedIssuerReasonDomain` does.
      */
-    data class IssuerNotTrusted(val message: String) : IosIssuanceProgress
+    data class IssuerNotTrusted(
+        val message: String,
+        val certificate: UntrustedCertificate = UntrustedCertificate.Access,
+    ) : IosIssuanceProgress
+
+    enum class UntrustedCertificate {
+        /** A credential signer or signed metadata the trust lists do not name. */
+        Access,
+
+        /** The issuer's registration certificate, checked before the flow starts. */
+        Registration,
+    }
 }
 
 /**
@@ -142,11 +157,14 @@ class IosCredentialIssuer(
      * use it is precisely that they do *not* go per configuration.
      */
     private val issueWholeOffer: (suspend (IosCredentialOffer, String?) -> Result<String>)? = null,
+    /** Whether the user has the registration check on, read per issuance since it can change. */
+    private val isRegistrationCheckEnabled: suspend () -> Boolean = { IosRegistrationCheckSetting.isEnabled() },
     /**
-     * Where documents live. Defaults to the engine's own store, which is what production wants.
-     * Injectable because [refreshCredentials] decides three of its four outcomes from the store's
-     * *contents*, and those are the outcomes a user actually meets.
+     * Checks the issuer's registration certificate for the configurations about to be issued; see
+     * [registrationPreflight]. Injectable so a test can pin the outcome without the network.
      */
+    private val checkRegistration: suspend (issuerUrl: String, configurationIds: Set<String>) -> IssuerRegistrationOutcome =
+        ::checkIssuerRegistrationOnline,
 ) {
 
     /**
@@ -163,7 +181,16 @@ class IosCredentialIssuer(
         walletEngine: IosWalletEngine,
         walletStore: suspend () -> MultipazWalletStore,
         issuers: List<IosVciIssuer> = IosIssuerCatalog.issuers,
-    ) : this(walletEngine = walletEngine, issuers = issuers) {
+        isRegistrationCheckEnabled: suspend () -> Boolean = { false },
+        checkRegistration: suspend (String, Set<String>) -> IssuerRegistrationOutcome = { _, _ ->
+            error("no registration check expected")
+        },
+    ) : this(
+        walletEngine = walletEngine,
+        issuers = issuers,
+        isRegistrationCheckEnabled = isRegistrationCheckEnabled,
+        checkRegistration = checkRegistration,
+    ) {
         this.walletStore = walletStore
     }
 
@@ -202,6 +229,11 @@ class IosCredentialIssuer(
         // no silent path for those.
         val authorization = document.authorizationData
             ?: return IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION)
+
+        // Android checks the registration before every re-issuance, user-asked or background, so a
+        // refusal leaves the document as it is. After the local refusals above, which need no network.
+        val configurationId = document.eudiMetadata?.issuerMetadata?.documentConfigurationIdentifier
+        preflightRefusal(issuer.issuerUrl, setOfNotNull(configurationId))?.let { return it }
 
         // Ask *before* opening a session.
         //
@@ -295,6 +327,12 @@ class IosCredentialIssuer(
         }
         if (configurationIds.isEmpty()) {
             emit(IosIssuanceProgress.Failure("No document was requested."))
+            return@flow
+        }
+        // Wallet-initiated issuance has no approval screen, so the registration is checked before the
+        // browser opens, as Android does; an offer is checked on its own screen instead.
+        preflightRefusal(issuer.issuerUrl, configurationIds.toSet())?.let { refusal ->
+            emit(refusal)
             return@flow
         }
 
@@ -434,6 +472,24 @@ class IosCredentialIssuer(
 
         emit(outcomeOf(documentIds, failures, untrusted))
     }
+
+    /**
+     * The outcome refusing or failing an issuance before it starts, or null to go ahead — always null
+     * while the registration check is off, which also skips the check itself.
+     */
+    private suspend fun preflightRefusal(issuerUrl: String, configurationIds: Set<String>): IosIssuanceProgress? =
+        when (val preflight = registrationPreflight(isRegistrationCheckEnabled) {
+            checkRegistration(issuerUrl, configurationIds)
+        }) {
+            is RegistrationPreflight.Proceed -> null
+            RegistrationPreflight.Refused -> IosIssuanceProgress.IssuerNotTrusted(
+                message = REGISTRATION_REFUSED,
+                certificate = IosIssuanceProgress.UntrustedCertificate.Registration,
+            )
+            is RegistrationPreflight.Unavailable -> IosIssuanceProgress.Failure(
+                message = REGISTRATION_UNAVAILABLE + (preflight.detail?.let { ": $it" } ?: ""),
+            )
+        }
 
     /**
      * What a run of configurations amounted to.
@@ -922,6 +978,12 @@ class IosCredentialIssuer(
 
         /** Only when a refusal carried no message of its own; the screens show their own text for it. */
         private const val ISSUER_NOT_TRUSTED = "The issuer is not trusted."
+
+        /** The registration pre-flight refused; the screens show Android's registration-certificate sheet. */
+        internal const val REGISTRATION_REFUSED =
+            "The issuer's registration certificate does not allow this issuance."
+
+        internal const val REGISTRATION_UNAVAILABLE = "The issuer's registration could not be checked"
 
         /** OAuth's name for a refresh token that is spent, revoked or past its expiry. */
         private const val INVALID_GRANT = "invalid_grant"

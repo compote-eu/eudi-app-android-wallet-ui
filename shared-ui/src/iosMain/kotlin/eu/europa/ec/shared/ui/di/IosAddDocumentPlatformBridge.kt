@@ -87,10 +87,8 @@ internal class IosAddDocumentPlatformBridge(
                 is IosIssuanceProgress.Failure ->
                     IssueDocumentsPartialState.Failure(errorMessage = progress.message)
 
-                // ACCESS_CERTIFICATE for both refusals, as Android's `toUntrustedIssuerReasonOrNull` reads
-                // an untrusted credential signer and untrusted signed metadata alike.
                 is IosIssuanceProgress.IssuerNotTrusted -> IssueDocumentsPartialState.IssuerNotTrusted(
-                    reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE,
+                    reason = progress.certificate.toUntrustedIssuerReason(),
                 )
 
                 is IosIssuanceProgress.Issued -> if (progress.failures.isEmpty()) {
@@ -131,3 +129,14 @@ internal class IosAddDocumentPlatformBridge(
     override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
 
 }
+
+/**
+ * Which sheet a refusal shows, as Android's `UntrustedIssuerReasonDomain` picks it: ACCESS_CERTIFICATE for
+ * an untrusted credential signer and untrusted signed metadata alike (`toUntrustedIssuerReasonOrNull`
+ * reads both so), REGISTRATION_CERTIFICATE for the registration pre-flight's refusal.
+ */
+internal fun IosIssuanceProgress.UntrustedCertificate.toUntrustedIssuerReason(): UntrustedIssuerReasonDomain =
+    when (this) {
+        IosIssuanceProgress.UntrustedCertificate.Access -> UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE
+        IosIssuanceProgress.UntrustedCertificate.Registration -> UntrustedIssuerReasonDomain.REGISTRATION_CERTIFICATE
+    }

@@ -70,11 +70,69 @@ class IosCredentialRefreshTest {
         return store to documentId
     }
 
-    private fun refresherOver(store: MultipazWalletStore) = IosCredentialIssuer(
+    private fun refresherOver(
+        store: MultipazWalletStore,
+        registrationCheck: Boolean = false,
+        registration: IssuerRegistrationOutcome = IssuerRegistrationOutcome.NotOffered,
+    ) = IosCredentialIssuer(
         walletEngine = IosWalletEngine(),
         walletStore = { store },
         issuers = listOf(issuer),
+        isRegistrationCheckEnabled = { registrationCheck },
+        checkRegistration = { issuerUrl, configurationIds ->
+            registrationChecks += issuerUrl to configurationIds
+            registration
+        },
     )
+
+    /** The registration checks asked for, as issuer URL and configurations. */
+    private val registrationChecks = mutableListOf<Pair<String, Set<String>>>()
+
+    /** A document that got as far as a refresh would: it holds the authorization from its issuance. */
+    private suspend fun MultipazWalletStore.authorize(documentId: String) {
+        documentStore.lookupDocument(documentId)!!.edit { authorizationData = storedAuthorization() }
+    }
+
+    // ---- the registration pre-flight ----------------------------------------------------------------
+    //
+    // Android checks the registration before every re-issuance, user-asked or background, while the
+    // user has the check on — so a refusal leaves the document exactly as it was.
+
+    @Test
+    fun a_refused_registration_stops_the_refresh_and_says_which_certificate() = runTest {
+        val (store, documentId) = walletWith()
+        store.authorize(documentId)
+
+        val progress = refresherOver(store, registrationCheck = true).refreshCredentials(documentId)
+
+        val refused = assertIs<IosIssuanceProgress.IssuerNotTrusted>(progress)
+        assertEquals(IosIssuanceProgress.UntrustedCertificate.Registration, refused.certificate)
+        // Judged for the configuration the document was issued from.
+        assertEquals(listOf(issuer.issuerUrl to setOf(MDOC_PID_DOC_TYPE)), registrationChecks)
+    }
+
+    @Test
+    fun with_the_registration_check_off_the_refresh_makes_no_check() = runTest {
+        val (store, documentId) = walletWith()
+        store.authorize(documentId)
+
+        val progress = refresherOver(store).refreshCredentials(documentId)
+
+        // The fixture's one credential is fresh, so there is nothing to fetch — and nothing was checked.
+        assertEquals(0, assertIs<IosIssuanceProgress.Issued>(progress).credentialsFetched)
+        assertEquals(emptyList(), registrationChecks)
+    }
+
+    @Test
+    fun a_document_with_no_stored_authorization_is_refused_before_the_registration_is_checked() = runTest {
+        // The local refusals need no network, so they come first.
+        val (store, documentId) = walletWith()
+
+        val progress = refresherOver(store, registrationCheck = true).refreshCredentials(documentId)
+
+        assertEquals(IosCredentialIssuer.NO_STORED_AUTHORIZATION, assertIs<IosIssuanceProgress.Failure>(progress).message)
+        assertEquals(emptyList(), registrationChecks)
+    }
 
     @Test
     fun a_document_the_wallet_no_longer_holds_is_refused_by_name() = runTest {
