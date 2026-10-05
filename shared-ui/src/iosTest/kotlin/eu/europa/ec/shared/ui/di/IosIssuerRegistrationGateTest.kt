@@ -44,7 +44,9 @@ import kotlin.test.assertTrue
  * 🚨 **The case that matters most is the one that must NOT block.** `isBlockedForIssuance` answers
  * `true` for `NotEvaluated`, because for a wallet with the check *on* an unestablished registration is a
  * refusal — but `NotEvaluated` is also exactly what a wallet with the check *off* produces, and that is
- * the default. A gate that consulted the rule alone would refuse every issuance in a stock build.
+ * the default. A gate that consulted the rule alone would refuse every issuance in a stock build; one
+ * that skipped `NotEvaluated` instead would let through an issuer with no certificate while the check
+ * is on. The gate reads the flag first, as Android's does.
  */
 class IosIssuerRegistrationGateTest {
 
@@ -163,6 +165,21 @@ class IosIssuerRegistrationGateTest {
             state !is IssueDocumentsPartialState.IssuerNotTrusted,
             "an unevaluated registration must not refuse issuance",
         )
+    }
+
+    @Test
+    fun an_issuer_publishing_no_registration_certificate_is_refused_while_the_check_is_on() = runTest {
+        // What the checker answers for an issuer with no `issuer_info`. Android refuses it at resolve
+        // ("refuse like any unverified outcome"); this gate once let it through by testing for
+        // `NotEvaluated` rather than for the setting.
+        val bridge = bridge(checkEnabled = true, outcome = IssuerRegistrationDomain.NotEvaluated)
+
+        val resolution = bridge.resolveOffer(offerUri, locale = "en")
+
+        val refused = assertIs<PlatformOfferResolution.IssuerNotTrusted>(resolution)
+        assertEquals(UntrustedIssuerReasonDomain.REGISTRATION_CERTIFICATE, refused.reason)
+        val state = bridge.issueResolvedOffer(offerUri, txCode = null).first()
+        assertIs<IssueDocumentsPartialState.IssuerNotTrusted>(state)
     }
 
     @Test

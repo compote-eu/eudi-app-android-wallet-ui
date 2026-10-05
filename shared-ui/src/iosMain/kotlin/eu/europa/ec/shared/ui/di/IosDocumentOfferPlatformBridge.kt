@@ -32,19 +32,22 @@ import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
 import eu.europa.ec.shared.wallet.multipaz.IosOfferResolution
 import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 /**
- * Whether a registration outcome refuses this issuance.
+ * Whether a registration outcome refuses this issuance — Android's offer gate,
+ * `isRegistrationCheckEnabled && isBlockedForIssuance`, in that order.
  *
- * 🚨 The `NotEvaluated` guard is the whole subtlety and belongs in one place. `isBlockedForIssuance`
- * answers true for it — correctly, for a wallet with the check on — but `NotEvaluated` is also exactly
- * what a wallet with the check *off* produces, and off is the default. Consulting the shared rule
- * alone would refuse every issuance in a stock build.
+ * 🚨 The flag is the whole subtlety and belongs in one place. `isBlockedForIssuance` answers true for
+ * `NotEvaluated`, which is exactly what a wallet with the check *off* produces, and off is the default:
+ * the rule alone would refuse every issuance in a stock build. With the check *on*, `NotEvaluated` is an
+ * issuer publishing no registration certificate, and Android refuses that like any unverified outcome.
+ * Until 2026-10-05 this gate tested for `NotEvaluated` instead of the flag, which let that issuer through.
  */
-private fun IssuerRegistrationDomain.refusesIssuance(): Boolean =
-    this !is IssuerRegistrationDomain.NotEvaluated && isBlockedForIssuance
+private fun IssuerRegistrationDomain.refusesIssuance(checkEnabled: Boolean): Boolean =
+    checkEnabled && isBlockedForIssuance
 
 /**
  * iOS's [DocumentOfferPlatformBridge]: offers are read and issued through multipaz.
@@ -102,7 +105,8 @@ internal class IosDocumentOfferPlatformBridge(
             is IosOfferResolution.Resolved -> {
                 resolvedOffers[offerUri] = resolution.offer
 
-                val registration = if (isRegistrationCheckEnabled()) {
+                val checkEnabled = isRegistrationCheckEnabled()
+                val registration = if (checkEnabled) {
                     checkRegistration(resolution.offer, locale)
                 } else {
                     // Not "we looked and found nothing" — "we did not look". The shared rule reads
@@ -111,7 +115,7 @@ internal class IosDocumentOfferPlatformBridge(
                 }
                 registrationOutcomes[offerUri] = registration
 
-                if (registration.refusesIssuance()) {
+                if (registration.refusesIssuance(checkEnabled)) {
                     // Android refuses here rather than on the offer screen, and the shared UI already
                     // has the screen for it — the user is told the issuer could not be placed instead
                     // of being shown an offer they cannot accept.
@@ -152,17 +156,8 @@ internal class IosDocumentOfferPlatformBridge(
         // The screen already refused to offer this, but the screen is not the gate: a deep link or a
         // resumed flow can reach here without one. Android gates in its controller for the same reason.
         val registration = registrationOutcomes[offerUri] ?: IssuerRegistrationDomain.NotEvaluated
-        if (registration.refusesIssuance()) {
-            return flow {
-                emit(
-                    IssueDocumentsPartialState.IssuerNotTrusted(
-                        reason = UntrustedIssuerReasonDomain.REGISTRATION_CERTIFICATE,
-                    )
-                )
-            }
-        }
 
-        return credentialIssuer.issueOffer(offer = offer, txCode = txCode).map { progress ->
+        val issuance = credentialIssuer.issueOffer(offer = offer, txCode = txCode).map { progress ->
             when (progress) {
                 is IosIssuanceProgress.Failure ->
                     IssueDocumentsPartialState.Failure(errorMessage = progress.message)
@@ -179,6 +174,18 @@ internal class IosDocumentOfferPlatformBridge(
                 } else {
                     IssueDocumentsPartialState.Success(documentIds = progress.documentIds)
                 }
+            }
+        }
+        return flow {
+            // Read when the flow runs, since the setting is: the switch can change after the resolve.
+            if (registration.refusesIssuance(checkEnabled = isRegistrationCheckEnabled())) {
+                emit(
+                    IssueDocumentsPartialState.IssuerNotTrusted(
+                        reason = UntrustedIssuerReasonDomain.REGISTRATION_CERTIFICATE,
+                    )
+                )
+            } else {
+                emitAll(issuance)
             }
         }
     }
