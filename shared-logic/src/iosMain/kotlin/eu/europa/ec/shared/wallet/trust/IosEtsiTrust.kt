@@ -35,12 +35,14 @@ import eu.europa.ec.eudi.etsi1196x2.consultation.pkix.PKIXConfiguration
 import eu.europa.ec.shared.wallet.platform.IosAppGroup
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.io.bytestring.ByteString
 import kotlinx.io.files.Path
 import org.multipaz.crypto.X509Cert
 import org.multipaz.request.Requester
 import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.Logger
 import platform.Foundation.NSData
+import platform.Foundation.base64EncodedStringWithOptions
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
 import platform.Foundation.create
@@ -216,7 +218,7 @@ internal class IosEtsiTrust(
                         }
 
                         else -> {
-                            Logger.i(TAG, "chain not trusted for $context: $validation")
+                            Logger.i(TAG, "chain not trusted for $context (${chain.leafSubject()}): $validation")
                             TrustVerdict.NOT_TRUSTED
                         }
                     }
@@ -317,3 +319,12 @@ internal fun List<X509Cert>?.toTrustChain(): List<NSData> =
             options = 0uL,
         )
     }.orEmpty()
+
+/**
+ * The subject of the chain's first certificate, for a log line — so a refusal names the certificate it
+ * refused, not only the rules it broke. Null when it will not parse.
+ */
+@OptIn(ExperimentalEncodingApi::class)
+internal fun List<NSData>.leafSubject(): String? = runCatching {
+    X509Cert(ByteString(Base64.Default.decode(first().base64EncodedStringWithOptions(0uL)))).subject.name
+}.getOrNull()
