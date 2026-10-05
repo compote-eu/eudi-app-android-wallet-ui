@@ -39,8 +39,11 @@ fun iosUserLanguage(
     preferredLanguages.firstNotNullOfOrNull { it.primaryLanguageSubtag() }
         ?: NSLocale.currentLocale.languageCode
 
-/** `fr` from `fr-FR`, `zh` from `zh-Hans-CN`; null when the tag does not start with a language. */
-private fun String.primaryLanguageSubtag(): String? =
+/**
+ * `fr` from `fr-FR`, `zh` from `zh-Hans-CN`; null when the tag does not start with a language. Shared with the
+ * places that match a recorded language against the user's, so `sk` and `sk-SK` count as the same language.
+ */
+internal fun String.primaryLanguageSubtag(): String? =
     substringBefore('-').substringBefore('_').lowercase().takeIf { subtag ->
         subtag.length in 2..8 && subtag.all { it in 'a'..'z' }
     }

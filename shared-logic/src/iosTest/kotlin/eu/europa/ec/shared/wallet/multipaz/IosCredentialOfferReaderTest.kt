@@ -199,6 +199,39 @@ class IosCredentialOfferReaderTest {
         assertIs<IosOfferResolution.Failure>(resolution)
     }
 
+    // ---- display names in the user's language, whatever region the issuer writes ---------------
+
+    @Test
+    fun a_display_name_tagged_with_a_region_is_shown_in_the_users_language() = runTest {
+        // multipaz matches display locales exactly, and the wallet asks in the user's bare language: an
+        // issuer writing `sk-SK` was shown in its first entry, English, to a Slovak user.
+        val regional = """
+            {"credential_issuer":"$issuerUrl","credential_endpoint":"$issuerUrl/credential",
+             "credential_configurations_supported":{
+               "pid_mdoc":{"format":"mso_mdoc","doctype":"eu.europa.ec.eudi.pid.1","scope":"pid",
+                 "display":[{"name":"PID","locale":"en-US"},{"name":"Občiansky preukaz","locale":"sk-SK"}]}}}
+        """.trimIndent()
+        val engine = MockEngine { request ->
+            if (request.url.toString() == "$issuerUrl/.well-known/openid-credential-issuer") {
+                respond(regional, headers = headersOf("Content-Type", "application/json"))
+            } else {
+                respondError(HttpStatusCode.NotFound)
+            }
+        }
+
+        val resolution = reader(engine).resolve(offerLink(), locale = "sk")
+
+        assertEquals(listOf("Občiansky preukaz"), assertIs<IosOfferResolution.Resolved>(resolution, "$resolution").documentNames)
+    }
+
+    @Test
+    fun metadata_with_bare_languages_is_unchanged() = runTest {
+        // The same names as before for every issuer seen so far, which all write bare codes.
+        val resolution = reader(engine()).resolve(offerLink(), locale = "sk")
+
+        assertEquals(listOf("PID (MSO MDoc)"), assertIs<IosOfferResolution.Resolved>(resolution).documentNames)
+    }
+
     // ---- an issuer the trust lists do not vouch for --------------------------------------------
 
     /** Serves the issuer metadata signed by [signer], as an issuer that signs it does. */

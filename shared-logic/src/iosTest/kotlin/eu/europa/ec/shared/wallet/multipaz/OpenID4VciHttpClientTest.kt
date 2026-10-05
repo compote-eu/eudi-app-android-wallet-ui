@@ -664,6 +664,31 @@ class OpenID4VciHttpClientTest {
         assertNull(notice.sessionAccessToken)
     }
 
+    // ---- display locales reduced to their language, for multipaz's exact matching ----------------
+
+    @Test
+    fun metadata_display_locales_are_reduced_to_their_language() = runTest {
+        val metadata = """{"credential_issuer":"https://issuer.test","display":[{"name":"Issuer","locale":"en-US"},{"name":"Vydavateľ","locale":"sk-SK"}]}"""
+        val client = openID4VciHttpClient(
+            MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) }
+        )
+
+        val body = client.get(metadataUrl).readRawBytes().decodeToString()
+
+        assertEquals("""{"credential_issuer":"https://issuer.test","display":[{"name":"Issuer","locale":"en"},{"name":"Vydavateľ","locale":"sk"}]}""", body)
+    }
+
+    @Test
+    fun metadata_with_bare_locales_passes_through_byte_for_byte() = runTest {
+        // Spacing and all: nothing to reduce, so nothing is re-serialised.
+        val metadata = """{ "credential_issuer": "https://issuer.test", "display": [ { "name": "Issuer", "locale": "en" } ] }"""
+        val client = openID4VciHttpClient(
+            MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) }
+        )
+
+        assertEquals(metadata, client.get(metadataUrl).readRawBytes().decodeToString())
+    }
+
     // ---- keeping the issuer's per-claim display names --------------------------------------------
 
     @Test

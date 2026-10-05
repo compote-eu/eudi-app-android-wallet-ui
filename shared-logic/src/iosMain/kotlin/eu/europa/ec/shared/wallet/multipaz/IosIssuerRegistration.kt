@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.platform.primaryLanguageSubtag
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.Json
@@ -108,11 +109,17 @@ data class SupervisoryAuthority(
 /** A certificate string carried once per language, as ETSI writes them. */
 data class LocalizedText(val language: String, val value: String)
 
-/** Picks the caller's language, falling back to the first entry rather than to nothing. */
-fun List<LocalizedText>.forLocale(locale: String): String? =
-    firstOrNull { it.language.equals(locale, ignoreCase = true) }?.value
-        ?: firstOrNull { locale.startsWith(it.language, ignoreCase = true) }?.value
+/**
+ * Picks the caller's language: the exact tag first, then the same language whatever the region — `sk`
+ * finds `sk-SK` and `sk-SK` finds `sk`, since certificates may write either (ETSI TS 119 475's own example
+ * uses `en-US` and `de-DE`) — and the first entry rather than nothing.
+ */
+fun List<LocalizedText>.forLocale(locale: String): String? {
+    val language = locale.primaryLanguageSubtag()
+    return firstOrNull { it.language.equals(locale, ignoreCase = true) }?.value
+        ?: firstOrNull { language != null && it.language.primaryLanguageSubtag() == language }?.value
         ?: firstOrNull()?.value
+}
 
 /** An attestation the certificate says the issuer is registered to provide. */
 data class RegisteredAttestation(

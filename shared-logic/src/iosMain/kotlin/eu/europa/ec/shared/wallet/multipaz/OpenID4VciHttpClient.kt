@@ -48,6 +48,9 @@ import kotlinx.io.readByteArray
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonArray
+import eu.europa.ec.shared.wallet.platform.primaryLanguageSubtag
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -570,7 +573,7 @@ internal class OpenID4VciCompatibilityEngine(
         if (response.statusCode != HttpStatusCode.OK) return response
         val unwrapped =
             if (isSignedMetadata(response)) unwrapSignedMetadata(data, response) else response
-        val bytes = (unwrapped.body as ByteReadChannel).readBuffer().readByteArray()
+        val bytes = withPrimaryLanguageLocales((unwrapped.body as ByteReadChannel).readBuffer().readByteArray())
 
         runCatching {
             val json = Json.parseToJsonElement(bytes.decodeToString()).jsonObject
@@ -598,6 +601,36 @@ internal class OpenID4VciCompatibilityEngine(
         }
 
         return unwrapped.replacingBody(bytes, asJson = true)
+    }
+
+    /**
+     * [metadata] with every display `locale` reduced to its language (`sk-SK` → `sk`), or the same bytes
+     * when none carries more than a language. multipaz picks display entries by EXACT match against the
+     * client's locales (`JsonParsing.extractDisplay`, whose TODO says so) and this wallet asks for the
+     * user's bare language, so an issuer writing `sk-SK` would show a Slovak user its English names. Done
+     * after any signature has been checked, and only to `locale` values: multipaz uses them for nothing else.
+     */
+    private fun withPrimaryLanguageLocales(metadata: ByteArray): ByteArray {
+        val json = runCatching { Json.parseToJsonElement(metadata.decodeToString()) }.getOrNull() ?: return metadata
+        var changed = false
+        fun normalised(element: JsonElement): JsonElement = when (element) {
+            is JsonObject -> JsonObject(
+                element.mapValues { (key, value) ->
+                    val tag = (value as? JsonPrimitive)?.takeIf { key == LOCALE && it.isString }?.content
+                    val language = tag?.primaryLanguageSubtag()
+                    if (tag != null && language != null && language != tag) {
+                        changed = true
+                        JsonPrimitive(language)
+                    } else {
+                        normalised(value)
+                    }
+                }
+            )
+            is JsonArray -> JsonArray(element.map { normalised(it) })
+            else -> element
+        }
+        val result = normalised(json)
+        return if (changed) result.toString().encodeToByteArray() else metadata
     }
 
     /**
@@ -1155,6 +1188,7 @@ internal class OpenID4VciCompatibilityEngine(
         const val ATTESTATION_POP_HEADER = "OAuth-Client-Attestation-PoP"
         const val DPOP_HEADER = "DPoP"
         const val DPOP_NONCE_HEADER = "DPoP-Nonce"
+        const val LOCALE = "locale"
 
         /**
          * Handed to multipaz as a `DPoP-Nonce` purely so its retry fires; the value is never checked
