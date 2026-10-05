@@ -115,6 +115,12 @@ targets:
         # both come from the same two properties files the app reads. XcodeGen otherwise writes 1.0/1.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # The app's languages, so the consent screen this extension draws follows the same per-app
+        # choice — see the app target's copy.
+        CFBundleLocalizations:
+          - en
+          - sk
+          - hu
         # 🪤 REQUIRED, and its absence is a crash rather than a degradation. This extension renders the
         # wallet's own Compose consent screen, and Compose Multiplatform's `PlistSanityCheck` throws
         #   IllegalStateException: `Info.plist` doesn't have a valid CADisableMinimumFrameDurationOnPhone
@@ -240,6 +246,16 @@ targets:
         # reads it, as the official iOS wallet's `ConfigLogicImpl.appVersion` reads the same key.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # The languages this app is translated into: English, and Slovak and Hungarian on this branch.
+        # Compose Multiplatform keeps its strings in its own resources rather than in `.lproj` folders,
+        # so iOS cannot see the translations; this key is how Compose's documentation says to declare
+        # them. With it iOS offers a per-app Language choice under Settings → this app, and resolves
+        # the app's language among these three — which also puts system dialogs in that language.
+        # The extension carries the same list, because it runs as a bundle of its own.
+        CFBundleLocalizations:
+          - en
+          - sk
+          - hu
         # The shared container both processes read, published so neither has to *derive* it.
         #
         # 🪤 Deriving it is exactly the bug this key exists to prevent. The wallet used to ask iOS for
