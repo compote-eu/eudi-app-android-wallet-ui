@@ -93,8 +93,9 @@ private suspend fun MultipazWalletStore.documentFormatType(documentId: String): 
 /**
  * One event as a transaction, or null for one the History tab has nothing to say about.
  *
- * Every entry is completed: multipaz logs an event only once the work has succeeded, so a failed or
- * cancelled exchange leaves none — as on Android, where a cancelled presentation logs nothing either.
+ * These are multipaz's events from before presentations and issuances were recorded the way wallet-core
+ * records them (`IosPresentationLog`, `IosIssuanceLog`). multipaz logged one only once the work had
+ * succeeded, so every one of them is completed.
  */
 internal suspend fun Event.toTransactionLogDomain(
     formatOf: suspend (documentId: String) -> FormatType?,
@@ -171,17 +172,17 @@ internal suspend fun Event.toTransactionLogDomain(
     }
 }
 
-private fun QualifiedIdentifierRecord.toDomain() = QualifiedIdentifierDomain(schemeUri = schemeUri, value = value)
+internal fun QualifiedIdentifierRecord.toDomain() = QualifiedIdentifierDomain(schemeUri = schemeUri, value = value)
 
 /** Android's rule: an intermediary appears only when the certificate named one. */
-private fun PresentationPartyRecord.intermediaryDomain(): InteractingPartyDomain? = InteractingPartyDomain(
+internal fun PresentationPartyRecord.intermediaryDomain(): InteractingPartyDomain? = InteractingPartyDomain(
     name = intermediaryName?.let { name -> LocalizedTextDomain(UNDETERMINED_LANGUAGE, name) },
     identifier = intermediaryIdentifier?.toDomain(),
     contacts = emptyList(),
 ).takeIf { intermediary -> intermediary.name != null || intermediary.identifier != null }
 
 /** Android's `toPresentationRegistrationDomain`: null when the certificate declared none of it. */
-private fun PresentationPartyRecord.registrationDomain(languageCode: String): PresentationRegistrationDomain? {
+internal fun PresentationPartyRecord.registrationDomain(languageCode: String): PresentationRegistrationDomain? {
     val localizedPurpose = purpose.map { LocalizedText(it.language, it.value) }.forLocale(languageCode)
     val authority = DpaContactDomain(
         name = authorityName?.let { name -> LocalizedTextDomain(UNDETERMINED_LANGUAGE, name) },
@@ -214,7 +215,7 @@ private suspend fun EventPresentmentDataDocument.toCredentialClaims(
     )
 }
 
-private fun RequestedClaim.credentialIdentifier(): FormatType? = when (this) {
+internal fun RequestedClaim.credentialIdentifier(): FormatType? = when (this) {
     is MdocRequestedClaim -> docType
     is JsonRequestedClaim -> vctValues.firstOrNull()
 }?.takeIf { it.isNotBlank() }
@@ -224,7 +225,7 @@ private fun RequestedClaim.credentialIdentifier(): FormatType? = when (this) {
  * TS10 entries hold — rather than the element alone with the namespace as a type, as the consent
  * screen's [claimPath] keeps it.
  */
-private fun RequestedClaim.logSegments(claim: Claim): List<ClaimPathSegment> = when (this) {
+internal fun RequestedClaim.logSegments(claim: Claim): List<ClaimPathSegment> = when (this) {
     is MdocRequestedClaim -> listOf(ClaimPathSegment.Key(namespaceName), ClaimPathSegment.Key(dataElementName))
     is JsonRequestedClaim -> claimPath(this, claim).segments
 }

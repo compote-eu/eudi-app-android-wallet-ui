@@ -222,6 +222,9 @@ class IosRemotePresenter internal constructor(
     /** How many times multipaz has asked for consent in the current exchange; for the log only. */
     private var consentRequests: Int = 0
 
+    /** The History row of the current exchange; see [IosPresentationLog]. */
+    private var history: IosPresentationLog? = null
+
     /**
      * Starts the exchange the verifier's link describes.
      *
@@ -241,6 +244,7 @@ class IosRemotePresenter internal constructor(
         // the wrong party, and telling nobody is better than telling the wrong one. It carries the link's
         // `client_id`, which the signed request object must repeat.
         requestNotice = PresentationRequestNotice(linkClientId = linkClientIdOf(uri))
+        val history = IosPresentationLog { walletEngine.store() }.also { this.history = it }
         mutableState.value = IosRemotePresentationState.Resolving
 
         presentmentJob = scope.launch {
@@ -272,6 +276,7 @@ class IosRemotePresenter internal constructor(
                     sharedDocuments = sharedDocuments,
                     redirectUri = redirect,
                 )
+                history.completed()
             } catch (e: CancellationException) {
                 // 🪤 The state is deliberately left alone — whoever cancelled owns it — but say so,
                 // because a cancellation mid-send leaves `Sending` on screen for ever otherwise.
@@ -284,15 +289,19 @@ class IosRemotePresenter internal constructor(
                     is PresentmentCanceledException -> {
                         // The user declined. Nothing was shared and nothing went wrong.
                         mutableState.value = IosRemotePresentationState.Idle
+                        history.stopped()
                     }
 
                     is PresentmentCannotSatisfyRequestException -> {
                         // An answer, not an error — see [IosRemotePresentationState.NothingToShare].
-                        mutableState.value = nothingToShare(
+                        val registration = evaluateRelyingPartyRegistration()
+                        val nothing = nothingToShare(
                             notice = requestNotice,
                             readerTrust = readerTrust,
-                            registration = evaluateRelyingPartyRegistration(),
+                            registration = registration,
                         )
+                        mutableState.value = nothing
+                        history.nothingToShare(nothing.requesterName, registration.partyRecord())
                     }
 
                     else -> if (t.isUntrustedVerifierRefusal()) {
@@ -306,7 +315,14 @@ class IosRemotePresenter internal constructor(
                     } else {
                         // multipaz's bare `check(...)` on the answer's status is what threw; the engine
                         // read the body it discarded.
-                        requestNotice.verifierRejection?.let(::rejected) ?: fail(t)
+                        val rejection = requestNotice.verifierRejection
+                        if (rejection != null) {
+                            rejected(rejection)
+                            history.rejected()
+                        } else {
+                            fail(t)
+                            history.failed(t)
+                        }
                     }
                 }
             }
@@ -394,6 +410,10 @@ class IosRemotePresenter internal constructor(
 
     /** Abandons the exchange — the back button, and every teardown. */
     fun cancel() {
+        // Its own coroutine, as the exchange's is cancelled below; a row already ended is left as it is,
+        // which is what makes the teardown after a successful send harmless here.
+        history?.let { ending -> scope.launch { ending.stopped() } }
+        history = null
         pendingConsent?.complete(null)
         pendingConsent = null
         pendingData = null
@@ -445,13 +465,14 @@ class IosRemotePresenter internal constructor(
         pendingConsent = consent
         pendingData = data.credentialQueryResult
         val registration = evaluateRelyingPartyRegistration()
-        rememberPartyRecord(registration)
+        val name = requesterName(trustedRequesterIdentity?.trustMetadata, requester.certChain)
+        history?.requestReceived(name, registration.partyRecord(), data.credentialQueryResult)
         mutableState.value = IosRemotePresentationState.Requesting(
             request = data.credentialQueryResult.toPresentmentRequest(
                 // A name without trust behind it is still worth showing. Unlike proximity there is
                 // usually *something* here: an OpenID4VP request over a URI scheme must be signed, so
                 // the verifier's certificate is present even when nothing vouches for it.
-                requesterName = requesterName(trustedRequesterIdentity?.trustMetadata, requester.certChain),
+                requesterName = name,
                 requesterIsTrusted = trustedRequesterIdentity != null,
                 // Read from the request object the observing engine already kept — `verifier_info` is
                 // another claim multipaz does not parse, and re-fetching a single-use `request_uri`
@@ -464,24 +485,10 @@ class IosRemotePresenter internal constructor(
         // ever. The verifier's own transaction expires on a similar scale.
         val selection = withTimeoutOrNull(CONSENT_TIMEOUT) { consent.await() }
         if (selection != null) {
+            history?.presented(selection)
             mutableState.value = IosRemotePresentationState.Sending
         }
         return selection
-    }
-
-    /**
-     * Leaves the relying party's registered details for the event this presentation logs once the verifier
-     * accepts it — see [PresentationPartyRecords]. Android records them whenever the certificate could be
-     * read, verified or not, and only while the registration check is on; so does this.
-     */
-    private suspend fun rememberPartyRecord(outcome: RelyingPartyRegistrationOutcome) {
-        val registration = when (outcome) {
-            is RelyingPartyRegistrationOutcome.Verified -> outcome.registration
-            is RelyingPartyRegistrationOutcome.Failed -> outcome.registration
-            RelyingPartyRegistrationOutcome.NotChecked, RelyingPartyRegistrationOutcome.NotOffered -> null
-        } ?: return
-        val signer = requestNotice.requestSigner ?: return
-        walletEngine.store().presentationPartyRecords.remember(signer, registration.toPresentationPartyRecord())
     }
 
     /**

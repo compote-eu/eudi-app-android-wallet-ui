@@ -67,18 +67,29 @@ internal val walletTransactionTypes: List<TransactionType<*>> =
 /** What [this] asks to authorise, for the consent screen; [PresentationTransactionDataDomain.Unavailable] when unreadable. */
 internal fun TransactionData<*>.toPresentationTransactionDataDomain(): PresentationTransactionDataDomain {
     val json = payload as? String ?: return PresentationTransactionDataDomain.Unavailable
-    return runCatching {
-        when (type.identifier) {
+    return transactionDataDomainOf(type = type.identifier, json = json, displayName = type.displayName)
+}
+
+/** The same, from what a History record kept of it — so a past presentation reads as its consent screen did. */
+internal fun TransactionDataRecord.toPresentationTransactionDataDomain(): PresentationTransactionDataDomain =
+    transactionDataDomainOf(type = type, json = json, displayName = displayName)
+
+/** One entry as the record keeps it, or null when its payload is not the decoded JSON this wallet reads. */
+internal fun TransactionData<*>.toRecordOrNull(): TransactionDataRecord? =
+    (payload as? String)?.let { json -> TransactionDataRecord(type = type.identifier, json = json, displayName = type.displayName) }
+
+private fun transactionDataDomainOf(type: String, json: String, displayName: String?): PresentationTransactionDataDomain =
+    runCatching {
+        when (type) {
             QES_APPROVAL_TYPE -> qesJson.decodeFromString(QesApprovalPayload.serializer(), json)
-                .toDomain(displayName = type.displayName)
+                .toDomain(displayName = displayName)
 
             QES_REQUEST_TYPE -> qesJson.decodeFromString(QesRequestPayload.serializer(), json)
-                .toDomain(displayName = type.displayName)
+                .toDomain(displayName = displayName)
 
             else -> PresentationTransactionDataDomain.Unavailable
         }
     }.getOrDefault(PresentationTransactionDataDomain.Unavailable)
-}
 
 /**
  * A CSC transaction type, holding its transaction data as the decoded JSON (see the note at the top).

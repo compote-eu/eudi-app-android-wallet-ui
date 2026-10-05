@@ -27,6 +27,7 @@ import eu.europa.ec.corelogic.model.LocalizedTextDomain
 import eu.europa.ec.corelogic.model.QualifiedIdentifierDomain
 import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.corelogic.model.TransactionResultDomain
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.io.bytestring.ByteString
@@ -91,7 +92,37 @@ internal sealed interface IosTransactionRecord {
         val userTriggered: Boolean? = null,
         val issuer: IssuerPartyRecord = IssuerPartyRecord(),
     ) : IosTransactionRecord
+
+    /**
+     * A presentation, or an attempt at one — wallet-core's `Presentation`, as its `PresentationLogListener`
+     * writes it: when a request the wallet can answer arrives, and brought up to date when it ends.
+     *
+     * @property requesterName the name the consent screen gave the relying party, for when its
+     *   registration names it not.
+     * @property claimsRequested what the consent screen asked for, per credential.
+     * @property claimsPresented what was actually sent, which the user may have narrowed.
+     */
+    @Serializable
+    @SerialName("presentation")
+    data class Presentation(
+        override val id: String,
+        override val timeEpochMillis: Long,
+        override val completed: Boolean,
+        override val reason: String? = null,
+        val requesterName: String? = null,
+        val party: PresentationPartyRecord? = null,
+        val claimsRequested: List<CredentialClaimsRecord> = emptyList(),
+        val claimsPresented: List<CredentialClaimsRecord> = emptyList(),
+        val transactionData: List<TransactionDataRecord> = emptyList(),
+    ) : IosTransactionRecord
 }
+
+/**
+ * One `transaction_data` entry as the request carried it: its type and its decoded JSON, read into the
+ * shared domain by the consent screen's own parser when the History shows it.
+ */
+@Serializable
+internal data class TransactionDataRecord(val type: String, val json: String, val displayName: String? = null)
 
 /**
  * Who issued, as wallet-core names the interacting party of an issuance: from the issuer's registration
@@ -146,6 +177,7 @@ internal suspend fun MultipazWalletStore.recordTransaction(record: IosTransactio
     } else {
         table.insert(key = record.id, data = encoded, expiration = expiration)
     }
+    transactionRecordChanges.tryEmit(Unit)
 }
 
 /** Every recorded transaction, as the shared domain; order is the caller's to decide. */
@@ -159,13 +191,35 @@ internal suspend fun MultipazWalletStore.transactionRecord(id: String): IosTrans
 
 /** Removes the recorded transaction [id], if there is one. */
 internal suspend fun MultipazWalletStore.deleteTransactionRecord(id: String) {
-    transactionRecordsTable().delete(key = id)
+    if (transactionRecordsTable().delete(key = id)) transactionRecordChanges.tryEmit(Unit)
 }
 
-internal fun IosTransactionRecord.toDomain(): TransactionLogDomain {
+internal fun IosTransactionRecord.toDomain(
+    /** The language a registered purpose is shown in, as Android picks it by the user's locale. */
+    languageCode: String = iosUserLanguage(),
+): TransactionLogDomain {
     val time = Instant.fromEpochMilliseconds(timeEpochMillis).toLocalDateTime(TimeZone.currentSystemDefault())
     val result = if (completed) TransactionResultDomain.Completed else TransactionResultDomain.NotCompleted(reason)
     return when (this) {
+        is IosTransactionRecord.Presentation -> TransactionLogDomain.Presentation(
+            id = id,
+            time = time,
+            result = result,
+            party = InteractingPartyDomain(
+                // The registered name first, as wallet-core takes it; otherwise what consent called them.
+                name = (party?.name?.takeIf { it.isNotBlank() } ?: requesterName?.takeIf { it.isNotBlank() })
+                    ?.let { name -> LocalizedTextDomain(UNDETERMINED_LANGUAGE, name) },
+                identifier = party?.identifier?.toDomain(),
+                contacts = party?.contacts.orEmpty(),
+            ),
+            partyType = null,
+            intermediary = party?.intermediaryDomain(),
+            registration = party?.registrationDomain(languageCode),
+            claimsRequested = claimsRequested.map { it.toDomain() },
+            claimsPresented = claimsPresented.map { it.toDomain() },
+            transactionData = transactionData.map { it.toPresentationTransactionDataDomain() },
+        )
+
         is IosTransactionRecord.Issuance -> {
             val details = IssuanceDetailsDomain(
                 issuer = InteractingPartyDomain(

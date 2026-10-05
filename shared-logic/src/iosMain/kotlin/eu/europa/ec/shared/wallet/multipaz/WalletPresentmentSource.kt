@@ -73,9 +73,8 @@ internal suspend fun walletPresentmentSource(
 ): SimplePresentmentSource = SimplePresentmentSource(
     documentStore = store.documentStore,
     documentTypeRepository = documentTypeRepository,
-    // What makes a successful exchange show up in the History tab: multipaz logs the event itself
-    // once the response is out, so supplying the logger *is* the whole write side.
-    eventLogger = store.eventLogger(),
+    // No event logger: each presenter writes the History row itself (`IosPresentationLog`), as wallet-core
+    // does — multipaz would log only an exchange the verifier accepted, and a second row beside ours.
     // Reader trust, matching Android's `readerAuthPolicy(EnforceIfPresent)`. multipaz's default is
     // `{ null }`, which reads as "not trusted" for every verifier that ever asks. The identity vouched for
     // is the one whose chain the trust source judged (see [certChain]).

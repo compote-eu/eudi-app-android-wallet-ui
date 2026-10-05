@@ -150,13 +150,13 @@ internal fun PresentationActionRecord.toDomain(): TransactionLogDomain.Presentat
     }
 }
 
-private fun ClaimPathSegment.toRecord() = when (this) {
+internal fun ClaimPathSegment.toRecord() = when (this) {
     is ClaimPathSegment.Key -> ClaimSegmentRecord(key = name)
     is ClaimPathSegment.Index -> ClaimSegmentRecord(index = index)
     ClaimPathSegment.AllElements -> ClaimSegmentRecord()
 }
 
-private fun ClaimSegmentRecord.toDomain(): ClaimPathSegment = when {
+internal fun ClaimSegmentRecord.toDomain(): ClaimPathSegment = when {
     key != null -> ClaimPathSegment.Key(key)
     index != null -> ClaimPathSegment.Index(index)
     else -> ClaimPathSegment.AllElements
@@ -176,15 +176,13 @@ internal suspend fun MultipazWalletStore.recordPresentationAction(record: Presen
     table.get(key = record.id, partitionId = record.parentPresentationId)?.let { stored ->
         return stored == encoded
     }
-    val parent = eventLogger().getEvents()
-        .firstOrNull { event -> event.identifier == record.parentPresentationId } as? EventPresentment
-        ?: return false
+    val parentTime = presentationTime(record.parentPresentationId) ?: return false
     table.insert(
         key = record.id,
         data = encoded,
         partitionId = record.parentPresentationId,
         // It goes with its presentation, as Android's rows go with theirs (a cascading foreign key).
-        expiration = parent.timestamp + MultipazWalletStore.EVENT_RETENTION,
+        expiration = parentTime + MultipazWalletStore.EVENT_RETENTION,
     )
     presentationActionChanges.tryEmit(Unit)
     return true
@@ -198,7 +196,7 @@ internal suspend fun MultipazWalletStore.presentationActions(
     presentationId: String,
 ): List<TransactionLogDomain.PresentationAction> {
     val table = presentationActionsTable()
-    if (eventLogger().getEvents().none { event -> event.identifier == presentationId }) {
+    if (presentationTime(presentationId) == null) {
         deletePresentationActions(presentationId)
         return emptyList()
     }
@@ -214,11 +212,20 @@ internal fun MultipazWalletStore.observePresentationActions(
 ): Flow<List<TransactionLogDomain.PresentationAction>> = flow {
     val logger = eventLogger()
     emitAll(
-        merge(presentationActionChanges, logger.eventFlow)
+        merge(presentationActionChanges, logger.eventFlow, transactionRecordChanges)
             .onStart { emit(Unit) }
             .map { presentationActions(presentationId) }
     )
 }
+
+/**
+ * When the presentation [id] happened, or null when there is none: one of multipaz's events from before
+ * presentations were recorded here, or one of the wallet's own records.
+ */
+private suspend fun MultipazWalletStore.presentationTime(id: String): Instant? =
+    (eventLogger().getEvents().firstOrNull { event -> event.identifier == id } as? EventPresentment)?.timestamp
+        ?: (transactionRecord(id) as? IosTransactionRecord.Presentation)
+            ?.let { record -> Instant.fromEpochMilliseconds(record.timeEpochMillis) }
 
 /** Removes every attempt recorded under [presentationId]. */
 internal suspend fun MultipazWalletStore.deletePresentationActions(presentationId: String) {

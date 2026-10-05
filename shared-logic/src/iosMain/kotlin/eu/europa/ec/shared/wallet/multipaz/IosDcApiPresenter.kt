@@ -20,6 +20,8 @@ import eu.europa.ec.shared.wallet.platform.IosRegistrationCheckSetting
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import eu.europa.ec.shared.wallet.trust.certChain
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CancellationException
 import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.presentment.ConsentData
@@ -143,6 +145,8 @@ internal class IosDcApiPresenter(
     ): IosDcApiOutcome {
         var shared: List<String> = emptyList()
         var deviceRequest: DeviceRequest? = null
+        // This runs in the document-provider extension, whose store is the app's, in the shared group.
+        val history = IosPresentationLog { store }
 
         return try {
             // Nothing is preselected: iOS's picker preselects nothing that reaches us here. Android's
@@ -164,27 +168,41 @@ internal class IosDcApiPresenter(
                         reader = requester.certChain?.certificates?.firstOrNull(),
                     )
 
+                    history.requestReceived(
+                        requesterName = requesterName(trustedRequesterIdentity?.trustMetadata, requester.certChain)
+                            ?: origin,
+                        party = registration.partyRecord(),
+                        request = consentData.credentialQueryResult,
+                    )
                     onConsent(requester, trustedRequesterIdentity, consentData, registration)?.also { selection ->
+                        history.presented(selection)
                         shared = selection.matches
                             .map { it.credential.document.displayName ?: it.credential.document.identifier }
                             .distinct()
                     }
                 },
             )
+            // Handed back to iOS, which delivers it: wallet-core's DC API success (`IntentToSend`).
+            history.completed()
             IosDcApiOutcome.Sent(responseJson = responseJson, sharedDocuments = shared)
         } catch (cancelled: CancellationException) {
+            withContext(NonCancellable) { history.stopped() }
             throw cancelled
         } catch (canceled: PresentmentCanceledException) {
             Logger.i(TAG, "declined by the user")
+            history.stopped()
             IosDcApiOutcome.Declined
         } catch (unsatisfiable: PresentmentCannotSatisfyRequestException) {
             Logger.i(TAG, "nothing matches: ${unsatisfiable.message}")
+            history.nothingToShare(requesterName = origin, party = null)
             IosDcApiOutcome.NothingToShare
         } catch (refused: UntrustedVerifierException) {
+            // Refused before consent, so no request was ever shown and there is no row to end.
             Logger.w(TAG, "blocked: ${refused.message}")
             IosDcApiOutcome.VerifierNotTrusted
         } catch (failure: Throwable) {
             Logger.w(TAG, "presentment failed: ${failure::class.simpleName}: ${failure.message}")
+            history.failed(failure)
             IosDcApiOutcome.Failed(
                 message = failure.message?.takeIf { it.isNotBlank() && it != CHECK_FAILED }
                     ?: SHARING_FAILED,
@@ -198,9 +216,7 @@ internal class IosDcApiPresenter(
      * Both credential kinds are offered, exactly as [IosRemotePresenter] does and for the same reason:
      * a DC API request is DCQL, and a DCQL query may name an SD-JWT VC as readily as an mdoc.
      *
-     * `eventLogger` is supplied so a successful exchange reaches the History tab — multipaz writes the
-     * event itself once the response is out, so passing the logger *is* the whole write side. That it
-     * works from a second process is one of the things the device run has to confirm.
+     * The History row is [IosPresentationLog]'s, written from this process into the app's store.
      */
     private suspend fun presentmentSource(
         showConsent: suspend (

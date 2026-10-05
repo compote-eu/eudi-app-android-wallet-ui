@@ -16,6 +16,10 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.corelogic.model.ClaimPathSegment
+import eu.europa.ec.corelogic.model.CredentialClaimsDomain
+import eu.europa.ec.corelogic.model.TransactionLogDomain
+import eu.europa.ec.corelogic.model.TransactionResultDomain
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import eu.europa.ec.shared.wallet.multipaz.harness.MDOC_PID_DOC_TYPE
 import eu.europa.ec.shared.wallet.multipaz.harness.sampleIssuerMetadata
@@ -590,6 +594,126 @@ class IosDcApiPresenterTest {
         )
         assertTrue("family_name" in plaintext, "the held claim is missing from the response")
         assertFalse("age_birth_year" in plaintext, "an element the PID does not hold appears in the response")
+    }
+
+    //endregion
+
+    //region the History row — wallet-core's `PresentationLogListener`, written from the extension
+
+    private suspend fun MultipazWalletStore.presentations() =
+        transactionLogs().filterIsInstance<TransactionLogDomain.Presentation>()
+
+    private fun List<CredentialClaimsDomain>.elements() =
+        flatMap { credential -> credential.claims.map { claim -> claim.segments.last() } }
+
+    @Test
+    fun a_shared_request_is_recorded_as_a_completed_presentation() = runTest {
+        val store = store()
+        store.seedPid()
+
+        IosDcApiPresenter(store).present(
+            protocol = "org-iso-mdoc",
+            data = mdocApiRequest(),
+            origin = verifierOrigin,
+            onConsent = acceptEverything,
+        )
+
+        val presentation = store.presentations().single()
+        assertEquals(TransactionResultDomain.Completed, presentation.result)
+        assertEquals(listOf(MDOC_PID_DOC_TYPE), presentation.claimsRequested.map { it.credential.identifier })
+        assertTrue(presentation.claimsRequested.elements().isNotEmpty())
+        // Everything asked for was sent.
+        assertEquals(presentation.claimsRequested, presentation.claimsPresented)
+        // No certificate and no trust list here, so the relying party is known by its origin.
+        assertEquals(verifierOrigin, presentation.party.name?.text)
+    }
+
+    @Test
+    fun what_the_user_left_out_is_requested_but_not_presented() = runTest {
+        val store = store()
+        store.seedPid()
+        val request = buildRequest()
+
+        IosDcApiPresenter(store).present(
+            protocol = "org-iso-mdoc",
+            data = request.json,
+            origin = verifierOrigin,
+            onConsent = { _, _, data, _ ->
+                CredentialSelection(
+                    matches = data.credentialQueryResult.credentialSets
+                        .flatMap { it.options }
+                        .flatMap { it.members }
+                        .mapNotNull { member ->
+                            val match = member.matches.firstOrNull() ?: return@mapNotNull null
+                            match.copy(claims = match.claims.filterKeys {
+                                it is MdocRequestedClaim && it.dataElementName == "family_name"
+                            })
+                        },
+                )
+            },
+        )
+
+        val presentation = store.presentations().single()
+        assertTrue(ClaimPathSegment.Key("given_name") in presentation.claimsRequested.elements())
+        assertEquals(listOf<ClaimPathSegment>(ClaimPathSegment.Key("family_name")), presentation.claimsPresented.elements())
+    }
+
+    @Test
+    fun a_declined_request_is_recorded_as_stopped_with_nothing_presented() = runTest {
+        val store = store()
+        store.seedPid()
+
+        IosDcApiPresenter(store).present(
+            protocol = "org-iso-mdoc",
+            data = mdocApiRequest(),
+            origin = verifierOrigin,
+            onConsent = { _, _, _, _ -> null },
+        )
+
+        val presentation = store.presentations().single()
+        assertEquals(TransactionResultDomain.NotCompleted(REASON_STOPPED), presentation.result)
+        assertTrue(presentation.claimsRequested.isNotEmpty())
+        assertTrue(presentation.claimsPresented.isEmpty())
+        // Nothing was shared, so there is nothing to ask the relying party to delete.
+        assertFalse(presentation.canRequestDataDeletion)
+    }
+
+    @Test
+    fun a_request_the_wallet_cannot_answer_is_recorded_with_wallet_cores_reason() = runTest {
+        val store = store()
+        store.seedPid()
+
+        IosDcApiPresenter(store).present(
+            protocol = "org-iso-mdoc",
+            data = mdocApiRequest(docType = "org.iso.18013.5.1.mDL"),
+            origin = verifierOrigin,
+            onConsent = acceptEverything,
+        )
+
+        val presentation = store.presentations().single()
+        assertEquals(TransactionResultDomain.NotCompleted(REASON_REQUEST_NOT_SATISFIABLE), presentation.result)
+    }
+
+    @Test
+    fun a_request_that_could_not_be_read_or_was_refused_before_consent_leaves_no_row() = runTest {
+        // Android logs a presentation only once a request it can process arrives.
+        val store = store()
+        store.seedPid()
+
+        IosDcApiPresenter(store).present(
+            protocol = "not-a-protocol",
+            data = "{}",
+            origin = verifierOrigin,
+            onConsent = refuseToBeAsked,
+        )
+        IosDcApiPresenter(store, readerTrust = ReaderTrustSource { null }).present(
+            protocol = "org-iso-mdoc",
+            data = buildRequest(reader = testReader()).json,
+            origin = verifierOrigin,
+            onConsent = refuseToBeAsked,
+        )
+
+        assertTrue(store.transactionLogs().isEmpty())
     }
 
     //endregion

@@ -83,6 +83,12 @@ internal class MultipazWalletStore(
     /** The relying party each consent saw, handed to the event its presentation logs. */
     val presentationPartyRecords = PresentationPartyRecords()
 
+    /** Emits whenever one of the wallet's own transaction records is written or removed. */
+    val transactionRecordChanges = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+
     /** Emits whenever a deletion request or report is recorded or removed — see `IosPresentationActions.kt`. */
     val presentationActionChanges = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1,
@@ -99,14 +105,13 @@ internal class MultipazWalletStore(
     suspend fun transactionRecordsTable(): StorageTable = appDataStorage.getTable(TransactionRecordsTableSpec)
 
     /**
-     * The wallet's transaction log.
+     * multipaz's transaction log, which this wallet now only reads and deletes from.
      *
-     * The presentment functions write to it *themselves*: `iosIso18013Presentment` (our copy of
-     * multipaz's) and multipaz's `uriSchemePresentment` both call
-     * `source.eventLogger?.addEventAsync(...)` once a response has gone out, and `ProvisioningModel`
-     * logs a provisioning event when a document is issued. So the whole write side is this object
-     * being handed to them rather than the null they were getting — which is also why only
-     * *successful* exchanges appear, exactly as on Android.
+     * Presentations and issuances were written here by multipaz itself — the presentment functions and
+     * `ProvisioningModel` log an event once a response has gone out or a document is issued — which is why
+     * only *successful* exchanges ever appeared. Both are now recorded the way wallet-core records them,
+     * in [transactionRecordsTable], and no logger is handed to multipaz any more; the events already here
+     * stay readable until they expire.
      *
      * One instance per store, since a second would keep its own initialization state over the same
      * table for no benefit.

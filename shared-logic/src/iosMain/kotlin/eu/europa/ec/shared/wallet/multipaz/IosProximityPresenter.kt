@@ -157,6 +157,9 @@ class IosProximityPresenter internal constructor(
     /** The request being consented to, as the reader sent it — where its registration certificate is. */
     private var deviceRequest: DeviceRequest? = null
 
+    /** The History row of the current exchange; see [IosPresentationLog]. */
+    private var history: IosPresentationLog? = null
+
     /**
      * Advertises this wallet over BLE and publishes the QR the reader scans.
      *
@@ -254,6 +257,9 @@ class IosProximityPresenter internal constructor(
 
     /** Stops advertising and closes any connection — the back button, and every terminal state. */
     fun cancel() {
+        // Its own coroutine, as the exchange's is cancelled below; a row already ended is left as it is.
+        history?.let { ending -> scope.launch { ending.stopped() } }
+        history = null
         pendingConsent?.complete(null)
         pendingConsent = null
         pendingData = null
@@ -270,6 +276,7 @@ class IosProximityPresenter internal constructor(
         eDeviceKey: EcPrivateKey,
         engagement: ByteArray,
     ) {
+        val history = IosPresentationLog { walletEngine.store() }.also { this.history = it }
         try {
             val connected = transports.waitForConnection(eSenderKey = eDeviceKey.publicKey)
             transport = connected
@@ -286,10 +293,20 @@ class IosProximityPresenter internal constructor(
                 onDeviceRequest = { deviceRequest = it },
             )
             mutableState.value = IosProximityState.Sent(sharedDocuments = sharedDocuments)
+            history.completed()
         } catch (e: CancellationException) {
             throw e
+        } catch (canceled: PresentmentCanceledException) {
+            mutableState.value = endedBy(canceled)
+            history.stopped()
+        } catch (unsatisfiable: PresentmentCannotSatisfyRequestException) {
+            mutableState.value = endedBy(unsatisfiable)
+            history.nothingToShare(requesterName = null, party = null)
         } catch (t: Throwable) {
             mutableState.value = endedBy(t)
+            // An untrusted reader is refused before consent, so no request was shown and there is no row
+            // for this to end.
+            history.failed(t)
         }
     }
 
@@ -356,11 +373,13 @@ class IosProximityPresenter internal constructor(
         val consent = CompletableDeferred<CredentialSelection?>()
         pendingConsent = consent
         pendingData = data.credentialQueryResult
+        // A name without trust behind it is still worth showing — but only the trust decision marks it
+        // verified, and over BLE there is usually neither.
+        val name = trustedRequesterIdentity?.trustMetadata?.displayName ?: requester.appId
+        history?.requestReceived(name, registration.partyRecord(), data.credentialQueryResult)
         mutableState.value = IosProximityState.Requesting(
             request = data.credentialQueryResult.toPresentmentRequest(
-                // A name without trust behind it is still worth showing — but only the trust decision
-                // marks it verified, and over BLE there is usually neither.
-                requesterName = trustedRequesterIdentity?.trustMetadata?.displayName ?: requester.appId,
+                requesterName = name,
                 requesterIsTrusted = trustedRequesterIdentity != null,
                 relyingPartyRegistration = registration,
             ),
@@ -370,6 +389,7 @@ class IosProximityPresenter internal constructor(
         // connection open forever is worse than telling it no.
         val selection = withTimeoutOrNull(CONSENT_TIMEOUT) { consent.await() }
         if (selection != null) {
+            history?.presented(selection)
             mutableState.value = IosProximityState.Sending
         }
         return selection

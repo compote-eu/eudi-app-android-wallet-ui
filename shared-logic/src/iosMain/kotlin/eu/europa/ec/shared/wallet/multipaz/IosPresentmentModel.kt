@@ -35,6 +35,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.intOrNull
 import org.multipaz.claim.Claim
 import org.multipaz.claim.MdocClaim
+import org.multipaz.presentment.CredentialMatchSourceIso18013
 import org.multipaz.presentment.CredentialMatchSourceOpenID4VP
 import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialSelection
@@ -166,6 +167,44 @@ internal fun CredentialQueryResult.toSelection(
         }
 
     return CredentialSelection(matches = matches)
+}
+
+/**
+ * What the consent screen asks for, as the History records it — wallet-core's `parseRequestedClaims`: one
+ * entry per held credential and query, typed as the request names it, paths only.
+ */
+internal fun CredentialQueryResult.requestedClaimsRecords(): List<CredentialClaimsRecord> =
+    combinationsOfMatches().flatten()
+        .distinctBy { match -> match.credential.document.identifier to match.queryKey() }
+        .mapNotNull { match -> match.toClaimsRecord() }
+
+/** The request's `transaction_data`, once each, as the History records it. */
+internal fun CredentialQueryResult.transactionDataRecords(): List<TransactionDataRecord> =
+    combinationsOfMatches().flatten()
+        .flatMap { match -> match.transactionData }
+        .mapNotNull { transactionData -> transactionData.toRecordOrNull() }
+        .distinct()
+
+/** What the user agreed to release, as the History records it: the claims the selection still carries. */
+internal fun CredentialSelection.presentedClaimsRecords(): List<CredentialClaimsRecord> =
+    matches.mapNotNull { match -> match.toClaimsRecord() }
+
+private fun MemberMatch.queryKey(): String? = when (val source = source) {
+    is CredentialMatchSourceOpenID4VP -> source.credentialQuery.id
+    is CredentialMatchSourceIso18013 -> source.docRequest.docType
+}
+
+/** The credential's type as the request names it, falling back to the stored document's own. */
+private fun MemberMatch.toClaimsRecord(): CredentialClaimsRecord? {
+    val identifier = when (val source = source) {
+        is CredentialMatchSourceOpenID4VP ->
+            source.credentialQuery.mdocDocType ?: source.credentialQuery.vctValues?.firstOrNull()
+        is CredentialMatchSourceIso18013 -> source.docRequest.docType
+    } ?: credential.document.eudiMetadata?.format?.identifier ?: return null
+    return CredentialClaimsRecord(
+        credential = identifier,
+        claims = claims.map { (requested, claim) -> requested.logSegments(claim).map { it.toRecord() } },
+    )
 }
 
 private fun MemberMatch.toRequestedDocument(): IosPresentmentRequest.RequestedDocument {
