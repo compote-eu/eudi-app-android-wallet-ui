@@ -261,7 +261,24 @@ internal class OpenID4VciCompatibilityEngine(
     /** `credential_configuration_id` → OAuth `scope`, from the credential issuer's own metadata. */
     private var scopesByConfigurationId: Map<String, String> = emptyMap()
 
+    /** The deferral this engine already handed on, as JSON; null until the issuer defers. See [execute]. */
+    private var deferralAnswer: ByteArray? = null
+
     override suspend fun execute(data: HttpRequestData): HttpResponseData {
+        // ⛔ Never ask an issuer again for a credential it has already deferred. multipaz's own client
+        // retries any credential answer that is not `200` but carries a `DPoP-Nonce`, and a deferral is such
+        // an answer; the request is not idempotent, so the issuer opens a second deferred transaction and
+        // the first is orphaned (watched against Plaut's issuers with multipaz 0.99 and 0.101). An engine
+        // serves one document, so a credential request after a deferral can only be that retry: it gets the
+        // same deferral back, and the handler parks the transaction the issuer opened first.
+        deferralAnswer?.let { deferral ->
+            if (credentialRequestOf(data) != null) {
+                Logger.i(TAG, "not asking again for a credential already deferred; answering with that deferral")
+                return deferralResponse(deferral)
+            }
+        }
+
+
         // A credential or deferred credential request to an issuer whose metadata offered encryption.
         // Looked up per request, and before anything is sent: see [CredentialEncryptionRegistry].
         val exchange = credentialExchangeFor(data)
@@ -437,7 +454,8 @@ internal class OpenID4VciCompatibilityEngine(
      * Deliberately an observation rather than a rewrite, unlike the other rules here: multipaz cannot
      * complete a deferred issuance at all — it never parses `deferred_credential_endpoint` and treats any
      * non-200 as an error — so there is nothing to paper over. What the note buys is a truthful message
-     * instead of `Error getting a credential issued: 202 Accepted {...}`.
+     * instead of `Error getting a credential issued: 202 Accepted {...}`. The body is kept too, so
+     * multipaz's retry is answered with this deferral rather than sent to the issuer — see [execute].
      */
     private suspend fun noteDeferredIssuance(response: HttpResponseData): HttpResponseData {
         val (bytes, replayable) = replayableBody(response)
@@ -446,6 +464,7 @@ internal class OpenID4VciCompatibilityEngine(
         }.getOrNull()
 
         body?.get("transaction_id")?.jsonPrimitive?.contentOrNull?.let { transactionId ->
+            deferralAnswer = bytes
             deferredNotice?.transactionId = transactionId
             deferredNotice?.retryAfterSeconds =
                 body["interval"]?.jsonPrimitive?.content?.toIntOrNull()
@@ -1034,6 +1053,16 @@ internal class OpenID4VciCompatibilityEngine(
         headers = Headers.Empty,
         version = HttpProtocolVersion.HTTP_1_1,
         body = ByteReadChannel(ByteArray(0)),
+        callContext = callContext(),
+    )
+
+    /** [deferral] again, as the `202` it was first handed on as; built like [emptyResponse]. */
+    private suspend fun deferralResponse(deferral: ByteArray): HttpResponseData = HttpResponseData(
+        statusCode = HttpStatusCode.Accepted,
+        requestTime = GMTDate(),
+        headers = HeadersBuilder().apply { append(CONTENT_TYPE, ContentType.Application.Json.toString()) }.build(),
+        version = HttpProtocolVersion.HTTP_1_1,
+        body = ByteReadChannel(deferral),
         callContext = callContext(),
     )
 

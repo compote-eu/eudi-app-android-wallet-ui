@@ -720,6 +720,51 @@ class OpenID4VciHttpClientTest {
     }
 
     @Test
+    fun a_credential_request_after_a_deferral_is_answered_with_it_and_never_reaches_the_issuer() = runTest {
+        // multipaz retries a non-200 answer that carries a DPoP-Nonce, a deferral included. Sent again,
+        // the request would make the issuer open a second deferred transaction and orphan the first.
+        var sent = 0
+        val notice = DeferredIssuanceNotice()
+        val client = openID4VciHttpClient(
+            engine = MockEngine {
+                sent++
+                respond(
+                    """{"transaction_id":"tx-$sent","interval":60}""",
+                    HttpStatusCode.Accepted,
+                    headersOf("Content-Type" to listOf("application/json"), "DPoP-Nonce" to listOf("nonce-$sent")),
+                )
+            },
+            deferredNotice = notice,
+        )
+
+        val first = client.postCredentialRequest("https://issuer.test/credential", "pid_mdoc")
+        val retried = client.postCredentialRequest("https://issuer.test/credential", "pid_mdoc")
+
+        assertEquals(1, sent, "the issuer is asked once")
+        assertEquals(HttpStatusCode.Accepted, retried.status)
+        assertEquals(first.bodyAsText(), retried.bodyAsText())
+        // The transaction the handler parks is the one the issuer opened.
+        assertEquals("tx-1", notice.transactionId)
+    }
+
+    @Test
+    fun credential_requests_go_to_the_issuer_until_one_is_deferred() = runTest {
+        var sent = 0
+        val client = openID4VciHttpClient(
+            engine = MockEngine {
+                sent++
+                respond("""{"credentials":[]}""", HttpStatusCode.OK, jsonContent)
+            },
+            deferredNotice = DeferredIssuanceNotice(),
+        )
+
+        client.postCredentialRequest("https://issuer.test/credential", "pid_mdoc")
+        client.postCredentialRequest("https://issuer.test/credential", "pid_mdoc")
+
+        assertEquals(2, sent)
+    }
+
+    @Test
     fun an_ordinary_credential_response_leaves_the_notice_empty() = runTest {
         val notice = DeferredIssuanceNotice()
         val client = openID4VciHttpClient(
