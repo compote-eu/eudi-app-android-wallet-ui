@@ -27,10 +27,8 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import org.multipaz.crypto.Algorithm
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.openid4vci.OpenID4VCI
-import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
 import org.multipaz.rpc.backend.BackendEnvironment
 import kotlin.coroutines.cancellation.CancellationException
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
@@ -231,21 +229,11 @@ class IosCredentialOfferReader internal constructor(
         OpenID4VCI.getMetadata(
             issuerUrl = issuerUrl,
             httpClient = httpClient,
-            clientPreferences = OpenID4VCIClientPreferences(
-                clientId = known.clientId,
-                redirectUrl = known.redirectUri,
-                locales = if (locale.startsWith(FALLBACK_LOCALE)) {
-                    listOf(FALLBACK_LOCALE)
-                } else {
-                    listOf(locale, FALLBACK_LOCALE)
-                },
-                signingAlgorithms = listOf(Algorithm.ESP256),
-            ),
+            clientPreferences = known.clientPreferences(userLanguage = locale),
         )
     }
 
     private companion object {
-        const val FALLBACK_LOCALE = "en"
         const val PRE_AUTHORIZED_CODE_GRANT = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
         const val AUTHORIZATION_CODE_GRANT = "authorization_code"
     }

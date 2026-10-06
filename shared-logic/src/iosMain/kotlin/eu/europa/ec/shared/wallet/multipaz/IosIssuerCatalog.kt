@@ -17,6 +17,9 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
+import eu.europa.ec.shared.wallet.platform.primaryLanguageSubtag
+import org.multipaz.crypto.Algorithm
+import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
 
 /**
  * One issuer this wallet is willing to talk OpenID4VCI to.
@@ -36,7 +39,40 @@ data class IosVciIssuer(
     val clientId: String,
     val redirectUri: String,
     val order: Int,
-)
+) {
+
+    /**
+     * How this wallet identifies itself to this issuer — one place, because the add-document list, an
+     * offer and the issuance itself must agree. The redirect in particular must be the URI registered for
+     * [clientId]: an issuer that saw two different ones would reject the second with
+     * `Invalid parameter: redirect_uri`.
+     *
+     * multipaz uses the locales for one thing only: choosing which of the issuer's `display` entries it
+     * keeps, one per document and one for the issuer. Those are the names a document is **stored** with, so
+     * issuance has to ask in the same languages the add-document list was shown in.
+     *
+     * @param userLanguage the language the user reads, e.g. `iosUserLanguage()`.
+     */
+    internal fun clientPreferences(userLanguage: String): OpenID4VCIClientPreferences =
+        OpenID4VCIClientPreferences(
+            clientId = clientId,
+            redirectUrl = redirectUri,
+            locales = displayLocales(userLanguage),
+            signingAlgorithms = listOf(Algorithm.ESP256),
+        )
+}
+
+/**
+ * The display languages to ask an issuer for: [userLanguage] first, then English, each once. An issuer that
+ * publishes neither still gives its first entry, which multipaz ranks last rather than dropping.
+ *
+ * Bare languages, because the compatibility engine reduces every `locale` an issuer publishes to its language
+ * before multipaz matches them exactly — so a user's `sk-SK` has to arrive there as `sk` too.
+ */
+internal fun displayLocales(userLanguage: String): List<String> =
+    listOfNotNull(userLanguage.primaryLanguageSubtag(), FALLBACK_LANGUAGE).distinct()
+
+private const val FALLBACK_LANGUAGE = "en"
 
 /**
  * Which issuers iOS offers documents from — the piece that was missing before iOS could show an

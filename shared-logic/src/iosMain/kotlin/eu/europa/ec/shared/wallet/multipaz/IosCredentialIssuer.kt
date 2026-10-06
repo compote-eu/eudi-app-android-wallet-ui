@@ -31,7 +31,7 @@ import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Tstr
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import eu.europa.ec.shared.wallet.platform.IosRegistrationCheckSetting
-import org.multipaz.crypto.Algorithm
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
 import org.multipaz.provisioning.ProvisioningModel
@@ -165,6 +165,8 @@ class IosCredentialIssuer(
      */
     private val checkRegistration: suspend (issuerUrl: String, configurationIds: Set<String>) -> IssuerRegistrationOutcome =
         ::checkIssuerRegistrationOnline,
+    /** The language the user reads, which documents' names are stored in. Read per issuance: it can change. */
+    private val userLanguage: () -> String = { iosUserLanguage() },
 ) {
 
     /**
@@ -292,7 +294,7 @@ class IosCredentialIssuer(
             val fetched = model.openID4VCIRefreshCredentials(
                 document = document,
                 authorizationData = withoutStoredWalletAttestation(authorization),
-                clientPreferences = issuer.clientPreferences(),
+                clientPreferences = clientPreferencesFor(issuer),
                 backend = IosOpenID4VciBackend(
                     walletProviderBaseUrl = walletProviderBaseUrl,
                     clientId = issuer.clientId,
@@ -608,7 +610,7 @@ class IosCredentialIssuer(
         val walletStore = walletEngine.store()
         IosAuthorizationRedirects.clear()
 
-        val clientPreferences = issuer.clientPreferences()
+        val clientPreferences = clientPreferencesFor(issuer)
 
         // ⛔ The claim-display and reuse-policy notices are filled in by the shim **while it reads the
         // issuer's metadata**, and in this path the metadata is read once, by the session. So they are
@@ -825,7 +827,7 @@ class IosCredentialIssuer(
             val document = model.launchOpenID4VCIProvisioning(
                 issuerUrl = issuerUrl,
                 credentialId = configurationId,
-                clientPreferences = issuer.clientPreferences(),
+                clientPreferences = clientPreferencesFor(issuer),
                 backend = IosOpenID4VciBackend(
                     walletProviderBaseUrl = walletProviderBaseUrl,
                     clientId = issuer.clientId,
@@ -896,7 +898,7 @@ class IosCredentialIssuer(
             val wallet = issuers.first()
             val document = model.launchOpenID4VCIProvisioning(
                 offerUri = offerUri,
-                clientPreferences = wallet.clientPreferences(),
+                clientPreferences = clientPreferencesFor(wallet),
                 backend = IosOpenID4VciBackend(
                     walletProviderBaseUrl = walletProviderBaseUrl,
                     clientId = wallet.clientId,
@@ -1014,16 +1016,11 @@ class IosCredentialIssuer(
     }
 
     /**
-     * How this wallet identifies itself to an issuer. Identical for every call, so it is built once —
-     * the redirect in particular must be the URI registered for [IosVciIssuer.clientId], and an issuer
-     * that saw two different ones would reject the second with `Invalid parameter: redirect_uri`.
+     * How this wallet identifies itself to [issuer], asking for its display texts in the user's language —
+     * see [IosVciIssuer.clientPreferences]. Every issuance and refresh goes through here.
      */
-    private fun IosVciIssuer.clientPreferences() = OpenID4VCIClientPreferences(
-        clientId = clientId,
-        redirectUrl = redirectUri,
-        locales = listOf(FALLBACK_LOCALE),
-        signingAlgorithms = listOf(Algorithm.ESP256),
-    )
+    internal fun clientPreferencesFor(issuer: IosVciIssuer): OpenID4VCIClientPreferences =
+        issuer.clientPreferences(userLanguage())
 
     companion object {
         private const val TAG = "IosCredentialIssuer"
@@ -1035,7 +1032,6 @@ class IosCredentialIssuer(
          */
         internal const val DEFERRED_NOT_SUPPORTED: String =
             "This issuer provides this document later, which this app cannot collect yet."
-        private const val FALLBACK_LOCALE = "en"
 
         // The four ways a credential refresh can end badly. Each says what a user could do about it,
         // since these reach the details screen's error card verbatim.

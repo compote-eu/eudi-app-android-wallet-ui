@@ -18,10 +18,8 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
-import org.multipaz.crypto.Algorithm
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.openid4vci.OpenID4VCI
-import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
 import org.multipaz.rpc.backend.BackendEnvironment
 import org.multipaz.util.Logger
 import kotlin.coroutines.cancellation.CancellationException
@@ -130,18 +128,7 @@ class IosOfferableCredentialsReader(
         val metadata = OpenID4VCI.getMetadata(
             issuerUrl = issuerUrl,
             httpClient = httpClient,
-            clientPreferences = OpenID4VCIClientPreferences(
-                clientId = clientId,
-                redirectUrl = redirectUri,
-                // The user's locale first, English second: an issuer that publishes neither gives
-                // whatever it has, which multipaz ranks last rather than dropping.
-                locales = if (locale.startsWith(FALLBACK_LOCALE)) {
-                    listOf(FALLBACK_LOCALE)
-                } else {
-                    listOf(locale, FALLBACK_LOCALE)
-                },
-                signingAlgorithms = listOf(Algorithm.ESP256),
-            ),
+            clientPreferences = clientPreferences(userLanguage = locale),
         )
 
         return metadata.credentials.map { (configurationId, credential) ->
@@ -161,6 +148,5 @@ class IosOfferableCredentialsReader(
 
     private companion object {
         const val TAG = "IosOfferableCredentialsReader"
-        const val FALLBACK_LOCALE = "en"
     }
 }
