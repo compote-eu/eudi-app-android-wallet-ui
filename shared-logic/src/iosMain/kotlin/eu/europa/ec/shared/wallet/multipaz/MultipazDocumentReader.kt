@@ -27,7 +27,10 @@ import org.multipaz.sdjwt.credential.SdJwtVcCredential
 import org.multipaz.util.Logger
 import kotlin.coroutines.cancellation.CancellationException
 import eu.europa.ec.shared.wallet.document.StoredCredential
+import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.StoredDocument
+import eu.europa.ec.shared.wallet.document.localizedOrFirst
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.document.Document
 import org.multipaz.mdoc.credential.MdocCredential
@@ -41,6 +44,28 @@ internal val Document.eudiMetadata: EudiDocumentMetadata?
     get() = metadata as? EudiDocumentMetadata
 
 /**
+ * This document's name in [language]: the issuer's display entry in that language, else its first, else the
+ * name multipaz stored at issuance. As the official iOS wallet reads it, so a name follows the user's language
+ * after issuance rather than staying in the one the wallet was in then — Android does that for the issuer's
+ * name only and keeps its first document name.
+ *
+ * A document issued before every language was kept has one entry, its stored name, so it reads as before.
+ */
+internal fun Document.localizedName(language: String = iosUserLanguage()): String? =
+    eudiMetadata?.issuerMetadata?.display
+        .localizedOrFirst(language) { it.locale }
+        ?.name
+        ?.takeIf { it.isNotBlank() }
+        ?: displayName
+
+/**
+ * The issuer's display entry in [language], else its first — Android's `Document.localizedIssuerMetadata`.
+ * Null for a document with no issuer display at all.
+ */
+internal fun Document.localizedIssuerDisplay(language: String = iosUserLanguage()): IssuerMetadata.IssuerDisplay? =
+    eudiMetadata?.issuerMetadata?.issuerDisplay.localizedOrFirst(language) { it.locale }
+
+/**
  * Reads one multipaz [Document] into the platform-neutral [StoredDocument] the projection consumes —
  * the iOS counterpart of the Android document manager's `IdentityDocument.toDocument()` plus
  * `IssuedDocument`'s accessors, and the only place in the wallet that touches `org.multipaz.document`.
@@ -48,8 +73,12 @@ internal val Document.eudiMetadata: EudiDocumentMetadata?
  * @param readClaims whether to parse the document's claims. Off by default because it means decoding
  * each credential's issuer-signed CBOR, and the document *list* does not display claims — Android's
  * list mapper does not read them either. Turn it on for the single-document reads that need them.
+ * @param language the language the document's name is read in; see [localizedName].
  */
-internal suspend fun Document.toStoredDocument(readClaims: Boolean = false): StoredDocument? {
+internal suspend fun Document.toStoredDocument(
+    readClaims: Boolean = false,
+    language: String = iosUserLanguage(),
+): StoredDocument? {
     // A document written by another app (or by a store built without our factory) has metadata we
     // cannot interpret; skip it rather than failing the whole list.
     val metadata = eudiMetadata ?: return null
@@ -58,9 +87,9 @@ internal suspend fun Document.toStoredDocument(readClaims: Boolean = false): Sto
 
     return StoredDocument(
         id = identifier,
-        // multipaz's own displayName, set at creation; fall back to the format identifier exactly as
-        // the Android `IdentityDocument.documentName` extension does.
-        name = displayName ?: metadata.format.identifier,
+        // Fall back to the format identifier exactly as the Android `IdentityDocument.documentName`
+        // extension does.
+        name = localizedName(language) ?: metadata.format.identifier,
         formatType = metadata.format.identifier,
         documentManagerId = metadata.documentManagerId,
         policy = metadata.credentialPolicy,

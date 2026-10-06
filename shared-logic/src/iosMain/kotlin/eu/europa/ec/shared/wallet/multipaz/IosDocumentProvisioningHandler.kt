@@ -69,10 +69,11 @@ internal class IosDocumentProvisioningHandler(
      */
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
     /**
-     * The issuer's per-claim display names, filled in by [OpenID4VciCompatibilityEngine] while it reads
-     * the metadata. Null leaves claims unnamed and the reader falls back to the identifier.
+     * The issuer's display data in every language — per-claim names, the document's and its own — filled in
+     * by [OpenID4VciCompatibilityEngine] while it reads the metadata. Null leaves claims unnamed, and each
+     * name in the one language multipaz chose.
      */
-    private val claimDisplay: IssuerClaimDisplayNotice? = null,
+    private val displayNotice: IssuerDisplayNotice? = null,
     /**
      * The issuer's advertised reuse policy, filled in by [OpenID4VciCompatibilityEngine] while it reads
      * the metadata. When the issuer published one it decides the batch size and the stored policy;
@@ -240,12 +241,10 @@ internal class IosDocumentProvisioningHandler(
     }
 
     /**
-     * The issuer/document display data, in the shape our reader already renders.
-     *
-     * Only what multipaz surfaces can be filled in: a name and a logo URI per side. The issuer's richer
-     * per-claim display — which the details screen would use for claim titles — is not exposed by
-     * `ProvisioningMetadata`, so claims keep showing raw data-element identifiers on iOS, the same
-     * limitation the fixture-backed path already has.
+     * The issuer/document display data, in the shape our reader already renders: every language the issuer
+     * published, as wallet-core keeps it, so that the reader can pick the user's language each time it shows a
+     * name. multipaz surfaces one entry per side and no per-claim names, so all three come from
+     * [displayNotice]; multipaz's own entry stands in only when the notice has nothing.
      */
     private fun issuerMetadataFrom(
         credentialMetadata: CredentialMetadata,
@@ -258,17 +257,19 @@ internal class IosDocumentProvisioningHandler(
         // document came from. It must not be `display.text`, the issuer's *name*: that matches nothing,
         // because every document would claim to come from "Digital Credentials Issuer".
         credentialIssuerIdentifier = issuerMetadata.url,
-        display = listOf(
-            IssuerMetadata.Display(name = credentialMetadata.display.text)
-        ),
-        issuerDisplay = listOf(
-            IssuerMetadata.IssuerDisplay(name = issuerMetadata.display.text)
-        ),
+        display = displayNotice
+            ?.documentDisplayFor(
+                documentType = credentialMetadata.format.toStoredFormat().identifier,
+                chosenName = credentialMetadata.display.text,
+            )
+            ?: listOf(IssuerMetadata.Display(name = credentialMetadata.display.text)),
+        issuerDisplay = displayNotice?.issuerDisplays?.takeIf { it.isNotEmpty() }
+            ?: listOf(IssuerMetadata.IssuerDisplay(name = issuerMetadata.display.text)),
         // The issuer's own per-claim names, so the details screen can say "Family Name(s)" rather than
         // `family_name`. Joined on doctype/vct because that is the only key both sides have — see
-        // [IssuerClaimDisplayNotice]. Null when the issuer published none, which is a display gap and
+        // [IssuerDisplayNotice]. Null when the issuer published none, which is a display gap and
         // never a wrong value: the reader falls back to the identifier.
-        claims = claimDisplay
+        claims = displayNotice
             ?.claimsByDocumentType
             ?.get(credentialMetadata.format.toStoredFormat().identifier),
     )

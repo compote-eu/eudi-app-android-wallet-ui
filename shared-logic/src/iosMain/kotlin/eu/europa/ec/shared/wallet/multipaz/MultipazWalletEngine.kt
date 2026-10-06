@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import io.ktor.client.request.get
 import org.multipaz.util.Logger
 import eu.europa.ec.shared.wallet.WalletDocument
@@ -59,6 +60,8 @@ import kotlin.time.Clock
  */
 internal class MultipazWalletEngine(
     private val store: MultipazWalletStore,
+    /** The language the user reads, for the names this engine reads on its own: a deletion's, a revocation's. */
+    private val userLanguage: () -> String = { iosUserLanguage() },
 ) : WalletEngine {
     /**
      * The issuer's own display name for each claim, for [locale] — `family_name` → "Family Name(s)".
@@ -92,7 +95,7 @@ internal class MultipazWalletEngine(
 
     override suspend fun getAllDocumentsWithDetails(locale: String): List<WalletDocument> =
         ownDocuments()
-            .mapNotNull { it.toStoredDocument() }
+            .mapNotNull { it.toStoredDocument(language = locale) }
             .map { stored ->
                 stored.toWalletDocument(
                     locale = locale,
@@ -127,7 +130,7 @@ internal class MultipazWalletEngine(
         val deletion = runCatching {
             store.documentStore.lookupDocument(documentId)
                 ?.takeIf { it.eudiMetadata?.documentManagerId == store.documentManagerId }
-                ?.deletionRecord(at = Clock.System.now())
+                ?.deletionRecord(at = Clock.System.now(), language = userLanguage())
         }.onFailure { Logger.w(TAG, "could not read the document to record its deletion", it) }.getOrNull()
         return runCatching {
             store.documentStore.deleteDocument(documentId)
@@ -260,7 +263,7 @@ internal class MultipazWalletEngine(
                     // Named because the user is told which documents were revoked, by name.
                     newlyRevoked += WalletDocument(
                         id = document.identifier,
-                        name = document.toStoredDocument()?.name.orEmpty(),
+                        name = document.toStoredDocument(language = userLanguage())?.name.orEmpty(),
                     )
                 }
 

@@ -693,7 +693,7 @@ class OpenID4VciHttpClientTest {
 
     @Test
     fun claim_display_names_are_kept_from_the_metadata_multipaz_discards() = runTest {
-        val notice = IssuerClaimDisplayNotice()
+        val notice = IssuerDisplayNotice()
         // The shape dev.issuer-backend.eudiw.dev actually publishes: names live under
         // `credential_metadata.claims`, and the join key is the configuration's doctype, not its id.
         val metadata = """
@@ -708,7 +708,7 @@ class OpenID4VciHttpClientTest {
         """.trimIndent()
         val client = openID4VciHttpClient(
             engine = MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) },
-            claimDisplayNotice = notice,
+            displayNotice = notice,
         )
 
         client.get(metadataUrl).readRawBytes()
@@ -723,7 +723,7 @@ class OpenID4VciHttpClientTest {
 
     @Test
     fun metadata_with_no_claims_leaves_the_notice_empty_rather_than_failing() = runTest {
-        val notice = IssuerClaimDisplayNotice()
+        val notice = IssuerDisplayNotice()
         // Exactly the older-issuer case; naming claims is cosmetic and must never fail an issuance.
         val client = openID4VciHttpClient(
             engine = MockEngine {
@@ -734,7 +734,7 @@ class OpenID4VciHttpClientTest {
                     headers = headersOf("Content-Type", "application/json"),
                 )
             },
-            claimDisplayNotice = notice,
+            displayNotice = notice,
         )
 
         client.get(metadataUrl).readRawBytes()
@@ -744,7 +744,7 @@ class OpenID4VciHttpClientTest {
 
     @Test
     fun an_unexpected_member_inside_a_claim_does_not_lose_the_whole_set() = runTest {
-        val notice = IssuerClaimDisplayNotice()
+        val notice = IssuerDisplayNotice()
         // Issuers publish more per claim than this reads; a new member must not cost the names.
         val client = openID4VciHttpClient(
             engine = MockEngine {
@@ -757,12 +757,119 @@ class OpenID4VciHttpClientTest {
                     headers = headersOf("Content-Type", "application/json"),
                 )
             },
-            claimDisplayNotice = notice,
+            displayNotice = notice,
         )
 
         client.get(metadataUrl).readRawBytes()
 
         assertEquals("Family Name(s)", notice.claimsByDocumentType.getValue("d").single().displayNameFor("en"))
+    }
+
+    // ---- keeping the document's and the issuer's names in every language ---------------------------
+
+    private suspend fun displaysKept(metadata: String): IssuerDisplayNotice {
+        val notice = IssuerDisplayNotice()
+        val client = openID4VciHttpClient(
+            engine = MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) },
+            displayNotice = notice,
+        )
+        client.get(metadataUrl).readRawBytes()
+        return notice
+    }
+
+    @Test
+    fun every_language_of_the_document_and_issuer_names_is_kept() = runTest {
+        // multipaz keeps one entry per side; these are what a name can follow the user's language from.
+        val notice = displaysKept(
+            """
+            {"credential_issuer":"https://issuer.test",
+             "display":[{"name":"Digital Credentials Issuer","locale":"en",
+                         "logo":{"uri":"https://issuer.test/logo.svg","alt_text":"Logo"}},
+                        {"name":"Εκδότης Ψηφιακών Διαπιστευτηρίων","locale":"el"}],
+             "credential_configurations_supported":{
+               "pid_mdoc":{"format":"mso_mdoc","doctype":"eu.europa.ec.eudi.pid.1",
+                 "credential_metadata":{"display":[
+                   {"name":"PID","locale":"en","description":"Person identification",
+                    "background_color":"#12107c","text_color":"#FFFFFF",
+                    "logo":{"uri":"https://issuer.test/pid.png"},
+                    "background_image":{"uri":"https://issuer.test/card.png"}},
+                   {"name":"Občiansky preukaz","locale":"sk-SK"}]}}}}
+            """.trimIndent()
+        )
+
+        val document = notice.documentDisplaysByDocumentType.getValue("eu.europa.ec.eudi.pid.1").single()
+        assertEquals(listOf("PID" to "en", "Občiansky preukaz" to "sk"), document.map { it.name to it.locale })
+        with(document.first()) {
+            assertEquals("Person identification", description)
+            assertEquals("#12107c", backgroundColor)
+            assertEquals("#FFFFFF", textColor)
+            assertEquals("https://issuer.test/pid.png", logo?.uri)
+            assertEquals("https://issuer.test/card.png", backgroundImageUri)
+        }
+        assertEquals(
+            listOf("Digital Credentials Issuer" to "en", "Εκδότης Ψηφιακών Διαπιστευτηρίων" to "el"),
+            notice.issuerDisplays.map { it.name to it.locale },
+        )
+        assertEquals("https://issuer.test/logo.svg", notice.issuerDisplays.first().logo?.uri)
+        assertEquals("Logo", notice.issuerDisplays.first().logo?.alternativeText)
+    }
+
+    @Test
+    fun configurations_sharing_a_doctype_are_told_apart_by_the_name_multipaz_chose() = runTest {
+        // The EU issuer's `_deferred` twins: one doctype, two names. Last-one-wins would label a PID
+        // "(deferred)", or the other way round.
+        val notice = displaysKept(
+            """
+            {"credential_issuer":"https://issuer.test",
+             "credential_configurations_supported":{
+               "pid":{"doctype":"eu.europa.ec.eudi.pid.1",
+                 "credential_metadata":{"display":[{"name":"PID (MSO MDoc)","locale":"en"}]}},
+               "pid_deferred":{"doctype":"eu.europa.ec.eudi.pid.1",
+                 "credential_metadata":{"display":[{"name":"PID (MSO MDoc) (deferred)","locale":"en"}]}}}}
+            """.trimIndent()
+        )
+
+        assertEquals(
+            "PID (MSO MDoc) (deferred)",
+            notice.documentDisplayFor("eu.europa.ec.eudi.pid.1", chosenName = "PID (MSO MDoc) (deferred)")?.single()?.name,
+        )
+        assertEquals(
+            "PID (MSO MDoc)",
+            notice.documentDisplayFor("eu.europa.ec.eudi.pid.1", chosenName = "PID (MSO MDoc)")?.single()?.name,
+        )
+        assertNull(notice.documentDisplayFor("eu.europa.ec.eudi.pid.1", chosenName = "Untitled"))
+    }
+
+    @Test
+    fun a_display_published_on_the_configuration_itself_is_kept_too() = runTest {
+        // Where multipaz reads it when there is no `credential_metadata` — an older draft's shape.
+        val notice = displaysKept(
+            """
+            {"credential_issuer":"https://issuer.test",
+             "credential_configurations_supported":{
+               "pid":{"doctype":"d","display":[{"name":"PID","locale":"en"},{"name":"PID","locale":"de"}]}}}
+            """.trimIndent()
+        )
+
+        assertEquals(listOf("en", "de"), notice.documentDisplaysByDocumentType.getValue("d").single().map { it.locale })
+    }
+
+    @Test
+    fun an_unnamed_or_malformed_display_entry_is_dropped_rather_than_failing() = runTest {
+        // Names are cosmetic: a broken entry must never cost the issuance, nor the entries beside it.
+        val notice = displaysKept(
+            """
+            {"credential_issuer":"https://issuer.test",
+             "display":"not a list",
+             "credential_configurations_supported":{
+               "a":{"doctype":"a","credential_metadata":{"display":[{"locale":"en"},42,{"name":"A","locale":"en"}]}},
+               "b":{"doctype":"b","credential_metadata":{"display":{"name":"B"}}}}}
+            """.trimIndent()
+        )
+
+        assertEquals(listOf("A"), notice.documentDisplaysByDocumentType.getValue("a").single().map { it.name })
+        assertTrue(notice.documentDisplaysByDocumentType.getValue("b").single().isEmpty())
+        assertTrue(notice.issuerDisplays.isEmpty())
     }
 
     // ---- noticing a deferred issuance -----------------------------------------------------------

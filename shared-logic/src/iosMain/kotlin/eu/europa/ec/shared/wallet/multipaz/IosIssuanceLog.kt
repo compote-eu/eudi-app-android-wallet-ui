@@ -16,6 +16,7 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.multipaz.document.Document
@@ -181,19 +182,20 @@ internal class IosIssuanceLog(
  * Brings a deferred credential's "awaiting" row up to date once its collection has ended — wallet-core's
  * `deferredResolutionEntry`: completed with the credential, or not completed with why. The issuer and
  * `isUserTriggered` are the awaiting row's; a credential parked before rows were kept is named from its
- * metadata.
+ * metadata, in [language].
  */
 internal suspend fun MultipazWalletStore.recordDeferredResolution(
     document: Document,
     completed: Boolean,
     reason: String?,
     now: Instant = Clock.System.now(),
+    language: String = iosUserLanguage(),
 ) {
     runCatching {
         val id = deferredRowId(document.identifier)
         val awaiting = transactionRecord(id) as? IosTransactionRecord.Issuance
         val metadata = document.eudiMetadata
-        val issuerDisplay = metadata?.issuerMetadata?.issuerDisplay?.firstOrNull()
+        val issuerDisplay = document.localizedIssuerDisplay(language)
         // A session that deferred everything wrote no awaiting row; the document kept what it would have
         // said, as wallet-core keeps the registration with a deferred document.
         recordTransaction(

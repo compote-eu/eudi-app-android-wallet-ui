@@ -17,6 +17,7 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
+import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import eu.europa.ec.shared.wallet.multipaz.harness.certifyWithFixtureIssuer
 import kotlinx.coroutines.test.runTest
@@ -111,6 +112,82 @@ class IosDocumentProvisioningHandlerTest {
         assertEquals("PID (issued)", documents.single().name)
         assertEquals("eu.europa.ec.eudi.pid.1", documents.single().formatType)
         assertEquals("Digital Credentials Issuer", documents.single().issuerName)
+    }
+
+    // ---- names in every language, read in the user's ----------------------------------------------
+
+    private fun displaysOf(
+        document: List<Pair<String, String>>,
+        issuer: List<Pair<String, String>>,
+        documentType: String = "eu.europa.ec.eudi.pid.1",
+    ) = IssuerDisplayNotice().apply {
+        documentDisplaysByDocumentType = mapOf(
+            documentType to listOf(document.map { (name, locale) -> IssuerMetadata.Display(name = name, locale = locale) })
+        )
+        issuerDisplays = issuer.map { (name, locale) -> IssuerMetadata.IssuerDisplay(name = name, locale = locale) }
+    }
+
+    @Test
+    fun the_names_follow_the_users_language_after_issuance() = runTest {
+        val store = store()
+        val notice = displaysOf(
+            document = listOf("PID" to "en", "Občiansky preukaz" to "sk"),
+            issuer = listOf("Digital Credentials Issuer" to "en", "Εκδότης Ψηφιακών Διαπιστευτηρίων" to "el"),
+        )
+
+        // Issued while the wallet was in English: multipaz chose, and stored, the English names.
+        IosDocumentProvisioningHandler(store, displayNotice = notice).createDocument(
+            credentialMetadata = credentialMetadata(name = "PID"),
+            issuerMetadata = issuerMetadata(name = "Digital Credentials Issuer"),
+            documentAuthorizationData = null,
+        )
+
+        val engine = MultipazWalletEngine(store)
+        suspend fun namesIn(locale: String) =
+            engine.getAllDocumentsWithDetails(locale).single().let { it.name to it.issuerName }
+        assertEquals("Občiansky preukaz" to "Digital Credentials Issuer", namesIn("sk"))
+        assertEquals("PID" to "Εκδότης Ψηφιακών Διαπιστευτηρίων", namesIn("el"))
+        assertEquals("PID" to "Digital Credentials Issuer", namesIn("fr"))
+    }
+
+    @Test
+    fun a_configuration_sharing_the_doctype_does_not_lend_the_document_its_name() = runTest {
+        val store = store()
+        val notice = IssuerDisplayNotice().apply {
+            documentDisplaysByDocumentType = mapOf(
+                "eu.europa.ec.eudi.pid.1" to listOf(
+                    listOf(IssuerMetadata.Display(name = "PID (MSO MDoc)", locale = "en")),
+                    listOf(IssuerMetadata.Display(name = "PID (MSO MDoc) (deferred)", locale = "en")),
+                )
+            )
+        }
+        val handler = IosDocumentProvisioningHandler(store, displayNotice = notice)
+
+        handler.createDocument(credentialMetadata(name = "PID (MSO MDoc)"), issuerMetadata(), null)
+        handler.createDocument(credentialMetadata(name = "PID (MSO MDoc) (deferred)"), issuerMetadata(), null)
+
+        assertEquals(
+            setOf("PID (MSO MDoc)", "PID (MSO MDoc) (deferred)"),
+            MultipazWalletEngine(store).getAllDocumentsWithDetails(locale = "en").map { it.name }.toSet(),
+        )
+    }
+
+    @Test
+    fun a_notice_without_the_name_multipaz_chose_keeps_multipazs_names() = runTest {
+        // Never a name from another document: when the notice cannot say which configuration this is, the
+        // one entry multipaz chose is stored, as before every language was kept.
+        val store = store()
+        val notice = displaysOf(document = listOf("Something else" to "en"), issuer = emptyList())
+
+        IosDocumentProvisioningHandler(store, displayNotice = notice).createDocument(
+            credentialMetadata = credentialMetadata(name = "PID"),
+            issuerMetadata = issuerMetadata(name = "Digital Credentials Issuer"),
+            documentAuthorizationData = null,
+        )
+
+        val metadata = assertNotNull(store.documentStore.listDocuments().single().eudiMetadata?.issuerMetadata)
+        assertEquals(listOf("PID"), metadata.display.map { it.name })
+        assertEquals(listOf("Digital Credentials Issuer"), metadata.issuerDisplay?.map { it.name })
     }
 
     @Test

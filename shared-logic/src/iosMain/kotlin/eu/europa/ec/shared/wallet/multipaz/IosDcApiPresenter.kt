@@ -177,7 +177,7 @@ internal class IosDcApiPresenter(
                     onConsent(requester, trustedRequesterIdentity, consentData, registration)?.also { selection ->
                         history.presented(selection)
                         shared = selection.matches
-                            .map { it.credential.document.displayName ?: it.credential.document.identifier }
+                            .map { it.credential.document.localizedName() ?: it.credential.document.identifier }
                             .distinct()
                     }
                 },

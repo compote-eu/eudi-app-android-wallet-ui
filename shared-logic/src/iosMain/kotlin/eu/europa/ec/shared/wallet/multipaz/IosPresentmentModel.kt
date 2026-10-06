@@ -212,7 +212,7 @@ private fun MemberMatch.toRequestedDocument(): IosPresentmentRequest.RequestedDo
     return IosPresentmentRequest.RequestedDocument(
         documentId = document.identifier,
         credentialId = credential.identifier,
-        documentName = document.displayName ?: document.identifier,
+        documentName = document.localizedName() ?: document.identifier,
         docType = document.eudiMetadata?.format?.identifier.orEmpty(),
         format = when (document.eudiMetadata?.format) {
             is StoredDocumentFormat.SdJwtVc -> IosPresentmentFormat.SdJwtVc

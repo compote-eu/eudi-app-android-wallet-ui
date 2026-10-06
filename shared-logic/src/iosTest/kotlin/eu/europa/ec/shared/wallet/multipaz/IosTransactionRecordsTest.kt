@@ -33,6 +33,7 @@ import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Clock
@@ -89,15 +90,28 @@ class IosTransactionRecordsTest {
         val store = store()
         val documentId = store.seedPid()
 
-        assertTrue(MultipazWalletEngine(store).deleteDocument(documentId).isSuccess)
+        assertTrue(MultipazWalletEngine(store, userLanguage = { "en" }).deleteDocument(documentId).isSuccess)
 
         val deletion = assertIs<TransactionLogDomain.CredentialDeletion>(store.transactionLogs().single())
         assertEquals(TransactionResultDomain.Completed, deletion.result)
         assertEquals(CredentialRefDomain(MDOC_PID_DOC_TYPE), deletion.credential)
-        // wallet-core names the issuer by the first name its metadata gives, with that name's language.
+        // The issuer's name in the user's language (pinned to English here), with that name's language, as the
+        // official iOS wallet records it. wallet-core records the issuer's first name instead.
         assertEquals(LocalizedTextDomain("en", "Fixture Issuer"), deletion.issuer.name)
         assertNull(deletion.issuer.identifier)
         assertTrue(deletion.issuer.contacts.isEmpty())
+    }
+
+    @Test
+    fun the_deletion_names_the_issuer_in_the_users_language() = runTest {
+        val store = store()
+        val document = assertNotNull(store.documentStore.lookupDocument(store.seedPid()))
+
+        val deletion = assertNotNull(document.deletionRecord(at = now, language = "sk"))
+
+        assertEquals("Fixture Vydavatel" to "sk", deletion.issuerName to deletion.issuerNameLanguage)
+        // A language the issuer does not publish gets its first name, as before.
+        assertEquals("Fixture Issuer", document.deletionRecord(at = now, language = "fr")?.issuerName)
     }
 
     @Test

@@ -121,28 +121,47 @@ class DeferredIssuanceNotice {
 }
 
 /**
- * The issuer's per-claim display names, which only the raw metadata carries.
+ * The issuer's display data as it published it, which only the raw metadata carries: the per-claim names,
+ * and the document's and the issuer's own display entries in **every** language.
  *
  * Written by [OpenID4VciCompatibilityEngine] while it is already reading the metadata JSON, and read by
  * the provisioning handler when it builds the document's [IssuerMetadata]. It exists for the same reason
  * [DeferredIssuanceNotice] does: **multipaz parses the credential configuration and throws this part
- * away** — its `CredentialMetadata` keeps a credential-level `display` and no per-claim display at all —
- * so the engine is the only place that still sees it.
+ * away** — its `CredentialMetadata` keeps one `display` entry, in one language, and no per-claim display
+ * at all — so the engine is the only place that still sees it. Keeping every language is what lets a
+ * document's names follow the user's language after issuance: both, as in the official iOS wallet;
+ * Android does it for the issuer's name.
  *
  * Keyed by **doctype or vct**, not by configuration id: the handler joins on
  * `StoredDocumentFormat.identifier`, and `CredentialMetadata.format.formatId` is only the *format*
  * (`mso_mdoc`), which would not distinguish two documents. Configurations that share a doctype — this
- * issuer's `_deferred` twins do — carry the same claims, so last-one-wins is harmless.
+ * issuer's `_deferred` twins do — carry the same claims, so last-one-wins is harmless there; their names
+ * differ, so [documentDisplayFor] tells them apart.
  */
-internal class IssuerClaimDisplayNotice {
+internal class IssuerDisplayNotice {
     var claimsByDocumentType: Map<String, List<IssuerMetadata.Claim>> = emptyMap()
         internal set
+
+    /** Every configuration's display entries, per doctype or vct, in the issuer's order. */
+    var documentDisplaysByDocumentType: Map<String, List<List<IssuerMetadata.Display>>> = emptyMap()
+        internal set
+
+    /** The issuer's own display entries; empty when it published none. */
+    var issuerDisplays: List<IssuerMetadata.IssuerDisplay> = emptyList()
+        internal set
+
+    /**
+     * The display entries of the configuration of [documentType] that multipaz named [chosenName] — the one
+     * being issued, since multipaz picked that name from this same metadata. Null when none carries it.
+     */
+    fun documentDisplayFor(documentType: String, chosenName: String): List<IssuerMetadata.Display>? =
+        documentDisplaysByDocumentType[documentType]?.firstOrNull { entries -> entries.any { it.name == chosenName } }
 }
 
 /**
  * The issuer's advertised credential reuse policy, per document type.
  *
- * Same reason [IssuerClaimDisplayNotice] exists: multipaz's `CredentialMetadata` keeps
+ * Same reason [IssuerDisplayNotice] exists: multipaz's `CredentialMetadata` keeps
  * `credential_metadata.display` and drops everything beside it, so `credential_reuse_policy` — the
  * batch size and re-issuance threshold the issuer actually published — is visible only to the engine
  * that read the raw metadata.
@@ -210,8 +229,8 @@ internal fun openID4VciHttpClient(
     deferredNotice: DeferredIssuanceNotice? = null,
     /** Filled in if the authorization server refuses a token exchange. */
     refusalNotice: TokenRefusalNotice? = null,
-    /** Filled in with the issuer's per-claim display names, which multipaz discards. */
-    claimDisplayNotice: IssuerClaimDisplayNotice? = null,
+    /** Filled in with the issuer's display data in every language, which multipaz discards. */
+    displayNotice: IssuerDisplayNotice? = null,
     reusePolicyNotice: IssuerReusePolicyNotice? = null,
     /**
      * Checks the signer of signed issuer metadata against the EU trust lists.
@@ -226,7 +245,7 @@ internal fun openID4VciHttpClient(
             engine,
             deferredNotice,
             refusalNotice,
-            claimDisplayNotice,
+            displayNotice,
             reusePolicyNotice,
             issuerTrust,
         )
@@ -253,7 +272,7 @@ internal class OpenID4VciCompatibilityEngine(
     private val delegate: HttpClientEngine,
     private val deferredNotice: DeferredIssuanceNotice? = null,
     private val refusalNotice: TokenRefusalNotice? = null,
-    private val claimDisplayNotice: IssuerClaimDisplayNotice? = null,
+    private val displayNotice: IssuerDisplayNotice? = null,
     private val reusePolicyNotice: IssuerReusePolicyNotice? = null,
     private val issuerTrust: IssuerTrustSource? = null,
 ) : HttpClientEngineBase("openid4vci-compat") {
@@ -596,6 +615,7 @@ internal class OpenID4VciCompatibilityEngine(
                 }.toMap()
                 Logger.i(TAG, "learned ${scopesByConfigurationId.size} credential scopes")
                 rememberClaimDisplayNames(configurations)
+                rememberDisplays(issuerMetadata = json, configurations = configurations)
                 rememberReusePolicies(configurations)
             }
         }
@@ -643,7 +663,7 @@ internal class OpenID4VciCompatibilityEngine(
      * issuance over a cosmetic feature.
      */
     private fun rememberClaimDisplayNames(configurations: JsonObject) {
-        val notice = claimDisplayNotice ?: return
+        val notice = displayNotice ?: return
         val byDocumentType = configurations.values.mapNotNull { configuration ->
             val configured = configuration.jsonObject
             // `doctype` for mdoc, `vct` for SD-JWT VC — whichever this configuration is.
@@ -664,6 +684,32 @@ internal class OpenID4VciCompatibilityEngine(
                         byDocumentType.entries.joinToString { "${it.key}=${it.value.size}" }
             )
         }
+    }
+
+    /**
+     * Keeps the document's and the issuer's `display` entries in every language the issuer published, where
+     * multipaz keeps one. Read from where multipaz reads them — `credential_metadata`, else the configuration
+     * itself — so the entry multipaz chose is among them. An entry without a name is dropped, as an issuer
+     * must name every one; a malformed list costs only its own document, never the issuance.
+     */
+    private fun rememberDisplays(issuerMetadata: JsonObject, configurations: JsonObject) {
+        val notice = displayNotice ?: return
+        val byDocumentType = configurations.values.mapNotNull { configuration ->
+            val configured = configuration as? JsonObject ?: return@mapNotNull null
+            val documentType = (configured["doctype"] ?: configured["vct"])
+                ?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val described = configured["credential_metadata"] as? JsonObject ?: configured
+            runCatching { documentType to described["display"].documentDisplays() }.getOrNull()
+        }.groupBy({ it.first }, { it.second })
+
+        notice.documentDisplaysByDocumentType = byDocumentType
+        notice.issuerDisplays = runCatching { issuerMetadata["display"].issuerDisplays() }.getOrDefault(emptyList())
+        Logger.i(
+            TAG,
+            "learned display entries for ${byDocumentType.size} document type(s) and " +
+                    "${notice.issuerDisplays.size} for the issuer: " +
+                    notice.issuerDisplays.joinToString { it.locale ?: "-" }
+        )
     }
 
     /**
@@ -1204,3 +1250,36 @@ internal class OpenID4VciCompatibilityEngine(
         const val RETRY_ARMING_DPOP_NONCE = "retry"
     }
 }
+
+/** A `display` array as the document's [IssuerMetadata.Display] entries; empty for anything that is not one. */
+private fun JsonElement?.documentDisplays(): List<IssuerMetadata.Display> =
+    displayObjects().mapNotNull { display ->
+        IssuerMetadata.Display(
+            name = display.text("name") ?: return@mapNotNull null,
+            locale = display.text("locale"),
+            logo = display.logo(),
+            description = display.text("description"),
+            backgroundColor = display.text("background_color"),
+            textColor = display.text("text_color"),
+            backgroundImageUri = (display["background_image"] as? JsonObject)?.text("uri"),
+        )
+    }
+
+/** A `display` array as the issuer's [IssuerMetadata.IssuerDisplay] entries; empty for anything that is not one. */
+private fun JsonElement?.issuerDisplays(): List<IssuerMetadata.IssuerDisplay> =
+    displayObjects().mapNotNull { display ->
+        IssuerMetadata.IssuerDisplay(
+            name = display.text("name") ?: return@mapNotNull null,
+            locale = display.text("locale"),
+            logo = display.logo(),
+        )
+    }
+
+private fun JsonElement?.displayObjects(): List<JsonObject> =
+    (this as? JsonArray)?.filterIsInstance<JsonObject>().orEmpty()
+
+private fun JsonObject.text(key: String): String? =
+    (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
+
+private fun JsonObject.logo(): IssuerMetadata.Logo? =
+    (this["logo"] as? JsonObject)?.let { logo -> IssuerMetadata.Logo(uri = logo.text("uri"), alternativeText = logo.text("alt_text")) }

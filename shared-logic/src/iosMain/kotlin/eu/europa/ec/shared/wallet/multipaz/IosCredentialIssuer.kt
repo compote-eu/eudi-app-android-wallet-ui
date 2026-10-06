@@ -285,7 +285,7 @@ class IosCredentialIssuer(
             requested = 1,
             registration = preflight.registration,
         )
-        val issuerDisplay = document.eudiMetadata?.issuerMetadata?.issuerDisplay?.firstOrNull()
+        val issuerDisplay = document.localizedIssuerDisplay(userLanguage())
         val credentialIdentifier = document.eudiMetadata?.format?.identifier
 
         return try {
@@ -612,7 +612,7 @@ class IosCredentialIssuer(
 
         val clientPreferences = clientPreferencesFor(issuer)
 
-        // ⛔ The claim-display and reuse-policy notices are filled in by the shim **while it reads the
+        // ⛔ The display and reuse-policy notices are filled in by the shim **while it reads the
         // issuer's metadata**, and in this path the metadata is read once, by the session. So they are
         // created once for the whole batch and given to every client, including the authorization one —
         // otherwise nothing ever sees the metadata response and the issuer's `credential_reuse_policy` is
@@ -620,11 +620,11 @@ class IosCredentialIssuer(
         // ⚖️ Sharing them is right rather than merely convenient: both are keyed by doctype or vct, which
         // is an issuer-level fact, not a per-document one. The deferral notice is the opposite and stays
         // per document.
-        val claimDisplay = IssuerClaimDisplayNotice()
+        val displayNotice = IssuerDisplayNotice()
         val reusePolicy = IssuerReusePolicyNotice()
         val authorizationHttpClient = openID4VciHttpClient(
             engine = httpEngine ?: Darwin.create(),
-            claimDisplayNotice = claimDisplay,
+            displayNotice = displayNotice,
             reusePolicyNotice = reusePolicy,
         )
         val session = IosVciAuthorizationSession(
@@ -652,13 +652,13 @@ class IosCredentialIssuer(
                 val httpClient = openID4VciHttpClient(
                     engine = httpEngine ?: Darwin.create(),
                     deferredNotice = deferred,
-                    claimDisplayNotice = claimDisplay,
+                    displayNotice = displayNotice,
                     reusePolicyNotice = reusePolicy,
                 )
                 val model = ProvisioningModel(
                     documentProvisioningHandler = IosDocumentProvisioningHandler(
                         walletStore,
-                        claimDisplay = claimDisplay,
+                        displayNotice = displayNotice,
                         reusePolicy = reusePolicy,
                         deferred = deferred,
                         issuanceLog = log,
@@ -795,12 +795,12 @@ class IosCredentialIssuer(
         log: IosIssuanceLog? = null,
     ): String {
         val deferred = DeferredIssuanceNotice()
-        val claimDisplay = IssuerClaimDisplayNotice()
+        val displayNotice = IssuerDisplayNotice()
         val reusePolicy = IssuerReusePolicyNotice()
         val httpClient = openID4VciHttpClient(
             engine = httpEngine ?: Darwin.create(),
             deferredNotice = deferred,
-            claimDisplayNotice = claimDisplay,
+            displayNotice = displayNotice,
             reusePolicyNotice = reusePolicy,
         )
         val walletStore = walletEngine.store()
@@ -810,7 +810,7 @@ class IosCredentialIssuer(
         val model = ProvisioningModel(
             documentProvisioningHandler = IosDocumentProvisioningHandler(
                 walletStore,
-                claimDisplay = claimDisplay,
+                displayNotice = displayNotice,
                 reusePolicy = reusePolicy,
                 // So a `202 Accepted` parks the document instead of deleting it.
                 deferred = deferred,
@@ -867,12 +867,12 @@ class IosCredentialIssuer(
      */
     private suspend fun provision(offerUri: String, txCode: String?, log: IosIssuanceLog? = null): String {
         val deferred = DeferredIssuanceNotice()
-        val claimDisplay = IssuerClaimDisplayNotice()
+        val displayNotice = IssuerDisplayNotice()
         val reusePolicy = IssuerReusePolicyNotice()
         val httpClient = openID4VciHttpClient(
             engine = httpEngine ?: Darwin.create(),
             deferredNotice = deferred,
-            claimDisplayNotice = claimDisplay,
+            displayNotice = displayNotice,
             reusePolicyNotice = reusePolicy,
         )
         val walletStore = walletEngine.store()
@@ -881,7 +881,7 @@ class IosCredentialIssuer(
         val model = ProvisioningModel(
             documentProvisioningHandler = IosDocumentProvisioningHandler(
                 walletStore,
-                claimDisplay = claimDisplay,
+                displayNotice = displayNotice,
                 reusePolicy = reusePolicy,
                 // So a `202 Accepted` parks the document instead of deleting it.
                 deferred = deferred,

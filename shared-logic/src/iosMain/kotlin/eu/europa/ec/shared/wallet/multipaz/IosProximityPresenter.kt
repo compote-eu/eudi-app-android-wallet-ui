@@ -241,7 +241,7 @@ class IosProximityPresenter internal constructor(
         }
 
         sharedDocuments = selection.matches.map { match ->
-            match.credential.document.displayName ?: match.credential.document.identifier
+            match.credential.document.localizedName() ?: match.credential.document.identifier
         }.distinct()
         mutableState.value = IosProximityState.Sending
         pendingConsent?.complete(selection)

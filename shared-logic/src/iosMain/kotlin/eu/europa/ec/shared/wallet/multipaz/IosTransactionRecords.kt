@@ -261,15 +261,18 @@ internal fun IosTransactionRecord.toDomain(
 /**
  * The deletion row for this document, still marked completed, or null when there is none to write:
  * wallet-core logs a deletion only for an *issued* document, so deleting a pending or deferred one leaves
- * no row. The issuer is named as wallet-core names it: as its issuance recorded them — the registered
- * name and identifier when its registration was verified — and otherwise by the first name the issuer's
- * metadata gives.
+ * no row. The issuer is named by the registered name and identifier its issuance recorded when its
+ * registration was verified, as wallet-core names it; otherwise by the name its metadata gives in [language],
+ * or its first, as the official iOS wallet names it. wallet-core takes the first.
  */
 @OptIn(ExperimentalUuidApi::class)
-internal fun Document.deletionRecord(at: Instant): IosTransactionRecord.Deletion? {
+internal fun Document.deletionRecord(
+    at: Instant,
+    language: String = iosUserLanguage(),
+): IosTransactionRecord.Deletion? {
     val metadata = eudiMetadata?.takeIf { it.issuedAt != null } ?: return null
     val party = metadata.issuerParty
-    val issuerDisplay = metadata.issuerMetadata?.issuerDisplay?.firstOrNull()
+    val issuerDisplay = localizedIssuerDisplay(language)
     return IosTransactionRecord.Deletion(
         id = Uuid.random().toString(),
         timeEpochMillis = at.toEpochMilliseconds(),
