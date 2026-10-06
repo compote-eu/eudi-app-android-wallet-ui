@@ -39,6 +39,7 @@ import eu.europa.ec.shared.wallet.multipaz.IosPresentmentDisclosure
 import eu.europa.ec.shared.wallet.multipaz.IosProximityPresenter
 import eu.europa.ec.shared.wallet.multipaz.IosPresentmentRequest
 import eu.europa.ec.shared.wallet.multipaz.IosProximityState
+import eu.europa.ec.shared.wallet.multipaz.RelyingPartyRegistrationOutcome
 import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
@@ -101,9 +102,12 @@ internal class IosProximityCoordinator(
                 is IosProximityState.Engaging ->
                     emit(ProximityQRPartialState.QrReady(qrCode = state.qrPayload))
 
-                // A block is reported by the request screen, so the QR screen moves on to it either way.
-                is IosProximityState.Requesting, is IosProximityState.VerifierNotTrusted ->
-                    emit(ProximityQRPartialState.Connected)
+                // A block and a no-match are reported by the request screen, so the QR screen moves on to
+                // it either way.
+                is IosProximityState.Requesting,
+                is IosProximityState.VerifierNotTrusted,
+                is IosProximityState.NothingToShare,
+                    -> emit(ProximityQRPartialState.Connected)
 
                 is IosProximityState.Failed ->
                     emit(ProximityQRPartialState.Error(error = state.message))
@@ -143,6 +147,18 @@ internal class IosProximityCoordinator(
 
             is IosProximityState.Failed ->
                 ProximityRequestInteractorPartialState.Failure(error = state.message)
+
+            // ⚠️ `NoData`, not `Failure`, as on the remote side and on Android: the reader was answered, there
+            // is simply nothing to show. Who it was is not known — the request was refused before consent —
+            // so the screen falls back to its own default name rather than naming the wrong party.
+            is IosProximityState.NothingToShare -> ProximityRequestInteractorPartialState.NoData(
+                relyingParty = relyingPartyDomain(
+                    requesterName = null,
+                    requesterIsTrusted = false,
+                    registration = RelyingPartyRegistrationOutcome.NotOffered,
+                    locale = iosUserLanguage(),
+                ),
+            )
 
             // The reader went away, or the user backed out of the QR screen.
             is IosProximityState.Idle -> ProximityRequestInteractorPartialState.Disconnect
@@ -214,8 +230,12 @@ internal class IosProximityCoordinator(
                         )
                     }
 
-                // A block ends the exchange before consent, so the loading screen is never reached.
-                is IosProximityState.Engaging, is IosProximityState.VerifierNotTrusted -> Unit
+                // A block and a no-match end the exchange before consent, so the loading screen is never
+                // reached.
+                is IosProximityState.Engaging,
+                is IosProximityState.VerifierNotTrusted,
+                is IosProximityState.NothingToShare,
+                    -> Unit
             }
         }
     }

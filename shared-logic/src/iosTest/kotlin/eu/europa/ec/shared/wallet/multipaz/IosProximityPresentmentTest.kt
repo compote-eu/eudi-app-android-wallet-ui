@@ -537,6 +537,24 @@ class IosProximityPresentmentTest {
         assertEquals(IosProximityState.VerifierNotTrusted, presenter.endedBy(refusal))
     }
 
+    @Test
+    fun a_request_for_nothing_the_wallet_holds_ends_as_nothing_to_share_not_as_a_failure() = runTest {
+        val store = walletWithPid()
+        val presenter = presenter(store, ReaderTrustSource { null }, backgroundScope)
+
+        val unsatisfiable = assertFailsWith<PresentmentCannotSatisfyRequestException> {
+            presentThrough(
+                presenter,
+                store,
+                readerRequest(elements = mapOf("given_name" to false), docType = "org.iso.18013.5.1.mDL"),
+            )
+        }
+
+        // An answer, not an error: the request screen says the document is not in this wallet, as on Android
+        // and in the official iOS wallet, instead of "something went wrong" with a Retry.
+        assertEquals(IosProximityState.NothingToShare, presenter.endedBy(unsatisfiable))
+    }
+
     /**
      * The control for the case above: the same signed request, vouched for, reaches the consent step and
      * is shown as trusted. Without it, the block could be passing because the signature never verified.

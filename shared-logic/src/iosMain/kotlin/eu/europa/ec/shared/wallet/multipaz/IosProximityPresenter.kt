@@ -76,6 +76,16 @@ sealed interface IosProximityState {
     data class Failed(val message: String) : IosProximityState
 
     /**
+     * The reader asked for nothing this wallet holds; multipaz has already ended the session.
+     *
+     * ⚠️ **Not a [Failed]**, for the reason [IosRemotePresentationState.NothingToShare] is not: the request
+     * was understood and answered, and the honest reply is that there is nothing to show. The request
+     * screen's `NoData` says so the way Android and the official iOS wallet do — the requested document is
+     * not in this wallet — where [Failed] put a "something went wrong" heading and a Retry over it.
+     */
+    data object NothingToShare : IosProximityState
+
+    /**
      * Blocked: the reader authenticated, and nothing this wallet trusts vouches for its certificate, or the
      * trust lists could not say ([isUntrustedReader]). The request was never shown and the session was
      * ended with no response. Android is as strict but shows consent and answers with status 10 instead.
@@ -318,8 +328,8 @@ class IosProximityPresenter internal constructor(
         // The user declined. Nothing was shared and nothing went wrong.
         cause is PresentmentCanceledException -> IosProximityState.Idle
 
-        cause is PresentmentCannotSatisfyRequestException ->
-            IosProximityState.Failed(message = "This wallet holds nothing the reader asked for.")
+        // An answer, not an error — see [IosProximityState.NothingToShare].
+        cause is PresentmentCannotSatisfyRequestException -> IosProximityState.NothingToShare
 
         cause.isUntrustedVerifierRefusal() -> {
             Logger.w(TAG, "blocked: the reader's certificate is not trusted")
