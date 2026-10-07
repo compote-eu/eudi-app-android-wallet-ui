@@ -298,7 +298,7 @@ class IosProximityPresenter internal constructor(
                 handover = Simple.NULL,
                 source = presentmentSource(walletEngine.store()),
                 keyAgreementPossible = listOf(EcCurve.P256),
-                timeout = ENGAGEMENT_TIMEOUT,
+                timeout = PROXIMITY_REQUEST_TIMEOUT,
                 onSendingResponse = { mutableState.value = IosProximityState.Sending },
                 onDeviceRequest = { deviceRequest = it },
             )
@@ -422,7 +422,6 @@ class IosProximityPresenter internal constructor(
         /** ISO 18013-5 device engagement version, as multipaz's own samples use. */
         const val ENGAGEMENT_VERSION = "1.0"
 
-        val ENGAGEMENT_TIMEOUT = 1.minutes
         val CONSENT_TIMEOUT = 2.minutes
 
         /** Long enough for the user to answer iOS's Bluetooth prompt, short enough not to read as a hang. */
@@ -434,6 +433,16 @@ class IosProximityPresenter internal constructor(
 
     }
 }
+
+/**
+ * How long a reader that has connected gets to send its request: multipaz's own default for that wait.
+ *
+ * It is also how long a reader that connects and then leaves keeps the QR on screen. multipaz's iOS BLE
+ * peripheral does not handle `didUnsubscribeFrom`, CoreBluetooth's only sign that a central went away,
+ * so nothing but this bound ends the wait. A reader sends its request as soon as it connects, so a longer
+ * bound only makes that wait longer.
+ */
+internal val PROXIMITY_REQUEST_TIMEOUT = 15.seconds
 
 /** The `mdoc:` URI a reader scans, per ISO 18013-5 §8.2.2.3. */
 internal fun ByteArray.toQrPayload(): String = "mdoc:" + toBase64Url()
