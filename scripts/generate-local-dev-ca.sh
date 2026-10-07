@@ -109,7 +109,7 @@ gen_server() {
     -subj "/CN=$host/O=Local Development/C=EU"
   openssl x509 -req -in "$csr" -CA "$CA_CRT" -CAkey "$CA_KEY" -CAcreateserial \
     -out "$crt" -days "$DAYS_LEAF" -sha256 \
-    -extfile <(printf "subjectAltName=%s\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\n" "$san")
+    -extfile <(printf "subjectAltName=%s\nbasicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n" "$san")
   rm -f "$csr"
   chmod 600 "$key"
   cat "$crt" "$CA_CRT" > "$full"
