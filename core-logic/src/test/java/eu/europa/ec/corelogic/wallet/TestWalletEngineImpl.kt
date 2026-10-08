@@ -250,6 +250,35 @@ class TestWalletEngineImpl {
     }
 
     @Test
+    fun `Given the issuer names the document in several locales, When mapped, Then the requested locale's name is used`() {
+        coroutineRule.runTest {
+            // Given — wallet-core's own `name` is the first published name, fixed at issuance.
+            val document = mockIssuedDocument(id = "multi-locale-name", name = "PID")
+            whenever(document.issuerMetadata).thenReturn(
+                IssuerMetadata(
+                    documentConfigurationIdentifier = "eu.europa.ec.eudi.pid_mdoc",
+                    display = listOf(
+                        IssuerMetadata.Display(name = "PID", locale = Locale.ENGLISH),
+                        IssuerMetadata.Display(name = "Osobný doklad", locale = Locale.forLanguageTag("sk")),
+                    ),
+                    claims = emptyList(),
+                    credentialIssuerIdentifier = "https://issuer.example",
+                    issuerDisplay = emptyList(),
+                )
+            )
+            whenever(documentsController.getAllDocuments()).thenReturn(listOf(document))
+            whenever(documentsController.isDocumentRevoked("multi-locale-name")).thenReturn(false)
+            whenever(documentsController.isDocumentLowOnCredentials(document)).thenReturn(false)
+
+            // When
+            val mapped = engine.getAllDocumentsWithDetails(locale = "sk-SK").single()
+
+            // Then
+            assertEquals("Osobný doklad", mapped.name)
+        }
+    }
+
+    @Test
     fun `Given no issuer metadata, When mapped, Then issuerName and issuerLogoUri are null`() {
         coroutineRule.runTest {
             // Given — the engine resolves no strings, so the absence is reported as-is and the

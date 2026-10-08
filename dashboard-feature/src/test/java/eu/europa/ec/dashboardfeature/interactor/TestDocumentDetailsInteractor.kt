@@ -46,6 +46,7 @@ import eu.europa.ec.dashboardfeature.util.mockedBookmarkId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocData
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker
 import eu.europa.ec.testfeature.util.copy
@@ -73,6 +74,7 @@ import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
+import java.util.Locale
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import org.junit.After
@@ -598,6 +600,49 @@ class TestDocumentDetailsInteractor {
                     IssuerDetailsCardDataUi.DocumentState.Revoked,
                     result.issuerDetails.documentState
                 )
+            }
+        }
+    }
+
+    // The issuer names the document in the user's language.
+    //
+    // Expected Result:
+    // DocumentDetailsInteractorPartialState.Success state, with the document named in that language.
+    @Test
+    fun `Given the issuer names the document in the user's language, When getDocumentDetails is called, Then the document is named in that language`() {
+        coroutineRule.runTest {
+            // Given
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockGetDocumentDetailsStrings(resourceProvider = resourceProvider)
+            whenever(resourceProvider.getLocale()).thenReturn(Locale.forLanguageTag("sk-SK"))
+            val mockedPidWithBasicFields = getMockedPidWithBasicFields()
+            val storedName = mockedPidWithBasicFields.name
+            whenever(mockedPidWithBasicFields.issuerMetadata).thenReturn(
+                IssuerMetadata(
+                    documentConfigurationIdentifier = "eu.europa.ec.eudi.pid_mdoc",
+                    display = listOf(
+                        IssuerMetadata.Display(name = storedName, locale = Locale.ENGLISH),
+                        IssuerMetadata.Display(name = "Osobný doklad", locale = Locale.forLanguageTag("sk")),
+                    ),
+                    claims = emptyList(),
+                    credentialIssuerIdentifier = "https://issuer.example",
+                    issuerDisplay = emptyList(),
+                )
+            )
+            mockGetDocumentByIdCall(response = mockedPidWithBasicFields)
+            mockIsDocumentLowOnCredentialsCall(response = false)
+            mockRetrieveBookmarkCall(response = false)
+            mockIsDocumentRevoked(isRevoked = false)
+
+            // When
+            interactor.getDocumentDetails(
+                documentId = mockedPidId,
+                wasIssuerDetailsExpanded = null,
+            ).runFlowTest {
+                // Then
+                val result = awaitItem()
+                kotlin.test.assertTrue(result is DocumentDetailsInteractorPartialState.Success)
+                assertEquals("Osobný doklad", result.documentDetailsDomain.docName)
             }
         }
     }

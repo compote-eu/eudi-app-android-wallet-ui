@@ -17,6 +17,7 @@
 package eu.europa.ec.corelogic.extension
 
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import org.junit.Assert.assertEquals
@@ -28,6 +29,7 @@ import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.multipaz.credential.SecureAreaBoundCredential
+import java.util.Locale
 import kotlin.time.Instant
 
 class TestDocumentExtensions {
@@ -103,7 +105,67 @@ class TestDocumentExtensions {
 
     //endregion
 
+    //region localizedName
+
+    @Test
+    fun `Given the issuer names the document in the user's language, When localizedName is called, Then that name is returned`() {
+        val document = mockDocumentNamed(
+            name = "PID",
+            display = listOf("PID" to "en", "Osobný doklad" to "sk"),
+        )
+
+        assertEquals("Osobný doklad", document.localizedName(Locale.forLanguageTag("sk-SK")))
+    }
+
+    @Test
+    fun `Given no name in the user's language, When localizedName is called, Then the first published name is returned`() {
+        val document = mockDocumentNamed(
+            name = "PID",
+            display = listOf("PID" to "en", "Osobný doklad" to "sk"),
+        )
+
+        assertEquals("PID", document.localizedName(Locale.forLanguageTag("de-DE")))
+    }
+
+    @Test
+    fun `Given no issuer metadata, When localizedName is called, Then the document's name is returned`() {
+        val document = mock<IssuedDocument>()
+        whenever(document.name).thenReturn("PID")
+        whenever(document.issuerMetadata).thenReturn(null)
+
+        assertEquals("PID", document.localizedName(Locale.forLanguageTag("sk-SK")))
+    }
+
+    @Test
+    fun `Given issuer metadata without names, When localizedName is called, Then the document's name is returned`() {
+        val document = mockDocumentNamed(name = "PID", display = emptyList())
+
+        assertEquals("PID", document.localizedName(Locale.forLanguageTag("sk-SK")))
+    }
+
+    //endregion
+
     //region helper functions
+
+    private fun mockDocumentNamed(
+        name: String,
+        display: List<Pair<String, String>>,
+    ): IssuedDocument {
+        val document = mock<IssuedDocument>()
+        whenever(document.name).thenReturn(name)
+        whenever(document.issuerMetadata).thenReturn(
+            IssuerMetadata(
+                documentConfigurationIdentifier = "eu.europa.ec.eudi.pid_mdoc",
+                display = display.map { (displayName, language) ->
+                    IssuerMetadata.Display(name = displayName, locale = Locale.forLanguageTag(language))
+                },
+                claims = emptyList(),
+                credentialIssuerIdentifier = "https://issuer.example",
+                issuerDisplay = emptyList(),
+            )
+        )
+        return document
+    }
 
     private suspend fun mockDocumentWithCredentials(vararg validUntil: Instant): IssuedDocument {
         val credentials = validUntil.map { instant ->

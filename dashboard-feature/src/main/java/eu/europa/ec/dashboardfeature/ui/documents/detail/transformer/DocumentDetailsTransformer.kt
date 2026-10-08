@@ -23,6 +23,7 @@ import eu.europa.ec.businesslogic.util.formatInstant
 import kotlin.time.toKotlinInstant
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
 import eu.europa.ec.corelogic.extension.getExpiryDate
+import eu.europa.ec.corelogic.extension.localizedName
 import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsDomain
@@ -51,7 +52,7 @@ object DocumentDetailsTransformer {
         )
 
         return@runCatching DocumentDetailsDomain(
-            docName = document.name,
+            docName = document.localizedName(resourceProvider.getLocale()),
             docId = document.id,
             issuerId = document.issuerMetadata?.credentialIssuerIdentifier.orEmpty(),
             documentConfigId = document.issuerMetadata?.documentConfigurationIdentifier.orEmpty(),

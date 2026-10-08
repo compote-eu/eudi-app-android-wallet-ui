@@ -28,6 +28,7 @@ import eu.europa.ec.corelogic.di.WalletCoreScope
 import eu.europa.ec.corelogic.di.getOrCreateKoinScope
 import eu.europa.ec.corelogic.extension.documentIdentifier
 import eu.europa.ec.corelogic.extension.getLocalizedDisplayName
+import eu.europa.ec.corelogic.extension.localizedName
 import eu.europa.ec.corelogic.extension.toIssuerRegistrationDomain
 import eu.europa.ec.corelogic.extension.isTerminalDeferredFailure
 import eu.europa.ec.corelogic.extension.toUntrustedIssuerReasonOrNull
@@ -728,7 +729,8 @@ class WalletCoreDocumentsControllerImpl(
                                         DeferredDocumentDataDomain(
                                             documentId = deferredIssuanceResult.documentId,
                                             formatType = deferredIssuanceResult.docType,
-                                            docName = deferredIssuanceResult.name
+                                            docName = deferredIssuanceResult.document
+                                                .localizedName(resourceProvider.getLocale())
                                         )
                                     )
                                 )
@@ -740,7 +742,8 @@ class WalletCoreDocumentsControllerImpl(
                                         DeferredDocumentDataDomain(
                                             documentId = deferredIssuanceResult.documentId,
                                             formatType = deferredIssuanceResult.docType,
-                                            docName = deferredIssuanceResult.name
+                                            docName = deferredIssuanceResult.document
+                                                .localizedName(resourceProvider.getLocale())
                                         )
                                     )
                                 )

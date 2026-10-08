@@ -21,6 +21,7 @@ import android.content.Intent
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.corelogic.extension.localizedName
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.shared.wallet.revocation.DocumentStatusDomain
 import eu.europa.ec.shared.wallet.revocation.RevocationActionDomain
@@ -35,6 +36,7 @@ import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.storagelogic.dao.RevokedDocumentDao
 import eu.europa.ec.storagelogic.model.RevokedDocument
 import org.koin.android.annotation.KoinWorker
+import java.util.Locale
 
 /**
  * [RevocationWorkManager] is a [CoroutineWorker] responsible for checking the revocation status of issued documents
@@ -168,7 +170,7 @@ class RevocationWorkManager(
                 CoreActions.REVOCATION_IDS_EXTRA,
                 ArrayList(
                     revokedDocuments.map {
-                        RevokedDocumentParcel(name = it.name, id = it.id)
+                        RevokedDocumentParcel(name = it.localizedName(Locale.getDefault()), id = it.id)
                     }
                 )
             )

@@ -34,6 +34,17 @@ fun Document.localizedIssuerMetadata(locale: Locale): IssuerMetadata.IssuerDispl
 }
 
 /**
+ * The document's name in [locale]'s language, from the names the issuer published for the
+ * document's configuration ([IssuerMetadata.display]); the first published name when none is in
+ * that language, and [Document.name] when the document has no issuer metadata.
+ *
+ * [Document.name] on its own is the first published name, fixed at issuance whatever the user's
+ * language, so a screen that shows it ignores a name the issuer offers in the user's language.
+ */
+fun Document.localizedName(locale: Locale): String =
+    issuerMetadata.getLocalizedDocumentName(userLocale = locale, fallback = name)
+
+/**
  * The document's expiry instant: the latest `validUntil` across its credentials, or `null` when the
  * document has no such credentials (e.g. an exhausted once-only batch).
  *

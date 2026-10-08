@@ -23,6 +23,7 @@ import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractorDelegat
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
+import eu.europa.ec.corelogic.extension.localizedName
 import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.ClaimItemId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
@@ -102,7 +103,9 @@ class ProximitySuccessInteractorImpl(
                                     docId = documentId,
                                     queryId = selection.queryId,
                                 ).encode(),
-                                mainContentData = ListItemMainContentDataUi.Text(text = document.name),
+                                mainContentData = ListItemMainContentDataUi.Text(
+                                    text = document.localizedName(resourceProvider.getLocale())
+                                ),
                                 supportingContentData = ListItemSupportingContentDataUi.Text(
                                     text = resourceProvider.getString(Res.string.document_success_collapsed_supporting_text),
                                 ),

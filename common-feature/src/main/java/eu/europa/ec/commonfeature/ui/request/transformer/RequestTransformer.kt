@@ -29,6 +29,7 @@ import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
+import eu.europa.ec.corelogic.extension.localizedName
 import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimItemId
@@ -153,7 +154,7 @@ object RequestTransformer {
         if (domainClaims.isEmpty()) return null
 
         return DocumentPayloadDomain(
-            docName = storageDocument.name,
+            docName = storageDocument.localizedName(resourceProvider.getLocale()),
             docId = storageDocument.id,
             docFormatDomain = DocumentFormatDomain.getFormat(format = storageDocument.format),
             docClaimsDomain = domainClaims,

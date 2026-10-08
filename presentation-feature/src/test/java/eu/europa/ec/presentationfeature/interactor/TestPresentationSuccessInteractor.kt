@@ -21,6 +21,7 @@ import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.ClaimItemId
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.document_success_banner_text
 import eu.europa.ec.shared.resources.UiText
@@ -60,6 +61,7 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.net.URI
+import java.util.Locale
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
 import eu.europa.ec.shared.resources.document_success_header_description
@@ -308,6 +310,62 @@ class TestPresentationSuccessInteractor {
                         )
                     ),
                     result.headerConfig
+                )
+            }
+        }
+    }
+
+    // Case 2a:
+    // As Case 2, while the issuer names the disclosed document in the user's language as well as in
+    // the language of its stored name.
+
+    // Case 2a Expected Result:
+    // The document's header is its name in the user's language.
+    @Test
+    fun `Given the issuer names the document in the user's language, When getUiItems is called, Then the document is named in that language`() {
+        coroutineRule.runTest {
+            // Given
+            val pid = getMockedFullPid()
+            val storedName = pid.name
+            whenever(pid.issuerMetadata).thenReturn(
+                IssuerMetadata(
+                    documentConfigurationIdentifier = "eu.europa.ec.eudi.pid_mdoc",
+                    display = listOf(
+                        IssuerMetadata.Display(name = storedName, locale = Locale.ENGLISH),
+                        IssuerMetadata.Display(name = "Osobný doklad", locale = Locale.forLanguageTag("sk")),
+                    ),
+                    claims = emptyList(),
+                    credentialIssuerIdentifier = "https://issuer.example",
+                    issuerDisplay = emptyList(),
+                )
+            )
+            val disclosedDocument = mockedMdocPresentationSelection(
+                documentId = mockedPidId,
+                namespace = mockedMdocPidNameSpace,
+                dataElements = listOf("family_name"),
+            )
+
+            whenever(walletCorePresentationController.disclosedDocuments)
+                .thenReturn(mutableListOf(disclosedDocument))
+            whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedPidId))
+                .thenReturn(pid)
+            whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(true)
+            mockSuccessHeaderStrings()
+            mockTransformToUiItemsStrings(resourceProvider)
+            whenever(resourceProvider.getLocale()).thenReturn(Locale.forLanguageTag("sk-SK"))
+            whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
+
+            // When
+            interactor.getUiItems().runFlowTest {
+                // Then
+                val result = awaitItem()
+                assertTrue(result is PresentationSuccessInteractorGetUiItemsPartialState.Success)
+                result as PresentationSuccessInteractorGetUiItemsPartialState.Success
+
+                assertEquals(
+                    ListItemMainContentDataUi.Text(text = "Osobný doklad"),
+                    result.documentsUi.single().header.mainContentData
                 )
             }
         }

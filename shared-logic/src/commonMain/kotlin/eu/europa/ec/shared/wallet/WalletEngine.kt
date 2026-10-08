@@ -71,8 +71,9 @@ interface WalletEngine {
      * counts and the low-on-credentials policy reads each document's credentials — so this is the
      * document-list accessor, not a general-purpose one.
      *
-     * @param locale a BCP-47 language tag (e.g. `en-GB`) used to pick the issuer's localized
-     * display name and logo. Localization of the *app's own* strings stays with the caller.
+     * @param locale a BCP-47 language tag (e.g. `en-GB`) used to pick the document's and the
+     * issuer's localized display names and the issuer's logo. Localization of the *app's own*
+     * strings stays with the caller.
      */
     suspend fun getAllDocumentsWithDetails(locale: String): List<WalletDocument>
 }

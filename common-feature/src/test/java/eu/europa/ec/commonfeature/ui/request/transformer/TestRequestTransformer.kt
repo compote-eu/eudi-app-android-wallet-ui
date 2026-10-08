@@ -37,6 +37,7 @@ import eu.europa.ec.eudi.sdjwt.vc.ClaimPathElement
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcData
 import eu.europa.ec.eudi.wallet.document.format.SdJwtVcFormat
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
@@ -80,6 +81,7 @@ import eu.europa.ec.testfeature.util.mockedTransactionDataApproval
 import eu.europa.ec.testfeature.util.mockedTransactionQueryId
 import eu.europa.ec.testfeature.util.mockedUuid
 import junit.framework.TestCase.assertNull
+import java.util.Locale
 
 class TestRequestTransformer {
 
@@ -161,6 +163,52 @@ class TestRequestTransformer {
             val leafKeys = payload.docClaimsDomain.leafKeys()
             assertFalse("portrait" in leafKeys)
             assertFalse("issuing_country" in leafKeys)
+        }
+    }
+
+    // Case 1a:
+    // The same single combination, while the issuer names the stored document in the user's
+    // language as well as in the language of its stored name.
+    //
+    // Case 1a Expected Result:
+    // The document item is named in the user's language.
+    @Test
+    fun `Given the issuer names the document in the user's language, When transformToCombinationsUi, Then the document is named in that language`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(resourceProvider.getLocale()).thenReturn(Locale.forLanguageTag("sk-SK"))
+            val storageDocument = getMockedPidWithBasicFields()
+            val storedName = storageDocument.name
+            whenever(storageDocument.issuerMetadata).thenReturn(
+                IssuerMetadata(
+                    documentConfigurationIdentifier = "eu.europa.ec.eudi.pid_mdoc",
+                    display = listOf(
+                        IssuerMetadata.Display(name = storedName, locale = Locale.ENGLISH),
+                        IssuerMetadata.Display(name = "Osobný doklad", locale = Locale.forLanguageTag("sk")),
+                    ),
+                    claims = emptyList(),
+                    credentialIssuerIdentifier = "https://issuer.example",
+                    issuerDisplay = emptyList(),
+                )
+            )
+
+            // When
+            val combinationsUi = RequestTransformer.transformToCombinationsUi(
+                storageDocuments = listOf(storageDocument),
+                resourceProvider = resourceProvider,
+                uuidProvider = uuidProvider,
+                combinationsDomain = listOf(
+                    PresentationCombinationDomain(
+                        matches = listOf(mockedValidPidWithBasicFieldsRequestMatch)
+                    )
+                ),
+                claimsAreSelectable = mockedSelectableClaims,
+                overaskedClaims = emptyList(),
+            ).getOrThrow()
+
+            // Then
+            val payload = combinationsUi.single().documents.single().domainPayload
+            assertEquals("Osobný doklad", payload.docName)
         }
     }
 

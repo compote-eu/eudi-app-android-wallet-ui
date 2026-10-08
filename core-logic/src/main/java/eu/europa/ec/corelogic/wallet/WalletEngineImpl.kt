@@ -21,6 +21,7 @@ import eu.europa.ec.corelogic.extension.getExpiryDate
 import eu.europa.ec.corelogic.extension.identifierString
 import eu.europa.ec.corelogic.extension.isExpired
 import eu.europa.ec.corelogic.extension.localizedIssuerMetadata
+import eu.europa.ec.corelogic.extension.localizedName
 import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.UnsignedDocument
@@ -83,7 +84,7 @@ class WalletEngineImpl(
         val issuerDisplay = localizedIssuerMetadata(userLocale)
         val base = WalletDocument(
             id = id,
-            name = name,
+            name = localizedName(userLocale),
             formatType = when (val f = format) {
                 is MsoMdocFormat -> f.docType
                 is SdJwtVcFormat -> f.vct
