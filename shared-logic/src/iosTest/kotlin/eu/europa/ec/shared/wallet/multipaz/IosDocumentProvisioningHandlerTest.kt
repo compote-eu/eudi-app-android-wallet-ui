@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.wallet.multipaz
 
+import eu.europa.ec.corelogic.model.LocalizedTextDomain
+import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
@@ -116,15 +118,16 @@ class IosDocumentProvisioningHandlerTest {
 
     // ---- names in every language, read in the user's ----------------------------------------------
 
+    /** [issuer] null leaves the issuer's names unread; an empty list says the issuer published none. */
     private fun displaysOf(
         document: List<Pair<String, String>>,
-        issuer: List<Pair<String, String>>,
+        issuer: List<Pair<String, String>>?,
         documentType: String = "eu.europa.ec.eudi.pid.1",
     ) = IssuerDisplayNotice().apply {
         documentDisplaysByDocumentType = mapOf(
             documentType to listOf(document.map { (name, locale) -> IssuerMetadata.Display(name = name, locale = locale) })
         )
-        issuerDisplays = issuer.map { (name, locale) -> IssuerMetadata.IssuerDisplay(name = name, locale = locale) }
+        issuerDisplays = issuer?.map { (name, locale) -> IssuerMetadata.IssuerDisplay(name = name, locale = locale) }
     }
 
     @Test
@@ -177,7 +180,7 @@ class IosDocumentProvisioningHandlerTest {
         // Never a name from another document: when the notice cannot say which configuration this is, the
         // one entry multipaz chose is stored, as before every language was kept.
         val store = store()
-        val notice = displaysOf(document = listOf("Something else" to "en"), issuer = emptyList())
+        val notice = displaysOf(document = listOf("Something else" to "en"), issuer = null)
 
         IosDocumentProvisioningHandler(store, displayNotice = notice).createDocument(
             credentialMetadata = credentialMetadata(name = "PID"),
@@ -188,6 +191,88 @@ class IosDocumentProvisioningHandlerTest {
         val metadata = assertNotNull(store.documentStore.listDocuments().single().eudiMetadata?.issuerMetadata)
         assertEquals(listOf("PID"), metadata.display.map { it.name })
         assertEquals(listOf("Digital Credentials Issuer"), metadata.issuerDisplay?.map { it.name })
+    }
+
+    // ---- an issuer that publishes no names -----------------------------------------------------------
+    // multipaz names an issuer or a configuration with no `display` "Untitled". Android has no such name
+    // and falls back instead, so the wallet must not store multipaz's stand-in as one.
+
+    @Test
+    fun an_issuer_that_published_no_name_is_left_unnamed_rather_than_untitled() = runTest {
+        val store = store()
+        val notice = displaysOf(document = listOf("PID" to "en"), issuer = emptyList())
+
+        IosDocumentProvisioningHandler(store, displayNotice = notice).createDocument(
+            credentialMetadata = credentialMetadata(name = "PID"),
+            issuerMetadata = issuerMetadata(name = "Untitled"),
+            documentAuthorizationData = null,
+        )
+
+        // No name, so the shared screens show their own "Unknown", as Android does for such an issuer.
+        val document = MultipazWalletEngine(store).getAllDocumentsWithDetails(locale = "en").single()
+        assertNull(document.issuerName)
+        assertEquals("PID", document.name)
+    }
+
+    @Test
+    fun a_configuration_that_published_no_name_is_named_by_its_doctype() = runTest {
+        val store = store()
+        val notice = IssuerDisplayNotice().apply {
+            documentDisplaysByDocumentType = mapOf("org.iso.18013.5.1.mDL" to listOf(emptyList()))
+            issuerDisplays = listOf(IssuerMetadata.IssuerDisplay(name = "Digital Credentials Issuer", locale = "en"))
+        }
+
+        IosDocumentProvisioningHandler(store, displayNotice = notice).createDocument(
+            credentialMetadata = credentialMetadata(format = CredentialFormat.Mdoc("org.iso.18013.5.1.mDL"), name = "Untitled"),
+            issuerMetadata = issuerMetadata(name = "Digital Credentials Issuer"),
+            documentAuthorizationData = null,
+        )
+
+        // As wallet-core names a document whose configuration has no name: by its doctype.
+        val document = MultipazWalletEngine(store).getAllDocumentsWithDetails(locale = "en").single()
+        assertEquals("org.iso.18013.5.1.mDL", document.name)
+        assertEquals("Digital Credentials Issuer", document.issuerName)
+    }
+
+    private fun issuanceLog(store: MultipazWalletStore) = IosIssuanceLog(
+        store = { store },
+        reissuance = false,
+        userTriggered = true,
+        requested = 1,
+        registration = null,
+    )
+
+    private suspend fun MultipazWalletStore.issuerOfTheIssuance() =
+        transactionLogs().filterIsInstance<TransactionLogDomain.CredentialIssuance>().single().details.issuer.name
+
+    @Test
+    fun the_history_names_the_issuer_in_the_users_language() = runTest {
+        val store = store()
+        val notice = displaysOf(
+            document = listOf("PID" to "en"),
+            issuer = listOf("Digital Credentials Issuer" to "en", "Vydavateľ digitálnych dokladov" to "sk"),
+        )
+
+        IosDocumentProvisioningHandler(
+            store,
+            displayNotice = notice,
+            issuanceLog = issuanceLog(store),
+            userLanguage = { "sk" },
+        ).createDocument(credentialMetadata(name = "PID"), issuerMetadata(name = "Digital Credentials Issuer"), null)
+
+        assertEquals(LocalizedTextDomain("sk", "Vydavateľ digitálnych dokladov"), store.issuerOfTheIssuance())
+    }
+
+    @Test
+    fun the_history_leaves_an_issuer_that_published_no_name_unnamed() = runTest {
+        val store = store()
+        val notice = displaysOf(document = listOf("PID" to "en"), issuer = emptyList())
+
+        IosDocumentProvisioningHandler(store, displayNotice = notice, issuanceLog = issuanceLog(store))
+            .createDocument(credentialMetadata(name = "PID"), issuerMetadata(name = "Untitled"), null)
+
+        // No name, so the History's row falls back to what the transaction is, as on Android.
+        assertNull(store.issuerOfTheIssuance())
     }
 
     @Test

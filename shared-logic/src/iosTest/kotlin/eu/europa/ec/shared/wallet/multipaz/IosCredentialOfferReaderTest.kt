@@ -62,10 +62,10 @@ class IosCredentialOfferReaderTest {
     }
 
     /** Serves the issuer metadata, and an offer document at `/offer` for the by-reference case. */
-    private fun engine(offerDocument: String? = null) = MockEngine { request ->
+    private fun engine(offerDocument: String? = null, metadata: String = issuerMetadata) = MockEngine { request ->
         when {
             request.url.toString() == "$issuerUrl/.well-known/openid-credential-issuer" ->
-                respond(issuerMetadata, headers = headersOf("Content-Type", "application/json"))
+                respond(metadata, headers = headersOf("Content-Type", "application/json"))
 
             request.url.toString() == "$issuerUrl/offer" && offerDocument != null ->
                 respond(offerDocument, headers = headersOf("Content-Type", "application/json"))
@@ -95,6 +95,55 @@ class IosCredentialOfferReaderTest {
         assertEquals(listOf("pid_mdoc"), resolved.offer.configurationIds)
         // No grants at all: nothing to enter, so the offer-code screen must not appear.
         assertNull(resolved.offer.txCodeLength)
+    }
+
+    // ---- names, as Android's offer screen shows them ------------------------------------------------
+    // multipaz names an issuer or a configuration with no `display` "Untitled"; Android falls back instead,
+    // to the host of the issuer's URL and to the doctype or vct.
+
+    @Test
+    fun an_issuer_that_published_no_name_is_shown_by_its_host() = runTest {
+        // The fixture's issuer publishes no `display` of its own.
+        val resolution = reader(engine()).resolve(offerLink(), locale = "en")
+
+        assertEquals("issuer.test", assertIs<IosOfferResolution.Resolved>(resolution).issuerName)
+    }
+
+    @Test
+    fun an_issuers_name_is_shown_in_the_users_language_else_in_its_first_language() = runTest {
+        val named = """
+            {"credential_issuer":"$issuerUrl",
+             "credential_endpoint":"$issuerUrl/credential",
+             "display":[{"name":"Vydavateľ digitálnych dokladov","locale":"sk"},
+                        {"name":"Digital Credentials Issuer","locale":"en"}],
+             "credential_configurations_supported":{
+               "pid_mdoc":{"format":"mso_mdoc","doctype":"eu.europa.ec.eudi.pid.1","scope":"pid",
+                 "display":[{"name":"PID (MSO MDoc)","locale":"en"}]}}}
+        """.trimIndent()
+
+        suspend fun issuerNameFor(locale: String) =
+            assertIs<IosOfferResolution.Resolved>(reader(engine(metadata = named)).resolve(offerLink(), locale))
+                .issuerName
+
+        assertEquals("Digital Credentials Issuer", issuerNameFor("en"))
+        // A language the issuer did not publish: the first entry, as Android's `getLocalizedValue` falls back —
+        // not multipaz's pick, which would be English.
+        assertEquals("Vydavateľ digitálnych dokladov", issuerNameFor("hu"))
+    }
+
+    @Test
+    fun a_configuration_that_published_no_name_is_shown_by_its_doctype() = runTest {
+        val unnamed = """
+            {"credential_issuer":"$issuerUrl",
+             "credential_endpoint":"$issuerUrl/credential",
+             "credential_configurations_supported":{
+               "loyalty_mdoc":{"format":"mso_mdoc","doctype":"org.example.loyalty","scope":"loyalty"}}}
+        """.trimIndent()
+
+        val resolution = reader(engine(metadata = unnamed))
+            .resolve(offerLink(configurationIds = """["loyalty_mdoc"]"""), locale = "en")
+
+        assertEquals(listOf("org.example.loyalty"), assertIs<IosOfferResolution.Resolved>(resolution).documentNames)
     }
 
     @Test

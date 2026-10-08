@@ -146,8 +146,14 @@ internal class IssuerDisplayNotice {
     var documentDisplaysByDocumentType: Map<String, List<List<IssuerMetadata.Display>>> = emptyMap()
         internal set
 
-    /** The issuer's own display entries; empty when it published none. */
-    var issuerDisplays: List<IssuerMetadata.IssuerDisplay> = emptyList()
+    /**
+     * The issuer's own display entries: empty when it published none, null until the metadata has been read.
+     *
+     * The difference is the point. multipaz names an issuer that publishes no `display` "Untitled"
+     * (`openid4vci/JsonParsing.kt`, `extractDisplay`), so an empty list here is what tells that stand-in
+     * apart from a name — and only once the metadata was actually read.
+     */
+    var issuerDisplays: List<IssuerMetadata.IssuerDisplay>? = null
         internal set
 
     /**
@@ -156,6 +162,14 @@ internal class IssuerDisplayNotice {
      */
     fun documentDisplayFor(documentType: String, chosenName: String): List<IssuerMetadata.Display>? =
         documentDisplaysByDocumentType[documentType]?.firstOrNull { entries -> entries.any { it.name == chosenName } }
+
+    /**
+     * Whether [chosenName] is multipaz's stand-in rather than a name: no configuration of [documentType]
+     * carries it, and one of them published no `display` at all — the one multipaz named "Untitled".
+     */
+    fun publishedNoDocumentDisplay(documentType: String, chosenName: String): Boolean =
+        documentDisplayFor(documentType, chosenName) == null &&
+            documentDisplaysByDocumentType[documentType]?.any { it.isEmpty() } == true
 }
 
 /**
@@ -703,12 +717,13 @@ internal class OpenID4VciCompatibilityEngine(
         }.groupBy({ it.first }, { it.second })
 
         notice.documentDisplaysByDocumentType = byDocumentType
-        notice.issuerDisplays = runCatching { issuerMetadata["display"].issuerDisplays() }.getOrDefault(emptyList())
+        val issuerDisplays = runCatching { issuerMetadata["display"].issuerDisplays() }.getOrDefault(emptyList())
+        notice.issuerDisplays = issuerDisplays
         Logger.i(
             TAG,
             "learned display entries for ${byDocumentType.size} document type(s) and " +
-                    "${notice.issuerDisplays.size} for the issuer: " +
-                    notice.issuerDisplays.joinToString { it.locale ?: "-" }
+                    "${issuerDisplays.size} for the issuer: " +
+                    issuerDisplays.joinToString { it.locale ?: "-" }
         )
     }
 

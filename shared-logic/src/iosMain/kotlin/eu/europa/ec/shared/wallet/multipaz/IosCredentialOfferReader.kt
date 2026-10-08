@@ -31,6 +31,7 @@ import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.openid4vci.OpenID4VCI
 import org.multipaz.rpc.backend.BackendEnvironment
 import kotlin.coroutines.cancellation.CancellationException
+import eu.europa.ec.shared.wallet.document.localizedOrFirst
 import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
 import kotlin.reflect.KClass
@@ -111,10 +112,13 @@ class IosCredentialOfferReader internal constructor(
     ) : this(engine, issuers, IosEtsiTrust())
 
     suspend fun resolve(offerUri: String, locale: String): IosOfferResolution {
+        // What the issuer's metadata really says about names. multipaz names an issuer or a configuration
+        // that publishes no `display` "Untitled", which must not reach the screen as a name.
+        val displayNotice = IssuerDisplayNotice()
         val httpClient = if (engine != null) {
-            openID4VciHttpClient(engine, issuerTrust = issuerTrust)
+            openID4VciHttpClient(engine, displayNotice = displayNotice, issuerTrust = issuerTrust)
         } else {
-            openID4VciHttpClient(issuerTrust = issuerTrust)
+            openID4VciHttpClient(displayNotice = displayNotice, issuerTrust = issuerTrust)
         }
 
         return try {
@@ -135,10 +139,21 @@ class IosCredentialOfferReader internal constructor(
 
             IosOfferResolution.Resolved(
                 offer = offer,
-                documentNames = offered.map { (configurationId, credential) ->
-                    credential!!.display.text.ifBlank { configurationId }
+                // Named as Android's `OfferedDocument.getName` names them: the issuer's name for the document,
+                // else its doctype or vct.
+                documentNames = offered.map { (_, credential) ->
+                    val documentType = credential!!.format.documentType
+                    credential.display.text
+                        .takeUnless { displayNotice.publishedNoDocumentDisplay(documentType, chosenName = it) }
+                        ?.ifBlank { null }
+                        ?: documentType
                 },
-                issuerName = metadata.display.text.ifBlank { null },
+                // As Android's `Offer.getIssuerName`: the issuer's name in the user's language, else the host of
+                // its URL. multipaz's own name counts only when nothing read the metadata.
+                issuerName = displayNotice.issuerDisplays
+                    ?.localizedOrFirst(locale) { it.locale }?.name
+                    ?: metadata.display.text.takeIf { displayNotice.issuerDisplays == null && it.isNotBlank() }
+                    ?: Url(offer.issuerUrl).host,
                 issuerLogoUri = null, // multipaz hands back logo *bytes*; the screen wants a URI.
                 containsPid = offered.any { (_, credential) ->
                     when (val format = credential!!.format) {
@@ -238,3 +253,10 @@ class IosCredentialOfferReader internal constructor(
         const val AUTHORIZATION_CODE_GRANT = "authorization_code"
     }
 }
+
+/** The doctype or vct a configuration issues — what Android names a document with no name of its own. */
+private val CredentialFormat.documentType: String
+    get() = when (this) {
+        is CredentialFormat.Mdoc -> docType
+        is CredentialFormat.SdJwt -> vct
+    }

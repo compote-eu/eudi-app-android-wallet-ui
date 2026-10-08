@@ -20,6 +20,8 @@ import eu.europa.ec.shared.wallet.config.iosWalletConfig
 
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
+import eu.europa.ec.shared.wallet.document.localizedOrFirst
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.credential.Credential
 import org.multipaz.document.Document
@@ -91,6 +93,8 @@ internal class IosDocumentProvisioningHandler(
      * so [createDocument] is where the session counts as started — see [IosIssuanceLog.started].
      */
     private val issuanceLog: IosIssuanceLog? = null,
+    /** The user's language, which the History names the issuer in — at the time of the event, as its rows are. */
+    private val userLanguage: () -> String = { iosUserLanguage() },
 ) : DocumentProvisioningHandler(
     secureArea = store.keySecureArea,
     documentStore = store.documentStore,
@@ -113,10 +117,14 @@ internal class IosDocumentProvisioningHandler(
             ?.numberOfCredentials
             ?: min(credentialMetadata.maxBatchSize, batchSize)
 
-        issuanceLog?.started(issuerName = issuerMetadata.display.text.takeIf { it.isNotBlank() })
+        val issuerName = issuerNameAtIssuance(issuerMetadata)
+        issuanceLog?.started(issuerName = issuerName?.name, issuerNameLanguage = issuerName?.locale)
+        // Null for a configuration that published no name: multipaz's "Untitled" is not one, and the reader
+        // then falls back to the doctype or vct, as Android names such a document.
+        val documentName = credentialMetadata.display.text.takeUnless { publishedNoDocumentName(credentialMetadata) }
         return documentStore.createDocument(
-            displayName = credentialMetadata.display.text,
-            typeDisplayName = credentialMetadata.display.text,
+            displayName = documentName,
+            typeDisplayName = documentName,
             cardArt = credentialMetadata.display.logo,
             issuerLogo = issuerMetadata.display.logo,
             authorizationData = documentAuthorizationData,
@@ -241,10 +249,31 @@ internal class IosDocumentProvisioningHandler(
     }
 
     /**
+     * The issuer's name for the History, in the user's language: from [displayNotice], whose empty list means
+     * the issuer published none — multipaz's own name is then its "Untitled" stand-in, so there is no name,
+     * and the History falls back as it does on Android. multipaz's name counts only when nothing read the
+     * metadata.
+     */
+    private fun issuerNameAtIssuance(issuerMetadata: ProvisioningMetadata): IssuerMetadata.IssuerDisplay? {
+        val published = displayNotice?.issuerDisplays
+            ?: return issuerMetadata.display.text.takeIf { it.isNotBlank() }?.let { IssuerMetadata.IssuerDisplay(name = it) }
+        return published.localizedOrFirst(userLanguage()) { it.locale }
+    }
+
+    /** Whether the configuration being issued published no name, so multipaz's is its "Untitled" stand-in. */
+    private fun publishedNoDocumentName(credentialMetadata: CredentialMetadata): Boolean =
+        displayNotice?.publishedNoDocumentDisplay(
+            documentType = credentialMetadata.format.toStoredFormat().identifier,
+            chosenName = credentialMetadata.display.text,
+        ) == true
+
+    /**
      * The issuer/document display data, in the shape our reader already renders: every language the issuer
      * published, as wallet-core keeps it, so that the reader can pick the user's language each time it shows a
      * name. multipaz surfaces one entry per side and no per-claim names, so all three come from
-     * [displayNotice]; multipaz's own entry stands in only when the notice has nothing.
+     * [displayNotice]; multipaz's own entry stands in only when the notice has nothing. A side the issuer
+     * published no name for stays without one — multipaz's "Untitled" is not a name — and the reader falls
+     * back as Android does: to the doctype or vct for the document, to "Unknown" for the issuer.
      */
     private fun issuerMetadataFrom(
         credentialMetadata: CredentialMetadata,
@@ -257,13 +286,17 @@ internal class IosDocumentProvisioningHandler(
         // document came from. It must not be `display.text`, the issuer's *name*: that matches nothing,
         // because every document would claim to come from "Digital Credentials Issuer".
         credentialIssuerIdentifier = issuerMetadata.url,
-        display = displayNotice
-            ?.documentDisplayFor(
-                documentType = credentialMetadata.format.toStoredFormat().identifier,
-                chosenName = credentialMetadata.display.text,
-            )
-            ?: listOf(IssuerMetadata.Display(name = credentialMetadata.display.text)),
-        issuerDisplay = displayNotice?.issuerDisplays?.takeIf { it.isNotEmpty() }
+        display = if (publishedNoDocumentName(credentialMetadata)) {
+            emptyList()
+        } else {
+            displayNotice
+                ?.documentDisplayFor(
+                    documentType = credentialMetadata.format.toStoredFormat().identifier,
+                    chosenName = credentialMetadata.display.text,
+                )
+                ?: listOf(IssuerMetadata.Display(name = credentialMetadata.display.text))
+        },
+        issuerDisplay = displayNotice?.issuerDisplays
             ?: listOf(IssuerMetadata.IssuerDisplay(name = issuerMetadata.display.text)),
         // The issuer's own per-claim names, so the details screen can say "Family Name(s)" rather than
         // `family_name`. Joined on doctype/vct because that is the only key both sides have — see

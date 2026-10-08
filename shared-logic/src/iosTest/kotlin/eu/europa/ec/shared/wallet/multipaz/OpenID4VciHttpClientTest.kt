@@ -808,10 +808,10 @@ class OpenID4VciHttpClientTest {
         }
         assertEquals(
             listOf("Digital Credentials Issuer" to "en", "Εκδότης Ψηφιακών Διαπιστευτηρίων" to "el"),
-            notice.issuerDisplays.map { it.name to it.locale },
+            notice.issuerDisplays?.map { it.name to it.locale },
         )
-        assertEquals("https://issuer.test/logo.svg", notice.issuerDisplays.first().logo?.uri)
-        assertEquals("Logo", notice.issuerDisplays.first().logo?.alternativeText)
+        assertEquals("https://issuer.test/logo.svg", notice.issuerDisplays?.first()?.logo?.uri)
+        assertEquals("Logo", notice.issuerDisplays?.first()?.logo?.alternativeText)
     }
 
     @Test
@@ -869,7 +869,8 @@ class OpenID4VciHttpClientTest {
 
         assertEquals(listOf("A"), notice.documentDisplaysByDocumentType.getValue("a").single().map { it.name })
         assertTrue(notice.documentDisplaysByDocumentType.getValue("b").single().isEmpty())
-        assertTrue(notice.issuerDisplays.isEmpty())
+        // Read and unusable: no names, as distinct from never read (null).
+        assertEquals(emptyList(), notice.issuerDisplays)
     }
 
     // ---- noticing a deferred issuance -----------------------------------------------------------
