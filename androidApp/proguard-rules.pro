@@ -107,6 +107,9 @@
 -keep interface eu.europa.ec.corelogic.config.WalletCoreConfig
 -keepclassmembers class * implements eu.europa.ec.corelogic.config.WalletCoreConfig { *; }
 -keep class eu.europa.ec.eudi.wallet.transactionLogging.** { *; }
+# A stored document records its credential policy by class name, so a renamed class makes
+# every stored document unreadable after an update (wallet-core #432)
+-keepnames class eu.europa.ec.eudi.wallet.document.CreateDocumentSettings$CredentialPolicy$*
 
 # Enum
 -keep enum * { *; }
