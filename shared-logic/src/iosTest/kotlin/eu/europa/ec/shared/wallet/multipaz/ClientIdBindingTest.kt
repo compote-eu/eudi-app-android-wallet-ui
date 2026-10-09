@@ -154,6 +154,40 @@ class ClientIdBindingTest {
         assertEquals("the client_id prefix 'decentralized_identifier' is not accepted", reason)
     }
 
+    // The client_ids the official iOS library let through to a verifier it never authenticated (wallet kit #471,
+    // #474, #475; fixed in 0.54.8), each signed by a certificate that does prove `verifier.test`.
+
+    @Test
+    fun an_unprefixed_client_id_is_refused_even_when_link_and_request_agree() = runTest {
+        for (id in listOf("verifier.test", "registered-verifier")) {
+            val reason = refusal(id, request(id), testVerifierCertificate(dnsNames = listOf("verifier.test")))
+            assertEquals("the client_id prefix '' is not accepted", reason)
+        }
+    }
+
+    @Test
+    fun a_prefix_with_no_authentication_here_is_refused() = runTest {
+        for (prefix in listOf("unknown", "redirect_uri", "openid_federation", "verifier_attestation", "pre-registered")) {
+            val id = "$prefix:verifier.test"
+            val reason = refusal(id, request(id), testVerifierCertificate(dnsNames = listOf("verifier.test")))
+            assertEquals("the client_id prefix '$prefix' is not accepted", reason)
+        }
+    }
+
+    @Test
+    fun a_malformed_prefix_is_refused() = runTest {
+        for (id in listOf(":", ":x509_san_dns:verifier.test", "::x509_san_dns:verifier.test")) {
+            val reason = refusal(id, request(id), testVerifierCertificate(dnsNames = listOf("verifier.test")))
+            assertEquals("the client_id prefix '' is not accepted", reason)
+        }
+    }
+
+    @Test
+    fun a_prefix_without_an_identifier_is_refused() = runTest {
+        refusal("x509_san_dns:", request("x509_san_dns:"), testVerifierCertificate(dnsNames = listOf("verifier.test")))
+        refusal("x509_hash:", request("x509_hash:"), euDevVerifier())
+    }
+
     @Test
     fun a_request_object_without_a_signing_certificate_is_refused() = runTest {
         val id = "x509_san_dns:verifier.test"
