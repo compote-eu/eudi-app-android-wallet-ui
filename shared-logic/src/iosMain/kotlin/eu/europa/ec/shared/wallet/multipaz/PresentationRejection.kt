@@ -116,8 +116,32 @@ internal class PresentationRequestNotice(
     var verifierRejection: VerifierRejection? = null
         private set
 
-    /** True once a request object has been seen and it named somewhere to answer. */
-    val canReject: Boolean get() = responseUri != null
+    /** Whether the request's one error response has been taken; see [claimRejection]. */
+    private var rejectionClaimed = false
+
+    /**
+     * True once a request object has been seen and it named somewhere to answer, until an error response
+     * has been sent to it.
+     */
+    val canReject: Boolean get() = responseUri != null && !rejectionClaimed
+
+    /**
+     * Takes the request's one error response: true if the caller is to send it, false when there is nowhere
+     * to send one or one has already been sent — the wallet's own refusal or the user's decline.
+     *
+     * One per request, as on Android: once wallet-core has dispatched an error it forgets the request
+     * (`activeRequestObject = null`), and a later `reject()` sends nothing. Without this, refusing an
+     * `x509_hash` verifier that sent no registration certificate posted `invalid_request` and then, as the
+     * user closed the error screen, `access_denied` as well — measured on Plaut's broker 2026-10-12.
+     *
+     * Claimed on the caller's thread, before the presenter publishes the state the screens act on, so a
+     * decline made from that state sees the claim: no lock is needed.
+     */
+    fun claimRejection(): Boolean {
+        if (!canReject) return false
+        rejectionClaimed = true
+        return true
+    }
 
     fun remember(responseUri: String?, state: String?) {
         if (responseUri.isNullOrBlank()) return

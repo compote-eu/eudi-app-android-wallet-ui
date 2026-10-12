@@ -378,17 +378,22 @@ class IosRemotePresenter internal constructor(
      * including after a successful send, where an `access_denied` would be a lie.
      *
      * The verifier is told on a best-effort basis and the teardown happens regardless: a user who has
-     * declined is finished either way, and multipaz never sent anything at all before this.
+     * declined is finished either way, and multipaz never sent anything at all before this. A request the
+     * wallet has already refused on its own account is not told again: closing that error screen also
+     * arrives here.
      */
     fun reject() {
         tellVerifier(ACCESS_DENIED)
         cancel()
     }
 
-    /** Sends an OpenID4VP error response to the current request's verifier, if it named where to. */
+    /**
+     * Sends an OpenID4VP error response to the current request's verifier, if it named where to and has
+     * not been sent one already — see [PresentationRequestNotice.claimRejection].
+     */
     private fun tellVerifier(error: String) {
         val notice = requestNotice
-        if (!notice.canReject) return
+        if (!notice.claimRejection()) return
         // Its own scope: `cancel()` kills `presentmentJob`, and the POST must outlive that.
         scope.launch {
             val client = HttpClient(Darwin)

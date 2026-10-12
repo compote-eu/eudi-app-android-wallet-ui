@@ -135,6 +135,25 @@ class PresentationRejectionTest {
     }
 
     @Test
+    fun a_request_is_sent_one_error_response_and_no_more() = runTest {
+        val notice = noticeAfterFetching(requestObjectJwt())
+
+        // The wallet's own refusal takes it; the user's decline as they close that error must not send
+        // a second one, which is what Android's wallet-core does too.
+        assertTrue(notice.claimRejection())
+        assertFalse(notice.claimRejection())
+        assertFalse(notice.canReject)
+        // Still known: the request is answered, not forgotten.
+        assertEquals(responseUri, notice.responseUri)
+    }
+
+    @Test
+    fun a_request_with_nowhere_to_answer_has_no_error_response_to_take() = runTest {
+        assertFalse(PresentationRequestNotice().claimRejection())
+        assertFalse(noticeAfterFetching(requestObjectJwt(responseUri = null)).claimRejection())
+    }
+
+    @Test
     fun the_signer_chain_is_kept_and_the_signer_is_its_first_certificate() = runTest {
         val notice = noticeAfterFetching(requestObjectJwt())
 
