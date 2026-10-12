@@ -27,14 +27,23 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.parseUrlEncodedParameters
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.crypto.JsonWebEncryption
+import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -66,15 +75,31 @@ class PresentationRejectionTest {
         state: String? = "the-state",
         clientId: String = this.clientId,
         signerDnsNames: List<String> = listOf("verifier.test"),
-    ): String = signedRequestObject(
-        claims = buildJsonObject {
-            put("client_id", clientId)
-            responseUri?.let { put("response_uri", it) }
-            state?.let { put("state", it) }
-            put("nonce", "n-123")
-        },
-        signer = testVerifierCertificate(dnsNames = signerDnsNames),
-    )
+        responseMode: String? = null,
+        /** The verifier's response encryption key, published in `client_metadata.jwks` as the request names it. */
+        encryptionKey: EcPublicKey? = null,
+        encValues: List<String>? = null,
+    ): String {
+        val jwk = encryptionKey?.toJwk(buildJsonObject { put("kid", "enc-1"); put("use", "enc") })
+        return signedRequestObject(
+            claims = buildJsonObject {
+                put("client_id", clientId)
+                responseUri?.let { put("response_uri", it) }
+                state?.let { put("state", it) }
+                put("nonce", "n-123")
+                responseMode?.let { put("response_mode", it) }
+                if (jwk != null || encValues != null) {
+                    putJsonObject("client_metadata") {
+                        jwk?.let { putJsonObject("jwks") { putJsonArray("keys") { add(it) } } }
+                        encValues?.let { values ->
+                            putJsonArray("encrypted_response_enc_values_supported") { values.forEach { add(it) } }
+                        }
+                    }
+                }
+            },
+            signer = testVerifierCertificate(dnsNames = signerDnsNames),
+        )
+    }
 
     /** Drives a fetch through the observing engine, as multipaz's request-object fetch would. */
     private suspend fun noticeAfterFetching(
@@ -342,6 +367,76 @@ class PresentationRejectionTest {
         assertEquals("access_denied", form["error"])
         // Without the state the verifier cannot tell which transaction was declined.
         assertEquals("the-state", form["state"])
+    }
+
+    // A verifier that asked for direct_post.jwt — openid4vp-kt encrypts its error on Android, and Plaut's
+    // broker refused the plain form with "Encrypted response expected (direct_post.jwt)" (2026-10-12).
+
+    @Test
+    fun a_direct_post_jwt_verifier_gets_the_error_encrypted_to_its_key() = runTest {
+        val verifierKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val notice = noticeAfterFetching(
+            requestObjectJwt(responseMode = "direct_post.jwt", encryptionKey = verifierKey.publicKey)
+        )
+        var posted: String? = null
+        val client = HttpClient(
+            MockEngine { request ->
+                posted = request.body.toByteArray().decodeToString()
+                respond("{}", HttpStatusCode.OK)
+            }
+        )
+
+        assertTrue(sendPresentationRejection(notice, client, INVALID_REQUEST))
+
+        val form = posted!!.parseUrlEncodedParameters()
+        // Nothing in the clear: the error travels only inside the encrypted response.
+        assertEquals(setOf("response"), form.names())
+        val jwe = form["response"]!!
+        val header = Json.parseToJsonElement(jwe.substringBefore('.').fromBase64Url().decodeToString()).jsonObject
+        assertEquals("enc-1", header["kid"]?.jsonPrimitive?.content)
+        assertEquals("A128GCM", header["enc"]?.jsonPrimitive?.content)
+        val claims = JsonWebEncryption.decrypt(jwe, AsymmetricKey.AnonymousExplicit(privateKey = verifierKey))
+        assertEquals("invalid_request", claims["error"]?.jsonPrimitive?.content)
+        assertEquals("the-state", claims["state"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun the_error_is_encrypted_with_an_enc_the_verifier_supports() = runTest {
+        val verifierKey = Crypto.createEcPrivateKey(EcCurve.P256)
+        val jwk = verifierKey.publicKey.toJwk()
+        val requestObject = buildJsonObject {
+            put("response_mode", "direct_post.jwt")
+            put("nonce", "n-123")
+            putJsonObject("client_metadata") {
+                putJsonObject("jwks") { putJsonArray("keys") { add(jwk) } }
+                putJsonArray("encrypted_response_enc_values_supported") { add("A256GCM") }
+            }
+        }
+
+        val jwe = encryptedErrorResponse(requestObject, ACCESS_DENIED, state = null)!!
+
+        val header = Json.parseToJsonElement(jwe.substringBefore('.').fromBase64Url().decodeToString()).jsonObject
+        assertEquals("A256GCM", header["enc"]?.jsonPrimitive?.content)
+        val claims = JsonWebEncryption.decrypt(jwe, AsymmetricKey.AnonymousExplicit(privateKey = verifierKey))
+        assertEquals("access_denied", claims["error"]?.jsonPrimitive?.content)
+        assertNull(claims["state"])
+    }
+
+    @Test
+    fun a_verifier_that_asked_for_plain_direct_post_gets_the_plain_form() = runTest {
+        assertNull(encryptedErrorResponse(buildJsonObject { put("response_mode", "direct_post") }, ACCESS_DENIED, "s"))
+        assertNull(encryptedErrorResponse(buildJsonObject { }, ACCESS_DENIED, "s"))
+    }
+
+    @Test
+    fun a_direct_post_jwt_request_without_a_key_is_not_answered_in_the_clear() = runTest {
+        val notice = noticeAfterFetching(requestObjectJwt(responseMode = "direct_post.jwt"))
+        var called = false
+        val client = HttpClient(MockEngine { called = true; respond("{}", HttpStatusCode.OK) })
+
+        assertFalse(sendPresentationRejection(notice, client))
+
+        assertFalse(called, "the plain form would only be refused, so nothing is sent")
     }
 
     @Test

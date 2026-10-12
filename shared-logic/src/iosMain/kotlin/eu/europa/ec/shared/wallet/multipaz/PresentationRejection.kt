@@ -37,19 +37,28 @@ import io.ktor.http.isSuccess
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.readBuffer
+import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.io.readByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.crypto.JsonWebEncryption
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.util.Logger
+import org.multipaz.util.toBase64Url
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.random.Random
 
 /**
  * Where to tell a verifier that the user said no, learned while multipaz fetches the request object.
@@ -345,6 +354,9 @@ private suspend fun HttpResponseData.replayableBody(): Pair<ByteArray, HttpRespo
  * Also how a request the wallet refuses on its own account is answered — [INVALID_REQUEST] for an
  * `x509_hash` verifier without its registration certificate, as openid4vp-kt dispatches it on Android.
  *
+ * A verifier that asked for `direct_post.jwt` gets the error encrypted, as it gets the presentation —
+ * see [encryptedErrorResponse]; every other one gets the plain form.
+ *
  * @param error the OpenID4VP error code; [ACCESS_DENIED] is the user's "no".
  * @return true if the verifier accepted the rejection.
  */
@@ -358,11 +370,16 @@ internal suspend fun sendPresentationRejection(
         return false
     }
     return runCatching {
+        val encrypted = notice.requestObject?.let { encryptedErrorResponse(it, error, notice.state) }
         val response = httpClient.submitForm(
             url = responseUri,
             formParameters = Parameters.build {
-                append("error", error)
-                notice.state?.let { append("state", it) }
+                if (encrypted != null) {
+                    append("response", encrypted)
+                } else {
+                    append("error", error)
+                    notice.state?.let { append("state", it) }
+                }
             },
         )
         val accepted = response.status.isSuccess()
@@ -377,6 +394,54 @@ internal suspend fun sendPresentationRejection(
         false
     }
 }
+
+/**
+ * The error as a `direct_post.jwt` verifier expects it: its parameters encrypted to the verifier's key and
+ * posted as `response`, which is how openid4vp-kt dispatches an error on Android. Null for a verifier that
+ * asked for anything else, which gets the plain form; a `direct_post.jwt` request naming no key it can be
+ * encrypted to throws, since the plain form would be refused anyway.
+ *
+ * Encrypted as multipaz encrypts the presentation itself (`OpenID4VP.generateResponse`): the first key of
+ * `client_metadata.jwks`, ECDH-ES, the request's nonce and a fresh one of the wallet's as `apu`/`apv` —
+ * never null, which multipaz 0.101.0 encodes wrongly (multipaz#2038). `enc` is the first of the
+ * verifier's `encrypted_response_enc_values_supported` this wallet can produce, else A128GCM.
+ *
+ * Measured 2026-10-12 on Plaut's broker: an unencrypted `invalid_request` from a `direct_post.jwt` request
+ * was refused with `400 Encrypted response expected (direct_post.jwt)`; Android's encrypted one was accepted.
+ */
+internal suspend fun encryptedErrorResponse(requestObject: JsonObject, error: String, state: String?): String? {
+    if (requestObject["response_mode"]?.jsonPrimitive?.contentOrNull != DIRECT_POST_JWT) return null
+    val clientMetadata = requestObject["client_metadata"]?.jsonObject
+    val key = clientMetadata?.get("jwks")?.jsonObject?.get("keys")?.jsonArray?.firstOrNull()?.jsonObject
+        ?: throw IllegalStateException("a direct_post.jwt request names no key to encrypt the error to")
+    val supported = clientMetadata["encrypted_response_enc_values_supported"]?.jsonArray
+        ?.mapNotNull { it.jsonPrimitive.contentOrNull }
+        .orEmpty()
+    val enc = supported.firstNotNullOfOrNull { RESPONSE_ENCRYPTION[it] } ?: Algorithm.A128GCM
+    return JsonWebEncryption.encrypt(
+        claimsSet = buildJsonObject {
+            put("error", error)
+            state?.let { put("state", it) }
+        },
+        recipientPublicKey = EcPublicKey.fromJwk(key),
+        encAlg = enc,
+        apu = (requestObject["nonce"]?.jsonPrimitive?.contentOrNull ?: "").encodeToByteString(),
+        apv = Random.nextBytes(WALLET_NONCE_BYTES).toBase64Url().encodeToByteString(),
+        kid = key["kid"]?.jsonPrimitive?.contentOrNull,
+    )
+}
+
+private const val DIRECT_POST_JWT = "direct_post.jwt"
+
+/** The `enc` values multipaz's `JsonWebEncryption` can produce, as OpenID4VP names them. */
+private val RESPONSE_ENCRYPTION = mapOf(
+    "A128GCM" to Algorithm.A128GCM,
+    "A192GCM" to Algorithm.A192GCM,
+    "A256GCM" to Algorithm.A256GCM,
+)
+
+/** The size of multipaz's own wallet nonce in `generateResponse`. */
+private const val WALLET_NONCE_BYTES = 16
 
 private const val TAG = "PresentationRejection"
 internal const val ACCESS_DENIED = "access_denied"
