@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -52,6 +53,8 @@ class IosCredentialIssuerTest {
         wholeOffer: Result<String> = Result.success("doc-whole-offer"),
         registrationCheck: Boolean = false,
         registration: IssuerRegistrationOutcome = IssuerRegistrationOutcome.NotOffered,
+        /** The documents the store would show as parked, by id, with their doctype or vct. */
+        parked: Map<String, String> = emptyMap(),
     ) = IosCredentialIssuer(
         walletEngine = IosWalletEngine(),
         issuers = listOf(issuer),
@@ -68,6 +71,7 @@ class IosCredentialIssuerTest {
             registrationChecks += issuerUrl to configurationIds
             registration
         },
+        deferredAmong = { documentIds -> parked.filterKeys { it in documentIds } },
     )
 
     private fun offer(
@@ -100,6 +104,39 @@ class IosCredentialIssuerTest {
         assertTrue(issued.failures.isEmpty())
         // One flow per configuration, in the order asked for — the PID-combined option depends on it.
         assertEquals(listOf("pid_mdoc", "pid_sd_jwt"), attempted)
+    }
+
+    @Test
+    fun a_document_the_issuer_deferred_is_reported_as_deferred_with_its_type() = runTest {
+        val issuing = issuerWith(
+            answers = mapOf("mdl_deferred" to Result.success("doc-parked")),
+            parked = mapOf("doc-parked" to "org.iso.18013.5.1.mDL"),
+        )
+
+        val issued = assertIs<IosIssuanceProgress.Issued>(issuing.issue(issuer.issuerUrl, listOf("mdl_deferred")).first())
+
+        // Still an issued document id — the parked document exists — but one the screens must not call issued.
+        assertEquals(listOf("doc-parked"), issued.documentIds)
+        assertEquals(mapOf("doc-parked" to "org.iso.18013.5.1.mDL"), issued.deferred)
+        assertTrue(issued.isDeferredOnly)
+    }
+
+    @Test
+    fun a_document_issued_beside_a_deferred_one_keeps_the_result_from_being_deferred_only() = runTest {
+        val issuing = issuerWith(
+            answers = mapOf(
+                "pid_mdoc" to Result.success("doc-mdoc"),
+                "pid_mdoc_deferred" to Result.success("doc-parked"),
+            ),
+            parked = mapOf("doc-parked" to "eu.europa.ec.eudi.pid.1"),
+        )
+
+        val issued = assertIs<IosIssuanceProgress.Issued>(
+            issuing.issue(issuer.issuerUrl, listOf("pid_mdoc", "pid_mdoc_deferred")).first()
+        )
+
+        assertEquals(mapOf("doc-parked" to "eu.europa.ec.eudi.pid.1"), issued.deferred)
+        assertFalse(issued.isDeferredOnly)
     }
 
     @Test

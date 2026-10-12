@@ -29,6 +29,7 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Tstr
+import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import eu.europa.ec.shared.wallet.platform.IosRegistrationCheckSetting
 import eu.europa.ec.shared.wallet.platform.iosUserLanguage
@@ -67,7 +68,18 @@ sealed interface IosIssuanceProgress {
          * the screen tells apart from the rest as Android's `PartialSuccessWithUntrustedIssuer` does.
          */
         val untrusted: Set<String> = emptySet(),
-    ) : IosIssuanceProgress
+        /**
+         * The documents among [documentIds] the issuer deferred, by document id, with their doctype or
+         * vct. They are parked — they read as `Pending` until `IosDeferredDocumentCompleter` collects
+         * them — which is what Android's `DeferredSuccess` reports; the screens decide from it whether
+         * to say the document will come later.
+         */
+        val deferred: Map<String, String> = emptyMap(),
+    ) : IosIssuanceProgress {
+
+        /** Nothing was issued yet: every document the issuer answered with is still to come. */
+        val isDeferredOnly: Boolean get() = deferred.isNotEmpty() && documentIds.all { it in deferred }
+    }
 
     data class Failure(val message: String) : IosIssuanceProgress
 
@@ -167,6 +179,15 @@ class IosCredentialIssuer(
         ::checkIssuerRegistrationOnline,
     /** The language the user reads, which documents' names are stored in. Read per issuance: it can change. */
     private val userLanguage: () -> String = { iosUserLanguage() },
+    /**
+     * Which of the documents an issuance returned the issuer deferred: id → doctype or vct, for those
+     * that read as `Pending`. Injectable so a test can script it without a store.
+     */
+    private val deferredAmong: suspend (documentIds: List<String>) -> Map<String, String> = { documentIds ->
+        walletEngine.getAllDocumentsWithDetails(userLanguage())
+            .filter { it.id in documentIds && it.issuanceState == WalletDocumentIssuanceState.Pending }
+            .associate { it.id to it.formatType }
+    },
 ) {
 
     /**
@@ -571,12 +592,17 @@ class IosCredentialIssuer(
      * attempted *before* the refused one makes this a partial success. Both runs stop at the first
      * failure, so nothing after the refused one changes the outcome.
      */
-    private fun outcomeOf(
+    private suspend fun outcomeOf(
         documentIds: List<String>,
         failures: Map<String, String>,
         untrusted: Set<String>,
     ): IosIssuanceProgress = when {
-        documentIds.isNotEmpty() -> IosIssuanceProgress.Issued(documentIds, failures, untrusted = untrusted)
+        documentIds.isNotEmpty() -> IosIssuanceProgress.Issued(
+            documentIds,
+            failures,
+            untrusted = untrusted,
+            deferred = deferredAmong(documentIds),
+        )
         untrusted.isNotEmpty() -> IosIssuanceProgress.IssuerNotTrusted(
             failures[untrusted.first()] ?: ISSUER_NOT_TRUSTED
         )

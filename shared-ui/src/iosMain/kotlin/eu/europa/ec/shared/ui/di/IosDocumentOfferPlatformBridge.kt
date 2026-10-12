@@ -52,6 +52,22 @@ private fun IssuerRegistrationDomain.refusesIssuance(checkEnabled: Boolean): Boo
     checkEnabled && isBlockedForIssuance
 
 /**
+ * What an offer's issuance tells the offer screen, by Android's rules (`WalletCoreDocumentsController`,
+ * `issueDocumentsByOffer` with `prioritizeDeferred = true`): an untrusted refusal first, then "it will
+ * come later" as soon as anything was deferred, even beside documents issued at once.
+ */
+internal fun IosIssuanceProgress.Issued.toOfferState(): IssueDocumentsPartialState = when {
+    untrusted.isNotEmpty() -> IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+        issuedDocumentIds = documentIds,
+        untrustedDocuments = failures.filterKeys { it in untrusted },
+    )
+
+    deferred.isNotEmpty() -> IssueDocumentsPartialState.DeferredSuccess(deferredDocuments = deferred)
+
+    else -> IssueDocumentsPartialState.Success(documentIds = documentIds)
+}
+
+/**
  * iOS's [DocumentOfferPlatformBridge]: offers are read and issued through multipaz.
  *
  * **It holds the resolved offers**, as the contract requires, though for a different reason than Android:
@@ -173,14 +189,7 @@ internal class IosDocumentOfferPlatformBridge(
                     reason = progress.certificate.toUntrustedIssuerReason(),
                 )
 
-                is IosIssuanceProgress.Issued -> if (progress.untrusted.isNotEmpty()) {
-                    IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
-                        issuedDocumentIds = progress.documentIds,
-                        untrustedDocuments = progress.failures.filterKeys { it in progress.untrusted },
-                    )
-                } else {
-                    IssueDocumentsPartialState.Success(documentIds = progress.documentIds)
-                }
+                is IosIssuanceProgress.Issued -> progress.toOfferState()
             }
         }
         return flow {

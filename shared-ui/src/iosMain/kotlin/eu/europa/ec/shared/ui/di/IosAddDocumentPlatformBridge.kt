@@ -91,22 +91,7 @@ internal class IosAddDocumentPlatformBridge(
                     reason = progress.certificate.toUntrustedIssuerReason(),
                 )
 
-                is IosIssuanceProgress.Issued -> if (progress.failures.isEmpty()) {
-                    IssueDocumentsPartialState.Success(documentIds = progress.documentIds)
-                } else if (progress.untrusted.isNotEmpty()) {
-                    IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
-                        issuedDocumentIds = progress.documentIds,
-                        untrustedDocuments = progress.failures.filterKeys { it in progress.untrusted },
-                    )
-                } else {
-                    // Android reaches this state when an issuer refuses some of a batch; here it is
-                    // reached when the second of two configurations fails, which is the same thing from
-                    // the screen's point of view: these were added, those were not.
-                    IssueDocumentsPartialState.PartialSuccess(
-                        documentIds = progress.documentIds,
-                        nonIssuedDocuments = progress.failures,
-                    )
-                }
+                is IosIssuanceProgress.Issued -> progress.toAddDocumentState()
             }
         }
 
@@ -128,6 +113,32 @@ internal class IosAddDocumentPlatformBridge(
      */
     override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
 
+}
+
+/**
+ * What a wallet-initiated issuance tells the add-document screen, by Android's rules
+ * (`WalletCoreDocumentsController`, `issueDocuments` with `prioritizeDeferred = false`): an untrusted
+ * refusal first, then "it will come later" when every document the issuer answered with was deferred,
+ * and the success screen as soon as one was issued — deferred ones are collected in the background
+ * either way.
+ */
+internal fun IosIssuanceProgress.Issued.toAddDocumentState(): IssueDocumentsPartialState = when {
+    untrusted.isNotEmpty() -> IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+        issuedDocumentIds = documentIds,
+        untrustedDocuments = failures.filterKeys { it in untrusted },
+    )
+
+    isDeferredOnly -> IssueDocumentsPartialState.DeferredSuccess(deferredDocuments = deferred)
+
+    failures.isEmpty() -> IssueDocumentsPartialState.Success(documentIds = documentIds)
+
+    // Android reaches this state when an issuer refuses some of a batch; here it is reached when the
+    // second of two configurations fails, which is the same thing from the screen's point of view:
+    // these were added, those were not.
+    else -> IssueDocumentsPartialState.PartialSuccess(
+        documentIds = documentIds,
+        nonIssuedDocuments = failures,
+    )
 }
 
 /**
