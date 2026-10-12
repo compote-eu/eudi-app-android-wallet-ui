@@ -1544,11 +1544,16 @@ class TestDocumentDetailsInteractor {
 
     //region resumeOpenId4VciWithAuthorization
     @Test
-    fun `When resumeOpenId4VciWithAuthorization is called, Then it delegates to walletCoreDocumentsController`() {
+    fun `When resumeOpenId4VciWithAuthorization is called, Then it delegates to walletCoreDocumentsController and returns its result`() {
+        // Given
+        whenever(walletCoreDocumentsController.resumeOpenId4VciWithAuthorization(mockedReIssueUri))
+            .thenReturn(true)
+
         // When
-        interactor.resumeOpenId4VciWithAuthorization(mockedReIssueUri)
+        val resumed = interactor.resumeOpenId4VciWithAuthorization(mockedReIssueUri)
 
         // Then
+        assertTrue(resumed)
         verify(walletCoreDocumentsController, times(1))
             .resumeOpenId4VciWithAuthorization(mockedReIssueUri)
     }

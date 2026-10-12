@@ -222,8 +222,11 @@ internal class IosDocumentOfferPlatformBridge(
      * Inert, because the issuer consumes its own redirect: `IosCredentialIssuer` awaits
      * `IosAuthorizationRedirects` for the flow it started, rather than being pushed a URL from outside as
      * wallet-core's resume does.
+     *
+     * True all the same: the only resume this screen hears is `IosAuthorizationRedirects` announcing
+     * `VCI_RESUME_ACTION`, which it does only when a flow was waiting for the redirect it queued.
      */
-    override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
+    override fun resumeOpenId4VciWithAuthorization(uri: String) = true
 
     // `internal`, matching the class's own visibility rather than widening anything: these two
     // strings are the bridge's failure vocabulary, and the gate tests assert on which one came back.

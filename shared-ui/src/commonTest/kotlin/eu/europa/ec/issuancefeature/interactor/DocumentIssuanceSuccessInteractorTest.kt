@@ -113,7 +113,7 @@ private class FakeDetailsBridge(
         resultHandler: DeviceAuthenticationResult,
     ) = Unit
 
-    override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
+    override fun resumeOpenId4VciWithAuthorization(uri: String) = false
 }
 
 private fun claim(name: String, value: String) = ClaimDomain.Primitive(

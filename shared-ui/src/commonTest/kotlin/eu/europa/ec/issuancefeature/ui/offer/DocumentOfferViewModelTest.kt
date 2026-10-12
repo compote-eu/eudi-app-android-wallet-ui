@@ -94,6 +94,7 @@ internal class FakeDocumentOfferInteractor(
         private set
     var resumedUris: MutableList<String> = mutableListOf()
         private set
+    var resumeTaken: Boolean = true
     var userAuthCalls: Int = 0
         private set
 
@@ -124,8 +125,9 @@ internal class FakeDocumentOfferInteractor(
         userAuthCalls++
     }
 
-    override fun resumeOpenId4VciWithAuthorization(uri: String) {
+    override fun resumeOpenId4VciWithAuthorization(uri: String): Boolean {
         resumedUris.add(uri)
+        return resumeTaken
     }
 }
 
@@ -351,6 +353,21 @@ class DocumentOfferViewModelTest {
         advanceUntilIdle()
 
         assertTrue(viewModel.viewState.value.isLoading)
+        assertEquals(listOf("eudi-openid4ci://authorize?code=abc"), interactor.resumedUris)
+    }
+
+    @Test
+    fun a_redirect_no_issuance_took_leaves_the_spinner_off() = runTest(mainDispatcher) {
+        val interactor = FakeDocumentOfferInteractor().apply { resumeTaken = false }
+        val viewModel = viewModel(interactor)
+        viewModel.setEvent(Event.Init(deepLink = null))
+        advanceUntilIdle()
+
+        viewModel.setEvent(Event.OnResumeIssuance(uri = "eudi-openid4ci://authorize?code=abc"))
+        advanceUntilIdle()
+
+        // Nothing would switch it off again.
+        assertFalse(viewModel.viewState.value.isLoading)
         assertEquals(listOf("eudi-openid4ci://authorize?code=abc"), interactor.resumedUris)
     }
 

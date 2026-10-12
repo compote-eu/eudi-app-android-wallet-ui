@@ -248,8 +248,11 @@ internal class IosDocumentDetailsPlatformBridge(
         resultHandler.onAuthenticationFailure()
     }
 
-    /** No-op: there is no in-flight OpenID4VCI session on iOS to resume. */
-    override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
+    /**
+     * False: there is no in-flight OpenID4VCI session on this screen to resume, because
+     * [reIssueDocument] never opens the browser.
+     */
+    override fun resumeOpenId4VciWithAuthorization(uri: String) = false
 
     /**
      * The `n/m` counter whenever the document reports a batch — reported unconditionally, because

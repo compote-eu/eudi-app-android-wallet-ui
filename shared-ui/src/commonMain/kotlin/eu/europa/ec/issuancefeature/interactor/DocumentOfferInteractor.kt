@@ -99,5 +99,5 @@ interface DocumentOfferInteractor {
         resultHandler: DeviceAuthenticationResult
     )
 
-    fun resumeOpenId4VciWithAuthorization(uri: String)
+    fun resumeOpenId4VciWithAuthorization(uri: String): Boolean
 }

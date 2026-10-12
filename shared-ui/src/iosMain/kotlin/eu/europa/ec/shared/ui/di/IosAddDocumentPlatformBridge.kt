@@ -110,8 +110,11 @@ internal class IosAddDocumentPlatformBridge(
      * Deliberately inert. iOS's redirects do arrive — `IosAuthorizationRedirects` receives them from the
      * app delegate — but they are consumed by the provisioning flow that asked for them, not pushed into
      * a wallet-core-style resume.
+     *
+     * True all the same: the only resume this screen hears is `IosAuthorizationRedirects` announcing
+     * `VCI_RESUME_ACTION`, which it does only when a flow was waiting for the redirect it queued.
      */
-    override fun resumeOpenId4VciWithAuthorization(uri: String) = Unit
+    override fun resumeOpenId4VciWithAuthorization(uri: String) = true
 
 }
 

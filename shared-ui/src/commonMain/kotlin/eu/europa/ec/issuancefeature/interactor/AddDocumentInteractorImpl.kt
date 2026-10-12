@@ -272,9 +272,8 @@ class AddDocumentInteractorImpl(
         return SuccessRoute(getSuccessConfigForDeferred(navigation))
     }
 
-    override fun resumeOpenId4VciWithAuthorization(uri: String) {
+    override fun resumeOpenId4VciWithAuthorization(uri: String): Boolean =
         platform.resumeOpenId4VciWithAuthorization(uri)
-    }
 
     private fun getSuccessConfigForDeferred(
         navigation: ConfigNavigation

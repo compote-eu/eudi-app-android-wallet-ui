@@ -82,6 +82,7 @@ import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
 import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -1273,9 +1274,13 @@ class TestDocumentOfferInteractor {
 
     //region resumeOpenId4VciWithAuthorization
     @Test
-    fun `when interactor resumeOpenId4VciWithAuthorization is called, then resumeOpenId4VciWithAuthorization should be invoked on the controller`() {
-        interactor.resumeOpenId4VciWithAuthorization(mockedUriPath1)
+    fun `when interactor resumeOpenId4VciWithAuthorization is called, then resumeOpenId4VciWithAuthorization should be invoked on the controller and its result returned`() {
+        whenever(walletCoreDocumentsController.resumeOpenId4VciWithAuthorization(mockedUriPath1))
+            .thenReturn(true)
 
+        val resumed = interactor.resumeOpenId4VciWithAuthorization(mockedUriPath1)
+
+        assertTrue(resumed)
         verify(walletCoreDocumentsController, times(1))
             .resumeOpenId4VciWithAuthorization(mockedUriPath1)
     }

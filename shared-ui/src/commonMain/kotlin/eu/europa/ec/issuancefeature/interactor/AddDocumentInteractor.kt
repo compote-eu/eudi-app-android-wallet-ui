@@ -78,5 +78,5 @@ interface AddDocumentInteractor {
 
     fun buildGenericSuccessRouteForDeferred(flowType: IssuanceFlowType): AppRoute
 
-    fun resumeOpenId4VciWithAuthorization(uri: String)
+    fun resumeOpenId4VciWithAuthorization(uri: String): Boolean
 }

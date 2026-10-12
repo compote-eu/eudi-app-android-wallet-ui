@@ -87,8 +87,11 @@ interface DocumentDetailsPlatformBridge {
         resultHandler: DeviceAuthenticationResult,
     )
 
-    /** Hands an in-flight OpenID4VCI authorization redirect back to the issuance flow. */
-    fun resumeOpenId4VciWithAuthorization(uri: String)
+    /**
+     * Hands an in-flight OpenID4VCI authorization redirect back to the issuance flow, and says whether
+     * an issuance took it.
+     */
+    fun resumeOpenId4VciWithAuthorization(uri: String): Boolean
 }
 
 /**

@@ -187,10 +187,9 @@ class AddDocumentViewModel(
             }
 
             is Event.OnResumeIssuance -> {
-                setState {
-                    copy(isLoading = true)
+                if (addDocumentInteractor.resumeOpenId4VciWithAuthorization(event.uri)) {
+                    setState { copy(isLoading = true) }
                 }
-                addDocumentInteractor.resumeOpenId4VciWithAuthorization(event.uri)
             }
 
             is Event.OnDynamicPresentation -> {

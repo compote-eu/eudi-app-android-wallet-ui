@@ -184,7 +184,7 @@ interface WalletCoreDocumentsController {
 
     fun issueDeferredDocument(docId: DocumentId): Flow<IssueDeferredDocumentPartialState>
 
-    fun resumeOpenId4VciWithAuthorization(uri: String)
+    fun resumeOpenId4VciWithAuthorization(uri: String): Boolean
 
     suspend fun getScopedDocuments(locale: Locale): FetchScopedDocumentsPartialState
 
@@ -245,13 +245,8 @@ class WalletCoreDocumentsControllerImpl(
     private val documentErrorMessage
         get() = resourceProvider.getString(Res.string.issuance_generic_error)
 
-    /**
-     * The manager whose authorization the user is completing in the browser. Its redirect is
-     * resumed there, because another issuer's manager may still hold an authorization the user
-     * abandoned.
-     */
     @Volatile
-    private var authorizingManager: OpenId4VciManager? = null
+    private var lastAuthorizationIssuerId: String? = null
 
     /**
      * A map of [OpenId4VciManager] instances, keyed by their [VciConfig].
@@ -489,6 +484,10 @@ class WalletCoreDocumentsControllerImpl(
         if (preflightRefusal != null) {
             trySendBlocking(preflightRefusal)
         } else {
+            if (allowAuthorizationFallback) {
+                lastAuthorizationIssuerId = issuerId
+            }
+
             manager.reissueDocument(
                 documentId,
                 allowAuthorizationFallback,
@@ -522,7 +521,8 @@ class WalletCoreDocumentsControllerImpl(
                 errorMessage = documentErrorMessage
             ).getOrThrow()
 
-            authorizingManager = manager
+            lastAuthorizationIssuerId = issuerId
+
             manager.issueDocumentByOffer(
                 offer = offer,
                 onIssueEvent = issuanceCallback(prioritizeDeferred),
@@ -774,21 +774,19 @@ class WalletCoreDocumentsControllerImpl(
             )
         }
 
-    override fun resumeOpenId4VciWithAuthorization(uri: String) {
-        authorizingManager?.let { manager ->
-            try {
-                manager.resumeWithAuthorization(uri)
-            } catch (_: Exception) {
-            }
-            return
-        }
-        for (manager in openId4VciManagers.values) {
-            try {
-                manager.resumeWithAuthorization(uri)
-                break
-            } catch (_: Exception) {
-            }
-        }
+    override fun resumeOpenId4VciWithAuthorization(uri: String): Boolean {
+        val issuerId = lastAuthorizationIssuerId ?: return false
+
+        return runCatching {
+            val manager = getVciManager(
+                issuerId = issuerId,
+                useDefault = true,
+                errorMessage = documentErrorMessage
+            ).getOrThrow()
+
+            manager.resumeWithAuthorization(uri)
+            true
+        }.getOrDefault(false)
     }
 
     override fun getAllDocumentCategories(): DocumentCategories {
@@ -856,7 +854,8 @@ class WalletCoreDocumentsControllerImpl(
             if (preflightRefusal != null) {
                 trySendBlocking(preflightRefusal)
             } else {
-                authorizingManager = manager
+                lastAuthorizationIssuerId = issuerId
+
                 manager.issueDocumentByConfigurationIdentifiers(
                     issuerUrl = issuerId,
                     credentialConfigurationIds = configIds,

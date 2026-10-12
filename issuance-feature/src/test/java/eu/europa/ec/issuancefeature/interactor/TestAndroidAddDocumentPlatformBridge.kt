@@ -40,6 +40,7 @@ import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import junit.framework.TestCase.assertEquals
+import junit.framework.TestCase.assertTrue
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -194,11 +195,16 @@ class TestAndroidAddDocumentPlatformBridge {
     //region resumeOpenId4VciWithAuthorization
 
     @Test
-    fun `When resumeOpenId4VciWithAuthorization is called, Then it is invoked on the controller`() {
+    fun `When resumeOpenId4VciWithAuthorization is called, Then it is invoked on the controller and returns its result`() {
+        // Given
+        whenever(walletCoreDocumentsController.resumeOpenId4VciWithAuthorization(mockedUriPath1))
+            .thenReturn(true)
+
         // When
-        bridge.resumeOpenId4VciWithAuthorization(mockedUriPath1)
+        val resumed = bridge.resumeOpenId4VciWithAuthorization(mockedUriPath1)
 
         // Then
+        assertTrue(resumed)
         verify(walletCoreDocumentsController, times(1))
             .resumeOpenId4VciWithAuthorization(mockedUriPath1)
     }
