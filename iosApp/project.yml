@@ -200,6 +200,8 @@ targets:
         # written and the pair cannot drift apart.
         PRODUCT_BUNDLE_IDENTIFIER: "$(APP_BUNDLE_ID).provider"
         SWIFT_VERSION: "6.0"
+        # iPhone only, as the app is.
+        TARGETED_DEVICE_FAMILY: "1"
         # Same team and style as the app; an extension is signed with its container's identity and
         # Xcode provisions the two together.
         CODE_SIGNING_ALLOWED: YES
@@ -239,6 +241,11 @@ targets:
         # Empty dict = the default system launch screen, replacing
         # INFOPLIST_KEY_UILaunchScreen_Generation now that the plist is explicit.
         UILaunchScreen: {}
+        # iPhone only, in portrait (TARGETED_DEVICE_FAMILY "1" below). Without the key App Store
+        # Connect rejects the upload (ITMS-90474), as it assumes iPad multitasking needs all four.
+        # Nothing in the app adapts to landscape, and the QR camera preview does not rotate.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
         # The user-visible app name — what Springboard shows under the icon. Without this key iOS falls
         # back to CFBundleName (`$(PRODUCT_NAME)`, i.e. the target name), which is how this app came to
         # be called "iosApp". The value comes from `app.properties` via APP_DISPLAY_NAME below, the
@@ -487,6 +494,9 @@ targets:
         # (verified: the key never reached the built Info.plist). So the plist is generated from the
         # `info:` block below instead, which is also more XcodeGen-idiomatic.
         SWIFT_VERSION: "6.0"
+        # iPhone only, in portrait (see UISupportedInterfaceOrientations). XcodeGen's default is
+        # "1,2"; on an iPad the app runs in iPhone mode.
+        TARGETED_DEVICE_FAMILY: "1"
         # ── Signing ──────────────────────────────────────────────────────────────────────────────
         #
         # ⚠️ **Team signing, not ad-hoc, and the reason is the Digital Credentials entitlement.**
