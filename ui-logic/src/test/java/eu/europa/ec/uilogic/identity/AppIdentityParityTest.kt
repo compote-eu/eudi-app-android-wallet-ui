@@ -111,10 +111,11 @@ class AppIdentityParityTest {
             "\${APP_NAME}",
             RepoFiles.projectYmlValue("APP_NAME"),
         )
+        // Both the app and the extension, which App Store Connect rejects without one (ITMS-90360).
         assertEquals(
-            "CFBundleDisplayName is not fed by APP_DISPLAY_NAME, so iOS falls back to the target name",
-            "$(APP_DISPLAY_NAME)",
-            RepoFiles.projectYmlValue("CFBundleDisplayName"),
+            "CFBundleDisplayName is not fed by APP_DISPLAY_NAME in both the extension and the app",
+            listOf("$(APP_DISPLAY_NAME)", "$(APP_DISPLAY_NAME)"),
+            RepoFiles.projectYmlValues("CFBundleDisplayName"),
         )
         assertEquals(
             "APP_DISPLAY_NAME no longer composes the name with the current variant's suffix",

@@ -84,6 +84,15 @@ settingGroups:
     BUILD_VARIANT: dev
     MARKETING_VERSION: "${VERSION_NAME}"
     CURRENT_PROJECT_VERSION: "${VERSION_CODE}"
+    # The launcher name, reaching both targets' CFBundleDisplayName. Here rather than in the app's
+    # settings because the extension needs it too: App Store Connect rejects an extension without a
+    # display name (ITMS-90360). Both variants are named identically today (the suffixes are empty in
+    # `app.properties`, as upstream and the reference wallet both do); the mechanism is here so that
+    # changing one file changes both platforms.
+    APP_NAME: "${APP_NAME}"
+    APP_NAME_SUFFIX_dev: "${APP_NAME_SUFFIX_dev}"
+    APP_NAME_SUFFIX_demo: "${APP_NAME_SUFFIX_demo}"
+    APP_DISPLAY_NAME: "$(APP_NAME)$(APP_NAME_SUFFIX_$(BUILD_VARIANT))"
 
 targets:
   # ── The Digital Credentials provider extension ───────────────────────────────────────────────────
@@ -115,6 +124,9 @@ targets:
         # both come from the same two properties files the app reads. XcodeGen otherwise writes 1.0/1.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # The app's name, from the same `identity` setting as the app's copy. App Store Connect
+        # rejects an embedded extension without one (ITMS-90360).
+        CFBundleDisplayName: $(APP_DISPLAY_NAME)
         # 🪤 REQUIRED, and its absence is a crash rather than a degradation. This extension renders the
         # wallet's own Compose consent screen, and Compose Multiplatform's `PlistSanityCheck` throws
         #   IllegalStateException: `Info.plist` doesn't have a valid CADisableMinimumFrameDurationOnPhone
@@ -434,13 +446,8 @@ targets:
         # installed side by side — whichever is installed second replaces the first, along with its
         # wallet data. Deliberate: this app is the KMP build of that wallet, not a companion to it.
         PRODUCT_BUNDLE_IDENTIFIER: "$(APP_BUNDLE_ID)"
-        # The launcher name, reaching CFBundleDisplayName above. Both variants are named identically
-        # today (the suffixes are empty in `app.properties`, as upstream and the reference wallet both
-        # do); the mechanism is here so that changing one file changes both platforms.
-        APP_NAME: "${APP_NAME}"
-        APP_NAME_SUFFIX_dev: "${APP_NAME_SUFFIX_dev}"
-        APP_NAME_SUFFIX_demo: "${APP_NAME_SUFFIX_demo}"
-        APP_DISPLAY_NAME: "$(APP_NAME)$(APP_NAME_SUFFIX_$(BUILD_VARIANT))"
+        # The launcher name (APP_DISPLAY_NAME) is in the `identity` setting group, because the
+        # extension needs the same one.
         # ── Launcher icon, taken verbatim from the reference wallet ───────────────────────────────
         #
         # `iosApp/Assets.xcassets` is the official iOS wallet's own `Wallet/Assets.xcassets`, copied
