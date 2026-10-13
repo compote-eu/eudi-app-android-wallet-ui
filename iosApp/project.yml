@@ -586,3 +586,46 @@ targets:
           # fallback keeps a hand-rolled xcodebuild invocation that predates the setting working.
           ./gradlew :shared-ui:embedAndSignAppleFrameworkForXcode \
             -PappFlavor="${BUILD_VARIANT:-dev}"
+    postBuildScripts:
+      # 🪤 Removes the empty PKIXBridge stub Xcode puts into the app, which App Store Connect rejects
+      # (ITMS-90208, 2026-10-12).
+      #
+      # PKIXBridge is upstream's *static* xcframework (see the `packages:` note), linked into the app
+      # and the extension binaries. Xcode still copies every package framework into `Frameworks/`,
+      # and for a static one it swaps the archive for an empty dynamic stub built against the app's
+      # deployment target (17.0) while keeping upstream's Info.plist (MinimumOSVersion 13.0). The
+      # binary then needs a newer iOS than its plist claims, which is what the upload refused.
+      # `embed: false` on the dependency does not stop the copy (tried: the project and the archive
+      # were unchanged), and the plist cannot be corrected at the source, inside a checksummed zip.
+      #
+      # The stub exports nothing and nothing loads it, so it is deleted rather than patched. That
+      # holds only while neither binary links it dynamically, so the script checks that with
+      # `otool -L` first and fails the build instead of shipping an app that would crash at launch.
+      # It runs after the stub is copied and the extension embedded, and before the app is signed,
+      # so the app's signature covers the bundle without it.
+      - name: Remove the unused PKIXBridge stub framework
+        basedOnDependencyAnalysis: false
+        script: |
+          if [ "$ACTION" = "indexbuild" ] || [ "$ENABLE_PREVIEWS" = "YES" ]; then
+            exit 0
+          fi
+          stub="$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH/PKIXBridge.framework"
+          if [ ! -d "$stub" ]; then
+            echo "note: no PKIXBridge.framework in the app bundle; nothing to remove."
+            exit 0
+          fi
+          app="$TARGET_BUILD_DIR/$EXECUTABLE_PATH"
+          ext="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Extensions/EudiWalletDocumentProvider.appex/EudiWalletDocumentProvider"
+          for binary in "$app" "$ext"; do
+            if [ ! -f "$binary" ]; then
+              echo "error: cannot check $binary before removing the PKIXBridge stub: it is missing." >&2
+              exit 1
+            fi
+            if xcrun otool -L "$binary" | grep -q "PKIXBridge.framework"; then
+              echo "error: $(basename "$binary") links PKIXBridge.framework dynamically, so the stub cannot be removed." >&2
+              echo "note: PKIXBridge is no longer the static framework this phase expects; see its comment in project.yml." >&2
+              exit 1
+            fi
+          done
+          rm -rf "$stub"
+          echo "Removed the unused PKIXBridge stub from $FRAMEWORKS_FOLDER_PATH."
