@@ -69,7 +69,7 @@ internal: wallet-provider ─→ statuslist ;  issuer ─→ issuer-oidc (intros
 | `issuer-frontend` | ghcr `eudi-srv-web-issuing-frontend-eudiw-py` | FormEU country/data-entry web UI |
 | `wallet-provider` | **built** (native) from `repos/eudi-srv-wallet-provider` | Wallet-instance + key attestation; needs Postgres |
 | `statuslist` | build `repos/eudi-srv-statuslist-py` | Status-token minting + revocation |
-| `wallet-db` | `postgres:18.3-alpine` | wallet-provider database |
+| `wallet-db` | `postgres:18.6-alpine` | wallet-provider database |
 
 Optional profiles (`verifier`, `trustedlist`, `rqes`) — see the end of this file.
 
