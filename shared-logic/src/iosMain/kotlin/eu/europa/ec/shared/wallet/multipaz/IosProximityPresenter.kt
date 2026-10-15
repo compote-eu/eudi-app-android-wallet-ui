@@ -131,6 +131,8 @@ class IosProximityPresenter internal constructor(
     private val readerTrust: ReaderTrustSource?,
     /** Whether the user asked for registration certificates to be checked; read on every request. */
     private val isRegistrationCheckEnabled: suspend () -> Boolean,
+    /** What creates the BLE transport: multipaz's own, except in a test. */
+    private val transportFactory: MdocTransportFactory = MdocTransportFactory.Default,
 ) {
 
     /**
@@ -155,7 +157,9 @@ class IosProximityPresenter internal constructor(
     val state: StateFlow<IosProximityState> = mutableState.asStateFlow()
 
     private var presentmentJob: Job? = null
-    private var transport: MdocTransport? = null
+
+    /** Every transport advertised for the current QR, the one a reader connects to included; see [cancel]. */
+    private var advertised: List<MdocTransport> = emptyList()
     private var pendingConsent: CompletableDeferred<CredentialSelection?>? = null
 
     /** The request being consented to, kept so [accept] can turn the app's answer back into matches. */
@@ -195,7 +199,7 @@ class IosProximityPresenter internal constructor(
             val transports = withTimeoutOrNull(ADVERTISE_TIMEOUT) {
                 listOf(connectionMethod).advertise(
                     role = MdocRole.MDOC,
-                    transportFactory = MdocTransportFactory.Default,
+                    transportFactory = transportFactory,
                     options = MdocTransportOptions(bleUseL2CAP = true),
                 )
             }
@@ -203,6 +207,7 @@ class IosProximityPresenter internal constructor(
                 mutableState.value = IosProximityState.Failed(message = BLUETOOTH_UNAVAILABLE)
                 return
             }
+            advertised = transports
 
             mutableState.value = IosProximityState.Engaging(qrPayload = engagement.toQrPayload())
 
@@ -276,8 +281,12 @@ class IosProximityPresenter internal constructor(
         deviceRequest = null
         presentmentJob?.cancel()
         presentmentJob = null
-        scope.launch { runCatching { transport?.close() } }
-        transport = null
+        // All of them, not only a connected one: multipaz 0.101 closes nothing when its wait for a reader is
+        // cancelled, and a BLE peripheral whose wait was cancelled keeps advertising until it is garbage
+        // collected. Closing a transport that has already ended does nothing.
+        val closing = advertised
+        advertised = emptyList()
+        scope.launch { closing.forEach { runCatching { it.close() } } }
         mutableState.value = IosProximityState.Idle
     }
 
@@ -289,7 +298,6 @@ class IosProximityPresenter internal constructor(
         val history = IosPresentationLog { walletEngine.store() }.also { this.history = it }
         try {
             val connected = transports.waitForConnection(eSenderKey = eDeviceKey.publicKey)
-            transport = connected
 
             iosIso18013Presentment(
                 transport = connected,
