@@ -1,7 +1,7 @@
 [versions]
 # Kotlin
 kotlin = "2.4.10"
-composeMultiplatform = "1.12.1"
+composeMultiplatform = "1.12.2"
 androidxLifecycleViewmodel = "2.11.0"
 navigation3 = "1.1.7"
 # JetBrains' multiplatform build of navigation3-ui. Google publishes navigation3-*runtime* for iOS but
@@ -14,7 +14,7 @@ kotlinxAtomicfu = "0.33.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxDatetime = "0.8.0"
 kotlinxSerializationJson = "1.11.0"
-ksp = "2.3.11"
+ksp = "2.3.12"
 
 # AndroidX
 androidxActivity = "1.13.0"
