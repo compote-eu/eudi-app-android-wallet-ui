@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import eu.europa.ec.ux.runtime.bundle.FlowBundle
 import eu.europa.ec.ux.runtime.engine.FlowStatus
 
-/** Test tags of the placeholder, for Maestro and the tests. */
+/** Test tags for Maestro and the tests: [STATE_PREFIX] + state id marks the drawn state (FlowHost), the rest the placeholder. */
 object PlaceholderTags {
     const val STATE: String = "ux-state"
     const val STATE_PREFIX: String = "ux-state-"
@@ -43,7 +43,8 @@ object PlaceholderTags {
 }
 
 /**
- * A generic, state-agnostic rendering of the current state (M4; the interpreter replaces it in M5b): the state id,
+ * A generic, state-agnostic rendering of a state whose screen the bundle does not describe (M4; since M5b only that
+ * fallback, every described screen is interpreted): the state id,
  * its kind and the events of its `on`, each as a button. A button is enabled when the engine accepts the event now
  * and the event needs no payload (the placeholder has none to give).
  */
@@ -65,7 +66,6 @@ internal fun StatePlaceholder(
         )
         BasicText(
             "kind: ${state.kind.wire}  screen: ${state.screen}  ui_state: ${status.uiState}",
-            Modifier.testTag(PlaceholderTags.STATE_PREFIX + state.id),
         )
         BasicText("gen: ${status.gen}  pending: ${status.pending}  back: ${state.back}")
         state.on.keys.forEach { event ->

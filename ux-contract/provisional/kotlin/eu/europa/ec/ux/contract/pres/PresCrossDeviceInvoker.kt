@@ -49,7 +49,12 @@ class PresCrossDeviceInvoker(private val services: PresCrossDeviceServices) {
         const val VERIFICATION_CODE = "verificationCode"
         const val SEND = "send"
         const val CANCEL = "cancel"
-        val json = Json { classDiscriminator = "type" }
+        // encodeDefaults: a field left at its default (`selected: false`, `value: null`, `privacy_url: null`) still
+        // reaches the engine, so the context never depends on the defaults of the contract classes (M4 finding 2).
+        val json = Json {
+            classDiscriminator = "type"
+            encodeDefaults = true
+        }
     }
 }
 

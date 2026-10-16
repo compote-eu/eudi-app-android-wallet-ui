@@ -62,13 +62,16 @@ import eu.europa.ec.ux.theme.UxTheme
 const val UX_GALLERY_PREFIX = "gallery"
 
 /** The templates the gallery shows, in picker order. */
-enum class UxGalleryPage(val key: String) {
-    Sheet("sheet"),
+enum class UxGalleryPage(private val explicitKey: String? = null) {
+    Sheet,
     SheetPage("page"),
-    Progress("progress"),
-    Outcome("outcome"),
-    Scan("scan"),
+    Progress,
+    Outcome,
+    Scan,
     ;
+
+    /** The script suffix: the entry name in lower case (no flow-state-like literal, KC1 guard), `page` for SheetPage. */
+    val key: String get() = explicitKey ?: name.lowercase()
 
     companion object {
         /** `gallery` -> sheet, `gallery-outcome` -> outcome; an unknown suffix falls back to the sheet. */

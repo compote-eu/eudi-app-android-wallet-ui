@@ -18,15 +18,22 @@ package eu.europa.ec.uxspike.ios
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import eu.europa.ec.commonfeature.config.IssuanceFlowType
+import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.QrScanFlow
+import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DebugFlowHook
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.QrScanRoute
 import eu.europa.ec.uilogic.component.PlatformBackHandler
+import eu.europa.ec.uilogic.component.PlatformScreenActions
+import eu.europa.ec.uilogic.component.rememberPlatformScreenActions
+import eu.europa.ec.ux.contract.pres.PresCrossDeviceExit
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceSpec
+import eu.europa.ec.ux.runtime.engine.FlowEngine
 import eu.europa.ec.ux.runtime.engine.FlowPlatform
 import eu.europa.ec.uxspike.UxFlowEntry
 import eu.europa.ec.uxspike.UxFlowRoute
@@ -47,17 +54,30 @@ class IosUxSpikeHook : DebugFlowHook {
 
     override fun EntryProviderScope<NavKey>.entries(navigator: AppNavigator) {
         entry<UxFlowRoute> { route ->
+            val actions = rememberPlatformScreenActions()
             UxFlowEntry(
                 route = route,
                 script = IosUxSpikeSwitch.script() ?: DEFAULT_SCRIPT,
                 platform = FlowPlatform.IOS,
                 // The one back-handler adapter of this hook: the runtime decides what a press does (bundle policy).
                 backHandler = { enabled, onBack -> PlatformBackHandler(enabled, onBack) },
-                onExit = { exit ->
-                    UxSpikeLog.log("exit to home (${exit?.kind} ${exit?.result})")
-                    if (!navigator.popUpTo(DashboardRoute::class)) navigator.pop()
-                },
+                onExit = { exit -> exitTo(exit, navigator, actions) },
             )
+        }
+    }
+
+    /** The deferred exits (SPIKE-PLAN §1.5): home first, then the exit's own target where the app has one. */
+    private fun exitTo(exit: PresCrossDeviceExit?, navigator: AppNavigator, actions: PlatformScreenActions) {
+        UxSpikeLog.log("exit $exit")
+        if (!navigator.popUpTo(DashboardRoute::class)) navigator.pop()
+        when (exit) {
+            PresCrossDeviceExit.AddDocument ->
+                navigator.navigate(AddDocumentRoute(IssuanceUiConfig(IssuanceFlowType.ExtraDocument(formatType = null))))
+            // PlatformScreenActions has no security-settings action (and iOS no such link): app settings is the closest.
+            PresCrossDeviceExit.DeviceSettings -> actions.openAppSettings()
+            is PresCrossDeviceExit.ToHelp ->
+                UxSpikeLog.log("GAP to-help: the app has no help route (FLW-app-info#help-from-error); home, error_class=${exit.errorClass}")
+            else -> Unit
         }
     }
 
@@ -68,7 +88,7 @@ class IosUxSpikeHook : DebugFlowHook {
                 UxFlowRoute(PresCrossDeviceSpec.FLOW_ID, entry = "deeplink", launch = (route.config.mode as PresentationMode.OpenId4Vp).uri)
 
             route is QrScanRoute && route.config.qrScanFlow is QrScanFlow.Presentation ->
-                UxFlowRoute(PresCrossDeviceSpec.FLOW_ID, entry = "scan")
+                UxFlowRoute(PresCrossDeviceSpec.FLOW_ID, entry = FlowEngine.DEFAULT_ENTRY)
 
             else -> null.also { println("UX-SPIKE: no redirect for $route (script=$script)") }
         }

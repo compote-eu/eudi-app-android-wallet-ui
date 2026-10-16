@@ -1,0 +1,49 @@
+# M5b D6-iOS-provisional, happy path (script `happy`), after `simctl openurl openid4vp://...`: connecting -> request
+# (hand-written) -> auth -> verification-code -> sending -> success -> Home. Each interpreted screen is checked by its
+# bundle node ids and its PROVISIONAL sk copy.
+appId: eu.compote.euidi.dev
+---
+- runFlow:
+    file: m4-open-link.yaml
+    env:
+      STATE: connecting
+- assertVisible: "Načítava sa žiadosť overovateľa"
+- takeScreenshot: ${EV}/d6-happy-1-connecting
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-request"
+    timeout: 20000
+- assertVisible:
+    id: "attributes"
+- takeScreenshot: ${EV}/d6-happy-2-request
+- tapOn:
+    id: "continue"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-verification-code"
+    timeout: 20000
+- assertVisible:
+    id: "code"
+- assertVisible: "4711"
+- takeScreenshot: ${EV}/d6-happy-3-verification-code
+- tapOn:
+    id: "confirm"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-sending"
+    timeout: 10000
+- takeScreenshot: ${EV}/d6-happy-4-sending
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-success"
+    timeout: 20000
+- assertVisible:
+    id: "close"
+- takeScreenshot: ${EV}/d6-happy-5-success
+- tapOn:
+    id: "close"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible:
+    id: "ux-state-success"
+- takeScreenshot: ${EV}/d6-happy-6-home

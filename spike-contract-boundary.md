@@ -703,7 +703,12 @@ class PresCrossDeviceInvoker(private val services: PresCrossDeviceServices) {
         const val VERIFICATION_CODE = "verificationCode"
         const val SEND = "send"
         const val CANCEL = "cancel"
-        val json = Json { classDiscriminator = "type" }
+        // M5b amendment: encodeDefaults, so fields left at their defaults (`selected: false`, `privacy_url: null`)
+        // still reach the engine; the spike's provisional copy does this and ProvisionalInvokerDefaultsTest checks it.
+        val json = Json {
+            classDiscriminator = "type"
+            encodeDefaults = true
+        }
     }
 }
 

@@ -23,10 +23,12 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import eu.europa.ec.ux.contract.pres.PresCrossDeviceExit
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceSpec
 import eu.europa.ec.ux.runtime.bundle.FlowBundle
 import eu.europa.ec.ux.runtime.bundle.LoadResult
@@ -35,6 +37,8 @@ import eu.europa.ec.ux.runtime.engine.FlowLog
 import eu.europa.ec.ux.runtime.engine.FlowPlatform
 import eu.europa.ec.ux.runtime.engine.ServicePort
 import eu.europa.ec.ux.runtime.host.FlowHost
+import eu.europa.ec.ux.runtime.screen.FlowScreens
+import eu.europa.ec.ux.theme.provisional.ProvisionalEudiwV1
 import eu.europa.ec.uxspike.resources.Res
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -88,9 +92,29 @@ sealed interface UxSpikeFlow {
     }
 }
 
+/** The context path a `to-help` exit carries (boundary Q10). */
+private const val ERROR_CLASS_PATH = "/flow/error_class"
+
+/**
+ * The flow's exit as the contract's typed exit (`PresCrossDeviceExit.of`), so the hooks map exits to the app without
+ * naming a state. Null for an abandoned flow with no final state.
+ */
+fun FlowExit.typed(): PresCrossDeviceExit? =
+    PresCrossDeviceExit.of(state, (carries[ERROR_CLASS_PATH] as? JsonPrimitive)?.takeIf { it.isString }?.content)
+
+/**
+ * How the spike draws the flow's screens: the hand-written consent screen by its screen id ([PresHandWrittenScreens]),
+ * every other screen interpreted from the bundle, PROVISIONAL copy and brand until `ux-spec/` exists.
+ */
+fun uxSpikeScreens(bundle: FlowBundle): FlowScreens = FlowScreens(
+    copy = ProvisionalBundleCopy.from(bundle),
+    custom = PresHandWrittenScreens,
+    brands = mapOf(ProvisionalEudiwV1.id to ProvisionalEudiwV1),
+)
+
 /**
  * The body of the [UxFlowRoute] entry: loads the bundle and the script, then hosts the flow. Each hook passes its
- * platform back-handler adapter and maps the exit onto the app's navigation.
+ * platform back-handler adapter and maps the typed exit onto the app's navigation.
  */
 @Composable
 fun UxFlowEntry(
@@ -98,7 +122,7 @@ fun UxFlowEntry(
     script: String,
     platform: FlowPlatform,
     backHandler: @Composable (enabled: Boolean, onBack: () -> Unit) -> Unit,
-    onExit: (FlowExit?) -> Unit,
+    onExit: (PresCrossDeviceExit?) -> Unit,
 ) {
     if (script.startsWith(UX_GALLERY_PREFIX)) {
         UxGallery(UxGalleryPage.fromScript(script))
@@ -119,7 +143,8 @@ fun UxFlowEntry(
             launch = route.launch?.let { JsonObject(mapOf("uri" to JsonPrimitive(it))) } ?: JsonObject(emptyMap()),
             platform = platform,
             backHandler = backHandler,
-            onExit = onExit,
+            onExit = { exit -> onExit(exit?.typed()) },
+            screens = remember(f.bundle) { uxSpikeScreens(f.bundle) },
             log = UxSpikeLog,
         )
     }

@@ -17,6 +17,27 @@ step() { # name, command...
   else echo "FAIL $name ($((SECONDS - t0))s) -> $LOG/$name.log"; RESULT=1; fi
 }
 
+# KC1 guard (SPIKE-PLAN §3, M5b): no SCR- literal or screen name in any spike module or hook (the plan's grep), and no
+# state-name literal of the bundle in their main sources. PresRequestScreen.kt (the hand-written consent screen and its
+# registration) is the only exception. Untracked files count too, so the guard holds before a commit.
+kc1_guard() {
+  local paths=(ux-theme ux-elements ux-runtime ux-spike ux-spike-android shared-ui/src/iosUxSpikeMain
+    shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/DebugFlowHook.kt)
+  local except=':(exclude,glob)ux-spike/**/PresRequestScreen.kt' hits states rc=0
+  hits=$(git grep -n --untracked -E 'SCR-|"pres-' -- "${paths[@]}" "$except")
+  [[ -z "$hits" ]] || { echo "KC1: SCR-/screen-name literals:"; echo "$hits"; rc=1; }
+  states=$(python3 -I -c 'import json,sys; [print(f"\"{s}\"") for s in json.load(open(sys.argv[1]))["states"]]' \
+    spike-evidence/boundary/FLW-pres-cross-device.bundle.PROVISIONAL.json)
+  hits=$(git grep -n --untracked -F -f <(echo "$states") -- ':(glob)ux-*/src/*Main/**/*.kt' ':(glob)ux-*/src/main/**/*.kt' \
+    ':(exclude,glob)ux-contract/**' ':(glob)shared-ui/src/iosUxSpikeMain/**/*.kt' "${paths[6]}" "$except")
+  [[ -z "$hits" ]] || { echo "KC1: state-name literals in main sources:"; echo "$hits"; rc=1; }
+  grep -q '"SCR-pres-request"' ux-spike/src/commonMain/kotlin/eu/europa/ec/uxspike/PresRequestScreen.kt \
+    || { echo "KC1: the one exception (PresRequestScreen.kt registration) is missing"; rc=1; }
+  [[ $rc == 0 ]] && echo "KC1 guard: 0 hits ($(echo "$states" | wc -l | tr -d ' ') state names checked)"
+  return $rc
+}
+step kc1-guard kc1_guard
+
 find . -path '*/build/test-results/*' -name '*.xml' -not -path './build/*' -delete 2>/dev/null
 
 ux_tests=(); for m in $SPIKE_MODULES; do ux_tests+=("$m:allTests"); done

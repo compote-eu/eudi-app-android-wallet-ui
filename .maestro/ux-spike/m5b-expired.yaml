@@ -1,0 +1,24 @@
+# M5b D6-iOS-provisional, expired path (script `expired-at-request`): connecting -> error-expired (interpreted
+# SCR-pres-outcome-expired) -> Close -> Home.
+appId: eu.compote.euidi.dev
+---
+- runFlow:
+    file: m4-open-link.yaml
+    env:
+      STATE: connecting
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-error-expired"
+    timeout: 20000
+- assertVisible:
+    id: "hero"
+- assertVisible:
+    id: "retry"
+- takeScreenshot: ${EV}/d6-expired-1-error-expired
+- tapOn:
+    id: "close"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible:
+    id: "ux-state-error-expired"
+- takeScreenshot: ${EV}/d6-expired-2-home

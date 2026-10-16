@@ -70,8 +70,9 @@ class ProvisionalFlowHostBackIosTest {
             }
         }
         waitUntil(timeoutMillis = TIMEOUT) { onAll("request") }
-        steps.forEach { (event, state) ->
-            onNodeWithTag(PlaceholderTags.EVENT_PREFIX + event).performClick()
+        steps.forEach { (node, state) ->
+            // Since M5b the screens are interpreted: a step presses the node (its bundle id is its test tag).
+            onNodeWithTag(node, useUnmergedTree = true).performClick()
             waitUntil(timeoutMillis = TIMEOUT) { onAll(state) }
         }
         assertTrue(recorder.enabled, "the handler must be enabled in $last")
@@ -103,7 +104,7 @@ class ProvisionalFlowHostBackIosTest {
     @Test
     fun backInAuthReturnsToRequestAndCancelsTheAuthentication() {
         val port = FakePort().apply { auto["fetchRequest"] = Results.requestReady }
-        steps = listOf("CONTINUE" to "auth")
+        steps = listOf("continue" to "auth")
         last = "auth"
         expected = "request"
         host(port, Recorder())
@@ -117,7 +118,7 @@ class ProvisionalFlowHostBackIosTest {
             auto["authenticate"] = Results.authenticated
             auto["verificationCode"] = Results.codeReady
         }
-        steps = listOf("CONTINUE" to "verification-code", "CONFIRM" to "sending")
+        steps = listOf("continue" to "verification-code", "confirm" to "sending")
         last = "sending"
         expected = "sending"
         afterPress = { r -> assertTrue(r.enabled, "blocked keeps the handler enabled") }
