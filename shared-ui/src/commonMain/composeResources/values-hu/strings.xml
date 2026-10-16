@@ -663,4 +663,10 @@
     <string name="privacy_history_method_phone">Telefonhívás</string>
     <!--endregion-->
 
+    <!--region iOS permission alerts (Info.plist purpose strings)-->
+    <string name="ios_permission_camera">Olvasson be egy QR-kódot egy dokumentum megosztásához vagy a tárcájához való hozzáadásához.</string>
+    <string name="ios_permission_face_id">Oldja fel a tárcáját, és hagyja jóvá egy dokumentum megosztását.</string>
+    <string name="ios_permission_bluetooth">Ossza meg a tárcájában lévő dokumentumokat egy közeli olvasóval Bluetooth-on keresztül.</string>
+    <!--endregion-->
+
 </resources>

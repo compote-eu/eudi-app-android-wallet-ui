@@ -665,4 +665,10 @@
     <string name="privacy_history_method_phone">Telefonát</string>
     <!--endregion-->
 
+    <!--region iOS permission alerts (Info.plist purpose strings)-->
+    <string name="ios_permission_camera">Naskenujte QR kód na zdieľanie dokumentu alebo na jeho pridanie do peňaženky.</string>
+    <string name="ios_permission_face_id">Odomknite svoju peňaženku a schváľte zdieľanie dokumentu.</string>
+    <string name="ios_permission_bluetooth">Zdieľajte dokumenty zo svojej peňaženky s čítačkou v blízkosti cez Bluetooth.</string>
+    <!--endregion-->
+
 </resources>
