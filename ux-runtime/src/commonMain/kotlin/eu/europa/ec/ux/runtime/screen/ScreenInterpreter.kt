@@ -21,14 +21,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import eu.europa.ec.ux.elements.registry.UxElementAdapter
+import eu.europa.ec.ux.elements.registry.UxElementSchema
 import eu.europa.ec.ux.elements.registry.UxNodeScope
 import eu.europa.ec.ux.elements.registry.UxRecord
 import eu.europa.ec.ux.elements.registry.UxTemplateAdapter
+import eu.europa.ec.ux.elements.registry.UxTemplateSchema
 import eu.europa.ec.ux.elements.registry.UxTemplateScope
 import eu.europa.ec.ux.runtime.bundle.ScreenRule
 import eu.europa.ec.ux.runtime.engine.FlowLog
@@ -41,6 +44,9 @@ import kotlinx.serialization.json.JsonPrimitive
 object InterpreterTags {
     const val UNKNOWN_ELEMENT_PREFIX: String = "ux-unknown-element."
     const val UNKNOWN_TEMPLATE_PREFIX: String = "ux-unknown-template."
+
+    /** A node (or template) that the registry knows but whose props, variants, events or slots are outside its schema. */
+    const val ERROR_PREFIX: String = "ux-error."
 }
 
 /**
@@ -57,6 +63,8 @@ internal class ScreenFrame(
     val onEvent: (event: String, payload: JsonObject) -> Unit,
     val elements: Map<String, UxElementAdapter>,
     val templates: Map<String, UxTemplateAdapter>,
+    val elementSchemas: Map<String, UxElementSchema>,
+    val templateSchemas: Map<String, UxTemplateSchema>,
     val log: FlowLog,
 ) {
     val props = PropResolver(context, copy)
@@ -91,7 +99,10 @@ internal fun InterpretedScreen(frame: ScreenFrame) {
         }
     }
     val template = tree.template?.let(frame.templates::get)
-    if (template != null) {
+    val templateProblems = tree.template?.let(frame.templateSchemas::get)?.violations(tree.regions.keys).orEmpty()
+    if (templateProblems.isNotEmpty()) {
+        ErrorNode(InterpreterTags.ERROR_PREFIX + tree.id, "${tree.template} ${tree.id}", templateProblems, frame.log)
+    } else if (template != null) {
         template(scope)
     } else {
         // A visible placeholder: the regions are still drawn, so the screen stays usable and the gap is obvious.
@@ -111,11 +122,24 @@ private fun RenderNode(node: ScreenNode, frame: ScreenFrame) {
         return
     }
     val scope = NodeScope(node, frame)
+    val problems = frame.elementSchemas[node.element]?.let { SchemaCheck.node(it, node, scope) }.orEmpty()
+    if (problems.isNotEmpty()) {
+        ErrorNode(InterpreterTags.ERROR_PREFIX + node.id, "${node.element} ${node.id}", problems, frame.log)
+        return
+    }
     if (node.a11y.inert) {
         Box(Modifier.clearAndSetSemantics { }) { adapter(scope) }
     } else {
         adapter(scope)
     }
+}
+
+/** The loud failure (M5c): what is wrong is on screen and in the log, tagged `ux-error.<id>`. */
+@Composable
+private fun ErrorNode(tag: String, what: String, problems: List<String>, log: FlowLog) {
+    val text = "⟦error $what: ${problems.joinToString("; ")}⟧"
+    LaunchedEffect(text) { log.log("interpreter: $text") }
+    BasicText(text, Modifier.testTag(tag))
 }
 
 private class NodeScope(private val node: ScreenNode, private val frame: ScreenFrame) : UxNodeScope {
@@ -154,6 +178,8 @@ private class NodeScope(private val node: ScreenNode, private val frame: ScreenF
 }
 
 private class JsonRecord(private val o: JsonObject) : UxRecord {
+    override val keys: Set<String> = o.keys
+
     override fun text(field: String): String? = displayText(o[field])
 
     override fun flag(field: String): Boolean? = (o[field] as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toBooleanStrictOrNull()

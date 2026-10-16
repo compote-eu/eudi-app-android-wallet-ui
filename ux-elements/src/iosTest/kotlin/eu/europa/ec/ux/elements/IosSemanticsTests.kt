@@ -22,3 +22,6 @@ class ElementsSemanticsIosTest : ElementsSemanticsScenario()
 
 /** The template semantics tests and D7-semantics-preliminary on the iOS simulator. */
 class TemplatesSemanticsIosTest : TemplatesSemanticsScenario()
+
+/** M5c: the registry schemas against what the adapters read, on the iOS simulator. */
+class RegistryAdapterIosTest : RegistryAdapterScenario()

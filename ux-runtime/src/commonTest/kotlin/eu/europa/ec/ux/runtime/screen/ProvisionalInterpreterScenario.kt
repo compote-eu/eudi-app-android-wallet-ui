@@ -250,6 +250,44 @@ abstract class ProvisionalInterpreterScenario {
     }
 
     @Test
+    fun anUnknownVariantDrawsATaggedErrorNodeAndLogsIt() = runComposeUiTest {
+        val screen = Fixture.bundle().state("connecting").screen!!
+        val root = Fixture.root.with("/screens/$screen/regions/hero/0/props/tone", JsonPrimitive("bogus"))
+        host(root, FakePort())
+        awaitState("connecting")
+        waitForIdle()
+        assertEquals(1, count(hasTestTag(InterpreterTags.ERROR_PREFIX + "hero")))
+        assertEquals(0, count(hasTestTag("hero")), "the element must not be drawn with a silent default")
+        assertTrue(lines.any { it.contains("EL-status-hero hero") && it.contains("unknown variant 'bogus'") }, "$lines")
+        assertTrue(lines.any { it.contains("1 schema problems") }, "the state-entry log names the problem")
+    }
+
+    @Test
+    fun anUnknownPropDrawsATaggedErrorNode() = runComposeUiTest {
+        val screen = Fixture.bundle().state("connecting").screen!!
+        val root = Fixture.root.with("/screens/$screen/regions/actions/0/props/colour", JsonPrimitive("red"))
+        host(root, FakePort())
+        awaitState("connecting")
+        waitForIdle()
+        assertEquals(1, count(hasTestTag(InterpreterTags.ERROR_PREFIX + "cancel")))
+        assertTrue(lines.any { it.contains("unknown prop 'colour'") }, "$lines")
+        assertEquals(1, count(hasTestTag("hero")), "the other nodes of the screen still draw")
+    }
+
+    @Test
+    fun anUnknownRegionOfATemplateDrawsATaggedErrorNode() = runComposeUiTest {
+        val screen = Fixture.bundle().state("connecting").screen!!
+        val regions = (Fixture.root["screens"] as JsonObject)[screen] as JsonObject
+        val extra = (regions["regions"] as JsonObject)["hero"]!!
+        val root = Fixture.root.with("/screens/$screen/regions/footer", extra)
+        host(root, FakePort())
+        awaitState("connecting")
+        waitForIdle()
+        assertEquals(1, count(hasTestTag(InterpreterTags.ERROR_PREFIX + screen)))
+        assertTrue(lines.any { it.contains("unknown region 'footer'") }, "$lines")
+    }
+
+    @Test
     fun everyScreenOfTheBundleUsesOnlyRegisteredParts() {
         val catalog = ScreenCatalog(Fixture.bundle())
         assertEquals(Fixture.bundle().screens.keys, catalog.screens.keys)

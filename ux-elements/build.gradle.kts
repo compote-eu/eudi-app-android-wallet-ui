@@ -25,6 +25,37 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// M5c (OR-2 (c)): the snapshot of the library YAML subset (spec repo commit recorded inside it) is embedded as a Kotlin
+// string under build/, so the registry-vs-library test runs on both targets and the spike repo builds without the spec
+// repo. Refresh: spike-evidence/M5c/tools/snapshot-library.py.
+abstract class SpecSnapshotFixture : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val snapshot: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val text = snapshot.get().asFile.readText()
+        check("\"source_commit\"" in text) { "the snapshot must record its source commit" }
+        check('$' !in text && "\"\"\"" !in text) { "the snapshot cannot be embedded in a raw string" }
+        val q = "\"\"\""
+        val dir = outputDir.get().asFile.resolve("eu/europa/ec/ux/elements/fixture").apply { mkdirs() }
+        dir.resolve("UxLibrarySnapshot.kt").writeText(
+            "// Generated from ux-elements/spec-snapshot/ux-library-subset.json. Do not edit.\n" +
+                "package eu.europa.ec.ux.elements.fixture\n\n" +
+                "internal object UxLibrarySnapshot {\n    const val JSON: String = $q$text$q\n}\n",
+        )
+    }
+}
+
+val specSnapshotFixture = tasks.register<SpecSnapshotFixture>("specSnapshotFixture") {
+    snapshot.set(layout.projectDirectory.file("spec-snapshot/ux-library-subset.json"))
+    outputDir.set(layout.buildDirectory.dir("generated/spec-snapshot/kotlin"))
+}
+
 kotlin {
     android {
         namespace = "eu.europa.ec.ux.elements"
@@ -48,10 +79,14 @@ kotlin {
             api(libs.jetbrains.compose.foundation)
             implementation(libs.jetbrains.compose.ui)
         }
-        commonTest.dependencies {
-            implementation(kotlin("test"))
-            // Direct coordinate, no catalog touch (SPIKE-PLAN §1.1).
-            implementation("org.jetbrains.compose.ui:ui-test:${libs.versions.composeMultiplatform.get()}")
+        commonTest {
+            kotlin.srcDir(specSnapshotFixture.map { it.outputDir })
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.serialization.json)
+                // Direct coordinate, no catalog touch (SPIKE-PLAN §1.1).
+                implementation("org.jetbrains.compose.ui:ui-test:${libs.versions.composeMultiplatform.get()}")
+            }
         }
         // runComposeUiTest on the Android host needs Robolectric (the precedent of :ux-runtime's P4 round trip).
         getByName("androidHostTest").dependencies {

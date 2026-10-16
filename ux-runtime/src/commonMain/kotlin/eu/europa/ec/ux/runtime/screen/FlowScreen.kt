@@ -51,7 +51,9 @@ internal fun FlowScreen(
             when {
                 custom != null -> "screen $screenId: hand-written (hook), state ${status.state}, ui_state ${status.uiState}"
                 tree != null -> "screen $screenId: interpreted from the bundle (${tree.template}, ${tree.nodes.size} nodes), " +
-                    "state ${status.state}, ui_state ${status.uiState}"
+                    "state ${status.state}, ui_state ${status.uiState}" +
+                    SchemaCheck.problems(tree, screens.elementSchemas, screens.templateSchemas)
+                        .let { if (it.isEmpty()) "" else ", ${it.size} schema problems: ${it.joinToString("; ")}" }
                 else -> "screen $screenId: no node tree in the bundle"
             },
         )
@@ -72,6 +74,8 @@ internal fun FlowScreen(
             onEvent = { event, payload -> onEvent(event, payload, status.gen) },
             elements = screens.elements,
             templates = screens.templates,
+            elementSchemas = screens.elementSchemas,
+            templateSchemas = screens.templateSchemas,
             log = log,
         ),
     )

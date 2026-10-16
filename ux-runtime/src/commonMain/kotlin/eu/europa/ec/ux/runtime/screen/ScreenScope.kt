@@ -20,7 +20,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.focus.FocusRequester
 import eu.europa.ec.ux.elements.registry.UxElementAdapter
 import eu.europa.ec.ux.elements.registry.UxElementRegistry
+import eu.europa.ec.ux.elements.registry.UxElementSchema
 import eu.europa.ec.ux.elements.registry.UxTemplateAdapter
+import eu.europa.ec.ux.elements.registry.UxTemplateSchema
 import eu.europa.ec.ux.runtime.a11y.AccessibilityBridge
 import eu.europa.ec.ux.theme.UxBrand
 import kotlinx.serialization.json.JsonObject
@@ -70,4 +72,7 @@ class FlowScreens(
     val accessibility: AccessibilityBridge? = null,
     val elements: Map<String, UxElementAdapter> = UxElementRegistry.elements,
     val templates: Map<String, UxTemplateAdapter> = UxElementRegistry.templates,
+    /** What each part accepts (props, variants, events, slots, regions); a node outside it draws a tagged error node. */
+    val elementSchemas: Map<String, UxElementSchema> = UxElementRegistry.elementSchemas,
+    val templateSchemas: Map<String, UxTemplateSchema> = UxElementRegistry.templateSchemas,
 )

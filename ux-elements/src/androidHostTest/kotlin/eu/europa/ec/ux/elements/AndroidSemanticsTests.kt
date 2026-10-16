@@ -30,3 +30,8 @@ class ElementsSemanticsAndroidTest : ElementsSemanticsScenario()
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class TemplatesSemanticsAndroidTest : TemplatesSemanticsScenario()
+
+/** M5c: the registry schemas against what the adapters read, on the Android host. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class RegistryAdapterAndroidTest : RegistryAdapterScenario()

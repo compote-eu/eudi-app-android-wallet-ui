@@ -58,6 +58,9 @@ interface UxNodeScope {
 
 /** One object of a bound data list. */
 interface UxRecord {
+    /** The field names the record carries (checked against the element's schema). */
+    val keys: Set<String>
+
     fun text(field: String): String?
 
     fun flag(field: String): Boolean?
@@ -81,8 +84,18 @@ typealias UxElementAdapter = @Composable (UxNodeScope) -> Unit
 
 typealias UxTemplateAdapter = @Composable (UxTemplateScope) -> Unit
 
-/** Maps a prop's wire value (`icon-primary`, `pending`) onto an enum entry by name; [default] when it does not match. */
+/**
+ * Maps a prop's wire value (`icon-primary`, `pending`) onto an enum entry by name. [default] only when the prop is
+ * absent (null); a value that names no entry is an error ([UxUnknownVariantException]), never a silent default
+ * (M5c, OR-2). The interpreter checks every node against its [UxElementSchema] first, so this is the backstop.
+ */
 fun <T : Enum<T>> wireEnum(value: String?, entries: List<T>, default: T): T {
-    val key = value?.replace("-", "")?.replace("_", "")?.lowercase() ?: return default
-    return entries.firstOrNull { it.name.lowercase() == key } ?: default
+    if (value == null) return default
+    val key = wireKey(value)
+    return entries.firstOrNull { wireKey(it.name) == key }
+        ?: throw UxUnknownVariantException(value, entries.map { it.name })
 }
+
+/** A wire value that matches no variant of the enum it was read for. */
+class UxUnknownVariantException(val value: String, val allowed: List<String>) :
+    IllegalArgumentException("unknown variant '$value' (allowed: ${allowed.joinToString()})")

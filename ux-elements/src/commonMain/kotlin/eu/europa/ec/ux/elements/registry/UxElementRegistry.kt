@@ -24,6 +24,7 @@ import eu.europa.ec.ux.elements.UxBarLeading
 import eu.europa.ec.ux.elements.UxBarTrailing
 import eu.europa.ec.ux.elements.UxButton
 import eu.europa.ec.ux.elements.UxButtonVariant
+import eu.europa.ec.ux.elements.UxHeroArt
 import eu.europa.ec.ux.elements.UxHeroTone
 import eu.europa.ec.ux.elements.UxLink
 import eu.europa.ec.ux.elements.UxNotice
@@ -182,6 +183,95 @@ object UxElementRegistry {
                 body = if (t.hasRegion("body")) ({ t.Region("body") }) else null,
             )
         },
+    )
+
+    /** The accepted props, variants, events and slots per element (M5c): one entry per adapter above. */
+    val elementSchemas: Map<String, UxElementSchema> = mapOf(
+        "EL-text" to UxElementSchema(
+            props = mapOf("text" to null, "variant" to enumKeys(UxTextVariant.entries), "tone" to enumKeys(UxTextTone.entries)),
+        ),
+        "EL-button" to UxElementSchema(
+            props = mapOf(
+                "label" to null,
+                "variant" to enumKeys(UxButtonVariant.entries),
+                "disabled" to null,
+                "icon" to null,
+                "popup" to null,
+                "popup_state_label" to null,
+            ),
+            events = setOf("press"),
+        ),
+        "EL-status-hero" to UxElementSchema(
+            props = mapOf(
+                "tone" to enumKeys(UxHeroTone.entries),
+                "title" to null,
+                "text" to null,
+                "art" to enumKeys(UxHeroArt.entries),
+            ),
+        ),
+        "EL-notice" to UxElementSchema(
+            props = mapOf("tone" to enumKeys(UxNoticeTone.entries), "title" to null, "text" to null),
+            slots = setOf("extra"),
+        ),
+        "EL-link" to UxElementSchema(
+            props = mapOf("label" to null, "href" to null, "external" to null, "external_label" to null),
+            events = setOf("activate"),
+        ),
+        "EL-qr-viewfinder" to UxElementSchema(props = mapOf("label" to null, "scanning" to null)),
+        "EL-app-bar" to UxElementSchema(
+            props = mapOf(
+                "leading" to enumKeys(UxBarLeading.entries),
+                "leading_label" to null,
+                "title" to null,
+                "trailing" to enumKeys(UxBarTrailing.entries),
+                "trailing_label" to null,
+                "badge" to null,
+            ),
+            events = setOf("leading", "trailing"),
+        ),
+        "EL-rp-identity" to UxElementSchema(
+            props = mapOf(
+                "name" to null,
+                "service" to null,
+                "reason" to null,
+                "trust" to enumKeys(UxTrust.entries),
+                "trust_label" to null,
+                "caption" to null,
+                "service_label" to null,
+                "reason_label" to null,
+            ),
+        ),
+        "EL-attribute-list" to UxElementSchema(
+            props = mapOf(
+                "items" to null,
+                "readonly" to null,
+                "mandatory_heading" to null,
+                "optional_heading" to null,
+                "mandatory_label" to null,
+                "optional_label" to null,
+                "copy_label" to null,
+            ),
+            events = setOf("toggle", "copy"),
+            itemsProp = "items",
+            itemProps = mapOf(
+                "id" to null,
+                "label" to null,
+                "label_copy" to null,
+                "value" to null,
+                "requirement" to enumKeys(UxRequirement.entries),
+                "selected" to null,
+                "copyable" to null,
+                "media" to null,
+            ),
+        ),
+    )
+
+    /** The accepted regions per template (M5c). */
+    val templateSchemas: Map<String, UxTemplateSchema> = mapOf(
+        "TPL-outcome" to UxTemplateSchema(setOf("appbar", "hero", "body", "actions")),
+        "TPL-progress" to UxTemplateSchema(setOf("appbar", "steps", "hero", "actions")),
+        "TPL-scan" to UxTemplateSchema(setOf("instruction", "camera", "actions")),
+        "TPL-sheet" to UxTemplateSchema(setOf("appbar", "header", "body", "actions")),
     )
 
     /** The payload field of the `toggle` and `copy` events of EL-attribute-list (boundary §1.7). */
