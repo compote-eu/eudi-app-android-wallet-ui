@@ -2,6 +2,11 @@
 # Kotlin
 kotlin = "2.4.10"
 composeMultiplatform = "1.12.2"
+# Compose Multiplatform's Material 3 has its own line: CMP 1.12.2's `compose.material3` accessor named
+# 1.9.0, not `composeMultiplatform` (read from the plugin's ComposePlugin$Dependencies). Move it on purpose.
+jetbrainsComposeMaterial3 = "1.9.0"
+# JetBrains' material-icons-extended ends at 1.7.3 ("pinned … will not receive updates", CMP 1.12.2).
+jetbrainsComposeMaterialIcons = "1.7.3"
 androidxLifecycleViewmodel = "2.11.0"
 navigation3 = "1.1.7"
 # JetBrains' multiplatform build of navigation3-ui. Google publishes navigation3-*runtime* for iOS but
@@ -158,11 +163,14 @@ jetbrains-compose-components-resources = { group = "org.jetbrains.compose.compon
 # `org.jetbrains.compose.ui.tooling.preview` package. This one carries the androidx package the
 # deprecation names, and does track `composeMultiplatform`.
 jetbrains-compose-ui-tooling-preview = { group = "org.jetbrains.compose.ui", name = "ui-tooling-preview", version.ref = "composeMultiplatform" }
-# NB: Compose Multiplatform's UI artifacts (foundation, material3, ui) are deliberately NOT listed here.
-# They are consumed through the `org.jetbrains.compose` plugin's `compose.*` accessors in
-# shared-ui/build.gradle.kts, because their versions do not all track `composeMultiplatform` — material3
-# in particular has its own line, so `org.jetbrains.compose.material3:material3:1.11.1` does not exist.
-# Letting the plugin resolve them keeps the set self-consistent.
+# Compose Multiplatform's UI artifacts for shared-ui, listed since CMP 1.12.2 deprecated the plugin's
+# `compose.*` accessors. They are exactly what those accessors resolved to: foundation, ui and animation
+# track `composeMultiplatform`; material3 and the extended icons have their own lines (see [versions]).
+jetbrains-compose-foundation = { group = "org.jetbrains.compose.foundation", name = "foundation", version.ref = "composeMultiplatform" }
+jetbrains-compose-ui = { group = "org.jetbrains.compose.ui", name = "ui", version.ref = "composeMultiplatform" }
+jetbrains-compose-animation = { group = "org.jetbrains.compose.animation", name = "animation", version.ref = "composeMultiplatform" }
+jetbrains-compose-material3 = { group = "org.jetbrains.compose.material3", name = "material3", version.ref = "jetbrainsComposeMaterial3" }
+jetbrains-compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "jetbrainsComposeMaterialIcons" }
 androidx-lifecycle-viewModelCompose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
 androidx-metrics = { group = "androidx.metrics", name = "metrics-performance", version.ref = "androidxMetrics" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "androidxProfileinstaller" }

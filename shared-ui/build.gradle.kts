@@ -159,13 +159,13 @@ kotlin {
             // resolved versions did not move (everything still converges on the BOM's 1.11.4, which is
             // already how the app reconciles requests from 1.2.1 through 1.11.2).
             // `api`, since these types appear in shared composables' public signatures (Modifier, …).
-            // Consumed through the Compose plugin's accessors, not the catalog: the versions do not all
-            // track `composeMultiplatform` (org.jetbrains.compose.material3:material3:1.11.1 does not
-            // exist).
-            api(compose.foundation)
-            api(compose.material3)
-            api(compose.ui)
-            api(compose.animation)
+            // Named from the catalog since Compose Multiplatform 1.12.2 deprecated the plugin's
+            // `compose.*` accessors; the entries are the coordinates those accessors resolved to, so
+            // material3 keeps its own line (`jetbrainsComposeMaterial3`).
+            api(libs.jetbrains.compose.foundation)
+            api(libs.jetbrains.compose.material3)
+            api(libs.jetbrains.compose.ui)
+            api(libs.jetbrains.compose.animation)
             // Compose Multiplatform's own `@Preview`, so a shared component can keep its previews in
             // commonMain. `api`, since `ThemeModePreviews` is annotated with it and every component's
             // preview functions carry that annotation. NB it has neither `uiMode` nor
@@ -181,9 +181,10 @@ kotlin {
             // preview annotation in commonMain — 18 warnings' worth.
             api(libs.jetbrains.compose.ui.tooling.preview)
             // The seven Material `ImageVector` icons `AppIconResolvers` falls back to for keys with no
-            // drawable of their own (ArrowBack, Close, KeyboardArrow*, DateRange, Info). Via the
-            // Compose plugin accessor, since androidx's `material-icons-extended` is Android-only.
-            api(compose.materialIconsExtended)
+            // drawable of their own (ArrowBack, Close, KeyboardArrow*, DateRange, Info). JetBrains'
+            // multiplatform build, since androidx's `material-icons-extended` is Android-only; that
+            // artifact ends at 1.7.3 (`jetbrainsComposeMaterialIcons`).
+            api(libs.jetbrains.compose.material.icons.extended)
             // Coil 3 is multiplatform — `coil`, `coil-compose` and `coil-svg` all publish iOS
             // variants (checked against Maven Central, not just the local cache) — which is what lets
             // `WrapAsyncImage` be shared. `api`, since `AsyncImage`'s types appear in its signature.
