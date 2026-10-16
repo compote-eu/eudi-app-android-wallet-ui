@@ -30,6 +30,19 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | RULING-1 | 2026-10-16 | M1a review panel (brief-compliance + technical reviews, merged) on `SPIKE-PLAN.md` | technical review: hook renamed to `DebugFlowHook` (release grep with no exemption); `#if DEBUG` around the ConsentHost import; one `backHandler(` call; KMP skeleton details; ui-test without a catalog touch; QrScan redirect null for Issuance/Signature; F2 run-once guard; no `simctl defaults write`; Koin hook-absent/present test; iOS Gradle-graph + Android dev/demo classpath checks | brief-compliance review: verdict needs D4, D5, D6 on both platforms and D7-Android; KC3 per the brief (VoiceOver); every code milestone closes with a §7 drill (preliminary allowed, not counted); KC1 fails on any non-`ux-spec` D8 diff unless the owner ruled in advance, data-driven scripts; wider KC1 and D1 greps; pre-D8 baseline grep, brand-selection path; graph-only Android check = unresolved, APK required; extra ⟲ after M7 and before M11, named D8 baseline; rows split; D3 device queued; D10 not run = Incomplete; D9 common lines count per platform; `--diff-filter=MDRT`; ≤ 1 file per ruling | all 21 points accepted and folded in; M1b defaults adopted (boundary §7 Q1–Q17); refinements F1–F5 accepted | no (5 planned + 3 reserved, cap 8) |
 | RULING-2 | 2026-10-16 | M3 finding 3: what does a service that throws mean? | — (orchestrator ruling, no panel) | — | A service that throws, or a coroutine failure other than cancellation, is converted into the `ServiceResult` type `Error` with payload `{class: unexpected}` and follows the bundle's declared error branch. If a state declares no error branch, the bundle is refused at load. Implemented in M4: `FlowEngine.callPort` (a `CancellationException` while the state job is still active counts as a failure); `BundleValidator.requireErrorBranch` requires, for every **state-scoped** invoke, an `Error` result on the service and an `invoke.on.Error` mapped to an event of the state's `on` (detached invokes are exempt: their results are ignored). `Error` becomes the single engine-convention name, exempted in `ProvisionalRuntimeLiteralGuardTest`. Tests: `ProvisionalRuling2Test` (9). Queued for week 0 / owner as Q-004 with this default. | no |
 
+## Owner rulings (2026-10-16, given in chat)
+
+| Id | Date | Ruling | Effect on the plan |
+|---|---|---|---|
+| OR-1 | 2026-10-16 | Home-screen probe: render only the dashboard Home screen from the bundle through the interpreter (no dashboard flow). A probe, not counted toward the verdict. After M7. | M5d (after M5c). |
+| OR-2 | 2026-10-16 | Adopt the evaluator's recommendations 2 and 3: (a) gate guard: no hard-coded dp/sp/colour/alpha/FontWeight in `:ux-elements` (templates included); (b) `wireEnum` and unknown variants or props fail loudly, prop names checked against the library YAML; (c) extend the `UxTokens` shell: elevation, font family and weight, `comp.*` tokens, modes incl. HighContrast; the exporter (week-0 batch 3) must emit these. Dark mode, icons/assets and motion stay declared gaps (out of brief scope). | M5c. |
+| OR-3 | 2026-10-16 | Q-002/KC1: the fake engine is data-driven and does not count. A compile break in the app's real `Services` adapter counts as a reported cost (not a screen-code edit); record it per D8 row. | D8 rows carry a "real adapter compile break" cost field. |
+| OR-4 | 2026-10-16 | Android (M11) is deferred to the end of the spike, after everything is confirmed on iPhone. | M11 runs last of the drills. |
+| OR-5 | 2026-10-16 | Real adapter probe at the end (after M11, before M12): one real `Services` adapter binds this flow's request step (and, as far as cheap, auth and send) to the app's real presentation interactors behind the debug switch; measure cost and the typed-error gaps (untyped `Failure` to `Expired` etc.). Not counted toward the verdict; feeds the estimates. | M11b. |
+| OR-6 | 2026-10-16 | Phase metrics for post-spike estimation: every milestone records a metrics row (phase, agent wall time, hand-written LOC main + test per module, generated LOC, files touched, gate runs, rework loops and cause). Backfill M2 to M5b from git history. M12 adds a per-phase cost model for a new flow (input to the post-spike challenge of estimates and of generalisation ideas; the challenge itself happens after the spike). | "Phase metrics" table below; M12 cost model. |
+
+Open: the owner's review of SPIKE-PLAN §2 (the touch list, brief §6.4) has not been given yet.
+
 ## Gate results
 
 Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where tests exist is red.
@@ -58,6 +71,34 @@ M5b Release spot check: `strings` on the Release app and extension binaries find
 M4 Release spot check (full gate's Release build): `strings` on the app binary finds 0 spike patterns; the `.app` and `.appex` carry only `eu.europa.ec.shared.resources`.
 
 Gate try 1 was RED: my first `DebugFlowHookTest` used Koin DSL modules, which made the Koin compiler plugin validate the iOS test compilation and reject `IosFilterValidatorScopeTest` (KOIN-D002). The test now uses `Koin().declare`. No wallet code changed.
+
+## Phase metrics (OR-6)
+
+How to read it. Source: `git log --numstat` and commit timestamps on `spike/ux-runtime`, backfilled for M2, M3, M4, M5, M5b
+and M7 (M5c onward: recorded by the milestone itself).
+- **Agent wall time** is the span from the first to the last commit timestamp of the milestone: approximate and a lower
+  bound (work before the first commit is invisible; the M2 code commits share one timestamp because they were
+  re-committed together). The bracket is the time since the previous milestone's last commit, an upper bound that
+  includes owner waits.
+- **LOC** are lines added (`--numstat`, `.kt`/`.kts`/`.sh`/`.swift` files; the PROVISIONAL bundle JSON, Maestro YAML and
+  evidence files are not counted), split main / test per module. Test = a `*Test` source set. All hand-written; **generated
+  LOC is 0** so far (the exporter does not exist yet; the fixture task in `:ux-runtime` emits a test-only Kotlin string
+  that is not counted).
+- **Gate runs** are the rows of "Gate results" and the commit table; **rework** is a loop that redid finished work, with its cause.
+
+| Milestone | Phase category | Agent wall time | Hand-written LOC main / test, per module | Generated LOC | Existing files touched | Gate runs | Rework loops and cause |
+|---|---|---|---|---|---|---|---|
+| M2 | runtime (skeletons, hook, wiring) | 34 min (since M1: 1 h 35 min incl. wiring) | shared-ui hook 172/70; ux-spike 150/31; ux-spike-android 177/0; ux-contract 85/0; ux-elements 72/0; ux-runtime 72/0; ux-theme 71/0; edits in shared-ui 5, androidApp 2, root 6 | 0 | 4 (T1-T4: `settings.gradle.kts`, `shared-ui/build.gradle.kts`, `SharedEntries.kt`, `androidApp/build.gradle.kts`) | 2 (full try 1 RED, retry GREEN) | 1: the hook test used Koin DSL modules, so the Koin compiler plugin validated the iOS tests and rejected `IosFilterValidatorScopeTest` (KOIN-D002); rewritten with `Koin().declare` |
+| M3 | runtime (engine, loader, handshake) | 9 min (since M2: 18 min) | ux-runtime 1551/1339 | 0 | 0 | 2 (fast, full; 4099) | 0 within M3; its finding (a throwing service) caused RULING-2 and the M4 rework below |
+| M4 | runtime (host, FlowViewModel, fake engine, contract copy) | 30 min (since M3: 1 h 12 min) | ux-runtime 359/615; ux-contract 407/53; ux-spike 263/229; shared-ui hook 22/0; ux-spike-android 22/0 | 0 | 0 | 3 (fast 4117, fast 4145, full 4148) | 1: RULING-2 (throwing service to Error branch, bundle refused without an error branch), found in M3 and done as the first M4 commit; D1-iOS-preliminary could not run (Maestro edge swipe triggers no back) and was redone in M5b with a dedicated tool |
+| M5 | elements + templates (theme shell, 9 elements, 4 templates, gallery) | 11 min (since M4: 24 min) | ux-elements 1486/596; ux-theme 329/15; ux-spike 188/33 | 0 | 0 | 2 (fast, full; 4196) | 1: template action buttons were intrinsic width, fixed in a second commit (`LocalUxFullWidthActions`) |
+| M5b | runtime (interpreter, registry) + hand-written screens (`PresRequestScreen`) | 45 min (since M5: 1 h 3 min) | ux-runtime 806/467; ux-elements 290/0; ux-spike 256/0 (the consent screen); ux-contract 7/77; shared-ui hook 25/0; ux-spike-android 25/0; root 21 (gate) | 0 | 0 | 2 (fast 4220, full 4220) | 1: the QR redirect passed the state name `scan` as the entry name (unknown since M4) and the gallery keys spelled it; the M4 back test pressed placeholder buttons and was re-pointed to node ids; `ui-test` moved to `:ux-runtime` commonTest |
+| M7 | drills + a11y (bridge, settle-time focus, audit) | 13 min (since M5b: 44 min incl. owner device runs) | ux-runtime 284/440; ux-elements 38/31 | 0 | 0 | 2 (fast 4234, full 4234) | 1: `EL-link` text repeated its content description (audit tree showed the name twice), fixed in the second commit |
+
+Reading the table for a new flow (input to the M12 cost model): with no generator, every phase is hand-written; the
+runtime phases (M2 to M4, M5b interpreter) hold about 5.3 k main lines and 3.2 k test lines across five modules, the elements
+and templates about 1.5 k main and 0.6 k test. Rework is small and mostly integration (a gate-plugin interaction, an
+entry-name convention, a missing width rule), never an engine redesign.
 
 ## M2 probes
 

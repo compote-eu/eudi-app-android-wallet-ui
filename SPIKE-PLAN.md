@@ -388,13 +388,24 @@ Legend:
 | M4 | `FlowHost` + `FlowViewModel` (P4), back by policy, fake engine player, provisional contract copy | `SavedStateHandle` round trip green; switch off = unchanged | *D1-iOS-preliminary* (swipe in `request`, `auth`, `sending` on placeholders), *D3-sim-preliminary* | — |
 | M5 | 9 elements + 4 templates; semantics per node `a11y` | template semantics tests (`runComposeUiTest`) green; Opus a11y review | *D7-semantics-preliminary* (heading/live/inert assertions per template, Accessibility Inspector on a template gallery) | — |
 | M5b | interpreter (§1.4); `PresRequestScreen` against the provisional contract | bundle-only render test, added-state test, KC1 guard green | *D6-iOS-provisional* (simulator, happy + expired, provisional bundle), *D8-added-state-preliminary* | — |
+| M5c | styling hardening (OR-2): `style-guard` gate step (no hard-coded dp/sp/Color/alpha/FontWeight in `:ux-elements` main, templates included), `wireEnum` and unknown variants/props fail loudly, registry-vs-library-YAML test, `UxTokens` shell grown (elevation drawn, font family and weight, `comp.*`, modes incl. HighContrast), exporter requirements for week-0 batch 3 | gate green incl. `style-guard`; a planted hard-coded value turns it red (proved once); the YAML test is green or its mismatches are listed; `spike-evidence/M5c/exporter-requirements.md` written; metrics row | none (hardening; not counted toward the verdict) | — |
+| M5d | Home-screen probe (OR-1): render only the dashboard Home screen from the bundle through the interpreter (no dashboard flow), after M5c | the Home screen is drawn from bundle data by the generic interpreter, gaps listed | *probe*, not counted toward the verdict | — |
 | M6 | wait for `ux-spec/` + lock; sync; lock + handshake; lint report; re-check per boundary §6 (shape diff, API diff, re-run, classify, delete provisional); bind the fake to the generated `Services` | divergence list in `SPIKE-LOG.md`; `git grep PROVISIONAL` clean | **D6-iOS**, **D1-iOS**, **D3-sim**, **D4-iOS**, **D5** | ★ `ux-spec/`; ⟲ after sync |
 | M7 | accessibility fixes in runtime/elements only; per-transition semantics assertions; Inspector audit | Inspector clean; walk queued | **D7-iOS** (VoiceOver, real iPhone) | ★ device; ⟲ at end (it is the M8 baseline) |
 | M8 | regeneration drills, all from **one named baseline SHA** (logged in `SPIKE-LOG.md` when cut, right after the M7 rebase); no rebase during M8 | 4 rows (§5 KC1) | **D8-logo**, **D8-offline**, **D8-brand**, **D8-copy** | ★ only if §1.6 case arises |
 | M9 | track B inside the TPL-sheet implementation | numstat per option per platform | **D9-brand**, **D9-sheet-page** | — |
 | M10 | track C: `UxDcApiSubflowViewController`, T5; in-app harness on the simulator (a scripted request, as in the `DcApiProbeRequest` builder, `shared-logic/.../multipaz/harness/DcApiHarness.kt`). The harness is evidence only, **not** a D10 pass. HTTPS `org-iso-mdoc` page written. | harness completes; steps queued | **D10 run 1–5** (device) | ★ iPhone iOS 26.2+, signing, hosting; ⟲ at end (before M11) |
-| M11 | Android drills (emulator/device) | rows recorded | **D1-Android**, **D2-Android** (`am kill`, ★ LMK), **D4-Android**, **D6-Android**, **D7-Android** (TalkBack ★) | ⟲ at start; ★ device |
-| M12 | close-out: gate, release check, independent KC re-derivation, DEC draft, copy-back, final report | report delivered | all rows final | ⟲ final; ★ approval, KC5 |
+| M11 | Android drills (emulator/device); **runs at the end of the spike (OR-4)**, after everything is confirmed on iPhone | rows recorded | **D1-Android**, **D2-Android** (`am kill`, ★ LMK), **D4-Android**, **D6-Android**, **D7-Android** (TalkBack ★) | ⟲ at start; ★ device |
+| M11b | real adapter probe (OR-5), after M11 and before M12: one real `Services` adapter binds this flow's request step (and, as far as cheap, auth and send) to the app's real presentation interactors, behind the debug switch | cost measured (LOC, files, compile breaks per OR-3), typed-error gaps listed (untyped `Failure` to `Expired` etc.); metrics row | *probe*, not counted toward the verdict; feeds the estimates | — |
+| M12 | close-out: gate, release check, independent KC re-derivation, DEC draft, copy-back, final report, **and a per-phase cost model for a new flow (OR-6)** built from the `SPIKE-LOG.md` "Phase metrics" table (spec / exporter / runtime / elements+templates / hand-written screens / services adapter / drills+a11y / sync: wall time, hand-written LOC, generated LOC, files touched, gate runs, rework) as input to the post-spike challenge of estimates | report delivered | all rows final | ⟲ final; ★ approval, KC5 |
+
+**Phase metrics (OR-6), part of every milestone's definition of done.** Each milestone adds one row to the "Phase metrics"
+table in `SPIKE-LOG.md`: phase category (spec / exporter / runtime / elements+templates / hand-written screens / services
+adapter / drills+a11y / sync), agent wall time, hand-written LOC (main and test, per module), generated LOC, existing files
+touched, gate runs, rework loops with their cause. A milestone without its row is not done.
+
+**Order after the owner rulings of 2026-10-16** (OR-1, OR-4, OR-5): M5b, M5c, M5d (probe), M6, M7, M8, M9, M10, M11
+(Android, at the end), M11b (probe), M12.
 
 **Drill specifics** (each command goes into its result row):
 
