@@ -124,6 +124,10 @@ fun UxFlowEntry(
     backHandler: @Composable (enabled: Boolean, onBack: () -> Unit) -> Unit,
     onExit: (PresCrossDeviceExit?) -> Unit,
 ) {
+    if (script.startsWith(UX_HOME_PROBE_PREFIX)) {
+        UxHomeProbe(script, platform, backHandler)
+        return
+    }
     if (script.startsWith(UX_GALLERY_PREFIX)) {
         UxGallery(UxGalleryPage.fromScript(script))
         return

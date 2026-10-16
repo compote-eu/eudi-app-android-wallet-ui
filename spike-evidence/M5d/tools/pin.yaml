@@ -1,0 +1,6 @@
+appId: eu.compote.euidi.dev
+---
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- waitForAnimationToEnd

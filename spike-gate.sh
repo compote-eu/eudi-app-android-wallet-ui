@@ -25,7 +25,9 @@ kc1_guard() {
   local paths=(ux-theme ux-elements ux-runtime ux-spike ux-spike-android shared-ui/src/iosUxSpikeMain
     shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/DebugFlowHook.kt)
   local except=':(exclude,glob)ux-spike/**/PresRequestScreen.kt' hits states rc=0
-  hits=$(git grep -n --untracked -E 'SCR-|"pres-' -- "${paths[@]}" "$except")
+  # M5d: the Home probe's fragment bundles are data (the screen id is their content), not code; the code stays scanned.
+  local data=':(exclude,glob)ux-spike/**/composeResources/files/home-probe/**'
+  hits=$(git grep -n --untracked -E 'SCR-|"pres-' -- "${paths[@]}" "$except" "$data")
   [[ -z "$hits" ]] || { echo "KC1: SCR-/screen-name literals:"; echo "$hits"; rc=1; }
   states=$(python3 -I -c 'import json,sys; [print(f"\"{s}\"") for s in json.load(open(sys.argv[1]))["states"]]' \
     spike-evidence/boundary/FLW-pres-cross-device.bundle.PROVISIONAL.json)
