@@ -206,3 +206,23 @@ Findings for week 0 / the owner (not decided here):
 6. The interpreter log line is written at state entry, so an internal `ui_state_when` change (verification-code
    `no-url` → default after `Ready`) is drawn but not re-logged.
 7. Boundary §2.5 sample amended (`encodeDefaults = true`); the generated invoker must pass `ProvisionalInvokerDefaultsTest`.
+
+## Device runs (owner, iPhone Air, iOS 27.0.1, team D2YJRYD9TA)
+
+DEVICE-TEST-1 on `d1ec06cf5` (M4 placeholders) and DEVICE-TEST-2 on `e837f53a7` (M5b screens), PROVISIONAL bundle,
+Debug build from the device worktree. Rows `D1-iOS-device`, `D4-iOS-device`, `D6-iOS-device-*` in `spike-results.md`
+(all preliminary, owner-run). Checklists and the raw log: `spike-evidence/device/`.
+
+- B (happy), C (expired), D1-D3 (swipe in request/auth/sending) ok on both builds. E (kill/relaunch) and F (switch off)
+  were skipped on the device; the simulator covers them (M4). D3-device stays open (Q-003).
+- The first D3 report (swipe in `sending` "went back to the reference screens") was a misread; on retry `sending` stayed
+  blocked and reached `success` on its own. No policy violation.
+
+**F-dev-1: the M4 placeholders were unreadable in system Dark Mode.** The owner switched the phone to Light mode and
+continued. Dark mode is out of brief scope. Check on the M5b theme: `UxTheme` does **not** follow the system mode.
+`FlowHost` passes `mode = theme.default_mode` from the bundle (`"light"` in the PROVISIONAL bundle, Light as fallback),
+and the PROVISIONAL brand has no dark token set (`UxBrand.dark = null` → light). The templates paint an opaque
+`surfaceDefault` and every `UxText` sets a token colour, so the interpreted screens and `PresRequestScreen` render in
+Light whatever the system mode: no readability risk inside the flow. Residual: the M4 `StatePlaceholder` (still used
+for an undrawable state) uses `BasicText` with no colour or background, so it stays unreadable in dark; and the system
+status bar follows the system mode over a light flow surface. Not fixed (out of scope).
