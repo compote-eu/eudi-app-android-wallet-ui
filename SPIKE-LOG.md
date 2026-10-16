@@ -16,7 +16,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M5 | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | `:ux-theme` (token value types, `UxBrand`, `UxTheme`, `LocalUxTokens`, PROVISIONAL eudiw_v1 set in `…theme.provisional`), `:ux-elements` (9 elements, 4 templates, heading focus API `headingFocus` / `LocalUxHeadingFocus`, `focusRequester` on interactive elements). 23 semantics tests per target (iOS sim + Android host under Robolectric). Debug-only template gallery behind `--ux-spike gallery[-page]` (UxFlowEntry, 4 lines). D7-semantics-preliminary recorded. No pre-spike file touched; only M2-M4 spike files (`ux-theme`/`ux-elements` build files, `UxFlowEntry.kt`). Gate GREEN 4196. |
 | M5b | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | Screen interpreter in `:ux-runtime` (`screen`, `a11y`), generic EL-*/TPL-* registry in `:ux-elements`, FlowHost draws every described screen; PROVISIONAL `PresRequestScreen` + registration in `:ux-spike` (the one KC1 exception); deferred exits; invoker `encodeDefaults`; KC1 guard step in `spike-gate.sh`. Tests (i) (ii) (iii) green. Drills D6-iOS-provisional (happy, expired), D8-added-state-preliminary, D1-iOS-preliminary rerun with the edge-swipe tool: all as brief §5. No pre-spike file touched. |
 | M6 | not started | — | — | — | — | blocked on `ux-spec/`; ⟲ after sync |
-| M7 | not started | — | — | — | — | ⟲ at end |
+| M7 | in progress (walk queued) | 2026-10-16 | — | Opus | see Commits | `AccessibilityBridge` expect/actual in `:ux-runtime` (iOS ScreenChanged on the h1 element + queued announcements; Android view announcements), settle-time focus/announce from the bundle a11y, leaving state cleared during the crossfade, TplSheet dialog semantics, list/group semantics, mandatory items not "dimmed", link label once; FlowHost-level D7 tests; scripted Inspector audit; Q-D7-iOS queued (device rebuild needed). No KC3 kill-signal. ⟲ at end not done (no rebase in this run). |
 | M8 | not started | — | — | — | — | D8 baseline SHA: _to be named when cut_ |
 | M9 | not started | — | — | — | — | D9 baseline SHA: _to be named when cut_ |
 | M10 | not started | — | — | — | — | ⟲ at end |
@@ -47,6 +47,11 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 
 | 2026-10-16 | f34c35dc0 | M5b | `./spike-gate.sh --fast` (+ kc1-guard) | 4220 (ux-runtime 76/74, ux-contract 4/2, ux-elements 23/23, ux-spike 12/4; rest as M4) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
 | 2026-10-16 | f34c35dc0 + drill evidence | M5b | full `./spike-gate.sh` (+ kc1-guard) | 4220 (as the fast run) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+
+| 2026-10-16 | adb3e33b1 | M7 | `./spike-gate.sh --fast` (+ kc1-guard) | 4234 (ux-runtime 81/83, ux-elements 23/23; rest as M5b) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
+| 2026-10-16 | adb3e33b1 + link label (this commit) | M7 | full `./spike-gate.sh` (+ kc1-guard) | 4234 (as the fast run) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+
+M7 Release spot check: `strings` on the Release app binary finds 0 spike or bridge patterns (`IosAccessibilityBridge`, `UIKitHeadingFinder`, `StateChangeA11y`, `UX-SPIKE`, `PresRequestScreen`).
 
 M5b Release spot check: `strings` on the Release app and extension binaries finds 0 spike patterns (incl. `PresRequestScreen`).
 
@@ -144,6 +149,9 @@ Findings for week 0 / the owner (not decided here):
 | d1ec06cf5 | 2026-10-16 | M5b | iOS edge-swipe tool + evidence (was untracked) | Claude Opus 5.5 | — |
 | f34c35dc0 | 2026-10-16 | M5b | interpreter, registry, PresRequestScreen, exits, invoker defaults, KC1 guard, tests | Claude Opus 5.5 | fast GREEN (4220) |
 | (this commit) | 2026-10-16 | M5b | Maestro flows, drill evidence, SPIKE-LOG, spike-results | Claude Opus 5.5 | full gate (see Gate results) |
+| c41662455 | 2026-10-16 | device | owner device runs: D1/D4/D6-iOS-device rows, F-dev-1, checklists | Claude Opus 5.5 | docs only |
+| adb3e33b1 | 2026-10-16 | M7 | AccessibilityBridge expect/actual, settle-time focus/announce, cleared leaving state, element fixes, FlowHost-level D7 tests, Q-D7-iOS | Claude Opus 5.5 | fast GREEN (4234) |
+| (this commit) | 2026-10-16 | M7 | link label once, audit evidence, SPIKE-LOG, spike-results | Claude Opus 5.5 | full gate (see Gate results) |
 
 ## M5 notes (elements and templates)
 
@@ -206,6 +214,56 @@ Findings for week 0 / the owner (not decided here):
 6. The interpreter log line is written at state entry, so an internal `ui_state_when` change (verification-code
    `no-url` → default after `Ready`) is drawn but not re-logged.
 7. Boundary §2.5 sample amended (`encodeDefaults = true`); the generated invoker must pass `ProvisionalInvokerDefaultsTest`.
+
+## M7 notes (accessibility)
+
+**Bridge per platform** (`ux-runtime/src/*/a11y/AccessibilityBridge*.kt`; `FlowScreens.accessibility` overrides it, null
+= the platform's):
+- **When.** FlowHost waits for the AnimatedContent transition to settle, plus one frame, then `StateChangeA11y` reads
+  the screen's bundle `a11y`: `focus-heading` → `requestFocus` on the h1 target, then `bridge.screenChanged(screen,
+  h1 node, h1 text, dialog)`; `announce-live` → `bridge.announce(screen, live node, text)`. Texts are the node's
+  `{copy}` props (after `set_copy`), so the runtime names no screen. One call per state entry (keyed on `gen`).
+- **Crossfade.** The leaving state's content is wrapped in `clearAndSetSemantics {}` as soon as the flow moved on, so
+  during the fade a screen reader sees one h1 and at most one live region, and no focus can stay on an old node.
+- **iOS.** `ScreenChanged` with the h1's UIKit element. CMP 1.12 has no public handle from a semantics node to its
+  element, so the actual walks the key window's accessibility tree for the element whose `accessibilityIdentifier` is
+  the h1 node's test tag (or `<node>.<part>`) and that has the Header trait, for up to 30 frames while VoiceOver runs.
+  CMP itself posts a focus notification when the focused node changes (seen in the klib: `Focused` →
+  `UIAccessibilityScreenChangedNotification`), so the bridge waits 3 frames and posts nothing if VoiceOver is already
+  on the element (no double speech); no element → it posts the heading text. Progress steps: one
+  `UIAccessibilityAnnouncementNotification` with an `NSAttributedString` carrying
+  `UIAccessibilitySpeechAttributeQueueAnnouncement = YES`.
+- **Android.** `View.announceForAccessibility` (deprecated from API 36, kept with a suppression) for progress steps and
+  for the h1 of non-dialog screens; TPL-sheet dialogs are announced by their pane title. TalkBack is M11 (D7-Android).
+
+**Elements.** TplSheet dialog node has `dialog()` semantics + traversal group + pane title. Attribute groups are
+traversal groups with `CollectionInfo`, rows carry `CollectionItemInfo`. Mandatory rows are a checked checkbox with no
+toggle action instead of a disabled toggle (audit: `Selected`, no `NotEnabled`, so VoiceOver does not say "dimmed").
+`EL-link` text no longer repeats its content description (the audit tree showed the name twice).
+
+**Tests.** The same-node state-change tests of M5 (sheet, outcome, scan) were removed; `ProvisionalStateChangeA11yScenario`
+(iOS sim + Robolectric, 3 tests) drives real transitions through FlowHost with a recording bridge; `IosAccessibilityBridgeTest`
+(6, iOS) checks the actual's posts with UIKit replaced by recorders and once inside FlowHost; `AndroidAccessibilityBridgeTest`
+(2). Template tests keep static semantics only (dialog, live region, focus target).
+
+**Audit.** `spike-evidence/tools/ios-a11y-audit.sh` runs `XCUIApplication.performAccessibilityAudit(for: .all)` (the
+Inspector's audit) from a standalone XCUITest runner on the running app. Results in `spike-evidence/M7/`: request 1
+(trust badge hit area), verification-code 1 (URL label not human-readable, by design), sending 0, success 0.
+
+**Remaining gaps (not fixable in the runtime/elements with CMP 1.12.2):**
+1. **No `accessibilityViewIsModal`** for TPL-sheet on iOS: modality rests on the cleared backdrop (app bar and scrim are
+   not in the tree), so VoiceOver cannot reach them, but there is no modal container and no escape semantics of its own.
+2. **No link trait.** CMP iOS maps `OnClick` to Button and has no `UIAccessibilityTraitLink` (klib trait list); `EL-link`
+   is read as a button. Android: no link role either.
+3. **Heading levels** (h1/h2) are not expressible (one Header trait).
+4. **The h1 is `focusable()`** to take the runtime focus, which adds a keyboard tab stop (review finding 3).
+5. **Single speech on the device is unproven**: the identifier lookup and the "already focused" check depend on CMP's
+   lazy accessibility sync while VoiceOver runs, which no simulator test exercises. Q-D7-iOS decides it.
+6. Android `announceForAccessibility` is deprecated; TalkBack following input focus may double-speak (M11).
+
+**KC3.** No kill-signal: every fix sits in `:ux-runtime` or `:ux-elements`, nothing screen-specific (kc1-guard green).
+The iOS element lookup is a generic workaround for a missing CMP API, inside the runtime actual. The verdict waits for
+the owner's walk.
 
 ## Device runs (owner, iPhone Air, iOS 27.0.1, team D2YJRYD9TA)
 

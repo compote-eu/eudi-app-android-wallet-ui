@@ -144,6 +144,8 @@ abstract class ElementsSemanticsScenario {
         }
         onNodeWithTag("l1").assertHasClickAction().assertContentDescriptionEquals("Privacy policy, opens in the browser")
             .assertHeightIsAtLeast(48.dp)
+            // The name is spoken once: the visible text is not merged in a second time (M7 audit).
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Text))
         onNodeWithTag("l2").assertContentDescriptionEquals("Local")
         onNodeWithTag("l3").assertDoesNotExist()
         onNodeWithTag("l1").performClick()

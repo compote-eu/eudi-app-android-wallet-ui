@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
@@ -63,9 +64,11 @@ fun UxLink(
             .semantics(mergeDescendants = true) { contentDescription = name },
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // The row's content description is the whole name; the visible text is not spoken again (M7 audit: it was).
         BasicText(
             label,
             style = tokens.type.body.copy(color = tokens.colors.textLink, textDecoration = TextDecoration.Underline),
+            modifier = Modifier.clearAndSetSemantics { },
         )
         if (external) Glyph("↗", tokens.colors.textLink, tokens.type.body, Modifier.padding(start = 4.dp))
     }
