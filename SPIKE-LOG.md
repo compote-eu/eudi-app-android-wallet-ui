@@ -96,7 +96,7 @@ and M7 (M5c onward: recorded by the milestone itself).
 | M7 | drills + a11y (bridge, settle-time focus, audit) | 13 min (since M5b: 44 min incl. owner device runs) | ux-runtime 284/440; ux-elements 38/31 | 0 | 0 | 2 (fast 4234, full 4234) | 1: `EL-link` text repeated its content description (audit tree showed the name twice), fixed in the second commit |
 
 Reading the table for a new flow (input to the M12 cost model): with no generator, every phase is hand-written; the
-runtime phases (M2 to M4, M5b interpreter) hold about 5.3 k main lines and 3.2 k test lines across five modules, the elements
+runtime phases (M2 to M4, M5b interpreter) hold about 4.3 k main lines and 2.9 k test lines across six modules, the elements
 and templates about 1.5 k main and 0.6 k test. Rework is small and mostly integration (a gate-plugin interaction, an
 entry-name convention, a missing width rule), never an engine redesign.
 
