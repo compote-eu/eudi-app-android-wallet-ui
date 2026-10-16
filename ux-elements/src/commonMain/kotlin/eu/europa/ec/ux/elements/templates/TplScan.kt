@@ -29,7 +29,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
 import eu.europa.ec.ux.elements.LocalUxHeadingFocus
 import eu.europa.ec.ux.theme.UxThemeAccess
 
@@ -56,12 +55,10 @@ fun TplScan(
                 content = instruction,
             )
             Box(
-                Modifier.testTag("$id.camera").weight(1f).fillMaxWidth().heightIn(min = MIN_CAMERA)
+                Modifier.testTag("$id.camera").weight(1f).fillMaxWidth().heightIn(min = tokens.comp.scan.cameraMinHeight)
                     .padding(horizontal = tokens.space.gutter),
             ) { camera() }
             ActionsRegion("$id.actions", actions)
         }
     }
 }
-
-private val MIN_CAMERA = 240.dp

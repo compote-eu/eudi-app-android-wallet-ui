@@ -37,17 +37,23 @@ data class UxStyles(
 
 /**
  * A brand as the runtime receives it: id, the token values per mode, and the `styles` and `layouts` selections
- * (generated per brand in `UxBrandConfig`; hand-written only for the PROVISIONAL set).
+ * (generated per brand in `UxBrandConfig`; hand-written only for the PROVISIONAL set). [light] and [highContrast] are
+ * required; an unbound optional mode falls back as the resolver says (`dark` to light, `dark-high-contrast` to
+ * high-contrast).
  */
 data class UxBrand(
     val id: String,
     val light: UxTokenValues,
+    val highContrast: UxTokenValues,
     val dark: UxTokenValues? = null,
+    val darkHighContrast: UxTokenValues? = null,
     val styles: UxStyles = UxStyles(),
     val layouts: UxLayouts = UxLayouts(),
 ) {
     fun tokens(mode: UxMode): UxTokens = when (mode) {
         UxMode.Light -> light.tokens
+        UxMode.HighContrast -> highContrast.tokens
         UxMode.Dark -> (dark ?: light).tokens
+        UxMode.DarkHighContrast -> (darkHighContrast ?: highContrast).tokens
     }
 }

@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.testTag
 import eu.europa.ec.ux.elements.LocalUxHeadingFocus
 import eu.europa.ec.ux.theme.UxDecisionSteps
 import eu.europa.ec.ux.theme.UxThemeAccess
+import eu.europa.ec.ux.theme.uxElevation
 
 /**
  * TPL-sheet: a decision over the app it interrupts. The [layout] parameter is the `decision-steps` axis, and the whole
@@ -78,6 +79,7 @@ fun TplSheet(
     body: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val tokens = UxThemeAccess.tokens
+    val sheetShape = RoundedCornerShape(topStart = tokens.radius.sheet, topEnd = tokens.radius.sheet)
     CompositionLocalProvider(LocalUxHeadingFocus provides headingFocus) {
         when (layout) {
             UxDecisionSteps.Sheet -> Box(modifier.testTag(id).fillMaxSize().background(tokens.colors.surfaceDefault)) {
@@ -89,7 +91,7 @@ fun TplSheet(
                 }
                 Box(
                     Modifier.fillMaxSize()
-                        .background(tokens.colors.overlayScrim.copy(alpha = SCRIM_ALPHA))
+                        .background(tokens.comp.sheet.scrim.copy(alpha = tokens.effects.scrimAlpha))
                         .pointerInput(Unit) { detectTapGestures { } }
                         .clearAndSetSemantics { testTag = "$id.scrim" },
                 )
@@ -99,9 +101,7 @@ fun TplSheet(
                     header,
                     body,
                     actions,
-                    Modifier.align(Alignment.BottomCenter).clip(
-                        RoundedCornerShape(topStart = tokens.radius.sheet, topEnd = tokens.radius.sheet),
-                    ),
+                    Modifier.align(Alignment.BottomCenter).uxElevation(tokens.comp.sheet.shadow, sheetShape).clip(sheetShape),
                     bottomInset = true,
                 )
             }
@@ -146,5 +146,3 @@ private fun Dialog(
         if (bottomInset) Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.safeDrawing))
     }
 }
-
-private const val SCRIM_ALPHA = 0.4f

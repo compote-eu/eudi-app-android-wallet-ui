@@ -45,6 +45,9 @@ kotlin {
             api(libs.jetbrains.compose.foundation)
             implementation(libs.jetbrains.compose.ui)
         }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
     }
 }
 

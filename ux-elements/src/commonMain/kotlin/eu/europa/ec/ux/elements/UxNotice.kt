@@ -30,7 +30,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import eu.europa.ec.ux.theme.UxFeedbackColors
 import eu.europa.ec.ux.theme.UxThemeAccess
 import eu.europa.ec.ux.theme.UxTokens
@@ -74,7 +73,7 @@ fun UxNotice(
             .testTag(id)
             .fillMaxWidth()
             .background(fb.bg, shape)
-            .border(tokens.size.focusRing / 3, fb.border, shape)
+            .border(tokens.effects.hairline, fb.border, shape)
             .padding(tokens.space.m),
         horizontalArrangement = Arrangement.spacedBy(tokens.space.s),
     ) {
@@ -84,7 +83,7 @@ fun UxNotice(
                 if (title != null) {
                     BasicText(
                         title,
-                        style = tokens.type.body.copy(color = fb.fg, fontWeight = FontWeight.SemiBold),
+                        style = tokens.type.body.copy(color = fb.fg, fontWeight = tokens.font.semibold),
                         modifier = Modifier.testTag("$id.title"),
                     )
                 }

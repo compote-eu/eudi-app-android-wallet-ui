@@ -32,7 +32,6 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.dp
 import eu.europa.ec.ux.theme.UxThemeAccess
 
 /**
@@ -70,6 +69,6 @@ fun UxLink(
             style = tokens.type.body.copy(color = tokens.colors.textLink, textDecoration = TextDecoration.Underline),
             modifier = Modifier.clearAndSetSemantics { },
         )
-        if (external) Glyph("↗", tokens.colors.textLink, tokens.type.body, Modifier.padding(start = 4.dp))
+        if (external) Glyph("↗", tokens.colors.textLink, tokens.type.body, Modifier.padding(start = tokens.comp.link.gap))
     }
 }

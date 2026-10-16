@@ -1,0 +1,29 @@
+# style-guard mutation proof (M5c), 2026-10-16T21:49:04Z
+# planted into UxText.kt: a Color(0xFF123456) and a 7.dp constant
+$ ./spike-gate.sh --style-guard   (planted)
+PASS kc1-guard (0s)
+FAIL style-guard (1s) -> build/spike-gate/style-guard.log
+style-guard: ux-elements/src/commonMain/kotlin/eu/europa/ec/ux/elements/UxText.kt:75: Color(...): private val planted = androidx.compose.ui.graphics.Color(0xFF123456)
+style-guard: ux-elements/src/commonMain/kotlin/eu/europa/ec/ux/elements/UxText.kt:76: dp/sp literal: private val plantedPad = 7.dp
+exit=1
+$ ./spike-gate.sh --style-guard   (planted line removed)
+PASS kc1-guard (0s)
+PASS style-guard (0s)
+style-guard: 0 hits in 18 files, 0 allowlisted
+exit=0
+
+# hits on the M5b tree (HEAD before M5c): 14 findings on 13 source lines
+style-guard: UxAppBar.kt:119: dp/sp literal: Modifier.align(Alignment.TopEnd).padding(10.dp).size(8.dp)
+style-guard: UxAttributeList.kt:173: FontWeight: BasicText(item.value, style = tokens.type.body.copy(color = tokens.colors.textPrimary, fontWeight = FontWeight.SemiBold))
+style-guard: UxButton.kt:90: alpha literal: .alpha(if (disabled) DISABLED_ALPHA else 1f)
+style-guard: UxButton.kt:100: dp/sp literal: .padding(horizontal = if (iconOnly) 0.dp else tokens.space.m),
+style-guard: UxButton.kt:111: named numeric constant: private const val DISABLED_ALPHA = 0.4f
+style-guard: UxLink.kt:73: dp/sp literal: if (external) Glyph("↗", tokens.colors.textLink, tokens.type.body, Modifier.padding(start = 4.dp))
+style-guard: UxNotice.kt:87: FontWeight: style = tokens.type.body.copy(color = fb.fg, fontWeight = FontWeight.SemiBold),
+style-guard: UxQrViewfinder.kt:63: alpha literal: Canvas(Modifier.fillMaxSize().padding(tokens.space.section).alpha(if (scanning) 1f else DIMMED)) {
+style-guard: UxQrViewfinder.kt:81: named numeric constant: private const val DIMMED = 0.35f
+style-guard: UxQrViewfinder.kt:82: named numeric constant: private const val ARM_DIVISOR = 5f
+style-guard: UxRpIdentity.kt:76: FontWeight: val nameStyle = if (trust == UxTrust.Trusted) tokens.type.section.copy(fontWeight = FontWeight.Bold) else tokens.type.body
+style-guard: templates/TplScan.kt:67: dp/sp literal: private val MIN_CAMERA = 240.dp
+style-guard: templates/TplScan.kt:67: named numeric constant: private val MIN_CAMERA = 240.dp
+style-guard: templates/TplSheet.kt:150: named numeric constant: private const val SCRIM_ALPHA = 0.4f

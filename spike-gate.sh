@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Spike quality gate: wiki/BRANCHES.md §4 plus the spike modules (SPIKE-PLAN.md).
-# Usage: ./spike-gate.sh [--fast]   (--fast skips the Release build)
+# Usage: ./spike-gate.sh [--fast | --style-guard]   (--fast skips the Release build; --style-guard runs the two guards only)
 # Prints one summary block; full logs go to build/spike-gate/.
 set -uo pipefail
 cd "$(dirname "$0")"
@@ -9,6 +9,7 @@ SIM="${SPIKE_SIM:-platform=iOS Simulator,name=iPhone 17,OS=27.0}"
 XFLAGS=(-skipMacroValidation -skipPackagePluginValidation)
 SPIKE_MODULES=$(grep -oE '":ux-[a-z-]+"' settings.gradle.kts | tr -d '"' | grep -v ':ux-spike-android' || true)
 RESULT=0
+ONLY_STYLE_GUARD=0; [[ "${1:-}" == --style-guard ]] && ONLY_STYLE_GUARD=1
 
 step() { # name, command...
   local name=$1; shift
@@ -37,6 +38,61 @@ kc1_guard() {
   return $rc
 }
 step kc1-guard kc1_guard
+
+# Style guard (SPIKE-PLAN §3, M5c, OR-2): no hard-coded dp, sp, Color(...), alpha literal, named numeric constant or
+# FontWeight in the main sources of :ux-elements (templates and registry included). Values come from the tokens;
+# the documented exceptions live in ux-elements/style-guard.allowlist (path|line|reason). Untracked files count too.
+style_guard() {
+  python3 -I - <<'PY'
+import re, subprocess, sys
+files = subprocess.run(['git', 'ls-files', '-co', '--exclude-standard', '--', 'ux-elements/src/*Main/*.kt'],
+                       capture_output=True, text=True, check=True).stdout.split()
+rules = [
+    ('dp/sp literal', r'\b\d+(?:\.\d+)?\.(?:dp|sp)\b'),
+    ('Dp()/TextUnit() constructor', r'\b(?:Dp|TextUnit)\('),
+    ('Color(...)', r'\bColor\('),
+    ('named Color', r'\bColor\.(?!Transparent\b|Unspecified\b)[A-Z]\w*'),
+    ('alpha literal', r'(?i)\balpha\b[^\n]*?(?:=\s*|\(\s*|\belse\s+|\)\s*)-?\d*\.?\d+f?\b'),
+    ('FontWeight', r'\bFontWeight\b'),
+    ('named numeric constant', r'\b(?:const\s+)?val\s+[A-Z][A-Z0-9_]*\s*(?::\s*\w+)?\s*=\s*-?\d'),
+]
+allow = {}
+for n, line in enumerate(open('ux-elements/style-guard.allowlist'), 1):
+    if line.strip() and not line.startswith('#'):
+        parts = line.rstrip('\n').split('|', 2)
+        if len(parts) != 3 or not all(x.strip() for x in parts):
+            print(f'style-guard: allowlist line {n} is not path|line|reason'); sys.exit(1)
+        allow[(parts[0].strip(), parts[1].strip())] = False
+hits = []
+for f in files:
+    in_block = False
+    for n, raw in enumerate(open(f), 1):
+        line = raw.strip()
+        if in_block:
+            in_block = '*/' not in line
+            continue
+        if line.startswith('/*'):
+            in_block = '*/' not in line
+            continue
+        if line.startswith('//') or line.startswith('*') or line.startswith('import ') or line.startswith('package '):
+            continue
+        code = re.sub(r'//.*$', '', line)
+        for name, rx in rules:
+            if re.search(rx, code):
+                if (f, line) in allow:
+                    allow[(f, line)] = True
+                else:
+                    hits.append(f'{f}:{n}: {name}: {line}')
+stale = [f'{p}|{l}' for (p, l), used in allow.items() if not used]
+for h in hits: print('style-guard:', h)
+for s in stale: print('style-guard: stale allowlist entry:', s)
+if not hits and not stale:
+    print(f'style-guard: 0 hits in {len(files)} files, {len(allow)} allowlisted')
+sys.exit(1 if hits or stale else 0)
+PY
+}
+step style-guard style_guard
+[[ $ONLY_STYLE_GUARD == 1 ]] && { cat "$LOG/style-guard.log"; exit $RESULT; }
 
 find . -path '*/build/test-results/*' -name '*.xml' -not -path './build/*' -delete 2>/dev/null
 

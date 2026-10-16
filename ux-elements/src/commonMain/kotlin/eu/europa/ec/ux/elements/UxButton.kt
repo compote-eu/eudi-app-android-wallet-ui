@@ -39,8 +39,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
+import eu.europa.ec.ux.theme.UxShadow
 import eu.europa.ec.ux.theme.UxThemeAccess
+import eu.europa.ec.ux.theme.uxElevation
 
 /** `EL-button variant`. */
 enum class UxButtonVariant { Primary, Secondary, Icon, IconPrimary, Search }
@@ -83,12 +84,18 @@ fun UxButton(
         UxButtonVariant.IconPrimary -> c.actionFloatingFg
         UxButtonVariant.Search -> c.textSecondary
     }
+    val shadow = when (variant) {
+        UxButtonVariant.Icon -> tokens.comp.button.iconShadow
+        UxButtonVariant.IconPrimary -> tokens.comp.button.floatingShadow
+        else -> UxShadow.None
+    }
     Box(
         modifier = modifier
             .then(if (LocalUxFullWidthActions.current) Modifier.fillMaxWidth() else Modifier)
             .testTag(id)
-            .alpha(if (disabled) DISABLED_ALPHA else 1f)
+            .then(if (disabled) Modifier.alpha(tokens.effects.disabledAlpha) else Modifier)
             .uxFocusRing(shape, focusRequester)
+            .uxElevation(shadow, shape)
             .clip(shape)
             .background(bg)
             .clickable(enabled = !disabled, role = Role.Button, onClick = onPress)
@@ -97,7 +104,7 @@ fun UxButton(
                 if (iconOnly) contentDescription = label
                 if (popup && popupStateLabel != null) stateDescription = popupStateLabel
             }
-            .padding(horizontal = if (iconOnly) 0.dp else tokens.space.m),
+            .then(if (iconOnly) Modifier else Modifier.padding(horizontal = tokens.space.m)),
         contentAlignment = Alignment.Center,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(tokens.space.s), verticalAlignment = Alignment.CenterVertically) {
@@ -107,5 +114,3 @@ fun UxButton(
         }
     }
 }
-
-private const val DISABLED_ALPHA = 0.4f

@@ -47,7 +47,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.text.font.FontWeight
 import eu.europa.ec.ux.theme.UxAttributePairs
 import eu.europa.ec.ux.theme.UxCheckboxStyle
 import eu.europa.ec.ux.theme.UxThemeAccess
@@ -170,7 +169,7 @@ private fun AttributeRow(
         val texts: @Composable () -> Unit = {
             BasicText(item.label, style = tokens.type.body.copy(color = tokens.colors.textLabel))
             if (item.value != null && !item.photo) {
-                BasicText(item.value, style = tokens.type.body.copy(color = tokens.colors.textPrimary, fontWeight = FontWeight.SemiBold))
+                BasicText(item.value, style = tokens.type.body.copy(color = tokens.colors.textPrimary, fontWeight = tokens.comp.attributeList.valueWeight))
             }
             if (tag != null) BasicText(tag, style = tokens.type.status.copy(color = tokens.colors.textSecondary))
         }

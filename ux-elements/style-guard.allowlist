@@ -1,0 +1,9 @@
+# style-guard allowlist (spike-gate.sh, step `style-guard`, M5c / OR-2).
+#
+# The guard fails on any hard-coded dp, sp, Color(...), alpha literal, named numeric constant or FontWeight in the
+# main sources of :ux-elements (elements, templates and registry): every such value is a token read from
+# `UxThemeAccess.tokens`. `0.dp` and `1.dp` hairlines are no exception: use `tokens.effects.hairline`.
+#
+# An exception needs a line here, `<path relative to the repo root>|<the offending source line, trimmed>|<reason>`,
+# and the reason must say why no token can carry the value. A line that matches nothing is itself an error, so the
+# list cannot rot. Empty at M5c: no exception was needed.

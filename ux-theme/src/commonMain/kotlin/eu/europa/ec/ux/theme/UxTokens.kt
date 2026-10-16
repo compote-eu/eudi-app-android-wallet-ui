@@ -19,6 +19,8 @@ package eu.europa.ec.ux.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 
 /*
@@ -85,6 +87,97 @@ data class UxRadii(val control: Dp, val card: Dp, val sheet: Dp, val pill: Dp, v
 /** `sys.size.*`. */
 data class UxSizes(val target: Dp, val iconMd: Dp, val iconSm: Dp, val focusRing: Dp, val glyphHero: Dp)
 
+/** `sys.font.family.*` (the webfont is not bundled: the platform family stands in) and `sys.font.weight.*`. */
+data class UxFonts(
+    val base: FontFamily,
+    val heading: FontFamily,
+    val regular: FontWeight,
+    val label: FontWeight,
+    val semibold: FontWeight,
+    val bold: FontWeight,
+    val value: FontWeight,
+    val status: FontWeight,
+)
+
+/** One layer of a `sys.elevation.*` shadow (DTCG shadow: colour, offsets, blur, spread, inset). */
+data class UxShadowLayer(
+    val color: Color,
+    val offsetX: Dp,
+    val offsetY: Dp,
+    val blur: Dp,
+    val spread: Dp,
+    val inset: Boolean,
+) {
+    /** Compose has no CSS blur: the platform shadow of this elevation approximates a blurred layer. */
+    val approximateElevation: Dp get() = blur / BLUR_PER_ELEVATION
+
+    private companion object {
+        const val BLUR_PER_ELEVATION = 2
+    }
+}
+
+/** A `sys.elevation.*` token: its layers, bottom first. */
+data class UxShadow(val layers: List<UxShadowLayer>) {
+    companion object {
+        val None = UxShadow(emptyList())
+    }
+}
+
+/** `sys.elevation.*`. */
+data class UxElevations(
+    val action: UxShadow,
+    val bar: UxShadow,
+    val card: UxShadow,
+    val floating: UxShadow,
+    val floatingAction: UxShadow,
+    val menu: UxShadow,
+    val raised: UxShadow,
+    val sheet: UxShadow,
+)
+
+/**
+ * NOT IN SPEC (no `sys.*` token exists yet): opacities and the hairline width the elements used to hard-code. Named
+ * here so no element holds a literal; the exporter must either add `sys.opacity.*` / `sys.size.hairline` to the spec
+ * or carry them as brand constants (SPIKE-LOG M5c, `spike-evidence/M5c/exporter-requirements.md`).
+ */
+data class UxEffects(val disabledAlpha: Float, val scrimAlpha: Float, val dimmedAlpha: Float, val hairline: Dp)
+
+/** `comp.app-bar.*`. */
+data class UxAppBarTokens(val minHeight: Dp, val badgeSize: Dp, val badgeOffset: Dp, val weight: FontWeight, val shadow: UxShadow)
+
+/** `comp.button.*` (the floating variants' shadows and the label weight). */
+data class UxButtonTokens(val weight: FontWeight, val iconShadow: UxShadow, val floatingShadow: UxShadow)
+
+/** `comp.link.*`. */
+data class UxLinkTokens(val gap: Dp, val weight: FontWeight)
+
+/** `comp.sheet.*` (the scrim colour; its opacity is [UxEffects.scrimAlpha]). */
+data class UxSheetTokens(val shadow: UxShadow, val scrim: Color)
+
+/** `comp.rp-identity.*`. */
+data class UxRpIdentityTokens(val nameWeight: FontWeight, val nameUnverifiedWeight: FontWeight)
+
+/** `comp.attribute-list.*`. */
+data class UxAttributeListTokens(val valueWeight: FontWeight)
+
+/** NOT IN SPEC (`comp.scan.*` does not exist): the minimum height of the camera region of TPL-scan. */
+data class UxScanTokens(val cameraMinHeight: Dp)
+
+/** NOT IN SPEC (`comp.qr-viewfinder.*` does not exist): the corner marks of EL-qr-viewfinder. */
+data class UxQrViewfinderTokens(val strokeWidth: Dp, val armRatio: Float)
+
+/** `comp.*` for the elements in scope (the nine elements and four templates): what they read beyond `sys.*`. */
+data class UxComponentTokens(
+    val appBar: UxAppBarTokens,
+    val button: UxButtonTokens,
+    val link: UxLinkTokens,
+    val sheet: UxSheetTokens,
+    val rpIdentity: UxRpIdentityTokens,
+    val attributeList: UxAttributeListTokens,
+    val scan: UxScanTokens,
+    val qrViewfinder: UxQrViewfinderTokens,
+)
+
 /** One resolved token set (one brand, one mode). */
 data class UxTokens(
     val colors: UxColors,
@@ -92,6 +185,10 @@ data class UxTokens(
     val space: UxSpacing,
     val radius: UxRadii,
     val size: UxSizes,
+    val elevation: UxElevations,
+    val font: UxFonts,
+    val effects: UxEffects,
+    val comp: UxComponentTokens,
 )
 
 /** What a generated brand object implements (`object EudiwV1Light : UxTokenValues`). */
@@ -99,5 +196,9 @@ interface UxTokenValues {
     val tokens: UxTokens
 }
 
-/** The user's colour scheme. The brand binds the modes it has; the others fall back (resolver `optional`). */
-enum class UxMode { Light, Dark }
+/**
+ * The scheme x contrast cell the user chose (resolver modifier `mode`, `facets`): `light` and `high-contrast` are
+ * required of every brand, `dark` and `dark-high-contrast` are optional (fallbacks `light` and `high-contrast`).
+ * [wireEnum]-compatible with the bundle's `theme.default_mode` (`high-contrast` -> [HighContrast]).
+ */
+enum class UxMode { Light, HighContrast, Dark, DarkHighContrast }

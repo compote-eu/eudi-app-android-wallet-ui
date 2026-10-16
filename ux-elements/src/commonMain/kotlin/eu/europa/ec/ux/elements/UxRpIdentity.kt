@@ -30,7 +30,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import eu.europa.ec.ux.theme.UxThemeAccess
 
 /** `EL-rp-identity trust`. */
@@ -68,12 +67,16 @@ fun UxRpIdentity(
             .testTag(id)
             .fillMaxWidth()
             .background(c.surfaceCard, shape)
-            .border(tokens.size.focusRing / 3, c.borderDefault, shape)
+            .border(tokens.effects.hairline, c.borderDefault, shape)
             .padding(tokens.space.m),
         verticalArrangement = Arrangement.spacedBy(tokens.space.xs),
     ) {
         if (caption != null) BasicText(caption, style = tokens.type.caption.copy(color = c.textSecondary))
-        val nameStyle = if (trust == UxTrust.Trusted) tokens.type.section.copy(fontWeight = FontWeight.Bold) else tokens.type.body
+        val nameStyle = if (trust == UxTrust.Trusted) {
+            tokens.type.section.copy(fontWeight = tokens.comp.rpIdentity.nameWeight)
+        } else {
+            tokens.type.body.copy(fontWeight = tokens.comp.rpIdentity.nameUnverifiedWeight)
+        }
         BasicText(name, style = nameStyle.copy(color = c.textPrimary), modifier = Modifier.testTag("$id.name"))
         Row(
             modifier = Modifier

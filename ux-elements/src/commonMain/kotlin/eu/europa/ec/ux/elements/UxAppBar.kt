@@ -22,7 +22,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -31,13 +31,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import eu.europa.ec.ux.theme.UxThemeAccess
+import eu.europa.ec.ux.theme.uxElevation
 
 /** `EL-app-bar leading`. */
 enum class UxBarLeading { Back, Close, Menu, None }
@@ -72,8 +73,9 @@ fun UxAppBar(
         modifier = modifier
             .testTag(id)
             .fillMaxWidth()
+            .uxElevation(tokens.comp.appBar.shadow, RectangleShape)
             .background(tokens.colors.surfaceAppBar)
-            .height(tokens.size.target + tokens.space.xs * 2)
+            .heightIn(min = tokens.comp.appBar.minHeight)
             .padding(horizontal = tokens.space.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -116,7 +118,7 @@ private fun BarButton(tag: String, label: String, glyph: String, onClick: () -> 
         Glyph(glyph, tokens.colors.textOnAppBar, tokens.type.section)
         if (badge) {
             Box(
-                Modifier.align(Alignment.TopEnd).padding(10.dp).size(8.dp)
+                Modifier.align(Alignment.TopEnd).padding(tokens.comp.appBar.badgeOffset).size(tokens.comp.appBar.badgeSize)
                     .background(tokens.colors.feedbackError.border, CircleShape),
             )
         }

@@ -60,12 +60,12 @@ fun UxQrViewfinder(
                 role = Role.Image
             },
     ) {
-        Canvas(Modifier.fillMaxSize().padding(tokens.space.section).alpha(if (scanning) 1f else DIMMED)) {
+        Canvas(Modifier.fillMaxSize().padding(tokens.space.section).then(if (scanning) Modifier else Modifier.alpha(tokens.effects.dimmedAlpha))) {
             val side = minOf(size.width, size.height)
             val left = (size.width - side) / 2f
             val top = (size.height - side) / 2f
-            val arm = side / ARM_DIVISOR
-            val stroke = Stroke(width = tokens.size.focusRing.toPx() * 2f)
+            val arm = side / tokens.comp.qrViewfinder.armRatio
+            val stroke = Stroke(width = tokens.comp.qrViewfinder.strokeWidth.toPx())
             fun corner(x: Float, y: Float, dx: Float, dy: Float) {
                 drawLine(frame, Offset(x, y), Offset(x + dx * arm, y), stroke.width)
                 drawLine(frame, Offset(x, y), Offset(x, y + dy * arm), stroke.width)
@@ -77,6 +77,3 @@ fun UxQrViewfinder(
         }
     }
 }
-
-private const val DIMMED = 0.35f
-private const val ARM_DIVISOR = 5f
