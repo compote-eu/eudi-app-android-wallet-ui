@@ -16,6 +16,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M5 | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | `:ux-theme` (token value types, `UxBrand`, `UxTheme`, `LocalUxTokens`, PROVISIONAL eudiw_v1 set in `…theme.provisional`), `:ux-elements` (9 elements, 4 templates, heading focus API `headingFocus` / `LocalUxHeadingFocus`, `focusRequester` on interactive elements). 23 semantics tests per target (iOS sim + Android host under Robolectric). Debug-only template gallery behind `--ux-spike gallery[-page]` (UxFlowEntry, 4 lines). D7-semantics-preliminary recorded. No pre-spike file touched; only M2-M4 spike files (`ux-theme`/`ux-elements` build files, `UxFlowEntry.kt`). Gate GREEN 4196. |
 | M5b | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | Screen interpreter in `:ux-runtime` (`screen`, `a11y`), generic EL-*/TPL-* registry in `:ux-elements`, FlowHost draws every described screen; PROVISIONAL `PresRequestScreen` + registration in `:ux-spike` (the one KC1 exception); deferred exits; invoker `encodeDefaults`; KC1 guard step in `spike-gate.sh`. Tests (i) (ii) (iii) green. Drills D6-iOS-provisional (happy, expired), D8-added-state-preliminary, D1-iOS-preliminary rerun with the edge-swipe tool: all as brief §5. No pre-spike file touched. |
 | M5c | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | Styling hardening (OR-2): `style-guard` step in `spike-gate.sh` (13 source lines of hard-coded dp/alpha/FontWeight fixed, a planted literal turns it red); `wireEnum` and unknown variants, props, events, slots and regions fail loudly (tagged `ux-error.<id>` node); registry schemas tested against the library YAML snapshot (spec commit `ec5e58e3`); `UxTokens` shell grown (elevation drawn, fonts, `comp.*`, four modes); `spike-evidence/M5c/exporter-requirements.md`. No pre-spike file touched. Gate GREEN 4273. |
+| M5d | done (probe, OR-1, not counted toward the verdict) | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | SCR-home drawn from generated fragment bundles by the generic interpreter (`--ux-spike gallery-home[-<ui state>|-full|-high-contrast]`, spike files only). Coverage of 10 parts: 3 present, 2 partial, 5 missing; about 1.7 k LOC to close for Home alone. `spike-evidence/M5d/`. No pre-spike file touched. Gate: see Gate results. |
 | M6 | not started | — | — | — | — | blocked on `ux-spec/`; ⟲ after sync |
 | M7 | in progress (walk queued) | 2026-10-16 | — | Opus | see Commits | `AccessibilityBridge` expect/actual in `:ux-runtime` (iOS ScreenChanged on the h1 element + queued announcements; Android view announcements), settle-time focus/announce from the bundle a11y, leaving state cleared during the crossfade, TplSheet dialog semantics, list/group semantics, mandatory items not "dimmed", link label once; FlowHost-level D7 tests; scripted Inspector audit; Q-D7-iOS queued (device rebuild needed). No KC3 kill-signal. ⟲ at end not done (no rebase in this run). |
 | M8 | not started | — | — | — | — | D8 baseline SHA: _to be named when cut_ |
@@ -67,6 +68,8 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 
 | 2026-10-16 | f1eac295f + fc32e0b72 (working tree, same content) | M5c | `./spike-gate.sh --fast` (+ kc1-guard, style-guard) | 4273 (ux-elements 31/32, ux-runtime 86/88, ux-theme 6/6, +39 over M7; rest as M7) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
 | 2026-10-16 | fc32e0b72 + this commit (docs) | M5c | full `./spike-gate.sh` (+ kc1-guard, style-guard) | 4273 (as the fast run) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+| 2026-10-17 | f0c52dc83 | M5d | `./spike-gate.sh --fast` (try 1 on the working tree was RED: kc1-guard hit `SCR-` in the fragment bundle data; fixed in `spike-gate.sh`) | 4273 (ux-spike 4/12, rest as M5c) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
+| 2026-10-17 | f0c52dc83 + this commit (docs) | M5d | full `./spike-gate.sh` | 4273 (as the fast run) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 
 M5c Release spot check: `strings` on the Release app binary finds 0 spike patterns (`ProvisionalEudiwV1`, `SchemaCheck`, `UxElementRegistry`, `ux-error`, `UxTokens`, `IosAccessibilityBridge`, `PresRequestScreen`, `UX-SPIKE`).
 
@@ -101,6 +104,7 @@ and M7 (M5c onward: recorded by the milestone itself).
 | M5b | runtime (interpreter, registry) + hand-written screens (`PresRequestScreen`) | 45 min (since M5: 1 h 3 min) | ux-runtime 806/467; ux-elements 290/0; ux-spike 256/0 (the consent screen); ux-contract 7/77; shared-ui hook 25/0; ux-spike-android 25/0; root 21 (gate) | 0 | 0 | 2 (fast 4220, full 4220) | 1: the QR redirect passed the state name `scan` as the entry name (unknown since M4) and the gallery keys spelled it; the M4 back test pressed placeholder buttons and was re-pointed to node ids; `ui-test` moved to `:ux-runtime` commonTest |
 | M7 | drills + a11y (bridge, settle-time focus, audit) | 13 min (since M5b: 44 min incl. owner device runs) | ux-runtime 284/440; ux-elements 38/31 | 0 | 0 | 2 (fast 4234, full 4234) | 1: `EL-link` text repeated its content description (audit tree showed the name twice), fixed in the second commit |
 | M5c | elements+templates (token shell, hardening) + runtime (schema check) | about 1 h 10 min, first (`87d397d22`, rulings and plan) to last (this commit) commit timestamp, approximate; the code commits are 23:49, the rest is gate waiting and documentation (since M7: 1 h 25 min) | ux-theme 518/101 (382 of the main lines are the four-mode PROVISIONAL value transcription); ux-elements 251/344; ux-runtime 106/95; root 57 (`spike-gate.sh`) | 0 | 0 | 3 (fast 4273 on the working tree before the commits, the `--style-guard` mutation run, full 4273) | 0 redone work; one re-scope inside the milestone: the registry-vs-YAML comparison first read `EL-attribute-item` as a registry element and was re-scoped to the record fields of `EL-attribute-list.items` |
+| M5d | runtime probe (generator, hook, coverage; elements not implemented) | about 50 min (first to last commit is shorter; most of it is two xcodebuilds, 8 simulator runs and the gate) | ux-spike 87/0 (`UxHomeProbe.kt` 81 incl. licence header, `UxFlowEntry.kt` 6); root 3 (`spike-gate.sh`) | 0 (the 15 fragment bundles, 7 of them packaged, are generated by a scratchpad script `spike-evidence/M5d/tools/make_home_fragment.py`, about 190 lines Python, not counted) | 1 spike file (`UxFlowEntry.kt`), `spike-gate.sh`; 0 pre-spike | 2 (fast RED on the KC1 guard, then fast, full) | 1: the KC1 guard grepped `SCR-` in the fragment bundle data under `ux-spike`; the guard now skips that data directory |
 
 Reading the table for a new flow (input to the M12 cost model): with no generator, every phase is hand-written; the
 runtime phases (M2 to M4, M5b interpreter) hold about 4.3 k main lines and 2.9 k test lines across six modules, the elements
@@ -204,6 +208,8 @@ Findings for week 0 / the owner (not decided here):
 | f1eac295f | 2026-10-16 | M5c | token shell (elevation, fonts, comp.*, four modes), style-guard step, element fixes | Claude Sonnet 5.5 | fast GREEN (4273, with the next commit) |
 | fc32e0b72 | 2026-10-16 | M5c | fail-loud schemas, tagged error node, registry-vs-YAML test, snapshot, exporter requirements | Claude Sonnet 5.5 | fast GREEN (4273) |
 | (this commit) | 2026-10-16 | M5c | SPIKE-LOG M5c, metrics row, gate rows | Claude Sonnet 5.5 | full gate (see Gate results) |
+| f0c52dc83 | 2026-10-17 | M5d | Home probe: fragment generator, bundles, `gallery-home` hook, KC1 guard data exclusion, coverage, screenshots | Claude Sonnet 5.5 | fast GREEN (4273) |
+| (this commit) | 2026-10-17 | M5d | SPIKE-LOG M5d, metrics row | Claude Sonnet 5.5 | full gate (see Gate results) |
 
 ## M5 notes (elements and templates)
 
@@ -369,6 +375,66 @@ device this milestone; no screenshot evidence of the shadows yet. Dark and high 
 
 Exporter requirements for week-0 batch 3: `spike-evidence/M5c/exporter-requirements.md` (token groups, the four modes,
 per-mode resolved emission, the NOT-IN-SPEC list). The orchestrator forwards it.
+
+## M5d notes (Home-screen probe, OR-1; not counted toward the verdict)
+
+Spec id: **SCR-home** (`ux/experience/screens/SCR-home.yaml`, template TPL-home, brief BRF-006, referenced by
+`FLW-dashboard` states `home*`). 28 nodes, 15 ui_states, 19 rules, 9 distinct elements. The product profile PRF-eudiw-v1
+turns the storage switch and the Trust Mark entry off and the bottom-nav variant `bar` replaces the present button, so the
+wallet-as-designed draws 26 of the 28 nodes. Full table: `spike-evidence/M5d/coverage.md`.
+
+How it was built. `spike-evidence/M5d/tools/make_home_fragment.py <ux> <out>` (beside the M1b generator's approach, read-only on
+the spec) writes one single-state fragment bundle per ui_state (profile applied) plus `full` (every node) and `high-contrast`.
+Context is the screen's `data_model` examples as static values, overridden by the ui_state's `data`; every emitted event is a
+stay-in-place branch so nodes are enabled; no services. `UxHomeProbe` (`:ux-spike`) loads
+`files/home-probe/home-<name>.bundle.json`, hashes taken from the file, and hosts it with the generic `FlowHost` (no engine
+or screen code added). `--ux-spike gallery-home` is the default state, `gallery-home-<ui state>` any packaged one
+(default, offline, empty, dl-expiring, id-revoked, notifications-unread, full, high-contrast); it is checked before the
+template gallery. Rules (`hide` effects) and ui_states needed no runtime change.
+
+Result (iPhone 17 simulator, light; HighContrast also drawn): the screen is drawn from bundle data with no crash. The app bar,
+title, heading, links and (offline) notices are real elements with brand copy ("eDoklady", "Moje eDoklady", "Všetky doklady",
+"História", the offline notices); the template, the cards and the bottom bar are tagged placeholders. A missing part does
+**not** draw the M5c `ux-error.<id>` node: the registry has no entry, so it draws the M5b tag (`ux-unknown-element.<id>` /
+`ux-unknown-template.TPL-home`). The `ux-error` node is the schema-violation path only. Both are visible and logged, neither
+crashes. A flow-level screen the registry cannot draw degrades to a readable list, which is the measurement we wanted.
+
+Coverage (10 parts: 9 elements + TPL-home): **present 3** (EL-text, EL-link, EL-notice), **partial 2** (EL-app-bar: no icon
+assets, menu and bell are text glyphs, the bell draws as a note; EL-button: `qr-code` icon is a placeholder glyph),
+**missing 5** (TPL-home, EL-document-card, EL-bottom-bar, EL-segmented-switch, EL-trust-mark), plus the implicit EL-status-chip
+inside the card and the icon/art asset table (declared gap since M5). Estimate to close Home: about 940 main LOC for the parts
+(TPL-home 190, document-card 330, status-chip 90, bottom-bar 140, segmented-switch 120, trust-mark 70), about 150 icons and
+art, about 100 `comp.*` tokens in four modes: about 1.2 k main, about 0.5 k test, about 1.7 k in total (calibration: M5 was
+about 115 main LOC per part, M5c about 30 token lines per part). Comparable app components exist for the bottom bar
+(`BottomNavigation.kt`), the chip (`WrapChip`), notices (`InlineSnackbar`, `AcknowledgeWarningCard`); none for the art
+document card (the app lists documents as `WrapListItem` rows), the segmented switch (`WrapSwitch` is a toggle) or the
+template (a scaffold, not a template).
+
+Implication for the dashboard estimate. The 19 screens of FLW-dashboard use 7 templates and 18 elements; the registry has
+1 template (TPL-outcome) and 7 elements (button, app-bar, text, notice, status-hero, link, attribute-list). Missing: 6
+templates (dialog, list, task, detail, static, home) and 11 elements (list-item, document-card, trust-mark, dialog,
+segmented-switch, status-chip, action-menu, action-item, text-input, snackbar, bottom-bar). Home is 5 + 1 of those 17, with
+the heaviest one (document-card, used by 3 screens). At the Home rate (about 1.7 k per 6 parts incl. icons) the dashboard
+needs roughly 17 parts, about 4 to 5 k LOC main plus test and the icon table, before any screen with a flow of its own
+(states, services, `invoke`s for 173 states) is wired. Nothing in the probe contradicts the engine or interpreter design:
+no engine, interpreter or contract change was needed, only parts.
+
+Findings.
+1. **Profile gating is not in the bundle.** `features.*.on` (profile) and the variant axes (`bottom-nav`, `card-face`) change
+   which nodes exist; the generator applied them. The exporter (week 0) must either filter nodes or emit the profile and a
+   rule; the interpreter has no notion of a profile.
+2. **Rule-driven visibility works unchanged** (hide of 11 nodes at `empty`, notices at `offline`, the dl-expiring card).
+3. **Missing parts and the `ux-error` node**: if a "no silent gaps" check is wanted at load time, `SchemaCheck.problems`
+   would have to report unknown elements and templates too (today it reports schema violations only). Not changed.
+4. **Region stacking without a template**: the unknown-template placeholder draws the regions unpadded, unscrolled and in
+   order; it is a debugging aid, not a layout.
+5. **`CPY-home-title`** resolves through `brand_overrides` as designed ("eDoklady" over "Moje eDoklady").
+6. **Heading level**: the screen's h1 is the title node; the heading row uses `heading` (h2). Compose cannot express the level (M5).
+
+Trivial prop additions: none were needed. Gate: the first fast run was RED on the KC1 guard (it grepped `SCR-` in the fragment
+bundle data), fixed by excluding `ux-spike/**/composeResources/files/home-probe/**` from the `SCR-`/`"pres-` grep only; code
+paths stay scanned (`spike-gate.sh`, 3 lines).
+
 
 ## Device runs (owner, iPhone Air, iOS 27.0.1, team D2YJRYD9TA)
 
