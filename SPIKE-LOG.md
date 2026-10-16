@@ -15,6 +15,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M4 | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | RULING-2 in the engine; `FlowHost` + `FlowViewModel` (`:ux-runtime` `host`), placeholder states; P4 passed on iOS (app, simulator) and Android (Robolectric round trip; app not run); D1 grep as a host test; PROVISIONAL contract copy + bundle resource in `:ux-contract`; data-driven fake engine (6 scripts) in `:ux-spike`; both hooks host the flow with one `PlatformBackHandler` adapter each. No existing file touched (only T1-T4 from M2 differ from the base). Drills: D3-sim-preliminary passed ×3, D-switch-1 passed, **D1-iOS-preliminary not run** (Maestro edge swipe triggers no back on any screen, baseline included); host-level FlowHost back test green. Gate GREEN 4148. |
 | M5 | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | `:ux-theme` (token value types, `UxBrand`, `UxTheme`, `LocalUxTokens`, PROVISIONAL eudiw_v1 set in `…theme.provisional`), `:ux-elements` (9 elements, 4 templates, heading focus API `headingFocus` / `LocalUxHeadingFocus`, `focusRequester` on interactive elements). 23 semantics tests per target (iOS sim + Android host under Robolectric). Debug-only template gallery behind `--ux-spike gallery[-page]` (UxFlowEntry, 4 lines). D7-semantics-preliminary recorded. No pre-spike file touched; only M2-M4 spike files (`ux-theme`/`ux-elements` build files, `UxFlowEntry.kt`). Gate GREEN 4196. |
 | M5b | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | Screen interpreter in `:ux-runtime` (`screen`, `a11y`), generic EL-*/TPL-* registry in `:ux-elements`, FlowHost draws every described screen; PROVISIONAL `PresRequestScreen` + registration in `:ux-spike` (the one KC1 exception); deferred exits; invoker `encodeDefaults`; KC1 guard step in `spike-gate.sh`. Tests (i) (ii) (iii) green. Drills D6-iOS-provisional (happy, expired), D8-added-state-preliminary, D1-iOS-preliminary rerun with the edge-swipe tool: all as brief §5. No pre-spike file touched. |
+| M5c | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | Styling hardening (OR-2): `style-guard` step in `spike-gate.sh` (13 source lines of hard-coded dp/alpha/FontWeight fixed, a planted literal turns it red); `wireEnum` and unknown variants, props, events, slots and regions fail loudly (tagged `ux-error.<id>` node); registry schemas tested against the library YAML snapshot (spec commit `ec5e58e3`); `UxTokens` shell grown (elevation drawn, fonts, `comp.*`, four modes); `spike-evidence/M5c/exporter-requirements.md`. No pre-spike file touched. Gate GREEN 4273. |
 | M6 | not started | — | — | — | — | blocked on `ux-spec/`; ⟲ after sync |
 | M7 | in progress (walk queued) | 2026-10-16 | — | Opus | see Commits | `AccessibilityBridge` expect/actual in `:ux-runtime` (iOS ScreenChanged on the h1 element + queued announcements; Android view announcements), settle-time focus/announce from the bundle a11y, leaving state cleared during the crossfade, TplSheet dialog semantics, list/group semantics, mandatory items not "dimmed", link label once; FlowHost-level D7 tests; scripted Inspector audit; Q-D7-iOS queued (device rebuild needed). No KC3 kill-signal. ⟲ at end not done (no rebase in this run). |
 | M8 | not started | — | — | — | — | D8 baseline SHA: _to be named when cut_ |
@@ -64,6 +65,11 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 | 2026-10-16 | adb3e33b1 | M7 | `./spike-gate.sh --fast` (+ kc1-guard) | 4234 (ux-runtime 81/83, ux-elements 23/23; rest as M5b) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
 | 2026-10-16 | adb3e33b1 + link label (this commit) | M7 | full `./spike-gate.sh` (+ kc1-guard) | 4234 (as the fast run) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 
+| 2026-10-16 | f1eac295f + fc32e0b72 (working tree, same content) | M5c | `./spike-gate.sh --fast` (+ kc1-guard, style-guard) | 4273 (ux-elements 31/32, ux-runtime 86/88, ux-theme 6/6, +39 over M7; rest as M7) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
+| 2026-10-16 | fc32e0b72 + this commit (docs) | M5c | full `./spike-gate.sh` (+ kc1-guard, style-guard) | 4273 (as the fast run) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+
+M5c Release spot check: `strings` on the Release app binary finds 0 spike patterns (`ProvisionalEudiwV1`, `SchemaCheck`, `UxElementRegistry`, `ux-error`, `UxTokens`, `IosAccessibilityBridge`, `PresRequestScreen`, `UX-SPIKE`).
+
 M7 Release spot check: `strings` on the Release app binary finds 0 spike or bridge patterns (`IosAccessibilityBridge`, `UIKitHeadingFinder`, `StateChangeA11y`, `UX-SPIKE`, `PresRequestScreen`).
 
 M5b Release spot check: `strings` on the Release app and extension binaries finds 0 spike patterns (incl. `PresRequestScreen`).
@@ -94,6 +100,7 @@ and M7 (M5c onward: recorded by the milestone itself).
 | M5 | elements + templates (theme shell, 9 elements, 4 templates, gallery) | 11 min (since M4: 24 min) | ux-elements 1486/596; ux-theme 329/15; ux-spike 188/33 | 0 | 0 | 2 (fast, full; 4196) | 1: template action buttons were intrinsic width, fixed in a second commit (`LocalUxFullWidthActions`) |
 | M5b | runtime (interpreter, registry) + hand-written screens (`PresRequestScreen`) | 45 min (since M5: 1 h 3 min) | ux-runtime 806/467; ux-elements 290/0; ux-spike 256/0 (the consent screen); ux-contract 7/77; shared-ui hook 25/0; ux-spike-android 25/0; root 21 (gate) | 0 | 0 | 2 (fast 4220, full 4220) | 1: the QR redirect passed the state name `scan` as the entry name (unknown since M4) and the gallery keys spelled it; the M4 back test pressed placeholder buttons and was re-pointed to node ids; `ui-test` moved to `:ux-runtime` commonTest |
 | M7 | drills + a11y (bridge, settle-time focus, audit) | 13 min (since M5b: 44 min incl. owner device runs) | ux-runtime 284/440; ux-elements 38/31 | 0 | 0 | 2 (fast 4234, full 4234) | 1: `EL-link` text repeated its content description (audit tree showed the name twice), fixed in the second commit |
+| M5c | elements+templates (token shell, hardening) + runtime (schema check) | about 1 h 10 min, first (`87d397d22`, rulings and plan) to last (this commit) commit timestamp, approximate; the code commits are 23:49, the rest is gate waiting and documentation (since M7: 1 h 25 min) | ux-theme 518/101 (382 of the main lines are the four-mode PROVISIONAL value transcription); ux-elements 251/344; ux-runtime 106/95; root 57 (`spike-gate.sh`) | 0 | 0 | 3 (fast 4273 on the working tree before the commits, the `--style-guard` mutation run, full 4273) | 0 redone work; one re-scope inside the milestone: the registry-vs-YAML comparison first read `EL-attribute-item` as a registry element and was re-scoped to the record fields of `EL-attribute-list.items` |
 
 Reading the table for a new flow (input to the M12 cost model): with no generator, every phase is hand-written; the
 runtime phases (M2 to M4, M5b interpreter) hold about 4.3 k main lines and 2.9 k test lines across six modules, the elements
@@ -193,6 +200,10 @@ Findings for week 0 / the owner (not decided here):
 | c41662455 | 2026-10-16 | device | owner device runs: D1/D4/D6-iOS-device rows, F-dev-1, checklists | Claude Opus 5.5 | docs only |
 | adb3e33b1 | 2026-10-16 | M7 | AccessibilityBridge expect/actual, settle-time focus/announce, cleared leaving state, element fixes, FlowHost-level D7 tests, Q-D7-iOS | Claude Opus 5.5 | fast GREEN (4234) |
 | (this commit) | 2026-10-16 | M7 | link label once, audit evidence, SPIKE-LOG, spike-results | Claude Opus 5.5 | full gate (see Gate results) |
+| 87d397d22 | 2026-10-16 | M5c | OR-1 to OR-6, plan M5c/M5d/M11b, phase metrics backfill | Claude Sonnet 5.5 | docs only |
+| f1eac295f | 2026-10-16 | M5c | token shell (elevation, fonts, comp.*, four modes), style-guard step, element fixes | Claude Sonnet 5.5 | fast GREEN (4273, with the next commit) |
+| fc32e0b72 | 2026-10-16 | M5c | fail-loud schemas, tagged error node, registry-vs-YAML test, snapshot, exporter requirements | Claude Sonnet 5.5 | fast GREEN (4273) |
+| (this commit) | 2026-10-16 | M5c | SPIKE-LOG M5c, metrics row, gate rows | Claude Sonnet 5.5 | full gate (see Gate results) |
 
 ## M5 notes (elements and templates)
 
@@ -305,6 +316,59 @@ Inspector's audit) from a standalone XCUITest runner on the running app. Results
 **KC3.** No kill-signal: every fix sits in `:ux-runtime` or `:ux-elements`, nothing screen-specific (kc1-guard green).
 The iOS element lookup is a generic workaround for a missing CMP API, inside the runtime actual. The verdict waits for
 the owner's walk.
+
+## M5c notes (styling hardening, OR-2)
+
+**Style guard** (`spike-gate.sh` step `style-guard`, also `./spike-gate.sh --style-guard` for the two guards alone). Scans
+`ux-elements/src/*Main/**/*.kt` (untracked files too; comments and imports skipped) for: a `<n>.dp` or `<n>.sp` literal,
+`Dp(`/`TextUnit(`, `Color(`, a named `Color.X` (except `Transparent`/`Unspecified`), a numeric alpha, any `FontWeight`, and
+named numeric constants (`private const val X = 0.4f`). Exceptions only through `ux-elements/style-guard.allowlist`
+(`path|line|reason`; a stale entry fails; empty now). Not covered, by design: layout ratios inside draw code (`/ 2f` to
+centre, `1f` direction signs) and `weight(1f)`; those are geometry, not styling values.
+- Hits on the M5b tree: 14 findings on 13 source lines (`spike-evidence/M5c/logs/style-guard-proof.log`): `UxAppBar` badge
+  offset 10.dp and size 8.dp, `UxButton` 0.dp, DISABLED_ALPHA 0.4 and `1f`, `UxLink` 4.dp, `UxQrViewfinder` DIMMED 0.35,
+  ARM_DIVISOR 5 and `1f`, `TplScan` 240.dp, `TplSheet` SCRIM_ALPHA 0.4, FontWeight in `UxRpIdentity`, `UxNotice`,
+  `UxAttributeList`. All moved to tokens: `comp.app-bar.badge-*`, `comp.link.gap`, `UxEffects.{disabled,scrim,dimmed}Alpha`,
+  `UxScanTokens.cameraMinHeight`, `UxQrViewfinderTokens`, `comp.rp-identity.name-weight`, `sys.font.weight.semibold`,
+  `comp.attribute-list.value-weight`. The `size.focusRing / 3` hairline trick became `UxEffects.hairline`.
+- Mutation proof: a planted `Color(0xFF123456)` and `7.dp` in `UxText.kt` turned `style-guard` red (exit 1, both lines
+  named); removed, green. Log in the same file.
+
+**Fail loudly.** `wireEnum` returns the default only for an absent (null) value and throws `UxUnknownVariantException`
+for a value that names no variant (was: silent default). Each element and template has a schema in the registry
+(`UxElementSchema`, `UxTemplateSchema`: props with their enum keys taken from the Kotlin enums, events, slots, item
+fields, regions). The interpreter checks every node before drawing it and draws a tagged `ux-error.<id>` text node
+(`⟦error EL-x id: unknown prop 'p'; ...⟧`) and logs it; the state-entry log line carries the screen's schema problems.
+Tests: unknown variant, unknown prop and unknown region draw the tagged node on both targets (`ProvisionalInterpreterScenario`,
++3 per target); the PROVISIONAL bundle and the offline-loading copy have 0 schema problems and a planted copy reports
+each problem (`SchemaCheckTest`); adapters read only declared props (`RegistryAdapterScenario`). Decision: render-time error
+node rather than a refusal at bundle load, because the loader (`:ux-runtime` bundle package) has no registry and a
+refusal would blank the whole flow for one bad node; the same check is available at load time as `SchemaCheck.problems`.
+
+**Registry versus library YAML** (`RegistrySchemaTest`, snapshot `ux-elements/spec-snapshot/ux-library-subset.json`,
+spec commit `ec5e58e3def93cfbd3ba846005ccd3e2c13f53ba`, library clean, embedded as a build-generated test string so the
+repo builds without the spec repo; refresh with `spike-evidence/M5c/tools/snapshot-library.py`). Result: prop names, enum
+variants (normalised), events, slots and template regions equal the YAML for all nine elements and four templates, except
+six differences, all listed with their reason in the test: `EL-button.popup_state_label` (renderer-owned extra, M5 deviation 5),
+record fields `id`, `label_copy`, `copyable`, `media` of `EL-attribute-list.items` (boundary 1.7, not element props), and
+the library's per-item `requirement_label`, which the registry does not draw (**GAP**: list-level labels are used). No variant
+mismatch was found.
+
+**Token shell** (`:ux-theme`). New: `UxElevations` (8 `sys.elevation.*`, layered shadows with inset and spread), `UxFonts`
+(`sys.font.family.*`, `sys.font.weight.*`), `UxComponentTokens` (`comp.app-bar`, `button`, `link`, `sheet`, `rp-identity`,
+`attribute-list`, plus NOT-IN-SPEC `scan` and `qr-viewfinder`), `UxEffects` (NOT IN SPEC: opacities, hairline), and
+`UxMode` = Light, HighContrast, Dark, DarkHighContrast with the resolver's fallbacks in `UxBrand`. The PROVISIONAL eudiw_v1 file
+is a hand-written transcription of the resolved spec tokens for all four modes (940 keys resolved per mode with
+`spike-evidence/M5c/tools/resolve-theme.py`). **Elevation is drawn**: `Modifier.uxElevation` is applied for `comp.app-bar.shadow`
+(bar divider), `comp.sheet.shadow` (the sheet), and the icon and floating button shadows; rings and inset rings are exact
+(an iOS pixel test checks the inset ring), a blurred layer is the platform shadow of half the blur (offsets are not
+honoured by Compose; declared approximation). Side effects of following the spec values: the app bar is 64 dp high (was 58),
+button labels are Bold (was SemiBold, `comp.button.font-weight` is 700), section and display styles are Bold. Not run on a
+device this milestone; no screenshot evidence of the shadows yet. Dark and high contrast are token-level only: `FlowHost` maps
+`theme.default_mode` onto the four modes (`wireEnum`), nothing follows the system setting (F-dev-1 unchanged).
+
+Exporter requirements for week-0 batch 3: `spike-evidence/M5c/exporter-requirements.md` (token groups, the four modes,
+per-mode resolved emission, the NOT-IN-SPEC list). The orchestrator forwards it.
 
 ## Device runs (owner, iPhone Air, iOS 27.0.1, team D2YJRYD9TA)
 
