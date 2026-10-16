@@ -193,7 +193,6 @@ internal class IosDocumentDetailsPlatformBridge(
     private fun WalletDocument?.isPid(): Boolean =
         this?.formatType?.toDocumentIdentifier().isPid
 
-    /** iOS has no OpenID4VCI implementation, so this fails rather than appearing to start something. */
     /**
      * Tops the document's credentials back up.
      *

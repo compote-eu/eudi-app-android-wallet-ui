@@ -1612,9 +1612,6 @@ class TestRequestTransformer {
         transactionData!!.details.nestedItems.filter { item -> item.header.overlineText == label }
             .map { item -> (item.header.mainContentData as ListItemMainContentDataUi.Text).text }
 
-
-    /** The collapsed supporting text the document header shows on the request screen. */
-
     /**
      * Builds the real UI rows the request screen would render for [matches] against
      * [storageDocuments], by running the genuine

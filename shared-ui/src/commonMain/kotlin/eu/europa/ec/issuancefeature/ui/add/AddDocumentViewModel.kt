@@ -525,11 +525,6 @@ class AddDocumentViewModel(
     }
 
     /**
-     * The link paired with its kind, or null when there is no link or it is not a deep link at all.
-     * Callers use the null case to mean "nothing arrived by deep link", which is what decides whether
-     * a failure to load the options is worth an error card.
-     */
-    /**
      * What to run once the "no verified issuer" notice has closed and the list is empty, or `null`
      * to stay on this screen. This is deliberately not [getOnBackAction]. With no document yet,
      * this screen is where issuance starts, so backing out of it closes the app. It would also
@@ -563,6 +558,11 @@ class AddDocumentViewModel(
         }
     }
 
+    /**
+     * The link paired with its kind, or null when there is no link or it is not a deep link at all.
+     * Callers use the null case to mean "nothing arrived by deep link", which is what decides whether
+     * a failure to load the options is worth an error card.
+     */
     private fun deepLinkAction(deepLink: String?): Pair<String, DeepLinkKind>? =
         deepLink?.let { link ->
             deepLinkClassifier.classify(link)?.let { kind -> link to kind }

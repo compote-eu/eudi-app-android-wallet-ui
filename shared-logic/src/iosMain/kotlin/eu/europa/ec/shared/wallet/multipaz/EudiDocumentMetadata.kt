@@ -238,7 +238,6 @@ internal sealed interface StoredDocumentFormat {
     }
 }
 
-/** Same CBOR shape as the Android original's `DocumentFormat.toDataItem()`. */
 /**
  * The issuing session's access token, kept with a parked document for an issuer that grants **no refresh
  * token** — without it such a document could never be collected, and the sweep would delete it.
@@ -261,6 +260,7 @@ internal data class DeferredResume(
     override fun toString(): String = "DeferredResume(dpopKeyAlias=$dpopKeyAlias, expiresAt=$expiresAt)"
 }
 
+/** Same CBOR shape as the Android original's `DocumentFormat.toDataItem()`. */
 private fun StoredDocumentFormat.toDataItem(): DataItem = buildCborMap {
     when (this@toDataItem) {
         is StoredDocumentFormat.MsoMdoc -> put("docType", docType)

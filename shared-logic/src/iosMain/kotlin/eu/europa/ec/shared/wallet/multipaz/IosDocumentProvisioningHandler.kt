@@ -350,13 +350,6 @@ internal class IosDocumentProvisioningHandler(
         internal val DEFAULT_BATCH_SIZE: Int get() = iosWalletConfig.credentialBatchSize
 
         /**
-         * How this wallet provisions credentials — one place, because two callers must agree on it.
-         *
-         * The handler passes these to multipaz when it provisions, and `IosCredentialIssuer` reads the
-         * same values to ask, without provisioning anything, whether a refresh would have work to do.
-         * Two copies that drifted would make that question answer for a wallet that does not exist.
-         */
-        /**
          * [settingsFor], with the numbers a stored policy dictates.
          *
          * The mapping is the policy's meaning, not a translation table: a once-only credential is spent
@@ -385,6 +378,13 @@ internal class IosDocumentProvisioningHandler(
             }
         }
 
+        /**
+         * How this wallet provisions credentials — one place, because two callers must agree on it.
+         *
+         * The handler passes these to multipaz when it provisions, and `IosCredentialIssuer` reads the
+         * same values to ask, without provisioning anything, whether a refresh would have work to do.
+         * Two copies that drifted would make that question answer for a wallet that does not exist.
+         */
         internal fun settingsFor(
             store: MultipazWalletStore,
             batchSize: Int = DEFAULT_BATCH_SIZE,

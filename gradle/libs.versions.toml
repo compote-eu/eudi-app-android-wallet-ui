@@ -115,7 +115,7 @@ detekt = "1.23.8"
 gmsPlugin = "4.5.0"
 kover = "0.9.11"
 # ktlintCli is the ktlint engine version; ktlintGradle is only the plugin wrapping it.
-ktlintCli = "1.6.0"
+ktlintCli = "1.8.0"
 ktlintGradle = "14.2.0"
 owaspDependencyCheck = "13.0.0"
 protobufPlugin = "0.10.0"

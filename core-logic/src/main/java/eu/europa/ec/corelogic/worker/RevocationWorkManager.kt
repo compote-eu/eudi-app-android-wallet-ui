@@ -39,6 +39,19 @@ import org.koin.android.annotation.KoinWorker
 import java.util.Locale
 
 /**
+ * wallet-core's status, in the vocabulary the shared policy speaks.
+ *
+ * `Status` has more cases than the wallet acts on; everything outside the three below is a value this
+ * wallet does not interpret, which is exactly [DocumentStatusDomain.Unknown].
+ */
+private fun Status.toDocumentStatusDomain(): DocumentStatusDomain = when (this) {
+    is Status.Valid -> DocumentStatusDomain.Valid
+    is Status.Invalid -> DocumentStatusDomain.Invalid
+    is Status.Suspended -> DocumentStatusDomain.Suspended
+    else -> DocumentStatusDomain.Unknown
+}
+
+/**
  * [RevocationWorkManager] is a [CoroutineWorker] responsible for checking the revocation status of issued documents
  * and updating the local storage and sending broadcasts when revocations are detected.
  *
@@ -61,19 +74,6 @@ import java.util.Locale
  * @param appContext The application context.
  * @param workerParams Parameters for the worker.
  */
-/**
- * wallet-core's status, in the vocabulary the shared policy speaks.
- *
- * `Status` has more cases than the wallet acts on; everything outside the three below is a value this
- * wallet does not interpret, which is exactly [DocumentStatusDomain.Unknown].
- */
-private fun Status.toDocumentStatusDomain(): DocumentStatusDomain = when (this) {
-    is Status.Valid -> DocumentStatusDomain.Valid
-    is Status.Invalid -> DocumentStatusDomain.Invalid
-    is Status.Suspended -> DocumentStatusDomain.Suspended
-    else -> DocumentStatusDomain.Unknown
-}
-
 @KoinWorker
 class RevocationWorkManager(
     appContext: Context,

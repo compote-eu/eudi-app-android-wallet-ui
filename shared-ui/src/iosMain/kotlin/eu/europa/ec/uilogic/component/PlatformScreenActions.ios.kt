@@ -124,13 +124,6 @@ actual fun rememberPlatformScreenActions(): PlatformScreenActions = remember {
 private const val TAG = "PlatformScreenActions"
 
 /**
- * Hands [url] to iOS to open — Safari, or whichever app claims the scheme.
- *
- * Top level rather than a member for the same reason [openIosAppSettings] is: a second caller outside
- * composition needs it. That caller is `IosNavPlatformActions.parkAndReturn`, which has to follow the
- * verifier's post-presentation redirect, and cannot reach a `@Composable` factory's object.
- */
-/**
  * [openIosUrlExternally] that reports the outcome: `openURL`'s completion handler says whether an app
  * took the link. `mailto:` with no mail account set up and `tel:` on a device that cannot call — every
  * simulator — answer false.
@@ -146,6 +139,13 @@ internal suspend fun tryOpenIosUrlExternally(url: String): Boolean {
     }
 }
 
+/**
+ * Hands [url] to iOS to open — Safari, or whichever app claims the scheme.
+ *
+ * Top level rather than a member for the same reason [openIosAppSettings] is: a second caller outside
+ * composition needs it. That caller is `IosNavPlatformActions.parkAndReturn`, which has to follow the
+ * verifier's post-presentation redirect, and cannot reach a `@Composable` factory's object.
+ */
 internal fun openIosUrlExternally(url: String) {
     // `NSURL.URLWithString` returns null for anything it cannot parse, which is the iOS counterpart of
     // the Android side swallowing `ActivityNotFoundException`.

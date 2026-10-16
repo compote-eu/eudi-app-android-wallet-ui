@@ -236,8 +236,7 @@ internal fun issuerNamespacesOf(
  *
  * The MSO is what makes this work at all — `MdocCredential.certify` reads the credential's validity
  * window out of `mso.validFrom`/`validUntil`, so a credential cannot be certified without one.
- */
-/**
+ *
  * ⚠️ `internal` rather than private so a test can mint the bytes an **issuer** would send, for a key it
  * chooses — which is what the deferred-collection test needs: the credential it certifies must be bound
  * to the pending credential's own key, not to a throwaway one.

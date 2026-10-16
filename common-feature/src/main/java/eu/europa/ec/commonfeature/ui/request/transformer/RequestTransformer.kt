@@ -202,11 +202,6 @@ object RequestTransformer {
     }
 
     /**
-     * Inverse of the projection: the user's kept rows → [PresentationSelectionDomain]s, one per
-     * rendered document (matched back by `(documentId, queryId)`; documents with no match, or
-     * nothing kept, are dropped). When [claimsAreSelectable] is false each document discloses the verifier's full set.
-     */
-    /**
      * Applies the overasked ("not registered") mark to every leaf row whose claim satisfies an
      * overasked claim of the row's document attestation — query-blind on purpose: registrations
      * key claims by attestation type, so a claim outside the registered scope is marked wherever
@@ -319,6 +314,11 @@ object RequestTransformer {
         )
     }
 
+    /**
+     * Inverse of the projection: the user's kept rows → [PresentationSelectionDomain]s, one per
+     * rendered document (matched back by `(documentId, queryId)`; documents with no match, or
+     * nothing kept, are dropped). When [claimsAreSelectable] is false each document discloses the verifier's full set.
+     */
     fun createSelectionsDomain(
         documentItemsUi: List<RequestDocumentItemUi>,
         matchesDomain: List<PresentationMatchDomain>,

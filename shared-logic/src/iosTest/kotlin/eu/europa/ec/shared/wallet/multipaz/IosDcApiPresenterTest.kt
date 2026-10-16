@@ -233,6 +233,13 @@ class IosDcApiPresenterTest {
 
     //region a full exchange — the branch nothing upstream covers
 
+    /** A request plus the two things a test needs to decrypt what comes back. */
+    private data class BuiltRequest(
+        val json: String,
+        val recipientKey: EcPrivateKey,
+        val encryptionInfoBase64: String,
+    )
+
     /**
      * A well-formed `org-iso-mdoc` request, exactly as iOS's ISO 18013 scene delivers one.
      *
@@ -241,13 +248,6 @@ class IosDcApiPresenterTest {
      * decrypts. The device request itself carries no reader authentication — the ordinary case for the
      * dev verifiers, and what the wallet must still answer.
      */
-    /** A request plus the two things a test needs to decrypt what comes back. */
-    private data class BuiltRequest(
-        val json: String,
-        val recipientKey: EcPrivateKey,
-        val encryptionInfoBase64: String,
-    )
-
     private suspend fun mdocApiRequest(
         docType: String = MDOC_PID_DOC_TYPE,
         elements: Map<String, Boolean> = mapOf("family_name" to false, "given_name" to false),

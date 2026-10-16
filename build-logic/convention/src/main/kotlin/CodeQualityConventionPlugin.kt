@@ -31,7 +31,9 @@ import project.convention.logic.libs
  * opt out of it.
  *
  * The two tools have separate jobs and share no rule. detekt owns static analysis -- above all the
- * dead-code rules, which is the drift this gate exists to stop. ktlint owns imports. Enabling the
+ * dead-code rules, which is the drift this gate exists to stop -- and, since ktlint 1.7.0 stopped
+ * running its unused-import rule by default, the import rules as well. ktlint owns the formatting
+ * rules `.editorconfig` leaves on. Enabling the
  * same rule in both would report every finding twice and leave neither tool the owner, so
  * `detekt-formatting` (which is ktlint's engine wrapped for detekt) is deliberately not on the
  * classpath. Which rules are on, which are off and what each exemption cost is recorded in

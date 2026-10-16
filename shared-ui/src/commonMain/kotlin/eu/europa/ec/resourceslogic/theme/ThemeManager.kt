@@ -39,8 +39,7 @@ class ThemeManager {
 
     /**
      * Defines if dynamic theming is supported. Notice that Dynamic color is available on Android 12+.
-     */
-    /**
+     *
      * Whether the platform can derive a colour scheme from the user's wallpaper (Material You).
      * True only on Android 12+; iOS has no equivalent, so it is always false there.
      */
