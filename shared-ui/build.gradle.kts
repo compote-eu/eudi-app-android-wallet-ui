@@ -236,6 +236,8 @@ kotlin {
             // which is what a developer wants. ⛔ Do not move probe code back into `iosMain`.
             if (providers.environmentVariable("CONFIGURATION").orNull != "Release") {
                 kotlin.srcDir("src/iosProbeMain/kotlin")
+                // The debug-only spike flow glue (SPIKE-PLAN §1.7), under the same rule as the probes.
+                kotlin.srcDir("src/iosUxSpikeMain/kotlin")
             }
         }
         // iOS adds only Coil's network fetcher. The Compose UI artifacts moved to commonMain with the
@@ -248,6 +250,9 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.coil.kt.network.ktor3)
             implementation(libs.ktor.client.darwin)
+            if (providers.environmentVariable("CONFIGURATION").orNull != "Release") {
+                implementation(project(":ux-spike"))
+            }
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

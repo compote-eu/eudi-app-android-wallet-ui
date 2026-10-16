@@ -87,4 +87,6 @@ android {
 dependencies {
     implementation(project(LibraryModule.AssemblyLogic.path))
     "baselineProfile"(project(LibraryModule.BaselineProfileLogic.path))
+    // Debug-only spike flow (SPIKE-PLAN §1.7): absent from every release variant.
+    debugImplementation(project(":ux-spike-android"))
 }
