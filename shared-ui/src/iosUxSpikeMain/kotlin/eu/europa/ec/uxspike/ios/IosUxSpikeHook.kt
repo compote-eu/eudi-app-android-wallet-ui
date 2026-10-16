@@ -35,6 +35,11 @@ import org.koin.core.annotation.Single
 @Single(binds = [DebugFlowHook::class])
 class IosUxSpikeHook : DebugFlowHook {
 
+    init {
+        // Parse and persist the launch argument as soon as the hook exists, so a later cold start sees it.
+        IosUxSpikeSwitch.script()
+    }
+
     override fun EntryProviderScope<NavKey>.entries(navigator: AppNavigator) {
         entry<UxFlowRoute> { route -> UxFlowStub(route) }
     }

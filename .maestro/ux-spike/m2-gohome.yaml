@@ -1,0 +1,5 @@
+appId: eu.compote.euidi.dev
+---
+- tapOn:
+    text: "GO TO HOME"
+    optional: true
