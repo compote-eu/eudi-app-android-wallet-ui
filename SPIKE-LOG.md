@@ -11,7 +11,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M1a | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | plan + state files; RULING-1 fold-in |
 | M1b | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | `spike-contract-boundary.md` + PROVISIONAL bundle (sha256 `31bfda65…cf8d71`) |
 | M2 | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | Six module skeletons, `DebugFlowHook`, conditional wiring; probes P1 (iOS, redirect option A works), P2, P3, P5 passed, P6 compile-level; release isolation clean; gate GREEN. ⟲: `origin/feature/kmp` still at `b23f6a1f5`, no rebase. T1-T4 touched only; reserved T6/T7/T8 unused. |
-| M3 | not started | — | — | — | — | — |
+| M3 | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | Pure-Kotlin engine + loader + handshake in `:ux-runtime` (`bundle`, `engine` packages; no Compose import, no bundle-name literal). 95 new tests (47 common ×2 targets + 1 host guard): H1-H12, async rules, brief §5 back/restore, iOS abandon, deeplink, exits, D5-engine. Drills D1-engine, D2-engine, D5-engine (preliminary). Only `ux-runtime/**` changed (+ these state files); no T-file touched. KC1 grep over `ux-runtime` = 0. |
 | M4 | not started | — | — | — | — | — |
 | M5 | not started | — | — | — | — | — |
 | M5b | not started | — | — | — | — | — |
@@ -37,6 +37,8 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 |---|---|---|---|---|---|---|---|---|---|---|
 | 2026-10-16 | b23f6a1f5 | M0 baseline | see `spike-evidence/M0-baseline.md` | 560 (shared-ui host), 166 (shared-logic host), Android unit tests per module | 0 | 0 | pass | pass | not run (no Xcode then) | Android/lint green; iOS tests pending |
 | 2026-10-16 | final M2 commit | M2 | full `./spike-gate.sh` (retry 1) | 4004 (shared-logic iOS 832, shared-ui iOS 648, host 166/562, ux-spike 1+1, module unit tests as M0) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+| 2026-10-16 | f31de1283 | M3 | `./spike-gate.sh --fast` | 4099 (ux-runtime host 48, iOS 47; rest as M2) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
+| 2026-10-16 | f31de1283 | M3 | full `./spike-gate.sh` | 4099 (shared-logic iOS 832, shared-ui iOS 648, host 166/562, ux-runtime 48/47, ux-spike 1+1, module unit tests as M0) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 
 Gate try 1 was RED: my first `DebugFlowHookTest` used Koin DSL modules, which made the Koin compiler plugin validate the iOS test compilation and reject `IosFilterValidatorScopeTest` (KOIN-D002). The test now uses `Koin().declare`. No wallet code changed.
 
@@ -51,6 +53,30 @@ Gate try 1 was RED: my first `DebugFlowHookTest` used Koin DSL modules, which ma
 | P6 Android standalone `UxFlowRoute` restore | compile-level only: `@Serializable @SerialName("UxFlow")`, JSON round-trip test green on host and iOS. No emulator or adb on this machine; the Android hook, provider and Koin load were built (`:ux-spike-android:assembleDebug`, merged manifest has the provider in debug, not in release) but not run. | `UxFlowRouteTest` |
 
 Note on P2 timing: the iOS hook parses the argument in its `init`, so persistence happens when the hook is first resolved (app start).
+
+## M3 engine notes and findings
+
+Public API (`eu.europa.ec.ux.runtime`): `FlowBundle.load(bytes, expectedFlowId, expectedSpecHash, themeSpecHash, allowProvisional) -> Loaded | Refused(reason)`;
+`FlowEngine(bundle, ServicePort, scope, FlowLog)` with `start(entry, launch, unlocked)`, `dispatch(event, payload, gen)`, `isAccepted`, `back()`,
+`snapshot()`, `restore(snapshot, platform)`, `current: StateFlow<FlowStatus>`; `ServicePort.call(service, args) -> ServiceResult(type, payload)`;
+`ServicePort.fromJsonInvoker(PresCrossDeviceInvoker(services)::invoke)` is the sync-time seam for the generated typed `Services`.
+
+The PROVISIONAL fixture is generated at build time (`:ux-runtime:provisionalBundleFixture`) from `spike-evidence/boundary/…PROVISIONAL.json`,
+sha256-checked, into `ux-runtime/build/`; boundary §6.1 put a tracked Kotlin copy in commonTest, which would break the KC1 grep (it greps all of
+`ux-runtime`). Tests read the screen id from the bundle. `ProvisionalRuntimeLiteralGuardTest` (host) fails if a main source names any state,
+event, service, result or screen of the bundle. The repo-wide KC1 grep stays an M5b gate item (`spike-gate.sh` not touched in M3).
+
+Findings for week 0 / the owner (not decided here):
+1. **L58 rests on a service-contract assumption.** With `RequestReady` or `RpUntrusted` carrying only optional items, the fixed bundle still
+   reaches `auth` with `selected_count == 0` (`fetchRequest->RequestReady, CONTINUE` and `…RpUntrusted, CONTINUE, APPROVE`): `request` and
+   `request-untrusted` `CONTINUE` are unguarded. Either SVC guarantees ≥ 1 mandatory item for those results, or the guard moves there.
+2. **H11 / iOS abandon target.** The boundary says "exits `closed`"; the engine finds it generically as the single final state with exit
+   `{home, not-presented}`. Suggest the bundle names it (e.g. `process_death.abandon_to`).
+3. **A throwing service** has no defined meaning; the engine logs it and does not move (the state stays pending-free with no transition).
+   W0 to define (for example, map to the service's `Error` result).
+4. Missing `back`/`restore` on a non-final state is refused (InvalidBundle), and `process_death` values, entry `requires` and exit `result`
+   are treated as closed enums, beyond the boundary's §1.1 list. Restore targets with a non-idempotent state-scoped invoke are refused.
+5. Unknown screen effects are recorded in `FlowBundle.warnings` (the M4 host logs them).
 
 ## M2 release-isolation check (baseline: `spike-evidence/M0-baseline.md`)
 
@@ -72,3 +98,5 @@ Note on P2 timing: the iOS hook parses the argument in its `init`, so persistenc
 | 320a10232 | 2026-10-16 | M2 | persist launch argument; Maestro flows, screenshots | Claude Sonnet 5.5 | Debug build |
 | be838cca3 | 2026-10-16 | M2 | hook test without Koin DSL | Claude Sonnet 5.5 | full gate GREEN |
 | (this commit) | 2026-10-16 | M2 | SPIKE-LOG, spike-results | Claude Sonnet 5.5 | — |
+| f31de1283 | 2026-10-16 | M3 | engine, loader, handshake, tests | Claude Opus 5.5 | fast + full gate GREEN (4099) |
+| (this commit) | 2026-10-16 | M3 | SPIKE-LOG, spike-results (D1/D2/D5-engine) | Claude Opus 5.5 | — |
