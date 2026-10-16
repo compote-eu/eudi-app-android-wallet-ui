@@ -28,9 +28,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 
@@ -195,7 +197,7 @@ class FlowEngine(
         if (invoke.scope == InvokeScope.DETACHED) {
             scope.launch {
                 val result = callPort(invoke.service, args)
-                log.log("detached ${invoke.service} finished (${result?.type}); result ignored")
+                log.log("detached ${invoke.service} finished (${result.type}); result ignored")
             }
             return false
         }
@@ -204,19 +206,29 @@ class FlowEngine(
         pending = true
         val gen = cfg.gen
         scope.launch(job) {
-            val result = callPort(invoke.service, args) ?: return@launch
+            val result = callPort(invoke.service, args)
             onResult(state.id, gen, result)
         }
         return true
     }
 
-    /** Null when the port threw: the boundary defines no meaning for that, so it is logged and nothing moves. */
-    private suspend fun callPort(service: String, args: JsonObject): ServiceResult? = try {
+    /**
+     * RULING-2: a port that throws, or a coroutine failure other than this job's own cancellation, becomes the
+     * [ServiceResult.UNEXPECTED_ERROR_TYPE] result with `{class: unexpected}`, so the state takes its declared error
+     * branch (the loader refuses a state-scoped invoke without one). The job's own cancellation is rethrown.
+     */
+    private suspend fun callPort(service: String, args: JsonObject): ServiceResult = try {
         port.call(service, args)
     } catch (e: CancellationException) {
-        throw e
+        if (!currentCoroutineContext().isActive) throw e
+        unexpected(service, e)
     } catch (e: Exception) {
-        null.also { log.log("service $service threw: ${e.message}") }
+        unexpected(service, e)
+    }
+
+    private fun unexpected(service: String, e: Exception): ServiceResult {
+        log.log("service $service failed (${e::class.simpleName}: ${e.message}); mapped to ${ServiceResult.UNEXPECTED_ERROR_TYPE}")
+        return ServiceResult.unexpected()
     }
 
     private fun onResult(stateId: String, gen: Long, result: ServiceResult) {

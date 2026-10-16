@@ -17,6 +17,7 @@
 // PROVISIONAL (M1b): reads the names from the boundary fixture; re-pointed at the real export in M6.
 package eu.europa.ec.ux.runtime
 
+import eu.europa.ec.ux.runtime.engine.ServiceResult
 import eu.europa.ec.ux.runtime.support.Fixture
 import java.io.File
 import kotlin.test.Test
@@ -35,7 +36,9 @@ class ProvisionalRuntimeLiteralGuardTest {
     @Test
     fun mainSourcesNameNothingFromTheBundle() {
         val b = Fixture.bundle()
-        val names = b.states.keys + b.events.keys + b.services.keys + b.services.values.flatMap { it.results } + b.screens.keys
+        // RULING-2 makes one result name an engine convention (ServiceResult.UNEXPECTED_ERROR_TYPE); it is the only exemption.
+        val names = b.states.keys + b.events.keys + b.services.keys + b.screens.keys +
+            (b.services.values.flatMap { it.results } - setOf(ServiceResult.UNEXPECTED_ERROR_TYPE))
         val sources = main.walkTopDown().filter { it.extension == "kt" }.toList()
         assertTrue(sources.size >= 5, "found ${sources.size} sources under ${main.absolutePath}")
         val hits = sources.flatMap { f ->

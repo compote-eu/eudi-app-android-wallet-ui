@@ -17,6 +17,7 @@
 // PROVISIONAL (M1b): the async rules of SPIKE-PLAN §1.3 on the boundary fixture; re-run on the real export in M6.
 package eu.europa.ec.ux.runtime.engine
 
+import eu.europa.ec.ux.runtime.bundle.FlowBundle
 import eu.europa.ec.ux.runtime.support.FakePort
 import eu.europa.ec.ux.runtime.support.Fixture
 import eu.europa.ec.ux.runtime.support.RecordingLog
@@ -42,9 +43,14 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** Drives the provisional flow to a named state through the engine's public API only. */
-internal class Driver(val scope: TestScope, val port: FakePort = FakePort(), engineScope: CoroutineScope = scope.backgroundScope) {
+internal class Driver(
+    val scope: TestScope,
+    val port: FakePort = FakePort(),
+    engineScope: CoroutineScope = scope.backgroundScope,
+    bundle: FlowBundle = Fixture.bundle(),
+) {
     val log = RecordingLog()
-    val engine = FlowEngine(Fixture.bundle(), port, engineScope, log)
+    val engine = FlowEngine(bundle, port, engineScope, log)
 
     fun request(result: ServiceResult = Results.requestReady): Driver = apply {
         port.auto["fetchRequest"] = result

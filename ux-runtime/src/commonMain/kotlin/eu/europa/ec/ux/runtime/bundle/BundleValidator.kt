@@ -16,6 +16,8 @@
 
 package eu.europa.ec.ux.runtime.bundle
 
+import eu.europa.ec.ux.runtime.engine.ServiceResult
+
 /** The structural invariants of boundary §1.4-§1.6. A failure is `Refused(InvalidBundle(path))` (H10). */
 internal class BundleValidator(private val b: FlowBundle) {
 
@@ -58,11 +60,23 @@ internal class BundleValidator(private val b: FlowBundle) {
         (inv.on.keys - svc.results).firstOrNull()?.let { invalid("$p/on/$it", "'$it' is not a result of '${svc.name}'") }
         if (inv.scope == InvokeScope.STATE) {
             (svc.results - inv.on.keys).firstOrNull()?.let { invalid("$p/on", "result '$it' of '${svc.name}' is not mapped") }
+            requireErrorBranch(s, inv, svc, p)
         }
         inv.on.forEach { (result, m) ->
             m.event?.let { if (it !in s.on) invalid("$p/on/$result/event", "'$it' is not in the state's on") }
         }
         inv.acceptsWhilePending?.forEach { if (it !in s.on) invalid("$p/accepts_while_pending", "'$it' is not in the state's on") }
+    }
+
+    /**
+     * RULING-2: a thrown call becomes the [ServiceResult.UNEXPECTED_ERROR_TYPE] result, so a state-scoped invoke must
+     * map that result to an event of the state. Detached invokes are exempt: their results are ignored.
+     */
+    private fun requireErrorBranch(s: StateDef, inv: Invoke, svc: ServiceDef, p: String) {
+        val error = ServiceResult.UNEXPECTED_ERROR_TYPE
+        if (error !in svc.results) invalid("/services/${svc.name}/results", "no '$error' result (RULING-2)")
+        val event = inv.on[error]?.event ?: invalid("$p/on/$error/event", "no error branch for '$error' (RULING-2)")
+        if (event !in s.on) invalid("$p/on/$error/event", "'$event' is not in the state's on (RULING-2)")
     }
 
     private fun validateBack(s: StateDef, p: String) {

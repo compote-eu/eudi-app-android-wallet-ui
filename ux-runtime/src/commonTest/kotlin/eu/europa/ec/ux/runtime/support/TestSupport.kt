@@ -106,6 +106,9 @@ internal class FakePort : ServicePort {
     val cancelled = mutableMapOf<String, Int>()
     val args = mutableListOf<Pair<String, JsonObject>>()
     var cancellable = true
+
+    /** A service in [throwing] throws this from its call (RULING-2). */
+    val throwing = mutableMapOf<String, Exception>()
     private val waiting = mutableMapOf<String, ArrayDeque<Continuation<ServiceResult>>>()
 
     val total: Int get() = calls.values.sum()
@@ -117,6 +120,7 @@ internal class FakePort : ServicePort {
     override suspend fun call(service: String, args: JsonObject): ServiceResult {
         calls[service] = calls(service) + 1
         this.args += service to args
+        throwing[service]?.let { throw it }
         auto[service]?.let { return it }
         val queue = waiting.getOrPut(service) { ArrayDeque() }
         return if (cancellable) {

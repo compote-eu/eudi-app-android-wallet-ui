@@ -51,7 +51,23 @@ fun interface ServicePort {
 }
 
 /** A service result: the bundle result name and its fields (the `{result: <field>}` inputs of an assign). */
-data class ServiceResult(val type: String, val payload: JsonObject = JsonObject(emptyMap()))
+data class ServiceResult(val type: String, val payload: JsonObject = JsonObject(emptyMap())) {
+    companion object {
+        /**
+         * RULING-2: the result name a thrown service call is converted into. It is an engine convention, not a name
+         * the engine reads from one bundle: the loader requires every state-scoped invoke's service to declare it and
+         * the invoke to map it to an event of the state (the error branch).
+         */
+        const val UNEXPECTED_ERROR_TYPE: String = "Error"
+
+        /** The payload field and value that mark a converted failure (RULING-2). */
+        const val UNEXPECTED_CLASS_FIELD: String = "class"
+        const val UNEXPECTED_CLASS: String = "unexpected"
+
+        fun unexpected(): ServiceResult =
+            ServiceResult(UNEXPECTED_ERROR_TYPE, JsonObject(mapOf(UNEXPECTED_CLASS_FIELD to JsonPrimitive(UNEXPECTED_CLASS))))
+    }
+}
 
 /** The engine's log sink; lines are meant to be prefixed `UX-SPIKE:` by the host. */
 fun interface FlowLog {

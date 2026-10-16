@@ -37,6 +37,29 @@ adding the date and the result under it.
   5. Record a screen recording of each run.
 - **Status:** open
 
+## Q-004: Confirm RULING-2 (a service that throws) for the real export
+
+- **Blocks:** nothing now (the default is implemented); M6 re-checks the real bundle against it.
+- **Question (week 0 / owner):** what does a service call that throws mean in the flow language?
+- **Default (RULING-2, implemented in M4):** the engine converts a throw, or a coroutine failure other than
+  cancellation, into the service's `Error` result with payload `{class: unexpected}`, and the state follows its
+  declared error branch (`invoke.on.Error` → an event of the state). A state-scoped invoke without that branch, or a
+  service without an `Error` result, refuses the bundle at load. Detached invokes are exempt.
+- **Options:** (a) keep the default; (b) a separate result name (e.g. `Unexpected`) that every service must declare;
+  (c) a flow-level `on_failure` target instead of a per-state branch.
+- **Status:** open (default applies)
+
+## Q-005: L58 guard on `CONTINUE` in `request` and `request-untrusted` (M3 open issue 1)
+
+- **Blocks:** the D5 property's caveat; nothing in M4.
+- **Question (week 0 / owner):** the fixed bundle reaches `auth` with `selected_count == 0` if `RequestReady` or
+  `RpUntrusted` carries only optional items, because `CONTINUE` is unguarded in `request` and `request-untrusted`.
+- **Default:** the service contract guarantees at least one mandatory item for `RequestReady` and `RpUntrusted`
+  (the fake scripts honour it), and the spec stays as it is.
+- **Options:** (a) the default (a contract guarantee); (b) move the `selected_count > 0` guard onto `CONTINUE` in
+  `request` and `request-untrusted` as well (spec change, re-export).
+- **Status:** open (default applies)
+
 ## Later (queued when their milestone arrives)
 
 - D7-iOS: VoiceOver walk on a real iPhone (M7).
