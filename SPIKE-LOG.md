@@ -14,8 +14,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M3 | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | Pure-Kotlin engine + loader + handshake in `:ux-runtime` (`bundle`, `engine` packages; no Compose import, no bundle-name literal). 95 new tests (47 common ×2 targets + 1 host guard): H1-H12, async rules, brief §5 back/restore, iOS abandon, deeplink, exits, D5-engine. Drills D1-engine, D2-engine, D5-engine (preliminary). Only `ux-runtime/**` changed (+ these state files); no T-file touched. KC1 grep over `ux-runtime` = 0. |
 | M4 | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | RULING-2 in the engine; `FlowHost` + `FlowViewModel` (`:ux-runtime` `host`), placeholder states; P4 passed on iOS (app, simulator) and Android (Robolectric round trip; app not run); D1 grep as a host test; PROVISIONAL contract copy + bundle resource in `:ux-contract`; data-driven fake engine (6 scripts) in `:ux-spike`; both hooks host the flow with one `PlatformBackHandler` adapter each. No existing file touched (only T1-T4 from M2 differ from the base). Drills: D3-sim-preliminary passed ×3, D-switch-1 passed, **D1-iOS-preliminary not run** (Maestro edge swipe triggers no back on any screen, baseline included); host-level FlowHost back test green. Gate GREEN 4148. |
 | M5 | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | `:ux-theme` (token value types, `UxBrand`, `UxTheme`, `LocalUxTokens`, PROVISIONAL eudiw_v1 set in `…theme.provisional`), `:ux-elements` (9 elements, 4 templates, heading focus API `headingFocus` / `LocalUxHeadingFocus`, `focusRequester` on interactive elements). 23 semantics tests per target (iOS sim + Android host under Robolectric). Debug-only template gallery behind `--ux-spike gallery[-page]` (UxFlowEntry, 4 lines). D7-semantics-preliminary recorded. No pre-spike file touched; only M2-M4 spike files (`ux-theme`/`ux-elements` build files, `UxFlowEntry.kt`). Gate GREEN 4196. |
-| M5 | not started | — | — | — | — | — |
-| M5b | not started | — | — | — | — | — |
+| M5b | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | Screen interpreter in `:ux-runtime` (`screen`, `a11y`), generic EL-*/TPL-* registry in `:ux-elements`, FlowHost draws every described screen; PROVISIONAL `PresRequestScreen` + registration in `:ux-spike` (the one KC1 exception); deferred exits; invoker `encodeDefaults`; KC1 guard step in `spike-gate.sh`. Tests (i) (ii) (iii) green. Drills D6-iOS-provisional (happy, expired), D8-added-state-preliminary, D1-iOS-preliminary rerun with the edge-swipe tool: all as brief §5. No pre-spike file touched. |
 | M6 | not started | — | — | — | — | blocked on `ux-spec/`; ⟲ after sync |
 | M7 | not started | — | — | — | — | ⟲ at end |
 | M8 | not started | — | — | — | — | D8 baseline SHA: _to be named when cut_ |
@@ -45,6 +44,11 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 | 2026-10-16 | 700787c3c | M4 | `./spike-gate.sh --fast` (RULING-2) | 4117 (ux-runtime host 57, iOS 56; rest as M3) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
 | 2026-10-16 | b754b7543 | M4 | `./spike-gate.sh --fast` (host, fake engine) | 4145 (ux-runtime 66/61, ux-spike 11/3, ux-contract 2; rest as M3) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
 | 2026-10-16 | b754b7543 + FlowHost back test (this commit) | M4 | full `./spike-gate.sh` | 4148 (shared-logic iOS 832, shared-ui iOS 648, host 166/562, ux-runtime 66/64, ux-spike 11/3, ux-contract 2, module unit tests as M0) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+
+| 2026-10-16 | f34c35dc0 | M5b | `./spike-gate.sh --fast` (+ kc1-guard) | 4220 (ux-runtime 76/74, ux-contract 4/2, ux-elements 23/23, ux-spike 12/4; rest as M4) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
+| 2026-10-16 | f34c35dc0 + drill evidence | M5b | full `./spike-gate.sh` (+ kc1-guard) | 4220 (as the fast run) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+
+M5b Release spot check: `strings` on the Release app and extension binaries finds 0 spike patterns (incl. `PresRequestScreen`).
 
 M4 Release spot check (full gate's Release build): `strings` on the app binary finds 0 spike patterns; the `.app` and `.appex` carry only `eu.europa.ec.shared.resources`.
 
@@ -137,6 +141,9 @@ Findings for week 0 / the owner (not decided here):
 | 85b1e98f0 | 2026-10-16 | M5 | tokens, 9 elements, 4 templates, semantics tests, gallery | Claude Sonnet 5.5 | fast GREEN (4196) |
 | 55d04b1e9 | 2026-10-16 | M5 | full-width template actions, gallery Maestro flow | Claude Sonnet 5.5 | full GREEN (4196) |
 | (this commit) | 2026-10-16 | M5 | SPIKE-LOG, spike-results, M5 evidence | Claude Sonnet 5.5 | — |
+| d1ec06cf5 | 2026-10-16 | M5b | iOS edge-swipe tool + evidence (was untracked) | Claude Opus 5.5 | — |
+| f34c35dc0 | 2026-10-16 | M5b | interpreter, registry, PresRequestScreen, exits, invoker defaults, KC1 guard, tests | Claude Opus 5.5 | fast GREEN (4220) |
+| (this commit) | 2026-10-16 | M5b | Maestro flows, drill evidence, SPIKE-LOG, spike-results | Claude Opus 5.5 | full gate (see Gate results) |
 
 ## M5 notes (elements and templates)
 
@@ -153,3 +160,49 @@ Deviations from the spec definitions (all in `:ux-elements`, none needs a decisi
 10. Templates provide the action region full-width through `LocalUxFullWidthActions`; bare buttons are intrinsic width.
 
 `TPL-sheet` layouts: one `layout: UxDecisionSteps` parameter (default = the brand's `layouts`), all difference inside `TplSheet`. Gallery layout has a doubled top inset under the picker; cosmetic, debug only.
+
+## M5b notes (interpreter)
+
+Design: `ScreenCatalog` reads the node trees, `declared_by` and the theme reference from `bundle.raw`; per status a
+`ScreenFrame` resolves props (`{copy,args}` through `CopyResolver`: brand override first, then base, `%n$s`;
+`{bind}` from the context; literals), applies the screen rules (`hide`/`show`/`enable`/`disable`/`set_copy`; later
+wins), and marks a node disabled when a rule disables it or the state does not accept one of its events now. The
+template and element adapters come from `UxElementRegistry` (`:ux-elements`, keyed only by `TPL-*`/`EL-*`); an unknown
+part draws a tagged placeholder. An element raises its own event (`press`, `toggle` + `{item_id}`), the node's `emits`
+goes to `FlowEngine.dispatch` with the status `gen`. A hook-supplied `FlowScreens.custom` map (screen id →
+composable) overrides a screen; its `ScreenScope` carries the consent snapshot (context paths whose `declared_by`
+names the screen), copy, `isAccepted` and `send` (intent only). After each state entry settles (AnimatedContent
+`Visible`, plus one frame), `StateChangeA11y` focuses the `a11y.heading` node or leaves the live region and calls
+`AccessibilityBridge` (interface; M7 adds the iOS notification). FlowHost wraps each state in `ux-state-<id>`.
+
+Tests: (i) `ProvisionalInterpreterScenario` (iOS sim + Robolectric): connecting and outcome-expired drawn from bundle
+data only (every visible node id, every copy text, live region / heading focus from the bundle a11y, no placeholder),
+plus rules/bindings (verification-code, CONFIRM disabled while pending), hand-written screen snapshot + intent,
+unknown element, registry coverage of all 16 screens; `ProvisionalCopyResolverTest`; (ii) the added-state test on the
+offline-loading TEST copy (build-time fixture `offlineLoadingBundleFixture`, sha-checked); (iii) `kc1-guard` gate step:
+the plan grep (`SCR-|"pres-`, untracked files included) plus every bundle state id as a quoted literal in the main
+sources of `ux-*` (contract excluded), `iosUxSpikeMain` and `DebugFlowHook.kt`; it requires the one exception to exist.
+Mutation check: a planted `"sending"` in `:ux-elements` and `SCR-` in a runtime test both turned it red.
+
+Changes beyond the interpreter: the QR redirect passed the state name `scan` as the entry name (an unknown entry since
+M4; now `FlowEngine.DEFAULT_ENTRY`); the gallery page keys no longer spell `"scan"`; the M4 FlowHost back test presses
+node ids instead of placeholder buttons; `ui-test` moved to `:ux-runtime` commonTest.
+
+Exits (hooks, typed through `PresCrossDeviceExit.of`): done/closed → Home; add-document → Home then
+`AddDocumentRoute(ExtraDocument)`; device-settings → Home then `PlatformScreenActions.openAppSettings()` (no
+security-settings action exists, nor an iOS link); to-help → Home and `GAP to-help` logged (no help route in the app).
+
+Findings for week 0 / the owner (not decided here):
+1. **`declared_by` became semantic** for hand-written screens (the consent snapshot is built from it). Week 0 should
+   either bless it or emit an explicit `snapshot` path list per custom screen.
+2. **`/links/help` has no source.** Nothing assigns it, and EL-link draws nothing without an href, so the HELP link of
+   the six outcome screens never shows and `to-help` is reachable only by Back policy, not by the user.
+3. **`connecting` and `auth` can be shorter than a frame** with immediate fakes; the screen is then never composed (the
+   engine state still runs). Not a runtime defect; drills that must see `auth` use `slow`.
+4. **iOS focus timing.** `requestFocus` right at the AnimatedContent settle is accepted but not applied on iOS; one frame
+   later it is. Kept generic in `FlowHost` (M7 re-checks with VoiceOver).
+5. **D8 on the device needs the contract to grow.** The fake decodes results with the sealed contract serializers, so a
+   new result (`Offline`) cannot be played from a script alone (R11); test (ii) runs on a JSON port.
+6. The interpreter log line is written at state entry, so an internal `ui_state_when` change (verification-code
+   `no-url` → default after `Ready`) is drawn but not re-logged.
+7. Boundary §2.5 sample amended (`encodeDefaults = true`); the generated invoker must pass `ProvisionalInvokerDefaultsTest`.

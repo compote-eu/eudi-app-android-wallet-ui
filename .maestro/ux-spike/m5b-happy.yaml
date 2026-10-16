@@ -1,21 +1,34 @@
-# M5b D6-iOS-provisional, happy path (script `happy`), after `simctl openurl openid4vp://...`: connecting -> request
+# M5b D6-iOS-provisional, happy path (script `happy`), opened with Maestro openLink ${LINK}: connecting -> request
 # (hand-written) -> auth -> verification-code -> sending -> success -> Home. Each interpreted screen is checked by its
 # bundle node ids and its PROVISIONAL sk copy.
 appId: eu.compote.euidi.dev
 ---
+- openLink: ${LINK}
+- tapOn:
+    text: "Open"
+    optional: true
 - runFlow:
-    file: m4-open-link.yaml
-    env:
-      STATE: connecting
-- assertVisible: "Načítava sa žiadosť overovateľa"
-- takeScreenshot: ${EV}/d6-happy-1-connecting
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+# connecting lasts 800 ms in these scripts: seen when the poll is fast enough, always proven by the interpreter log.
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-connecting"
+    timeout: 3000
+    optional: true
+- takeScreenshot: d6-happy-1-connecting-or-request
 - extendedWaitUntil:
     visible:
       id: "ux-state-request"
     timeout: 20000
 - assertVisible:
     id: "attributes"
-- takeScreenshot: ${EV}/d6-happy-2-request
+- takeScreenshot: d6-happy-2-request
 - tapOn:
     id: "continue"
 - extendedWaitUntil:
@@ -25,25 +38,25 @@ appId: eu.compote.euidi.dev
 - assertVisible:
     id: "code"
 - assertVisible: "4711"
-- takeScreenshot: ${EV}/d6-happy-3-verification-code
+- takeScreenshot: d6-happy-3-verification-code
 - tapOn:
     id: "confirm"
 - extendedWaitUntil:
     visible:
       id: "ux-state-sending"
     timeout: 10000
-- takeScreenshot: ${EV}/d6-happy-4-sending
+- takeScreenshot: d6-happy-4-sending
 - extendedWaitUntil:
     visible:
       id: "ux-state-success"
     timeout: 20000
 - assertVisible:
     id: "close"
-- takeScreenshot: ${EV}/d6-happy-5-success
+- takeScreenshot: d6-happy-5-success
 - tapOn:
     id: "close"
 - waitForAnimationToEnd:
     timeout: 5000
 - assertNotVisible:
     id: "ux-state-success"
-- takeScreenshot: ${EV}/d6-happy-6-home
+- takeScreenshot: d6-happy-6-home

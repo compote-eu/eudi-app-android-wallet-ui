@@ -1,0 +1,94 @@
+2026-10-16T22:19:40.396375: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-16T22:19:40.409505: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-16T22:19:40.431787: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-16T22:19:40.988316: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/DDB9C3D1-1142-46FB-8ACD-656D981D7964/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-16T22:19:40.999544: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=happy (persisting)
+2026-10-16T22:20:11.621017: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-16T22:20:11.622602: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-16T22:20:11.650661: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-16T22:20:11.65224: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
+objc[59310]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x109998398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x109b88310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-16T22:20:41.450452: INFO: IosAuthorizationRedirects: ignoring an opened URL that is not an authorization redirect
+2026-10-16T22:20:41.453083: INFO: IosDeepLinks: a presentation request is waiting to be opened
+UX-SPIKE: argument --ux-spike=happy (persisting)
+UX-SPIKE: argument --ux-spike=happy (persisting)
+UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=true), script happy
+UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (IOS)
+UX-SPIKE: enter connecting (gen 1)
+UX-SPIKE: fetchRequest#1 (script happy)
+UX-SPIKE: start deeplink: Started(state=connecting)
+UX-SPIKE: screen SCR-pres-connecting: interpreted from the bundle (TPL-progress, 2 nodes), state connecting, ui_state default
+UX-SPIKE: a11y: SCR-pres-connecting announce-live hero
+UX-SPIKE: enter request (gen 2)
+UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)
+2026-10-16T22:22:19.189077: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-16T22:22:19.196758: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-16T22:22:19.203609: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-16T22:22:19.303576: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/DDB9C3D1-1142-46FB-8ACD-656D981D7964/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-16T22:22:19.311057: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=happy (persisting)
+objc[62290]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x109cfc398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x109e74310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-16T22:22:49.562535: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-16T22:22:49.564232: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-16T22:22:49.581543: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-16T22:22:49.583176: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
+2026-10-16T22:23:07.371193: INFO: IosAuthorizationRedirects: ignoring an opened URL that is not an authorization redirect
+2026-10-16T22:23:07.372833: INFO: IosDeepLinks: a presentation request is waiting to be opened
+UX-SPIKE: argument --ux-spike=happy (persisting)
+UX-SPIKE: argument --ux-spike=happy (persisting)
+UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=true), script happy
+UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (IOS)
+UX-SPIKE: enter connecting (gen 1)
+UX-SPIKE: fetchRequest#1 (script happy)
+UX-SPIKE: start deeplink: Started(state=connecting)
+UX-SPIKE: screen SCR-pres-connecting: interpreted from the bundle (TPL-progress, 2 nodes), state connecting, ui_state default
+UX-SPIKE: a11y: SCR-pres-connecting announce-live hero
+UX-SPIKE: enter request (gen 2)
+UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)
+2026-10-16T22:23:36.39184: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-16T22:23:36.397013: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-16T22:23:36.402439: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-16T22:23:36.473172: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/DDB9C3D1-1142-46FB-8ACD-656D981D7964/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-16T22:23:36.479213: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=happy (persisting)
+objc[63469]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x109164398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x11fe9c310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-16T22:24:06.669711: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-16T22:24:06.671371: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-16T22:24:06.679639: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-16T22:24:06.68111: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
+2026-10-16T22:24:13.209425: INFO: IosAuthorizationRedirects: ignoring an opened URL that is not an authorization redirect
+2026-10-16T22:24:13.210705: INFO: IosDeepLinks: a presentation request is waiting to be opened
+UX-SPIKE: argument --ux-spike=happy (persisting)
+UX-SPIKE: argument --ux-spike=happy (persisting)
+UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=true), script happy
+UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (IOS)
+UX-SPIKE: enter connecting (gen 1)
+UX-SPIKE: fetchRequest#1 (script happy)
+UX-SPIKE: start deeplink: Started(state=connecting)
+UX-SPIKE: screen SCR-pres-connecting: interpreted from the bundle (TPL-progress, 2 nodes), state connecting, ui_state default
+UX-SPIKE: a11y: SCR-pres-connecting announce-live hero
+UX-SPIKE: enter request (gen 2)
+UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)
+UX-SPIKE: intent from SCR-pres-request: CONTINUE {} (gen 2)
+UX-SPIKE: enter auth (gen 3)
+UX-SPIKE: authenticate#1 (script happy)
+UX-SPIKE: enter verification-code (gen 4)
+UX-SPIKE: verificationCode#1 (script happy)
+UX-SPIKE: screen SCR-pres-verification-code: interpreted from the bundle (TPL-sheet, 8 nodes), state verification-code, ui_state no-url
+UX-SPIKE: a11y: SCR-pres-verification-code focus-heading title (focused)
+UX-SPIKE: interpreter: confirm press -> CONFIRM
+UX-SPIKE: enter sending (gen 5)
+UX-SPIKE: send#1 (script happy)
+UX-SPIKE: screen SCR-pres-sending: interpreted from the bundle (TPL-progress, 1 nodes), state sending, ui_state default
+UX-SPIKE: a11y: SCR-pres-sending announce-live hero
+UX-SPIKE: enter success (gen 6)
+UX-SPIKE: screen SCR-pres-outcome-success: interpreted from the bundle (TPL-outcome, 2 nodes), state success, ui_state default
+UX-SPIKE: a11y: SCR-pres-outcome-success focus-heading hero (focused)
+UX-SPIKE: interpreter: close press -> CLOSE
+UX-SPIKE: enter done (gen 7)
+UX-SPIKE: exit done (FINAL_STATE)
+UX-SPIKE: exit Done

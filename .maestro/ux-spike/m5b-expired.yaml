@@ -2,10 +2,24 @@
 # SCR-pres-outcome-expired) -> Close -> Home.
 appId: eu.compote.euidi.dev
 ---
+- openLink: ${LINK}
+- tapOn:
+    text: "Open"
+    optional: true
 - runFlow:
-    file: m4-open-link.yaml
-    env:
-      STATE: connecting
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+# connecting lasts 800 ms in these scripts: seen when the poll is fast enough, always proven by the interpreter log.
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-connecting"
+    timeout: 3000
+    optional: true
 - extendedWaitUntil:
     visible:
       id: "ux-state-error-expired"
@@ -14,11 +28,11 @@ appId: eu.compote.euidi.dev
     id: "hero"
 - assertVisible:
     id: "retry"
-- takeScreenshot: ${EV}/d6-expired-1-error-expired
+- takeScreenshot: d6-expired-1-error-expired
 - tapOn:
     id: "close"
 - waitForAnimationToEnd:
     timeout: 5000
 - assertNotVisible:
     id: "ux-state-error-expired"
-- takeScreenshot: ${EV}/d6-expired-2-home
+- takeScreenshot: d6-expired-2-home

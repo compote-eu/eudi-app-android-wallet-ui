@@ -1,0 +1,33 @@
+# D8-added-state-preliminary: JSON leaf paths added in the TEST copy (none removed or changed)
+# removed: []
+# changed: []
++ /events/SYS_OFFLINE/source = "service"
++ /states/connecting/invoke/on/Offline/event = "SYS_OFFLINE"
++ /states/connecting/on/SYS_OFFLINE = [{"target": "offline-loading", "kind": "error", "error_class": "offline"}]
++ /states/offline-loading/kind = "recovery"
++ /states/offline-loading/description = "No network: wait, then retry the request (D8-offline shape, M5b test copy)"
++ /states/offline-loading/screen = "SCR-pres-offline-loading"
++ /states/offline-loading/ui_state = "default"
++ /states/offline-loading/on/RETRY = [{"target": "connecting", "kind": "main"}]
++ /states/offline-loading/on/CANCEL = [{"target": "cancelled", "kind": "alt", "error_class": "user-refusal"}]
++ /states/offline-loading/back/policy = "event"
++ /states/offline-loading/back/event = "CANCEL"
++ /states/offline-loading/restore/policy = "snapshot"
++ /screens/SCR-pres-offline-loading/name = "Offline, waiting to retry"
++ /screens/SCR-pres-offline-loading/template = "TPL-progress"
++ /screens/SCR-pres-offline-loading/in_brief_scope = false
++ /screens/SCR-pres-offline-loading/regions/hero = [{"id": "hero", "element": "EL-status-hero", "props": {"tone": "pending", "title": {"copy": "CPY-pres-offline-title"}, "text": {"copy": "CPY-pres-offline-text"}}, "a11y": {"live": "polite"}}]
++ /screens/SCR-pres-offline-loading/regions/actions = [{"id": "retry", "element": "EL-button", "props": {"variant": "secondary", "label": {"copy": "CPY-pres-offline-retry"}}, "events": [{"on": "press", "emits": "RETRY"}]}]
++ /screens/SCR-pres-offline-loading/rules = []
++ /screens/SCR-pres-offline-loading/ui_states = ["default"]
++ /screens/SCR-pres-offline-loading/a11y/heading = null
++ /screens/SCR-pres-offline-loading/a11y/on_enter = "announce-live"
++ /screens/SCR-pres-offline-loading/a11y/live_region = "hero"
++ /screens/SCR-pres-offline-loading/a11y/focus_order = ["hero", "retry"]
++ /copy/keys/CPY-pres-offline-title/res = "cpy_pres_offline_title"
++ /copy/keys/CPY-pres-offline-title/_sk = "Ste offline"
++ /copy/keys/CPY-pres-offline-text/res = "cpy_pres_offline_text"
++ /copy/keys/CPY-pres-offline-text/_sk = "Čakáme na pripojenie k internetu."
++ /copy/keys/CPY-pres-offline-retry/res = "cpy_pres_offline_retry"
++ /copy/keys/CPY-pres-offline-retry/_sk = "Skúsiť znova"
++ /_test_copy = "M5b test (ii): the PROVISIONAL bundle plus the state offline-loading; never shipped, never in ux-spec/"
