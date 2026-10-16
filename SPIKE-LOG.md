@@ -13,6 +13,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M2 | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | Six module skeletons, `DebugFlowHook`, conditional wiring; probes P1 (iOS, redirect option A works), P2, P3, P5 passed, P6 compile-level; release isolation clean; gate GREEN. ⟲: `origin/feature/kmp` still at `b23f6a1f5`, no rebase. T1-T4 touched only; reserved T6/T7/T8 unused. |
 | M3 | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | Pure-Kotlin engine + loader + handshake in `:ux-runtime` (`bundle`, `engine` packages; no Compose import, no bundle-name literal). 95 new tests (47 common ×2 targets + 1 host guard): H1-H12, async rules, brief §5 back/restore, iOS abandon, deeplink, exits, D5-engine. Drills D1-engine, D2-engine, D5-engine (preliminary). Only `ux-runtime/**` changed (+ these state files); no T-file touched. KC1 grep over `ux-runtime` = 0. |
 | M4 | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | RULING-2 in the engine; `FlowHost` + `FlowViewModel` (`:ux-runtime` `host`), placeholder states; P4 passed on iOS (app, simulator) and Android (Robolectric round trip; app not run); D1 grep as a host test; PROVISIONAL contract copy + bundle resource in `:ux-contract`; data-driven fake engine (6 scripts) in `:ux-spike`; both hooks host the flow with one `PlatformBackHandler` adapter each. No existing file touched (only T1-T4 from M2 differ from the base). Drills: D3-sim-preliminary passed ×3, D-switch-1 passed, **D1-iOS-preliminary not run** (Maestro edge swipe triggers no back on any screen, baseline included); host-level FlowHost back test green. Gate GREEN 4148. |
+| M5 | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | `:ux-theme` (token value types, `UxBrand`, `UxTheme`, `LocalUxTokens`, PROVISIONAL eudiw_v1 set in `…theme.provisional`), `:ux-elements` (9 elements, 4 templates, heading focus API `headingFocus` / `LocalUxHeadingFocus`, `focusRequester` on interactive elements). 23 semantics tests per target (iOS sim + Android host under Robolectric). Debug-only template gallery behind `--ux-spike gallery[-page]` (UxFlowEntry, 4 lines). D7-semantics-preliminary recorded. No pre-spike file touched; only M2-M4 spike files (`ux-theme`/`ux-elements` build files, `UxFlowEntry.kt`). Gate GREEN 4196. |
 | M5 | not started | — | — | — | — | — |
 | M5b | not started | — | — | — | — | — |
 | M6 | not started | — | — | — | — | blocked on `ux-spec/`; ⟲ after sync |
@@ -133,3 +134,22 @@ Findings for week 0 / the owner (not decided here):
 | 700787c3c | 2026-10-16 | M4 | RULING-2: throwing service → Error branch; load refusal | Claude Opus 5.5 | fast GREEN (4117) |
 | b754b7543 | 2026-10-16 | M4 | FlowHost, FlowViewModel, fake engine, provisional contract, hooks | Claude Opus 5.5 | fast GREEN (4145) |
 | (this commit) | 2026-10-16 | M4 | FlowHost back test (iOS), Maestro flows, evidence, SPIKE-LOG, spike-results, HUMAN-QUEUE | Claude Opus 5.5 | full GREEN (4148) |
+| 85b1e98f0 | 2026-10-16 | M5 | tokens, 9 elements, 4 templates, semantics tests, gallery | Claude Sonnet 5.5 | fast GREEN (4196) |
+| 55d04b1e9 | 2026-10-16 | M5 | full-width template actions, gallery Maestro flow | Claude Sonnet 5.5 | full GREEN (4196) |
+| (this commit) | 2026-10-16 | M5 | SPIKE-LOG, spike-results, M5 evidence | Claude Sonnet 5.5 | — |
+
+## M5 notes (elements and templates)
+
+Deviations from the spec definitions (all in `:ux-elements`, none needs a decision now):
+1. **Heading level.** Compose has one `heading()` flag; h1 versus h2 is not expressible. `EL-text` title and heading, and the `EL-status-hero` title, set it.
+2. **`EL-status-hero` pending** keeps the title a heading inside the polite live region (the spec's HTML does the same); the boundary's node `a11y.heading` omits pending. Runtime decides focus, not the element.
+3. **No link role in Compose.** `EL-link` is a click target named by label plus `external_label`.
+4. **Icons and illustrations are text glyphs** (no brand asset table yet); `art` is accepted and ignored. The webfont is not bundled.
+5. **Extra prop `popup_state_label`** on `EL-button` (the spec's `popup` needs a spoken state text). `EL-attribute-list` items take resolved label text, not `label_copy`; the copy lookup is the interpreter's (M5b).
+6. **Inert appbar** is `clearAndSetSemantics` plus a tap-taking scrim; Compose has no `inert`/`aria-hidden`. The dialog is a traversal group with `paneTitle` = the h1 text (`dialogLabel`), not a true modal role.
+7. **Registry** keyed by `EL-*`/`TPL-*` id (SPIKE-PLAN §1.1) is not built here; the interpreter owns it in M5b. Elements take typed plain props only.
+8. `EL-progress-steps` (TPL-progress `steps` region) is a plain slot, since it is outside the nine.
+9. `ui-test-manifest:1.12.1` is pinned by coordinate for the Android host (registers `ComponentActivity` for `runComposeUiTest`); no catalog touch. Tests use `androidx.compose.ui.test.v2.runComposeUiTest` (the v1 one is deprecated in 1.12).
+10. Templates provide the action region full-width through `LocalUxFullWidthActions`; bare buttons are intrinsic width.
+
+`TPL-sheet` layouts: one `layout: UxDecisionSteps` parameter (default = the brand's `layouts`), all difference inside `TplSheet`. Gallery layout has a doubled top inset under the picker; cosmetic, debug only.
