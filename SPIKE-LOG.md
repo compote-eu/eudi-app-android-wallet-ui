@@ -10,7 +10,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M0 | in progress | 2026-10-16 | — | Haiku/Sonnet | — | Android SDK, Maestro, baseline gate (Android + lint green; iOS tests failed before Xcode). Xcode 27.1 now installed; iOS runtime and `M0-baseline-launch.png` in progress. See `spike-evidence/M0-baseline.md`. |
 | M1a | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | plan + state files; RULING-1 fold-in |
 | M1b | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | `spike-contract-boundary.md` + PROVISIONAL bundle (sha256 `31bfda65…cf8d71`) |
-| M2 | not started | — | — | — | — | ⟲ at end |
+| M2 | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | Six module skeletons, `DebugFlowHook`, conditional wiring; probes P1 (iOS, redirect option A works), P2, P3, P5 passed, P6 compile-level; release isolation clean; gate GREEN. ⟲: `origin/feature/kmp` still at `b23f6a1f5`, no rebase. T1-T4 touched only; reserved T6/T7/T8 unused. |
 | M3 | not started | — | — | — | — | — |
 | M4 | not started | — | — | — | — | — |
 | M5 | not started | — | — | — | — | — |
@@ -36,8 +36,39 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 | Date | SHA | Milestone | Task | Executed | Failed | Skipped | detekt | ktlint | xcodebuild | Result |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 2026-10-16 | b23f6a1f5 | M0 baseline | see `spike-evidence/M0-baseline.md` | 560 (shared-ui host), 166 (shared-logic host), Android unit tests per module | 0 | 0 | pass | pass | not run (no Xcode then) | Android/lint green; iOS tests pending |
+| 2026-10-16 | final M2 commit | M2 | full `./spike-gate.sh` (retry 1) | 4004 (shared-logic iOS 832, shared-ui iOS 648, host 166/562, ux-spike 1+1, module unit tests as M0) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+
+Gate try 1 was RED: my first `DebugFlowHookTest` used Koin DSL modules, which made the Koin compiler plugin validate the iOS test compilation and reject `IosFilterValidatorScopeTest` (KOIN-D002). The test now uses `Koin().declare`. No wallet code changed.
+
+## M2 probes
+
+| Probe | Outcome | Evidence |
+|---|---|---|
+| P1 redirect (option A, `SharedEntries.kt`) | passed on iOS: with the switch on, the `openid4vp://` link reaches the stub after the unlock gate; with it off the real request screen runs. Reserved T7 not used. `PresentationRequestViewModel` construction log not checked (the entry returns before `koinViewModel`). | `spike-evidence/M2/05-…`, `06-…` |
+| P2 Koin pickup (option A) | passed: `@Single(binds=[DebugFlowHook::class]) IosUxSpikeHook` in `iosUxSpikeMain` is found by the component scan; no T6. Extension pickup not run (DC API cannot be driven on the simulator). | stub rendered |
+| P3 compose resource from `:ux-contract` | passed in the app (stub read `ux-contract-resource-ok` at run time) and present in the `.appex` bundle (`compose-resources/…/eu.europa.ec.ux.contract.resources/files/ux-probe.txt`); not read at run time inside the extension. | `05-…`; `find` on the Debug `.app` |
+| P5 `--ux-spike` read in Kotlin | passed: `--ux-spike happy` parsed in `IosUxSpikeSwitch`, persisted to the app-group defaults, survives a `simctl openurl` cold start; `off` clears it. Log: `UX-SPIKE: argument --ux-spike=happy (persisting)`. No T8. | launch log |
+| P6 Android standalone `UxFlowRoute` restore | compile-level only: `@Serializable @SerialName("UxFlow")`, JSON round-trip test green on host and iOS. No emulator or adb on this machine; the Android hook, provider and Koin load were built (`:ux-spike-android:assembleDebug`, merged manifest has the provider in debug, not in release) but not run. | `UxFlowRouteTest` |
+
+Note on P2 timing: the iOS hook parses the argument in its `init`, so persistence happens when the hook is first resolved (app start).
+
+## M2 release-isolation check (baseline: `spike-evidence/M0-baseline.md`)
+
+| Check | Result |
+|---|---|
+| iOS Gradle graph, `CONFIGURATION=Release :shared-ui:dependencies` (simulator and arm64 compile klibs) | 0 `ux-` lines; control without `CONFIGURATION` shows 7 |
+| iOS Release `SharedKit`, app binary, `.appex` binary: `nm -gU` + `strings` grep of all spike patterns | 0 / 0 / 0. `nm -gU SharedKit` = 114167 (baseline 114164): +3 symbols are `DebugFlowHook`, which matches no spike pattern (F5) |
+| iOS Release `.app` and `.appex` resources | no `ux-probe.txt`, no `eu.europa.ec.ux.contract.resources`; only `eu.europa.ec.shared.resources` |
+| Android `devReleaseRuntimeClasspath`, `demoReleaseRuntimeClasspath` | 0 `ux-`/`uxspike`; debug classpaths list `:ux-spike-android` and `:ux-spike` |
+| Android `assembleDevRelease` (throwaway keystore via `-Pandroid.injected.signing.*`) | built; `apkanalyzer dex packages` 0 spike packages, `files list` 0 spike files, manifest has no `ux-spike-init` provider. Control, the dev debug APK: 240 dex hits, 3 files, provider present. Demo release APK not built (classpath only). |
 
 ## Commits
 
 | SHA | Date | Milestone | Subject | Co-Authored-By (model) | Gate |
 |---|---|---|---|---|---|
+| 1e4946b70 | 2026-10-16 | M2 | DebugFlowHook seam + SharedEntries calls | Claude Sonnet 5.5 | lint + shared-ui tests |
+| d33a9c727 | 2026-10-16 | M2 | six module skeletons, stub | Claude Sonnet 5.5 | module tests |
+| 965694770 | 2026-10-16 | M2 | iOS srcDir/dependency, Android debugImplementation | Claude Sonnet 5.5 | build |
+| 320a10232 | 2026-10-16 | M2 | persist launch argument; Maestro flows, screenshots | Claude Sonnet 5.5 | Debug build |
+| be838cca3 | 2026-10-16 | M2 | hook test without Koin DSL | Claude Sonnet 5.5 | full gate GREEN |
+| (this commit) | 2026-10-16 | M2 | SPIKE-LOG, spike-results | Claude Sonnet 5.5 | — |
