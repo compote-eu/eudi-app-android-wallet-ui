@@ -18,6 +18,7 @@ package eu.europa.ec.shared.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import org.koin.core.Koin
 import org.koin.mp.KoinPlatform
 
 /**
@@ -34,5 +35,5 @@ interface DebugFlowHook {
 }
 
 /** The bound hook, or null when no module provides one (every release build). */
-internal fun debugFlowHookOrNull(): DebugFlowHook? =
-    KoinPlatform.getKoinOrNull()?.getOrNull<DebugFlowHook>()
+internal fun debugFlowHookOrNull(koin: Koin? = KoinPlatform.getKoinOrNull()): DebugFlowHook? =
+    koin?.getOrNull<DebugFlowHook>()

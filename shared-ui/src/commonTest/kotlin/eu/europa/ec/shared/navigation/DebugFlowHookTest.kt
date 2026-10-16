@@ -18,42 +18,29 @@ package eu.europa.ec.shared.navigation
 
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import org.koin.core.context.startKoin
-import org.koin.core.context.stopKoin
-import org.koin.dsl.module
-import kotlin.test.AfterTest
+import org.koin.core.Koin
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class DebugFlowHookTest {
 
-    @AfterTest
-    fun tearDown() {
-        stopKoin()
-    }
-
     @Test
     fun withoutAModuleThereIsNoHook() {
-        startKoin { modules(module { }) }
-        assertNull(debugFlowHookOrNull())
+        assertNull(debugFlowHookOrNull(Koin()))
+        assertNull(debugFlowHookOrNull(null))
     }
 
     @Test
     fun withAModuleTheHookIsFound() {
-        startKoin {
-            modules(
-                module {
-                    single<DebugFlowHook> {
-                        object : DebugFlowHook {
-                            override fun EntryProviderScope<NavKey>.entries(navigator: AppNavigator) = Unit
+        val koin = Koin()
+        koin.declare<DebugFlowHook>(
+            object : DebugFlowHook {
+                override fun EntryProviderScope<NavKey>.entries(navigator: AppNavigator) = Unit
 
-                            override fun redirect(route: NavKey): NavKey? = null
-                        }
-                    }
-                },
-            )
-        }
-        assertNotNull(debugFlowHookOrNull())
+                override fun redirect(route: NavKey): NavKey? = null
+            },
+        )
+        assertNotNull(debugFlowHookOrNull(koin))
     }
 }
