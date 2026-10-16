@@ -1,0 +1,83 @@
+{
+  "_provisional": "PROVISIONAL (M4): hand-written in the shape boundary §3 asks the exporter for (ux-spec/fixtures/scripts, Q14); replaced at M6. Each service plays its steps in order; the last step repeats. A step has delay_ms, then either result (decoded with the contract's result serializer, discriminator 'type') or fail (the call throws: RULING-2).",
+  "script": "untrusted",
+  "flow_id": "FLW-pres-cross-device",
+  "description": "The verifier is not trusted: request-untrusted -> untrusted-confirm (APPROVE) -> auth.",
+  "calls": {
+    "fetchRequest": [
+      {
+        "delay_ms": 800,
+        "result": {
+          "type": "RpUntrusted",
+          "verifier": {
+            "name": "Spike Verifier",
+            "service_name": "Spike demo service",
+            "reason": "Identity check for the spike",
+            "trust": "untrusted",
+            "privacy_url": "https://verifier.example/privacy"
+          },
+          "request": {
+            "document_name": "PID",
+            "attributes": [
+              {
+                "id": "given_name",
+                "label_copy": "CPY-pres-attr-given-name",
+                "value": "Ján",
+                "requirement": "mandatory"
+              },
+              {
+                "id": "family_name",
+                "label_copy": "CPY-pres-attr-family-name",
+                "value": "Novák",
+                "requirement": "mandatory"
+              },
+              {
+                "id": "birth_date",
+                "label_copy": "CPY-pres-attr-birth-date",
+                "value": "12. 4. 1985",
+                "requirement": "optional"
+              },
+              {
+                "id": "age_over_18",
+                "label_copy": "CPY-pres-attr-age-over-18",
+                "requirement": "optional"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "authenticate": [
+      {
+        "result": {
+          "type": "Authenticated"
+        }
+      }
+    ],
+    "verificationCode": [
+      {
+        "delay_ms": 300,
+        "result": {
+          "type": "Ready",
+          "code": "4711",
+          "portal_url": "https://verifier.example/portal"
+        }
+      }
+    ],
+    "send": [
+      {
+        "delay_ms": 1200,
+        "result": {
+          "type": "Sent"
+        }
+      }
+    ],
+    "cancel": [
+      {
+        "result": {
+          "type": "Cancelled"
+        }
+      }
+    ]
+  }
+}

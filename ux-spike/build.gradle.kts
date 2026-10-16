@@ -30,6 +30,9 @@ kotlin {
         namespace = "eu.europa.ec.uxspike"
         compileSdk = 37
         minSdk = 29
+        androidResources {
+            enable = true
+        }
         withHostTest {}
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
@@ -48,11 +51,20 @@ kotlin {
             api(libs.androidx.navigation3.runtime)
             api(libs.jetbrains.compose.runtime)
             api(libs.jetbrains.compose.foundation)
+            implementation(libs.jetbrains.compose.ui)
+            implementation(libs.jetbrains.compose.components.resources)
+            implementation(libs.kotlinx.coroutines)
             implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
+}
+
+// The PROVISIONAL fake-engine scripts (files/scripts/*.json) until ux-spec/fixtures/scripts supplies them (M6).
+compose.resources {
+    packageOfResClass = "eu.europa.ec.uxspike.resources"
 }
 

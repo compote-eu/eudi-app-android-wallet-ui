@@ -43,10 +43,18 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
-        commonMain.dependencies {
-            api(libs.jetbrains.compose.runtime)
-            api(libs.jetbrains.compose.components.resources)
-            api(libs.kotlinx.serialization.json)
+        commonMain {
+            // PROVISIONAL (boundary §6.3): the hand copy of the contract, until ux-spec/ brings the generated one (M6
+            // deletes the directory and this conditional).
+            if (!rootProject.file("ux-spec/UX_SPEC.lock").exists()) kotlin.srcDir("provisional/kotlin")
+            dependencies {
+                api(libs.jetbrains.compose.runtime)
+                api(libs.jetbrains.compose.components.resources)
+                api(libs.kotlinx.serialization.json)
+            }
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
         }
     }
 }

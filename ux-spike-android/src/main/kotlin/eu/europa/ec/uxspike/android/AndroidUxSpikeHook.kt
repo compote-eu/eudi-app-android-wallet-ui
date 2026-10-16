@@ -22,11 +22,16 @@ import androidx.navigation3.runtime.NavKey
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.QrScanFlow
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.DashboardRoute
 import eu.europa.ec.shared.navigation.DebugFlowHook
 import eu.europa.ec.shared.navigation.PresentationRequestRoute
 import eu.europa.ec.shared.navigation.QrScanRoute
+import eu.europa.ec.uilogic.component.PlatformBackHandler
+import eu.europa.ec.ux.contract.pres.PresCrossDeviceSpec
+import eu.europa.ec.ux.runtime.engine.FlowPlatform
+import eu.europa.ec.uxspike.UxFlowEntry
 import eu.europa.ec.uxspike.UxFlowRoute
-import eu.europa.ec.uxspike.UxFlowStub
+import eu.europa.ec.uxspike.UxSpikeLog
 import java.io.File
 
 /**
@@ -36,17 +41,29 @@ import java.io.File
 internal class AndroidUxSpikeHook(private val context: Context) : DebugFlowHook {
 
     override fun EntryProviderScope<NavKey>.entries(navigator: AppNavigator) {
-        entry<UxFlowRoute> { route -> UxFlowStub(route) }
+        entry<UxFlowRoute> { route ->
+            UxFlowEntry(
+                route = route,
+                script = script() ?: DEFAULT_SCRIPT,
+                platform = FlowPlatform.ANDROID,
+                // The one back-handler adapter of this hook: the runtime decides what a press does (bundle policy).
+                backHandler = { enabled, onBack -> PlatformBackHandler(enabled, onBack) },
+                onExit = { exit ->
+                    UxSpikeLog.log("exit to home (${exit?.kind} ${exit?.result})")
+                    if (!navigator.popUpTo(DashboardRoute::class)) navigator.pop()
+                },
+            )
+        }
     }
 
     override fun redirect(route: NavKey): NavKey? {
         if (script() == null) return null
         return when {
             route is PresentationRequestRoute && route.config.mode is PresentationMode.OpenId4Vp ->
-                UxFlowRoute(FLOW_ID, entry = "deeplink", launch = (route.config.mode as PresentationMode.OpenId4Vp).uri)
+                UxFlowRoute(PresCrossDeviceSpec.FLOW_ID, entry = "deeplink", launch = (route.config.mode as PresentationMode.OpenId4Vp).uri)
 
             route is QrScanRoute && route.config.qrScanFlow is QrScanFlow.Presentation ->
-                UxFlowRoute(FLOW_ID, entry = "scan")
+                UxFlowRoute(PresCrossDeviceSpec.FLOW_ID, entry = "scan")
 
             else -> null
         }
@@ -56,7 +73,7 @@ internal class AndroidUxSpikeHook(private val context: Context) : DebugFlowHook 
         File(context.filesDir, SWITCH_FILE).takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotEmpty() }
 
     private companion object {
-        const val FLOW_ID = "FLW-pres-cross-device"
+        const val DEFAULT_SCRIPT = "happy"
         const val SWITCH_FILE = "ux-spike.on"
     }
 }

@@ -1,0 +1,47 @@
+{
+  "_provisional": "PROVISIONAL (M4): hand-written in the shape boundary §3 asks the exporter for (ux-spec/fixtures/scripts, Q14); replaced at M6. Each service plays its steps in order; the last step repeats. A step has delay_ms, then either result (decoded with the contract's result serializer, discriminator 'type') or fail (the call throws: RULING-2).",
+  "script": "expired-at-request",
+  "flow_id": "FLW-pres-cross-device",
+  "description": "The request has expired when the wallet fetches it: connecting -> error-expired.",
+  "calls": {
+    "fetchRequest": [
+      {
+        "delay_ms": 800,
+        "result": {
+          "type": "Expired"
+        }
+      }
+    ],
+    "authenticate": [
+      {
+        "result": {
+          "type": "Authenticated"
+        }
+      }
+    ],
+    "verificationCode": [
+      {
+        "delay_ms": 300,
+        "result": {
+          "type": "Ready",
+          "code": "4711",
+          "portal_url": "https://verifier.example/portal"
+        }
+      }
+    ],
+    "send": [
+      {
+        "result": {
+          "type": "Sent"
+        }
+      }
+    ],
+    "cancel": [
+      {
+        "result": {
+          "type": "Cancelled"
+        }
+      }
+    ]
+  }
+}

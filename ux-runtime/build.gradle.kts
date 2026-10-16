@@ -87,7 +87,9 @@ kotlin {
         namespace = "eu.europa.ec.ux.runtime"
         compileSdk = 37
         minSdk = 29
-        withHostTest {}
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
@@ -101,6 +103,13 @@ kotlin {
             api(project(":ux-elements"))
             api(libs.jetbrains.compose.runtime)
             api(libs.jetbrains.compose.foundation)
+            implementation(libs.jetbrains.compose.ui)
+            implementation(libs.jetbrains.compose.animation)
+            // viewModel { }, createSavedStateHandle and the saved {} delegate (lifecycle-viewmodel-savedstate) for the host.
+            api(libs.androidx.lifecycle.viewModelCompose)
+            // Not in the version catalog (no catalog touch, SPIKE-PLAN §2): the artifact viewmodel-compose pulls in at
+            // run time, named here for compilation, on the same lifecycle line.
+            api("androidx.lifecycle:lifecycle-viewmodel-savedstate:${libs.versions.androidxLifecycle.get()}")
             implementation(libs.kotlinx.coroutines)
             implementation(libs.kotlinx.serialization.json)
         }
@@ -111,6 +120,16 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
             }
         }
+        // The Android saved state is a Bundle, so the P4 round trip runs under Robolectric on the host.
+        getByName("androidHostTest").dependencies {
+            implementation(libs.robolectric)
+        }
     }
 }
 
+
+// Robolectric 4.17+ reaches jdk.internal.access.SharedSecrets for the SDK 37+ application environment (the same
+// flag the convention plugin gives every Android unit-test task, KotlinAndroid.kt).
+tasks.withType<Test>().configureEach {
+    jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
+}
