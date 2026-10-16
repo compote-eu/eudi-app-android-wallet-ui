@@ -1,0 +1,207 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+// PROVISIONAL (M1b): helpers over the boundary fixture; re-pointed at the real export in M6.
+package eu.europa.ec.ux.runtime.support
+
+import eu.europa.ec.ux.runtime.bundle.FlowBundle
+import eu.europa.ec.ux.runtime.bundle.LoadResult
+import eu.europa.ec.ux.runtime.engine.FlowEngine
+import eu.europa.ec.ux.runtime.engine.FlowLog
+import eu.europa.ec.ux.runtime.engine.FlowStatus
+import eu.europa.ec.ux.runtime.engine.EventResult
+import eu.europa.ec.ux.runtime.engine.ServicePort
+import eu.europa.ec.ux.runtime.engine.ServiceResult
+import eu.europa.ec.ux.runtime.fixture.ProvisionalPresBundle
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
+import kotlin.test.assertIs
+import kotlin.test.fail
+
+internal object Fixture {
+    val root: JsonObject by lazy { Json.parseToJsonElement(ProvisionalPresBundle.JSON).jsonObject }
+    val flowId: String get() = root.getValue("flow_id").jsonPrimitive.content
+    val specHash: String get() = root.getValue("spec_hash").jsonPrimitive.content
+
+    fun bytes(root: JsonObject = this.root): ByteArray = Json.encodeToString(JsonObject.serializer(), root).encodeToByteArray()
+
+    fun load(root: JsonObject = this.root): LoadResult =
+        FlowBundle.load(bytes(root), flowId, specHash, specHash, allowProvisional = true)
+
+    fun bundle(root: JsonObject = this.root): FlowBundle = when (val r = load(root)) {
+        is LoadResult.Loaded -> r.bundle
+        is LoadResult.Refused -> fail("PROVISIONAL bundle refused: ${r.reason}")
+    }
+}
+
+/** Sets (or, with null, removes) the value at a JSON pointer; array segments are indices. */
+internal fun JsonElement.with(pointer: String, value: JsonElement?): JsonElement =
+    edit(pointer.trim('/').split('/').map { it.replace("~1", "/").replace("~0", "~") }, value)
+
+internal fun JsonObject.with(pointer: String, value: JsonElement?): JsonObject = (this as JsonElement).with(pointer, value).jsonObject
+
+private fun JsonElement.edit(segs: List<String>, value: JsonElement?): JsonElement {
+    val head = segs.first()
+    val rest = segs.drop(1)
+    return when (this) {
+        is JsonArray -> {
+            val i = head.toInt()
+            val list = toMutableList()
+            if (rest.isEmpty()) {
+                if (value == null) list.removeAt(i) else list[i] = value
+            } else {
+                list[i] = list[i].edit(rest, value)
+            }
+            JsonArray(list)
+        }
+        is JsonObject -> {
+            val map = toMutableMap()
+            if (rest.isEmpty()) {
+                if (value == null) map.remove(head) else map[head] = value
+            } else {
+                map[head] = (map[head] ?: JsonObject(emptyMap())).edit(rest, value)
+            }
+            JsonObject(map)
+        }
+        else -> fail("cannot descend into $this at $head")
+    }
+}
+
+internal fun json(text: String): JsonElement = Json.parseToJsonElement(text)
+
+internal fun obj(text: String): JsonObject = json(text).jsonObject
+
+/**
+ * A scripted service port with call counters. A service in [auto] answers at once; any other call waits until
+ * [complete]. With [cancellable] false the wait ignores cancellation, which models a late completion.
+ */
+internal class FakePort : ServicePort {
+    val auto = mutableMapOf<String, ServiceResult>()
+    val calls = mutableMapOf<String, Int>()
+    val cancelled = mutableMapOf<String, Int>()
+    val args = mutableListOf<Pair<String, JsonObject>>()
+    var cancellable = true
+    private val waiting = mutableMapOf<String, ArrayDeque<Continuation<ServiceResult>>>()
+
+    val total: Int get() = calls.values.sum()
+
+    fun calls(service: String): Int = calls[service] ?: 0
+
+    fun waiting(service: String): Int = waiting[service]?.size ?: 0
+
+    override suspend fun call(service: String, args: JsonObject): ServiceResult {
+        calls[service] = calls(service) + 1
+        this.args += service to args
+        auto[service]?.let { return it }
+        val queue = waiting.getOrPut(service) { ArrayDeque() }
+        return if (cancellable) {
+            suspendCancellableCoroutine { c ->
+                queue.addLast(c)
+                c.invokeOnCancellation {
+                    cancelled[service] = (cancelled[service] ?: 0) + 1
+                    queue.remove(c)
+                }
+            }
+        } else {
+            suspendCoroutine { c -> queue.addLast(c) }
+        }
+    }
+
+    fun complete(service: String, result: ServiceResult) {
+        val c = waiting[service]?.removeFirstOrNull() ?: fail("no pending call of $service")
+        c.resume(result)
+    }
+}
+
+internal class RecordingLog : FlowLog {
+    val lines = mutableListOf<String>()
+
+    override fun log(message: String) {
+        lines += message
+    }
+}
+
+/** Service results in the shape of boundary §1.6, small enough for the model check (selected_count in 0..2). */
+internal object Results {
+    private fun attr(id: String, requirement: String) = buildJsonObject {
+        put("id", id)
+        put("label_copy", "CPY-test-$id")
+        put("value", "v-$id")
+        put("requirement", requirement)
+        put("selected", false)
+    }
+
+    private fun verifier(trust: String) = buildJsonObject {
+        put("name", "Verifier")
+        put("service_name", "Service")
+        put("reason", "Reason")
+        put("trust", trust)
+    }
+
+    private fun payload(trust: String, vararg attrs: JsonObject) = buildJsonObject {
+        put("verifier", verifier(trust))
+        put("request", buildJsonObject {
+            put("document_name", "Doc")
+            put("attributes", buildJsonArray { attrs.forEach { add(it) } })
+        })
+    }
+
+    val requestReady = ServiceResult("RequestReady", payload("trusted", attr("m1", "mandatory"), attr("o1", "optional")))
+    val optionalOnly = ServiceResult("OptionalOnly", payload("trusted", attr("o1", "optional"), attr("o2", "optional")))
+    val rpUntrusted = ServiceResult("RpUntrusted", payload("untrusted", attr("m1", "mandatory"), attr("o1", "optional")))
+    val authenticated = ServiceResult("Authenticated")
+    val codeReady = ServiceResult("Ready", obj("""{"code":"1234","portal_url":"https://verifier.example/p"}"""))
+    val sent = ServiceResult("Sent")
+    val cancelled = ServiceResult("Cancelled")
+
+    /** The payloads per service and result name, for the model check. */
+    val byService: Map<String, Map<String, JsonObject>> = mapOf(
+        "fetchRequest" to listOf(requestReady, optionalOnly, rpUntrusted).associate { it.type to it.payload } +
+            mapOf("DocMissing" to obj("""{"document_name":"Doc"}"""), "DocInvalid" to obj("""{"document_name":"Doc"}""")),
+        "verificationCode" to mapOf(codeReady.type to codeReady.payload),
+    )
+}
+
+internal const val QR_URI = "openid4vp://?client_id=spike&request_uri=https://example.invalid/r"
+
+internal val qrPayload: JsonObject = buildJsonObject { put("uri", QR_URI) }
+
+internal fun FlowEngine.active(): FlowStatus.Active = assertIs<FlowStatus.Active>(current.value)
+
+internal fun FlowEngine.stateId(): String? = (current.value as? FlowStatus.Active)?.state
+
+/** Sends with the current generation, as a well-behaved host does. */
+internal fun FlowEngine.send(event: String, payload: JsonObject = JsonObject(emptyMap())): EventResult =
+    dispatch(event, payload, active().gen)
+
+internal fun FlowEngine.toggle(id: String): EventResult = send("TOGGLE_ITEM", buildJsonObject { put("item_id", id) })
+
+internal fun FlowEngine.ctx(path: String): JsonElement =
+    path.trim('/').split('/').fold(active().context as JsonElement) { e, k -> (e as JsonObject).getValue(k) }
+
+internal fun JsonElement.int(): Int = (this as JsonPrimitive).content.toInt()
