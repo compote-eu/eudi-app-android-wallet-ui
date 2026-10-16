@@ -150,4 +150,62 @@ class IosPinThrottleTest {
         val state = assertIs<PinLockoutState.Active>(throttle.getState())
         assertEquals(30.seconds, state.remaining)
     }
+
+    // ---- the shared throttle (2026-10-16). The document-provider extension asks for the same PIN as the
+    // ---- app, so both count failures in the app group's defaults; a lockout the app had already counted
+    // ---- in its own defaults is carried across once. Two named suites stand in for the two stores.
+
+    private val shared = NSUserDefaults(suiteName = "eu.europa.ec.test.pin-throttle.shared")
+
+    private fun clearShared() = listOf(
+        "PinFailedAttempts",
+        "PinLockoutLevel",
+        "PinLockoutStartedAt",
+        "PinLockoutEndsAt",
+    ).forEach { shared.removeObjectForKey(it) }
+
+    @Test
+    fun a_lockout_in_the_old_store_carries_over_and_still_holds() = runTest {
+        clearShared()
+        repeat(3) { throttle().recordFailure() }
+
+        IosPinThrottle.migrate(from = defaults, to = shared)
+
+        // The point of the move: a lockout counted before the upgrade is not a way out of it after.
+        val moved = IosPinThrottle(authenticationConfig = config, defaults = shared, clock = { now })
+        assertEquals(30.seconds, assertIs<PinLockoutState.Active>(moved.getState()).remaining)
+        // And it is gone from the old store, so there is nothing left to carry over a second time.
+        assertEquals(PinLockoutState.Idle, throttle().getState())
+        clearShared()
+    }
+
+    @Test
+    fun the_shared_store_is_never_overwritten_by_the_old_one() = runTest {
+        clearShared()
+        val sharedThrottle = IosPinThrottle(authenticationConfig = config, defaults = shared, clock = { now })
+        sharedThrottle.recordFailure()
+        repeat(3) { throttle().recordFailure() }
+
+        IosPinThrottle.migrate(from = defaults, to = shared)
+
+        // One failure counted in the shared store already: an older state must not replace it.
+        assertEquals(1L, shared.integerForKey("PinFailedAttempts"))
+        assertEquals(PinLockoutState.Idle, sharedThrottle.getState())
+        clearShared()
+    }
+
+    @Test
+    fun failures_counted_by_one_process_lock_the_other() = runTest {
+        clearShared()
+        // The app and the extension each build their own throttle over the same shared defaults.
+        val app = IosPinThrottle(authenticationConfig = config, defaults = shared, clock = { now })
+        val extension = IosPinThrottle(authenticationConfig = config, defaults = shared, clock = { now })
+
+        repeat(2) { app.recordFailure() }
+        val state = assertIs<PinLockoutState.Active>(extension.recordFailure())
+
+        assertEquals(30.seconds, state.remaining)
+        assertIs<PinLockoutState.Active>(app.getState())
+        clearShared()
+    }
 }

@@ -17,6 +17,7 @@
 package eu.europa.ec.shared.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import eu.europa.ec.commonfeature.ui.request.ConsentStickyBottomSection
 import eu.europa.ec.commonfeature.ui.request.ConsentWarningSection
@@ -52,6 +53,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeUIViewController
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
@@ -103,6 +105,9 @@ import eu.europa.ec.commonfeature.ui.request.TransactionDataSection
  * Returning `null` refuses. So does returning disclosures that keep nothing — multipaz builds the
  * response from exactly the claims a selection carries, so an empty one would mean "share a document
  * with none of its claims". [onDecision] is called **exactly once**.
+ *
+ * And a share is **authenticated first**: [onDecision] receives disclosures only after the wallet's PIN
+ * or biometrics checked out, as the app asks for them after consent ([DcApiAuthentication] has why).
  */
 @Suppress("FunctionNaming", "Unused")
 fun DcApiConsentViewController(
@@ -121,10 +126,62 @@ fun DcApiConsentViewController(
     return ComposeUIViewController {
         ThemeManager.instance.Theme {
             Surface(modifier = Modifier.fillMaxSize()) {
-                DcApiConsentScreen(
+                DcApiConsentAndAuthentication(
                     request = request,
                     strings = strings,
                     onDecision = onDecision,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Consent, then — for a share — the wallet's PIN or biometrics ([DcApiAuthenticationStep]) before
+ * [onDecision] hears of it. A refusal needs no authentication and is passed on at once.
+ *
+ * The consent screen stays composed under the step, so going back finds the user's choices as they left
+ * them. While the step is up it covers the screen and takes its touches, and the consent screen is hidden
+ * from VoiceOver.
+ */
+@Composable
+private fun DcApiConsentAndAuthentication(
+    request: IosPresentmentRequest,
+    strings: StringCatalog,
+    onDecision: (List<IosPresentmentDisclosure>?) -> Unit,
+) {
+    // Exactly once, whichever way the decision is reached.
+    var decided: Boolean by remember(request) { mutableStateOf(false) }
+    val decide: (List<IosPresentmentDisclosure>?) -> Unit = { disclosures ->
+        if (!decided) {
+            decided = true
+            onDecision(disclosures)
+        }
+    }
+    // The share waiting for the PIN or biometrics; null while the consent screen is the one in use.
+    var pendingShare: List<IosPresentmentDisclosure>? by remember(request) { mutableStateOf(null) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = if (pendingShare == null) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier.fillMaxSize().clearAndSetSemantics {}
+            },
+        ) {
+            DcApiConsentScreen(
+                request = request,
+                strings = strings,
+                onDecision = { disclosures ->
+                    if (disclosures == null) decide(null) else pendingShare = disclosures
+                },
+            )
+        }
+        pendingShare?.let { disclosures ->
+            Surface(modifier = Modifier.fillMaxSize()) {
+                DcApiAuthenticationStep(
+                    onAuthenticated = { decide(disclosures) },
+                    onBack = { pendingShare = null },
                 )
             }
         }

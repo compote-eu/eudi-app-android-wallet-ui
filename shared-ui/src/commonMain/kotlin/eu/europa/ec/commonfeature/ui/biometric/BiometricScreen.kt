@@ -96,8 +96,54 @@ fun BiometricScreen(
     onExternalDeepLink: (link: String, routeToPop: AppRoute?, isPreAuthorization: Boolean) -> Unit =
         { _, _, _ -> },
 ) {
-    val state: State by viewModel.viewState.collectAsStateWithLifecycle()
     val platformActions = rememberPlatformScreenActions()
+
+    BiometricScreen(
+        viewModel = viewModel,
+        onNavigationRequested = { navigationEffect ->
+            when (navigationEffect) {
+                is Effect.Navigation.SwitchScreen -> {
+                    navigator.navigateReplacingCurrent(navigationEffect.route)
+                }
+
+                is Effect.Navigation.LaunchBiometricsSystemScreen -> {
+                    viewModel.setEvent(Event.LaunchBiometricSystemScreen)
+                }
+
+                is Effect.Navigation.PopBackStackUpTo -> {
+                    navigator.popBackStackTo(
+                        route = navigationEffect.route,
+                        inclusive = navigationEffect.inclusive
+                    )
+                }
+
+                is Effect.Navigation.Deeplink -> onExternalDeepLink(
+                    navigationEffect.link,
+                    navigationEffect.routeToPop,
+                    navigationEffect.isPreAuthorization,
+                )
+
+                is Effect.Navigation.Pop -> navigator.pop()
+                is Effect.Navigation.Finish -> platformActions.finishApp()
+            }
+        },
+    )
+}
+
+/**
+ * [BiometricScreen] for a host with no navigation graph: every navigation the view model asks for is
+ * handed to [onNavigationRequested] instead of to a navigator.
+ *
+ * The document-provider extension is that host. It asks for the PIN or biometrics after consent with the
+ * same screen and view model as the app, and maps the two navigations its config names — success and
+ * back — onto its own outcomes.
+ */
+@Composable
+fun BiometricScreen(
+    viewModel: BiometricViewModel,
+    onNavigationRequested: (navigationEffect: Effect.Navigation) -> Unit,
+) {
+    val state: State by viewModel.viewState.collectAsStateWithLifecycle()
     // Null on iOS: the biometric prompt needs an Android context, and iOS has no login prompt yet.
     val platformContext = rememberPlatformContextOrNull()
     val pinInputState = rememberSecurePinTextFieldState(
@@ -121,33 +167,7 @@ fun BiometricScreen(
             state = state,
             effectFlow = viewModel.effect,
             onEventSent = { event -> viewModel.setEvent(event) },
-            onNavigationRequested = { navigationEffect ->
-                when (navigationEffect) {
-                    is Effect.Navigation.SwitchScreen -> {
-                        navigator.navigateReplacingCurrent(navigationEffect.route)
-                    }
-
-                    is Effect.Navigation.LaunchBiometricsSystemScreen -> {
-                        viewModel.setEvent(Event.LaunchBiometricSystemScreen)
-                    }
-
-                    is Effect.Navigation.PopBackStackUpTo -> {
-                        navigator.popBackStackTo(
-                            route = navigationEffect.route,
-                            inclusive = navigationEffect.inclusive
-                        )
-                    }
-
-                    is Effect.Navigation.Deeplink -> onExternalDeepLink(
-                        navigationEffect.link,
-                        navigationEffect.routeToPop,
-                        navigationEffect.isPreAuthorization,
-                    )
-
-                    is Effect.Navigation.Pop -> navigator.pop()
-                    is Effect.Navigation.Finish -> platformActions.finishApp()
-                }
-            },
+            onNavigationRequested = onNavigationRequested,
             padding = it,
             pinInputState = pinInputState,
             platformContext = platformContext,

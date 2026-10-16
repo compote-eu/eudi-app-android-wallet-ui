@@ -19,6 +19,8 @@ package eu.europa.ec.authenticationlogic.storage
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
+import eu.europa.ec.shared.wallet.platform.IosAppGroup
+import org.multipaz.util.Logger
 import platform.Foundation.NSUserDefaults
 import kotlin.time.Clock
 import kotlin.time.Duration
@@ -37,6 +39,9 @@ import kotlin.time.Duration.Companion.milliseconds
  * [AuthenticationConfig.maxFailedPinAttempts], then lock for the duration at the current level, advance the
  * level, and evaluate the remaining time against the wall clock on every read. A [clock] is injectable so
  * the escalation can be tested without waiting out a real lockout.
+ *
+ * The wallet's throttle is [shared]: the app and its document-provider extension ask for the same PIN,
+ * so they must count the same failures.
  */
 class IosPinThrottle(
     private val authenticationConfig: AuthenticationConfig,
@@ -93,10 +98,48 @@ class IosPinThrottle(
         defaults.setInteger(0L, KEY_LOCKOUT_ENDS_AT)
     }
 
-    private companion object {
-        const val KEY_FAILED_ATTEMPTS = "PinFailedAttempts"
-        const val KEY_LOCKOUT_LEVEL = "PinLockoutLevel"
-        const val KEY_LOCKOUT_STARTED_AT = "PinLockoutStartedAt"
-        const val KEY_LOCKOUT_ENDS_AT = "PinLockoutEndsAt"
+    companion object {
+        private const val KEY_FAILED_ATTEMPTS = "PinFailedAttempts"
+        private const val KEY_LOCKOUT_LEVEL = "PinLockoutLevel"
+        private const val KEY_LOCKOUT_STARTED_AT = "PinLockoutStartedAt"
+        private const val KEY_LOCKOUT_ENDS_AT = "PinLockoutEndsAt"
+        private val KEYS = listOf(KEY_FAILED_ATTEMPTS, KEY_LOCKOUT_LEVEL, KEY_LOCKOUT_STARTED_AT, KEY_LOCKOUT_ENDS_AT)
+        private const val TAG = "IosPinThrottle"
+
+        /**
+         * The throttle the app and its document-provider extension share, kept in the app group's
+         * defaults.
+         *
+         * `standardUserDefaults` belongs to the running process, and the extension is another process:
+         * a throttle kept there would give the extension its own fresh set of attempts, so the PIN the
+         * extension asks for could be guessed past the app's lockout. A lockout already counted in the
+         * app's own defaults is carried across once ([migrate]).
+         *
+         * Without an app group (a signing setup that never registered one, see [IosAppGroup]) this falls
+         * back to the process's own defaults, as the store degrades rather than refusing to start.
+         */
+        fun shared(authenticationConfig: AuthenticationConfig): IosPinThrottle {
+            val group = IosAppGroup.identifier()?.let { NSUserDefaults(suiteName = it) }
+            if (group == null) {
+                Logger.w(TAG, "no app group: the PIN lockout is not shared with the extension")
+                return IosPinThrottle(authenticationConfig = authenticationConfig)
+            }
+            migrate(from = NSUserDefaults.standardUserDefaults, to = group)
+            return IosPinThrottle(authenticationConfig = authenticationConfig, defaults = group)
+        }
+
+        /**
+         * Moves a throttle state from [from] into [to], once: only when [to] holds none of it, so a
+         * state the shared defaults already count is never overwritten by an older one. The keys are
+         * then removed from [from], which leaves nothing behind to migrate a second time.
+         */
+        internal fun migrate(from: NSUserDefaults, to: NSUserDefaults) {
+            if (KEYS.any { to.objectForKey(it) != null }) return
+            if (KEYS.none { from.objectForKey(it) != null }) return
+            KEYS.forEach { key ->
+                to.setInteger(from.integerForKey(key), key)
+                from.removeObjectForKey(key)
+            }
+        }
     }
 }

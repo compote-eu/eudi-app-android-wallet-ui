@@ -143,6 +143,11 @@ targets:
         # `$(AppIdentifierPrefix)` is the team prefix Xcode expands while building the plist, and the
         # value is read at runtime rather than derived: see IosKeychainAccessGroup.
         EUDIKeychainAccessGroup: $(AppIdentifierPrefix)$(APP_BUNDLE_ID)
+        # The extension asks for the wallet's biometrics after consent (DcApiAuthentication), and Face ID
+        # reads its purpose string from the bundle that raises the prompt — this one, not the app's. The
+        # app target carries the same words.
+        NSFaceIDUsageDescription: >-
+          Unlock your wallet and authorise sharing a document.
         # What makes iOS treat this bundle as a document provider. `EXAppExtensionAttributes` is the
         # ExtensionKit form; the older `NSExtension` dictionary is for the previous extension model
         # and is not interchangeable.

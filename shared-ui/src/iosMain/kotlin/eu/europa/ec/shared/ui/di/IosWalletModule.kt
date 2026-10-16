@@ -406,9 +406,10 @@ fun provideIosTrustMarkInteractor(
 @Single
 fun provideIosPinStorage(): PinStorageController = IosPinStorage()
 
+/** Shared with the document-provider extension, which asks for the same PIN: see [IosPinThrottle.shared]. */
 @Single
 fun provideIosPinThrottle(config: AuthenticationConfig): PinThrottleController =
-    IosPinThrottle(authenticationConfig = config)
+    IosPinThrottle.shared(authenticationConfig = config)
 
 @Factory
 fun provideIosQuickPinInteractor(
