@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -84,6 +85,7 @@ fun UxButton(
     }
     Box(
         modifier = modifier
+            .then(if (LocalUxFullWidthActions.current) Modifier.fillMaxWidth() else Modifier)
             .testTag(id)
             .alpha(if (disabled) DISABLED_ALPHA else 1f)
             .uxFocusRing(shape, focusRequester)

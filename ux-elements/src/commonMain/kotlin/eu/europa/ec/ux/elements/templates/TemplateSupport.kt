@@ -31,20 +31,24 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import eu.europa.ec.ux.elements.LocalUxFullWidthActions
 import eu.europa.ec.ux.theme.UxThemeAccess
 
 /** The bottom-fixed action region of a template: the primary first, the dismissive action second. */
 @Composable
 internal fun ActionsRegion(tag: String, content: @Composable ColumnScope.() -> Unit) {
     val tokens = UxThemeAccess.tokens
-    Column(
-        modifier = Modifier.testTag(tag).fillMaxWidth().padding(tokens.space.gutter),
-        verticalArrangement = Arrangement.spacedBy(tokens.space.s),
-        content = content,
-    )
+    CompositionLocalProvider(LocalUxFullWidthActions provides true) {
+        Column(
+            modifier = Modifier.testTag(tag).fillMaxWidth().padding(tokens.space.gutter),
+            verticalArrangement = Arrangement.spacedBy(tokens.space.s),
+            content = content,
+        )
+    }
 }
 
 /** The scroll region whose content is vertically centred in the free height (hero regions). */

@@ -44,6 +44,9 @@ import eu.europa.ec.ux.theme.UxThemeAccess
  */
 val LocalUxHeadingFocus = compositionLocalOf<FocusRequester?> { null }
 
+/** True inside a template's action region: its buttons take the full width, as the spec's bottom actions do. */
+val LocalUxFullWidthActions = compositionLocalOf { false }
+
 /** Attaches [requester] (when given) in front of the next focus target of the chain. */
 internal fun Modifier.withFocusRequester(requester: FocusRequester?): Modifier =
     if (requester == null) this else this.focusRequester(requester)
