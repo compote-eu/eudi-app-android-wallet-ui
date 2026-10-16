@@ -16,6 +16,8 @@
 
 package eu.europa.ec.shared.navigation
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
@@ -72,6 +74,9 @@ import eu.europa.ec.dashboardfeature.ui.transactions.history.TransactionHistoryS
  */
 fun EntryProviderScope<NavKey>.sharedAppEntries(navigator: AppNavigator) {
 
+    // Debug builds only: a bound hook adds its own destinations. Nothing is bound in release.
+    debugFlowHookOrNull()?.run { entries(navigator) }
+
     entry<SplashRoute> {
         SplashScreen(navigator, koinViewModel())
     }
@@ -81,6 +86,7 @@ fun EntryProviderScope<NavKey>.sharedAppEntries(navigator: AppNavigator) {
     }
 
     entry<QrScanRoute> { route ->
+        if (redirectedByDebugHook(navigator, route)) return@entry
         QrScanScreen(navigator, koinViewModel { parametersOf(route.config) })
     }
 
@@ -225,6 +231,7 @@ fun EntryProviderScope<NavKey>.sharedAppEntries(navigator: AppNavigator) {
     }
 
     entry<PresentationRequestRoute> { route ->
+        if (redirectedByDebugHook(navigator, route)) return@entry
         val platform = LocalNavPlatformActions.current
         // Read once per entry, not once per recomposition: it is a one-shot slot the host filled just
         // before pushing this route.
@@ -275,4 +282,15 @@ fun EntryProviderScope<NavKey>.sharedAppEntries(navigator: AppNavigator) {
             onFinishWithResult = { platform.finishWithResult(it) },
         )
     }
+}
+
+/**
+ * Asks the debug hook, once per entry, whether [route] should be replaced; if so, replaces it and returns true so the
+ * caller renders nothing (its view-model is never created). With no hook bound, this is false and costs nothing.
+ */
+@Composable
+private fun redirectedByDebugHook(navigator: AppNavigator, route: NavKey): Boolean {
+    val target = remember(route) { debugFlowHookOrNull()?.redirect(route) }
+    if (target != null) LaunchedEffect(target) { navigator.replaceCurrent(target) }
+    return target != null
 }
