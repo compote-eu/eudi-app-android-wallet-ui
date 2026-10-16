@@ -1,0 +1,9 @@
+# M4: press the placeholder button of event ${EVENT} and wait for state ${STATE}.
+appId: eu.compote.euidi.dev
+---
+- tapOn:
+    id: "ux-event-${EVENT}"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-${STATE}"
+    timeout: 30000

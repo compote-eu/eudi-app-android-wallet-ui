@@ -12,7 +12,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M1b | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | `spike-contract-boundary.md` + PROVISIONAL bundle (sha256 `31bfda65…cf8d71`) |
 | M2 | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | Six module skeletons, `DebugFlowHook`, conditional wiring; probes P1 (iOS, redirect option A works), P2, P3, P5 passed, P6 compile-level; release isolation clean; gate GREEN. ⟲: `origin/feature/kmp` still at `b23f6a1f5`, no rebase. T1-T4 touched only; reserved T6/T7/T8 unused. |
 | M3 | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | Pure-Kotlin engine + loader + handshake in `:ux-runtime` (`bundle`, `engine` packages; no Compose import, no bundle-name literal). 95 new tests (47 common ×2 targets + 1 host guard): H1-H12, async rules, brief §5 back/restore, iOS abandon, deeplink, exits, D5-engine. Drills D1-engine, D2-engine, D5-engine (preliminary). Only `ux-runtime/**` changed (+ these state files); no T-file touched. KC1 grep over `ux-runtime` = 0. |
-| M4 | not started | — | — | — | — | — |
+| M4 | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | RULING-2 in the engine; `FlowHost` + `FlowViewModel` (`:ux-runtime` `host`), placeholder states; P4 passed on iOS (app, simulator) and Android (Robolectric round trip; app not run); D1 grep as a host test; PROVISIONAL contract copy + bundle resource in `:ux-contract`; data-driven fake engine (6 scripts) in `:ux-spike`; both hooks host the flow with one `PlatformBackHandler` adapter each. No existing file touched (only T1-T4 from M2 differ from the base). Drills: D3-sim-preliminary passed ×3, D-switch-1 passed, **D1-iOS-preliminary not run** (Maestro edge swipe triggers no back on any screen, baseline included); host-level FlowHost back test green. Gate GREEN 4148. |
 | M5 | not started | — | — | — | — | — |
 | M5b | not started | — | — | — | — | — |
 | M6 | not started | — | — | — | — | blocked on `ux-spec/`; ⟲ after sync |
@@ -40,6 +40,12 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 | 2026-10-16 | final M2 commit | M2 | full `./spike-gate.sh` (retry 1) | 4004 (shared-logic iOS 832, shared-ui iOS 648, host 166/562, ux-spike 1+1, module unit tests as M0) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 | 2026-10-16 | f31de1283 | M3 | `./spike-gate.sh --fast` | 4099 (ux-runtime host 48, iOS 47; rest as M2) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
 | 2026-10-16 | f31de1283 | M3 | full `./spike-gate.sh` | 4099 (shared-logic iOS 832, shared-ui iOS 648, host 166/562, ux-runtime 48/47, ux-spike 1+1, module unit tests as M0) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+
+| 2026-10-16 | 700787c3c | M4 | `./spike-gate.sh --fast` (RULING-2) | 4117 (ux-runtime host 57, iOS 56; rest as M3) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
+| 2026-10-16 | b754b7543 | M4 | `./spike-gate.sh --fast` (host, fake engine) | 4145 (ux-runtime 66/61, ux-spike 11/3, ux-contract 2; rest as M3) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
+| 2026-10-16 | b754b7543 + FlowHost back test (this commit) | M4 | full `./spike-gate.sh` | 4148 (shared-logic iOS 832, shared-ui iOS 648, host 166/562, ux-runtime 66/64, ux-spike 11/3, ux-contract 2, module unit tests as M0) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+
+M4 Release spot check (full gate's Release build): `strings` on the app binary finds 0 spike patterns; the `.app` and `.appex` carry only `eu.europa.ec.shared.resources`.
 
 Gate try 1 was RED: my first `DebugFlowHookTest` used Koin DSL modules, which made the Koin compiler plugin validate the iOS test compilation and reject `IosFilterValidatorScopeTest` (KOIN-D002). The test now uses `Koin().declare`. No wallet code changed.
 
@@ -79,6 +85,29 @@ Findings for week 0 / the owner (not decided here):
    are treated as closed enums, beyond the boundary's §1.1 list. Restore targets with a non-idempotent state-scoped invoke are refused.
 5. Unknown screen effects are recorded in `FlowBundle.warnings` (the M4 host logs them).
 
+## M4 notes and findings
+
+**P4 (SavedStateHandle from the Nav3 entry).**
+
+| Platform | Outcome | Evidence |
+|---|---|---|
+| iOS (app, simulator) | **passed**: `rememberViewModelStoreNavEntryDecorator` + `rememberSaveableStateHolderNavEntryDecorator` (`AppNavDisplay.kt`) supply the saved-state owner, so `createSavedStateHandle()` works in `viewModel { }`. Log on every flow start: `P4 SavedStateHandle supplied by the entry owner (IOS)`. Across process death nothing is saved anyway (no back stack, `process_death.ios = abandon`), which D3 shows. | `spike-evidence/M4/logs/d3-*.log` |
+| iOS (unit) | round trip green: `saved {}` → `savedStateProvider().saveState()` → `SavedStateHandle(map)` → new `FlowViewModel` with a new port | `ProvisionalFlowViewModelSavedStateIosTest` (5) |
+| Android (unit) | round trip green under Robolectric (SDK 37): the provider's `Bundle` → `SavedStateHandle.createHandle` → new view model: request = snapshot (0 calls), auth = request (0 `authenticate`), sending = error (0 `send`), iOS platform = abandoned | `ProvisionalFlowViewModelSavedStateAndroidTest` (5) |
+| Android (app) | not run: no emulator (M11). The decorator code is the same `AppNavDisplay` path; the R14 fallback is not needed so far. | — |
+
+`saved {}` stores the snapshot's JSON text (`String?`), because `FlowSnapshot` holds `JsonObject` trees, whose serializer needs a JSON encoder, not the saved-state encoder. If an owner supplies no handle, `FlowViewModel.create` logs `P4 … MISSING` and runs on an unsaved handle.
+
+**D1 grep.** `D1BackHandlerGrepTest` (host) implements the SPIKE-PLAN §3 checks: one `backHandler(` call in `ux-runtime` (FlowHost.kt:64), one `PlatformBackHandler(` adapter in each hook, nothing else matching `BackHandler\(|NavigationEventHandler|NavigationBackHandler|onBack *=` in `ux-*` or `iosUxSpikeMain`, and no back handling in `redirectedByDebugHook`. Note: the plan's literal `git grep -n -E '\bbackHandler\('` matches nothing on macOS (POSIX ERE has no `\b`); `git grep -n -P` gives the one line.
+
+Findings for week 0 / the owner (not decided here):
+1. **D1-iOS cannot be driven by Maestro 2.11 on this simulator.** No synthesized swipe (four variants) triggers back, on the flow or on the wallet's own pushed screens. D1-iOS (M6) needs a manual swipe in Simulator.app, a device, or another driver (e.g. idb). Queued as part of Q-006.
+2. **The boundary §2.5 invoker drops default fields** (`Json { classDiscriminator = "type" }` without `encodeDefaults`): `selected: false`, `value: null` and `privacy_url: null` are not sent to the engine. The engine tolerates it (a missing `selected` reads as false), but the exporter should decide (M6 API diff).
+3. **The theme spec hash** has no generated source yet; the spike passes the contract `SPEC_HASH` as `themeSpecHash` until M6.
+4. **Script `expired-at-request`** is defined as `fetchRequest → Expired` (connecting → error-expired), since the `request` state has no invoke that could expire. Week 0 owns the real scripts (Q14).
+5. Exits: every final state and an abandon return to Home (`popUpTo(DashboardRoute)`). Mapping `add-document`, `device-settings` and `to-help` (SPIKE-PLAN §1.5) is left for M5b, and the gap is logged by the hook.
+6. The placeholder lists every `on` event as a button; events with a payload (`TOGGLE_ITEM`, `SYS_QR_SCANNED`) are disabled, so the `scan` entry cannot advance until M5b.
+
 ## M2 release-isolation check (baseline: `spike-evidence/M0-baseline.md`)
 
 | Check | Result |
@@ -101,3 +130,6 @@ Findings for week 0 / the owner (not decided here):
 | (this commit) | 2026-10-16 | M2 | SPIKE-LOG, spike-results | Claude Sonnet 5.5 | — |
 | f31de1283 | 2026-10-16 | M3 | engine, loader, handshake, tests | Claude Opus 5.5 | fast + full gate GREEN (4099) |
 | (this commit) | 2026-10-16 | M3 | SPIKE-LOG, spike-results (D1/D2/D5-engine) | Claude Opus 5.5 | — |
+| 700787c3c | 2026-10-16 | M4 | RULING-2: throwing service → Error branch; load refusal | Claude Opus 5.5 | fast GREEN (4117) |
+| b754b7543 | 2026-10-16 | M4 | FlowHost, FlowViewModel, fake engine, provisional contract, hooks | Claude Opus 5.5 | fast GREEN (4145) |
+| (this commit) | 2026-10-16 | M4 | FlowHost back test (iOS), Maestro flows, evidence, SPIKE-LOG, spike-results, HUMAN-QUEUE | Claude Opus 5.5 | full GREEN (4148) |

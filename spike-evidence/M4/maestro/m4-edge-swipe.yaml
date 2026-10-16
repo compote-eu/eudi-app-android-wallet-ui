@@ -1,0 +1,16 @@
+# M4 D1-iOS: an interactive edge swipe (SPIKE-PLAN §3 D1) in state ${FROM}; the bundle policy decides the result,
+# which must be state ${TO} (for `blocked`, TO = FROM and the flow stays put).
+appId: eu.compote.euidi.dev
+---
+- assertVisible:
+    id: "ux-state-${FROM}"
+- swipe:
+    start: "1%,50%"
+    end: "70%,50%"
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-${TO}"
+    timeout: 5000

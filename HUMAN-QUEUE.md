@@ -60,6 +60,16 @@ adding the date and the result under it.
   `request` and `request-untrusted` as well (spec change, re-export).
 - **Status:** open (default applies)
 
+## Q-006: An edge swipe the simulator drills can use (D1-iOS)
+
+- **Blocks:** row `D1-iOS` (KC2 evidence, M6); `D1-iOS-preliminary` is recorded as not run.
+- **Why:** Maestro 2.11's synthesized swipe from the left edge triggers no back on this simulator, not even on the
+  wallet's own pushed screens (`spike-evidence/M4/base-0{3,4,5}-*.png`).
+- **Options:** (a) the owner swipes by hand in Simulator.app while the agent records (`simctl io recordVideo`) and reads
+  the `UX-SPIKE:` log; (b) allow installing `idb` (`brew install facebook/fb/idb-companion` + `pip install fb-idb`) for
+  `idb ui swipe`; (c) run D1-iOS on the real iPhone together with Q-003.
+- **Status:** open
+
 ## Later (queued when their milestone arrives)
 
 - D7-iOS: VoiceOver walk on a real iPhone (M7).

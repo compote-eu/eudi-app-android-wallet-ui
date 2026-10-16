@@ -1,0 +1,18 @@
+2026-10-16T21:05:05.267403: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-16T21:05:05.270455: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-16T21:05:05.274294: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-16T21:05:05.31208: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/203EA563-C041-4C4C-A73C-685678D53100/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-16T21:05:05.315252: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=off (persisting)
+objc[37176]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x1091a0398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x1092d8310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-16T21:05:22.89869: INFO: IosAuthorizationRedirects: ignoring an opened URL that is not an authorization redirect
+2026-10-16T21:05:22.900415: INFO: IosDeepLinks: a presentation request is waiting to be opened
+UX-SPIKE: argument --ux-spike=off (persisting)
+2026-10-16T21:05:22.963437: INFO: IosRemotePresenter: starting an exchange for openid4vp; cancelling any previous
+2026-10-16T21:05:23.006878: WARNING: IosRemotePresenter: remote presentation failed: DarwinHttpRequestException: Exception in http request: Error Domain=NSURLErrorDomain Code=-1003 "A server with the specified hostname could not be found." UserInfo={_kCFStreamErrorCodeKey=8, NSUnderlyingError=0x11ff51590 {Error Domain=kCFErrorDomainCFNetwork Code=-1003 "(null)" UserInfo={_kCFStreamErrorDomainKey=12, _kCFStreamErrorCodeKey=8, _NSURLErrorNWResolutionReportKey=Resolved 0 endpoints in 17ms using unknown from cache, _NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: en0[802.11], uses wifi, LQM: unknown}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <E88DE5C5-EB02-4C07-8493-7569EF5CA6FC>.<1>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <E88DE5C5-EB02-4C07-8493-7569EF5CA6FC>.<1>"
+), NSLocalizedDescription=A server with the specified hostname could not be found., NSErrorFailingURLStringKey=https://example.invalid/r, NSErrorFailingURLKey=https://example.invalid/r, _kCFStreamErrorDomainKey=12}
+2026-10-16T21:05:35.423995: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-16T21:05:35.424773: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-16T21:05:35.427406: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-16T21:05:35.428103: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0

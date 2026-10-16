@@ -1,0 +1,17 @@
+appId: eu.compote.euidi.dev
+---
+- tapOn:
+    text: "Open"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+- waitForAnimationToEnd:
+    timeout: 8000
+- assertNotVisible:
+    id: "ux-state"

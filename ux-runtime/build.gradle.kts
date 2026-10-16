@@ -120,6 +120,10 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
             }
         }
+        // Compose UI tests of FlowHost run on the iOS simulator (no catalog touch, SPIKE-PLAN §1.1).
+        iosTest.dependencies {
+            implementation("org.jetbrains.compose.ui:ui-test:${libs.versions.composeMultiplatform.get()}")
+        }
         // The Android saved state is a Bundle, so the P4 round trip runs under Robolectric on the host.
         getByName("androidHostTest").dependencies {
             implementation(libs.robolectric)

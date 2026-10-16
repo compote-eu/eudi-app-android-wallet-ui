@@ -1,0 +1,15 @@
+# M4 D3: after a relaunch, pass the unlock gate if it shows and land on Home; no flow placeholder may be visible.
+appId: eu.compote.euidi.dev
+---
+- runFlow:
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible:
+    id: "ux-state"
