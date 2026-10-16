@@ -144,10 +144,9 @@ targets:
         # value is read at runtime rather than derived: see IosKeychainAccessGroup.
         EUDIKeychainAccessGroup: $(AppIdentifierPrefix)$(APP_BUNDLE_ID)
         # The extension asks for the wallet's biometrics after consent (DcApiAuthentication), and Face ID
-        # reads its purpose string from the bundle that raises the prompt — this one, not the app's. The
-        # app target carries the same words.
-        NSFaceIDUsageDescription: >-
-          Unlock your wallet and authorise sharing a document.
+        # reads its purpose string from the bundle that asks — this one, not the app's. Same string as
+        # the app's; see the note on purpose strings there.
+        NSFaceIDUsageDescription: ${IOS_PERMISSION_FACE_ID}
         # What makes iOS treat this bundle as a document provider. `EXAppExtensionAttributes` is the
         # ExtensionKit form; the older `NSExtension` dictionary is for the previous extension model
         # and is not interchangeable.
@@ -335,22 +334,26 @@ targets:
           #              inbound one falls through to EXTERNAL -> `openUrl`, re-opening its own scheme.
           #              Unfinished upstream scaffolding, so it is mirrored as absent rather than as a
           #              second dead registration.
+        # PURPOSE STRINGS — the text of iOS's one-time permission alerts. Never literal here: each is a
+        # `${IOS_PERMISSION_...}` reference to the `ios_permission_...` string in the shared Compose
+        # catalogue (`shared-ui/src/commonMain/composeResources/values*/strings.xml`), which
+        # `./gradlew generateIosProject` expands to the English text here and writes, for every locale
+        # the catalogue has, into this bundle's `<locale>.lproj/InfoPlist.strings`. One source for the
+        # words, in the place translators already work; `PurposeStringsParityTest` keeps it that way.
+        #
         # The QR scanner's camera. Like the Bluetooth string below, this *is* the permission: iOS
         # shows it in the prompt the first time AVFoundation is asked for the camera, and an app
         # without the key is terminated instead of prompted.
-        NSCameraUsageDescription: >-
-          Scan a QR code to share a document or to add one to your wallet.
-        # Biometric unlock. Like the two strings below this *is* the permission surface: iOS shows it
-        # in the Face ID prompt `IosBiometricGate` raises, and an app without the key gets the generic
-        # system wording. The official iOS wallet sets the same key
+        NSCameraUsageDescription: ${IOS_PERMISSION_CAMERA}
+        # Biometric unlock: the alert iOS shows the first time `IosBiometricGate` asks for Face ID, and
+        # an app without the key gets the generic system wording. Not the text of each scan, which is
+        # the localized reason the gate passes. The official iOS wallet sets the same key
         # (INFOPLIST_KEY_NSFaceIDUsageDescription); Touch ID needs no equivalent.
-        NSFaceIDUsageDescription: >-
-          Unlock your wallet and authorise sharing a document.
+        NSFaceIDUsageDescription: ${IOS_PERMISSION_FACE_ID}
         # ISO 18013-5 proximity sharing. iOS has no runtime Bluetooth permission to request; this
         # string *is* the permission — CoreBluetooth raises the system prompt with it the first time
         # the wallet advertises, and without the key the app is terminated instead of prompted.
-        NSBluetoothAlwaysUsageDescription: >-
-          Share documents from your wallet with a nearby reader over Bluetooth.
+        NSBluetoothAlwaysUsageDescription: ${IOS_PERMISSION_BLUETOOTH}
         # ⛔ NO BACKGROUND MODES, AND NO `BGTaskSchedulerPermittedIdentifiers` — deliberate, 2026-09-04.
         # There was a `BGProcessingTask` here for credential top-up, iOS's counterpart of Android's
         # `ReIssuanceWorkManager`. It was removed so the wallet database can carry

@@ -663,4 +663,14 @@
     <string name="privacy_history_method_phone">Phone call</string>
     <!--endregion-->
 
+    <!--region iOS permission alerts (Info.plist purpose strings)-->
+    <!-- Not read by Kotlin. `./gradlew generateIosProject` puts them into the iOS bundles: the English
+         value into Info.plist, through project.yml's ${IOS_PERMISSION_...} references, and every locale
+         into that bundle's <locale>.lproj/InfoPlist.strings. They cannot be read at runtime like the
+         rest of this file, because iOS shows them before any app code runs. -->
+    <string name="ios_permission_camera">Scan a QR code to share a document or to add one to your wallet.</string>
+    <string name="ios_permission_face_id">Unlock your wallet and authorise sharing a document.</string>
+    <string name="ios_permission_bluetooth">Share documents from your wallet with a nearby reader over Bluetooth.</string>
+    <!--endregion-->
+
 </resources>
