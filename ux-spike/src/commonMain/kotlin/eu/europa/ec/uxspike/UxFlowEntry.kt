@@ -100,6 +100,10 @@ fun UxFlowEntry(
     backHandler: @Composable (enabled: Boolean, onBack: () -> Unit) -> Unit,
     onExit: (FlowExit?) -> Unit,
 ) {
+    if (script.startsWith(UX_GALLERY_PREFIX)) {
+        UxGallery(UxGalleryPage.fromScript(script))
+        return
+    }
     val flow by produceState<UxSpikeFlow?>(null, route, script) {
         value = UxSpikeFlow.load(script).also { (it as? UxSpikeFlow.Failed)?.let { f -> UxSpikeLog.log(f.reason) } }
     }

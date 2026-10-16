@@ -30,7 +30,9 @@ kotlin {
         namespace = "eu.europa.ec.ux.elements"
         compileSdk = 37
         minSdk = 29
-        withHostTest {}
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
@@ -44,7 +46,24 @@ kotlin {
             api(project(":ux-theme"))
             api(libs.jetbrains.compose.runtime)
             api(libs.jetbrains.compose.foundation)
+            implementation(libs.jetbrains.compose.ui)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            // Direct coordinate, no catalog touch (SPIKE-PLAN §1.1).
+            implementation("org.jetbrains.compose.ui:ui-test:${libs.versions.composeMultiplatform.get()}")
+        }
+        // runComposeUiTest on the Android host needs Robolectric (the precedent of :ux-runtime's P4 round trip).
+        getByName("androidHostTest").dependencies {
+            implementation(libs.robolectric)
+            // Registers the ComponentActivity that ActivityScenario launches (the artifact has no catalog entry with a version).
+            implementation("androidx.compose.ui:ui-test-manifest:1.12.1")
         }
     }
 }
 
+// Robolectric 4.17+ reaches jdk.internal.access.SharedSecrets for the SDK 37+ application environment (the same flag
+// the convention plugin gives every Android unit-test task, KotlinAndroid.kt).
+tasks.withType<Test>().configureEach {
+    jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
+}

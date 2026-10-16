@@ -1,0 +1,51 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+
+package eu.europa.ec.ux.theme
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
+import eu.europa.ec.ux.theme.provisional.ProvisionalEudiwV1
+
+/** The active tokens. Defaults to the PROVISIONAL set so an element never crashes outside a [UxTheme]. */
+val LocalUxTokens = staticCompositionLocalOf { ProvisionalEudiwV1.light.tokens }
+
+/** The active brand's `styles` and `layouts` selections. */
+val LocalUxBrand = staticCompositionLocalOf { ProvisionalEudiwV1 }
+
+/** Applies one brand in one mode. Never touches the wallet's `ThemeManager`. */
+@Composable
+fun UxTheme(brand: UxBrand = ProvisionalEudiwV1, mode: UxMode = UxMode.Light, content: @Composable () -> Unit) {
+    CompositionLocalProvider(
+        LocalUxBrand provides brand,
+        LocalUxTokens provides brand.tokens(mode),
+        content = content,
+    )
+}
+
+/** Read access to the active theme from an element. */
+object UxThemeAccess {
+    val tokens: UxTokens
+        @Composable @ReadOnlyComposable
+        get() = LocalUxTokens.current
+
+    val brand: UxBrand
+        @Composable @ReadOnlyComposable
+        get() = LocalUxBrand.current
+}

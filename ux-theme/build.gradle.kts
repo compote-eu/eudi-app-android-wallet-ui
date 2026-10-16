@@ -43,6 +43,7 @@ kotlin {
         commonMain.dependencies {
             api(libs.jetbrains.compose.runtime)
             api(libs.jetbrains.compose.foundation)
+            implementation(libs.jetbrains.compose.ui)
         }
     }
 }

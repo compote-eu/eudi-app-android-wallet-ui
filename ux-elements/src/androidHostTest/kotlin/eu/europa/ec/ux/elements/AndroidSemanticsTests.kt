@@ -14,9 +14,19 @@
  * governing permissions and limitations under the Licence.
  */
 
-package eu.europa.ec.ux.theme
 
-/** Empty M2 skeleton of `:ux-theme`; the token value types and `UxTheme` arrive with M5. */
-object UxThemeModule {
-    const val NAME = "ux-theme"
-}
+package eu.europa.ec.ux.elements
+
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/** The element semantics tests on the Android host (Robolectric hosts the Compose UI test environment). */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class ElementsSemanticsAndroidTest : ElementsSemanticsScenario()
+
+/** The template semantics tests and D7-semantics-preliminary on the Android host. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class TemplatesSemanticsAndroidTest : TemplatesSemanticsScenario()

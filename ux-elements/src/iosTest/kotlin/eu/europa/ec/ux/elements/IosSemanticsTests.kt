@@ -14,9 +14,11 @@
  * governing permissions and limitations under the Licence.
  */
 
+
 package eu.europa.ec.ux.elements
 
-/** Empty M2 skeleton of `:ux-elements`; the nine elements and four templates arrive with M5. */
-object UxElementsModule {
-    const val NAME = "ux-elements"
-}
+/** The element semantics tests on the iOS simulator. */
+class ElementsSemanticsIosTest : ElementsSemanticsScenario()
+
+/** The template semantics tests and D7-semantics-preliminary on the iOS simulator. */
+class TemplatesSemanticsIosTest : TemplatesSemanticsScenario()
