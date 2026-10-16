@@ -34,12 +34,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.CollectionInfo
+import androidx.compose.ui.semantics.CollectionItemInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.collectionInfo
+import androidx.compose.ui.semantics.collectionItemInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import eu.europa.ec.ux.theme.UxAttributePairs
 import eu.europa.ec.ux.theme.UxCheckboxStyle
@@ -84,28 +91,37 @@ fun UxAttributeList(
     val tokens = UxThemeAccess.tokens
     Column(modifier.testTag(id).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(tokens.space.m)) {
         if (readonly) {
-            Group(null, "$id.items") { items.forEach { AttributeRow(id, it, true, null, copyLabel, onToggle, onCopy) } }
+            Group(null, "$id.items", items.size) {
+                items.forEachIndexed { i, item -> AttributeRow(id, item, i, true, null, copyLabel, onToggle, onCopy) }
+            }
         } else {
             val mandatory = items.filter { it.requirement == UxRequirement.Mandatory }
             val optional = items.filter { it.requirement == UxRequirement.Optional }
             if (mandatory.isNotEmpty()) {
-                Group(mandatoryHeading, "$id.mandatory") {
-                    mandatory.forEach { AttributeRow(id, it, false, mandatoryLabel, copyLabel, onToggle, onCopy) }
+                Group(mandatoryHeading, "$id.mandatory", mandatory.size) {
+                    mandatory.forEachIndexed { i, item -> AttributeRow(id, item, i, false, mandatoryLabel, copyLabel, onToggle, onCopy) }
                 }
             }
             if (optional.isNotEmpty()) {
-                Group(optionalHeading, "$id.optional") {
-                    optional.forEach { AttributeRow(id, it, false, optionalLabel, copyLabel, onToggle, onCopy) }
+                Group(optionalHeading, "$id.optional", optional.size) {
+                    optional.forEachIndexed { i, item -> AttributeRow(id, item, i, false, optionalLabel, copyLabel, onToggle, onCopy) }
                 }
             }
         }
     }
 }
 
+/** A list group: one traversal group with list (collection) semantics, so a screen reader can say "list, n items". */
 @Composable
-private fun Group(headingText: String?, tag: String, content: @Composable () -> Unit) {
+private fun Group(headingText: String?, tag: String, count: Int, content: @Composable () -> Unit) {
     val tokens = UxThemeAccess.tokens
-    Column(Modifier.testTag(tag).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(tokens.space.xs)) {
+    Column(
+        Modifier.testTag(tag).fillMaxWidth().semantics {
+            isTraversalGroup = true
+            collectionInfo = CollectionInfo(rowCount = count, columnCount = 1)
+        },
+        verticalArrangement = Arrangement.spacedBy(tokens.space.xs),
+    ) {
         if (headingText != null) {
             BasicText(
                 headingText,
@@ -122,6 +138,7 @@ private fun Group(headingText: String?, tag: String, content: @Composable () -> 
 private fun AttributeRow(
     listId: String,
     item: UxAttributeItem,
+    index: Int,
     readonly: Boolean,
     tag: String?,
     copyLabel: String?,
@@ -136,10 +153,15 @@ private fun AttributeRow(
         .testTag("$listId.item.${item.id}")
         .fillMaxWidth()
         .defaultMinSize(minHeight = tokens.size.target)
+        .semantics { collectionItemInfo = CollectionItemInfo(rowIndex = index, rowSpan = 1, columnIndex = 0, columnSpan = 1) }
         .let {
             when {
                 readonly -> it.semantics(mergeDescendants = true) { }
-                mandatory -> it.toggleable(value = true, enabled = false, role = Role.Checkbox, onValueChange = {})
+                // Locked, not disabled: a checked checkbox with no toggle action, so VoiceOver does not say "dimmed".
+                mandatory -> it.semantics(mergeDescendants = true) {
+                    role = Role.Checkbox
+                    toggleableState = ToggleableState.On
+                }
                 else -> it.toggleable(value = checked, role = Role.Checkbox) { v -> onToggle(item.id, v) }
             }
         }

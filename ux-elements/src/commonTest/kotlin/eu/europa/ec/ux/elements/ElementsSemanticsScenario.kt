@@ -19,10 +19,12 @@ package eu.europa.ec.ux.elements
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.semantics.CollectionInfo
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.test.ExperimentalTestApi
@@ -32,6 +34,7 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
@@ -247,16 +250,22 @@ abstract class ElementsSemanticsScenario {
                 mandatoryHeading = "Required", optionalHeading = "Optional", mandatoryLabel = "Mandatory",
             )
         }
-        onNodeWithTag("attrs.item.name").assertIsNotEnabled().assertIsOn().assert(role(Role.Checkbox))
-            .assert(hasText("Mandatory", substring = true))
+        // Locked but enabled (no "dimmed" on iOS): checked, a checkbox, no toggle action.
+        onNodeWithTag("attrs.item.name").assertIsEnabled().assertIsOn().assert(role(Role.Checkbox))
+            .assert(hasText("Mandatory", substring = true)).assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
         onNodeWithTag("attrs.item.photo").assertIsOff().assert(role(Role.Checkbox)).performClick()
         onNodeWithTag("attrs.item.age").assertIsOn()
         assertEquals(listOf("photo" to true), toggled)
         // Mandatory items are never toggled.
         onNodeWithTag("attrs.item.name").performClick()
         assertEquals(1, toggled.size)
-        // The two groups are headed.
+        // The two groups are headed lists: "list, 1 item" and "list, 2 items"; each row has its position.
         onAllNodes(isHeading, useUnmergedTree = true).assertCountEquals(2)
+        onNodeWithTag("attrs.mandatory").assert(SemanticsMatcher.expectValue(SemanticsProperties.CollectionInfo, CollectionInfo(1, 1)))
+        onNodeWithTag("attrs.optional").assert(SemanticsMatcher.expectValue(SemanticsProperties.CollectionInfo, CollectionInfo(2, 1)))
+        onNodeWithTag("attrs.item.age").assert(
+            SemanticsMatcher("second row") { it.config.getOrNull(SemanticsProperties.CollectionItemInfo)?.rowIndex == 1 },
+        )
     }
 
     @Test

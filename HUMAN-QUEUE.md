@@ -70,9 +70,55 @@ adding the date and the result under it.
   `idb ui swipe`; (c) run D1-iOS on the real iPhone together with Q-003.
 - **Status:** open
 
+## Q-D7-iOS: VoiceOver walk `request` → `success` on the iPhone (D7-iOS, KC3)
+
+- **Blocks:** row `D7-iOS` (KC3 verdict). Automated evidence so far: `D7-iOS-preliminary` in `spike-results.md`.
+- **Build:** the M7 commit (see `SPIKE-LOG.md` M7). **A device rebuild is needed**: the phone still runs `e837f53a7`
+  (M5b). The orchestrator rebuilds and installs it from the device worktree and launches it with the deep link and
+  `--ux-spike slow` (so `auth` lasts 12 s and `sending` 45 s, long enough to hear them).
+- **Before:** phone in Light mode. Settings > Accessibility > VoiceOver: on (or triple-click the side button if the
+  Accessibility Shortcut is set). Start a screen recording with sound (Control Center > Screen Recording, long-press,
+  Microphone on) before the orchestrator launches the app. Use only swipe right/left (next/previous element) and
+  double-tap (activate); no direct touch on items, so focus is what the runtime set.
+- **Expected texts** are the PROVISIONAL sk copy; the app may show the eudiw_v1 brand variant (e.g. "eDoklady"). VoiceOver
+  adds its own role words ("heading", "button", ...); the language of speech is the phone's.
+
+### Steps and what VoiceOver should do after each state change
+
+| # | You do | New state | VoiceOver should say first (without you touching anything) | Focus should be on |
+|---|---|---|---|---|
+| 1 | unlock with the PIN (VoiceOver: double-tap digits) | `connecting` (4 s) | "Načítava sa žiadosť overovateľa. Overuje sa totožnosť overovateľa a dostupnosť vašich eDokladov." once (an announcement; it waits for current speech) | not moved (wherever VoiceOver was) |
+| 2 | wait | `request` (sheet) | "Overenie eDokladu, heading" | the sheet title; swipe right goes to the verifier, privacy link, data, attributes, Continue, Reject. The app bar behind the sheet is never reached |
+| 3 | swipe to "Continue", double-tap | `auth` (12 s) | "Overenie, že ste to vy, heading" | the auth title |
+| 4 | wait | `verification-code` | "Skontrolujte stránku a prepíšte overovací kód, heading" | the title; swipe right reaches the code 4711 and Confirm |
+| 5 | swipe to "Confirm", double-tap | `sending` (45 s) | "Prebieha odoslanie dát eDokladov" exactly **once** | not moved |
+| 6 | wait | `success` | "eDoklady boli predložené, heading" | the success title; swipe right reads "Pokračujte na stránke overovateľa vo webovom prehliadači.", then Close |
+| 7 | swipe to "Close", double-tap | Home | (wallet Home; not part of D7) | — |
+
+After each change also check: swipe left from the new focus never reaches text of the previous screen (no focus on a node
+of the old state), and there is only one heading per screen in the rotor (Rotor > Headings, swipe up/down) apart from
+the two attribute group headings on `request`.
+
+### Fill in (one row per step; send the recording)
+
+| # | State | Said first (as heard) | Said once? (y/n) | Focus on (element) | Any old-screen element reachable? (y/n) | Notes (double speech, delay, silence) |
+|---|---|---|---|---|---|---|
+| 1 | connecting | | | | | |
+| 2 | request | | | | | |
+| 3 | auth | | | | | |
+| 4 | verification-code | | | | | |
+| 5 | sending | | | | | |
+| 6 | success | | | | | |
+
+Also note on `request`: is a mandatory attribute read as "dimmed"? (It should not be.) Is the privacy link read as
+"link" or "button"? (Known gap: Compose Multiplatform 1.12 has no link trait, so "button" is expected.)
+
+- **Pass (SPIKE-PLAN §3 D7):** after each state change focus is on the new heading (2, 3, 4, 6), `sending` is announced
+  once (5) and `success` is announced (6), and no focus remains on a node of the old state.
+- **Status:** open
+
 ## Later (queued when their milestone arrives)
 
-- D7-iOS: VoiceOver walk on a real iPhone (M7).
 - D10 runs 1–5: iPhone with iOS 26.2+, team signing, hosting the HTTPS `org-iso-mdoc` page (M10).
 - M11: an Android emulator or device; the D2 real low-memory kill; D7-Android TalkBack on a real device.
 - KC5: the app team's estimate (Martin).

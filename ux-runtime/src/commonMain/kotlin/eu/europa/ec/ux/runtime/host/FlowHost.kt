@@ -26,12 +26,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.lifecycle.viewmodel.compose.viewModel
 import eu.europa.ec.ux.elements.registry.wireEnum
+import eu.europa.ec.ux.runtime.a11y.rememberPlatformAccessibilityBridge
 import eu.europa.ec.ux.runtime.bundle.FlowBundle
 import eu.europa.ec.ux.runtime.engine.FlowExit
 import eu.europa.ec.ux.runtime.engine.FlowLog
@@ -97,6 +100,9 @@ fun FlowHost(
         if (brand == null) log.log("brand ${catalog.defaultBrand} not supplied by the hook; the default theme is used")
     }
 
+    val accessibility = screens.accessibility ?: rememberPlatformAccessibilityBridge()
+    val currentState by rememberUpdatedState(active?.state)
+
     UxTheme(brand = brand ?: LocalUxBrand.current, mode = wireEnum(catalog.defaultMode, UxMode.entries, UxMode.Light)) {
         Box(modifier.fillMaxSize()) {
             AnimatedContent(targetState = active, contentKey = { it?.state }) { shown ->
@@ -107,37 +113,57 @@ fun FlowHost(
                             transition.currentState == EnterExitState.Visible && transition.targetState == EnterExitState.Visible
                         }
                     }
+                    // The leaving state is still drawn during the crossfade: its semantics are cleared, so a screen reader
+                    // never sees two h1s or two live regions, and no focus stays on a node of the old state (D7).
+                    val leaving by remember { derivedStateOf { currentState != shown.state } }
                     Box(Modifier.fillMaxSize().testTag(PlaceholderTags.STATE_PREFIX + shown.state)) {
-                        if (canDraw(catalog, screens, shown)) {
-                            FlowScreen(
-                                bundle = bundle,
-                                catalog = catalog,
-                                screens = screens,
-                                copy = copy,
-                                status = shown,
-                                headingFocus = headingFocus,
-                                isAccepted = flow::isAccepted,
-                                onEvent = { event, payload, gen -> flow.dispatch(event, payload, gen) },
-                                log = log,
-                            )
-                        } else {
-                            StatePlaceholder(
-                                bundle = bundle,
-                                status = shown,
-                                isAccepted = flow::isAccepted,
-                                onEvent = { event -> flow.dispatch(event, JsonObject(emptyMap()), shown.gen) },
-                            )
+                        Box(Modifier.fillMaxSize().then(if (leaving) Modifier.clearAndSetSemantics { } else Modifier)) {
+                            StateContent(bundle, catalog, screens, copy, shown, headingFocus, flow, log)
                         }
                     }
                     LaunchedEffect(shown.gen, settled) {
                         val tree = shown.screen?.let(catalog.screens::get)
                         if (settled && tree != null) {
                             withFrameNanos { } // one frame after the transition ended: the new nodes are placed
-                            StateChangeA11y.settled(tree.a11y, tree.id, headingFocus, screens.accessibility, log)
+                            StateChangeA11y.settled(tree, bundle, shown, copy, headingFocus, accessibility, log)
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Suppress("LongParameterList")
+@Composable
+private fun StateContent(
+    bundle: FlowBundle,
+    catalog: ScreenCatalog,
+    screens: FlowScreens,
+    copy: CopyResolver,
+    shown: FlowStatus.Active,
+    headingFocus: FocusRequester,
+    flow: FlowViewModel,
+    log: FlowLog,
+) {
+    if (canDraw(catalog, screens, shown)) {
+        FlowScreen(
+            bundle = bundle,
+            catalog = catalog,
+            screens = screens,
+            copy = copy,
+            status = shown,
+            headingFocus = headingFocus,
+            isAccepted = flow::isAccepted,
+            onEvent = { event, payload, gen -> flow.dispatch(event, payload, gen) },
+            log = log,
+        )
+    } else {
+        StatePlaceholder(
+            bundle = bundle,
+            status = shown,
+            isAccepted = flow::isAccepted,
+            onEvent = { event -> flow.dispatch(event, JsonObject(emptyMap()), shown.gen) },
+        )
     }
 }

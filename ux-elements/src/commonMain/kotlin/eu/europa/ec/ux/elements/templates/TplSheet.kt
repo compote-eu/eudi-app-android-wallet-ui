@@ -43,6 +43,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.dialog
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
@@ -58,7 +59,9 @@ import eu.europa.ec.ux.theme.UxThemeAccess
  * draws the same dialog full screen, with no backdrop and no scrim.
  *
  * Semantics: the [appbar] region is inert (hidden from the accessibility tree, behind a tap-taking scrim); header,
- * body and actions form the dialog, a traversal group named by [dialogLabel] (the h1 text). The header holds exactly one
+ * body and actions form the dialog: a node with the dialog semantics, a traversal group, named by [dialogLabel] (the h1
+ * text, Android's pane title). Compose Multiplatform 1.12 maps neither to iOS: there is no `accessibilityViewIsModal`,
+ * so on iOS modality rests on the backdrop being cleared from the tree (SPIKE-LOG M7). The header holds exactly one
  * `EL-text` title: it is the h1 and takes [headingFocus]. [layout] defaults to the brand's selection.
  * Test tags: [id], `<id>.appbar`, `<id>.scrim`, `<id>.dialog`, `<id>.header`, `<id>.body`, `<id>.actions`.
  */
@@ -123,6 +126,7 @@ private fun Dialog(
     val tokens = UxThemeAccess.tokens
     Column(
         modifier.testTag("$id.dialog").background(tokens.colors.surfaceRaised).semantics {
+            dialog()
             isTraversalGroup = true
             if (label != null) paneTitle = label
         },

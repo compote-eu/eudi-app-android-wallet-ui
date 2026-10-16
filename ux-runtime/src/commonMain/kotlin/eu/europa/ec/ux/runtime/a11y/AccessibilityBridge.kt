@@ -14,26 +14,39 @@
  * governing permissions and limitations under the Licence.
  */
 
+
 package eu.europa.ec.ux.runtime.a11y
 
+import androidx.compose.runtime.Composable
+
 /**
- * The platform announcement bridge (SPIKE-PLAN §1.4). The runtime calls it once per state change, after the
- * transition settled and after it moved focus to the heading (`on_enter: focus-heading`) or left the polite live
- * region to speak (`announce-live`). M5b leaves the platform side open: M7 adds the iOS one, which posts
- * `UIAccessibilityScreenChangedNotification`. The ids are node ids of the screen, never screen-specific code.
+ * The platform side of the per-state focus and announcement hook (SPIKE-PLAN §1.4, KC3). The runtime calls it once per
+ * state entry, after the `AnimatedContent` transition settled plus one frame, when the old state's nodes are gone and
+ * the new ones are placed. It never names a screen: everything comes from the screen's bundle `a11y` and node tree.
  */
 interface AccessibilityBridge {
-    /** Focus moved to the heading node [headingNode] (null: the screen has no heading). */
-    fun screenChanged(screen: String, headingNode: String?)
+    /**
+     * `on_enter: focus-heading`: the runtime moved input focus to the h1 node [headingNode] (its test tag, or the
+     * tag of an element that draws its h1 under `<node>.<part>`), whose spoken text is [headingText]. [dialog] is true
+     * for a screen with a dialog label (TPL-sheet), which Android already announces through its pane title.
+     */
+    suspend fun screenChanged(screen: String, headingNode: String?, headingText: String?, dialog: Boolean)
 
-    /** The screen announces itself through its live region [liveRegionNode]; focus is not moved. */
-    fun liveRegionShown(screen: String, liveRegionNode: String?)
+    /** `on_enter: announce-live`: a step in progress. Speak [text] once, queued after current speech; focus stays. */
+    suspend fun announce(screen: String, liveRegionNode: String?, text: String)
 
     companion object {
         val NONE: AccessibilityBridge = object : AccessibilityBridge {
-            override fun screenChanged(screen: String, headingNode: String?) = Unit
+            override suspend fun screenChanged(screen: String, headingNode: String?, headingText: String?, dialog: Boolean) = Unit
 
-            override fun liveRegionShown(screen: String, liveRegionNode: String?) = Unit
+            override suspend fun announce(screen: String, liveRegionNode: String?, text: String) = Unit
         }
     }
 }
+
+/**
+ * The bridge of this platform: iOS posts `UIAccessibilityScreenChangedNotification` on the h1 element and queued
+ * `UIAccessibilityAnnouncementNotification`s; Android announces through the host view.
+ */
+@Composable
+expect fun rememberPlatformAccessibilityBridge(): AccessibilityBridge

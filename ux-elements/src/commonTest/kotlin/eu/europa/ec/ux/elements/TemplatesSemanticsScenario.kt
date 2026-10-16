@@ -44,9 +44,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Semantics of the four templates, and D7-semantics-preliminary: after a simulated state change (the screen content
- * changes, then the runtime asks the template's heading focus target for focus, as `on_enter: focus-heading` will),
- * each template shows its heading, sets the live region where it has status text, and the focus target holds focus.
+ * Semantics of the four templates: heading, dialog, live region, inert backdrop and the heading focus target. What
+ * happens on a real state change (focus, announcements, the crossfade) is asserted at FlowHost level in `:ux-runtime`
+ * (`ProvisionalStateChangeA11yScenario`, M7), which replaced the same-node state-change tests of M5.
  * Run on the iOS simulator and, under Robolectric, on the Android host.
  */
 @OptIn(ExperimentalTestApi::class)
@@ -62,7 +62,9 @@ abstract class TemplatesSemanticsScenario {
         onAllNodes(hasText("Wallet")).assertCountEquals(0)
         onNodeWithTag("s.scrim").assertExists()
         onNodeWithTag("s.dialog").assert(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Review request"))
+            .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.IsDialog))
         onAllNodes(isHeading).assertCountEquals(1)
+        onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)).assertCountEquals(0)
         onNodeWithTag("s.title").assert(isHeading).assertTextEquals("Review request")
         onNodeWithTag("s.send").assertIsDisplayed()
         onNodeWithTag("s.cancel").assertIsDisplayed()
@@ -76,21 +78,6 @@ abstract class TemplatesSemanticsScenario {
         onNodeWithTag("s.dialog").assert(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Review request"))
         onAllNodes(isHeading).assertCountEquals(1)
         onNodeWithTag("s.send").assertIsDisplayed()
-    }
-
-    @Test
-    fun sheetStateChangeKeepsTheHeadingAndFocusMovesToIt() = runComposeUiTest {
-        // D7-semantics-preliminary, TPL-sheet: a dialog has no status text, so no live region may be set.
-        val focus = FocusRequester()
-        var title by mutableStateOf("Review request")
-        setUx { SheetUnderTest(UxDecisionSteps.Sheet, title, focus) }
-        onNodeWithTag("s.title").assert(isHeading)
-        title = "Authenticate"
-        waitForIdle()
-        runOnIdle { focus.requestFocus() }
-        onNodeWithTag("s.title").assert(isHeading).assertTextEquals("Authenticate").assertIsFocused()
-        onAllNodes(isHeading).assertCountEquals(1)
-        onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)).assertCountEquals(0)
     }
 
     @Test
@@ -116,7 +103,7 @@ abstract class TemplatesSemanticsScenario {
 
     @Test
     fun progressPendingHeroIsAPoliteLiveRegionAndKeepsFocusWhereItWas() = runComposeUiTest {
-        // D7-semantics-preliminary, TPL-progress: the status text is a polite live region; no focus move on change.
+        // TPL-progress: the status text is a polite live region and stays one when its text changes.
         val focus = FocusRequester()
         var text by mutableStateOf("Please wait")
         setUx { ProgressUnderTest(text, focus) }
@@ -143,14 +130,17 @@ abstract class TemplatesSemanticsScenario {
     }
 
     @Test
-    fun outcomeStateChangeFromPendingToResultMovesFocusToTheH1AndDropsTheLiveRegion() = runComposeUiTest {
-        // D7-semantics-preliminary, TPL-outcome: pending is live; the result is not, and the h1 takes focus.
+    fun outcomePendingIsAPoliteLiveRegion() = runComposeUiTest {
+        // TPL-outcome: pending is live; a result is not (its h1 takes focus on entry instead).
         val focus = FocusRequester()
-        var tone by mutableStateOf(UxHeroTone.Pending)
-        setUx { OutcomeUnderTest(tone, focus) }
+        setUx { OutcomeUnderTest(UxHeroTone.Pending, focus) }
         onNodeWithTag("o.hero-block").assert(live(LiveRegionMode.Polite))
-        tone = UxHeroTone.Success
-        waitForIdle()
+    }
+
+    @Test
+    fun outcomeResultHeadingTakesTheFocusTarget() = runComposeUiTest {
+        val focus = FocusRequester()
+        setUx { OutcomeUnderTest(UxHeroTone.Success, focus) }
         runOnIdle { focus.requestFocus() }
         onNodeWithTag("o.hero-block").assert(noLiveRegion)
         onNodeWithTag("o.hero-block.title", useUnmergedTree = true).assert(isHeading).assertTextEquals("Shared").assertIsFocused()
@@ -162,16 +152,14 @@ abstract class TemplatesSemanticsScenario {
     @Test
     fun scanReadsTheInstructionFirstAndTheCameraIsAnImage() = runComposeUiTest {
         val focus = FocusRequester()
-        var scanning by mutableStateOf(true)
+        val scanning = true
         setUx { ScanUnderTest(scanning, focus) }
         onNodeWithTag("c.title").assert(isHeading)
         onNodeWithTag("c.camera-view").assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Image))
         val ty = onNodeWithTag("c.instruction").fetchSemanticsNode().boundsInRoot.top
         val cy = onNodeWithTag("c.camera").fetchSemanticsNode().boundsInRoot.top
         assertTrue(ty < cy, "instruction before camera")
-        // D7-semantics-preliminary, TPL-scan: a state change (camera paused), then the h1 holds focus; no status text.
-        scanning = false
-        waitForIdle()
+        // TPL-scan: the h1 is the focus target; no status text, so no live region.
         runOnIdle { focus.requestFocus() }
         onNodeWithTag("c.title").assert(isHeading).assertIsFocused()
         onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)).assertCountEquals(0)

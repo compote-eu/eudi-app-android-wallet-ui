@@ -21,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.focus.FocusRequester
 import eu.europa.ec.ux.runtime.a11y.AccessibilityBridge
 import eu.europa.ec.ux.runtime.bundle.FlowBundle
+import eu.europa.ec.ux.runtime.bundle.ScreenRule
 import eu.europa.ec.ux.runtime.engine.FlowContext
 import eu.europa.ec.ux.runtime.engine.FlowLog
 import eu.europa.ec.ux.runtime.engine.FlowStatus
@@ -115,23 +116,52 @@ internal object ConsentSnapshot {
 }
 
 /**
- * The focus/announcement hook (SPIKE-PLAN §1.4), called once per state entry after the transition settled:
- * `focus-heading` moves focus to the heading node and reports it; `announce-live` leaves focus and reports the live
- * region, which speaks by itself (polite). The platform side is [AccessibilityBridge] (M7).
+ * The focus/announcement hook (SPIKE-PLAN §1.4, KC3), called once per state entry after the transition settled plus
+ * one frame: `focus-heading` moves input focus to the heading node and asks the [AccessibilityBridge] to move the screen
+ * reader there; `announce-live` leaves focus and has the bridge speak the live region's text once (a node inserted with
+ * a new state is not announced by the live region itself). Texts come from the node's `{copy}` props, so nothing here
+ * knows a screen.
  */
 internal object StateChangeA11y {
-    fun settled(tree: ScreenA11y, screen: String, headingFocus: FocusRequester, bridge: AccessibilityBridge, log: FlowLog) {
-        when (tree.onEnter) {
+    @Suppress("LongParameterList")
+    suspend fun settled(
+        tree: ScreenTree,
+        bundle: FlowBundle,
+        status: FlowStatus.Active,
+        copy: CopyResolver,
+        headingFocus: FocusRequester,
+        bridge: AccessibilityBridge,
+        log: FlowLog,
+    ) {
+        val a11y = tree.a11y
+        val speech = ScreenSpeech(tree, bundle.screens[tree.id]?.rules.orEmpty(), status.context, copy)
+        when (a11y.onEnter) {
             ScreenA11y.FOCUS_HEADING -> {
                 val moved = runCatching { headingFocus.requestFocus() }.isSuccess
-                log.log("a11y: $screen focus-heading ${tree.heading} (${if (moved) "focused" else "no focus target"})")
-                bridge.screenChanged(screen, tree.heading)
+                log.log("a11y: ${tree.id} focus-heading ${a11y.heading} (${if (moved) "focused" else "no focus target"})")
+                bridge.screenChanged(tree.id, a11y.heading, a11y.heading?.let(speech::text), dialog = a11y.dialogLabelledBy != null)
             }
             ScreenA11y.ANNOUNCE_LIVE -> {
-                log.log("a11y: $screen announce-live ${tree.liveRegion}")
-                bridge.liveRegionShown(screen, tree.liveRegion)
+                val text = a11y.liveRegion?.let(speech::text).orEmpty()
+                log.log("a11y: ${tree.id} announce-live ${a11y.liveRegion} ('$text')")
+                bridge.announce(tree.id, a11y.liveRegion, text)
             }
-            else -> log.log("a11y: $screen on_enter ${tree.onEnter} (nothing to do)")
+            else -> log.log("a11y: ${tree.id} on_enter ${a11y.onEnter} (nothing to do)")
         }
+    }
+}
+
+/** What a node says: its `{copy}` props in declared order (after `set_copy`), joined; literals and bindings are not speech. */
+internal class ScreenSpeech(private val tree: ScreenTree, rules: List<ScreenRule>, context: JsonObject, copy: CopyResolver) {
+    private val props = PropResolver(context, copy)
+    private val effects = NodeEffects.of(rules, context)
+
+    fun text(nodeId: String): String? {
+        val node = tree.node(nodeId) ?: return null
+        return node.props.mapNotNull { (name, raw) ->
+            val o = raw as? JsonObject ?: return@mapNotNull null
+            if (o["copy"] == null) return@mapNotNull null
+            effects.copyOverride(node.id, name)?.let { props.copyText(it, o["args"] as? JsonObject) } ?: displayText(props.resolve(o))
+        }.filter { it.isNotBlank() }.joinToString(". ").ifBlank { null }
     }
 }

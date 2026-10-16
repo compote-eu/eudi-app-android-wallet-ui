@@ -66,7 +66,8 @@ class FlowScreens(
     val custom: Map<String, CustomScreen> = emptyMap(),
     /** Brands by id; the bundle's `theme.default_brand` picks one. */
     val brands: Map<String, UxBrand> = emptyMap(),
-    val accessibility: AccessibilityBridge = AccessibilityBridge.NONE,
+    /** The screen-reader bridge; null uses the platform's ([eu.europa.ec.ux.runtime.a11y.rememberPlatformAccessibilityBridge]). */
+    val accessibility: AccessibilityBridge? = null,
     val elements: Map<String, UxElementAdapter> = UxElementRegistry.elements,
     val templates: Map<String, UxTemplateAdapter> = UxElementRegistry.templates,
 )
