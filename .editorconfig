@@ -6,13 +6,24 @@
 # Same policy as detekt.yml, and the same reason: this repository is a fork that takes
 # upstream changes by HAND-PORTING individual commits. A reformatted file is a conflict in every
 # future port that touches it, so the gate was chosen to cost nothing cosmetically. Every rule
-# disabled below is one that already had findings; the number is how many, measured on 2026-08-28
-# over 773 `.kt` files with ktlint 1.6.0 in its default `ktlint_official` style. The engine is 1.8.0
-# since 2026-10-16; the two rules it promoted carry that day's counts (921 files).
+# disabled below is one that already had findings; the number is how many, with every rule on, in
+# ktlint's default `ktlint_official` style. First measured on 2026-08-28 (773 `.kt` files, ktlint
+# 1.6.0); the numbers below are the 2026-10-16 ones (ktlint 1.8.0, over the 909 `.kt`/`.kts` files the
+# gate lints) and sum to 21,730 across 51 rules.
 #
-# Enabling ktlint's ruleset wholesale would have meant a 14,394-finding reformat of the tree
-# (6,666 under `intellij_idea`, 9,079 under `android_studio` -- no style fits this code). Those
-# numbers are the cost of turning a rule back on. Chip away deliberately, in a pass of its own.
+# Enabling ktlint's ruleset wholesale would mean a 21,773-finding reformat of the tree (8,516 under
+# `intellij_idea`, 20,018 under `android_studio`, each style with only its own defaults -- no style
+# fits this code; 14,394 / 6,666 / 9,079 on 2026-08-28). Those numbers are the cost of turning a rule
+# back on. Chip away deliberately, in a pass of its own.
+#
+# HOW TO RE-MEASURE (the whole ledger, in one run)
+#
+#   copy this file aside, turn every `= disabled` below into `= enabled`, then
+#   ./gradlew ktlintCheck --continue --rerun-tasks   # fails by design
+#   # count <error source="standard:..."> per rule over every build/reports/ktlint/**/*.xml
+#   # (local-services/ excluded), then restore the copy
+#
+# For a style's total, use a file holding only `ktlint_code_style = <style>` under [*.{kt,kts}].
 #
 # WHAT IS ACTUALLY GATED
 #
@@ -33,24 +44,26 @@ ktlint_standard_no-wildcard-imports = disabled # 0 -- owned by detekt's Wildcard
 
 # --- Disabled: wrapping and line breaks. The largest block, and the least valuable: this is the
 # --- part of ktlint_official that this tree has simply never followed.
-ktlint_standard_multiline-expression-wrapping = disabled # 4162
-ktlint_standard_function-signature = disabled # 1816
-ktlint_standard_chain-method-continuation = disabled # 736
-ktlint_standard_class-signature = disabled # 509
-ktlint_standard_indent = disabled # 203
-ktlint_standard_argument-list-wrapping = disabled # 181
-ktlint_standard_if-else-wrapping = disabled # 66
-ktlint_standard_multiline-if-else = disabled # 56
-ktlint_standard_wrapping = disabled # 46
-ktlint_standard_string-template-indent = disabled # 31
-ktlint_standard_condition-wrapping = disabled # 31
-ktlint_standard_chain-wrapping = disabled # 29
-ktlint_standard_enum-wrapping = disabled # 20
-ktlint_standard_statement-wrapping = disabled # 18
-ktlint_standard_if-else-bracing = disabled # 13
-ktlint_standard_parameter-list-wrapping = disabled # 6
-ktlint_standard_binary-expression-wrapping = disabled # 4
-ktlint_standard_property-wrapping = disabled # 1
+ktlint_standard_multiline-expression-wrapping = disabled # 6708
+ktlint_standard_function-signature = disabled # 3090
+ktlint_standard_chain-method-continuation = disabled # 1397
+ktlint_standard_class-signature = disabled # 697
+ktlint_standard_indent = disabled # 423
+ktlint_standard_argument-list-wrapping = disabled # 531
+ktlint_standard_if-else-wrapping = disabled # 118
+ktlint_standard_multiline-if-else = disabled # 98
+ktlint_standard_wrapping = disabled # 158
+ktlint_standard_string-template-indent = disabled # 51
+# Reports nothing since ktlint 1.7.0, which hands its job to the experimental `expression-operand-wrapping`;
+# ktlint 2.0 removes it.
+ktlint_standard_condition-wrapping = disabled # 0
+ktlint_standard_chain-wrapping = disabled # 37
+ktlint_standard_enum-wrapping = disabled # 21
+ktlint_standard_statement-wrapping = disabled # 107
+ktlint_standard_if-else-bracing = disabled # 17
+ktlint_standard_parameter-list-wrapping = disabled # 9
+ktlint_standard_binary-expression-wrapping = disabled # 5
+ktlint_standard_property-wrapping = disabled # 5
 
 # --- Disabled: promoted from experimental to standard in ktlint 1.8.0 (pinterest/ktlint#3171).
 # --- Formatting only, like the block above; counted 2026-10-16.
@@ -58,40 +71,42 @@ ktlint_standard_when-entry-bracing = disabled # 473
 ktlint_standard_blank-line-between-when-conditions = disabled # 214
 
 # --- Disabled: trailing commas. A preference, and the second-largest block on its own.
-ktlint_standard_trailing-comma-on-call-site = disabled # 3756
-ktlint_standard_trailing-comma-on-declaration-site = disabled # 363
+ktlint_standard_trailing-comma-on-call-site = disabled # 4382
+ktlint_standard_trailing-comma-on-declaration-site = disabled # 371
 
 # --- Disabled: blank lines and whitespace.
-ktlint_standard_blank-line-before-declaration = disabled # 396
-ktlint_standard_no-empty-first-line-in-class-body = disabled # 357
-ktlint_standard_final-newline = disabled # 330 -- upstream's style; would touch nearly every file
-ktlint_standard_no-empty-first-line-in-method-block = disabled # 97
-ktlint_standard_no-blank-line-in-list = disabled # 40
-ktlint_standard_no-blank-line-before-rbrace = disabled # 31
-ktlint_standard_no-consecutive-blank-lines = disabled # 30
+ktlint_standard_blank-line-before-declaration = disabled # 471
+ktlint_standard_no-empty-first-line-in-class-body = disabled # 508
+ktlint_standard_final-newline = disabled # 346 -- upstream's style; would touch nearly every file
+ktlint_standard_no-empty-first-line-in-method-block = disabled # 91
+ktlint_standard_no-blank-line-in-list = disabled # 42
+ktlint_standard_no-blank-line-before-rbrace = disabled # 34
+ktlint_standard_no-consecutive-blank-lines = disabled # 44
 ktlint_standard_no-trailing-spaces = disabled # 15
-ktlint_standard_no-multi-spaces = disabled # 7
-ktlint_standard_function-return-type-spacing = disabled # 4
-ktlint_standard_paren-spacing = disabled # 1
-ktlint_standard_annotation-spacing = disabled # 1
-ktlint_standard_spacing-between-declarations-with-annotations = disabled # 2
+ktlint_standard_no-multi-spaces = disabled # 9
+ktlint_standard_function-return-type-spacing = disabled # 5
+ktlint_standard_paren-spacing = disabled # 2
+ktlint_standard_annotation-spacing = disabled # 2
+ktlint_standard_spacing-between-declarations-with-annotations = disabled # 5
 
 # --- Disabled: naming and file layout. detekt owns naming instead (see detekt.yml), where the same
 # --- rules could be narrowed by configuration to nearly zero rather than switched off.
-ktlint_standard_function-naming = disabled # 320
-ktlint_standard_property-naming = disabled # 174
-ktlint_standard_package-name = disabled # 17
-ktlint_standard_filename = disabled # 14
+ktlint_standard_function-naming = disabled # 384
+ktlint_standard_property-naming = disabled # 190
+ktlint_standard_package-name = disabled # 25
+ktlint_standard_filename = disabled # 13
 ktlint_standard_backing-property-naming = disabled # 7
 
 # --- Disabled: the rest.
-ktlint_standard_import-ordering = disabled # 153
-ktlint_standard_function-expression-body = disabled # 239
-ktlint_standard_max-line-length = disabled # 70
-ktlint_standard_spacing-between-declarations-with-comments = disabled # 10
-ktlint_standard_no-consecutive-comments = disabled # 10
-ktlint_standard_comment-spacing = disabled # 10
-ktlint_standard_string-template = disabled # 3
-ktlint_standard_block-comment-initial-star-alignment = disabled # 3
+ktlint_standard_import-ordering = disabled # 214
+ktlint_standard_function-expression-body = disabled # 260
+# Turning this on also wakes `function-literal` (43 more): that rule is on, but it only wraps against a line
+# length, and there is none while this one is off.
+ktlint_standard_max-line-length = disabled # 120
+ktlint_standard_spacing-between-declarations-with-comments = disabled # 12
+ktlint_standard_no-consecutive-comments = disabled # 5
+ktlint_standard_comment-spacing = disabled # 4
+ktlint_standard_string-template = disabled # 5
+ktlint_standard_block-comment-initial-star-alignment = disabled # 2
 ktlint_standard_no-single-line-block-comment = disabled # 2
 ktlint_standard_no-semi = disabled # 1
