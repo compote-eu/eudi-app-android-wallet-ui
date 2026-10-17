@@ -109,7 +109,9 @@ fun UxButton(
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(tokens.space.s), verticalAlignment = Alignment.CenterVertically) {
             val shownIcon = icon ?: if (variant == UxButtonVariant.Search) "search" else null
-            if (shownIcon != null) Glyph(glyphFor(shownIcon), fg, tokens.type.button)
+            if (shownIcon != null) {
+                PartIcon("EL-button", "leading icon", shownIcon, fg, UxThemeAccess.compDp("comp.button.icon-glyph-size", tokens.size.iconMd))
+            }
             if (!iconOnly) BasicText(label, style = tokens.type.button.copy(color = fg, textAlign = TextAlign.Center))
         }
     }

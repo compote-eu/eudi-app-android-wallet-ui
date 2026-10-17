@@ -25,3 +25,6 @@ class TemplatesSemanticsIosTest : TemplatesSemanticsScenario()
 
 /** M5c: the registry schemas against what the adapters read, on the iOS simulator. */
 class RegistryAdapterIosTest : RegistryAdapterScenario()
+
+/** M6c: part assets by name, tinted masks, on the iOS simulator. */
+class AssetIosTest : AssetScenario()

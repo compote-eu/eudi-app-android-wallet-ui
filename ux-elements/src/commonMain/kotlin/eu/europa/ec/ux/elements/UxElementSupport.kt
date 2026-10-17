@@ -17,11 +17,12 @@
 
 package eu.europa.ec.ux.elements
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,9 +33,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.semantics.hideFromAccessibility
+import androidx.compose.ui.unit.Dp
+import eu.europa.ec.ux.theme.UxAsset
+import eu.europa.ec.ux.theme.UxAssetPaint
 import eu.europa.ec.ux.theme.UxThemeAccess
 
 /**
@@ -68,25 +75,47 @@ internal fun Modifier.uxFocusRing(shape: Shape, requester: FocusRequester? = nul
         )
 }
 
+/** What a decorative asset node draws: a test hook only (the node is hidden from accessibility). */
+data class UxAssetDrawn(val id: String, val resource: String, val tint: Color?)
+
+/** The semantics key of [UxAssetDrawn]. */
+val UxAssetDrawnKey = SemanticsPropertyKey<UxAssetDrawn>("UxAssetDrawn")
+
 /**
- * A decorative glyph (`aria-hidden`): drawn, never announced. The prototype draws text glyphs where the spec binds
- * brand icon assets (deviation, SPIKE-LOG M5).
+ * The asset [element]'s [part] draws for prop value [value], by the library's rules (`ux-library.json` element
+ * `assets`), bound for the active brand (`ux-assets.json`); null when the library names none or the brand binds none
+ * (DEC-080: no art is invented, the caller draws its fallback or nothing).
  */
 @Composable
-internal fun Glyph(glyph: String, color: Color, style: TextStyle, modifier: Modifier = Modifier) {
-    Box(modifier.clearAndSetSemantics { }) { BasicText(glyph, style = style.copy(color = color)) }
+@ReadOnlyComposable
+internal fun partAsset(element: String, part: String, value: String? = null): UxAsset? {
+    val resources = UxThemeAccess.resources
+    val id = resources.library.assetId(element, part, value) ?: return null
+    return resources.assets.asset(UxThemeAccess.brand.id, id)
 }
 
-/** Glyph for an `icon.<name>` id of the asset table; unknown ids draw a dot. */
-internal fun glyphFor(icon: String?): String = when (icon) {
-    "back" -> "←"
-    "close" -> "×"
-    "menu" -> "≡"
-    "notifications" -> "♪"
-    "help" -> "?"
-    "qr-code" -> "▣"
-    "search" -> "⌕"
-    "plus", "add" -> "+"
-    "copy" -> "❐"
-    else -> "•"
+/**
+ * A decorative asset (`aria-hidden`): loaded by its resource name, a mask tinted with [tint], an image drawn as is;
+ * drawn, never announced. Nothing is drawn when the host's resources cannot load the name.
+ */
+@Composable
+internal fun AssetImage(asset: UxAsset, tint: Color, size: Dp, modifier: Modifier = Modifier) {
+    val painter = UxThemeAccess.resources.painter(asset.resource) ?: return
+    val filter = if (asset.paint == UxAssetPaint.Mask) tint else null
+    Image(
+        painter = painter,
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        colorFilter = filter?.let { ColorFilter.tint(it) },
+        modifier = modifier.size(size).clearAndSetSemantics {
+            hideFromAccessibility()
+            this[UxAssetDrawnKey] = UxAssetDrawn(asset.id, asset.resource, filter)
+        },
+    )
+}
+
+/** [partAsset] drawn with [AssetImage], or nothing. */
+@Composable
+internal fun PartIcon(element: String, part: String, value: String?, tint: Color, size: Dp, modifier: Modifier = Modifier) {
+    partAsset(element, part, value)?.let { AssetImage(it, tint, size, modifier) }
 }

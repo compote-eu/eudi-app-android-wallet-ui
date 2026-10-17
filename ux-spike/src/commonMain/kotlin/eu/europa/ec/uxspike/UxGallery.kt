@@ -30,6 +30,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -56,6 +57,7 @@ import eu.europa.ec.ux.elements.templates.TplProgress
 import eu.europa.ec.ux.elements.templates.TplScan
 import eu.europa.ec.ux.elements.templates.TplSheet
 import eu.europa.ec.ux.theme.UxDecisionSteps
+import eu.europa.ec.ux.theme.UxSpecResources
 import eu.europa.ec.ux.theme.UxTheme
 
 /** Script-name prefix that opens the template gallery instead of a flow (`--ux-spike gallery-outcome`). */
@@ -88,7 +90,8 @@ enum class UxGalleryPage(private val explicitKey: String? = null) {
 @Composable
 fun UxGallery(initial: UxGalleryPage = UxGalleryPage.Sheet) {
     var page by remember { mutableStateOf(initial) }
-    UxTheme {
+    val resources by produceState(UxSpecResources.NONE) { value = exportedSpecResources() }
+    UxTheme(resources = resources) {
         Column(Modifier.fillMaxSize()) {
             Row(
                 Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing).horizontalScroll(rememberScrollState())

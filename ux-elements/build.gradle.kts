@@ -15,6 +15,7 @@
  */
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.security.MessageDigest
 
 // Spike module (SPIKE-PLAN.md §1.1). Same plugin block and android { } block as :shared-ui; no Koin.
 plugins {
@@ -25,26 +26,32 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// M5c (OR-2 (c)): the snapshot of the library YAML subset (spec repo commit recorded inside it) is embedded as a Kotlin
-// string under build/, so the registry-vs-library test runs on both targets and the spike repo builds without the spec
-// repo. Refresh: spike-evidence/M5c/tools/snapshot-library.py.
+// M5c (OR-2 (c)), M6c: the library data of the export (ux-spec/resources/files/ux-library.json, spec commit recorded
+// inside it; was the M5c snapshot of the library YAML subset) is embedded as a Kotlin string under build/, so the
+// registry-vs-library test runs on both targets. The task refuses a file whose sha256 is not UX_SPEC.lock's.
 abstract class SpecSnapshotFixture : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
     abstract val snapshot: RegularFileProperty
+
+    @get:Input
+    abstract val expectedSha256: Property<String>
 
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
     @TaskAction
     fun generate() {
-        val text = snapshot.get().asFile.readText()
+        val bytes = snapshot.get().asFile.readBytes()
+        val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        check(sha == expectedSha256.get()) { "ux-library.json sha256 is $sha, UX_SPEC.lock says ${expectedSha256.get()}" }
+        val text = bytes.decodeToString()
         check("\"source_commit\"" in text) { "the snapshot must record its source commit" }
         check('$' !in text && "\"\"\"" !in text) { "the snapshot cannot be embedded in a raw string" }
         val q = "\"\"\""
         val dir = outputDir.get().asFile.resolve("eu/europa/ec/ux/elements/fixture").apply { mkdirs() }
         dir.resolve("UxLibrarySnapshot.kt").writeText(
-            "// Generated from ux-elements/spec-snapshot/ux-library-subset.json. Do not edit.\n" +
+            "// Generated from ux-spec/resources/files/ux-library.json. Do not edit.\n" +
                 "package eu.europa.ec.ux.elements.fixture\n\n" +
                 "internal object UxLibrarySnapshot {\n    const val JSON: String = $q$text$q\n}\n",
         )
@@ -52,7 +59,14 @@ abstract class SpecSnapshotFixture : DefaultTask() {
 }
 
 val specSnapshotFixture = tasks.register<SpecSnapshotFixture>("specSnapshotFixture") {
-    snapshot.set(layout.projectDirectory.file("spec-snapshot/ux-library-subset.json"))
+    snapshot.set(rootProject.layout.projectDirectory.file("ux-spec/resources/files/ux-library.json"))
+    expectedSha256.set(
+        providers.fileContents(rootProject.layout.projectDirectory.file("ux-spec/UX_SPEC.lock")).asText.map { lock ->
+            val entry = Regex("""\{[^{}]*"path": "resources/files/ux-library.json"[^{}]*}""").find(lock)?.value
+                ?: error("UX_SPEC.lock lists no resources/files/ux-library.json")
+            Regex(""""sha256": "([0-9a-f]{64})"""").find(entry)!!.groupValues[1]
+        },
+    )
     outputDir.set(layout.buildDirectory.dir("generated/spec-snapshot/kotlin"))
 }
 

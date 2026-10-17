@@ -44,13 +44,6 @@ internal fun UxTokens.feedback(tone: UxNoticeTone): UxFeedbackColors = when (ton
     UxNoticeTone.Success -> colors.feedbackSuccess
 }
 
-internal fun glyphOf(tone: UxNoticeTone): String = when (tone) {
-    UxNoticeTone.Info -> "i"
-    UxNoticeTone.Warning -> "!"
-    UxNoticeTone.Error -> "×"
-    UxNoticeTone.Success -> "✓"
-}
-
 /**
  * EL-notice: an inline, non-blocking message (a plain note: not a live region, as the spec's v0 says). The tone shows
  * in the [title] text and a hidden glyph as well as the colour. The title and text are one merged node; [extra] (a
@@ -77,7 +70,7 @@ fun UxNotice(
             .padding(tokens.space.m),
         horizontalArrangement = Arrangement.spacedBy(tokens.space.s),
     ) {
-        Glyph(glyphOf(tone), fb.border, tokens.type.section)
+        PartIcon("EL-notice", "tone icon", tone.name.lowercase(), fb.border, UxThemeAccess.compDp("comp.notice.icon-size", tokens.size.iconMd))
         Column(verticalArrangement = Arrangement.spacedBy(tokens.space.xs)) {
             Column(Modifier.semantics(mergeDescendants = true) { }) {
                 if (title != null) {

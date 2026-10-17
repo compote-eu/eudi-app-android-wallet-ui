@@ -40,6 +40,8 @@ import androidx.compose.ui.semantics.testTag
 import coil3.compose.AsyncImage
 import eu.europa.ec.ux.theme.UxThemeAccess
 
+private const val EL_RP_IDENTITY = "EL-rp-identity"
+
 /** `EL-rp-identity trust`. */
 enum class UxTrust { Trusted, Untrusted, Unknown }
 
@@ -100,7 +102,7 @@ fun UxRpIdentity(
                         .semantics(mergeDescendants = true) { },
                     horizontalArrangement = Arrangement.spacedBy(tokens.space.xs),
                 ) {
-                    Glyph(glyphOfTrust(trust), badge.fg, tokens.type.status)
+                    PartIcon(EL_RP_IDENTITY, "trust glyph", trust.name.lowercase(), badge.fg, tokens.size.iconSm)
                     BasicText(trustLabel, style = tokens.type.status.copy(color = badge.fg))
                 }
             }
@@ -130,12 +132,6 @@ private fun RpLogo(url: String, tag: String) {
                 hideFromAccessibility()
             },
     )
-}
-
-private fun glyphOfTrust(trust: UxTrust): String = when (trust) {
-    UxTrust.Trusted -> "✓"
-    UxTrust.Untrusted -> "!"
-    UxTrust.Unknown -> "?"
 }
 
 @Composable

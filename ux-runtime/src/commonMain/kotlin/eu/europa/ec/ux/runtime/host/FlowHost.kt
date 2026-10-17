@@ -103,7 +103,11 @@ fun FlowHost(
     val accessibility = screens.accessibility ?: rememberPlatformAccessibilityBridge()
     val currentState by rememberUpdatedState(active?.state)
 
-    UxTheme(brand = brand ?: LocalUxBrand.current, mode = wireEnum(catalog.defaultMode, UxMode.entries, UxMode.Light)) {
+    UxTheme(
+        brand = brand ?: LocalUxBrand.current,
+        mode = wireEnum(catalog.defaultMode, UxMode.entries, UxMode.Light),
+        resources = screens.resources,
+    ) {
         Box(modifier.fillMaxSize()) {
             AnimatedContent(targetState = active, contentKey = { it?.state }) { shown ->
                 if (shown != null) {

@@ -35,3 +35,8 @@ class TemplatesSemanticsAndroidTest : TemplatesSemanticsScenario()
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class RegistryAdapterAndroidTest : RegistryAdapterScenario()
+
+/** M6c: part assets by name, tinted masks, on the Android host. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class AssetAndroidTest : AssetScenario()

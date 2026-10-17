@@ -69,6 +69,7 @@ fun UxLink(
             style = tokens.type.body.copy(color = tokens.colors.textLink, textDecoration = TextDecoration.Underline),
             modifier = Modifier.clearAndSetSemantics { },
         )
-        if (external) Glyph("↗", tokens.colors.textLink, tokens.type.body, Modifier.padding(start = tokens.comp.link.gap))
+        // The library's marker: open-in-new for an external link, chevron-right otherwise (EL-link `assets`).
+        PartIcon("EL-link", "marker", external.toString(), tokens.colors.textLink, tokens.size.iconSm, Modifier.padding(start = tokens.comp.link.gap))
     }
 }

@@ -35,6 +35,7 @@ import eu.europa.ec.ux.runtime.engine.FlowPlatform
 import eu.europa.ec.ux.runtime.engine.ServicePort
 import eu.europa.ec.ux.runtime.host.FlowHost
 import eu.europa.ec.ux.runtime.screen.CopyProvider
+import eu.europa.ec.ux.theme.UxSpecResources
 import eu.europa.ec.uxspike.resources.Res
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -63,6 +64,7 @@ fun UxHomeProbe(
     val bundle by produceState<Result<Pair<FlowBundle, CopyProvider>>?>(null, name) {
         value = runCatching { loadHomeProbe(name).let { it to probeCopy(it) } }
     }
+    val resources by produceState(UxSpecResources.NONE) { value = exportedSpecResources() }
     val loaded = bundle
     when {
         loaded == null -> Unit
@@ -79,7 +81,7 @@ fun UxHomeProbe(
                 platform = platform,
                 backHandler = backHandler,
                 onExit = { },
-                screens = remember(b) { uxSpikeScreens(copy) },
+                screens = remember(b, resources) { uxSpikeScreens(copy, resources) },
                 log = UxSpikeLog,
             )
         }

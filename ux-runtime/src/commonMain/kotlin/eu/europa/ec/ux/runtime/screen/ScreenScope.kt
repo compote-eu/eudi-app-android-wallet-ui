@@ -25,6 +25,7 @@ import eu.europa.ec.ux.elements.registry.UxTemplateAdapter
 import eu.europa.ec.ux.elements.registry.UxTemplateSchema
 import eu.europa.ec.ux.runtime.a11y.AccessibilityBridge
 import eu.europa.ec.ux.theme.UxBrand
+import eu.europa.ec.ux.theme.UxSpecResources
 import kotlinx.serialization.json.JsonObject
 
 /**
@@ -78,6 +79,8 @@ class FlowScreens(
     val custom: Map<String, CustomScreen> = emptyMap(),
     /** Brands by id; the bundle's `theme.default_brand` picks one. */
     val brands: Map<String, UxBrand> = emptyMap(),
+    /** The export's assets, library asset rules and `comp.*` table (M6c); [UxSpecResources.NONE] draws no asset. */
+    val resources: UxSpecResources = UxSpecResources.NONE,
     /** The screen-reader bridge; null uses the platform's ([eu.europa.ec.ux.runtime.a11y.rememberPlatformAccessibilityBridge]). */
     val accessibility: AccessibilityBridge? = null,
     val elements: Map<String, UxElementAdapter> = UxElementRegistry.elements,

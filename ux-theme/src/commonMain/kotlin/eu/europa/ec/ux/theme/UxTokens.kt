@@ -93,7 +93,7 @@ data class UxSpacing(val xs: Dp, val s: Dp, val m: Dp, val section: Dp, val gutt
 /** `sys.radius.*`. */
 data class UxRadii(val control: Dp, val card: Dp, val sheet: Dp, val pill: Dp, val floating: Dp)
 
-/** `sys.size.*`. */
+/** `sys.size.*` (`glyphHero` is `sys.size.glyph-hero`; `focusRing` is `comp.focus.ring-width`). */
 data class UxSizes(val target: Dp, val iconMd: Dp, val iconSm: Dp, val focusRing: Dp, val glyphHero: Dp)
 
 /** `sys.font.family.*` (the webfont is not bundled: the platform family stands in) and `sys.font.weight.*`. */
@@ -145,9 +145,9 @@ data class UxElevations(
 )
 
 /**
- * NOT IN SPEC (no `sys.*` token exists yet): opacities and the hairline width the elements used to hard-code. Named
- * here so no element holds a literal; the exporter must either add `sys.opacity.*` / `sys.size.hairline` to the spec
- * or carry them as brand constants (SPIKE-LOG M5c, `spike-evidence/M5c/exporter-requirements.md`).
+ * `sys.opacity.disabled`, `sys.opacity.scrim`, `sys.opacity.dimmed` and `sys.size.hairline` (RULING-W3 / DEC-079: were
+ * NOT IN SPEC until the spec gained them; the exporter's reverse coverage check, DEC-082, refuses a shell field
+ * without a token).
  */
 data class UxEffects(val disabledAlpha: Float, val scrimAlpha: Float, val dimmedAlpha: Float, val hairline: Dp)
 
@@ -169,10 +169,10 @@ data class UxRpIdentityTokens(val nameWeight: FontWeight, val nameUnverifiedWeig
 /** `comp.attribute-list.*`. */
 data class UxAttributeListTokens(val valueWeight: FontWeight)
 
-/** NOT IN SPEC (`comp.scan.*` does not exist): the minimum height of the camera region of TPL-scan. */
+/** `comp.viewfinder.min-height`: the minimum height of the camera region of TPL-scan (DEC-079). */
 data class UxScanTokens(val cameraMinHeight: Dp)
 
-/** NOT IN SPEC (`comp.qr-viewfinder.*` does not exist): the corner marks of EL-qr-viewfinder. */
+/** `comp.viewfinder.arm-stroke` / `arm-ratio`: the corner marks of EL-qr-viewfinder (DEC-079). */
 data class UxQrViewfinderTokens(val strokeWidth: Dp, val armRatio: Float)
 
 /** `comp.*` for the elements in scope (the nine elements and four templates): what they read beyond `sys.*`. */

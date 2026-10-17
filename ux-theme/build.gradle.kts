@@ -48,6 +48,8 @@ kotlin {
             api(libs.jetbrains.compose.runtime)
             api(libs.jetbrains.compose.foundation)
             implementation(libs.jetbrains.compose.ui)
+            // M6c: ux-assets.json, ux-library.json and ux-tokens.json (UxSpecResources).
+            implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

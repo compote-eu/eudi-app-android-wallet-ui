@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceExit
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceSpec
+import eu.europa.ec.ux.contract.resources.allDrawableResources
 import eu.europa.ec.ux.contract.resources.allStringResources
 import eu.europa.ec.ux.runtime.bundle.FlowBundle
 import eu.europa.ec.ux.runtime.bundle.LoadResult
@@ -40,12 +41,17 @@ import eu.europa.ec.ux.runtime.engine.ServicePort
 import eu.europa.ec.ux.runtime.host.FlowHost
 import eu.europa.ec.ux.runtime.screen.CopyProvider
 import eu.europa.ec.ux.runtime.screen.FlowScreens
+import eu.europa.ec.ux.theme.UxAssets
+import eu.europa.ec.ux.theme.UxComponentTokenTable
+import eu.europa.ec.ux.theme.UxLibraryAssets
+import eu.europa.ec.ux.theme.UxSpecResources
 import eu.europa.ec.ux.theme.generated.UxBrandConfig
 import eu.europa.ec.ux.theme.generated.UxThemeSpec
 import eu.europa.ec.uxspike.resources.Res
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.painterResource
 import eu.europa.ec.ux.contract.resources.Res as ContractRes
 
 /** Test tag of the text shown when the bundle or the script cannot be loaded. */
@@ -56,7 +62,12 @@ val UxSpikeLog: FlowLog = FlowLog { println("UX-SPIKE: $it") }
 
 /** What the entry needs before [FlowHost] can run. */
 sealed interface UxSpikeFlow {
-    data class Ready(val bundle: FlowBundle, val services: FakePresCrossDeviceServices, val copy: CopyProvider) : UxSpikeFlow {
+    data class Ready(
+        val bundle: FlowBundle,
+        val services: FakePresCrossDeviceServices,
+        val copy: CopyProvider,
+        val resources: UxSpecResources,
+    ) : UxSpikeFlow {
         val port: ServicePort get() = services.port()
     }
 
@@ -93,7 +104,8 @@ sealed interface UxSpikeFlow {
                 return Failed("script '$script' is for spec ${parsed.specHash}, the bundle is ${bundle.specHash}")
             }
             log.log("flow ${bundle.flowId} loaded (provisional=${bundle.provisional}), script ${parsed.script}")
-            return Ready(bundle, FakePresCrossDeviceServices(FakeScriptPlayer(parsed) { log.log(it) }), exportedCopy())
+            val services = FakePresCrossDeviceServices(FakeScriptPlayer(parsed) { log.log(it) })
+            return Ready(bundle, services, exportedCopy(), exportedSpecResources())
         }
     }
 }
@@ -103,6 +115,22 @@ sealed interface UxSpikeFlow {
  * read once, keyed by resource name, as the runtime's [CopyProvider] wants it (it is synchronous).
  */
 suspend fun exportedCopy(): CopyProvider = CopyProvider.of(ContractRes.allStringResources.mapValues { (_, r) -> getString(r) })
+
+/**
+ * The export's data files beside the bundle (V32, M6c): `ux-assets.json` (asset id to drawable per brand),
+ * `ux-library.json` (which asset each element part draws) and `ux-tokens.json` (`comp.*` values), read once from
+ * `:ux-contract`'s `Res`; a drawable is loaded by its resource name (`Res.allDrawableResources`).
+ */
+suspend fun exportedSpecResources(): UxSpecResources {
+    suspend fun file(name: String) = ContractRes.readBytes("files/$name").decodeToString()
+    val drawables = ContractRes.allDrawableResources
+    return UxSpecResources(
+        assets = UxAssets.parse(file("ux-assets.json")),
+        library = UxLibraryAssets.parse(file("ux-library.json")),
+        componentTokens = UxComponentTokenTable.parse(file("ux-tokens.json")),
+        painter = { resource -> drawables[resource]?.let { painterResource(it) } },
+    )
+}
 
 /** The context path a `to-help` exit carries (boundary Q10). */
 private const val ERROR_CLASS_PATH = "/flow/error_class"
@@ -116,12 +144,13 @@ fun FlowExit.typed(): PresCrossDeviceExit? =
 
 /**
  * How the spike draws the flow's screens: the hand-written consent screen by its screen id ([PresHandWrittenScreens]),
- * every other screen interpreted from the bundle, with the exported copy and the exported brands (`UxBrandConfig`).
+ * every other screen interpreted from the bundle, with the exported copy, brands (`UxBrandConfig`) and data files.
  */
-fun uxSpikeScreens(copy: CopyProvider): FlowScreens = FlowScreens(
+fun uxSpikeScreens(copy: CopyProvider, resources: UxSpecResources): FlowScreens = FlowScreens(
     copy = copy,
     custom = PresHandWrittenScreens,
     brands = UxBrandConfig.brands.associateBy { it.id },
+    resources = resources,
 )
 
 /**
@@ -160,7 +189,7 @@ fun UxFlowEntry(
             platform = platform,
             backHandler = backHandler,
             onExit = { exit -> onExit(exit?.typed()) },
-            screens = remember(f.bundle) { uxSpikeScreens(f.copy) },
+            screens = remember(f.bundle) { uxSpikeScreens(f.copy, f.resources) },
             log = UxSpikeLog,
         )
     }

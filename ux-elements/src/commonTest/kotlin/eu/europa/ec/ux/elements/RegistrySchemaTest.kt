@@ -37,9 +37,9 @@ import kotlin.test.assertTrue
 
 /**
  * M5c (OR-2 (b), (c)): `wireEnum` and unknown variants or props fail loudly, and the registry's prop names, enum
- * variants, events, slots and template regions equal the library YAML (a snapshot of `ux/library` of the spec repo,
- * its commit inside the snapshot file). Every difference is either a failure or an entry of [KNOWN_DEVIATIONS] with its
- * reason; a stale entry fails too.
+ * variants, events, slots and template regions equal the library (since M6c the export's `ux-library.json`, its spec
+ * commit inside; was a snapshot of `ux/library`). Every difference is either a failure or an entry of
+ * [KNOWN_DEVIATIONS] or [KNOWN_GAPS] with its reason; a stale entry fails too.
  */
 class RegistrySchemaTest {
 
@@ -89,18 +89,20 @@ class RegistrySchemaTest {
     }
 
     @Test
-    fun theRegistryCoversExactlyTheElementsAndTemplatesOfTheSnapshot() {
+    fun theRegistryCoversExactlyTheElementsAndTemplatesOfTheLibrary() {
         // EL-attribute-item is no node of its own: its props are the record fields of EL-attribute-list `items`.
-        assertEquals(snapshot.section("elements").keys - "EL-attribute-item", UxElementRegistry.elements.keys)
+        val parts = snapshot.section("elements").keys + snapshot.section("templates").keys
+        assertEquals(emptySet(), KNOWN_GAPS.keys - parts, "stale KNOWN_GAPS")
+        assertEquals(snapshot.section("elements").keys - "EL-attribute-item" - KNOWN_GAPS.keys, UxElementRegistry.elements.keys)
         assertEquals(UxElementRegistry.elements.keys, UxElementRegistry.elementSchemas.keys)
-        assertEquals(snapshot.section("templates").keys, UxElementRegistry.templates.keys)
+        assertEquals(snapshot.section("templates").keys - KNOWN_GAPS.keys, UxElementRegistry.templates.keys)
         assertEquals(UxElementRegistry.templates.keys, UxElementRegistry.templateSchemas.keys)
     }
 
     @Test
     fun registryPropsVariantsEventsSlotsAndRegionsEqualTheLibraryYaml() {
         val found = mutableSetOf<String>()
-        snapshot.section("elements").forEach { (id, yaml) ->
+        snapshot.section("elements").filterKeys { it !in KNOWN_GAPS }.forEach { (id, yaml) ->
             // EL-attribute-item is not a node: its props are the record fields of EL-attribute-list `items`.
             val schema = if (id == "EL-attribute-item") null else UxElementRegistry.elementSchemas.getValue(id)
             val yamlProps = yaml.jsonObject.section("props")
@@ -120,7 +122,7 @@ class RegistrySchemaTest {
                 if (slots != schema.slots) found += "$id: library slots $slots, registry slots ${schema.slots}"
             }
         }
-        snapshot.section("templates").forEach { (id, yaml) ->
+        snapshot.section("templates").filterKeys { it !in KNOWN_GAPS }.forEach { (id, yaml) ->
             val regions = yaml.jsonObject["regions"]!!.jsonArray.map { it.jsonPrimitive.content }.toSet()
             val registry = UxElementRegistry.templateSchemas.getValue(id).regions
             if (regions != registry) found += "$id: library regions $regions, registry regions $registry"
@@ -129,6 +131,15 @@ class RegistrySchemaTest {
         val stale = KNOWN_DEVIATIONS.keys - found
         assertTrue(unexplained.isEmpty(), "registry differs from the library YAML (commit ${snapshot["source_commit"]}):\n" + unexplained.sorted().joinToString("\n"))
         assertTrue(stale.isEmpty(), "KNOWN_DEVIATIONS entries that no longer apply:\n" + stale.sorted().joinToString("\n"))
+    }
+
+    @Test
+    fun everyAssetPartTheElementsDrawIsInTheLibrary() {
+        // The elements ask the library which asset a part draws (UxLibraryAssets); a renamed part would draw nothing.
+        val declared = snapshot.section("elements").flatMap { (id, e) ->
+            (e.jsonObject["assets"] as? JsonArray).orEmpty().map { id to it.jsonObject["part"]!!.jsonPrimitive.content }
+        }.toSet()
+        assertEquals(emptySet(), ASSET_PARTS_DRAWN - declared)
     }
 
     @Test
@@ -141,6 +152,25 @@ class RegistrySchemaTest {
     private fun JsonObject.section(key: String): JsonObject = this[key]!!.jsonObject
 
     private companion object {
+        /** Library parts with no registry entry yet: the Home parts (OR-8, DEC-080), a later milestone. */
+        val KNOWN_GAPS: Map<String, String> = listOf(
+            "EL-bottom-bar", "EL-document-card", "EL-segmented-switch", "EL-status-chip", "EL-trust-mark", "TPL-home",
+        ).associateWith { "GAP (M6c): a part of the Home screen probe (OR-8), not implemented in the registry yet" }
+
+        /** The (element, part) pairs whose asset the elements draw (`PartIcon` / `partAsset`). */
+        val ASSET_PARTS_DRAWN: Set<Pair<String, String>> = setOf(
+            "EL-app-bar" to "leading control",
+            "EL-app-bar" to "trailing control",
+            "EL-attribute-item" to "tick",
+            "EL-attribute-list" to "copy button",
+            "EL-button" to "leading icon",
+            "EL-link" to "marker",
+            "EL-notice" to "tone icon",
+            "EL-rp-identity" to "trust glyph",
+            "EL-status-hero" to "art",
+            "EL-status-hero" to "tone glyph",
+        )
+
         /** Difference found by the comparison to the reason it is accepted. Anything else fails the test. */
         val KNOWN_DEVIATIONS: Map<String, String> = mapOf(
             "EL-button: registry prop 'popup_state_label' is not in the library" to

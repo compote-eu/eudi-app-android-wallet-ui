@@ -40,6 +40,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import eu.europa.ec.ux.theme.UxThemeAccess
 import eu.europa.ec.ux.theme.uxElevation
 
+private const val EL_APP_BAR = "EL-app-bar"
+
 /** `EL-app-bar leading`. */
 enum class UxBarLeading { Back, Close, Menu, None }
 
@@ -80,7 +82,7 @@ fun UxAppBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != UxBarLeading.None) {
-            BarButton("$id.leading", leadingLabel.orEmpty(), glyphFor(leading.name.lowercase()), onLeading, leadingFocus, false)
+            BarButton("$id.leading", leadingLabel.orEmpty(), "leading control" to leading.name.lowercase(), onLeading, leadingFocus, false)
         } else {
             Box(Modifier.size(tokens.size.target))
         }
@@ -96,7 +98,7 @@ fun UxAppBar(
             }
         }
         if (trailing != UxBarTrailing.None) {
-            BarButton("$id.trailing", trailingLabel.orEmpty(), glyphFor(trailing.name.lowercase()), onTrailing, trailingFocus, badge)
+            BarButton("$id.trailing", trailingLabel.orEmpty(), "trailing control" to trailing.name.lowercase(), onTrailing, trailingFocus, badge)
         } else {
             Box(Modifier.size(tokens.size.target))
         }
@@ -104,7 +106,14 @@ fun UxAppBar(
 }
 
 @Composable
-private fun BarButton(tag: String, label: String, glyph: String, onClick: () -> Unit, focus: FocusRequester?, badge: Boolean) {
+private fun BarButton(
+    tag: String,
+    label: String,
+    icon: Pair<String, String>,
+    onClick: () -> Unit,
+    focus: FocusRequester?,
+    badge: Boolean,
+) {
     val tokens = UxThemeAccess.tokens
     Box(
         modifier = Modifier
@@ -115,7 +124,7 @@ private fun BarButton(tag: String, label: String, glyph: String, onClick: () -> 
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Glyph(glyph, tokens.colors.textOnAppBar, tokens.type.section)
+        PartIcon(EL_APP_BAR, icon.first, icon.second, tokens.colors.textOnAppBar, tokens.size.iconMd)
         if (badge) {
             Box(
                 Modifier.align(Alignment.TopEnd).padding(tokens.comp.appBar.badgeOffset).size(tokens.comp.appBar.badgeSize)

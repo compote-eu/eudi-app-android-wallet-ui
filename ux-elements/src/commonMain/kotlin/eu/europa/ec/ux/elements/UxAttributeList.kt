@@ -193,7 +193,7 @@ private fun AttributeRow(
                     .clickable(role = Role.Button) { onCopy(item.id) }
                     .semantics { contentDescription = "${copyLabel.orEmpty()} ${item.label}".trim() },
                 contentAlignment = Alignment.Center,
-            ) { Glyph(glyphFor("copy"), tokens.colors.textLink, tokens.type.body) }
+            ) { PartIcon("EL-attribute-list", "copy button", null, tokens.colors.textLink, tokens.size.iconMd) }
         }
     }
 }
@@ -208,7 +208,13 @@ private fun CheckMark(checked: Boolean, style: UxCheckboxStyle) {
         contentAlignment = Alignment.Center,
     ) {
         if (checked) {
-            Glyph("✓", if (style == UxCheckboxStyle.Filled) tokens.colors.actionPrimaryFg else tokens.colors.actionPrimaryBg, tokens.type.small)
+            PartIcon(
+                "EL-attribute-item",
+                "tick",
+                null,
+                if (style == UxCheckboxStyle.Filled) tokens.colors.actionPrimaryFg else tokens.colors.actionPrimaryBg,
+                UxThemeAccess.compDp("comp.attribute-item.tick-size", tokens.size.iconSm),
+            )
         }
     }
 }

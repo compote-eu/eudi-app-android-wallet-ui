@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.unit.Dp
 import eu.europa.ec.ux.theme.generated.UxBrandConfig
 
 /** The active tokens. Defaults to the exported default brand so an element never crashes outside a [UxTheme]. */
@@ -29,12 +30,22 @@ val LocalUxTokens = staticCompositionLocalOf { UxBrandConfig.defaultBrand.light.
 /** The active brand's `styles` and `layouts` selections. */
 val LocalUxBrand = staticCompositionLocalOf { UxBrandConfig.defaultBrand }
 
-/** Applies one brand in one mode. Never touches the wallet's `ThemeManager`. */
+/**
+ * Applies one brand in one mode, with the export's data files ([resources]: assets, library asset rules, `comp.*`
+ * table; M6c). Never touches the wallet's `ThemeManager`.
+ */
 @Composable
-fun UxTheme(brand: UxBrand = UxBrandConfig.defaultBrand, mode: UxMode = UxMode.Light, content: @Composable () -> Unit) {
+fun UxTheme(
+    brand: UxBrand = UxBrandConfig.defaultBrand,
+    mode: UxMode = UxMode.Light,
+    resources: UxSpecResources = LocalUxSpecResources.current,
+    content: @Composable () -> Unit,
+) {
     CompositionLocalProvider(
         LocalUxBrand provides brand,
+        LocalUxMode provides mode,
         LocalUxTokens provides brand.tokens(mode),
+        LocalUxSpecResources provides resources,
         content = content,
     )
 }
@@ -48,4 +59,13 @@ object UxThemeAccess {
     val brand: UxBrand
         @Composable @ReadOnlyComposable
         get() = LocalUxBrand.current
+
+    val resources: UxSpecResources
+        @Composable @ReadOnlyComposable
+        get() = LocalUxSpecResources.current
+
+    /** A `comp.*` dimension of the active brand and mode from `ux-tokens.json`, or [fallback] (a shell value). */
+    @Composable @ReadOnlyComposable
+    fun compDp(key: String, fallback: Dp): Dp =
+        LocalUxSpecResources.current.componentTokens.dp(LocalUxBrand.current.id, LocalUxMode.current, key) ?: fallback
 }

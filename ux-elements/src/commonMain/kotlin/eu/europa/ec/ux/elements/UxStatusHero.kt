@@ -38,17 +38,22 @@ import androidx.compose.ui.text.style.TextAlign
 import eu.europa.ec.ux.theme.UxFeedbackColors
 import eu.europa.ec.ux.theme.UxThemeAccess
 
+private const val EL_STATUS_HERO = "EL-status-hero"
+
 /** `EL-status-hero tone`. */
 enum class UxHeroTone { Success, Error, Warning, Info, Pending }
 
-/** `EL-status-hero art`. The prototype has no brand illustration assets, so both draw the tone glyph in a circle. */
+/**
+ * `EL-status-hero art`: the brand's tone illustration, or the tone glyph in a tone-coloured circle. An illustration the
+ * brand does not bind (or this platform cannot load) falls back to the glyph circle, as `ux-assets.json` `unbound` says.
+ */
 enum class UxHeroArt { Glyph, Illustration }
 
 /**
- * EL-status-hero: the centred outcome block (glyph, title, text). The title is the screen's h1 and takes the
+ * EL-status-hero: the centred outcome block (art, title, text). The title is the screen's h1 and takes the
  * template's heading focus target. `tone = Pending` makes the block a polite live region (title and text are read as
  * one announcement without moving focus); the other tones are not live, because a result is a new screen whose h1
- * takes focus on entry. The glyph is hidden. Test tags: [id], `<id>.title`, `<id>.text`.
+ * takes focus on entry. The art is hidden. Test tags: [id], `<id>.title`, `<id>.text`.
  */
 @Composable
 fun UxStatusHero(
@@ -57,7 +62,7 @@ fun UxStatusHero(
     title: String,
     modifier: Modifier = Modifier,
     text: String? = null,
-    @Suppress("UNUSED_PARAMETER") art: UxHeroArt = UxHeroArt.Illustration,
+    art: UxHeroArt = UxHeroArt.Illustration,
     focusRequester: FocusRequester? = null,
 ) {
     val tokens = UxThemeAccess.tokens
@@ -67,13 +72,8 @@ fun UxStatusHero(
         UxHeroTone.Warning -> tokens.colors.feedbackWarning
         UxHeroTone.Info, UxHeroTone.Pending -> tokens.colors.feedbackInfo
     }
-    val glyph = when (tone) {
-        UxHeroTone.Success -> "✓"
-        UxHeroTone.Error -> "×"
-        UxHeroTone.Warning -> "!"
-        UxHeroTone.Info -> "i"
-        UxHeroTone.Pending -> "…"
-    }
+    val toneKey = tone.name.lowercase()
+    val illustration = if (art == UxHeroArt.Illustration) partAsset(EL_STATUS_HERO, "art", toneKey) else null
     val semanticsModifier = if (tone == UxHeroTone.Pending) {
         Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
     } else {
@@ -84,11 +84,15 @@ fun UxStatusHero(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(tokens.space.m),
     ) {
-        Box(
-            Modifier.size(tokens.size.glyphHero).background(accent.bg, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Glyph(glyph, accent.border, tokens.type.display)
+        if (illustration != null) {
+            AssetImage(illustration, accent.border, UxThemeAccess.compDp("comp.status-hero.art-min-size", tokens.size.glyphHero))
+        } else {
+            Box(
+                Modifier.size(tokens.size.glyphHero).background(accent.bg, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                PartIcon(EL_STATUS_HERO, "tone glyph", toneKey, accent.border, UxThemeAccess.compDp("comp.status-hero.icon-size", tokens.size.iconMd))
+            }
         }
         val titleFocus = focusRequester ?: LocalUxHeadingFocus.current
         BasicText(
