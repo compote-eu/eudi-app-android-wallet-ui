@@ -117,8 +117,45 @@ Also note on `request`: is a mandatory attribute read as "dimmed"? (It should no
   once (5) and `success` is announced (6), and no focus remains on a node of the old state.
 - **Status:** open
 
+## Q-D10: Request sub-flow inside the DC API extension, 5 runs on the iPhone (D10, track C)
+
+- **Blocks:** row `D10` (Track C verdict). Not run means Incomplete; run and failed means a declared exception (SPIKE-PLAN R7).
+  The simulator harness (`--ux-spike dcapi-harness`, `spike-evidence/M10/`) is preliminary evidence only.
+- **Build:** the M10 commit (see `SPIKE-LOG.md` M10), Debug, from the device worktree (the orchestrator builds and installs it;
+  iPhone, iOS 27.0.1, team D2YJRYD9TA). The flag is **on** when the app-group default `ux-spike` holds a script name.
+- **Steps (owner):**
+  1. The orchestrator launches the app once with `--ux-spike happy` (for example
+     `xcrun devicectl device process launch --device <id> --terminate-existing eu.compote.euidi.dev --ux-spike happy`).
+     The argument is persisted to the app-group defaults, which the extension reads. Unlock once, then close the app.
+  2. Host `spike-evidence/M10/dcapi-test-page/index.html` over HTTPS (see its `README.md`) and open the URL in Safari on the iPhone.
+  3. On the Mac, start the log before each series: Console.app, select the iPhone, search `UX-SPIKE-D10`, Start streaming
+     (or after the runs: `sudo log collect --device --last 10m --output d10.logarchive`, then
+     `log show --archive d10.logarchive --predicate 'eventMessage CONTAINS "UX-SPIKE-D10"'`).
+  4. Run 5 times. Each run: kill Safari's tab or reload the page, tap **Request PID**, choose the wallet in the system sheet,
+     and in the extension tap Continue (request), wait for the verification code screen, tap Confirm, wait for the outcome, tap Close.
+     Between runs wait 10 s so the extension process is cold (check that `created` appears again).
+  5. Note per run: did the sub-flow render (y/n), did it complete (y/n), anything odd (blank frame, jetsam kill, system sheet
+     closed early). Safari shows `ERROR ...` on the page after a refusal; a refusal (`NotAllowedError`) is the expected result here:
+     the fake engine returns no data (`onDecision(null)`).
+- **Log lines** (tag `UX-SPIKE-D10`, `host=extension`):
+  `created`, `first-frame start_to_first_frame_ms=<ms> footprint_mb=<MB>`, `complete outcome=<exit> start_to_complete_ms=<ms> footprint_mb=<MB>`.
+  Footprint is `task_info` `phys_footprint` of the extension process. Start is the creation of the view controller, not the process launch (`wall_epoch_ms` allows correlation with the system log).
+- **Switch off afterwards:** launch the app with `--ux-spike off`.
+- **Fill in:**
+
+| Run | Rendered | Completed | start_to_first_frame_ms | footprint at first frame (MB) | footprint at complete (MB) | Notes |
+|---|---|---|---|---|---|---|
+| 1 | | | | | | |
+| 2 | | | | | | |
+| 3 | | | | | | |
+| 4 | | | | | | |
+| 5 | | | | | | |
+
+- **Pass (brief D10):** renders and completes on the device; memory and start time recorded (5 runs).
+- **Status:** open
+
 ## Later (queued when their milestone arrives)
 
-- D10 runs 1–5: iPhone with iOS 26.2+, team signing, hosting the HTTPS `org-iso-mdoc` page (M10).
+- D10 runs 1–5: now queued as Q-D10.
 - M11: an Android emulator or device; the D2 real low-memory kill; D7-Android TalkBack on a real device.
 - KC5: the app team's estimate (Martin).

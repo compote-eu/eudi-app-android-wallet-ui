@@ -55,6 +55,10 @@ class IosUxSpikeHook : DebugFlowHook {
     override fun EntryProviderScope<NavKey>.entries(navigator: AppNavigator) {
         entry<UxFlowRoute> { route ->
             val actions = rememberPlatformScreenActions()
+            if (IosUxSpikeSwitch.script() == HARNESS_SCRIPT) {
+                UxDcApiHarness()
+                return@entry
+            }
             UxFlowEntry(
                 route = route,
                 script = IosUxSpikeSwitch.script() ?: DEFAULT_SCRIPT,

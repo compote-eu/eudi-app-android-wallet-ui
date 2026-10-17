@@ -18,6 +18,9 @@ import SwiftUI
 import class SharedKit.IosPresentmentRequest
 import class SharedKit.IosPresentmentDisclosure
 import class SharedKit.DcApiConsentViewControllerKt
+#if DEBUG
+import class SharedKit.UxDcApiSubflowViewControllerKt
+#endif
 
 /// Hosts the wallet's **shared Compose** consent screen inside the extension.
 ///
@@ -37,7 +40,16 @@ struct ConsentHost: UIViewControllerRepresentable {
     let onDecision: ([IosPresentmentDisclosure]?) -> Void
 
     func makeUIViewController(context: Context) -> UIViewController {
-        DcApiConsentViewControllerKt.DcApiConsentViewController(
+        #if DEBUG
+        // Spike track C: with the app-group switch on (`--ux-spike <script>`), host the spike sub-flow instead.
+        if UxDcApiSubflowViewControllerKt.uxDcApiSubflowEnabled() {
+            return UxDcApiSubflowViewControllerKt.UxDcApiSubflowViewController(
+                request: request,
+                onDecision: { disclosures in onDecision(disclosures as? [IosPresentmentDisclosure]) }
+            )
+        }
+        #endif
+        return DcApiConsentViewControllerKt.DcApiConsentViewController(
             request: request,
             onDecision: { disclosures in
                 // Kotlin hands back `List<IosPresentmentDisclosure>?`, which arrives as `[Any]?`.
