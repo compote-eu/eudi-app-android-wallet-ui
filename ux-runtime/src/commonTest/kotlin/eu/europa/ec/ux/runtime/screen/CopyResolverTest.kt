@@ -23,6 +23,7 @@ import eu.europa.ec.ux.runtime.support.Fixture
 import eu.europa.ec.ux.runtime.support.TestCopy
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -41,7 +42,9 @@ class CopyResolverTest {
         val key = (overrides as JsonObject).keys.first()
         val base = TestCopy.sk(Fixture.root, key)
         val branded = resolver(brand).text(key)
-        assertEquals(TestCopy.table(Fixture.root).getValue("${TestCopy.table(Fixture.root).keys.first { it.endsWith("__$brand") }}"), branded)
+        // The override's own resource name (M6c: the export also carries branded resources of other screens).
+        val res = ((overrides[key] as JsonObject)["res"] as JsonPrimitive).content
+        assertEquals(TestCopy.table(Fixture.root).getValue(res), branded)
         assertTrue(branded != base, "override differs from the base text")
         assertEquals(base, resolver("another-brand").text(key))
     }
