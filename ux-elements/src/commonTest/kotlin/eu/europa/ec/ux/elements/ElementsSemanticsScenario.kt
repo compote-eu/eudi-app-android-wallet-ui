@@ -46,11 +46,13 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Semantics of the nine elements (SPIKE-PLAN §3 M5): role, name, heading, live region, focus target, events and the
@@ -185,6 +187,26 @@ abstract class ElementsSemanticsScenario {
         // Only a trusted name is drawn prominent (bold); an unverified name keeps the regular body weight.
         assertEquals(FontWeight.Bold, weightOf("rp1.name"))
         assertEquals(FontWeight.Normal, weightOf("rp2.name"))
+    }
+
+    @Test
+    fun rpIdentityLogoIsADecorativeImageHiddenFromAccessibilityAndAbsentWhenEmpty() = runComposeUiTest {
+        // EL-rp-identity `logo` (RULING-W1, M8r): an image node hidden from accessibility, with the name still naming
+        // the party; an empty or absent logo draws nothing. The URL is not fetched in the test (no network fetcher).
+        setUx {
+            Column {
+                UxRpIdentity("rp1", "Acme", UxTrust.Trusted, "Verified", logo = "https://www.example.sk/rp/logo")
+                UxRpIdentity("rp2", "Beta", UxTrust.Trusted, "Verified", logo = "")
+                UxRpIdentity("rp3", "Gamma", UxTrust.Untrusted, "Not verified")
+            }
+        }
+        val logo = onNodeWithTag("rp1.logo", useUnmergedTree = true).assertExists().fetchSemanticsNode().config
+        assertTrue(SemanticsProperties.HideFromAccessibility in logo, "the logo is hidden from accessibility")
+        assertEquals(null, logo.getOrNull(SemanticsProperties.ContentDescription), "decorative: no alt text")
+        assertEquals(null, logo.getOrNull(SemanticsProperties.Text), "decorative: no text")
+        onNodeWithTag("rp1.name", useUnmergedTree = true).assertTextEquals("Acme")
+        onAllNodesWithTag("rp2.logo", useUnmergedTree = true).assertCountEquals(0)
+        onAllNodesWithTag("rp3.logo", useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test

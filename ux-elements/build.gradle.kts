@@ -78,6 +78,10 @@ kotlin {
             api(libs.jetbrains.compose.runtime)
             api(libs.jetbrains.compose.foundation)
             implementation(libs.jetbrains.compose.ui)
+            // M8r: EL-rp-identity `logo` (a remote image URL) through the app's own image loader, Coil 3 (multiplatform,
+            // already in the catalog and in :shared-ui). The network fetchers come from the app: okhttp on Android
+            // (convention plugin), ktor3 on iOS (:shared-ui iosMain).
+            implementation(libs.coil.kt.compose)
         }
         commonTest {
             kotlin.srcDir(specSnapshotFixture.map { it.outputDir })

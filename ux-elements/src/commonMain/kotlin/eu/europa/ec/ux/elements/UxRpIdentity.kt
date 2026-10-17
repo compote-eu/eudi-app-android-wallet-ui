@@ -24,12 +24,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import coil3.compose.AsyncImage
 import eu.europa.ec.ux.theme.UxThemeAccess
 
 /** `EL-rp-identity trust`. */
@@ -38,8 +46,10 @@ enum class UxTrust { Trusted, Untrusted, Unknown }
 /**
  * EL-rp-identity: who asks for data. A section of labelled paragraphs (no role): caption, name, trust badge, service,
  * reason. The badge is text ([trustLabel]) plus a hidden glyph, never colour alone. Only a trusted name is prominent
- * (title size, bold); an untrusted or unknown name stays in plain body style. Test tags: [id], `<id>.name`,
- * `<id>.trust`, `<id>.service`, `<id>.reason`.
+ * (title size, bold); an untrusted or unknown name stays in plain body style. [logo] is the library's optional image
+ * of the party (`logo`, type url, RULING-W1): drawn beside the name in the avatar box, loaded with the app's image
+ * loader (Coil 3), and decorative (alt empty): hidden from accessibility, the name still names the party. Null or
+ * empty draws nothing. Test tags: [id], `<id>.logo`, `<id>.name`, `<id>.trust`, `<id>.service`, `<id>.reason`.
  */
 @Composable
 fun UxRpIdentity(
@@ -53,6 +63,7 @@ fun UxRpIdentity(
     caption: String? = null,
     serviceLabel: String? = null,
     reasonLabel: String? = null,
+    logo: String? = null,
 ) {
     val tokens = UxThemeAccess.tokens
     val c = tokens.colors
@@ -71,27 +82,54 @@ fun UxRpIdentity(
             .padding(tokens.space.m),
         verticalArrangement = Arrangement.spacedBy(tokens.space.xs),
     ) {
-        if (caption != null) BasicText(caption, style = tokens.type.caption.copy(color = c.textSecondary))
-        val nameStyle = if (trust == UxTrust.Trusted) {
-            tokens.type.section.copy(fontWeight = tokens.comp.rpIdentity.nameWeight)
-        } else {
-            tokens.type.body.copy(fontWeight = tokens.comp.rpIdentity.nameUnverifiedWeight)
-        }
-        BasicText(name, style = nameStyle.copy(color = c.textPrimary), modifier = Modifier.testTag("$id.name"))
-        Row(
-            modifier = Modifier
-                .background(badge.bg, RoundedCornerShape(tokens.radius.pill))
-                .padding(horizontal = tokens.space.s, vertical = tokens.space.xs)
-                .testTag("$id.trust")
-                .semantics(mergeDescendants = true) { },
-            horizontalArrangement = Arrangement.spacedBy(tokens.space.xs),
-        ) {
-            Glyph(glyphOfTrust(trust), badge.fg, tokens.type.status)
-            BasicText(trustLabel, style = tokens.type.status.copy(color = badge.fg))
+        Row(horizontalArrangement = Arrangement.spacedBy(tokens.space.s), verticalAlignment = Alignment.CenterVertically) {
+            if (!logo.isNullOrEmpty()) RpLogo(logo, "$id.logo")
+            Column(verticalArrangement = Arrangement.spacedBy(tokens.space.xs)) {
+                if (caption != null) BasicText(caption, style = tokens.type.caption.copy(color = c.textSecondary))
+                val nameStyle = if (trust == UxTrust.Trusted) {
+                    tokens.type.section.copy(fontWeight = tokens.comp.rpIdentity.nameWeight)
+                } else {
+                    tokens.type.body.copy(fontWeight = tokens.comp.rpIdentity.nameUnverifiedWeight)
+                }
+                BasicText(name, style = nameStyle.copy(color = c.textPrimary), modifier = Modifier.testTag("$id.name"))
+                Row(
+                    modifier = Modifier
+                        .background(badge.bg, RoundedCornerShape(tokens.radius.pill))
+                        .padding(horizontal = tokens.space.s, vertical = tokens.space.xs)
+                        .testTag("$id.trust")
+                        .semantics(mergeDescendants = true) { },
+                    horizontalArrangement = Arrangement.spacedBy(tokens.space.xs),
+                ) {
+                    Glyph(glyphOfTrust(trust), badge.fg, tokens.type.status)
+                    BasicText(trustLabel, style = tokens.type.status.copy(color = badge.fg))
+                }
+            }
         }
         if (service != null) Labelled(serviceLabel, service, "$id.service")
         if (reason != null) Labelled(reasonLabel, reason, "$id.reason")
     }
+}
+
+/**
+ * The avatar image: `comp.rp-identity.avatar-size` is 48 px in the library, the same as `size.target` (the exported
+ * rp-identity tokens carry the weights only). Decorative: its semantics are cleared and hidden, so a screen reader
+ * skips it; only the test tag stays.
+ */
+@Composable
+private fun RpLogo(url: String, tag: String) {
+    val tokens = UxThemeAccess.tokens
+    AsyncImage(
+        model = url,
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = Modifier
+            .size(tokens.size.target)
+            .clip(RoundedCornerShape(tokens.radius.card))
+            .clearAndSetSemantics {
+                testTag = tag
+                hideFromAccessibility()
+            },
+    )
 }
 
 private fun glyphOfTrust(trust: UxTrust): String = when (trust) {

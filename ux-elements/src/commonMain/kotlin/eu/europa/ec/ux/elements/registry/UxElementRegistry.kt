@@ -128,6 +128,7 @@ object UxElementRegistry {
                 caption = n.text("caption"),
                 serviceLabel = n.text("service_label"),
                 reasonLabel = n.text("reason_label"),
+                logo = n.text("logo"),
             )
         },
         "EL-attribute-list" to { n ->
@@ -239,6 +240,7 @@ object UxElementRegistry {
                 "caption" to null,
                 "service_label" to null,
                 "reason_label" to null,
+                "logo" to null,
             ),
         ),
         "EL-attribute-list" to UxElementSchema(
