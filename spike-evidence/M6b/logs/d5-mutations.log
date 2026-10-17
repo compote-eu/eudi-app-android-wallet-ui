@@ -1,0 +1,186 @@
+✓ baseline: real ux/ tree is clean
+✓ g0-intake-drift                      G0 tripped (1): SRC-ARF-5.01: sha256 drift (recorded 000000000000, actual e416c36961da)
+✓ g1-screen-missing-purpose            G1 tripped (1): ux/experience/screens/SCR-pres-verification-code.yaml: (root): 'purpose' is a required pro
+✓ g1-element-bad-prop-type             G1 tripped (1): ux/library/elements/EL-button.yaml: props/disabled/type: 'checkbox' is not one of ['text',
+✓ g2-element-not-accepted-by-region    G2 tripped (1): SCR-pres-verification-code/cancel: EL-button not accepted by region TPL-sheet.body
+✓ g2-date-with-breaking-spaces         G2 tripped (1): SCR-doc-list: data_model /id_card/valid_until: date «1. 3. 2034» has breaking spaces — wri
+✓ g2-region-empty-in-a-ui-state        G2 tripped (1): SCR-pres-verification-code: region header has 0 node(s) in ui_state no-url, allowed 1..1
+✓ g2-outcome-three-visible-actions     G2 tripped (2): SCR-pres-outcome-document-missing: region actions shows 3 node(s) at once in ui_state defa
+✓ g2-outcome-body-link-accepted        clean (positive control)
+✓ g2-same-device-return-without-replacing-close G2 tripped (1): SCR-pres-outcome-document-invalid: region actions shows 3 node(s) at once in ui_state same
+✓ g2-set-copy-non-text-prop            G2 tripped (1): SCR-pres-outcome-document-missing: rule RUL-zz-set-copy set_copy targets close.variant, no
+✓ g2-set-copy-text-prop                clean (positive control)
+✓ g2-event-not-emitted                 G2 tripped (1): FLW-pres-cross-device.verification-code: event APPROVE is not emitted by SCR-pres-verifica
+✓ g2-event-undeclared-control          G2 tripped (1): SCR-home/appbar: EL-app-bar has no event or control `notifications` (declared: leading (le
+✓ g2-control-emits-two-events          G2 tripped (1): SCR-home/appbar: control leading emits 2 events (OPEN_MENU, OPEN_NOTIFICATIONS) — one cont
+✓ g2-event-control-not-in-template     G2 tripped (1): EL-app-bar: event trailing names control `bell`, which renderer/templates/EL-app-bar.html.
+✓ g2-unknown-bind-path                 G2 tripped (1): SCR-pres-verification-code/code: bind /verification/otp not in data_model
+✓ g3-contrast-fail-high-contrast-mode  G3 tripped (7): theme idsk/high-contrast: sys.color.text.secondary on sys.color.surface.default = 2.08:1 <
+✓ g3-raw-value-in-library              G3 tripped (1): ux/library/tokens/comp.tokens.json: comp.button.primary-bg: raw value in library (must ali
+✓ g3-provenance-wrong-line             G3 tripped (1): product/theme/idsk/ref.tokens.json: ref.color.blue: quote not found at SRC-IDSK3 _colours-
+✓ g3-unbound-role                      G3 tripped (14): theme idsk/light: contract role sys.color.focus.ring not bound
+✓ g4-unreachable-state                 G4 tripped (3): FLW-pres-cross-device: state orphan is unreachable from scan
+✓ g4-missing-error-class               G4 tripped (3): FLW-pres-cross-device: state document-invalid is unreachable from scan
+✓ g4-error-branch-trap                 G4 tripped (5): FLW-pres-cross-device: alt branch verification-code --CANCEL--> trap never reaches recover
+✓ g4-profile-waiver-removed            G4 tripped (3): PRF-eudiw-v1: feature trust-mark-entry is legal: true and off without an owner ruling (wai
+✓ g4-profile-feature-off-without-waiver G4 tripped (3): PRF-zz-idsk: state FLW-dashboard#cert is unreachable under this profile (off: trust-mark-e
+✓ g4-profile-waiver-provisional        G4 tripped (4): PRF-eudiw-v1: feature trust-mark-entry: waiver DEC-038 is provisional — an owner ruling is
+✓ g4-profile-state-unlisted            G4 tripped (1): PRF-eudiw-v1: state FLW-dashboard#cert is unreachable under this profile (off: storage-swi
+✓ g4-profile-storage-switch-states-unlisted G4 tripped (10): PRF-eudiw-v1: state FLW-dashboard#doc-delete-confirm-cloud is unreachable under this profi
+✓ g4-profile-state-listed-but-reachable G4 tripped (1): PRF-eudiw-v1: feature trust-mark-entry lists state FLW-dashboard#home, which stays reachab
+✓ g4-profile-state-listed-ok           clean (positive control)
+✓ g4-profile-feature-on-no-waiver      clean (positive control)
+✓ g5-text-drifts-from-source           G5 tripped (1): sk:CPY-pres-code-title: text differs from source quote (record an `edit` + decision)
+✓ g5-literal-text-in-screen            G5 tripped (1): SCR-pres-verification-code/instruction.text: literal text 'Prepíšte kód' — text props must
+✓ g5-copy-from-other-brief             G5 tripped (1): SCR-pres-verification-code/instruction.text (BRF-001) uses CPY-act-intro-title from ux/pro
+✓ g5-quote-not-in-source               G5 tripped (1): sk:CPY-pres-code-cancel: quote not found at SRC-APP-STRINGS L690
+✓ g5-file-line-quote-not-in-source     G5 tripped (1): sk:CPY-home-identity-status-valid: quote not found at SRC-EUDIW-V1-EXP029R2 page.html:1690
+✓ g6-unknown-requirement               G6 tripped (1): ARF-HLR:RPA_999: `RPA_999` not found in {ux}/sources/arf-hlr-index.yaml
+✓ g6-active-brief-uncovered            G6 tripped (1): BRF-001: requirement UXR:REQ-PRES-016 not satisfied by any artifact of the brief
+✓ g6-unavailable-namespace             G6 tripped (1): FR:FR-PRES-001: namespace `FR` is unavailable
+✓ g7-candidate-without-record          G7 tripped (1): EL-button: maturity candidate but no candidate record in records/candidates/
+✓ g7-decision-superseded-by-unknown    G7 tripped (1): DEC-015: superseded_by DEC-999 is not another decision record
+✓ g8-promoted-snapshot-tampered        G8 tripped (1): ux/snapshots/SNAP-999/manifest.json: output out.html changed since promotion
+✓ g5-list-item-copy-missing            G5 tripped (1): copy CPY-pres-attr-does-not-exist used by SCR-zz-mutation-list:data_model/request/attribut
+✓ g2-list-prop-binds-non-list          G2 tripped (1): SCR-zz-mutation-list/attributes: list prop `items` binds /request/attributes of type 'stri
+✓ g2-list-item-bad-requirement         G2 tripped (1): SCR-zz-mutation-list: data_model example /request/attributes[0]: item key `requirement`='r
+✓ zz-brand-clean                       clean (positive control)
+✓ g3-second-brand-unbound-role         G3 tripped (14): theme zz/high-contrast: contract role sys.color.focus.ring not bound
+✓ g3-pointer-provenance-missing-path   G3 tripped (1): product/theme/zz/ref.tokens.json: ref.color.black: pointer /zz/color/ghost/$value does not
+✓ g3-authored-ref-unknown-decision     G3 tripped (1): product/theme/zz/ref.tokens.json: ref.color.white: authored provenance cites decision DEC-
+✓ g3-theme-file-not-in-resolver        G3 tripped (1): product/theme/zz/sys.light.tokens.json: not referenced by any theme in product/theme/resol
+✓ g3-mode-optional-falls-back-to-optional G3 tripped (1): resolver.json: optional mode 'dark' falls back to 'dark-high-contrast', which is not a req
+✓ g3-mode-optional-fallback-other-contrast G3 tripped (1): resolver.json: optional mode 'dark' falls back to 'high-contrast' of another contrast
+✓ g3-mode-facets-same-cell             G3 tripped (1): resolver.json: modes 'light' and 'dark' are the same cell light/standard
+✓ g3-mode-optional-file-in-other-brand G3 tripped (136): product/theme/idsk/sys.dark.tokens.json: sys.color.action.floating.bg: alias {ref.color.pr
+✓ g3-mode-optional-file-misnamed       G3 tripped (1): product/theme/eudiw_v1/sys.drak.tokens.json: not referenced by any theme in product/theme/
+✓ g3-dark-contrast-pair                G3 tripped (5): theme eudiw_v1/dark: sys.color.text.primary on sys.color.surface.default = 1.18:1 < 4.5:1 
+✓ g0-external-root-absent              clean (positive control)
+✓ g6-external-source-lines-missing     G6 tripped (1): SRC:SRC-EDK-ASIS#L99990-99999: lines L99990-99999 not in SRC-EDK-ASIS
+✓ g0-external-drift-is-warning         clean (positive control)
+✓ g0-external-unknown-root             G0 tripped (1): SRC-ZZ-EXT: unknown external root NO_SUCH_ROOT (declare it under external_roots)
+✓ g3-ref-value-not-its-quote           G3 tripped (1): product/theme/idsk/ref.tokens.json: ref.color.black: value {"colorSpace": "srgb", "compone
+✓ g3-css-var-undefined                 G3 tripped (1): ux/renderer/brands/edoklady/brand.css: var(--comp-button-raduis) names no comp token and n
+✓ g3-anatomy-token-alias               G3 tripped (1): ux/library/tokens/comp.anatomy.tokens.json: comp.list-item.gap: anatomy tokens are literal
+✓ g3-anatomy-token-unused              G3 tripped (1): library/tokens/comp.anatomy.tokens.json: comp.list-item.unused-gap: no stylesheet uses var
+✓ g3-comp-literal-dimension-outside-anatomy G3 tripped (1): ux/library/tokens/comp.tokens.json: comp.button.radius: raw value in library (must alias s
+✓ g3-comp-token-defined-twice          G3 tripped (1): ux/library/tokens/comp.tokens.json: comp.list-item.gap: defined twice in the library comp 
+✓ g3-px-ratchet-stray-literal          G3 tripped (1): renderer/base.css: 5 element px literals > ceiling 4 (renderer/px-ratchet.yaml) — use an a
+✓ g3-brand-comp-override-not-anatomy   G3 tripped (4): product/theme/edoklady/comp.tokens.json: comp.button.primary-bg: a brand comp override may
+✓ g3-brand-comp-override-not-its-quote G3 tripped (2): product/theme/edoklady/comp.tokens.json: comp.app-bar.padding-inline: value {"value": 24, 
+✓ g3-css-stray-brace                   G3 tripped (1): ux/renderer/base.css line 1042: `}` closes no block — the browser drops the rule after it 
+✓ g3-variant-brand-default-unknown-option G3 tripped (9): EL-attribute-list: style pairs: attr 'pairs' is already used by product/variants.yaml (dat
+✓ g3-variant-option-unstyled           G3 tripped (7): EL-attribute-item: style checkbox: attr 'checkbox' is already used by product/variants.yam
+✓ g3-variant-unknown-template          G3 tripped (1): product/variants.yaml: bottom-nav: template TPL-bottom-sheet does not exist in library/tem
+✓ g3-style-selection-unknown-option    G3 tripped (1): product/theme/eudiw_v1/components.yaml: EL-status-chip.mark = 'square' is not one of its o
+✓ g3-style-option-token-missing        G3 tripped (1): EL-status-chip: style mark: option dot names token comp.status-chip.dot-diameter, which is
+✓ g3-layout-scope-other-template       G3 tripped (1): TPL-detail: layout composition: scope screen SCR-home uses TPL-home, not TPL-detail
+✓ g3-layout-groups-scope-other-template G3 tripped (1): TPL-list: layout groups: scope screen SCR-doc-detail uses TPL-detail, not TPL-list
+✓ g3-layout-selection-unknown-option   G3 tripped (1): product/theme/eudiw_v1/components.yaml: TPL-detail.composition = 'tiles' is not one of its
+✓ g3-style-attr-taken                  G3 tripped (5): EL-status-chip: style ring: attr 'decision-steps' is already used by TPL-sheet layout deci
+✓ g3-brand-css-colour-literal          G3 tripped (1): renderer/brands/edoklady/brand.css line 1: raw colour literal '#126dff' — use var(--comp-…
+✓ g3-brand-css-unscoped-selector       G3 tripped (1): renderer/brands/edoklady/brand.css line 1: selector '.el-button' is not scoped to [data-br
+✓ g3-brand-css-raw-asset-url           G3 tripped (1): renderer/brands/edoklady/brand.css line 1: 'url(' — images come from the asset registry, f
+✓ g3-webfont-unused-family             G3 tripped (3): product/theme/idsk/webfonts.yaml: Source Sans 3: brand idsk's ref tier names none of Comic
+✓ g3-webfont-unpinned-url              G3 tripped (3): product/theme/idsk/webfonts.yaml: Source Sans 3: face 400 latin url 'http://example.com/so
+✓ g3-webfont-shared-registry           G3 tripped (1): product/theme/webfonts.yaml: a shared webfont registry is not read — each brand lists its 
+✓ g3-webfont-brands-disagree           G3 tripped (1): webfont 'Source Sans 3': faces differs between brands idsk and eudiw_v1 (product/theme/<br
+✓ g3-resolver-switch-unknown-brand     G3 tripped (1): resolver.json: brand switch label for 'retired', which is not one of its contexts
+✓ g3-brand-neutral-code                G3 tripped (1): tools/render.py:832: names brand 'idsk' ('idsk') — shared code is brand-neutral; read the 
+✓ g2-screen-raw-asset-path             G2 tripped (1): SCR-home: data_model./links/cert.example = '../assets/edoklady/document-art.id-card.png' n
+✓ g2-icon-unknown-name                 G2 tripped (1): SCR-pres-outcome-success/icon: icon 'no-such-icon' is not an icon of library/assets.yaml (
+✓ g2-icon-known-name                   clean (positive control)
+✓ g3-asset-binding-wrong-scope         G3 tripped (1): product/theme/edoklady/assets.yaml: illustration.success: source SRC-EDK-DS is not registe
+✓ g3-asset-unknown-id                  G3 tripped (1): product/theme/edoklady/assets.yaml: illustration.confetti is not an asset of library/asset
+✓ g3-asset-file-missing                G3 tripped (1): product/theme/edoklady/assets.yaml: illustration.wait: file 'wait-NOPE.svg' not found in S
+✓ g3-shadow-malformed                  G3 tripped (2): product/theme/edoklady/ref.tokens.json: ref.shadow.card: invalid shadow — layer 1: blur mu
+✓ g3-shadow-colour-not-literal         G3 tripped (1): product/theme/idsk/ref.tokens.json: ref.shadow.raised: invalid shadow — layer 0: color mus
+✓ g3-elevation-role-not-a-shadow       G3 tripped (1): theme idsk/light: sys.elevation.card is shadow but binds ref.color.white (color)
+✓ g2-template-text-glyph-icon          G2 tripped (2): ux/renderer/templates/EL-button.html.j2 line 1: text glyph '✓' used as an icon — draw it w
+✓ g2-template-glyph-table              G2 tripped (1): ux/renderer/templates/EL-button.html.j2 line 1: `marks` is a table of text glyphs ('!', 'i
+✓ g2-template-hidden-text-mark         G2 tripped (1): ux/renderer/templates/EL-button.html.j2 line 1: aria-hidden text '!' drawn as an icon — dr
+✓ g2-template-unknown-icon             G2 tripped (1): ux/renderer/templates/EL-button.html.j2: icon 'no-such-icon' is not an icon of library/ass
+✓ g5-copy-text-glyph                   G5 tripped (1): sk:CPY-cert-trustmark-placeholder: text glyph '✓' in copy renders as an icon — use the ele
+✓ g9-outcome-without-picture           G9 tripped (35): SCR-act-device-check--default (edoklady): outcome state draws no picture (no illustration,
+✓ g9-outcome-icon-only-hero            clean (positive control)
+✓ g9-trust-mark-placeholder            G9 tripped (1): SCR-home--default (edoklady): EL-trust-mark trustmark draws its placeholder drawing — bind
+✓ g9-icon-fallback                     G9 tripped (167): SCR-about--default (edoklady): EL-app-bar appbar draws icon.arrow-back-ios, which edoklady
+✓ g9-document-card-synthetic           G9 tripped (1): SCR-home--default (edoklady): EL-document-card card-id has no artwork in edoklady (art: sy
+✓ g9-screen-level-css                  G9 tripped (1): ux/renderer/brands/idsk/brand.css line 1: selector '[data-screen' styles one screen / node
+✓ g9-stale-debt                        G9 tripped (1): process/visual-debt.yaml: debt card-art SCR-log document-art.pid matches no finding any mo
+✓ g9-pid-art-unbound                   G9 tripped (3): SCR-doc-detail--cloud (edoklady): EL-document-card hero-pid has no artwork in edoklady (do
+✓ g5-brand-copy-quote-not-in-source    G5 tripped (1): sk/brands/eudiw_v1:CPY-home-title: quote not found at SRC-EUDIW-V1-EXP029R2 page.html:1690
+✓ g1-brand-copy-unknown-id             G1 tripped (1): ux/product/copy/sk/brands/eudiw_v1.yaml: CPY-home-does-not-exist overrides no shared copy 
+✓ g5-brand-copy-var-not-supplied       G5 tripped (2): SCR-home/card-id.status_label: args [] do not match CPY-home-card-valid vars ['date']
+✓ g4-branch-unguarded-not-last         G4 tripped (1): FLW-pres-cross-device: request-untrusted --CONTINUE--> branch 1 of 2 has no guard — only t
+✓ g2-guard-without-allow-transition    G2 tripped (1): FLW-pres-cross-device.request-untrusted: CONTINUE guard RUL-pres-request-no-selection-erro
+✓ g2-allow-transition-rule-on-screen   G2 tripped (1): SCR-pres-request: rule RUL-pres-untrusted-explicit-approval has the allow_transition effec
+✓ g2-assign-path-not-in-context        G2 tripped (1): FLW-pres-cross-device.request-optional-only: CONTINUE assign[0] set writes /request/tried,
+✓ g2-derive-over-non-list              G2 tripped (1): FLW-pres-cross-device: context /request/selected_count derives count_where over /request/a
+✓ g2-context-type-differs-from-screen  G2 tripped (1): FLW-pres-cross-device: context /request/attempted is string, but SCR-pres-request declares
+✓ g2-ui-state-when-unknown-ui-state    G2 tripped (1): FLW-pres-cross-device.verification-code: ui_state_when[0] ui_state no-such-state is not a 
+✓ g4-internal-transition-on-final      G4 tripped (1): FLW-pres-cross-device: final state done must not have transitions
+✓ g4-internal-error-branch             G4 tripped (1): FLW-pres-cross-device: request --SYS_ERROR--> is internal (target: null) with kind error —
+✓ g1-assign-unknown-op                 G1 tripped (1): ux/experience/flows/FLW-pres-cross-device.yaml: states/request-optional-only/on/CONTINUE: 
+✓ g4-branch-list-guarded-then-internal clean (positive control)
+✓ g4-agree-emitted-event-no-transition G4 tripped (1): FLW-pres-cross-device.request (SCR-pres-request ui_state default): a visible, enabled node
+✓ g4-agree-no-selection-internal-continue-dropped G4 tripped (1): FLW-pres-cross-device.request-no-selection (SCR-pres-request ui_state no-selection): a vis
+✓ g4-agree-transition-without-visible-emitter G4 tripped (1): FLW-pres-cross-device.request-optional-selected (SCR-pres-request ui_state optional-select
+✓ g4-agree-disabled-node-flow-goes     G4 tripped (1): FLW-pres-cross-device.request-optional-selected (SCR-pres-request ui_state optional-select
+✓ g4-agree-disabled-node-internal-noop clean (positive control)
+✓ g4-agree-guard-reads-undeclared-path G4 tripped (2): FLW-pres-cross-device.request-untrusted: CONTINUE guard RUL-pres-untrusted-explicit-approv
+✓ g4-agree-baselined-flow-new-finding  G4 tripped (1): FLW-pres-same-device.request (SCR-pres-request ui_state sd-default): a visible, enabled no
+✓ g4-agree-baseline-stale-key          G4 tripped (1): process/agreement-baseline.yaml: key FLW-pres-same-device/request/sd-default/1/RETURN matc
+✓ g4-agree-baseline-context-flow       G4 tripped (2): FLW-pres-cross-device.request (SCR-pres-request ui_state default): a visible, enabled node
+✓ g4-back-missing-in-back-flow         G4 tripped (1): FLW-pres-cross-device: non-final state request declares no `back` — in a flow that uses `b
+✓ g4-back-event-not-accepted           G4 tripped (1): FLW-pres-cross-device.sending: back fires CANCEL, which is not an `on` event of the state
+✓ g4-back-to-final-state               G4 tripped (1): FLW-pres-cross-device.auth: back to names done, which is final
+✓ g4-restore-to-unknown-state          G4 tripped (1): FLW-pres-cross-device.connecting: restore to names no-such-state, which is not a state of 
+✓ g4-exit-ref-unknown-state            G4 tripped (1): FLW-pres-cross-device.to-help: exit names state no-such-state of FLW-app-info, which does 
+✓ g4-exit-carries-undeclared-path      G4 tripped (1): FLW-pres-cross-device.to-help: exit carries /flow/error_reason, which the flow's context d
+✓ g4-entry-starts-in-final             G4 tripped (1): FLW-pres-cross-device: entry deeplink starts in done, which is final
+✓ g1-back-to-without-target            G1 tripped (1): ux/experience/flows/FLW-pres-cross-device.yaml: states/auth/back: 'target' is a required p
+✓ g2-entry-assign-undeclared-path      G2 tripped (1): FLW-pres-cross-device.entry deeplink assign[0] set writes /launch/url, which the flow's co
+✓ g4-back-history-positive             clean (positive control)
+✓ g4-invoke-probe-positive             clean (positive control)
+✓ g4-invoke-result-event-not-in-on     G4 tripped (1): FLW-pres-cross-device.verification-code: invoke SVC-zz-probe maps Ready to SYS_CODE_READY,
+✓ g4-invoke-result-not-mapped          G4 tripped (1): FLW-pres-cross-device.verification-code: invoke SVC-zz-probe does not map its result Expir
+✓ g4-invoke-error-not-mapped           G4 tripped (1): FLW-pres-cross-device.verification-code: state-scoped invoke SVC-zz-probe does not map its
+✓ g1-service-without-error             G1 tripped (2): ux/product/services/SVC-zz-probe.yaml: results: 'Error' is a required property
+✓ g4-sys-event-without-emitter         G4 tripped (1): FLW-pres-cross-device.scan: SYS_QR_SCANNED has no emitter — no invoke result maps it and t
+✓ g4-snapshot-restore-non-idempotent   G4 tripped (1): FLW-pres-cross-device.verification-code: restores from a snapshot, but its invoke SVC-zz-p
+✓ g4-ensures-reads-unwritten-path      G4 tripped (1): FLW-pres-cross-device.verification-code: SVC-zz-probe Ready ensures RUL-pres-request-has-s
+✓ g4-fixture-unknown-result            G4 tripped (1): SVC-zz-probe: fixture happy[0] names result Nope, which the service does not declare
+✓ g4-accepts-while-pending-unknown     G4 tripped (1): FLW-pres-cross-device.verification-code: accepts_while_pending names RETRY, which is not a
+✓ g2-invoke-unknown-service            G2 tripped (1): FLW-pres-cross-device.verification-code: invoke names unknown service SVC-zz-nothing
+✓ g2-invoke-result-field-missing       G2 tripped (1): FLW-pres-cross-device.verification-code: invoke Ready assign[0] set reads result field cod
+✓ g2-event-payload-field-missing       G2 tripped (1): FLW-pres-cross-device.request: TOGGLE_ITEM assign[0] reads event field id, which the TOGGL
+✓ g4-snapshot-restore-connecting       G4 tripped (1): FLW-pres-cross-device.connecting: restores from a snapshot, but its invoke SVC-pres-fetch-
+✓ g2-merge-field-not-in-context        G2 tripped (3): FLW-pres-cross-device.connecting: invoke OptionalOnly assign[0] merge writes /verifier/cou
+✓ g4-model-l58-reintroduced            G4 tripped (1): FLW-pres-cross-device: invariant request-nonempty-at-auth (RUL-pres-request-has-selection)
+✓ g4-model-guard-dropped               G4 tripped (1): FLW-pres-cross-device: invariant request-nonempty-at-auth (RUL-pres-request-has-selection)
+✓ g4-model-ensures-dropped             G4 tripped (1): FLW-pres-cross-device: invariant request-nonempty-at-auth (RUL-pres-request-has-selection)
+✓ g4-model-untrusted-ensures-dropped   G4 tripped (1): FLW-pres-cross-device: invariant request-nonempty-at-auth (RUL-pres-request-has-selection)
+✓ g4-model-context-deleted             G2+G4 tripped: FLW-pres-cross-device: declares invariants but no `context` — the model check has no data 
+✓ g4-model-invariant-unknown-state     G4 tripped (1): FLW-pres-cross-device: invariant request-nonempty-at-auth names state confirm, which the f
+✓ g4-model-guard-in-request-positive   clean (positive control)
+✓ g4-model-optional-only-continue-dropped G4 tripped (1): FLW-pres-cross-device: invariant continue-accepted-with-selection fails in request-optiona
+✓ g4-model-untrusted-trust-not-set     G4 tripped (1): FLW-pres-cross-device: invariant continue-accepted-with-selection fails in request-untrust
+✓ g4-model-optional-only-ensures-dropped G4 tripped (1): FLW-pres-cross-device: invariant optional-only-arrives-unticked (RUL-pres-request-optional
+✓ g4-model-accepts-event-not-in-states G4 tripped (1): FLW-pres-cross-device: invariant continue-accepted-with-selection requires APPROVE to be a
+✓ g4-layout-back-flow-state-without-back G4 tripped (1): FLW-pres-cross-device: non-final state auth declares no `back` — in a flow that uses `back
+✓ g1-layout-option-back-not-flow       G1 tripped (1): ux/library/templates/TPL-sheet.yaml: layouts/decision-steps/options/page/back: 'app' is no
+✓ g3-layout-decision-steps-page-positive clean (positive control)
+✓ g1-kmp-export-unknown-key            G1 tripped (1): ux/product/export/kmp.yaml: targets/FLW-pres-cross-device: Additional properties are not a
+✓ g2-kmp-export-unknown-flow           G2 tripped (1): product/export/kmp.yaml: target FLW-pres-zz names no flow
+✓ g2-kmp-export-unknown-brand          G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device brand zz is not a brand of product/theme/re
+✓ g2-kmp-export-default-brand-not-exported G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device default_brand edoklady is not one of its br
+✓ g2-kmp-export-unknown-locale         G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device locale en has no product/copy/<locale>/ fol
+✓ g2-kmp-export-mode-not-bound         G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device mode dark is not bound by brand idsk (it wo
+✓ g2-kmp-export-scope-screen-not-in-flow G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device in_brief_scope screen SCR-home is not shown
+✓ g2-kmp-export-brands-reordered-positive clean (positive control)
+✓ g2-kmp-export-typed-screen-not-in-flow G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device kotlin.typed_screens screen SCR-home is not
+✓ g1-kmp-export-not-in-spec-unit       G1 tripped (1): ux/product/export/kmp.yaml: targets/FLW-pres-cross-device/kotlin/not_in_spec/effects.hairl
+
+mutation self-test: 182 case(s), 0 failure(s)
+rc=0

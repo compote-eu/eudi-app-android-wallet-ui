@@ -34,11 +34,17 @@ appId: eu.compote.euidi.dev
     id: "continue"
 - extendedWaitUntil:
     visible:
+      id: "ux-state-auth"
+    timeout: 3000
+    optional: true
+- takeScreenshot: d6-happy-2b-auth
+- extendedWaitUntil:
+    visible:
       id: "ux-state-verification-code"
     timeout: 20000
 - assertVisible:
     id: "code"
-- assertVisible: "4711"
+- assertVisible: "482 913"
 - takeScreenshot: d6-happy-3-verification-code
 - tapOn:
     id: "confirm"

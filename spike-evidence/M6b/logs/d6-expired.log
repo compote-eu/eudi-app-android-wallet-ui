@@ -1,0 +1,28 @@
+2026-10-17T09:34:10.209776: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-17T09:34:10.212833: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-17T09:34:10.216696: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-17T09:34:10.25495: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/93338715-034D-4A10-9F70-FF8BBC4A29F5/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-17T09:34:10.258161: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=expired-at-request (persisting)
+objc[67469]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x105060398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x1051d8310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-17T09:34:40.35896: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-17T09:34:40.359762: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-17T09:34:40.363639: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-17T09:34:40.364382: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
+2026-10-17T09:34:53.305045: INFO: IosAuthorizationRedirects: ignoring an opened URL that is not an authorization redirect
+2026-10-17T09:34:53.305901: INFO: IosDeepLinks: a presentation request is waiting to be opened
+UX-SPIKE: argument --ux-spike=expired-at-request (persisting)
+UX-SPIKE: argument --ux-spike=expired-at-request (persisting)
+UX-SPIKE: argument --ux-spike=expired-at-request (persisting)
+UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script expired-at-request
+UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (IOS)
+UX-SPIKE: enter connecting (gen 1)
+UX-SPIKE: fetchRequest#1 (script expired-at-request)
+UX-SPIKE: enter error-expired (gen 2)
+UX-SPIKE: start deeplink: Started(state=connecting)
+UX-SPIKE: screen SCR-pres-outcome-expired: interpreted from the bundle (TPL-outcome, 6 nodes), state error-expired, ui_state default
+UX-SPIKE: a11y: SCR-pres-outcome-expired focus-heading hero (focused)
+UX-SPIKE: interpreter: close press -> CLOSE
+UX-SPIKE: enter closed (gen 3)
+UX-SPIKE: exit closed (FINAL_STATE)
+UX-SPIKE: exit Closed

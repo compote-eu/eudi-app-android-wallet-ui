@@ -1,0 +1,10 @@
+# M6b D4-iOS (QR entry): Home > Authenticate > "Online" opens QrScanRoute (Presentation); the debug hook redirects it
+# into the flow at its default entry, state `scan`.
+appId: eu.compote.euidi.dev
+---
+- tapOn: "Authenticate"
+- tapOn: "Online"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-${STATE}"
+    timeout: 20000
