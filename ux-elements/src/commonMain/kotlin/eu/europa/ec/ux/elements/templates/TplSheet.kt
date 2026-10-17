@@ -25,11 +25,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,6 +60,10 @@ import eu.europa.ec.ux.theme.uxElevation
  * difference lives in this function (track B changes only this implementation): `Sheet` draws the dialog as a bottom
  * sheet that is as tall as its content, over the inert [appbar] backdrop under a scrim that takes every tap; `Page`
  * draws the same dialog full screen, with no backdrop and no scrim.
+ *
+ * Insets: `Page` pads the whole page by `safeDrawing`; `Sheet` keeps the inert backdrop's app bar below the status bar,
+ * stops the sheet below the top safe area (it never slides under the status bar, however tall its content), and keeps
+ * the bottom inset inside the sheet.
  *
  * Semantics: the [appbar] region is inert (hidden from the accessibility tree, behind a tap-taking scrim); header,
  * body and actions form the dialog: a node with the dialog semantics, a traversal group, named by [dialogLabel] (the h1
@@ -101,7 +107,11 @@ fun TplSheet(
                     header,
                     body,
                     actions,
-                    Modifier.align(Alignment.BottomCenter).uxElevation(tokens.comp.sheet.shadow, sheetShape).clip(sheetShape),
+                    // M9r: a sheet as tall as its content stops below the status bar (the top safe area), so a long
+                    // header never draws under it; the bottom inset stays inside the sheet (the spacer below).
+                    Modifier.align(Alignment.BottomCenter)
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                        .uxElevation(tokens.comp.sheet.shadow, sheetShape).clip(sheetShape),
                     bottomInset = true,
                 )
             }
