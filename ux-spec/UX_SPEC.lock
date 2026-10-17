@@ -1,0 +1,440 @@
+{
+  "brands": [
+    "eudiw_v1",
+    "idsk"
+  ],
+  "bundle_schema_version": 1,
+  "default_brand": "eudiw_v1",
+  "exporter": {
+    "path": "tools/export_kmp.py",
+    "version": "0.3.0"
+  },
+  "files": [
+    {
+      "bytes": 3814,
+      "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceEvent.kt",
+      "sha256": "3251748f94772a62365462fff49a3eb669429890d9adb3ad18e920ac66ffe3d4"
+    },
+    {
+      "bytes": 1579,
+      "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceExit.kt",
+      "sha256": "32799326a0200b7319cdd707c0cf9a4a4708e3a0435abc86a628700842be17aa"
+    },
+    {
+      "bytes": 2389,
+      "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceInvoker.kt",
+      "sha256": "619c69e98203b9270a5e7bf520947a390a568db415d23aafc7e55c578d0900b5"
+    },
+    {
+      "bytes": 4474,
+      "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceServices.kt",
+      "sha256": "978ef90b71fa3fee24c9c67c8dca5ab122234ded3135f960c42393d33786bca3"
+    },
+    {
+      "bytes": 468,
+      "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceSpec.kt",
+      "sha256": "d201ac178ddca89c09c4fae43c4c0b6dd2c21e0264dfdb29fae35c31bade4cf8"
+    },
+    {
+      "bytes": 3690,
+      "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceState.kt",
+      "sha256": "9e4e4d84d78f803633107b7fbeb2eb2e099bcd52a5e0404d8036d15ab466f065"
+    },
+    {
+      "bytes": 129478,
+      "path": "fixtures/model/FLW-pres-cross-device.model.json",
+      "sha256": "9fc3ea67fa669f598be4e1b8ed8b5587ba05f1e3b8946689718c4afe3a8d0349"
+    },
+    {
+      "bytes": 330,
+      "path": "fixtures/scripts/doc-missing.json",
+      "sha256": "e4d7f1fb48304a2dba95997115473031b41a06779496f5c253305dcb3f2f4842"
+    },
+    {
+      "bytes": 390,
+      "path": "fixtures/scripts/expired-at-request.json",
+      "sha256": "91ceb55c7263f116a086b8c5078194af44397aa5637c629c679cf783a15c2197"
+    },
+    {
+      "bytes": 2221,
+      "path": "fixtures/scripts/expired-at-sending.json",
+      "sha256": "ebcbcf7ffd9d63b6b676f1060a2f0622bbe03421f06f16a437a1e3423f5e0fed"
+    },
+    {
+      "bytes": 2304,
+      "path": "fixtures/scripts/happy.json",
+      "sha256": "3b811725390be400ad0d8396305c111aeac25daf2adaf4b4bd3861a4d6b9ea66"
+    },
+    {
+      "bytes": 2308,
+      "path": "fixtures/scripts/slow.json",
+      "sha256": "c192aee9747a4b28c7ab19b06b76e03c4fb1e9e97a5d033168d37e85d6f96ad0"
+    },
+    {
+      "bytes": 1459,
+      "path": "fixtures/scripts/untrusted.json",
+      "sha256": "dcee2dae686995a2fa5da956926ba6aca591e8a06a41fc2480465ed222b91ded"
+    },
+    {
+      "bytes": 134638,
+      "path": "resources/files/FLW-pres-cross-device.bundle.json",
+      "sha256": "415c7435be51f415f5289679b47ae7e755bb50fe61ab13b7bf93e8142f8fda73"
+    },
+    {
+      "bytes": 8456,
+      "path": "resources/values/strings.xml",
+      "sha256": "1b4fe1ae4310e4f932650ef79a75b1618495c9a123dd763a9d568075f86712fa"
+    },
+    {
+      "bytes": 1910,
+      "path": "theme/kotlin/eu/europa/ec/ux/theme/generated/UxBrandConfig.kt",
+      "sha256": "7722efa90a9bd758a325fd18413e8c5a74e813b6cb00949f7fc9254194da737c"
+    },
+    {
+      "bytes": 43576,
+      "path": "theme/kotlin/eu/europa/ec/ux/theme/generated/UxBrandTokens.kt",
+      "sha256": "9d9cbd9a1cace78cc827d85793f30f526801a581e20a001dbdb6dcee18ac0059"
+    },
+    {
+      "bytes": 386,
+      "path": "theme/kotlin/eu/europa/ec/ux/theme/generated/UxThemeSpec.kt",
+      "sha256": "59ca88e89fd31ea125562c78e6c6533ab38255eb1efacc7885d8f50b3b7997c5"
+    }
+  ],
+  "flows": [
+    "FLW-pres-cross-device"
+  ],
+  "gates": {
+    "a11y": {
+      "renders": 240,
+      "source": "check",
+      "tree_hash": "sha256:30f22340d8a9cdfa0af337e16a2914776d9e7414d1339682a0badba051e311b0",
+      "violations": 0
+    },
+    "g4_profiles": {
+      "PRF-dvm": "green",
+      "PRF-eudiw-v1": "green"
+    },
+    "make_gates": "green"
+  },
+  "locale": "sk",
+  "lock_version": 1,
+  "modes": [
+    "light",
+    "high-contrast"
+  ],
+  "sources": [
+    {
+      "path": "experience/flows/FLW-pres-cross-device.yaml",
+      "sha256": "708b5b6016073377c816406b7d5293418fd71d6ab11de923880c889125ab5860"
+    },
+    {
+      "path": "experience/screens/SCR-pres-auth.yaml",
+      "sha256": "66ae998df9cabe348815cc6fca7ff5221d31078b8168d0814a58e21a7e6630fd"
+    },
+    {
+      "path": "experience/screens/SCR-pres-connecting.yaml",
+      "sha256": "4c024cfc4561e971e35b32ead2e4c6fdc61b4d0740253de4040a7f300230cd44"
+    },
+    {
+      "path": "experience/screens/SCR-pres-outcome-auth-failed.yaml",
+      "sha256": "38122efe80e17a604a551b53827e9eb855ea1bd41875a03c4ddf1b082ee03956"
+    },
+    {
+      "path": "experience/screens/SCR-pres-outcome-auth-unavailable.yaml",
+      "sha256": "6e610aed9c97fb2403740df1006943b8089f3cdb7df421b41fe8e370e76e93e4"
+    },
+    {
+      "path": "experience/screens/SCR-pres-outcome-cancelled.yaml",
+      "sha256": "62a52209f1a47cd422b5649a6d10e8466f77c42195fb586ee474831852b72fdb"
+    },
+    {
+      "path": "experience/screens/SCR-pres-outcome-document-invalid.yaml",
+      "sha256": "b8102bcc4e60bde152f3af5e0b22e9a70c4e10cc28b5e1960cf93f9de856b017"
+    },
+    {
+      "path": "experience/screens/SCR-pres-outcome-document-missing.yaml",
+      "sha256": "14122fbf9ec1b567711c35517c652231f8adc7b2b91b5ebfd2df9b9c00d21ff6"
+    },
+    {
+      "path": "experience/screens/SCR-pres-outcome-error.yaml",
+      "sha256": "55435ad4390e2c61aee068378d04bda6427d855ec80c02a747278cb72ad71b92"
+    },
+    {
+      "path": "experience/screens/SCR-pres-outcome-expired.yaml",
+      "sha256": "790ff497dd2a4b07ce3e660b513d4f7aee2d120ba663fcfb390cc91b8caf4890"
+    },
+    {
+      "path": "experience/screens/SCR-pres-outcome-invalid-qr.yaml",
+      "sha256": "07b4d180510c3c96e46a354cc85026571d06e393ce5f2369c259b4d18b853e37"
+    },
+    {
+      "path": "experience/screens/SCR-pres-outcome-success.yaml",
+      "sha256": "f9694b8c1dc0c7c8ae2ed9aa1e141cf77b98c8ddfa919f2ced468c700f92ab16"
+    },
+    {
+      "path": "experience/screens/SCR-pres-request.yaml",
+      "sha256": "1f2bff9bb9cf9ca23f95772503d0623a2f51dc9e4e2f684573ae6f37bf9ddecc"
+    },
+    {
+      "path": "experience/screens/SCR-pres-scan-qr.yaml",
+      "sha256": "96473dbfe1afb428f015c50e36a8949b4c8a929bf3c739454fa1204b1528c4f5"
+    },
+    {
+      "path": "experience/screens/SCR-pres-sending.yaml",
+      "sha256": "c354958298ae679c41d498892d43aa9d0cbc62e28360bf7bf86584b7c33f0148"
+    },
+    {
+      "path": "experience/screens/SCR-pres-untrusted-confirm.yaml",
+      "sha256": "0485c9d49dc6d8fd991b84c0ca9e03a346b86a09668b73d1363c2a32b468c0b3"
+    },
+    {
+      "path": "experience/screens/SCR-pres-verification-code.yaml",
+      "sha256": "17c56158098a2b8101a1714c23aee5bfdd346babc126c10c7c6e1a47f1161092"
+    },
+    {
+      "path": "library/elements/EL-app-bar.yaml",
+      "sha256": "288e2b7b67c28ff08563e836b76beb3c449df1f43ca083289a8308465477b6c4"
+    },
+    {
+      "path": "library/elements/EL-attribute-item.yaml",
+      "sha256": "194140c1c68f1f948d7ab6430d6ace66f32f38a5523fdb560d217c726dc64c24"
+    },
+    {
+      "path": "library/elements/EL-attribute-list.yaml",
+      "sha256": "e74bd07e8d6e4dded78a0a5c65449fd25b27a3803e8f3de78f94e54870e4d379"
+    },
+    {
+      "path": "library/elements/EL-button.yaml",
+      "sha256": "f6d904c1d099a4187dd5f0ae0f451fbb010cd360d3b03ef9324ce93078c1ddcb"
+    },
+    {
+      "path": "library/elements/EL-link.yaml",
+      "sha256": "807de9fcce768778d593e83b2d6b448ee81587788847b9cd44ccc4457a827fba"
+    },
+    {
+      "path": "library/elements/EL-notice.yaml",
+      "sha256": "73b36068290504f31fcd9a22304bf5a390d6cc04260ab74137b6486912d5ffd1"
+    },
+    {
+      "path": "library/elements/EL-qr-viewfinder.yaml",
+      "sha256": "633212dec3a1ad36f88544a68b5c6ef50d584e8410a159414440d6762a4e30d8"
+    },
+    {
+      "path": "library/elements/EL-rp-identity.yaml",
+      "sha256": "48d7207fdf0e5f25294789a74fd4407a25ebffab167ea66082785017efcdf906"
+    },
+    {
+      "path": "library/elements/EL-status-hero.yaml",
+      "sha256": "170b93a36b5fefb8ec3c45b97cb7bb2addadd3248b88acf6533657e7e7ede27a"
+    },
+    {
+      "path": "library/elements/EL-text.yaml",
+      "sha256": "bdfa54c2a1d6c91d00d26bd46d1bd92a9b6a8a7648451a83250c6c5b3817630b"
+    },
+    {
+      "path": "library/templates/TPL-outcome.yaml",
+      "sha256": "0daa78e5171a2fe7f55a8ba4bd70c5aeb79db1d9f35e496bbb6366fbf01c71a4"
+    },
+    {
+      "path": "library/templates/TPL-progress.yaml",
+      "sha256": "634235c16b24402ddb00a223774b7d091cadf8ea30d7b55c650a616ed2574e1e"
+    },
+    {
+      "path": "library/templates/TPL-scan.yaml",
+      "sha256": "f434b87d6f7a7fbbfe11c3dd89b7569d93c1354b6cc5b9c03dd313cbdec17a0b"
+    },
+    {
+      "path": "library/templates/TPL-sheet.yaml",
+      "sha256": "508647922f5349a6ab29255cae841802cfc32e1008197bdcdf46c111074f807d"
+    },
+    {
+      "path": "library/tokens/comp.anatomy.tokens.json",
+      "sha256": "406328fc40e9e8ba5a1de26585a1d6e6e12101ea688ec9c05a4b7f6619007eca"
+    },
+    {
+      "path": "library/tokens/comp.tokens.json",
+      "sha256": "72e1528a31841d7ff1c6f3812503b5ca6ee6a4fda9ba1886ac0709de3ef3cdcf"
+    },
+    {
+      "path": "library/tokens/sys.contract.yaml",
+      "sha256": "633b1fc5a45a3226d634ebfa75b6b1ced6052219abb756b4cc14deb228bb75bb"
+    },
+    {
+      "path": "product/copy/sk/BRF-001.yaml",
+      "sha256": "42c1d96ab12bd3eb9ab8e7f9dbcf4c884c22443f3d25f6ead3b1042440bb41fb"
+    },
+    {
+      "path": "product/copy/sk/brands/eudiw_v1.yaml",
+      "sha256": "8345aff8e307860933b4204ebd0225459334c404ab45bc58b6474c1d255c923f"
+    },
+    {
+      "path": "product/copy/sk/common.yaml",
+      "sha256": "fce3e40aed2c779882d4ede69a4289d4bb9b862ffaf23d19d448282abef8b5e1"
+    },
+    {
+      "path": "product/export/kmp.yaml",
+      "sha256": "9cd1c46040c05b5284ad9bf6dad1f1f6c5d37d5675cbe996ed72fb75c4010fd7"
+    },
+    {
+      "path": "product/profiles/PRF-dvm.yaml",
+      "sha256": "0cff1345bdb5e4b205062582d858ad5de84c204f2ed592bc64630eb55c0281e2"
+    },
+    {
+      "path": "product/profiles/PRF-eudiw-v1.yaml",
+      "sha256": "54b4c2fd4d688775618110ba09e3187b1e28492cff7c4f26da110318d9369d28"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-has-mandatory.yaml",
+      "sha256": "13b509e6b48b3ec8e534fcccc00bdfc59ca27b2ed813d9fd3330306efe7107f4"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-has-selection.yaml",
+      "sha256": "4727310a0daefc445535bc75827db7013bda59db579f0ecdfc1fb1ea93886870"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-instructions-visible.yaml",
+      "sha256": "709d6a4ff662f9f09d6378a1d036650f01dd6303663c063036689d35fea6e0b1"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-no-selection-blocks-continue.yaml",
+      "sha256": "45e743773c35c82f7ca69b10b6e652f57e30f3370d712c06b10c570b9ba5bdce"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-no-selection-error.yaml",
+      "sha256": "f5bfe17473fd9fd1adc2ad00335d837089eaf9dd247b74a2cc56aa2b16b232dd"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-optional-unticked.yaml",
+      "sha256": "7da73c0bc8c5e933944565f762a898a8ad6567abaecf40818691bf714b797623"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-privacy-link.yaml",
+      "sha256": "8fe3813885874216d4ee390de05791799e4732eed09f9ddfb6b8e9682099dc26"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-ready-unticked.yaml",
+      "sha256": "31f8e8ab7f56f2efe58ecd6fb685f8277740375230604b960d02281ea307f56a"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-service-line-same-device.yaml",
+      "sha256": "472e0976a6a49cb36dbe5621419156c6324f27360609eb591fc8260ffb6934ce"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-trusted-identity.yaml",
+      "sha256": "887b078e2ed7a7b9a3d75082342829ed4df52c8b37c86d1494532e5328621229"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-unticked-after-attempt.yaml",
+      "sha256": "71b9c58711e668bfefd954013083724a01f4709b8df12c5910e2a9b023e7adfa"
+    },
+    {
+      "path": "product/rules/RUL-pres-request-untrusted-identity.yaml",
+      "sha256": "7cc4c49806e8d0eaaf0abaec904f52a09326675ea6871f99fa6086c9336008b3"
+    },
+    {
+      "path": "product/rules/RUL-pres-sd-no-return-text.yaml",
+      "sha256": "08b7460a83081acb896f2163bea356c8ff7967b82cad658a3b21c3121abe54cc"
+    },
+    {
+      "path": "product/rules/RUL-pres-sd-return-label.yaml",
+      "sha256": "d7367a3a295868b5ad840ae1fb30f0f89406fac17673cc35d1c523f8a208eb3c"
+    },
+    {
+      "path": "product/rules/RUL-pres-sd-return-replaces-close.yaml",
+      "sha256": "3fed038fb5b52436993db3711f1b7978315086b85bf91da7b074845fec5b2d0f"
+    },
+    {
+      "path": "product/rules/RUL-pres-sd-return.yaml",
+      "sha256": "27c75bde751fdcf301bf9903caadd7404ca3f9a7a2dc95cfcf224c6b57dd05ac"
+    },
+    {
+      "path": "product/rules/RUL-pres-untrusted-confirm-service-line-same-device.yaml",
+      "sha256": "6e23320cfbf8d35bee61883ae649894caf2e8a2fc8cd542235b184c57ae768fb"
+    },
+    {
+      "path": "product/rules/RUL-pres-untrusted-explicit-approval.yaml",
+      "sha256": "8b16d66d0ab07114ff0f70238e8e620ea13ad9c3e08cf22f01a7a2559a76646c"
+    },
+    {
+      "path": "product/rules/RUL-pres-url-check-visible.yaml",
+      "sha256": "d13a4ae8550b6cad739f5d5829d02a707ea8e7fcc679d6e628b5a204d754a6e2"
+    },
+    {
+      "path": "product/services/SVC-pres-authenticate.yaml",
+      "sha256": "c3ef583535f010ccd1a3edcdd4f15ae1a56a50b6f773d0991d430e92373d8540"
+    },
+    {
+      "path": "product/services/SVC-pres-cancel.yaml",
+      "sha256": "51e2da39ae560214e1613703a72429c5186f80645e0be703371b7e221407e274"
+    },
+    {
+      "path": "product/services/SVC-pres-fetch-request.yaml",
+      "sha256": "3725085357fc9bcd1f0279b29b07d3f253c0012b96174e66c361c677bf323e0c"
+    },
+    {
+      "path": "product/services/SVC-pres-send.yaml",
+      "sha256": "5684ed5a65dc997dd28f5c1378050569bcd0901a4805a59eff4961acadc5ee9f"
+    },
+    {
+      "path": "product/services/SVC-pres-verification-code.yaml",
+      "sha256": "367125f6c33e1e49feecb3238a74c87de85a9d3c055e61abc308f3646a7bd407"
+    },
+    {
+      "path": "product/theme/edoklady/comp.tokens.json",
+      "sha256": "cf4a40fd21f5ba0557488258c91c6264937542e31fc9057e57cffcaefe0b8fa1"
+    },
+    {
+      "path": "product/theme/edoklady/ref.tokens.json",
+      "sha256": "550be55e56bc4bb9edbd138009768256191542e688fc67e8f2dec09bd1e4894d"
+    },
+    {
+      "path": "product/theme/eudiw_v1/comp.tokens.json",
+      "sha256": "0f47ae3330b29f2da0d2365cc97545e6bdd635f26d518660fa91e7058c38377d"
+    },
+    {
+      "path": "product/theme/eudiw_v1/components.yaml",
+      "sha256": "0f623680dc9ef76744b3af38cca7e9a95a971d5d08f1c6aced5c9eefdbb334cf"
+    },
+    {
+      "path": "product/theme/eudiw_v1/ref.tokens.json",
+      "sha256": "a7da8946d47e37b9f7891f09497e9f682c147056219ec249005869967eb64823"
+    },
+    {
+      "path": "product/theme/eudiw_v1/sys.high-contrast.tokens.json",
+      "sha256": "83bfd44c687d0d15eb0c201c66209b2cdf4853f58b4494af5ffcf3cf99316e9e"
+    },
+    {
+      "path": "product/theme/eudiw_v1/sys.light.tokens.json",
+      "sha256": "78f8a90b01080db806d01fe5dc357c1da3bdb9c159701804280b8f175b1b4f3a"
+    },
+    {
+      "path": "product/theme/idsk/components.yaml",
+      "sha256": "67e9ed7a3fcc1b3755183c0a216bc32b7c870565f19081b06eff2f2c603ac923"
+    },
+    {
+      "path": "product/theme/idsk/ref.tokens.json",
+      "sha256": "8c51580c7af7a5a9538ab9fc8511ed10c01b6758db92a9a36037e22daf6b8b23"
+    },
+    {
+      "path": "product/theme/idsk/sys.high-contrast.tokens.json",
+      "sha256": "d18c5cb7bd64ef50a5fd9152892c15feea3742b32eed8f6a15c7a2a5b49add5d"
+    },
+    {
+      "path": "product/theme/idsk/sys.light.tokens.json",
+      "sha256": "047e1ad0fba8b99c13202fd638b3b7572421cce1b0e77d6e83fde0f753f3370c"
+    },
+    {
+      "path": "product/theme/resolver.json",
+      "sha256": "4a05f2b216cfea0f47dc507461b38ab2727a8eee8760fa525e2f31143b766834"
+    },
+    {
+      "path": "schemas/kmp-bundle.schema.json",
+      "sha256": "414231220f679292ecb849aa4eb023838dbf28ea372140c266039b19359ab29a"
+    }
+  ],
+  "spec_hash": "sha256:88e2b61145bd0a2586831e88bab4c5ac0df93c2ac7b6fe85d9cec779f44702d0",
+  "ux_commit": "3d6ecb6e601bae931ce5f6f55be216cf841c0817",
+  "ux_dirty": false,
+  "ux_repo": "dvm-edoklady-eudiw-analysis"
+}

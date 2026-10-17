@@ -1,0 +1,61 @@
+{
+  "calls": {
+    "authenticate": [
+      {
+        "result": {
+          "type": "Authenticated"
+        }
+      }
+    ],
+    "fetchRequest": [
+      {
+        "result": {
+          "request": {
+            "attributes": [
+              {
+                "id": "given_name",
+                "label_copy": "CPY-pres-attr-given-name",
+                "requirement": "mandatory",
+                "value": "Ján"
+              },
+              {
+                "id": "family_name",
+                "label_copy": "CPY-pres-attr-family-name",
+                "requirement": "mandatory",
+                "value": "Novák"
+              }
+            ],
+            "document_name": "Občiansky preukaz"
+          },
+          "type": "RpUntrusted",
+          "verifier": {
+            "name": "Príkladová banka, a.s.",
+            "privacy_url": null,
+            "reason": "Overenie totožnosti pri otvorení účtu",
+            "service_name": "Internetové bankovníctvo",
+            "trust": "untrusted"
+          }
+        }
+      }
+    ],
+    "send": [
+      {
+        "result": {
+          "type": "Sent"
+        }
+      }
+    ],
+    "verificationCode": [
+      {
+        "result": {
+          "code": "482 913",
+          "portal_url": null,
+          "type": "Ready"
+        }
+      }
+    ]
+  },
+  "flow_id": "FLW-pres-cross-device",
+  "script": "untrusted",
+  "spec_hash": "sha256:88e2b61145bd0a2586831e88bab4c5ac0df93c2ac7b6fe85d9cec779f44702d0"
+}

@@ -1,0 +1,88 @@
+{
+  "calls": {
+    "authenticate": [
+      {
+        "result": {
+          "type": "Authenticated"
+        }
+      }
+    ],
+    "cancel": [
+      {
+        "result": {
+          "type": "Cancelled"
+        }
+      }
+    ],
+    "fetchRequest": [
+      {
+        "result": {
+          "request": {
+            "attributes": [
+              {
+                "id": "given_name",
+                "label_copy": "CPY-pres-attr-given-name",
+                "requirement": "mandatory",
+                "value": "Ján"
+              },
+              {
+                "id": "family_name",
+                "label_copy": "CPY-pres-attr-family-name",
+                "requirement": "mandatory",
+                "value": "Novák"
+              },
+              {
+                "id": "birth_date",
+                "label_copy": "CPY-pres-attr-birth-date",
+                "requirement": "optional",
+                "selected": false,
+                "value": "12. 4. 1985"
+              },
+              {
+                "id": "nationality",
+                "label_copy": "CPY-pres-attr-nationality",
+                "requirement": "optional",
+                "selected": false,
+                "value": "SK"
+              },
+              {
+                "id": "age_over_18",
+                "label_copy": "CPY-pres-attr-age-over-18",
+                "requirement": "optional",
+                "selected": false
+              }
+            ],
+            "document_name": "Občiansky preukaz"
+          },
+          "type": "RequestReady",
+          "verifier": {
+            "name": "Príkladová banka, a.s.",
+            "privacy_url": "https://www.example.sk/ochrana-udajov",
+            "reason": "Overenie totožnosti pri otvorení účtu",
+            "service_name": "Internetové bankovníctvo",
+            "trust": "trusted"
+          }
+        }
+      }
+    ],
+    "send": [
+      {
+        "result": {
+          "type": "Sent"
+        }
+      }
+    ],
+    "verificationCode": [
+      {
+        "result": {
+          "code": "482 913",
+          "portal_url": "https://www.example.sk/overenie",
+          "type": "Ready"
+        }
+      }
+    ]
+  },
+  "flow_id": "FLW-pres-cross-device",
+  "script": "happy",
+  "spec_hash": "sha256:88e2b61145bd0a2586831e88bab4c5ac0df93c2ac7b6fe85d9cec779f44702d0"
+}

@@ -1,0 +1,21 @@
+{
+  "calls": {
+    "cancel": [
+      {
+        "result": {
+          "type": "NothingToCancel"
+        }
+      }
+    ],
+    "fetchRequest": [
+      {
+        "result": {
+          "type": "Expired"
+        }
+      }
+    ]
+  },
+  "flow_id": "FLW-pres-cross-device",
+  "script": "expired-at-request",
+  "spec_hash": "sha256:88e2b61145bd0a2586831e88bab4c5ac0df93c2ac7b6fe85d9cec779f44702d0"
+}
