@@ -31,6 +31,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M12 | not started | — | — | — | — | ⟲ final |
 | M11 | done (2026-10-17): Android drills D1, D2(a) and D2(b-approx) (launcher root only; link root failed, F-D2-1, fixed and re-run in M11c), D4, D6, D7 passed; real LMK and real-phone TalkBack queued | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | Dev Debug APK on emulator `spike_pixel` (API 37, arm64), sk, Light. P2 (the hook module loads in the first activity, `UX-SPIKE: hook module loaded`) and P6 (`UxFlowRoute` + snapshot restore after process death) verified on Android; Release APK isolation clean again. 0 of 3 hard states needed a Back or restore handler outside the bundle policy: no KC2 signal from Android. No KC3 signal (emulator, events only). Findings F-D2-1, F-M11-1..4 in "M11 notes". Gate GREEN 4360. |
 | M11c | done (2026-10-17; rework of M11 D2 after F-D2-1, RULING-W6): D2-Android passed for BOTH task roots after the T9 guard | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | One extra pre-spike file (T9, `EudiComponentActivity.kt`, +28/-1) with a `launchIntentConsumed` flag in `onSaveInstanceState`, active only when a `DebugFlowHook` is bound. D2 re-run on the emulator, 12 runs (2 roots x request/auth/sending x am kill and LMK approximation): request → snapshot, auth → request, sending → error, no new send. D4 passed; switch-off by host test; Release isolation clean. KC2 not hit. See "M11c notes". Gate GREEN 4364. |
+| M11b | done (probe, OR-5; not counted toward the verdict) | 2026-10-17 | 2026-10-17 | Opus | see Commits | Step 0: the T9 guard asks `DebugFlowHook.isEnabled()` (RULING-M11b-0). `InteractorPresCrossDeviceServices` implements the generated services and declaration on the REAL interactors (no interactor changed): 21 results, 5 mapped, 10 lossy, 6 impossible (`undeclared` = authenticate Expired, fetchRequest DocInvalid/Expired, send Expired, verificationCode Ready/Expired, pinned). `--ux-spike real` wired on both hooks, not run against a verifier. Linked into the iOS Debug app and the Android debug APK; release isolation clean. Report: `spike-evidence/M11b/adapter-report.md`. Gate GREEN 4444. |
 
 ## Rulings
 
@@ -143,6 +144,7 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 | 2026-10-17 | 8fd57b22d (`spike/d8-1`, deleted) | M8 D8-logo | full `./spike-gate.sh` (5 min 16 s) | 4279 | 6 (`SchemaCheckTest` 2 tests × host/iOS: `unknown prop 'logo'`; `InterpreterScenario` × 2: pinned fixture) | 0 | pass | pass | Debug and Release build | GATE RED |
 | 2026-10-17 | 25e2e31dc (+ M11 evidence, docs only) | M11 | full `./spike-gate.sh` (no code change; the run includes regen-smoke) | 4360 | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 | 2026-10-17 | 8ff589aca | M11c | full `./spike-gate.sh` (includes regen-smoke; +4 tests: `LaunchIntentGuardTest` 2 x demo/dev) | 4364 | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+| 2026-10-17 | 44514b4b5 | M11b | full `./spike-gate.sh` (includes regen-smoke 9/9; +6 `LaunchIntentGuardTest` 3 x demo/dev, +74 `InteractorPresCrossDeviceServicesTest` 37 x host/iOS) | 4444 | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 
 M6a test delta, 4273 → 4279 (+6): `ExportedModelReplayTest` adds 3 tests on each target. Nothing else changed in count:
 the 2 `ProvisionalBundleResourceTest` tests became the 2 `BundleResourceTest` tests; 17 `Provisional*` runtime classes,
@@ -204,6 +206,7 @@ and M7 (M5c onward: recorded by the milestone itself).
 | M9r | **rework** (test harness; independent-verifier remediation of D9 = (C)) | about 55 min (15:43 first re-export to 16:36 shot; commits 16:19 to 16:34), incl. one full gate of 13 min 51 s (regen-smoke 8 min 11 s) and two regen-smoke runs before the fix (7 min 28 s all, 2 min 10 s host) | tests +1 573/−955 (ux-runtime +1 288/−630 incl. `SyntheticFlow` 293, `ExportWalk` 237, `ExportedPoliciesTest` 186; ux-elements +181/−141; ux-spike +230/−130; ux-contract +4/−80); main: `TplSheet` +11/−1, `FakePresCrossDeviceServices` +17/−27 (results declared from the generated table); build +91/−17 (5 `build.gradle.kts`: `uxSpecDir`, own build dir, `ux.spec.dir`, scripts fixture); root +71/−3 (`spike-regen-smoke.sh` 55, `spike-gate.sh` 16); tool `reexport-d8.sh` 22 | 0 (5 re-exports archived as evidence, not committed to `ux-spec/`) | 0 pre-spike files | 1 full (GREEN 4360/0, regen 9/9) + 3 regen-smoke runs + module runs | 3 small loops: FlowModelCheck variant claimed every invariant breaks without its guard (only L58 does), recovery-outcome close node picked an unlinked help link, the main-path walk awaited a state a service leaves in one frame |
 | M11 | Android drills (verification; no Kotlin change) | about 1 h 55 min (build and install, onboarding, D4, D6, D1 x6, D2 x6, D7, Release isolation check; gate 21 min on top) | 0 Kotlin; tools: `spike-evidence/M11/helpers.sh` (about 35 shell lines), `pin.yaml` +7, `a11y-trace-events.py` +17 | 0 | 0 pre-spike files | 1 full (4360), 1 `assembleDevDebug`, 1 `assembleDevRelease` | 3 loops, all drill timing or tooling, none in the app: (1) `auth` is 1.5 s long and an adb HOME key arrives about 2 s after the tap while `screenrecord` runs, so D2(b) auth hit `verification-code` three times and was repeated without video; (2) `cmd activity kill-all` does not reclaim the wallet, so D2(b) uses root `kill -9` under `memory-factor CRITICAL`; (3) the a11y trace with `IAccessibilityServiceConnection` kept only the last 5 s, `-t IAccessibilityServiceClient` alone keeps all events |
 | M11c | **rework** (F-D2-1 fix and D2 re-run, RULING-W6) | about 1 h 10 min (guard and test 10 min, build 5 min, 12 D2 runs plus D4 about 45 min, release isolation 5 min; gate on top) | 28 Kotlin lines in 1 pre-spike file (T9) + 28 test lines; tool: `d2c_run` in `helpers.sh` +11 | 0 new | 1 pre-spike file (T9) | 1 full gate, 1 `assembleDevDebug`, 1 `assembleDevRelease` (throwaway keystore) | 1 loop: the first batch of 11 runs was void (zsh does not word-split `$r`, so `d2c_run` got empty arguments), repeated with `${=r}`; tooling only | 
+| M11b | **services adapter** (probe, OR-5; one flow's real `Services` adapter on the app's interactors) | about 42 min (18:05 to 18:47: step 0 2 min; reading 15 min; code + tests 10 min; full gate 20 min; release isolation build 2 min 22 s) | adapter main 562 / test 468 lines (code lines 366 / 362), per service main: fetchRequest 166, send 152, authenticate 65, cancel+teardown 30, verificationCode 6, declaration + plumbing 143; wiring +87/−5 (UxFlowEntry 28/5, hooks 19 + 20, builds 13 + 7); step 0: T9 +7/−3, hook interface +3, hooks +4, test +27 | 0 | 1 pre-spike file (`shared-ui/build.gradle.kts`, T2, already on the touch list) + T9 for step 0; 4 spike files | 1 full gate (4444), 1 `assembleDevRelease` | 0 rework; 2 build-configuration compile breaks (AGP 9 `sourceSets` class-cast in `ux-spike-android`, fixed with `androidComponents`), 1 KC1 hit (a state-name literal in a comment), 0 Kotlin compile breaks |
 
 Reading the table for a new flow (input to the M12 cost model): with no generator, every phase is hand-written; the
 runtime phases (M2 to M4, M5b interpreter) hold about 4.3 k main lines and 2.9 k test lines across six modules, the elements
@@ -348,6 +351,9 @@ Findings for week 0 / the owner (not decided here):
 | (this commit) | 2026-10-17 | M11 | formal Android rows (D1, D2 a/b-approx, D4, D6, D7), SPIKE-LOG M11, HUMAN-QUEUE Q-D2-LMK and Q-D7-Android, evidence `spike-evidence/M11/` and `M11-prep/` | Claude Sonnet 5.5 | full gate GREEN 4360 |
 | 8ff589aca | 2026-10-17 | M11c | `EudiComponentActivity.kt` (T9) `launchIntentConsumed` guard, `LaunchIntentGuardTest` | Claude Sonnet 5.5 | host test green |
 | (this commit) | 2026-10-17 | M11c | SPIKE-PLAN §2 T9, SPIKE-LOG M11c, RULING-W6, spike-results D2 and D4 rows, evidence `M11/logs/d2c-*`, `d4c`, `m11c-release-isolation` | Claude Sonnet 5.5 | full gate GREEN 4364 |
+| 88a79d4ec | 2026-10-17 | M11b | step 0: `DebugFlowHook.isEnabled()`, T9 guard only with the switch ON, `LaunchIntentGuardTest` 5, RULING-M11b-0 | Claude Opus 5.5 | host test green |
+| 44514b4b5 | 2026-10-17 | M11b | `InteractorPresCrossDeviceServices` (`ux-spike/src/realAdapterMain`), tests (`realAdapterTest`), `--ux-spike real` wiring, build wiring | Claude Opus 5.5 | full gate GREEN 4444 |
+| (this commit) | 2026-10-17 | M11b | `spike-evidence/M11b/` (report, gate and isolation logs), SPIKE-LOG M11b | Claude Opus 5.5 | docs only |
 
 ## M5e notes (Home parts, OR-8; a probe, not counted toward the verdict)
 
@@ -759,7 +765,7 @@ counts against KC1 or is an accepted cost of §6.6 is for the independent check 
 drill, RULING-M8-1); no Kotlin was edited. Also: the library declares `logo` decorative (alt empty), so the brief's "logo with an
 accessibility label" conflicts with the spec.
 
-**Real `Services` adapter (OR-3) cost per row.** No adapter exists yet (M11b). Logo, brand, copy: no compile break (new fields
+**Real `Services` adapter (OR-3) cost per row.** No adapter existed yet at M8 (M11b has since built one: `spike-evidence/M11b/adapter-report.md`). Logo, brand, copy: no compile break (new fields
 have defaults). Offline: a real adapter mapping app failures to `FetchRequestResult` would compile, but an exhaustive `when` over the
 result (if any) would gain a branch; recorded as the expected cost.
 
@@ -997,3 +1003,61 @@ RULING-W6 (copied in "Rulings"); touch-list widening T9 in SPIKE-PLAN §2. Build
 Each run's logcat (cleared just before the kill): `launch intent already consumed, cold-boot link skipped`, one `flow ... loaded`, `restore <state> -> <target>`, no `start deeplink`, no `enter connecting`, no new `authenticate` or `send`. The send#1 and authenticate#1 lines precede the kill (cleared from the logs; in the M11 logs they show once). Real LMK is still not run (Q-D2-LMK). **D4:** a fresh link still shows the unlock gate first, then `connecting` (`logs/d4c.log`). **Switch off / hook absent:** guard inactive by the host test (and Release has no hook and no provider); the emulator cannot run a debug build without the hook. **Release:** `assembleDevRelease` APK: 0 spike dex packages, 0 files, no `ux-spike-init`; classpaths 0/0 (`logs/m11c-release-isolation.log`).
 
 **Finding for the app team (F-D2-1, upstream bug).** `EudiComponentActivity` re-delivers the launch intent after any process death or configuration re-creation: `setIntent(Intent())` clears only the in-memory intent, `Content` handles the base intent as a cold boot on every composition start, and for OPENID4VP with documents it pops to Dashboard, losing the restored back stack (any in-progress presentation, not only this spike's). Proposed production fix: keep a `launchIntentConsumed` flag in `onSaveInstanceState` (or in the activity's ViewModel for config changes plus the bundle for process death), set it after `handleDeepLink(coldBoot = true)` ran, and skip the cold-boot link when it is set on restore; or do not handle the link in `Content` but from `onCreate` when `savedInstanceState == null`. The spike's guard is the same idea without the debug-hook condition.
+
+## M11b notes (real Services adapter probe, OR-5; not counted toward the verdict)
+
+**Step 0 (RULING-M11b-0).** `DebugFlowHook.isEnabled()` was added; the Android implementation checks that the switch
+file exists, and the iOS one checks `IosUxSpikeSwitch.script() != null`. `EudiComponentActivity` now calls
+`launchGuardActive(hook) = hook?.isEnabled() == true`, so a debug build with the switch off follows upstream logic, as
+§6.3 of the brief requires. `LaunchIntentGuardTest` covers no hook, hook off and hook on (5 tests). Commit `88a79d4ec`.
+
+**The adapter.** `InteractorPresCrossDeviceServices` implements `PresCrossDeviceServices` and
+`PresCrossDeviceResultDeclaration` on top of `PresentationRequestInteractor`, `PresentationLoadingInteractor` and
+`BiometricInteractor`. `DeviceAuthentication` is reached through `handleUserAuthentication`. No interactor, wallet
+logic, wallet-core or Multipaz file changed. The full table (generated result, real source, status, app-team change)
+is in `spike-evidence/M11b/adapter-report.md`.
+
+**Counts.** Of 21 results, 5 are mapped, 10 lossy and 6 impossible. The adapter declares only what it can produce, so
+`undeclared(adapter)` equals `AdapterGaps.UNDECLARED` (the test pins it): `{authenticate=[Expired],
+fetchRequest=[DocInvalid, Expired], send=[Expired], verificationCode=[Ready, Expired]}`. Each lossy mapping logs a
+`UX-SPIKE: GAP` line when it happens. Tests: 37, run on both targets, against the app's own
+`FakePresentationRequestInteractor` and `FakeBiometricInteractor`, plus a new `FakeLoading` (the app's loading fake is
+private).
+
+**Findings (for M12 and the app team).**
+- **F-M11b-1, placement.** The adapter cannot live in `:ux-spike` commonMain, because `:shared-ui` (which holds the
+  interactors) depends on `:ux-spike` on iOS, so the import would form a cycle. It lives in
+  `ux-spike/src/realAdapterMain` and is compiled into three places: `:shared-ui` iosMain for non-Release builds,
+  `:ux-spike-android` (debug only), and `:shared-ui` androidHostTest for the tests. In the app, the adapter belongs
+  beside the interactors, with `:ux-contract` as its dependency.
+- **F-M11b-2, typed errors.** Every expiry arrives as an untyped `Failure(String)`, so the adapter cannot produce
+  `Expired` for any service. Android folds revoked documents into `NoData`, so `DocInvalid` has no source.
+- **F-M11b-3, no verification-code source.** `verificationCode` can only return an explicit `Error`. With the real
+  adapter the flow can never reach `sending`. This needs a spec or product decision.
+- **F-M11b-4, request model.**
+  - `isRequired` is false on every path, so the requirement is derived for the whole request from
+    `claimsAreSelectable`.
+  - `label_copy` is a copy key, but the app has only display titles.
+  - The app's card starts with every row ticked, while the spec wants optional rows unticked.
+  - Alternative combinations, several documents and `transactionData` are dropped. Dropping `transactionData` is a
+    security gap for signing or payment requests.
+- **F-M11b-5, trust.** The app's `VerifierNotTrusted` is a hard block with no request, so it maps to `Error`.
+  `RpUntrusted` is derived from `!isFullyVerified`, and with optional-only rows it breaks
+  `RUL-pres-request-has-mandatory`.
+- **F-M11b-6, authentication.** The spec places `authenticate` before `send`, but the real key-bound authentication
+  happens inside the send (Android: `UserAuthenticationRequired` per document; iOS: the Secure Enclave). On Android
+  this means a second prompt. The PIN path has no contract counterpart, and `PlatformContext` has to be injected
+  outside the contract (the Android activity; null on iOS).
+- **F-M11b-7, lifecycle.** The contract has no teardown call, yet the Android presentation Koin scope must be closed.
+  The adapter implements `AutoCloseable` and `UxFlowEntry` closes it on exit. `cancel` sends a fire-and-forget
+  rejection: the real calls return `Unit`.
+
+**Cost (the per-flow "Services adapter" line of the cost model).**
+- Adapter: 562 main / 468 test lines (code lines 366 / 362).
+- Wiring: +87 / −5.
+- About 40 min of agent time (half of it the gate).
+- 0 Kotlin compile breaks and 2 build-configuration breaks.
+
+Not run against a verifier, because that is out of scope. The adapter is linked into the iOS Debug app and the
+Android debug APK. Release isolation is clean (`spike-evidence/M11b/logs/m11b-release-isolation.log`).
+

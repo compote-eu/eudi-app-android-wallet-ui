@@ -1,0 +1,7 @@
+# M11b link + release isolation 2026-10-17T18:40+02:00 (pattern: InteractorPresCrossDevice|uxspike/real|uxspike.real|AdapterGaps)
+iOS Debug  EudiWallet.debug.dylib: 3 matching lines (linked)
+iOS Debug  EudiWalletDocumentProvider.debug.dylib: 3 (linked; the extension shares SharedKit)
+iOS Release EudiWallet: 0; EudiWalletDocumentProvider.appex: 0
+Android dev debug APK: apkanalyzer dex packages eu.europa.ec.uxspike.real: 212 lines (linked)
+Android assembleDevRelease (throwaway keystore): dex uxspike|ux.runtime|InteractorPresCrossDevice 0; files spike 0; manifest UxSpikeInit 0
+devReleaseRuntimeClasspath project :ux-*: 0
