@@ -1,0 +1,13 @@
+## D1 auth / edge 2026-10-17T16:42:40+02:00
+at request
+shot d1-auth-edge-after
+resource-id="ux-state-request"
+shot d1-auth-edge-settled
+10-17 16:42:53.124 UX-SPIKE: enter connecting (gen 1)
+10-17 16:42:56.131 UX-SPIKE: enter request (gen 2)
+10-17 16:43:01.353 UX-SPIKE: enter auth (gen 3)
+10-17 16:43:01.354 UX-SPIKE: authenticate#1 (script slow)
+10-17 16:43:01.632 UX-SPIKE: enter request (gen 4)
+10-17 16:43:01.632 UX-SPIKE: back: Moved(target=request)
+/sdcard/d1-auth-edge.mp4: 1 file pulled, 0 skipped. 110.1 MB/s (1163137 bytes in 0.010s)
+video d1-auth-edge

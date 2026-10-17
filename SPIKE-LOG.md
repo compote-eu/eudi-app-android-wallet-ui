@@ -29,6 +29,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M10 | done (harness preliminary; D10 device runs queued as Q-D10) | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | `UxDcApiSubflowViewController` (+ `uxDcApiSubflowEnabled`) in `iosUxSpikeMain`, T5 in `ConsentHost.swift` (import and branch inside `#if DEBUG`, +12 lines), in-app harness `--ux-spike dcapi-harness`, D10 instrumentation (`UX-SPIKE-D10` via NSLog), HTTPS test page `spike-evidence/M10/dcapi-test-page/`. Only T5 touched (T1-T5 used, cap 8). Gate GREEN 4273. ⟲ at end not done. |
 | M11 | not started | — | — | — | — | ⟲ at start; needs emulator/device |
 | M12 | not started | — | — | — | — | ⟲ final |
+| M11 | done (2026-10-17): Android drills D1, D2(a), D2(b-approx), D4, D6, D7 passed; real LMK and real-phone TalkBack queued | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | Dev Debug APK on emulator `spike_pixel` (API 37, arm64), sk, Light. P2 (the hook module loads in the first activity, `UX-SPIKE: hook module loaded`) and P6 (`UxFlowRoute` + snapshot restore after process death) verified on Android; Release APK isolation clean again. 0 of 3 hard states needed a Back or restore handler outside the bundle policy: no KC2 signal from Android. No KC3 signal (emulator, events only). Findings F-D2-1, F-M11-1..4 in "M11 notes". Gate GREEN 4360. |
 
 ## Rulings
 
@@ -136,6 +137,7 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 | 2026-10-17 | 0541d2e5e (`spike/d8-4`, deleted) | M8 D8-copy | full `./spike-gate.sh` (8 min 31 s) | 4279 | 4 (as D8-brand) | 0 | pass | pass | Debug and Release build | GATE RED |
 | 2026-10-17 | c12e0e2ca (`spike/d8-2`, deleted) | M8 D8-offline | full `./spike-gate.sh` (6 min 33 s) | 4279 | 7 (fixture 4, `HandshakeTest.h1` 2, `FakeScriptsTest` 1) | 0 | pass | pass | Debug and Release build | GATE RED |
 | 2026-10-17 | 8fd57b22d (`spike/d8-1`, deleted) | M8 D8-logo | full `./spike-gate.sh` (5 min 16 s) | 4279 | 6 (`SchemaCheckTest` 2 tests × host/iOS: `unknown prop 'logo'`; `InterpreterScenario` × 2: pinned fixture) | 0 | pass | pass | Debug and Release build | GATE RED |
+| 2026-10-17 | 25e2e31dc (+ M11 evidence, docs only) | M11 | full `./spike-gate.sh` (no code change; the run includes regen-smoke) | 4360 | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 
 M6a test delta, 4273 → 4279 (+6): `ExportedModelReplayTest` adds 3 tests on each target. Nothing else changed in count:
 the 2 `ProvisionalBundleResourceTest` tests became the 2 `BundleResourceTest` tests; 17 `Provisional*` runtime classes,
@@ -195,6 +197,7 @@ and M7 (M5c onward: recorded by the milestone itself).
 | M5e | elements + templates (Home parts) + probe from the export | about 2 h 45 min (13:35 first read to 16:20 log), of which about 1 h 10 min is simulator shots (56 + 4) and builds; code commits are the last third | ux-elements main 1 703 (parts 1 177, `UxComp` 105, registry +155, app-bar/avatar/lock/title +94, build +172 of which fixture task 112) / test 515 (`HomePartsScenario` 423, support 93, `RegistrySchemaTest` +16); ux-theme 96 main (readers 66, access 27, alias 3) / 56 test; ux-spike 360 main (`ScreenProbe` 218, probe host 79 net, gallery +46, entry +8, build +60 incl. fixture) / 215 test; root 5 (`spike-gate.sh`) | 0 (the probe and tokens are the M6c export; 145 KB of tokens and assets embedded for tests at build time, not counted) | 0 pre-spike files (spike files: 3 existing elements, 4 existing tests, build files, gate) | 3 full-ish (module tests several times, one full gate GREEN 4360) | 2 small loops: (1) the band card collapsed its body without artwork (`weight(1f)` under a minimum height), found on the idsk shots, fixed with a regression assertion; (2) the shots were first taken with the selections missing from `exportedSpecResources()` (centered face and dot mark not applied) |
 | M9 | drills (track B, verification; spec + sync only) | about 1 h 40 min (3 spec worktrees, 3 exports, 4 simulator runs, 3 full gates of 6 to 7 min, one spec gate of 4 min 24 s) | 0 Kotlin; tools: `spike-evidence/M9/run-variant.sh`, `drill-helpers.sh` | generated: `ux-spec/` +774/−985 (option 1), +69/−75 (option 2) | 0 | 3 full (4360/12, 4360/2, 4360/0) | 0 rework; 2 test-pin findings (RULING-M9-2) |
 | M9r | **rework** (test harness; independent-verifier remediation of D9 = (C)) | about 55 min (15:43 first re-export to 16:36 shot; commits 16:19 to 16:34), incl. one full gate of 13 min 51 s (regen-smoke 8 min 11 s) and two regen-smoke runs before the fix (7 min 28 s all, 2 min 10 s host) | tests +1 573/−955 (ux-runtime +1 288/−630 incl. `SyntheticFlow` 293, `ExportWalk` 237, `ExportedPoliciesTest` 186; ux-elements +181/−141; ux-spike +230/−130; ux-contract +4/−80); main: `TplSheet` +11/−1, `FakePresCrossDeviceServices` +17/−27 (results declared from the generated table); build +91/−17 (5 `build.gradle.kts`: `uxSpecDir`, own build dir, `ux.spec.dir`, scripts fixture); root +71/−3 (`spike-regen-smoke.sh` 55, `spike-gate.sh` 16); tool `reexport-d8.sh` 22 | 0 (5 re-exports archived as evidence, not committed to `ux-spec/`) | 0 pre-spike files | 1 full (GREEN 4360/0, regen 9/9) + 3 regen-smoke runs + module runs | 3 small loops: FlowModelCheck variant claimed every invariant breaks without its guard (only L58 does), recovery-outcome close node picked an unlinked help link, the main-path walk awaited a state a service leaves in one frame |
+| M11 | Android drills (verification; no Kotlin change) | about 1 h 55 min (build and install, onboarding, D4, D6, D1 x6, D2 x6, D7, Release isolation check; gate 21 min on top) | 0 Kotlin; tools: `spike-evidence/M11/helpers.sh` (about 35 shell lines), `pin.yaml` +7, `a11y-trace-events.py` +17 | 0 | 0 pre-spike files | 1 full (4360), 1 `assembleDevDebug`, 1 `assembleDevRelease` | 3 loops, all drill timing or tooling, none in the app: (1) `auth` is 1.5 s long and an adb HOME key arrives about 2 s after the tap while `screenrecord` runs, so D2(b) auth hit `verification-code` three times and was repeated without video; (2) `cmd activity kill-all` does not reclaim the wallet, so D2(b) uses root `kill -9` under `memory-factor CRITICAL`; (3) the a11y trace with `IAccessibilityServiceConnection` kept only the last 5 s, `-t IAccessibilityServiceClient` alone keeps all events |
 
 Reading the table for a new flow (input to the M12 cost model): with no generator, every phase is hand-written; the
 runtime phases (M2 to M4, M5b interpreter) hold about 4.3 k main lines and 2.9 k test lines across six modules, the elements
@@ -336,6 +339,7 @@ Findings for week 0 / the owner (not decided here):
 | 069e596ac | 2026-10-17 | M9r | test-pin sweep (rule T1): synthetic bundle, ExportWalk, ExportedPoliciesTest, fake declarations | Claude Opus 5.5 | module tests green; regen-smoke host 9/9 |
 | 391edd84e | 2026-10-17 | M9r | TplSheet sheet top safe-area inset; shots; gate log | Claude Opus 5.5 | full gate GREEN (4360/0, regen 9/9) |
 | (this commit) | 2026-10-17 | M9r | SPIKE-PLAN §0.2b (rule T1), SPIKE-LOG M9r, spike-results D9 rows | Claude Opus 5.5 | docs only |
+| (this commit) | 2026-10-17 | M11 | formal Android rows (D1, D2 a/b-approx, D4, D6, D7), SPIKE-LOG M11, HUMAN-QUEUE Q-D2-LMK and Q-D7-Android, evidence `spike-evidence/M11/` and `M11-prep/` | Claude Sonnet 5.5 | full gate GREEN 4360 |
 
 ## M5e notes (Home parts, OR-8; a probe, not counted toward the verdict)
 
@@ -935,3 +939,31 @@ drew under the status bar (`spike-evidence/M9r/shots/request-sheet-before-646fea
 `WindowInsets.safeDrawing.only(Top)` outside its elevation and clip, inside `TplSheet` only
 (`shots/request-sheet-after.png`: the scrim shows above the sheet, the body scrolls, the actions stay pinned).
 
+## M11 notes (formal Android drills on the real export)
+
+Build: `./gradlew :androidApp:assembleDevDebug` of `25e2e31dc`, installed on the headless emulator `spike_pixel` (API 37, arm64,
+setup in `spike-evidence/M11-prep/README.md`), package `eu.compote.euidi.dev`, `cmd locale set-app-locales … sk` (the wallet's own
+screens stay English, the spike screens show the Slovak copy, as on iOS), `cmd uimode night no`. The switch is the file
+`files/ux-spike.on` (`AndroidUxSpikeHook.script()`), script `slow`. Helpers: `spike-evidence/M11/helpers.sh`, `pin.yaml`.
+All six formal rows passed on the emulator; no KC2 or KC3 signal. Open for a device: the real low-memory kill (Q-D2-LMK) and the
+optional real-phone TalkBack walk (Q-D7-Android).
+
+**P2 (Koin).** `UX-SPIKE: hook module loaded` appears in logcat in the first activity of every process, after the Koin start and
+before the first `UxFlowRoute` entry; `loaded` guard held across 40+ process starts (one line each). **P6 (Android restore).** The
+standalone `UxFlowRoute` survives a real process death and the engine restores from its snapshot (`restore request -> snapshot`);
+no `AppRoute` edit. **Release isolation** (`logs/p2p6-release-isolation.log`): `devRelease`/`demoRelease` runtime classpaths 0 `ux-`/`uxspike`
+lines (debug 8); `assembleDevRelease` APK (throwaway keystore): 0 spike dex packages, 0 files, no `ux-spike-init` provider; control, the
+debug APK: 9418 package lines, 85 files, provider present.
+
+| # | Ruling or finding | Resolution |
+|---|---|---|
+| RULING-M11-1 | `run-as … 'echo > files/ux-spike.on'` fails until `files/` exists, and needs `adb shell "run-as …"` quoting. | Switch written after the first launch with `mkdir -p files`. Tool only. |
+| RULING-M11-2 | `auth` (1.5 s) and `sending` (3 s) are shorter than adb latency plus Maestro. | D1/D2 chain the tap and the Back/HOME key in one `adb shell "…; …"`; the state is read from the `UX-SPIKE` log, not by polling (a `uiautomator dump` also suppresses TalkBack while it runs, so D7 never dumps). |
+| RULING-M11-3 | D2(b): a real lmkd kill cannot be provoked on this emulator as shell (10 apps under `memory-factor CRITICAL`: lmkd killed other cached apps, not the wallet; `cmd activity kill-all`: wallet survived twice; RAM filler: shell cannot write `/dev`). | D2(b-approx) = `memory-factor set CRITICAL` + `am send-trim-memory COMPLETE` + root `kill -9` (lmkd's own mechanism), relaunch from recents. Not a real LMK: the row says so and Q-D2-LMK stays open. |
+| RULING-M11-4 | D2(a): the recents relaunch of a task whose root is the deep-link intent re-dispatches the link. | F-D2-1. The drill task root is the launcher intent (MAIN launch, PIN, then the link as `onNewIntent`); the link-rooted case is kept as `d2a-request-linkroot.*` evidence. |
+| RULING-M11-5 | TalkBack on the image asks for the notification permission; a double tap is needed to activate. | `pm grant com.google.android.marvin.talkback android.permission.POST_NOTIFICATIONS`; activation by two `input tap`s (works). Events from `cmd accessibility start-trace -t IAccessibilityServiceClient` (TYPE_ANNOUNCEMENT, WINDOW_STATE_CHANGED pane events, ACCESSIBILITY_FOCUSED), parsed by `a11y-trace-events.py`; no audio headless. |
+| F-D2-1 | A link-rooted task is not restored from the snapshot after process death: the relaunch re-opens the link and starts a new flow at `connecting` (old snapshot unused; for `sending` this means no second send either, as the flow starts again from `connecting`). | Reported, no change: this is the app's intent redelivery for any deep link, not a flow handler. Candidate follow-up for the app team (clear or consume the launch intent). Not counted as a hard-state handler (KC2). |
+| F-M11-1 | `cancel#1` on the `request` Back fails in the fake (`script 'slow' has no step for cancel`, mapped to Error, result ignored); state is still `cancelled`. | Same as iOS (script data); no impact on the pass condition. |
+| F-M11-2 | After a process death and recents relaunch the app showed no PIN gate. | Not investigated (app unlock policy, outside the flow). |
+| F-M11-3 | The snapshot is saved at stop: in D2 `sending` the flow had already reached `success` in the background, and the restore still gave `error` (state at stop). | As designed; sending restores to error. |
+| F-M11-4 | Compose virtual nodes produce `ACCESSIBILITY_FOCUSED` events with empty text, so the trace alone does not name the focused node. | The focus target is shown by the screenshots (ring on the heading) and the app's `focus-heading … (focused)` log. A swipe walk of the old state's reachability is left to the real-phone walk. |

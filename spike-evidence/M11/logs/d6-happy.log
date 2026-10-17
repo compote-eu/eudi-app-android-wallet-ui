@@ -1,0 +1,32 @@
+10-17 16:39:42.030 I/System.out( 5371): UX-SPIKE: hook module loaded
+10-17 16:39:53.469 I/System.out( 5371): UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 16:39:53.676 I/System.out( 5371): UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 16:39:53.677 I/System.out( 5371): UX-SPIKE: enter connecting (gen 1)
+10-17 16:39:53.677 I/System.out( 5371): UX-SPIKE: fetchRequest#1 (script slow)
+10-17 16:39:53.678 I/System.out( 5371): UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 16:39:53.699 I/System.out( 5371): UX-SPIKE: screen SCR-pres-connecting: interpreted from the bundle (TPL-progress, 2 nodes), state connecting, ui_state default
+10-17 16:39:53.702 I/System.out( 5371): UX-SPIKE: a11y: SCR-pres-connecting announce-live hero ('Overuje sa totožnosť overovateľa a dostupnosť vašich eDokladov.. Načítava sa žiadosť overovateľa')
+10-17 16:39:56.680 I/System.out( 5371): UX-SPIKE: enter request (gen 2)
+10-17 16:39:56.736 I/System.out( 5371): UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+10-17 16:39:57.078 I/System.out( 5371): UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)
+10-17 16:39:58.988 I/System.out( 5371): UX-SPIKE: intent from SCR-pres-request: CONTINUE {} (gen 2)
+10-17 16:39:58.988 I/System.out( 5371): UX-SPIKE: enter auth (gen 3)
+10-17 16:39:58.988 I/System.out( 5371): UX-SPIKE: authenticate#1 (script slow)
+10-17 16:39:59.048 I/System.out( 5371): UX-SPIKE: screen SCR-pres-auth: interpreted from the bundle (TPL-sheet, 4 nodes), state auth, ui_state default
+10-17 16:39:59.369 I/System.out( 5371): UX-SPIKE: a11y: SCR-pres-auth focus-heading title (focused)
+10-17 16:40:00.492 I/System.out( 5371): UX-SPIKE: enter verification-code (gen 4)
+10-17 16:40:00.493 I/System.out( 5371): UX-SPIKE: verificationCode#1 (script slow)
+10-17 16:40:00.540 I/System.out( 5371): UX-SPIKE: screen SCR-pres-verification-code: interpreted from the bundle (TPL-sheet, 8 nodes), state verification-code, ui_state no-url
+10-17 16:40:00.913 I/System.out( 5371): UX-SPIKE: a11y: SCR-pres-verification-code focus-heading title (focused)
+10-17 16:40:03.701 I/System.out( 5371): UX-SPIKE: interpreter: confirm press -> CONFIRM
+10-17 16:40:03.701 I/System.out( 5371): UX-SPIKE: enter sending (gen 5)
+10-17 16:40:03.702 I/System.out( 5371): UX-SPIKE: send#1 (script slow)
+10-17 16:40:03.730 I/System.out( 5371): UX-SPIKE: screen SCR-pres-sending: interpreted from the bundle (TPL-progress, 1 nodes), state sending, ui_state default
+10-17 16:40:04.088 I/System.out( 5371): UX-SPIKE: a11y: SCR-pres-sending announce-live hero ('Prebieha odoslanie dát eDokladov')
+10-17 16:40:06.703 I/System.out( 5371): UX-SPIKE: enter success (gen 6)
+10-17 16:40:06.748 I/System.out( 5371): UX-SPIKE: screen SCR-pres-outcome-success: interpreted from the bundle (TPL-outcome, 2 nodes), state success, ui_state default
+10-17 16:40:07.092 I/System.out( 5371): UX-SPIKE: a11y: SCR-pres-outcome-success focus-heading hero (focused)
+10-17 16:40:09.019 I/System.out( 5371): UX-SPIKE: interpreter: close press -> CLOSE
+10-17 16:40:09.019 I/System.out( 5371): UX-SPIKE: enter done (gen 7)
+10-17 16:40:09.027 I/System.out( 5371): UX-SPIKE: exit done (FINAL_STATE)
+10-17 16:40:09.027 I/System.out( 5371): UX-SPIKE: exit Done

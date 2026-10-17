@@ -1,0 +1,29 @@
+1979173	TYPE_ANNOUNCEMENT	eu.compote.euidi.dev	android.view.ViewGroup	text=[Overuje sa totožnosť overovateľa a dostupnosť vašich eDokladov.. Načítava sa žiadosť overovateľa]	desc=null	change=
+1979787	TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1979788	TYPE_VIEW_ACCESSIBILITY_FOCUSED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1982253	TYPE_WINDOW_STATE_CHANGED	eu.compote.euidi.dev	android.view.View	text=[Overenie eDokladu]	desc=null	change=CONTENT_CHANGE_TYPE_PANE_APPEARED
+1982589	TYPE_VIEW_FOCUSED	eu.compote.euidi.dev	android.view.ViewGroup	text=[]	desc=null	change=
+1982649	TYPE_VIEW_FOCUSED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1982689	TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1982690	TYPE_VIEW_ACCESSIBILITY_FOCUSED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1986207	TYPE_WINDOW_STATE_CHANGED	eu.compote.euidi.dev	android.view.View	text=[Overenie eDokladu]	desc=null	change=CONTENT_CHANGE_TYPE_PANE_DISAPPEARED
+1986207	TYPE_WINDOW_STATE_CHANGED	eu.compote.euidi.dev	android.view.View	text=[Overenie, že ste to vy]	desc=null	change=CONTENT_CHANGE_TYPE_PANE_APPEARED
+1986581	TYPE_VIEW_FOCUSED	eu.compote.euidi.dev	android.view.ViewGroup	text=[]	desc=null	change=
+1986596	TYPE_VIEW_FOCUSED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1986767	TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1986768	TYPE_VIEW_ACCESSIBILITY_FOCUSED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1987722	TYPE_WINDOW_STATE_CHANGED	eu.compote.euidi.dev	android.view.View	text=[Overenie, že ste to vy]	desc=null	change=CONTENT_CHANGE_TYPE_PANE_DISAPPEARED
+1987722	TYPE_WINDOW_STATE_CHANGED	eu.compote.euidi.dev	android.view.View	text=[Skontrolujte stránku a prepíšte overovací kód]	desc=null	change=CONTENT_CHANGE_TYPE_PANE_APPEARED
+1988070	TYPE_VIEW_FOCUSED	eu.compote.euidi.dev	android.view.ViewGroup	text=[]	desc=null	change=
+1988103	TYPE_VIEW_FOCUSED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1988121	TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1988122	TYPE_VIEW_ACCESSIBILITY_FOCUSED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1990353	TYPE_WINDOW_STATE_CHANGED	eu.compote.euidi.dev	android.view.View	text=[Skontrolujte stránku a prepíšte overovací kód]	desc=null	change=CONTENT_CHANGE_TYPE_PANE_DISAPPEARED
+1990742	TYPE_ANNOUNCEMENT	eu.compote.euidi.dev	android.view.ViewGroup	text=[Prebieha odoslanie dát eDokladov]	desc=null	change=
+1990923	TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1990923	TYPE_VIEW_ACCESSIBILITY_FOCUSED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1993764	TYPE_VIEW_FOCUSED	eu.compote.euidi.dev	android.view.ViewGroup	text=[]	desc=null	change=
+1993765	TYPE_ANNOUNCEMENT	eu.compote.euidi.dev	android.view.ViewGroup	text=[Pokračujte na stránke overovateľa vo webovom prehliadači.. eDoklady boli predložené]	desc=null	change=
+1993777	TYPE_VIEW_FOCUSED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1993797	TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=
+1993798	TYPE_VIEW_ACCESSIBILITY_FOCUSED	eu.compote.euidi.dev	android.view.View	text=[]	desc=null	change=

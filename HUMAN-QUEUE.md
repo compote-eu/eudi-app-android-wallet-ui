@@ -154,8 +154,30 @@ Also note on `request`: is a mandatory attribute read as "dimmed"? (It should no
 - **Pass (brief D10):** renders and completes on the device; memory and start time recorded (5 runs).
 - **Status:** open
 
+## Q-D2-LMK: real low-memory kill on an Android phone (D2, KC2)
+
+- **Blocks:** the real-kill half of `D2-Android-lmk` (the emulator approximation, `kill -9` under `memory-factor CRITICAL`, passed).
+- **Steps:** install the Debug build (`./gradlew :androidApp:assembleDevDebug`, id `eu.compote.euidi.dev`), write the switch
+  (`adb shell "run-as eu.compote.euidi.dev sh -c 'mkdir -p files; echo slow > files/ux-spike.on'"`), start the wallet from the
+  launcher and finish onboarding, then open `openid4vp://?client_id=spike&request_uri=https://example.invalid/r` (task root must be the
+  launcher, so deliver the link while the app is running). In `request`, press Home and open many heavy apps (camera, maps, a game)
+  until the wallet is gone from recents' live processes (`adb shell pidof eu.compote.euidi.dev` empty), then reopen the wallet from
+  recents. Repeat for `auth` and `sending` (use script `slow`; press Home within 1.5 s / 3 s).
+- **Expected (brief §5):** request restores from the snapshot, auth restores to request, sending restores to error with no second send
+  (`adb logcat | grep UX-SPIKE`: `restore ... -> ...`, one `send#1`).
+- **Status:** open
+
+## Q-D7-Android: TalkBack walk on a real Android phone (optional)
+
+- **Blocks:** nothing (the emulator events-only row passed; the brief wants a real device for D7).
+- **Steps:** Debug build and switch as above, script `slow`, TalkBack on. Open the link, then go `request` → `auth` →
+  `verification-code` → `sending` → `success` by double tap. After each state change listen: focus on the new heading (or the
+  announced status for connecting and sending), no sound from the previous screen, no stray focus on the page behind a sheet.
+- **Fill in:** per state: heard text, focus on heading yes/no, anything old reachable yes/no.
+- **Status:** open
+
 ## Later (queued when their milestone arrives)
 
 - D10 runs 1–5: now queued as Q-D10.
-- M11: an Android emulator or device; the D2 real low-memory kill; D7-Android TalkBack on a real device.
+- M11: queued as Q-D2-LMK and Q-D7-Android (below); the emulator rows are in `spike-results.md`.
 - KC5: the app team's estimate (Martin).

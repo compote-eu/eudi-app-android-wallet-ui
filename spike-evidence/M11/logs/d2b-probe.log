@@ -1,0 +1,46 @@
+## D2b request 2026-10-17T16:50:21+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+at request
+pid: 10711
+CRITICAL
+head: illegal line count -- 0
+16:50:55 started com.android.settings/.Settings; wallet pid='10711'
+16:51:00 started com.google.android.dialer/.extensions.GoogleDialtactsActivity; wallet pid='10711'
+16:51:04 started com.android.vending/com.google.android.finsky.activities.MainActivity; wallet pid='10711'
+16:51:08 started com.google.android.apps.messaging/.ui.ConversationListActivity; wallet pid='10711'
+16:51:12 started com.android.chrome/com.google.android.apps.chrome.Main; wallet pid='10711'
+16:51:16 started com.google.android.apps.maps/com.google.android.maps.MapsActivity; wallet pid='10711'
+16:51:20 started com.google.android.youtube/.HomeActivity; wallet pid='10711'
+16:51:24 started com.google.android.calendar/com.android.calendar.AllInOneActivity; wallet pid='10711'
+16:51:28 started com.google.android.contacts/com.android.contacts.activities.PeopleActivity; wallet pid='10711'
+16:51:32 started com.google.android.gm/.ConversationListActivityGmail; wallet pid='10711'
+dalvik/lmk log:
+10-17 16:49:00.352   643  1741 I am_kill : [0,9789,eu.compote.euidi.dev,700,kill background,332212]
+10-17 16:49:22.043   643  1903 I am_kill : [0,10120,eu.compote.euidi.dev,0,stop eu.compote.euidi.dev due to from pid 10212,317316]
+10-17 16:49:56.431   643  1979 I am_kill : [0,10227,eu.compote.euidi.dev,700,kill background,332080]
+10-17 16:50:21.412   643   892 I am_kill : [0,10599,eu.compote.euidi.dev,0,stop eu.compote.euidi.dev due to from pid 10696,315476]
+10-17 16:51:23.144   285   285 I lowmemorykiller: Kill 'com.google.android.cellbroadcastreceiver' (1298), uid 10210, oom_score_adj 995 to free 109428kB rss, 45084kB anon rss, 4488kB swap, 0kB dmabuf_pss, 0kB dmabuf_rss; reason: low watermark is breached
+## D2b: tmpfs RAM filler under memory-factor CRITICAL 2026-10-17T16:51:39+02:00
+CRITICAL
+		total        used        free      shared     buffers
+Mem:             3915        3450         465          18          64
+-/+ buffers/cache:           3385         530
+16:51:42 filler 250 MB; wallet pid='10711'; Mem:             3915        3484         431          18          68
+16:51:45 filler 500 MB; wallet pid='10711'; Mem:             3915        3446         469          17          69
+16:51:48 filler 750 MB; wallet pid='10711'; Mem:             3915        3362         552          17          69
+16:51:52 filler 1000 MB; wallet pid='10711'; Mem:             3915        3325         590          17          70
+16:51:55 filler 1250 MB; wallet pid='10711'; Mem:             3915        3338         576          17          71
+16:51:58 filler 1500 MB; wallet pid='10711'; Mem:             3915        3340         575          17          72
+16:52:01 filler 1750 MB; wallet pid='10711'; Mem:             3915        3330         585          17          72
+16:52:04 filler 2000 MB; wallet pid='10711'; Mem:             3915        3291         624          17          72
+16:52:07 filler 2250 MB; wallet pid='10711'; Mem:             3915        3268         647          17          72
+16:52:10 filler 2500 MB; wallet pid='10711'; Mem:             3915        3237         677          17          72
+16:52:13 filler 2750 MB; wallet pid='10711'; Mem:             3915        3238         677          17          72
+16:52:16 filler 3000 MB; wallet pid='10711'; Mem:             3915        3235         679          17          72
+16:52:19 filler 3250 MB; wallet pid='10711'; Mem:             3915        3242         672          17          72
+16:52:22 filler 3500 MB; wallet pid='10711'; Mem:             3915        3250         665          17          72
+10-17 16:48:30.620   643  1878 I am_kill : [0,9672,eu.compote.euidi.dev,0,stop eu.compote.euidi.dev due to from pid 9774,328744]
+10-17 16:49:00.352   643  1741 I am_kill : [0,9789,eu.compote.euidi.dev,700,kill background,332212]
+10-17 16:49:22.043   643  1903 I am_kill : [0,10120,eu.compote.euidi.dev,0,stop eu.compote.euidi.dev due to from pid 10212,317316]
+10-17 16:49:56.431   643  1979 I am_kill : [0,10227,eu.compote.euidi.dev,700,kill background,332080]
+10-17 16:50:21.412   643   892 I am_kill : [0,10599,eu.compote.euidi.dev,0,stop eu.compote.euidi.dev due to from pid 10696,315476]

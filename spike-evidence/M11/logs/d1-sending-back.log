@@ -1,0 +1,17 @@
+## D1 sending / back 2026-10-17T16:43:48+02:00
+at request
+at verification-code
+shot d1-sending-back-during
+state during: resource-id="ux-state-sending"
+state after: resource-id="ux-state-success"
+shot d1-sending-back-settled
+10-17 16:44:01.505 UX-SPIKE: enter connecting (gen 1)
+10-17 16:44:04.510 UX-SPIKE: enter request (gen 2)
+10-17 16:44:07.677 UX-SPIKE: enter auth (gen 3)
+10-17 16:44:09.180 UX-SPIKE: enter verification-code (gen 4)
+10-17 16:44:14.541 UX-SPIKE: enter sending (gen 5)
+10-17 16:44:14.542 UX-SPIKE: send#1 (script slow)
+10-17 16:44:14.568 UX-SPIKE: back: Blocked
+10-17 16:44:17.550 UX-SPIKE: enter success (gen 6)
+/sdcard/d1-sending-back.mp4: 1 file pulled, 0 skipped. 90.0 MB/s (950668 bytes in 0.010s)
+video d1-sending-back

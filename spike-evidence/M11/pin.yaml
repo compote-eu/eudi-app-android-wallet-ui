@@ -1,0 +1,10 @@
+appId: eu.compote.euidi.dev
+---
+- runFlow:
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"

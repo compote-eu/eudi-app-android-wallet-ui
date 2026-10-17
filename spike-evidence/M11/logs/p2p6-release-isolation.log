@@ -1,0 +1,12 @@
+# P2/P6 release isolation (Android) 2026-10-17T17:10:27+02:00
+devReleaseRuntimeClasspath: ux-/uxspike lines = 0
+demoReleaseRuntimeClasspath: ux-/uxspike lines = 0
+devDebugRuntimeClasspath: ux-/uxspike lines = 8
+-- release APK Oct 17 17:10
+release dex packages with spike patterns: 0
+release files list spike patterns: 0
+release manifest ux-spike-init: 0
+-- control: debug APK
+debug dex packages spike patterns: 9418
+debug files list spike patterns: 85
+debug manifest ux-spike-init: 1

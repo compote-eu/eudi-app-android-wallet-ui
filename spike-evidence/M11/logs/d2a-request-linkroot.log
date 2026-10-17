@@ -1,0 +1,18 @@
+## D2a request, task root = the deep-link intent (finding) 2026-10-17T17:02:12+02:00
+at request
+pid before kill: 18203
+pid after am kill: ''
+shot d2a-request-linkroot-after
+pid: 18508 gate=0 state=resource-id="ux-state-request"
+10-17 17:02:25.658 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 17:02:25.813 UX-SPIKE: enter connecting (gen 1)
+10-17 17:02:25.814 UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 17:02:28.828 UX-SPIKE: enter request (gen 2)
+10-17 17:02:41.101 UX-SPIKE: hook module loaded
+10-17 17:02:41.490 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 17:02:42.496 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 17:02:42.580 UX-SPIKE: enter connecting (gen 1)
+10-17 17:02:42.581 UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 17:02:45.593 UX-SPIKE: enter request (gen 2)
+/sdcard/d2a-request-linkroot.mp4: 1 file pulled, 0 skipped. 195.1 MB/s (3687286 bytes in 0.018s)
+video d2a-request-linkroot

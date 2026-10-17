@@ -1,0 +1,17 @@
+## D1 sending / edge 2026-10-17T16:44:25+02:00
+at request
+at verification-code
+shot d1-sending-edge-during
+state during: resource-id="ux-state-sending"
+state after: resource-id="ux-state-success"
+shot d1-sending-edge-settled
+10-17 16:44:38.860 UX-SPIKE: enter connecting (gen 1)
+10-17 16:44:41.871 UX-SPIKE: enter request (gen 2)
+10-17 16:44:45.060 UX-SPIKE: enter auth (gen 3)
+10-17 16:44:46.561 UX-SPIKE: enter verification-code (gen 4)
+10-17 16:44:51.868 UX-SPIKE: enter sending (gen 5)
+10-17 16:44:51.868 UX-SPIKE: send#1 (script slow)
+10-17 16:44:52.155 UX-SPIKE: back: Blocked
+10-17 16:44:54.872 UX-SPIKE: enter success (gen 6)
+/sdcard/d1-sending-edge.mp4: 1 file pulled, 0 skipped. 133.1 MB/s (1069315 bytes in 0.008s)
+video d1-sending-edge

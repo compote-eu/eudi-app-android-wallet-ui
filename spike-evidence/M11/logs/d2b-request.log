@@ -1,0 +1,19 @@
+## D2b request 2026-10-17T16:56:07+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+at request
+pid before: 14871
+CRITICAL
+send-trim-memory rc=0
+pid after SIGKILL: ''
+-- relaunch (recents)
+shot d2b-request-after
+pid: 15219 gate=0 state=resource-id="ux-state-request"
+10-17 16:56:26.155 UX-SPIKE: enter connecting (gen 1)
+10-17 16:56:26.156 UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 16:56:29.163 UX-SPIKE: enter request (gen 2)
+10-17 16:56:41.769 UX-SPIKE: hook module loaded
+10-17 16:56:42.351 UX-SPIKE: restore request -> snapshot
+10-17 16:56:42.351 UX-SPIKE: restore: Restored(state=request, reinvoked=false)
+10-17 16:56:07.286   643  1727 I am_kill : [0,14766,eu.compote.euidi.dev,0,stop eu.compote.euidi.dev due to from pid 14856,316764]
+/sdcard/d2b-request.mp4: 1 file pulled, 0 skipped. 295.1 MB/s (2259750 bytes in 0.007s)
+video d2b-request
