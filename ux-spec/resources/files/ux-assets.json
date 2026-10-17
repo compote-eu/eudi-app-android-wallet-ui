@@ -426,7 +426,7 @@
     }
   },
   "naming": "resources/drawable/ux_<brand>_<asset id with every non-alphanumeric as _>[__<mode>]; the app looks a resource up by `resource` (Res.allDrawableResources); paint mask = tint with the content colour, image = draw as is",
-  "spec_hash": "sha256:0829f1cb6dd08306d29dc98c63679e975238639cc75384c9679640281315d21e",
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
   "unbound": {
     "idsk": {
       "illustration.error": {

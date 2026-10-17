@@ -1,0 +1,1730 @@
+{
+  "attributes" : {
+    "accessibilityText" : "",
+    "title" : "",
+    "value" : "",
+    "text" : "",
+    "hintText" : "",
+    "resource-id" : "",
+    "bounds" : "[0,0][0,0]",
+    "enabled" : "false",
+    "focused" : "false",
+    "selected" : "false",
+    "checked" : "false"
+  },
+  "children" : [ {
+    "attributes" : {
+      "accessibilityText" : "EUDI Wallet",
+      "title" : "",
+      "value" : "",
+      "text" : "",
+      "hintText" : "",
+      "resource-id" : "",
+      "bounds" : "[0,0][402,874]",
+      "enabled" : "true",
+      "focused" : "false",
+      "selected" : "false",
+      "checked" : "false"
+    },
+    "children" : [ {
+      "attributes" : {
+        "accessibilityText" : "",
+        "title" : "",
+        "value" : "",
+        "text" : "",
+        "hintText" : "",
+        "resource-id" : "",
+        "bounds" : "[0,0][402,874]",
+        "enabled" : "true",
+        "focused" : "false",
+        "selected" : "false",
+        "checked" : "false"
+      },
+      "children" : [ {
+        "attributes" : {
+          "accessibilityText" : "",
+          "title" : "",
+          "value" : "",
+          "text" : "",
+          "hintText" : "",
+          "resource-id" : "",
+          "bounds" : "[0,0][402,874]",
+          "enabled" : "true",
+          "focused" : "false",
+          "selected" : "false",
+          "checked" : "false"
+        },
+        "children" : [ {
+          "attributes" : {
+            "accessibilityText" : "",
+            "title" : "",
+            "value" : "",
+            "text" : "",
+            "hintText" : "",
+            "resource-id" : "",
+            "bounds" : "[0,0][402,874]",
+            "enabled" : "true",
+            "focused" : "false",
+            "selected" : "false",
+            "checked" : "false"
+          },
+          "children" : [ {
+            "attributes" : {
+              "accessibilityText" : "",
+              "title" : "",
+              "value" : "",
+              "text" : "",
+              "hintText" : "",
+              "resource-id" : "",
+              "bounds" : "[0,0][402,874]",
+              "enabled" : "true",
+              "focused" : "false",
+              "selected" : "false",
+              "checked" : "false"
+            },
+            "children" : [ {
+              "attributes" : {
+                "accessibilityText" : "",
+                "title" : "",
+                "value" : "",
+                "text" : "",
+                "hintText" : "",
+                "resource-id" : "",
+                "bounds" : "[0,0][402,874]",
+                "enabled" : "true",
+                "focused" : "false",
+                "selected" : "false",
+                "checked" : "false"
+              },
+              "children" : [ {
+                "attributes" : {
+                  "accessibilityText" : "",
+                  "title" : "",
+                  "value" : "",
+                  "text" : "",
+                  "hintText" : "",
+                  "resource-id" : "",
+                  "bounds" : "[0,0][402,874]",
+                  "enabled" : "true",
+                  "focused" : "false",
+                  "selected" : "false",
+                  "checked" : "false"
+                },
+                "children" : [ {
+                  "attributes" : {
+                    "accessibilityText" : "",
+                    "title" : "",
+                    "value" : "",
+                    "text" : "",
+                    "hintText" : "",
+                    "resource-id" : "",
+                    "bounds" : "[0,0][402,874]",
+                    "enabled" : "true",
+                    "focused" : "false",
+                    "selected" : "false",
+                    "checked" : "false"
+                  },
+                  "children" : [ ],
+                  "enabled" : true,
+                  "focused" : false,
+                  "checked" : false,
+                  "selected" : false
+                }, {
+                  "attributes" : {
+                    "accessibilityText" : "",
+                    "title" : "",
+                    "value" : "",
+                    "text" : "",
+                    "hintText" : "",
+                    "resource-id" : "",
+                    "bounds" : "[0,0][402,874]",
+                    "enabled" : "true",
+                    "focused" : "false",
+                    "selected" : "false",
+                    "checked" : "false"
+                  },
+                  "children" : [ ],
+                  "enabled" : true,
+                  "focused" : false,
+                  "checked" : false,
+                  "selected" : false
+                }, {
+                  "attributes" : {
+                    "accessibilityText" : "",
+                    "title" : "",
+                    "value" : "",
+                    "text" : "",
+                    "hintText" : "",
+                    "resource-id" : "",
+                    "bounds" : "[0,0][402,874]",
+                    "enabled" : "true",
+                    "focused" : "false",
+                    "selected" : "false",
+                    "checked" : "false"
+                  },
+                  "children" : [ {
+                    "attributes" : {
+                      "accessibilityText" : "",
+                      "title" : "",
+                      "value" : "",
+                      "text" : "",
+                      "hintText" : "",
+                      "resource-id" : "",
+                      "bounds" : "[0,0][402,874]",
+                      "enabled" : "true",
+                      "focused" : "false",
+                      "selected" : "false",
+                      "checked" : "false"
+                    },
+                    "children" : [ {
+                      "attributes" : {
+                        "accessibilityText" : "",
+                        "title" : "",
+                        "value" : "",
+                        "text" : "",
+                        "hintText" : "",
+                        "resource-id" : "",
+                        "bounds" : "[0,0][402,874]",
+                        "enabled" : "true",
+                        "focused" : "false",
+                        "selected" : "false",
+                        "checked" : "false"
+                      },
+                      "children" : [ {
+                        "attributes" : {
+                          "accessibilityText" : "",
+                          "title" : "",
+                          "value" : "",
+                          "text" : "",
+                          "hintText" : "",
+                          "resource-id" : "",
+                          "bounds" : "[0,0][402,874]",
+                          "enabled" : "true",
+                          "focused" : "false",
+                          "selected" : "false",
+                          "checked" : "false"
+                        },
+                        "children" : [ ],
+                        "enabled" : true,
+                        "focused" : false,
+                        "checked" : false,
+                        "selected" : false
+                      }, {
+                        "attributes" : {
+                          "accessibilityText" : "",
+                          "title" : "",
+                          "value" : "",
+                          "text" : "",
+                          "hintText" : "",
+                          "resource-id" : "",
+                          "bounds" : "[0,0][402,874]",
+                          "enabled" : "true",
+                          "focused" : "false",
+                          "selected" : "false",
+                          "checked" : "false"
+                        },
+                        "children" : [ ],
+                        "enabled" : true,
+                        "focused" : false,
+                        "checked" : false,
+                        "selected" : false
+                      }, {
+                        "attributes" : {
+                          "accessibilityText" : "",
+                          "title" : "",
+                          "value" : "",
+                          "text" : "",
+                          "hintText" : "",
+                          "resource-id" : "ux-state-request",
+                          "bounds" : "[0,0][402,874]",
+                          "enabled" : "true",
+                          "focused" : "false",
+                          "selected" : "false",
+                          "checked" : "false"
+                        },
+                        "children" : [ ],
+                        "enabled" : true,
+                        "focused" : false,
+                        "checked" : false,
+                        "selected" : false
+                      }, {
+                        "attributes" : {
+                          "accessibilityText" : "",
+                          "title" : "",
+                          "value" : "",
+                          "text" : "",
+                          "hintText" : "",
+                          "resource-id" : "SCR-pres-request",
+                          "bounds" : "[0,0][402,874]",
+                          "enabled" : "true",
+                          "focused" : "false",
+                          "selected" : "false",
+                          "checked" : "false"
+                        },
+                        "children" : [ ],
+                        "enabled" : true,
+                        "focused" : false,
+                        "checked" : false,
+                        "selected" : false
+                      }, {
+                        "attributes" : {
+                          "accessibilityText" : "",
+                          "title" : "",
+                          "value" : "",
+                          "text" : "",
+                          "hintText" : "",
+                          "resource-id" : "",
+                          "bounds" : "[0,0][402,874]",
+                          "enabled" : "true",
+                          "focused" : "false",
+                          "selected" : "false",
+                          "checked" : "false"
+                        },
+                        "children" : [ ],
+                        "enabled" : true,
+                        "focused" : false,
+                        "checked" : false,
+                        "selected" : false
+                      }, {
+                        "attributes" : {
+                          "accessibilityText" : "",
+                          "title" : "",
+                          "value" : "",
+                          "text" : "",
+                          "hintText" : "",
+                          "resource-id" : "SCR-pres-request.dialog",
+                          "bounds" : "[0,0][402,874]",
+                          "enabled" : "true",
+                          "focused" : "false",
+                          "selected" : "false",
+                          "checked" : "false"
+                        },
+                        "children" : [ {
+                          "attributes" : {
+                            "accessibilityText" : "",
+                            "title" : "",
+                            "value" : "",
+                            "text" : "",
+                            "hintText" : "",
+                            "resource-id" : "SCR-pres-request.header",
+                            "bounds" : "[0,0][402,68]",
+                            "enabled" : "true",
+                            "focused" : "false",
+                            "selected" : "false",
+                            "checked" : "false"
+                          },
+                          "children" : [ ],
+                          "enabled" : true,
+                          "focused" : false,
+                          "checked" : false,
+                          "selected" : false
+                        }, {
+                          "attributes" : {
+                            "accessibilityText" : "Overenie eDokladu",
+                            "title" : "",
+                            "value" : "",
+                            "text" : "",
+                            "hintText" : "",
+                            "resource-id" : "title",
+                            "bounds" : "[20,20][247,48]",
+                            "enabled" : "true",
+                            "focused" : "false",
+                            "selected" : "false",
+                            "checked" : "false"
+                          },
+                          "children" : [ ],
+                          "enabled" : true,
+                          "focused" : false,
+                          "checked" : false,
+                          "selected" : false
+                        }, {
+                          "attributes" : {
+                            "accessibilityText" : "",
+                            "title" : "",
+                            "value" : "",
+                            "text" : "",
+                            "hintText" : "",
+                            "resource-id" : "SCR-pres-request.body",
+                            "bounds" : "[0,68][402,694]",
+                            "enabled" : "true",
+                            "focused" : "false",
+                            "selected" : "false",
+                            "checked" : "false"
+                          },
+                          "children" : [ {
+                            "attributes" : {
+                              "accessibilityText" : "",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "rp-trusted",
+                              "bounds" : "[20,68][382,244]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "rp-trusted.avatar",
+                              "bounds" : "[35,96][83,144]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "Overovateľ",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "",
+                              "bounds" : "[93,83][155,98]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "Príkladová banka, a.s.",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "rp-trusted.name",
+                              "bounds" : "[93,103][292,124]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "Overený overovateľ",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "rp-trusted.trust",
+                              "bounds" : "[103,134][250,152]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ {
+                              "attributes" : {
+                                "accessibilityText" : "",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "",
+                                "bounds" : "[103,134][121,152]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            }, {
+                              "attributes" : {
+                                "accessibilityText" : "Overený overovateľ",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "",
+                                "bounds" : "[126,134][250,150]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            } ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "Overenie cez webový portál, Internetové bankovníctvo",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "rp-trusted.service",
+                              "bounds" : "[35,162][201,193]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ {
+                              "attributes" : {
+                                "accessibilityText" : "Overenie cez webový portál",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "",
+                                "bounds" : "[35,162][192,176]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            }, {
+                              "attributes" : {
+                                "accessibilityText" : "Internetové bankovníctvo",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "",
+                                "bounds" : "[35,176][201,193]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            } ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "Dôvod kontroly, Overenie totožnosti pri otvorení účtu",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "rp-trusted.reason",
+                              "bounds" : "[35,198][276,229]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ {
+                              "attributes" : {
+                                "accessibilityText" : "Dôvod kontroly",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "",
+                                "bounds" : "[35,198][120,212]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            }, {
+                              "attributes" : {
+                                "accessibilityText" : "Overenie totožnosti pri otvorení účtu",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "",
+                                "bounds" : "[35,212][276,229]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            } ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "Zásady ochrany osobných údajov overovateľa, otvorí sa v prehliadači",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "privacy",
+                              "bounds" : "[20,259][382,307]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ {
+                              "attributes" : {
+                                "accessibilityText" : "",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "",
+                                "bounds" : "[20,274][363,293]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            }, {
+                              "attributes" : {
+                                "accessibilityText" : "",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "",
+                                "bounds" : "[368,274][382,292]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            } ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "Overovateľ žiada tieto údaje z eDokladu Občiansky preukaz:",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "data-intro",
+                              "bounds" : "[20,322][382,365]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "Vyberte, ktoré nepovinné údaje chcete predložiť.",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "instructions",
+                              "bounds" : "[20,380][341,397]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "attributes",
+                              "bounds" : "[20,412][382,694]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "attributes.mandatory",
+                              "bounds" : "[20,412][382,541]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ {
+                              "attributes" : {
+                                "accessibilityText" : "Meno, Ján, Povinné",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "attributes.item.given_name",
+                                "bounds" : "[20,412][382,474]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "true",
+                                "checked" : "false"
+                              },
+                              "children" : [ {
+                                "attributes" : {
+                                  "accessibilityText" : "Meno",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[54,412][96,431]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[8,419][56,467]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ {
+                                  "attributes" : {
+                                    "accessibilityText" : "",
+                                    "title" : "",
+                                    "value" : "",
+                                    "text" : "",
+                                    "hintText" : "",
+                                    "resource-id" : "",
+                                    "bounds" : "[22,433][42,453]",
+                                    "enabled" : "true",
+                                    "focused" : "false",
+                                    "selected" : "false",
+                                    "checked" : "false"
+                                  },
+                                  "children" : [ ],
+                                  "enabled" : true,
+                                  "focused" : false,
+                                  "checked" : false,
+                                  "selected" : false
+                                } ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "Ján",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[54,431][82,450]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[62,438][132,479]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ {
+                                  "attributes" : {
+                                    "accessibilityText" : "",
+                                    "title" : "",
+                                    "value" : "",
+                                    "text" : "",
+                                    "hintText" : "",
+                                    "resource-id" : "",
+                                    "bounds" : "[62,454][78,470]",
+                                    "enabled" : "true",
+                                    "focused" : "false",
+                                    "selected" : "false",
+                                    "checked" : "false"
+                                  },
+                                  "children" : [ ],
+                                  "enabled" : true,
+                                  "focused" : false,
+                                  "checked" : false,
+                                  "selected" : false
+                                }, {
+                                  "attributes" : {
+                                    "accessibilityText" : "Povinné",
+                                    "title" : "",
+                                    "value" : "",
+                                    "text" : "",
+                                    "hintText" : "",
+                                    "resource-id" : "",
+                                    "bounds" : "[82,454][132,470]",
+                                    "enabled" : "true",
+                                    "focused" : "false",
+                                    "selected" : "false",
+                                    "checked" : "false"
+                                  },
+                                  "children" : [ ],
+                                  "enabled" : true,
+                                  "focused" : false,
+                                  "checked" : false,
+                                  "selected" : false
+                                } ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              } ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : true
+                            }, {
+                              "attributes" : {
+                                "accessibilityText" : "Priezvisko, Novák, Povinné",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "attributes.item.family_name",
+                                "bounds" : "[20,479][382,541]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "true",
+                                "checked" : "false"
+                              },
+                              "children" : [ {
+                                "attributes" : {
+                                  "accessibilityText" : "Priezvisko",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[54,479][131,498]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[8,486][56,534]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ {
+                                  "attributes" : {
+                                    "accessibilityText" : "",
+                                    "title" : "",
+                                    "value" : "",
+                                    "text" : "",
+                                    "hintText" : "",
+                                    "resource-id" : "",
+                                    "bounds" : "[22,500][42,520]",
+                                    "enabled" : "true",
+                                    "focused" : "false",
+                                    "selected" : "false",
+                                    "checked" : "false"
+                                  },
+                                  "children" : [ ],
+                                  "enabled" : true,
+                                  "focused" : false,
+                                  "checked" : false,
+                                  "selected" : false
+                                } ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "Novák",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[54,498][103,517]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[62,505][132,553]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ {
+                                  "attributes" : {
+                                    "accessibilityText" : "",
+                                    "title" : "",
+                                    "value" : "",
+                                    "text" : "",
+                                    "hintText" : "",
+                                    "resource-id" : "",
+                                    "bounds" : "[62,521][78,537]",
+                                    "enabled" : "true",
+                                    "focused" : "false",
+                                    "selected" : "false",
+                                    "checked" : "false"
+                                  },
+                                  "children" : [ ],
+                                  "enabled" : true,
+                                  "focused" : false,
+                                  "checked" : false,
+                                  "selected" : false
+                                }, {
+                                  "attributes" : {
+                                    "accessibilityText" : "Povinné",
+                                    "title" : "",
+                                    "value" : "",
+                                    "text" : "",
+                                    "hintText" : "",
+                                    "resource-id" : "",
+                                    "bounds" : "[82,521][132,537]",
+                                    "enabled" : "true",
+                                    "focused" : "false",
+                                    "selected" : "false",
+                                    "checked" : "false"
+                                  },
+                                  "children" : [ ],
+                                  "enabled" : true,
+                                  "focused" : false,
+                                  "checked" : false,
+                                  "selected" : false
+                                } ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              } ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : true
+                            } ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          }, {
+                            "attributes" : {
+                              "accessibilityText" : "",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "attributes.optional",
+                              "bounds" : "[20,556][382,694]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ {
+                              "attributes" : {
+                                "accessibilityText" : "Nepovinné údaje",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "",
+                                "bounds" : "[20,556][170,577]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            }, {
+                              "attributes" : {
+                                "accessibilityText" : "Dátum narodenia, 12. 4. 1985",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "attributes.item.birth_date",
+                                "bounds" : "[20,582][382,630]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ {
+                                "attributes" : {
+                                  "accessibilityText" : "",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[8,582][56,630]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "Dátum narodenia",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[54,587][182,606]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "12. 4. 1985",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[54,606][141,625]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              } ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            }, {
+                              "attributes" : {
+                                "accessibilityText" : "Štátna príslušnosť, SK",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "attributes.item.nationality",
+                                "bounds" : "[20,635][382,683]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ {
+                                "attributes" : {
+                                  "accessibilityText" : "",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[8,635][56,683]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "Štátna príslušnosť",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[54,640][190,659]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "SK",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[54,659][75,678]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              } ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            }, {
+                              "attributes" : {
+                                "accessibilityText" : "Vek 18 a viac",
+                                "title" : "",
+                                "value" : "",
+                                "text" : "",
+                                "hintText" : "",
+                                "resource-id" : "attributes.item.age_over_18",
+                                "bounds" : "[20,688][382,714]",
+                                "enabled" : "true",
+                                "focused" : "false",
+                                "selected" : "false",
+                                "checked" : "false"
+                              },
+                              "children" : [ {
+                                "attributes" : {
+                                  "accessibilityText" : "",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[20,688][56,736]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              }, {
+                                "attributes" : {
+                                  "accessibilityText" : "Vek 18 a viac",
+                                  "title" : "",
+                                  "value" : "",
+                                  "text" : "",
+                                  "hintText" : "",
+                                  "resource-id" : "",
+                                  "bounds" : "[54,703][152,722]",
+                                  "enabled" : "true",
+                                  "focused" : "false",
+                                  "selected" : "false",
+                                  "checked" : "false"
+                                },
+                                "children" : [ ],
+                                "enabled" : true,
+                                "focused" : false,
+                                "checked" : false,
+                                "selected" : false
+                              } ],
+                              "enabled" : true,
+                              "focused" : false,
+                              "checked" : false,
+                              "selected" : false
+                            } ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          } ],
+                          "enabled" : true,
+                          "focused" : false,
+                          "checked" : false,
+                          "selected" : false
+                        }, {
+                          "attributes" : {
+                            "accessibilityText" : "",
+                            "title" : "",
+                            "value" : "",
+                            "text" : "",
+                            "hintText" : "",
+                            "resource-id" : "SCR-pres-request.actions",
+                            "bounds" : "[0,694][402,840]",
+                            "enabled" : "true",
+                            "focused" : "false",
+                            "selected" : "false",
+                            "checked" : "false"
+                          },
+                          "children" : [ ],
+                          "enabled" : true,
+                          "focused" : false,
+                          "checked" : false,
+                          "selected" : false
+                        }, {
+                          "attributes" : {
+                            "accessibilityText" : "Pokračovať",
+                            "title" : "",
+                            "value" : "",
+                            "text" : "",
+                            "hintText" : "",
+                            "resource-id" : "continue",
+                            "bounds" : "[20,714][382,762]",
+                            "enabled" : "true",
+                            "focused" : "false",
+                            "selected" : "false",
+                            "checked" : "false"
+                          },
+                          "children" : [ {
+                            "attributes" : {
+                              "accessibilityText" : "Pokračovať",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "",
+                              "bounds" : "[155,728][246,747]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          } ],
+                          "enabled" : true,
+                          "focused" : false,
+                          "checked" : false,
+                          "selected" : false
+                        }, {
+                          "attributes" : {
+                            "accessibilityText" : "Odmietnuť",
+                            "title" : "",
+                            "value" : "",
+                            "text" : "",
+                            "hintText" : "",
+                            "resource-id" : "reject",
+                            "bounds" : "[20,772][382,820]",
+                            "enabled" : "true",
+                            "focused" : "false",
+                            "selected" : "false",
+                            "checked" : "false"
+                          },
+                          "children" : [ {
+                            "attributes" : {
+                              "accessibilityText" : "Odmietnuť",
+                              "title" : "",
+                              "value" : "",
+                              "text" : "",
+                              "hintText" : "",
+                              "resource-id" : "",
+                              "bounds" : "[158,786][244,805]",
+                              "enabled" : "true",
+                              "focused" : "false",
+                              "selected" : "false",
+                              "checked" : "false"
+                            },
+                            "children" : [ ],
+                            "enabled" : true,
+                            "focused" : false,
+                            "checked" : false,
+                            "selected" : false
+                          } ],
+                          "enabled" : true,
+                          "focused" : false,
+                          "checked" : false,
+                          "selected" : false
+                        } ],
+                        "enabled" : true,
+                        "focused" : false,
+                        "checked" : false,
+                        "selected" : false
+                      } ],
+                      "enabled" : true,
+                      "focused" : false,
+                      "checked" : false,
+                      "selected" : false
+                    } ],
+                    "enabled" : true,
+                    "focused" : false,
+                    "checked" : false,
+                    "selected" : false
+                  } ],
+                  "enabled" : true,
+                  "focused" : false,
+                  "checked" : false,
+                  "selected" : false
+                } ],
+                "enabled" : true,
+                "focused" : false,
+                "checked" : false,
+                "selected" : false
+              } ],
+              "enabled" : true,
+              "focused" : false,
+              "checked" : false,
+              "selected" : false
+            } ],
+            "enabled" : true,
+            "focused" : false,
+            "checked" : false,
+            "selected" : false
+          } ],
+          "enabled" : true,
+          "focused" : false,
+          "checked" : false,
+          "selected" : false
+        } ],
+        "enabled" : true,
+        "focused" : false,
+        "checked" : false,
+        "selected" : false
+      } ],
+      "enabled" : true,
+      "focused" : false,
+      "checked" : false,
+      "selected" : false
+    }, {
+      "attributes" : {
+        "accessibilityText" : "",
+        "title" : "",
+        "value" : "",
+        "text" : "",
+        "hintText" : "",
+        "resource-id" : "",
+        "bounds" : "[0,0][402,874]",
+        "enabled" : "true",
+        "focused" : "false",
+        "selected" : "false",
+        "checked" : "false"
+      },
+      "children" : [ {
+        "attributes" : {
+          "accessibilityText" : "",
+          "title" : "",
+          "value" : "",
+          "text" : "",
+          "hintText" : "",
+          "resource-id" : "",
+          "bounds" : "[0,0][402,874]",
+          "enabled" : "true",
+          "focused" : "false",
+          "selected" : "false",
+          "checked" : "false"
+        },
+        "children" : [ {
+          "attributes" : {
+            "accessibilityText" : "",
+            "title" : "",
+            "value" : "",
+            "text" : "",
+            "hintText" : "",
+            "resource-id" : "",
+            "bounds" : "[0,0][402,874]",
+            "enabled" : "true",
+            "focused" : "false",
+            "selected" : "false",
+            "checked" : "false"
+          },
+          "children" : [ ],
+          "enabled" : true,
+          "focused" : false,
+          "checked" : false,
+          "selected" : false
+        } ],
+        "enabled" : true,
+        "focused" : false,
+        "checked" : false,
+        "selected" : false
+      } ],
+      "enabled" : true,
+      "focused" : false,
+      "checked" : false,
+      "selected" : false
+    } ],
+    "enabled" : true,
+    "focused" : false,
+    "checked" : false,
+    "selected" : false
+  }, {
+    "attributes" : {
+      "accessibilityText" : "",
+      "title" : "",
+      "value" : "",
+      "text" : "",
+      "hintText" : "",
+      "resource-id" : "",
+      "bounds" : "[0,0][0,0]",
+      "enabled" : "false",
+      "focused" : "false",
+      "selected" : "false",
+      "checked" : "false"
+    },
+    "children" : [ {
+      "attributes" : {
+        "accessibilityText" : "",
+        "title" : "",
+        "value" : "",
+        "text" : "",
+        "hintText" : "",
+        "resource-id" : "",
+        "bounds" : "[0,0][402,54]",
+        "enabled" : "true",
+        "focused" : "false",
+        "selected" : "false",
+        "checked" : "false"
+      },
+      "children" : [ ],
+      "enabled" : true,
+      "focused" : false,
+      "checked" : false,
+      "selected" : false
+    }, {
+      "attributes" : {
+        "accessibilityText" : "",
+        "title" : "",
+        "value" : "",
+        "text" : "",
+        "hintText" : "",
+        "resource-id" : "",
+        "bounds" : "[0,0][402,54]",
+        "enabled" : "true",
+        "focused" : "false",
+        "selected" : "false",
+        "checked" : "false"
+      },
+      "children" : [ {
+        "attributes" : {
+          "accessibilityText" : "",
+          "title" : "",
+          "value" : "",
+          "text" : "",
+          "hintText" : "",
+          "resource-id" : "",
+          "bounds" : "[0,0][402,54]",
+          "enabled" : "true",
+          "focused" : "false",
+          "selected" : "false",
+          "checked" : "false"
+        },
+        "children" : [ {
+          "attributes" : {
+            "accessibilityText" : "",
+            "title" : "",
+            "value" : "",
+            "text" : "",
+            "hintText" : "",
+            "resource-id" : "",
+            "bounds" : "[0,0][402,54]",
+            "enabled" : "true",
+            "focused" : "false",
+            "selected" : "false",
+            "checked" : "false"
+          },
+          "children" : [ {
+            "attributes" : {
+              "accessibilityText" : "15:40",
+              "title" : "",
+              "value" : "",
+              "text" : "",
+              "hintText" : "",
+              "resource-id" : "",
+              "bounds" : "[50,21][98,43]",
+              "enabled" : "true",
+              "focused" : "false",
+              "selected" : "false",
+              "checked" : "false"
+            },
+            "children" : [ ],
+            "enabled" : true,
+            "focused" : false,
+            "checked" : false,
+            "selected" : false
+          }, {
+            "attributes" : {
+              "accessibilityText" : "",
+              "title" : "",
+              "value" : "",
+              "text" : "",
+              "hintText" : "",
+              "resource-id" : "",
+              "bounds" : "[55,14][92,51]",
+              "enabled" : "true",
+              "focused" : "false",
+              "selected" : "false",
+              "checked" : "false"
+            },
+            "children" : [ ],
+            "enabled" : true,
+            "focused" : false,
+            "checked" : false,
+            "selected" : false
+          }, {
+            "attributes" : {
+              "accessibilityText" : "",
+              "title" : "",
+              "value" : "",
+              "text" : "",
+              "hintText" : "",
+              "resource-id" : "",
+              "bounds" : "[309,14][345,51]",
+              "enabled" : "true",
+              "focused" : "false",
+              "selected" : "false",
+              "checked" : "false"
+            },
+            "children" : [ ],
+            "enabled" : true,
+            "focused" : false,
+            "checked" : false,
+            "selected" : false
+          }, {
+            "attributes" : {
+              "accessibilityText" : "Cellular",
+              "title" : "",
+              "value" : "No signal",
+              "text" : "No signal",
+              "hintText" : "",
+              "resource-id" : "",
+              "bounds" : "[284,25][305,38]",
+              "enabled" : "true",
+              "focused" : "false",
+              "selected" : "false",
+              "checked" : "false"
+            },
+            "children" : [ ],
+            "enabled" : true,
+            "focused" : false,
+            "checked" : false,
+            "selected" : false
+          }, {
+            "attributes" : {
+              "accessibilityText" : "",
+              "title" : "",
+              "value" : "SSID, 3 of 3 Wi-Fi bars",
+              "text" : "SSID, 3 of 3 Wi-Fi bars",
+              "hintText" : "",
+              "resource-id" : "3 of 3 Wi-Fi bars",
+              "bounds" : "[314,26][331,38]",
+              "enabled" : "true",
+              "focused" : "false",
+              "selected" : "false",
+              "checked" : "false"
+            },
+            "children" : [ {
+              "attributes" : {
+                "accessibilityText" : "Wi-Fi",
+                "title" : "",
+                "value" : "",
+                "text" : "",
+                "hintText" : "",
+                "resource-id" : "wifi",
+                "bounds" : "[311,23][334,41]",
+                "enabled" : "true",
+                "focused" : "false",
+                "selected" : "false",
+                "checked" : "false"
+              },
+              "children" : [ ],
+              "enabled" : true,
+              "focused" : false,
+              "checked" : false,
+              "selected" : false
+            } ],
+            "enabled" : true,
+            "focused" : false,
+            "checked" : false,
+            "selected" : false
+          }, {
+            "attributes" : {
+              "accessibilityText" : "100 % battery power",
+              "title" : "",
+              "value" : "Not charging",
+              "text" : "Not charging",
+              "hintText" : "",
+              "resource-id" : "",
+              "bounds" : "[340,25][369,39]",
+              "enabled" : "true",
+              "focused" : "false",
+              "selected" : "false",
+              "checked" : "false"
+            },
+            "children" : [ ],
+            "enabled" : true,
+            "focused" : false,
+            "checked" : false,
+            "selected" : false
+          } ],
+          "enabled" : true,
+          "focused" : false,
+          "checked" : false,
+          "selected" : false
+        } ],
+        "enabled" : true,
+        "focused" : false,
+        "checked" : false,
+        "selected" : false
+      } ],
+      "enabled" : true,
+      "focused" : false,
+      "checked" : false,
+      "selected" : false
+    } ],
+    "enabled" : false,
+    "focused" : false,
+    "checked" : false,
+    "selected" : false
+  } ],
+  "enabled" : false,
+  "focused" : false,
+  "checked" : false,
+  "selected" : false
+}

@@ -1,0 +1,47 @@
+2026-10-17T15:29:47.004096: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-17T15:29:47.010263: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-17T15:29:47.016669: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-17T15:29:47.037529: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/3D27B004-54A7-4D49-9E1B-04F9081528B8/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-17T15:29:47.041591: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=slow (persisting)
+objc[85727]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x10c350398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x10c488310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-17T15:30:10.073107: INFO: IosAuthorizationRedirects: ignoring an opened URL that is not an authorization redirect
+2026-10-17T15:30:10.074041: INFO: IosDeepLinks: a presentation request is waiting to be opened
+UX-SPIKE: argument --ux-spike=slow (persisting)
+UX-SPIKE: argument --ux-spike=slow (persisting)
+UX-SPIKE: argument --ux-spike=slow (persisting)
+UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (IOS)
+UX-SPIKE: enter connecting (gen 1)
+UX-SPIKE: fetchRequest#1 (script slow)
+UX-SPIKE: start deeplink: Started(state=connecting)
+UX-SPIKE: screen SCR-pres-connecting: interpreted from the bundle (TPL-progress, 2 nodes), state connecting, ui_state default
+UX-SPIKE: a11y: SCR-pres-connecting announce-live hero ('Overuje sa totožnosť overovateľa a dostupnosť vašich eDokladov.. Načítava sa žiadosť overovateľa')
+UX-SPIKE: enter request (gen 2)
+UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)
+2026-10-17T15:30:17.220661: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-17T15:30:17.221464: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-17T15:30:17.228572: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-17T15:30:17.229311: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
+UX-SPIKE: intent from SCR-pres-request: CONTINUE {} (gen 2)
+UX-SPIKE: enter auth (gen 3)
+UX-SPIKE: authenticate#1 (script slow)
+UX-SPIKE: screen SCR-pres-auth: interpreted from the bundle (TPL-sheet, 4 nodes), state auth, ui_state default
+UX-SPIKE: a11y: SCR-pres-auth focus-heading title (focused)
+UX-SPIKE: enter verification-code (gen 4)
+UX-SPIKE: verificationCode#1 (script slow)
+UX-SPIKE: screen SCR-pres-verification-code: interpreted from the bundle (TPL-sheet, 8 nodes), state verification-code, ui_state no-url
+UX-SPIKE: a11y: SCR-pres-verification-code focus-heading title (focused)
+UX-SPIKE: interpreter: confirm press -> CONFIRM
+UX-SPIKE: enter sending (gen 5)
+UX-SPIKE: send#1 (script slow)
+UX-SPIKE: screen SCR-pres-sending: interpreted from the bundle (TPL-progress, 1 nodes), state sending, ui_state default
+UX-SPIKE: a11y: SCR-pres-sending announce-live hero ('Prebieha odoslanie dát eDokladov')
+UX-SPIKE: enter success (gen 6)
+UX-SPIKE: screen SCR-pres-outcome-success: interpreted from the bundle (TPL-outcome, 2 nodes), state success, ui_state default
+UX-SPIKE: a11y: SCR-pres-outcome-success focus-heading hero (focused)
+UX-SPIKE: interpreter: close press -> CLOSE
+UX-SPIKE: enter done (gen 7)
+UX-SPIKE: exit done (FINAL_STATE)
+UX-SPIKE: exit Done

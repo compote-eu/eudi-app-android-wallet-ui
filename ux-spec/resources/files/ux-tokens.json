@@ -27,7 +27,7 @@
     "light",
     "high-contrast"
   ],
-  "spec_hash": "sha256:0829f1cb6dd08306d29dc98c63679e975238639cc75384c9679640281315d21e",
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
   "tokens_schema_version": 1,
   "units": "a dimension is DTCG px: read it as sp where its alias chain passes a sys.type.* path (a text size or line height), else as dp; colours are sRGB with an optional alpha",
   "values": {
