@@ -20,6 +20,7 @@ package eu.europa.ec.ux.elements
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -85,7 +86,7 @@ fun UxRpIdentity(
         verticalArrangement = Arrangement.spacedBy(tokens.space.xs),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(tokens.space.s), verticalAlignment = Alignment.CenterVertically) {
-            if (!logo.isNullOrEmpty()) RpLogo(logo, "$id.logo")
+            if (!logo.isNullOrEmpty()) RpLogo(logo, "$id.logo") else OrganisationAvatar("$id.avatar")
             Column(verticalArrangement = Arrangement.spacedBy(tokens.space.xs)) {
                 if (caption != null) BasicText(caption, style = tokens.type.caption.copy(color = c.textSecondary))
                 val nameStyle = if (trust == UxTrust.Trusted) {
@@ -132,6 +133,31 @@ private fun RpLogo(url: String, tag: String) {
                 hideFromAccessibility()
             },
     )
+}
+
+/**
+ * The generic organisation avatar (`icon.apartment`) the library draws when the party has no logo: a rounded tile in
+ * `comp.rp-identity.avatar-*` with a ring of its own colour, decorative (hidden; only the test tag stays).
+ */
+@Composable
+private fun OrganisationAvatar(tag: String) {
+    val tokens = UxThemeAccess.tokens
+    val rp = UxComp("comp.rp-identity")
+    val shape = RoundedCornerShape(rp.dp("radius", tokens.radius.card))
+    val fg = rp.color("avatar-fg", tokens.colors.textSelected)
+    val size = rp.dp("avatar-size", tokens.size.target)
+    Box(
+        Modifier.size(size)
+            .background(rp.color("avatar-bg", tokens.colors.surfaceSelected), shape)
+            .border(tokens.effects.hairline, fg, shape)
+            .clearAndSetSemantics {
+                testTag = tag
+                hideFromAccessibility()
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        PartIcon(EL_RP_IDENTITY, "organisation avatar", null, fg, tokens.size.iconMd)
+    }
 }
 
 @Composable

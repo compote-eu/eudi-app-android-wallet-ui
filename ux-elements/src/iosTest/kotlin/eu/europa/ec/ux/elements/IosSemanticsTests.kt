@@ -28,3 +28,6 @@ class RegistryAdapterIosTest : RegistryAdapterScenario()
 
 /** M6c: part assets by name, tinted masks, on the iOS simulator. */
 class AssetIosTest : AssetScenario()
+
+/** M5e: the Home parts on the iOS simulator. */
+class HomePartsIosTest : HomePartsScenario()

@@ -134,6 +134,15 @@ class RegistrySchemaTest {
     }
 
     @Test
+    fun theListItemFieldsOfTheNewListElementsEqualTheLibrary() {
+        // EL-bottom-bar `tabs` and EL-segmented-switch `options` (M5e): the record fields the adapters read are the library's.
+        mapOf("EL-bottom-bar" to "tabs", "EL-segmented-switch" to "options").forEach { (id, prop) ->
+            val item = snapshot.section("elements").section(id).section("props").section(prop).section("item").keys
+            assertEquals(item, UxElementRegistry.elementSchemas.getValue(id).itemProps.keys, "$id.$prop item fields")
+        }
+    }
+
+    @Test
     fun everyAssetPartTheElementsDrawIsInTheLibrary() {
         // The elements ask the library which asset a part draws (UxLibraryAssets); a renamed part would draw nothing.
         val declared = snapshot.section("elements").flatMap { (id, e) ->
@@ -152,21 +161,33 @@ class RegistrySchemaTest {
     private fun JsonObject.section(key: String): JsonObject = this[key]!!.jsonObject
 
     private companion object {
-        /** Library parts with no registry entry yet: the Home parts (OR-8, DEC-080), a later milestone. */
-        val KNOWN_GAPS: Map<String, String> = listOf(
-            "EL-bottom-bar", "EL-document-card", "EL-segmented-switch", "EL-status-chip", "EL-trust-mark", "TPL-home",
-        ).associateWith { "GAP (M6c): a part of the Home screen probe (OR-8), not implemented in the registry yet" }
+        /**
+         * Library parts with no registry entry yet. Empty since M5e: the Home parts (OR-8, DEC-080) landed. A part the
+         * library adds later is listed here with its reason, and a stale entry fails the test.
+         */
+        val KNOWN_GAPS: Map<String, String> = emptyMap()
 
         /** The (element, part) pairs whose asset the elements draw (`PartIcon` / `partAsset`). */
         val ASSET_PARTS_DRAWN: Set<Pair<String, String>> = setOf(
             "EL-app-bar" to "leading control",
             "EL-app-bar" to "trailing control",
             "EL-attribute-item" to "tick",
+            "EL-attribute-item" to "mandatory lock",
             "EL-attribute-list" to "copy button",
             "EL-button" to "leading icon",
             "EL-link" to "marker",
             "EL-notice" to "tone icon",
             "EL-rp-identity" to "trust glyph",
+            "EL-rp-identity" to "organisation avatar",
+            "EL-document-card" to "card art",
+            "EL-document-card" to "storage glyph",
+            "EL-document-card" to "chevron",
+            "EL-status-chip" to "tone glyph",
+            "EL-bottom-bar" to "destination icon",
+            "EL-bottom-bar" to "action button",
+            "EL-segmented-switch" to "selected check",
+            "EL-trust-mark" to "mark",
+            "EL-trust-mark" to "chevron",
             "EL-status-hero" to "art",
             "EL-status-hero" to "tone glyph",
         )

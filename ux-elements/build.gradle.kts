@@ -70,6 +70,87 @@ val specSnapshotFixture = tasks.register<SpecSnapshotFixture>("specSnapshotFixtu
     outputDir.set(layout.buildDirectory.dir("generated/spec-snapshot/kotlin"))
 }
 
+// M5e: the `comp.*` values of the parts the Home screen draws (ux-spec/resources/files/ux-tokens.json: type and value of
+// the groups below, per brand and mode) as a Kotlin string under build/, so the part tests read the export's own values on
+// both targets. The task refuses a file whose sha256 is not UX_SPEC.lock's. Chunked: a string constant has a size limit.
+abstract class TokensFixture : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val tokens: RegularFileProperty
+
+    @get:Input
+    abstract val expectedSha256: Property<String>
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val assets: RegularFileProperty
+
+    @get:Input
+    abstract val expectedAssetsSha256: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    @Suppress("UNCHECKED_CAST")
+    fun generate() {
+        val bytes = tokens.get().asFile.readBytes()
+        val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        check(sha == expectedSha256.get()) { "ux-tokens.json sha256 is $sha, UX_SPEC.lock says ${expectedSha256.get()}" }
+        val root = groovy.json.JsonSlurper().parseText(bytes.decodeToString()) as Map<String, Any?>
+        val groups = listOf("app-bar", "attribute-item", "bottom-bar", "document-card", "rp-identity", "screen", "segmented-switch", "status-chip", "trust-mark")
+            .map { "comp.$it." }
+        val values = (root["values"] as Map<String, Map<String, Map<String, Any?>>>).mapValues { (_, modes) ->
+            modes.mapValues { (_, all) ->
+                all.filterKeys { key -> groups.any { key.startsWith(it) } }
+                    .mapValues { (_, token) -> (token as Map<String, Any?>).filterKeys { it == "type" || it == "value" } }
+            }
+        }
+        val text = groovy.json.JsonOutput.toJson(mapOf("values" to values))
+        check('$' !in text && "\"\"\"" !in text) { "the tokens cannot be embedded in a raw string" }
+        val q = "\"\"\""
+        val body = text.chunked(CHUNK).joinToString(",\n") { "        $q$it$q" }
+        val dir = outputDir.get().asFile.resolve("eu/europa/ec/ux/elements/fixture").apply { mkdirs() }
+        val assetBytes = assets.get().asFile.readBytes()
+        val assetSha = MessageDigest.getInstance("SHA-256").digest(assetBytes).joinToString("") { "%02x".format(it) }
+        check(assetSha == expectedAssetsSha256.get()) { "ux-assets.json sha256 is $assetSha, UX_SPEC.lock says ${expectedAssetsSha256.get()}" }
+        dir.resolve("UxAssetsSnapshot.kt").writeText(
+            "// Generated from ux-spec/resources/files/ux-assets.json (sha256 $assetSha). Do not edit.\n" +
+                "package eu.europa.ec.ux.elements.fixture\n\n" +
+                "internal object UxAssetsSnapshot {\n    const val JSON: String = $q${assetBytes.decodeToString()}$q\n}\n",
+        )
+        dir.resolve("UxTokensSnapshot.kt").writeText(
+            "// Generated from ux-spec/resources/files/ux-tokens.json (sha256 $sha). Do not edit.\n" +
+                "package eu.europa.ec.ux.elements.fixture\n\n" +
+                "internal object UxTokensSnapshot {\n    val JSON: String = listOf(\n$body\n    ).joinToString(\"\")\n}\n",
+        )
+    }
+
+    private companion object {
+        const val CHUNK = 16_000
+    }
+}
+
+val tokensFixture = tasks.register<TokensFixture>("tokensFixture") {
+    tokens.set(rootProject.layout.projectDirectory.file("ux-spec/resources/files/ux-tokens.json"))
+    expectedSha256.set(
+        providers.fileContents(rootProject.layout.projectDirectory.file("ux-spec/UX_SPEC.lock")).asText.map { lock ->
+            val entry = Regex("""\{[^{}]*"path": "resources/files/ux-tokens.json"[^{}]*}""").find(lock)?.value
+                ?: error("UX_SPEC.lock lists no resources/files/ux-tokens.json")
+            Regex(""""sha256": "([0-9a-f]{64})"""").find(entry)!!.groupValues[1]
+        },
+    )
+    assets.set(rootProject.layout.projectDirectory.file("ux-spec/resources/files/ux-assets.json"))
+    expectedAssetsSha256.set(
+        providers.fileContents(rootProject.layout.projectDirectory.file("ux-spec/UX_SPEC.lock")).asText.map { lock ->
+            val entry = Regex("""\{[^{}]*"path": "resources/files/ux-assets.json"[^{}]*}""").find(lock)?.value
+                ?: error("UX_SPEC.lock lists no resources/files/ux-assets.json")
+            Regex(""""sha256": "([0-9a-f]{64})"""").find(entry)!!.groupValues[1]
+        },
+    )
+    outputDir.set(layout.buildDirectory.dir("generated/tokens-snapshot/kotlin"))
+}
+
 kotlin {
     android {
         namespace = "eu.europa.ec.ux.elements"
@@ -99,6 +180,7 @@ kotlin {
         }
         commonTest {
             kotlin.srcDir(specSnapshotFixture.map { it.outputDir })
+            kotlin.srcDir(tokensFixture.map { it.outputDir })
             dependencies {
                 implementation(kotlin("test"))
                 implementation(libs.kotlinx.serialization.json)

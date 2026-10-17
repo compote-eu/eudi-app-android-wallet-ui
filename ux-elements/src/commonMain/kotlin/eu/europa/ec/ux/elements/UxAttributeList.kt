@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -171,7 +172,7 @@ private fun AttributeRow(
             if (item.value != null && !item.photo) {
                 BasicText(item.value, style = tokens.type.body.copy(color = tokens.colors.textPrimary, fontWeight = tokens.comp.attributeList.valueWeight))
             }
-            if (tag != null) BasicText(tag, style = tokens.type.status.copy(color = tokens.colors.textSecondary))
+            if (tag != null) RequirementTag(tag, locked = mandatory)
         }
         if (readonly && brand.styles.attributePairs == UxAttributePairs.Columns) {
             Row(Modifier.weight(1f), horizontalArrangement = Arrangement.SpaceBetween) { texts() }
@@ -195,6 +196,29 @@ private fun AttributeRow(
                 contentAlignment = Alignment.Center,
             ) { PartIcon("EL-attribute-list", "copy button", null, tokens.colors.textLink, tokens.size.iconMd) }
         }
+    }
+}
+
+/** The requirement tag; a mandatory item's carries the lock (`icon.lock`), so the locked state is not told by the control alone. */
+@Composable
+private fun RequirementTag(text: String, locked: Boolean) {
+    val tokens = UxThemeAccess.tokens
+    val item = UxComp("comp.attribute-item")
+    val fg = item.color("tag-fg", tokens.colors.textSecondary)
+    Row(
+        modifier = Modifier
+            .background(item.color("tag-bg", tokens.colors.surfaceSubtle), RoundedCornerShape(item.dp("tag-radius", tokens.radius.pill)))
+            .padding(
+                start = item.dp("tag-padding-left", tokens.space.s),
+                end = item.dp("tag-padding-right", tokens.space.s),
+                top = item.dp("tag-padding-block", tokens.space.xs),
+                bottom = item.dp("tag-padding-block", tokens.space.xs),
+            ),
+        horizontalArrangement = Arrangement.spacedBy(item.dp("tag-gap", tokens.space.xs)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (locked) PartIcon("EL-attribute-item", "mandatory lock", null, fg, item.dp("lock-size", tokens.size.iconSm))
+        BasicText(text, style = tokens.type.status.copy(color = fg))
     }
 }
 

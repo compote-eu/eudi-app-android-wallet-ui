@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import eu.europa.ec.ux.theme.UxThemeAccess
 
 /** `EL-text variant`. */
@@ -60,14 +61,29 @@ fun UxText(
         UxTextVariant.Small -> tokens.type.small
         UxTextVariant.Display -> tokens.type.display
     }
+    val inBar = variant == UxTextVariant.Title && LocalUxBarTitle.current
     val isHeading = variant == UxTextVariant.Title || variant == UxTextVariant.Heading
     val focus = focusRequester ?: if (variant == UxTextVariant.Title) LocalUxHeadingFocus.current else null
     BasicText(
         text = text,
-        style = style.copy(color = color),
+        style = if (inBar) barTitleStyle() else style.copy(color = color),
         modifier = modifier
             .testTag(id)
             .focusTargetIf(focus)
             .then(if (isHeading) Modifier.semantics { heading() } else Modifier),
+    )
+}
+
+/** The screen title drawn in the app bar's band: the bar's title size, line, weight and colour, centred (`comp.app-bar.title-*`). */
+@Composable
+private fun barTitleStyle(): TextStyle {
+    val tokens = UxThemeAccess.tokens
+    val bar = UxComp("comp.app-bar")
+    return tokens.type.appBar.copy(
+        color = tokens.colors.textOnAppBar,
+        fontSize = bar.sp("title-size", tokens.type.appBar.fontSize),
+        lineHeight = bar.sp("title-line", tokens.type.appBar.lineHeight),
+        fontWeight = bar.weight("weight", tokens.comp.appBar.weight),
+        textAlign = TextAlign.Center,
     )
 }

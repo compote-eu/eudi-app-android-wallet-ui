@@ -18,7 +18,9 @@
 package eu.europa.ec.ux.elements
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,11 +38,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import eu.europa.ec.ux.theme.UxThemeAccess
 import eu.europa.ec.ux.theme.uxElevation
 
 private const val EL_APP_BAR = "EL-app-bar"
+private const val GROUP = "comp.app-bar"
 
 /** `EL-app-bar leading`. */
 enum class UxBarLeading { Back, Close, Menu, None }
@@ -70,15 +74,17 @@ fun UxAppBar(
     trailingFocus: FocusRequester? = null,
 ) {
     val tokens = UxThemeAccess.tokens
-    val fg = tokens.colors.textOnAppBar
+    val bar = UxComp(GROUP)
+    val fg = bar.color("fg", tokens.colors.textOnAppBar)
     Row(
         modifier = modifier
             .testTag(id)
             .fillMaxWidth()
             .uxElevation(tokens.comp.appBar.shadow, RectangleShape)
-            .background(tokens.colors.surfaceAppBar)
-            .heightIn(min = tokens.comp.appBar.minHeight)
-            .padding(horizontal = tokens.space.xs),
+            .background(bar.color("bg", tokens.colors.surfaceAppBar))
+            .heightIn(min = bar.dp("min-height", tokens.comp.appBar.minHeight))
+            .padding(horizontal = bar.dp("padding-inline", tokens.space.xs)),
+        horizontalArrangement = Arrangement.spacedBy(bar.dp("column-gap", tokens.space.xs)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leading != UxBarLeading.None) {
@@ -86,11 +92,17 @@ fun UxAppBar(
         } else {
             Box(Modifier.size(tokens.size.target))
         }
-        Box(Modifier.weight(1f).padding(horizontal = tokens.space.s)) {
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             if (title != null) {
                 BasicText(
                     title,
-                    style = tokens.type.appBar.copy(color = fg),
+                    style = tokens.type.appBar.copy(
+                        color = fg,
+                        fontSize = bar.sp("title-size", tokens.type.appBar.fontSize),
+                        lineHeight = bar.sp("title-line", tokens.type.appBar.lineHeight),
+                        fontWeight = bar.weight("weight", tokens.comp.appBar.weight),
+                        textAlign = TextAlign.Center,
+                    ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.testTag("$id.title"),
@@ -115,6 +127,7 @@ private fun BarButton(
     badge: Boolean,
 ) {
     val tokens = UxThemeAccess.tokens
+    val bar = UxComp(GROUP)
     Box(
         modifier = Modifier
             .testTag(tag)
@@ -124,11 +137,14 @@ private fun BarButton(
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        PartIcon(EL_APP_BAR, icon.first, icon.second, tokens.colors.textOnAppBar, tokens.size.iconMd)
+        PartIcon(EL_APP_BAR, icon.first, icon.second, bar.color("fg", tokens.colors.textOnAppBar), tokens.size.iconMd)
         if (badge) {
+            // The unread dot, ringed in the bar's foreground so it shows on any band (the library's renderer: a ring of the fg colour).
             Box(
-                Modifier.align(Alignment.TopEnd).padding(tokens.comp.appBar.badgeOffset).size(tokens.comp.appBar.badgeSize)
-                    .background(tokens.colors.feedbackError.border, CircleShape),
+                Modifier.align(Alignment.TopEnd).padding(bar.dp("badge-offset", tokens.comp.appBar.badgeOffset))
+                    .size(bar.dp("badge-size", tokens.comp.appBar.badgeSize))
+                    .background(bar.color("badge", tokens.colors.feedbackError.border), CircleShape)
+                    .border(tokens.effects.hairline, bar.color("fg", tokens.colors.textOnAppBar), CircleShape),
             )
         }
     }

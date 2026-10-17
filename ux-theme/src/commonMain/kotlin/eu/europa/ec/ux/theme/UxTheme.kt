@@ -21,7 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import eu.europa.ec.ux.theme.generated.UxBrandConfig
 
 /** The active tokens. Defaults to the exported default brand so an element never crashes outside a [UxTheme]. */
@@ -68,4 +71,28 @@ object UxThemeAccess {
     @Composable @ReadOnlyComposable
     fun compDp(key: String, fallback: Dp): Dp =
         LocalUxSpecResources.current.componentTokens.dp(LocalUxBrand.current.id, LocalUxMode.current, key) ?: fallback
+
+    /** A `comp.*` colour of the active brand and mode from `ux-tokens.json`, or [fallback] (a `sys.*` role). */
+    @Composable @ReadOnlyComposable
+    fun compColor(key: String, fallback: Color): Color =
+        LocalUxSpecResources.current.componentTokens.color(LocalUxBrand.current.id, LocalUxMode.current, key) ?: fallback
+
+    /** A `comp.*` font size or line height (sp) from `ux-tokens.json`, or [fallback]. */
+    @Composable @ReadOnlyComposable
+    fun compSp(key: String, fallback: TextUnit): TextUnit =
+        LocalUxSpecResources.current.componentTokens.sp(LocalUxBrand.current.id, LocalUxMode.current, key) ?: fallback
+
+    /** A `comp.*` font weight from `ux-tokens.json`, or [fallback]. */
+    @Composable @ReadOnlyComposable
+    fun compWeight(key: String, fallback: FontWeight): FontWeight =
+        LocalUxSpecResources.current.componentTokens.weight(LocalUxBrand.current.id, LocalUxMode.current, key) ?: fallback
+
+    /** A `comp.*` shadow from `ux-tokens.json`, or [fallback]. */
+    @Composable @ReadOnlyComposable
+    fun compShadow(key: String, fallback: UxShadow = UxShadow.None): UxShadow =
+        LocalUxSpecResources.current.componentTokens.shadow(LocalUxBrand.current.id, LocalUxMode.current, key) ?: fallback
+
+    /** The active brand's library selection [key] (`EL-status-chip.mark`, `card-face`, ...), or null. */
+    @Composable @ReadOnlyComposable
+    fun selection(key: String): String? = LocalUxSpecResources.current.selections.of(LocalUxBrand.current.id, key)
 }

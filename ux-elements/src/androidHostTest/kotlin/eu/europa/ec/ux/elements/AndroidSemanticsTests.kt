@@ -40,3 +40,8 @@ class RegistryAdapterAndroidTest : RegistryAdapterScenario()
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class AssetAndroidTest : AssetScenario()
+
+/** M5e: the Home parts on the Android host. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class HomePartsAndroidTest : HomePartsScenario()

@@ -16,9 +16,27 @@
 
 package eu.europa.ec.ux.elements.registry
 
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
 import eu.europa.ec.ux.elements.UxAppBar
 import eu.europa.ec.ux.elements.UxAttributeItem
+import eu.europa.ec.ux.elements.UxBarAction
+import eu.europa.ec.ux.elements.UxBarTab
+import eu.europa.ec.ux.elements.UxBottomBar
+import eu.europa.ec.ux.elements.UxCardArt
+import eu.europa.ec.ux.elements.UxCardVariant
+import eu.europa.ec.ux.elements.UxChipStatus
+import eu.europa.ec.ux.elements.UxDocStatus
+import eu.europa.ec.ux.elements.UxDocType
+import eu.europa.ec.ux.elements.UxDocumentCard
+import eu.europa.ec.ux.elements.UxSegmentedSwitch
+import eu.europa.ec.ux.elements.UxStatusChip
+import eu.europa.ec.ux.elements.UxStorage
+import eu.europa.ec.ux.elements.UxSwitchLayout
+import eu.europa.ec.ux.elements.UxSwitchOption
+import eu.europa.ec.ux.elements.UxTrustMark
+import eu.europa.ec.ux.elements.UxTrustMarkArt
+import eu.europa.ec.ux.elements.UxTrustMarkVariant
 import eu.europa.ec.ux.elements.UxAttributeList
 import eu.europa.ec.ux.elements.UxBarLeading
 import eu.europa.ec.ux.elements.UxBarTrailing
@@ -37,6 +55,7 @@ import eu.europa.ec.ux.elements.UxText
 import eu.europa.ec.ux.elements.UxTextTone
 import eu.europa.ec.ux.elements.UxTextVariant
 import eu.europa.ec.ux.elements.UxTrust
+import eu.europa.ec.ux.elements.templates.TplHome
 import eu.europa.ec.ux.elements.templates.TplOutcome
 import eu.europa.ec.ux.elements.templates.TplProgress
 import eu.europa.ec.ux.elements.templates.TplScan
@@ -145,6 +164,81 @@ object UxElementRegistry {
                 copyLabel = n.text("copy_label"),
             )
         },
+        "EL-status-chip" to { n ->
+            UxStatusChip(
+                id = n.id,
+                status = wireEnum(n.text("status"), UxChipStatus.entries, UxChipStatus.Info),
+                label = n.text("label").orEmpty(),
+            )
+        },
+        "EL-document-card" to { n ->
+            UxDocumentCard(
+                id = n.id,
+                variant = wireEnum(n.text("variant"), UxCardVariant.entries, UxCardVariant.Full),
+                docType = wireEnum(n.text("doc_type"), UxDocType.entries, UxDocType.IdCard),
+                title = n.text("title").orEmpty(),
+                status = wireEnum(n.text("status"), UxDocStatus.entries, UxDocStatus.Valid),
+                statusLabel = n.text("status_label").orEmpty(),
+                titleEn = n.text("title_en"),
+                initials = n.text("initials"),
+                holder = n.text("holder"),
+                number = n.text("number"),
+                storage = n.text("storage")?.let { wireEnum(it, UxStorage.entries, UxStorage.Phone) },
+                storageLabel = n.text("storage_label"),
+                art = wireEnum(n.text("art"), UxCardArt.entries, UxCardArt.Brand),
+                interactive = n.flag("interactive") != false,
+                enabled = n.enabled,
+                onOpen = { n.emit("open") },
+            )
+        },
+        "EL-bottom-bar" to { n ->
+            UxBottomBar(
+                id = n.id,
+                label = n.text("label").orEmpty(),
+                tabs = n.records("tabs").map { r ->
+                    UxBarTab(
+                        id = r.text("id").orEmpty(),
+                        label = r.text("label_copy")?.let(n::copy).orEmpty(),
+                        icon = r.text("icon").orEmpty(),
+                        selected = r.flag("selected") == true,
+                    )
+                },
+                action = wireEnum(n.text("action"), UxBarAction.entries, UxBarAction.None),
+                actionLabel = n.text("action_label"),
+                enabled = n.enabled,
+                onSelect = { tab -> n.emit("select", mapOf(ITEM_ID to tab)) },
+                onAction = { n.emit("action") },
+            )
+        },
+        "EL-segmented-switch" to { n ->
+            UxSegmentedSwitch(
+                id = n.id,
+                label = n.text("label").orEmpty(),
+                options = n.records("options").map { r ->
+                    UxSwitchOption(
+                        id = r.text("id").orEmpty(),
+                        label = r.text("label_copy")?.let(n::copy).orEmpty(),
+                        selected = r.flag("selected") == true,
+                        disabled = r.flag("disabled") == true,
+                    )
+                },
+                labelVisible = n.flag("label_visible") == true,
+                layout = wireEnum(n.text("layout"), UxSwitchLayout.entries, UxSwitchLayout.Auto),
+                enabled = n.enabled,
+                onChange = { option -> n.emit("change", mapOf(ITEM_ID to option)) },
+            )
+        },
+        "EL-trust-mark" to { n ->
+            UxTrustMark(
+                id = n.id,
+                variant = wireEnum(n.text("variant"), UxTrustMarkVariant.entries, UxTrustMarkVariant.Badge),
+                label = n.text("label").orEmpty(),
+                art = wireEnum(n.text("art"), UxTrustMarkArt.entries, UxTrustMarkArt.Official),
+                href = n.text("href"),
+                enabled = n.enabled,
+                onActivate = { n.emit("activate") },
+            )
+        },
     )
 
     val templates: Map<String, UxTemplateAdapter> = mapOf(
@@ -155,6 +249,21 @@ object UxElementRegistry {
                 actions = { t.Region("actions") },
                 appbar = t.optional("appbar"),
                 body = if (t.hasRegion("body")) ({ t.Region("body") }) else null,
+            )
+        },
+        "TPL-home" to { t ->
+            TplHome(
+                id = t.id,
+                header = { t.Region("header") },
+                appbar = t.optional("appbar"),
+                switch = t.optionalBody("switch"),
+                notice = t.optionalBody("notice"),
+                identity = t.optionalBody("identity"),
+                documentsHeading = if (t.hasRegion("documents-heading")) ({ t.Region("documents-heading") }) else null,
+                cards = t.optionalBody("cards"),
+                body = t.optionalBody("body"),
+                footer = t.optionalBody("footer"),
+                actions = t.optionalBody("actions"),
             )
         },
         "TPL-progress" to { t ->
@@ -266,11 +375,54 @@ object UxElementRegistry {
                 "media" to null,
             ),
         ),
+        "EL-status-chip" to UxElementSchema(props = mapOf("status" to enumKeys(UxChipStatus.entries), "label" to null)),
+        "EL-document-card" to UxElementSchema(
+            props = mapOf(
+                "variant" to enumKeys(UxCardVariant.entries),
+                "title_en" to null,
+                "initials" to null,
+                "doc_type" to enumKeys(UxDocType.entries),
+                "title" to null,
+                "holder" to null,
+                "number" to null,
+                "status" to enumKeys(UxDocStatus.entries),
+                "status_label" to null,
+                "storage" to enumKeys(UxStorage.entries),
+                "storage_label" to null,
+                "art" to enumKeys(UxCardArt.entries),
+                "interactive" to null,
+            ),
+            events = setOf("open"),
+        ),
+        "EL-bottom-bar" to UxElementSchema(
+            props = mapOf("label" to null, "tabs" to null, "action" to enumKeys(UxBarAction.entries), "action_label" to null),
+            events = setOf("select", "action"),
+            itemsProp = "tabs",
+            itemProps = mapOf("id" to null, "label_copy" to null, "icon" to null, "selected" to null),
+        ),
+        "EL-segmented-switch" to UxElementSchema(
+            props = mapOf("label" to null, "label_visible" to null, "layout" to enumKeys(UxSwitchLayout.entries), "options" to null),
+            events = setOf("change"),
+            itemsProp = "options",
+            itemProps = mapOf("id" to null, "label_copy" to null, "selected" to null, "disabled" to null),
+        ),
+        "EL-trust-mark" to UxElementSchema(
+            props = mapOf(
+                "variant" to enumKeys(UxTrustMarkVariant.entries),
+                "label" to null,
+                "art" to enumKeys(UxTrustMarkArt.entries),
+                "href" to null,
+            ),
+            events = setOf("activate"),
+        ),
     )
 
     /** The accepted regions per template (M5c). */
     val templateSchemas: Map<String, UxTemplateSchema> = mapOf(
         "TPL-outcome" to UxTemplateSchema(setOf("appbar", "hero", "body", "actions")),
+        "TPL-home" to UxTemplateSchema(
+            setOf("appbar", "header", "switch", "notice", "identity", "documents-heading", "cards", "body", "footer", "actions"),
+        ),
         "TPL-progress" to UxTemplateSchema(setOf("appbar", "steps", "hero", "actions")),
         "TPL-scan" to UxTemplateSchema(setOf("instruction", "camera", "actions")),
         "TPL-sheet" to UxTemplateSchema(setOf("appbar", "header", "body", "actions")),
@@ -290,5 +442,8 @@ object UxElementRegistry {
     )
 
     private fun UxTemplateScope.optional(region: String): (@Composable () -> Unit)? =
+        if (hasRegion(region)) ({ Region(region) }) else null
+
+    private fun UxTemplateScope.optionalBody(region: String): (@Composable ColumnScope.() -> Unit)? =
         if (hasRegion(region)) ({ Region(region) }) else null
 }

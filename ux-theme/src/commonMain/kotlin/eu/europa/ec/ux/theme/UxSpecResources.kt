@@ -18,15 +18,20 @@ package eu.europa.ec.ux.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
 
 /** `ux-assets.json` `paint`: a mask is tinted with the content colour, an image is drawn as is. */
 enum class UxAssetPaint { Mask, Image }
@@ -102,10 +107,41 @@ class UxLibraryAssets(private val parts: Map<String, Map<String, JsonObject>>) {
  */
 class UxComponentTokenTable(private val values: Map<String, Map<String, JsonObject>>) {
     /** A `dimension` token in dp (DTCG px), or null when the brand, mode or key has none. */
-    fun dp(brand: String, mode: UxMode, key: String): Dp? {
-        val token = token(brand, mode, key)?.takeIf { it.str("type") == "dimension" } ?: return null
-        val value = token["value"] as? JsonObject ?: return null
-        return (value["value"] as? JsonPrimitive)?.doubleOrNull?.takeIf { value.str("unit") == "px" }?.dp
+    fun dp(brand: String, mode: UxMode, key: String): Dp? = pxValue(brand, mode, key)?.dp
+
+    /** A `dimension` token as a font size or line height (the export reads it as sp where its alias chain passes `sys.type.*`). */
+    fun sp(brand: String, mode: UxMode, key: String): TextUnit? = pxValue(brand, mode, key)?.sp
+
+    /** A `color` token (sRGB components and the optional alpha), or null. */
+    fun color(brand: String, mode: UxMode, key: String): Color? =
+        (token(brand, mode, key)?.takeIf { it.str("type") == "color" }?.get("value") as? JsonObject)?.let(::srgb)
+
+    /** A `fontWeight` token, or null. */
+    fun weight(brand: String, mode: UxMode, key: String): FontWeight? =
+        (token(brand, mode, key)?.takeIf { it.str("type") == "fontWeight" }?.get("value") as? JsonPrimitive)?.intOrNull?.let(::FontWeight)
+
+    /** A `shadow` token as its layers, bottom first (null when absent). */
+    fun shadow(brand: String, mode: UxMode, key: String): UxShadow? {
+        val layers = token(brand, mode, key)?.takeIf { it.str("type") == "shadow" }?.get("value") as? JsonArray ?: return null
+        return UxShadow(
+            layers.filterIsInstance<JsonObject>().map { l ->
+                val rgb = (l["color"] as? JsonObject)?.let(::srgb) ?: Color.Transparent
+                val inset = (l["inset"] as? JsonPrimitive)?.content == "true"
+                UxShadowLayer(rgb, l.px("offsetX").dp, l.px("offsetY").dp, l.px("blur").dp, l.px("spread").dp, inset)
+            },
+        )
+    }
+
+    private fun srgb(o: JsonObject): Color? {
+        val c = (o["components"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull?.toFloat() } ?: return null
+        return if (c.size == RGB) Color(c[0], c[1], c[2], (o["alpha"] as? JsonPrimitive)?.doubleOrNull?.toFloat() ?: 1f) else null
+    }
+
+    private fun JsonObject.px(key: String): Float = ((this[key] as? JsonObject)?.get("value") as? JsonPrimitive)?.doubleOrNull?.toFloat() ?: 0f
+
+    private fun pxValue(brand: String, mode: UxMode, key: String): Float? {
+        val value = token(brand, mode, key)?.takeIf { it.str("type") == "dimension" }?.get("value") as? JsonObject ?: return null
+        return (value["value"] as? JsonPrimitive)?.doubleOrNull?.takeIf { value.str("unit") == "px" }?.toFloat()
     }
 
     private fun token(brand: String, mode: UxMode, key: String): JsonObject? {
@@ -123,12 +159,33 @@ class UxComponentTokenTable(private val values: Map<String, Map<String, JsonObje
         val NONE = UxComponentTokenTable(emptyMap())
         private const val LIGHT = "light"
         private const val HIGH_CONTRAST = "high-contrast"
+        private const val RGB = 3
 
         fun parse(json: String): UxComponentTokenTable = UxComponentTokenTable(
             Json.parseToJsonElement(json).obj("values").mapValues { (_, modes) ->
                 (modes as JsonObject).mapValues { (_, tokens) -> tokens as JsonObject }
             },
         )
+    }
+}
+
+/**
+ * The library's brand selections (`ux-library.json` `brand_selections`: part style and variant axis per brand), e.g.
+ * `EL-status-chip.mark` is `dot` in eudiw_v1 and `icon` in idsk. Elements ask by the library's own key; a brand or key
+ * the export lacks answers null and the element draws the library's default.
+ */
+class UxBrandSelections(private val byBrand: Map<String, Map<String, String>>) {
+    fun of(brand: String, key: String): String? = byBrand[brand]?.get(key)
+
+    companion object {
+        val NONE = UxBrandSelections(emptyMap())
+
+        fun parse(json: String): UxBrandSelections =
+            UxBrandSelections(
+                Json.parseToJsonElement(json).obj("brand_selections").mapValues { (_, keys) ->
+                    (keys as JsonObject).mapValues { (_, v) -> (v as JsonPrimitive).content }
+                },
+            )
     }
 }
 
@@ -141,6 +198,7 @@ class UxSpecResources(
     val assets: UxAssets = UxAssets.NONE,
     val library: UxLibraryAssets = UxLibraryAssets.NONE,
     val componentTokens: UxComponentTokenTable = UxComponentTokenTable.NONE,
+    val selections: UxBrandSelections = UxBrandSelections.NONE,
     val painter: @Composable (resource: String) -> Painter? = { null },
 ) {
     companion object {

@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.Dp
  * (boundary §2.6). Names follow `library/tokens/sys.contract.yaml` (sys.color.*, sys.type.*, sys.space.*, ...).
  */
 
+/** A font weight as the token types name it (a type name for signatures; the values come from tokens, never from Kotlin). */
+typealias UxFontWeight = FontWeight
+
 /** `sys.color.*`: the full `library/tokens/sys.contract.yaml` colour role set (boundary V9: a D8 change never edits it). */
 data class UxColors(
     val textPrimary: Color,
