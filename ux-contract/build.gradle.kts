@@ -45,8 +45,9 @@ kotlin {
     sourceSets {
         commonMain {
             // PROVISIONAL (boundary §6.3): the hand copy of the contract, until ux-spec/ brings the generated one (M6
-            // deletes the directory and this conditional).
-            if (!rootProject.file("ux-spec/UX_SPEC.lock").exists()) kotlin.srcDir("provisional/kotlin")
+            // deletes the directory and this conditional). M6a keys it on the directory, not on the lock, so the sync
+            // commit (ux-spec/ only) leaves the build unchanged and the adoption commit switches it.
+            if (file("provisional/kotlin").isDirectory) kotlin.srcDir("provisional/kotlin")
             dependencies {
                 api(libs.jetbrains.compose.runtime)
                 api(libs.jetbrains.compose.components.resources)
