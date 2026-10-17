@@ -1,0 +1,9 @@
+screen: True
+testTag order (iOS a11y tree): ['hero', 'hint', 'verifier', 'help-note', 'retry', 'close']
+PASS 2 verifier exists
+PASS 2 verifier.title == name
+PASS 2 verifier.text == text
+PASS 3 hint < verifier < help-note
+PASS 3 order == expected minus tags absent from the iOS tree
+verifier.title label: Príkladová banka, a.s.
+verifier.text label: Overenie spustite znovu na stránke tohto overovateľa.

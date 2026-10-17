@@ -1,0 +1,48 @@
+PASS kc1-guard (1s)
+PASS style-guard (1s)
+PASS uxspec-lock (2s)
+PASS gradle-tests (267s)
+PASS gradle-ios-demo (66s)
+PASS lint (8s)
+PASS ios-project (1s)
+PASS xcode-debug (230s)
+PASS xcode-release (86s)
+--- test counts (tests/failures/errors/skipped per task dir) ---
+authentication-logic:testDemoDebugUnitTest: 45/0/0/0
+authentication-logic:testDevDebugUnitTest: 45/0/0/0
+business-logic:testDemoDebugUnitTest: 80/0/0/0
+business-logic:testDevDebugUnitTest: 80/0/0/0
+common-feature:testDemoDebugUnitTest: 139/0/0/0
+common-feature:testDevDebugUnitTest: 139/0/0/0
+core-logic:testDemoDebugUnitTest: 176/0/0/0
+core-logic:testDevDebugUnitTest: 176/0/0/0
+dashboard-feature:testDemoDebugUnitTest: 255/0/0/0
+dashboard-feature:testDevDebugUnitTest: 255/0/0/0
+issuance-feature:testDemoDebugUnitTest: 56/0/0/0
+issuance-feature:testDevDebugUnitTest: 56/0/0/0
+network-logic:testDemoDebugUnitTest: 1/0/0/0
+network-logic:testDevDebugUnitTest: 1/0/0/0
+presentation-feature:testDemoDebugUnitTest: 54/0/0/0
+presentation-feature:testDevDebugUnitTest: 54/0/0/0
+proximity-feature:testDemoDebugUnitTest: 62/0/0/0
+proximity-feature:testDevDebugUnitTest: 62/0/0/0
+shared-logic:iosSimulatorArm64Test: 832/0/0/0
+shared-logic:testAndroidHostTest: 166/0/0/0
+shared-ui:iosSimulatorArm64Test: 648/0/0/0
+shared-ui:testAndroidHostTest: 562/0/0/0
+startup-feature:testDemoDebugUnitTest: 9/0/0/0
+startup-feature:testDevDebugUnitTest: 9/0/0/0
+ui-logic:testDemoDebugUnitTest: 20/0/0/0
+ui-logic:testDevDebugUnitTest: 20/0/0/0
+ux-contract:iosSimulatorArm64Test: 2/0/0/0
+ux-contract:testAndroidHostTest: 4/0/0/0
+ux-elements:iosSimulatorArm64Test: 33/0/0/0
+ux-elements:testAndroidHostTest: 32/0/0/0
+ux-runtime:iosSimulatorArm64Test: 92/0/0/0
+ux-runtime:testAndroidHostTest: 90/0/0/0
+ux-spike:iosSimulatorArm64Test: 4/0/0/0
+ux-spike:testAndroidHostTest: 12/0/0/0
+ux-theme:iosSimulatorArm64Test: 6/0/0/0
+ux-theme:testAndroidHostTest: 6/0/0/0
+TOTAL: 4283/0/0/0
+GATE GREEN

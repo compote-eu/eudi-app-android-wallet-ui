@@ -1,0 +1,23 @@
+Running on iPhone 17 - iOS 27.0 - 3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA
+ > Flow d8-copy
+Open ${LINK}... COMPLETED
+Tap on (Optional) "Open"... WARNED
+Run flow when id: pin_text_field_0 is visible...
+Run flow when id: pin_text_field_0 is visible... SKIPPED
+Take screenshot d8-4-1-connecting-or-request... COMPLETED
+Assert that id: ux-state-request is visible... COMPLETED
+Assert that "Žiadosť o údaje z eDokladu" is visible... COMPLETED
+Assert that "Overenie eDokladu" is not visible... COMPLETED
+Take screenshot d8-4-2-request... COMPLETED
+Tap on id: continue... COMPLETED
+Assert that id: ux-state-verification-code is visible... COMPLETED
+Assert that "Zadajte tento kód na stránke overovateľa" is visible... COMPLETED
+Assert that "482 913" is visible... COMPLETED
+Take screenshot d8-4-3-verification-code... COMPLETED
+Tap on id: confirm... COMPLETED
+Assert that id: ux-state-sending is visible... COMPLETED
+Assert that "Odosielame údaje z eDokladov" is visible... COMPLETED
+Take screenshot d8-4-4-sending... COMPLETED
+Assert that id: ux-state-success is visible... COMPLETED
+Assert that "Vráťte sa na stránku overovateľa vo webovom prehliadači." is visible... COMPLETED
+Take screenshot d8-4-5-success... COMPLETED
