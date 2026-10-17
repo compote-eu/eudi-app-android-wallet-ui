@@ -82,7 +82,7 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 | 2026-10-17 | ab7011ada + this commit (docs) | M10 | full `./spike-gate.sh` | 4273 (as the fast run) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 
 | 2026-10-17 | 909ccf460 | M6a | full `./spike-gate.sh` (+ kc1-guard on the real bundle, style-guard, new uxspec-lock) | 4279 (ux-runtime 89/91, ux-contract 4/2, ux-elements 31/32, ux-spike 12/4, ux-theme 6/6; rest as M10) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
-| 2026-10-17 | M6b commit (see Commits) | M6b | full `./spike-gate.sh` (no code change; Maestro flow, tool and evidence only) | 4279 (as M6a) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+| 2026-10-17 | 8830b6fe7 | M6b | full `./spike-gate.sh` (no code change; Maestro flow, tool and evidence only) | 4279 (as M6a) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 
 M6a test delta, 4273 → 4279 (+6): `ExportedModelReplayTest` adds 3 tests on each target. Nothing else changed in count:
 the 2 `ProvisionalBundleResourceTest` tests became the 2 `BundleResourceTest` tests; 17 `Provisional*` runtime classes,
@@ -248,6 +248,7 @@ Findings for week 0 / the owner (not decided here):
 | 6cd58495b | 2026-10-17 | M6a | handshake on the real SPEC_HASH; runtime tests on the export; model replay | Claude Opus 5.5 | all ux tests, lint |
 | e1ccc57e3 | 2026-10-17 | M6a | provisional test names dropped; registry snapshot at 3d6ecb6 | Claude Opus 5.5 | all ux tests, lint |
 | 909ccf460 | 2026-10-17 | M6a | KC1 guard on the exported bundle | Claude Opus 5.5 | full gate GREEN (4279) |
+| 8830b6fe7 | 2026-10-17 | M6b | formal iOS drills, rows, notes, evidence, tool `-t` mode | Claude Sonnet 5.5 | full gate GREEN 4279 |
 | (this commit) | 2026-10-17 | M6a | SPIKE-LOG M6a, metrics row, rulings | Claude Opus 5.5 | — |
 | ab7011ada | 2026-10-17 | M10 | track C view controller, T5, harness, instrumentation, test page, Q-D10 | Claude Sonnet 5.5 | fast GREEN (4273) |
 | (this commit) | 2026-10-17 | M10 | SPIKE-LOG M10, metrics row, results row | Claude Sonnet 5.5 | full gate (see Gate results) |
