@@ -54,6 +54,18 @@ Two plan errors caused part of it, and are corrected here:
 Also corrected: the test pins outside `ux-spec/` that turned every D8 gate red (RULING-M8-5) are removed (M8r-1); test
 expectations come from `ux-spec/` at test time. See §5 "D8 attempt 2".
 
+### 0.2b Spike rule T1: tests do not pin the spec (M9r, 2026-10-17)
+
+An independent verifier ruled D9 = (C): both options pass at 0 hand-written lines and KC4 is not hit, but the option
+commits breached brief §6.5 (red unit tests) through test pins, the same cause as D8 attempt 1 and D8-unseen. Rule from
+M9r on:
+
+| # | Rule |
+|---|---|
+| T1 | A test may not hard-code a value the spec owns: brand, state, node, event, service, result, copy, asset, layout, count. It derives the value from `ux-spec/` at test time (default brand, the brand's layout, the tree's regions, the rules, the fixtures and scripts, the library and asset tables) or runs against a synthetic, test-only bundle whose names the test owns. Literals are allowed only for runtime invariants (one h1, one focused node, at most one live region) and for code-owned API names (a registry element id, a generated contract member). |
+| T1a | Engine tests of generic semantics (async, back/restore policy, saved state, RULING-2, guards, the loader's refusals) run on the synthetic bundle (`ux-runtime/src/commonTest/.../support/SyntheticFlow.kt`). Tests that check "the real export renders and behaves as declared" derive their expectations from `ux-spec/` (`support/ExportWalk.kt`; `ExportedPoliciesTest` for every exported state's back/restore). |
+| T1b | A spec-only sync that turns the gate red is a **harness defect**, not a KC signal. The gate's `regen-smoke` step (`spike-regen-smoke.sh`) runs the spike module tests on host and iOS against every archived export (baseline, D8-attempt2 drills 1-5 re-exported on exporter 0.5.0, M9 options) in a scratch copy of `ux-spec/`; all must be green. `--no-regen` skips it for fast runs; a gate without it is not a full gate. |
+
 ### 0.3 Setup milestones (no drill)
 
 M0 (bootstrap, toolchain, baseline gate), M1a (this plan and the state files) and M1b (the interface boundary) are
