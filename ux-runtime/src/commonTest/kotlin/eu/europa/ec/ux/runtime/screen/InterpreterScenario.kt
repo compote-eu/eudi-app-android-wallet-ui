@@ -15,7 +15,7 @@
  */
 
 // M5b, re-run at M6a on the real export (was provisional on the boundary fixture): the interpreter on the exported
-// bundle and its offline-loading test copy.
+// bundle and its added-state test copy (built from ux-spec/ at test time since M8r).
 package eu.europa.ec.ux.runtime.screen
 
 import androidx.compose.foundation.clickable
@@ -51,9 +51,9 @@ import eu.europa.ec.ux.runtime.engine.FlowPlatform
 import eu.europa.ec.ux.runtime.engine.ServiceResult
 import eu.europa.ec.ux.runtime.host.FlowHost
 import eu.europa.ec.ux.runtime.host.PlaceholderTags
+import eu.europa.ec.ux.runtime.support.AddedStateFixture
 import eu.europa.ec.ux.runtime.support.FakePort
 import eu.europa.ec.ux.runtime.support.Fixture
-import eu.europa.ec.ux.runtime.support.OfflineFixture
 import eu.europa.ec.ux.runtime.support.QR_URI
 import eu.europa.ec.ux.runtime.support.Results
 import eu.europa.ec.ux.runtime.support.TestCopy
@@ -172,17 +172,21 @@ abstract class InterpreterScenario {
 
     @Test
     fun anAddedStateRendersAndTransitionsWithNoKotlinChange() = runComposeUiTest {
-        val port = FakePort().apply { auto["fetchRequest"] = ServiceResult("Offline") }
-        val bundle = host(OfflineFixture.root, port)
+        // The copy is built from the current export, so it holds whatever states the spec has; the added one is the
+        // single state that is not in the export.
+        val root = AddedStateFixture.root
+        val port = FakePort().apply { auto[AddedStateFixture.service] = ServiceResult(AddedStateFixture.RESULT) }
+        val bundle = host(root, port)
         val added = (bundle.states.keys - Fixture.bundle().states.keys).single()
+        assertEquals(AddedStateFixture.STATE, added)
         awaitState(added)
-        assertDrawnFromBundle(OfflineFixture.root, bundle, added)
+        assertDrawnFromBundle(root, bundle, added)
         val tree = ScreenCatalog(bundle).screens.getValue(bundle.state(added).screen!!)
-        val retry = tree.regions.getValue("actions").single()
-        port.auto["fetchRequest"] = Results.requestReady
-        onNodeWithTag(retry.id, useUnmergedTree = true).performClick()
+        val leave = tree.nodes.first { it.events.isNotEmpty() }
+        port.auto[AddedStateFixture.service] = Results.requestReady
+        onNodeWithTag(leave.id, useUnmergedTree = true).performClick()
         awaitState("request")
-        assertEquals(2, port.calls("fetchRequest"))
+        assertEquals(2, port.calls(AddedStateFixture.service))
     }
 
     @Test

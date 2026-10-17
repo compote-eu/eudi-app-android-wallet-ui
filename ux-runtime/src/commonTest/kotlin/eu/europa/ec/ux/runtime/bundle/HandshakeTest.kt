@@ -32,6 +32,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -63,8 +64,13 @@ class HandshakeTest {
     @Test
     fun h1_equalHashesAndVersion1Load() {
         val bundle = assertIs<LoadResult.Loaded>(load()).bundle
-        assertEquals(25, bundle.states.size)
-        assertEquals(16, bundle.screens.size)
+        // The counts come from the exported JSON itself (M8r: no pinned numbers, so a re-export that adds a state or a
+        // screen keeps this green); the loader must keep every state and screen of it.
+        val states = Fixture.root.getValue("states").jsonObject
+        val screens = Fixture.root.getValue("screens").jsonObject
+        assertTrue(states.isNotEmpty() && screens.isNotEmpty())
+        assertEquals(states.keys, bundle.states.keys)
+        assertEquals(screens.keys, bundle.screens.keys)
         assertEquals(hash, bundle.specHash)
         assertFalse(bundle.provisional)
     }

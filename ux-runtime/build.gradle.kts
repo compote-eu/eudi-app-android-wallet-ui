@@ -133,14 +133,8 @@ val exportedModelFixture = tasks.register<BundleFixture>("exportedModelFixture")
     outputDir.set(layout.buildDirectory.dir("generated/exported-model-fixture/kotlin"))
 }
 
-// M5b test (ii), re-derived at M6a from the export: the TEST copy that adds the state offline-loading
-// (spike-evidence/M6a/make-offline-loading-bundle.py).
-val offlineLoadingFixture = tasks.register<BundleFixture>("offlineLoadingBundleFixture") {
-    bundle.set(rootProject.layout.projectDirectory.file("spike-evidence/M6a/FLW-pres-cross-device.bundle.offline-loading.TEST.json"))
-    expectedSha256.set("12054ee87b0b27400edb3cdbf200bdcf0be798b74f777b2db222b29096176ab4")
-    objectName.set("OfflineLoadingTestBundle")
-    outputDir.set(layout.buildDirectory.dir("generated/offline-loading-fixture/kotlin"))
-}
+// M5b test (ii): the added-state copy is no longer a pinned file (spike-evidence/M6a/…offline-loading.TEST.json, kept as
+// M6a evidence); since M8r the tests build it from the exported bundle at test time (AddedStateFixture).
 
 kotlin {
     android {
@@ -176,7 +170,6 @@ kotlin {
         commonTest {
             kotlin.srcDir(exportedFixture.map { it.outputDir })
             kotlin.srcDir(exportedModelFixture.map { it.outputDir })
-            kotlin.srcDir(offlineLoadingFixture.map { it.outputDir })
             dependencies {
                 implementation(kotlin("test"))
                 implementation(libs.kotlinx.coroutines.test)

@@ -31,8 +31,12 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -50,6 +54,15 @@ class FakeScriptsTest {
         val bytes = File(module, "../ux-spec/resources/${PresCrossDeviceSpec.BUNDLE_PATH}").readBytes()
         val r = FlowBundle.load(bytes, PresCrossDeviceSpec.FLOW_ID, PresCrossDeviceSpec.SPEC_HASH, UxThemeSpec.SPEC_HASH)
         (r as? LoadResult.Loaded)?.bundle ?: fail("bundle refused: $r")
+    }
+
+    /** The script names UX_SPEC.lock lists under fixtures/scripts/ (M8r: read from the export, not pinned here). */
+    private val exportedScripts: Set<String> by lazy {
+        val lock = Json.parseToJsonElement(File(module, "../ux-spec/UX_SPEC.lock").readText()).jsonObject
+        lock.getValue("files").jsonArray.map { it.jsonObject.getValue("path").jsonPrimitive.content }
+            .filter { it.startsWith(SCRIPTS_PREFIX) && it.endsWith(".json") }
+            .map { it.removePrefix(SCRIPTS_PREFIX).removeSuffix(".json") }
+            .toSet()
     }
 
     private fun script(name: String) = FakeScript.parse(File(scriptsDir, "$name.json").readText())
@@ -95,9 +108,10 @@ class FakeScriptsTest {
     }
 
     @Test
-    fun theSixScriptsExistForThisFlowAndAuthenticationAlwaysSucceeds() = runTest {
+    fun theExportedScriptsExistForThisFlowAndAuthenticationAlwaysSucceeds() = runTest {
         val names = scriptsDir.listFiles().orEmpty().map { it.nameWithoutExtension }.toSet()
-        assertEquals(setOf("happy", "expired-at-request", "expired-at-sending", "slow", "untrusted", "doc-missing"), names)
+        assertTrue(exportedScripts.isNotEmpty(), "UX_SPEC.lock lists no script")
+        assertEquals(exportedScripts, names)
         names.forEach { name ->
             val s = script(name)
             assertEquals(name, s.script)
@@ -173,5 +187,6 @@ class FakeScriptsTest {
     private companion object {
         const val MAX_STEPS = 40
         const val SETTLE_MS = 120_000L
+        const val SCRIPTS_PREFIX = "fixtures/scripts/"
     }
 }

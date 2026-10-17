@@ -15,12 +15,12 @@
  */
 
 // M5b, re-run at M6a on the real export (was provisional on the boundary fixture): the interpreter on the exported
-// bundle and its offline-loading test copy.
+// bundle and its added-state test copy (built from ux-spec/ at test time since M8r).
 package eu.europa.ec.ux.runtime.screen
 
 import eu.europa.ec.ux.elements.registry.UxElementRegistry
+import eu.europa.ec.ux.runtime.support.AddedStateFixture
 import eu.europa.ec.ux.runtime.support.Fixture
-import eu.europa.ec.ux.runtime.support.OfflineFixture
 import eu.europa.ec.ux.runtime.support.with
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -39,7 +39,7 @@ class SchemaCheckTest {
     @Test
     fun theExportedBundleAndTheAddedStateCopyHaveNoSchemaProblems() {
         assertEquals(emptyList(), problems(Fixture.root))
-        assertEquals(emptyList(), problems(OfflineFixture.root))
+        assertEquals(emptyList(), problems(AddedStateFixture.root))
     }
 
     @Test
