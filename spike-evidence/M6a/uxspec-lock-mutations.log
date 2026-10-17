@@ -1,0 +1,14 @@
+== L1
+uxspec-lock: sha256/bytes mismatch: contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceSpec.kt
+rc=1
+== L2
+uxspec-lock: bundle spec_hash sha256:88e2b61145bd0a2586831e88bab4c5ac0df93c2ac7b6fe85d9cec779f44702d0 != lock sha256:00
+uxspec-lock: SPEC_HASH literal in contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceSpec.kt != lock sha256:00
+uxspec-lock: SPEC_HASH literal in theme/kotlin/eu/europa/ec/ux/theme/generated/UxThemeSpec.kt != lock sha256:00
+rc=1
+== L3
+uxspec-lock: unlisted file: resources/files/extra.json
+rc=1
+== dirty
+uxspec-lock: ux_dirty export outside spike/d8-*
+rc=1

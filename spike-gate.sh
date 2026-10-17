@@ -96,6 +96,39 @@ PY
 step style-guard style_guard
 [[ $ONLY_STYLE_GUARD == 1 ]] && { cat "$LOG/style-guard.log"; exit $RESULT; }
 
+# ux-spec lock (boundary §3, L1-L3; M6a): every file of ux-spec/ matches UX_SPEC.lock (sha256 and bytes), no file is
+# missing or unlisted, the lock spec_hash equals the bundle's and the contract and theme SPEC_HASH literals, and
+# ux_dirty is false outside a spike/d8-* branch. ux-spec/ is exporter-only: a red step means re-export, never a hand fix.
+uxspec_lock() {
+  python3 -I - "$(git rev-parse --abbrev-ref HEAD)" <<'PY'
+import hashlib, json, os, re, sys
+root = 'ux-spec'
+lock = json.load(open(os.path.join(root, 'UX_SPEC.lock')))
+listed = {f['path']: f for f in lock['files']}
+on_disk = {os.path.relpath(os.path.join(d, n), root) for d, _, ns in os.walk(root) for n in ns} - {'UX_SPEC.lock'}
+errors = [f'unlisted file: {p}' for p in sorted(on_disk - listed.keys())]
+errors += [f'missing file: {p}' for p in sorted(listed.keys() - on_disk)]
+for p in sorted(listed.keys() & on_disk):
+    data = open(os.path.join(root, p), 'rb').read()
+    if hashlib.sha256(data).hexdigest() != listed[p]['sha256'] or len(data) != listed[p]['bytes']:
+        errors.append(f'sha256/bytes mismatch: {p}')
+h = lock['spec_hash']
+bundle = json.load(open(os.path.join(root, 'resources/files', lock['flows'][0] + '.bundle.json')))
+if bundle.get('spec_hash') != h: errors.append(f"bundle spec_hash {bundle.get('spec_hash')} != lock {h}")
+for p in listed:
+    if p.endswith(('Spec.kt', 'ThemeSpec.kt')):
+        m = re.search(r'SPEC_HASH: String = "([^"]+)"', open(os.path.join(root, p)).read())
+        if not m or m.group(1) != h: errors.append(f'SPEC_HASH literal in {p} != lock {h}')
+if lock.get('ux_dirty') and not sys.argv[1].startswith('spike/d8-'): errors.append('ux_dirty export outside spike/d8-*')
+for e in errors: print('uxspec-lock:', e)
+if not errors:
+    print(f"uxspec-lock: {len(listed)} files match UX_SPEC.lock, spec_hash {h[:19]}..., ux@{lock['ux_commit'][:12]}, "
+          f"exporter {lock['exporter']['version']}")
+sys.exit(1 if errors else 0)
+PY
+}
+step uxspec-lock uxspec_lock
+
 find . -path '*/build/test-results/*' -name '*.xml' -not -path './build/*' -delete 2>/dev/null
 
 ux_tests=(); for m in $SPIKE_MODULES; do ux_tests+=("$m:allTests"); done
