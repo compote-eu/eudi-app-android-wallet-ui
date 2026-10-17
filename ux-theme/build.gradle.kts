@@ -25,6 +25,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// M9r regen-smoke: -PuxSpecDir=<dir> points this build at a scratch copy of an export (default: the tracked ux-spec/).
+val uxSpec: Directory = rootProject.layout.projectDirectory.dir(providers.gradleProperty("uxSpecDir").getOrElse("ux-spec"))
+// ...and keeps that build apart from the tracked one (its own build directory), so the two never clobber each other.
+if (providers.gradleProperty("uxSpecDir").isPresent) layout.buildDirectory.set(layout.projectDirectory.dir("build/regen-smoke"))
+
 kotlin {
     android {
         namespace = "eu.europa.ec.ux.theme"
@@ -42,7 +47,7 @@ kotlin {
     sourceSets {
         commonMain {
             // boundary §3: the generated theme objects (ux-spec/theme/kotlin) fill this module's hand-written shell
-            kotlin.srcDir(rootProject.file("ux-spec/theme/kotlin"))
+            kotlin.srcDir(uxSpec.dir("theme/kotlin"))
         }
         commonMain.dependencies {
             api(libs.jetbrains.compose.runtime)

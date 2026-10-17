@@ -1,0 +1,18 @@
+FAIL m9-1-brand 358/12 gradle rc=1 (40s) -> build/spike-gate/regen-smoke/m9-1-brand.log
+  FAILED ux-elements:HomePartsAndroidTest.aBandFullCardDrawsHolderNumberAndStorageAndNamesThemAfterTheStatus
+  FAILED ux-elements:HomePartsAndroidTest.aCenteredFullCardDrawsTitleEnglishNameAndNumberOnlyAndKeepsTheArtworksProportion
+  FAILED ux-elements:HomePartsAndroidTest.theBottomBarIsANamedGroupOfButtonsWithTheCurrentOneSelectedAndANamedActionButton
+  FAILED ux-elements:HomePartsAndroidTest.theHolderCardIsOneButtonNamedByHolderAndStatusWithDecorativeAvatarDotAndChevron
+  FAILED ux-elements:HomePartsAndroidTest.theIconMarkDrawsTheToneGlyphTheBrandBindsAndNothingForAGlyphItDoesNot
+  FAILED ux-elements:HomePartsIosTest.aBandFullCardDrawsHolderNumberAndStorageAndNamesThemAfterTheStatus[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.aCenteredFullCardDrawsTitleEnglishNameAndNumberOnlyAndKeepsTheArtworksProportion[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theBottomBarIsANamedGroupOfButtonsWithTheCurrentOneSelectedAndANamedActionButton[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theHolderCardIsOneButtonNamedByHolderAndStatusWithDecorativeAvatarDotAndChevron[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theIconMarkDrawsTheToneGlyphTheBrandBindsAndNothingForAGlyphItDoesNot[iosSimulatorArm64]
+  FAILED ux-spike:ScreenProbeTest.theExportsGatingRemovesTheNodesItNamesAndAnUnlistedBrandGetsItsVariantsOmits
+  FAILED ux-spike:ScreenProbeTest.theExportsGatingRemovesTheNodesItNamesAndAnUnlistedBrandGetsItsVariantsOmits[iosSimulatorArm64]
+FAIL m9-2-sheet-page 358/2 gradle rc=1 (48s) -> build/spike-gate/regen-smoke/m9-2-sheet-page.log
+  FAILED ux-runtime:InterpreterAndroidTest.rulesAndBindingsFollowTheContext
+  FAILED ux-runtime:InterpreterIosTest.rulesAndBindingsFollowTheContext[iosSimulatorArm64]
+regen-smoke (all): 92s, scratch /var/folders/1t/xlrc9d_97ts6w7syc220npdw0000gn/T/regen-smoke.EQOQcXxUUK
+./spike-regen-smoke.sh all m9-1-brand m9-2-sheet-page  2.33s user 3.06s system 5% cpu 1:31.45 total

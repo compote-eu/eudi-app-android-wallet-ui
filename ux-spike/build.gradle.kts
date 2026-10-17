@@ -26,6 +26,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// M9r regen-smoke: -PuxSpecDir=<dir> points this build at a scratch copy of an export (default: the tracked ux-spec/).
+val uxSpec: Directory = rootProject.layout.projectDirectory.dir(providers.gradleProperty("uxSpecDir").getOrElse("ux-spec"))
+// ...and keeps that build apart from the tracked one (its own build directory), so the two never clobber each other.
+if (providers.gradleProperty("uxSpecDir").isPresent) layout.buildDirectory.set(layout.projectDirectory.dir("build/regen-smoke"))
+
 // M5e: the export's screen probe and the data files the elements read, embedded as Kotlin strings under build/ so the probe
 // tests run on both targets (a test cannot read ux-spec/ from disk on iOS). Each file's sha256 must be UX_SPEC.lock's.
 abstract class ProbeFixture : DefaultTask() {
@@ -65,13 +70,13 @@ abstract class ProbeFixture : DefaultTask() {
 }
 
 fun lockedSha256(path: String): Provider<String> =
-    providers.fileContents(rootProject.layout.projectDirectory.file("ux-spec/UX_SPEC.lock")).asText.map { lock ->
+    providers.fileContents(uxSpec.file("UX_SPEC.lock")).asText.map { lock ->
         val entry = Regex("""\{[^{}]*"path": "${Regex.escape(path)}"[^{}]*}""").find(lock)?.value ?: error("UX_SPEC.lock lists no $path")
         Regex(""""sha256": "([0-9a-f]{64})"""").find(entry)!!.groupValues[1]
     }
 
 val probeFixture = tasks.register<ProbeFixture>("probeFixture") {
-    val dir = rootProject.layout.projectDirectory.dir("ux-spec/resources/files")
+    val dir = uxSpec.dir("resources/files")
     val names = dir.asFile.listFiles().orEmpty().map { it.name }
         .filter { it.endsWith(".probe.json") || it in listOf("ux-library.json", "ux-assets.json", "ux-tokens.json") }
     files.from(names.map { dir.file(it) })
@@ -131,6 +136,8 @@ kotlin {
 // Robolectric 4.17+ reaches jdk.internal.access.SharedSecrets for the SDK 37+ application environment (as in :ux-runtime).
 tasks.withType<Test>().configureEach {
     jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
+    // M9r: the host tests that read the export from disk read the same directory the build embeds.
+    systemProperty("ux.spec.dir", uxSpec.asFile.absolutePath)
 }
 
 // boundary §3 / Q14: the fake engine plays the exported scripts (ux-spec/fixtures/scripts, read as data) as
@@ -138,10 +145,10 @@ tasks.withType<Test>().configureEach {
 // exporter-only: the scripts are copied into build/, never edited.
 val uxSpikeResources = tasks.register<Sync>("uxSpikeComposeResources") {
     from("src/commonMain/composeResources")
-    from(rootProject.layout.projectDirectory.dir("ux-spec/fixtures/scripts")) { into("files/scripts") }
+    from(uxSpec.dir("fixtures/scripts")) { into("files/scripts") }
     // M5e: the export's screen probes (`<screen id>.probe.json`) as files/probes/<name>.probe.json: the name is what follows the
     // id's first dash, so no screen id is spelled here or in the Kotlin that reads them.
-    from(rootProject.layout.projectDirectory.dir("ux-spec/resources/files")) {
+    from(uxSpec.dir("resources/files")) {
         include("*.probe.json")
         into("files/probes")
         rename { it.substringAfter('-') }

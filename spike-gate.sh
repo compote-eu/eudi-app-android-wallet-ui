@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Spike quality gate: wiki/BRANCHES.md §4 plus the spike modules (SPIKE-PLAN.md).
-# Usage: ./spike-gate.sh [--fast | --style-guard]   (--fast skips the Release build; --style-guard runs the two guards only)
+# Usage: ./spike-gate.sh [--fast] [--no-regen] | --style-guard
+#   --fast skips the Release build; --no-regen skips regen-smoke (M9r, ~8 min; also SPIKE_REGEN=0); --style-guard runs
+#   the two guards only. The full gate (no flag) includes regen-smoke; a gate run with --no-regen is not a full gate.
 # Prints one summary block; full logs go to build/spike-gate/.
 set -uo pipefail
 cd "$(dirname "$0")"
@@ -9,7 +11,8 @@ SIM="${SPIKE_SIM:-platform=iOS Simulator,name=iPhone 17,OS=27.0}"
 XFLAGS=(-skipMacroValidation -skipPackagePluginValidation)
 SPIKE_MODULES=$(grep -oE '":ux-[a-z-]+"' settings.gradle.kts | tr -d '"' | grep -v ':ux-spike-android' || true)
 RESULT=0
-ONLY_STYLE_GUARD=0; [[ "${1:-}" == --style-guard ]] && ONLY_STYLE_GUARD=1
+ONLY_STYLE_GUARD=0; FAST=0; REGEN=${SPIKE_REGEN:-1}
+for a in "$@"; do case $a in --style-guard) ONLY_STYLE_GUARD=1 ;; --fast) FAST=1 ;; --no-regen) REGEN=0 ;; *) echo "unknown flag $a"; exit 2 ;; esac; done
 
 step() { # name, command...
   local name=$1; shift
@@ -141,9 +144,19 @@ step lint ./gradlew --continue detekt ktlintCheck
 step ios-project ./gradlew generateIosProject
 step xcode-debug xcodebuild -project iosApp/iosApp.xcodeproj -scheme EudiWallet -configuration Debug \
   -destination "$SIM" -derivedDataPath DerivedData "${XFLAGS[@]}" build
-if [[ "${1:-}" != "--fast" ]]; then
+if [[ $FAST == 0 ]]; then
   step xcode-release env CONFIGURATION=Release xcodebuild -project iosApp/iosApp.xcodeproj -scheme EudiWallet \
     -configuration Release -destination "$SIM" -derivedDataPath DerivedData-Release "${XFLAGS[@]}" build
+fi
+
+# M9r regen-smoke (SPIKE-PLAN §0.2b, rule T1): the spike module tests (host + iOS simulator) against every archived
+# export, each in a scratch copy of ux-spec/ outside the tree (spike-regen-smoke.sh; its own build dirs, so the counts
+# below and the tracked build are untouched). A spec-only sync that turns this red is a harness defect.
+if [[ $REGEN == 1 ]]; then
+  step regen-smoke ./spike-regen-smoke.sh all
+  grep -E '^(PASS|FAIL|  FAILED|regen-smoke)' "$LOG/regen-smoke.log"
+else
+  echo "SKIP regen-smoke (--no-regen): not a full gate"
 fi
 
 echo "--- test counts (tests/failures/errors/skipped per task dir) ---"

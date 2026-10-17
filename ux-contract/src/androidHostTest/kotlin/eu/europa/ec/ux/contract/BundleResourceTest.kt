@@ -28,9 +28,10 @@ import kotlin.test.assertTrue
 /** The app reads the bundle from this module's compose resources: the file `ux-spec/` carries and its lock lists. */
 class BundleResourceTest {
 
-    private val root = listOf(File("."), File("..")).first { File(it, "ux-spec/UX_SPEC.lock").isFile }
-    private val lock = File(root, "ux-spec/UX_SPEC.lock").readText()
-    private val resource = File(root, "ux-spec/resources/${PresCrossDeviceSpec.BUNDLE_PATH}")
+    /** The export the build embeds (`ux.spec.dir`, set by the Gradle test task; M9r regen-smoke points it at a scratch copy). */
+    private val spec = File(System.getProperty("ux.spec.dir") ?: error("ux.spec.dir is not set"))
+    private val lock = File(spec, "UX_SPEC.lock").readText()
+    private val resource = File(spec, "resources/${PresCrossDeviceSpec.BUNDLE_PATH}")
 
     @Test
     fun theBundleResourceIsTheLockedExport() {

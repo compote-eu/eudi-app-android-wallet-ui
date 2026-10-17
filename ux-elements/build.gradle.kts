@@ -26,6 +26,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// M9r regen-smoke: -PuxSpecDir=<dir> points this build at a scratch copy of an export (default: the tracked ux-spec/).
+val uxSpec: Directory = rootProject.layout.projectDirectory.dir(providers.gradleProperty("uxSpecDir").getOrElse("ux-spec"))
+// ...and keeps that build apart from the tracked one (its own build directory), so the two never clobber each other.
+if (providers.gradleProperty("uxSpecDir").isPresent) layout.buildDirectory.set(layout.projectDirectory.dir("build/regen-smoke"))
+
 // M5c (OR-2 (c)), M6c: the library data of the export (ux-spec/resources/files/ux-library.json, spec commit recorded
 // inside it; was the M5c snapshot of the library YAML subset) is embedded as a Kotlin string under build/, so the
 // registry-vs-library test runs on both targets. The task refuses a file whose sha256 is not UX_SPEC.lock's.
@@ -59,9 +64,9 @@ abstract class SpecSnapshotFixture : DefaultTask() {
 }
 
 val specSnapshotFixture = tasks.register<SpecSnapshotFixture>("specSnapshotFixture") {
-    snapshot.set(rootProject.layout.projectDirectory.file("ux-spec/resources/files/ux-library.json"))
+    snapshot.set(uxSpec.file("resources/files/ux-library.json"))
     expectedSha256.set(
-        providers.fileContents(rootProject.layout.projectDirectory.file("ux-spec/UX_SPEC.lock")).asText.map { lock ->
+        providers.fileContents(uxSpec.file("UX_SPEC.lock")).asText.map { lock ->
             val entry = Regex("""\{[^{}]*"path": "resources/files/ux-library.json"[^{}]*}""").find(lock)?.value
                 ?: error("UX_SPEC.lock lists no resources/files/ux-library.json")
             Regex(""""sha256": "([0-9a-f]{64})"""").find(entry)!!.groupValues[1]
@@ -132,17 +137,17 @@ abstract class TokensFixture : DefaultTask() {
 }
 
 val tokensFixture = tasks.register<TokensFixture>("tokensFixture") {
-    tokens.set(rootProject.layout.projectDirectory.file("ux-spec/resources/files/ux-tokens.json"))
+    tokens.set(uxSpec.file("resources/files/ux-tokens.json"))
     expectedSha256.set(
-        providers.fileContents(rootProject.layout.projectDirectory.file("ux-spec/UX_SPEC.lock")).asText.map { lock ->
+        providers.fileContents(uxSpec.file("UX_SPEC.lock")).asText.map { lock ->
             val entry = Regex("""\{[^{}]*"path": "resources/files/ux-tokens.json"[^{}]*}""").find(lock)?.value
                 ?: error("UX_SPEC.lock lists no resources/files/ux-tokens.json")
             Regex(""""sha256": "([0-9a-f]{64})"""").find(entry)!!.groupValues[1]
         },
     )
-    assets.set(rootProject.layout.projectDirectory.file("ux-spec/resources/files/ux-assets.json"))
+    assets.set(uxSpec.file("resources/files/ux-assets.json"))
     expectedAssetsSha256.set(
-        providers.fileContents(rootProject.layout.projectDirectory.file("ux-spec/UX_SPEC.lock")).asText.map { lock ->
+        providers.fileContents(uxSpec.file("UX_SPEC.lock")).asText.map { lock ->
             val entry = Regex("""\{[^{}]*"path": "resources/files/ux-assets.json"[^{}]*}""").find(lock)?.value
                 ?: error("UX_SPEC.lock lists no resources/files/ux-assets.json")
             Regex(""""sha256": "([0-9a-f]{64})"""").find(entry)!!.groupValues[1]

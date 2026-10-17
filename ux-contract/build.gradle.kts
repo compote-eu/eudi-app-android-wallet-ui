@@ -25,6 +25,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// M9r regen-smoke: -PuxSpecDir=<dir> points this build at a scratch copy of an export (default: the tracked ux-spec/).
+val uxSpec: Directory = rootProject.layout.projectDirectory.dir(providers.gradleProperty("uxSpecDir").getOrElse("ux-spec"))
+// ...and keeps that build apart from the tracked one (its own build directory), so the two never clobber each other.
+if (providers.gradleProperty("uxSpecDir").isPresent) layout.buildDirectory.set(layout.projectDirectory.dir("build/regen-smoke"))
+
 kotlin {
     android {
         namespace = "eu.europa.ec.ux.contract"
@@ -45,7 +50,7 @@ kotlin {
     sourceSets {
         commonMain {
             // boundary §3: the generated contract (ux-spec/ is exporter-only, never edited here).
-            kotlin.srcDir(rootProject.file("ux-spec/contract/kotlin"))
+            kotlin.srcDir(uxSpec.dir("contract/kotlin"))
             dependencies {
                 api(libs.jetbrains.compose.runtime)
                 api(libs.jetbrains.compose.components.resources)
@@ -64,5 +69,10 @@ compose.resources {
     packageOfResClass = "eu.europa.ec.ux.contract.resources"
     // boundary §3 / V29: the export's resources (values/strings.xml, files/<flow>.bundle.json) are this module's
     // commonMain compose resources; the Res package stays eu.europa.ec.ux.contract.resources.
-    customDirectory("commonMain", provider { rootProject.layout.projectDirectory.dir("ux-spec/resources") })
+    customDirectory("commonMain", provider { uxSpec.dir("resources") })
+}
+
+// M9r: the host tests that read the export from disk read the same directory the build embeds.
+tasks.withType<Test>().configureEach {
+    systemProperty("ux.spec.dir", uxSpec.asFile.absolutePath)
 }

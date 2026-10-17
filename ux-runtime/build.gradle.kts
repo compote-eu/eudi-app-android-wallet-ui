@@ -26,6 +26,11 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// M9r regen-smoke: -PuxSpecDir=<dir> points this build at a scratch copy of an export (default: the tracked ux-spec/).
+val uxSpec: Directory = rootProject.layout.projectDirectory.dir(providers.gradleProperty("uxSpecDir").getOrElse("ux-spec"))
+// ...and keeps that build apart from the tracked one (its own build directory), so the two never clobber each other.
+if (providers.gradleProperty("uxSpecDir").isPresent) layout.buildDirectory.set(layout.projectDirectory.dir("build/regen-smoke"))
+
 // Test fixtures (M6a; M1b embedded the provisional boundary bundle the same way): the exported bundle and copy,
 // embedded as Kotlin strings under build/, so the tracked :ux-runtime sources carry no screen id (KC1 guard,
 // SPIKE-PLAN §3), there is one copy of each file, and the runtime needs no :ux-contract. The task refuses a file whose
@@ -110,16 +115,16 @@ abstract class BundleFixture : DefaultTask() {
 
 /** The sha256 UX_SPEC.lock lists for an exported file (boundary §3); the gate's uxspec-lock step checks the files. */
 fun lockedSha256(path: String): Provider<String> =
-    providers.fileContents(rootProject.layout.projectDirectory.file("ux-spec/UX_SPEC.lock")).asText.map { lock ->
+    providers.fileContents(uxSpec.file("UX_SPEC.lock")).asText.map { lock ->
         val entry = Regex("""\{[^{}]*"path": "${Regex.escape(path)}"[^{}]*}""").find(lock)?.value
             ?: error("UX_SPEC.lock lists no $path")
         Regex(""""sha256": "([0-9a-f]{64})"""").find(entry)!!.groupValues[1]
     }
 
 val exportedFixture = tasks.register<BundleFixture>("exportedBundleFixture") {
-    bundle.set(rootProject.layout.projectDirectory.file("ux-spec/resources/files/FLW-pres-cross-device.bundle.json"))
+    bundle.set(uxSpec.file("resources/files/FLW-pres-cross-device.bundle.json"))
     expectedSha256.set(lockedSha256("resources/files/FLW-pres-cross-device.bundle.json"))
-    strings.set(rootProject.layout.projectDirectory.file("ux-spec/resources/values/strings.xml"))
+    strings.set(uxSpec.file("resources/values/strings.xml"))
     expectedStringsSha256.set(lockedSha256("resources/values/strings.xml"))
     objectName.set("ExportedPresBundle")
     outputDir.set(layout.buildDirectory.dir("generated/exported-fixture/kotlin"))
@@ -127,10 +132,51 @@ val exportedFixture = tasks.register<BundleFixture>("exportedBundleFixture") {
 
 // V6 / R5: the exported model fixture (invariants and the explored event sequences) for the engine's replay test.
 val exportedModelFixture = tasks.register<BundleFixture>("exportedModelFixture") {
-    bundle.set(rootProject.layout.projectDirectory.file("ux-spec/fixtures/model/FLW-pres-cross-device.model.json"))
+    bundle.set(uxSpec.file("fixtures/model/FLW-pres-cross-device.model.json"))
     expectedSha256.set(lockedSha256("fixtures/model/FLW-pres-cross-device.model.json"))
     objectName.set("ExportedPresModel")
     outputDir.set(layout.buildDirectory.dir("generated/exported-model-fixture/kotlin"))
+}
+
+// M9r: the exported fake-engine scripts (ux-spec/fixtures/scripts, every file UX_SPEC.lock lists there), embedded the same
+// way, so the export tests answer services with the export's own payloads (realistic copy keys, data and trust).
+abstract class ScriptsFixture : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val scripts: ConfigurableFileCollection
+
+    @get:Input
+    abstract val expected: MapProperty<String, String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val q = "\"\"\""
+        val entries = scripts.files.sortedBy { it.name }.map { f ->
+            val bytes = f.readBytes()
+            val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+            check(sha == expected.get()[f.name]) { "${f.name} sha256 is $sha, UX_SPEC.lock says ${expected.get()[f.name]}" }
+            val text = bytes.decodeToString()
+            check('$' !in text && q !in text) { "${f.name} cannot be embedded in a raw string" }
+            "        \"${f.name.removeSuffix(".json")}\" to $q$text$q,"
+        }
+        val dir = outputDir.get().asFile.resolve("eu/europa/ec/ux/runtime/fixture").apply { mkdirs() }
+        dir.resolve("ExportedPresScripts.kt").writeText(
+            "// Generated from ux-spec/fixtures/scripts. Do not edit.\n" +
+                "package eu.europa.ec.ux.runtime.fixture\n\ninternal object ExportedPresScripts {\n" +
+                "    val BY_NAME: Map<String, String> = mapOf(\n${entries.joinToString("\n")}\n    )\n}\n",
+        )
+    }
+}
+
+val exportedScriptsFixture = tasks.register<ScriptsFixture>("exportedScriptsFixture") {
+    val dir = uxSpec.dir("fixtures/scripts")
+    val names = dir.asFile.listFiles().orEmpty().map { it.name }.filter { it.endsWith(".json") }
+    scripts.from(names.map { dir.file(it) })
+    expected.set(providers.provider { names.associateWith { n -> lockedSha256("fixtures/scripts/$n").get() } })
+    outputDir.set(layout.buildDirectory.dir("generated/exported-scripts-fixture/kotlin"))
 }
 
 // M5b test (ii): the added-state copy is no longer a pinned file (spike-evidence/M6a/…offline-loading.TEST.json, kept as
@@ -170,6 +216,7 @@ kotlin {
         commonTest {
             kotlin.srcDir(exportedFixture.map { it.outputDir })
             kotlin.srcDir(exportedModelFixture.map { it.outputDir })
+            kotlin.srcDir(exportedScriptsFixture.map { it.outputDir })
             dependencies {
                 implementation(kotlin("test"))
                 implementation(libs.kotlinx.coroutines.test)
