@@ -37,6 +37,7 @@ import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.resourceslogic.theme.ThemeManager
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.DebugFlowHook
 import eu.europa.ec.shared.navigation.DocumentDetailsRoute
 import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
@@ -57,15 +58,30 @@ import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.core.annotation.KoinViewModel
+import org.koin.mp.KoinPlatform
 
 open class EudiComponentActivity : FragmentActivity() {
 
     private val routerHost: RouterHost by inject()
     private val viewModel: EudiComponentActivityViewModel by viewModel()
 
+    // UX spike (T9): after process death the system re-creates the activity with the ORIGINAL launch
+    // intent, because `setIntent(Intent())` below does not survive the kill. Remember across the kill
+    // that the cold-boot link was already handled. Active only when a DebugFlowHook is bound (debug).
+    private var launchIntentConsumed = false
+
+    private fun launchGuardActive(): Boolean =
+        KoinPlatform.getKoinOrNull()?.getOrNull<DebugFlowHook>() != null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        launchIntentConsumed = savedInstanceState?.getBoolean(KEY_LAUNCH_INTENT_CONSUMED) == true
         viewModel.onCreate()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEY_LAUNCH_INTENT_CONSUMED, launchIntentConsumed)
     }
 
     internal fun cacheIntent(intent: Intent?) {
@@ -104,7 +120,12 @@ open class EudiComponentActivity : FragmentActivity() {
                 }
                 LaunchedEffect(Unit) {
                     viewModel.onFlowStart()
-                    handleDeepLink(intent, coldBoot = true)
+                    if (shouldHandleLaunchIntent(launchGuardActive(), launchIntentConsumed)) {
+                        handleDeepLink(intent, coldBoot = true)
+                    } else {
+                        println("UX-SPIKE: launch intent already consumed, cold-boot link skipped")
+                    }
+                    if (launchGuardActive()) launchIntentConsumed = true
                 }
             }
         }
@@ -183,6 +204,12 @@ open class EudiComponentActivity : FragmentActivity() {
         }
     }
 }
+
+private const val KEY_LAUNCH_INTENT_CONSUMED = "launchIntentConsumed"
+
+/** The cold-boot link is skipped only when the debug hook is present and a restore says it was consumed. */
+internal fun shouldHandleLaunchIntent(guardActive: Boolean, consumed: Boolean): Boolean =
+    !(guardActive && consumed)
 
 @KoinViewModel
 internal class EudiComponentActivityViewModel(
