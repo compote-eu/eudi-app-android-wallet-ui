@@ -1,0 +1,2032 @@
+{
+  "probe_schema_version": 1,
+  "kind": "screen-probe",
+  "screen_id": "SCR-home",
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
+  "source": {
+    "brief": "BRF-006",
+    "description": "Home (TPL-home, BRF-006) as a standalone screen probe: the default brand's profile and variants applied",
+    "exporter": "tools/export_kmp.py 0.5.0",
+    "locale": "sk",
+    "maturity": "candidate",
+    "ux_commit": "b55be659455f936456632cea230d6fc0ee58f9c5"
+  },
+  "brands": [
+    "eudiw_v1"
+  ],
+  "default_brand": "eudiw_v1",
+  "gating": {
+    "eudiw_v1": {
+      "hidden": [
+        {
+          "by": "profile",
+          "feature": "storage-switch",
+          "node": "switch",
+          "profile": "PRF-eudiw-v1"
+        },
+        {
+          "by": "profile",
+          "feature": "trust-mark-entry",
+          "node": "trustmark",
+          "profile": "PRF-eudiw-v1"
+        },
+        {
+          "axis": "bottom-nav",
+          "by": "variant",
+          "node": "present",
+          "option": "bar"
+        }
+      ],
+      "hidden_events": [
+        "OPEN_CERT",
+        "PRESENT",
+        "SWITCH_STORAGE"
+      ],
+      "profile": "PRF-eudiw-v1",
+      "variants": {
+        "bottom-nav": "bar",
+        "card-face": "centered"
+      },
+      "visible": [
+        "appbar",
+        "appbar-unread",
+        "title",
+        "notice-offline",
+        "notice-offline-phone",
+        "notice-invalid",
+        "card-id",
+        "card-id-revoked",
+        "card-id-suspended",
+        "card-id-stale",
+        "card-dl",
+        "card-dl-expired",
+        "card-pid-cloud",
+        "empty-title",
+        "empty-text",
+        "add-document",
+        "history",
+        "bottom-bar",
+        "card-pid",
+        "documents-heading",
+        "all-documents",
+        "card-dl-expiring"
+      ]
+    }
+  },
+  "dropped": [
+    {
+      "node": "switch",
+      "reasons": {
+        "eudiw_v1": {
+          "by": "profile",
+          "feature": "storage-switch",
+          "node": "switch",
+          "profile": "PRF-eudiw-v1"
+        }
+      }
+    },
+    {
+      "node": "trustmark",
+      "reasons": {
+        "eudiw_v1": {
+          "by": "profile",
+          "feature": "trust-mark-entry",
+          "node": "trustmark",
+          "profile": "PRF-eudiw-v1"
+        }
+      }
+    },
+    {
+      "node": "present",
+      "reasons": {
+        "eudiw_v1": {
+          "axis": "bottom-nav",
+          "by": "variant",
+          "node": "present",
+          "option": "bar"
+        }
+      }
+    }
+  ],
+  "rules_pruned": [
+    {
+      "effects_on": [
+        "present"
+      ],
+      "rule": "RUL-home-empty"
+    }
+  ],
+  "context": {
+    "/documents/dl_present": {
+      "description": "false = the driving licence was just deleted from the phone; the home shows no card for it",
+      "type": "boolean",
+      "value": true
+    },
+    "/documents/dl_status": {
+      "description": "Status of the driving licence in the example wallet: valid | expiring (validity ends within 30 days, DEC-060) | expired (document-invalid state)",
+      "type": "string",
+      "value": "valid"
+    },
+    "/documents/empty": {
+      "description": "The selected storage holds no eDoklad",
+      "type": "boolean",
+      "value": false
+    },
+    "/documents/id_present": {
+      "description": "false = the identity card was just deleted from the phone; the home shows no card for it",
+      "type": "boolean",
+      "value": true
+    },
+    "/documents/id_status": {
+      "description": "Status of the identity card in the example wallet: valid | revoked | suspended | stale (set while the user was in its detail; the home shows it on return)",
+      "type": "string",
+      "value": "valid"
+    },
+    "/documents/pid_present": {
+      "description": "false = the identification data (PID) were just deleted from the phone; the home shows no identity card",
+      "type": "boolean",
+      "value": true
+    },
+    "/driving_licence/number": {
+      "description": "Driving licence number (synthetic)",
+      "type": "string",
+      "value": "SK 0000000"
+    },
+    "/driving_licence/valid_until": {
+      "description": "Expiry date of the driving licence (synthetic; as its detail) — in a brand's dated status (DEC-052)",
+      "type": "string",
+      "value": "15. 9. 2036"
+    },
+    "/holder/initials": {
+      "description": "Initials of the holder in the identity card's avatar (synthetic; DEC-049)",
+      "type": "string",
+      "value": "JV"
+    },
+    "/holder/name": {
+      "description": "Holder name on the cards (synthetic)",
+      "type": "string",
+      "value": "Ján Vzorový"
+    },
+    "/id_card/number": {
+      "description": "Identity card number (synthetic)",
+      "type": "string",
+      "value": "EA 000000"
+    },
+    "/id_card/valid_until": {
+      "description": "Expiry date of the identity card (synthetic; as its detail) — in a brand's dated status (DEC-052)",
+      "type": "string",
+      "value": "1. 3. 2034"
+    },
+    "/links/all_documents": {
+      "description": "In-app route to the list of all eDoklady (prototype anchor; the press is OPEN_ALL_DOCUMENTS; DEC-051)",
+      "type": "url",
+      "value": "#all-documents"
+    },
+    "/links/cert": {
+      "description": "In-app route to the certification view (prototype anchor; the press is OPEN_CERT)",
+      "type": "url",
+      "value": "#cert"
+    },
+    "/links/log": {
+      "description": "In-app route to the history (prototype anchor; the press is OPEN_LOG)",
+      "type": "url",
+      "value": "#log"
+    },
+    "/nav/tabs": {
+      "description": "Top-level destinations of the bottom bar (EL-bottom-bar, shown where the brand's bottom-nav variant is bar; DEC-043); home is the eDoklady destination",
+      "type": "list",
+      "value": [
+        {
+          "icon": "icon-id-card",
+          "id": "documents",
+          "label_copy": "CPY-home-nav-documents",
+          "selected": true
+        },
+        {
+          "icon": "icon-case",
+          "id": "services",
+          "label_copy": "CPY-home-nav-services"
+        }
+      ]
+    },
+    "/network/online": {
+      "description": "Whether the phone has an internet connection",
+      "type": "boolean",
+      "value": true
+    },
+    "/notifications/unread": {
+      "description": "Unread notifications exist (as-is EdokladyHomeUiState.hasUnreadNotifications)",
+      "type": "boolean",
+      "value": false
+    },
+    "/storage/options": {
+      "description": "Options of the storage switch (as-is L789-790); offline the cloud option is disabled and its label says why",
+      "type": "list",
+      "value": [
+        {
+          "id": "phone",
+          "label_copy": "CPY-home-switch-phone",
+          "selected": true
+        },
+        {
+          "id": "cloud",
+          "label_copy": "CPY-home-switch-cloud"
+        }
+      ]
+    },
+    "/storage/selected": {
+      "description": "Storage whose documents the cards show: phone | cloud",
+      "type": "string",
+      "value": "phone"
+    }
+  },
+  "ui_states": [
+    {
+      "data": {},
+      "description": "Online, phone storage selected — the identity card and the driving licence, both valid; Predložiť eDoklady at the bottom",
+      "id": "default"
+    },
+    {
+      "data": {
+        "/storage/options": [
+          {
+            "id": "phone",
+            "label_copy": "CPY-home-switch-phone"
+          },
+          {
+            "id": "cloud",
+            "label_copy": "CPY-home-switch-cloud",
+            "selected": true
+          }
+        ],
+        "/storage/selected": "cloud"
+      },
+      "description": "Cloud storage selected — the documents kept in the cloud (synthetic, SLOVAK-CONTEXT-C-36)",
+      "id": "cloud"
+    },
+    {
+      "data": {
+        "/network/online": false,
+        "/storage/options": [
+          {
+            "id": "phone",
+            "label_copy": "CPY-home-switch-phone",
+            "selected": true
+          },
+          {
+            "disabled": true,
+            "id": "cloud",
+            "label_copy": "CPY-home-switch-cloud-offline"
+          }
+        ]
+      },
+      "description": "No internet — the phone documents stay usable; a notice says the cloud needs a connection and the phone documents work without one; the cloud option stays visible, disabled, and says why (RUL-home-offline)",
+      "id": "offline"
+    },
+    {
+      "data": {
+        "/documents/empty": true
+      },
+      "description": "The phone storage holds no eDoklad — the empty state says so and offers Pridať doklad (to BRF-002); nothing to present (RUL-home-empty)",
+      "id": "empty"
+    },
+    {
+      "data": {
+        "/documents/empty": true,
+        "/storage/options": [
+          {
+            "id": "phone",
+            "label_copy": "CPY-home-switch-phone"
+          },
+          {
+            "id": "cloud",
+            "label_copy": "CPY-home-switch-cloud",
+            "selected": true
+          }
+        ],
+        "/storage/selected": "cloud"
+      },
+      "description": "Cloud storage selected and it holds no eDoklad — the same empty state as the phone storage (as-is L364-365) with Pridať doklad; nothing to present (RUL-home-empty)",
+      "id": "cloud-empty"
+    },
+    {
+      "data": {
+        "/documents/dl_status": "expired"
+      },
+      "description": "The driving licence has expired — its card says 'Platnosť skončila' in text and a notice asks to open it for the reason (RUL-home-document-invalid)",
+      "id": "document-invalid"
+    },
+    {
+      "data": {
+        "/documents/id_status": "revoked"
+      },
+      "description": "Back from the identity card's detail after it became revoked — its card says 'Odvolaný' in text and the notice asks to open it for the reason (RUL-home-id-revoked, RUL-home-all-valid)",
+      "id": "id-revoked"
+    },
+    {
+      "data": {
+        "/documents/id_status": "suspended"
+      },
+      "description": "Back from the identity card's detail after it became suspended — its card says 'Pozastavený' in text and the notice asks to open it for the reason (RUL-home-id-suspended, RUL-home-all-valid)",
+      "id": "id-suspended"
+    },
+    {
+      "data": {
+        "/documents/id_status": "stale"
+      },
+      "description": "Back from the identity card's detail after it became out of date — its card says 'Treba aktualizovať' in text and the notice asks to open it for the reason (RUL-home-id-stale, RUL-home-all-valid)",
+      "id": "id-stale"
+    },
+    {
+      "data": {
+        "/documents/id_present": false
+      },
+      "description": "Back from deleting the identity card (whatever its status was) — only the driving licence's card is shown, valid; no attention notice (RUL-home-id-deleted)",
+      "id": "without-id"
+    },
+    {
+      "data": {
+        "/documents/pid_present": false
+      },
+      "description": "Back from deleting the identification data (PID) from the phone — no identity card; the other documents as default (RUL-home-pid-deleted)",
+      "id": "without-pid"
+    },
+    {
+      "data": {
+        "/documents/dl_present": false
+      },
+      "description": "Back from deleting the driving licence (valid or expired) — only the identity card's card is shown, valid; no attention notice (RUL-home-dl-deleted)",
+      "id": "without-dl"
+    },
+    {
+      "data": {
+        "/notifications/unread": true
+      },
+      "description": "Unread notifications — the bell has a dot and its accessible name says there are unread messages (RUL-home-notifications-unread)",
+      "id": "notifications-unread"
+    },
+    {
+      "data": {
+        "/documents/dl_status": "expiring",
+        "/driving_licence/valid_until": "12. 11. 2026"
+      },
+      "description": "The driving licence's validity ends within 30 days — its card says 'Platnosť končí 12. 11. 2026' in a warning chip; it is still valid, so no notice (RUL-home-dl-expiring, DEC-060)",
+      "id": "dl-expiring"
+    }
+  ],
+  "events": {
+    "ADD_DOCUMENT": {
+      "nodes": [
+        {
+          "node": "add-document",
+          "on": "press"
+        }
+      ],
+      "source": "ui"
+    },
+    "OPEN_ACTIONS": {
+      "nodes": [
+        {
+          "node": "bottom-bar",
+          "on": "action"
+        }
+      ],
+      "source": "ui"
+    },
+    "OPEN_ALL_DOCUMENTS": {
+      "nodes": [
+        {
+          "node": "all-documents",
+          "on": "activate"
+        }
+      ],
+      "source": "ui"
+    },
+    "OPEN_DOCUMENT": {
+      "nodes": [
+        {
+          "node": "card-id",
+          "on": "open"
+        },
+        {
+          "node": "card-pid-cloud",
+          "on": "open"
+        }
+      ],
+      "source": "ui"
+    },
+    "OPEN_DOCUMENT_DL": {
+      "nodes": [
+        {
+          "node": "card-dl",
+          "on": "open"
+        },
+        {
+          "node": "card-dl-expiring",
+          "on": "open"
+        }
+      ],
+      "source": "ui"
+    },
+    "OPEN_DOCUMENT_INVALID": {
+      "nodes": [
+        {
+          "node": "card-id-revoked",
+          "on": "open"
+        },
+        {
+          "node": "card-id-suspended",
+          "on": "open"
+        },
+        {
+          "node": "card-id-stale",
+          "on": "open"
+        },
+        {
+          "node": "card-dl-expired",
+          "on": "open"
+        }
+      ],
+      "source": "ui"
+    },
+    "OPEN_DOCUMENT_PID": {
+      "nodes": [
+        {
+          "node": "card-pid",
+          "on": "open"
+        }
+      ],
+      "source": "ui"
+    },
+    "OPEN_LOG": {
+      "nodes": [
+        {
+          "node": "history",
+          "on": "activate"
+        }
+      ],
+      "source": "ui"
+    },
+    "OPEN_MENU": {
+      "nodes": [
+        {
+          "node": "appbar",
+          "on": "leading"
+        },
+        {
+          "node": "appbar-unread",
+          "on": "leading"
+        }
+      ],
+      "source": "ui"
+    },
+    "OPEN_NOTIFICATIONS": {
+      "nodes": [
+        {
+          "node": "appbar",
+          "on": "trailing"
+        },
+        {
+          "node": "appbar-unread",
+          "on": "trailing"
+        }
+      ],
+      "source": "ui"
+    }
+  },
+  "screen": {
+    "name": "My eDoklady (wallet home)",
+    "template": "TPL-home",
+    "in_brief_scope": false,
+    "regions": {
+      "appbar": [
+        {
+          "id": "appbar",
+          "element": "EL-app-bar",
+          "props": {
+            "leading": "menu",
+            "leading_label": {
+              "copy": "CPY-home-menu-label"
+            },
+            "trailing": "notifications",
+            "trailing_label": {
+              "copy": "CPY-home-notifications-label"
+            }
+          },
+          "events": [
+            {
+              "emits": "OPEN_MENU",
+              "on": "leading"
+            },
+            {
+              "emits": "OPEN_NOTIFICATIONS",
+              "on": "trailing"
+            }
+          ]
+        },
+        {
+          "id": "appbar-unread",
+          "element": "EL-app-bar",
+          "props": {
+            "badge": true,
+            "leading": "menu",
+            "leading_label": {
+              "copy": "CPY-home-menu-label"
+            },
+            "trailing": "notifications",
+            "trailing_label": {
+              "copy": "CPY-home-notifications-unread-label"
+            }
+          },
+          "events": [
+            {
+              "emits": "OPEN_MENU",
+              "on": "leading"
+            },
+            {
+              "emits": "OPEN_NOTIFICATIONS",
+              "on": "trailing"
+            }
+          ]
+        }
+      ],
+      "header": [
+        {
+          "id": "title",
+          "element": "EL-text",
+          "props": {
+            "text": {
+              "copy": "CPY-home-title"
+            },
+            "variant": "title"
+          },
+          "a11y": {
+            "heading": 1
+          }
+        }
+      ],
+      "notice": [
+        {
+          "id": "notice-offline",
+          "element": "EL-notice",
+          "props": {
+            "text": {
+              "copy": "CPY-home-offline-text"
+            },
+            "title": {
+              "copy": "CPY-home-offline-title"
+            },
+            "tone": "warning"
+          }
+        },
+        {
+          "id": "notice-offline-phone",
+          "element": "EL-notice",
+          "props": {
+            "text": {
+              "copy": "CPY-home-offline-phone"
+            },
+            "tone": "info"
+          }
+        },
+        {
+          "id": "notice-invalid",
+          "element": "EL-notice",
+          "props": {
+            "text": {
+              "copy": "CPY-home-invalid-notice"
+            },
+            "tone": "warning"
+          }
+        }
+      ],
+      "identity": [
+        {
+          "id": "card-pid",
+          "element": "EL-document-card",
+          "props": {
+            "doc_type": "pid",
+            "holder": {
+              "bind": "/holder/name"
+            },
+            "initials": {
+              "bind": "/holder/initials"
+            },
+            "status": "valid",
+            "status_label": {
+              "copy": "CPY-home-identity-status-valid"
+            },
+            "title": {
+              "copy": "CPY-doc-type-pid"
+            },
+            "variant": "holder"
+          },
+          "events": [
+            {
+              "emits": "OPEN_DOCUMENT_PID",
+              "on": "open"
+            }
+          ]
+        }
+      ],
+      "documents-heading": [
+        {
+          "id": "documents-heading",
+          "element": "EL-text",
+          "props": {
+            "text": {
+              "copy": "CPY-home-documents-heading"
+            },
+            "variant": "heading"
+          },
+          "a11y": {
+            "heading": 2
+          }
+        },
+        {
+          "id": "all-documents",
+          "element": "EL-link",
+          "props": {
+            "href": {
+              "bind": "/links/all_documents"
+            },
+            "label": {
+              "copy": "CPY-home-all-documents"
+            }
+          },
+          "events": [
+            {
+              "emits": "OPEN_ALL_DOCUMENTS",
+              "on": "activate"
+            }
+          ]
+        }
+      ],
+      "cards": [
+        {
+          "id": "card-id",
+          "element": "EL-document-card",
+          "props": {
+            "doc_type": "id-card",
+            "holder": {
+              "bind": "/holder/name"
+            },
+            "number": {
+              "bind": "/id_card/number"
+            },
+            "status": "valid",
+            "status_label": {
+              "args": {
+                "date": "/id_card/valid_until"
+              },
+              "copy": "CPY-home-card-valid"
+            },
+            "storage": "phone",
+            "storage_label": {
+              "copy": "CPY-doc-storage-phone"
+            },
+            "title": {
+              "copy": "CPY-doc-type-id-card"
+            },
+            "title_en": {
+              "copy": "CPY-doc-name-en-id-card"
+            },
+            "variant": "full"
+          },
+          "events": [
+            {
+              "emits": "OPEN_DOCUMENT",
+              "on": "open"
+            }
+          ]
+        },
+        {
+          "id": "card-id-revoked",
+          "element": "EL-document-card",
+          "props": {
+            "doc_type": "id-card",
+            "holder": {
+              "bind": "/holder/name"
+            },
+            "number": {
+              "bind": "/id_card/number"
+            },
+            "status": "revoked",
+            "status_label": {
+              "copy": "CPY-doc-status-revoked"
+            },
+            "storage": "phone",
+            "storage_label": {
+              "copy": "CPY-doc-storage-phone"
+            },
+            "title": {
+              "copy": "CPY-doc-type-id-card"
+            },
+            "title_en": {
+              "copy": "CPY-doc-name-en-id-card"
+            },
+            "variant": "full"
+          },
+          "events": [
+            {
+              "emits": "OPEN_DOCUMENT_INVALID",
+              "on": "open"
+            }
+          ]
+        },
+        {
+          "id": "card-id-suspended",
+          "element": "EL-document-card",
+          "props": {
+            "doc_type": "id-card",
+            "holder": {
+              "bind": "/holder/name"
+            },
+            "number": {
+              "bind": "/id_card/number"
+            },
+            "status": "suspended",
+            "status_label": {
+              "copy": "CPY-doc-status-suspended"
+            },
+            "storage": "phone",
+            "storage_label": {
+              "copy": "CPY-doc-storage-phone"
+            },
+            "title": {
+              "copy": "CPY-doc-type-id-card"
+            },
+            "title_en": {
+              "copy": "CPY-doc-name-en-id-card"
+            },
+            "variant": "full"
+          },
+          "events": [
+            {
+              "emits": "OPEN_DOCUMENT_INVALID",
+              "on": "open"
+            }
+          ]
+        },
+        {
+          "id": "card-id-stale",
+          "element": "EL-document-card",
+          "props": {
+            "doc_type": "id-card",
+            "holder": {
+              "bind": "/holder/name"
+            },
+            "number": {
+              "bind": "/id_card/number"
+            },
+            "status": "stale",
+            "status_label": {
+              "copy": "CPY-doc-status-stale"
+            },
+            "storage": "phone",
+            "storage_label": {
+              "copy": "CPY-doc-storage-phone"
+            },
+            "title": {
+              "copy": "CPY-doc-type-id-card"
+            },
+            "title_en": {
+              "copy": "CPY-doc-name-en-id-card"
+            },
+            "variant": "full"
+          },
+          "events": [
+            {
+              "emits": "OPEN_DOCUMENT_INVALID",
+              "on": "open"
+            }
+          ]
+        },
+        {
+          "id": "card-dl",
+          "element": "EL-document-card",
+          "props": {
+            "doc_type": "driving-licence",
+            "holder": {
+              "bind": "/holder/name"
+            },
+            "number": {
+              "bind": "/driving_licence/number"
+            },
+            "status": "valid",
+            "status_label": {
+              "args": {
+                "date": "/driving_licence/valid_until"
+              },
+              "copy": "CPY-home-card-valid"
+            },
+            "storage": "phone",
+            "storage_label": {
+              "copy": "CPY-doc-storage-phone"
+            },
+            "title": {
+              "copy": "CPY-doc-type-driving-licence"
+            },
+            "title_en": {
+              "copy": "CPY-doc-name-en-driving-licence"
+            },
+            "variant": "full"
+          },
+          "events": [
+            {
+              "emits": "OPEN_DOCUMENT_DL",
+              "on": "open"
+            }
+          ]
+        },
+        {
+          "id": "card-dl-expired",
+          "element": "EL-document-card",
+          "props": {
+            "doc_type": "driving-licence",
+            "holder": {
+              "bind": "/holder/name"
+            },
+            "number": {
+              "bind": "/driving_licence/number"
+            },
+            "status": "expired",
+            "status_label": {
+              "copy": "CPY-doc-status-expired"
+            },
+            "storage": "phone",
+            "storage_label": {
+              "copy": "CPY-doc-storage-phone"
+            },
+            "title": {
+              "copy": "CPY-doc-type-driving-licence"
+            },
+            "title_en": {
+              "copy": "CPY-doc-name-en-driving-licence"
+            },
+            "variant": "full"
+          },
+          "events": [
+            {
+              "emits": "OPEN_DOCUMENT_INVALID",
+              "on": "open"
+            }
+          ]
+        },
+        {
+          "id": "card-pid-cloud",
+          "element": "EL-document-card",
+          "props": {
+            "doc_type": "pid",
+            "holder": {
+              "bind": "/holder/name"
+            },
+            "status": "valid",
+            "status_label": {
+              "copy": "CPY-doc-status-valid"
+            },
+            "storage": "cloud",
+            "storage_label": {
+              "copy": "CPY-doc-storage-cloud"
+            },
+            "title": {
+              "copy": "CPY-doc-type-pid"
+            },
+            "variant": "full"
+          },
+          "events": [
+            {
+              "emits": "OPEN_DOCUMENT",
+              "on": "open"
+            }
+          ]
+        },
+        {
+          "id": "card-dl-expiring",
+          "element": "EL-document-card",
+          "props": {
+            "doc_type": "driving-licence",
+            "holder": {
+              "bind": "/holder/name"
+            },
+            "number": {
+              "bind": "/driving_licence/number"
+            },
+            "status": "expiring",
+            "status_label": {
+              "args": {
+                "date": "/driving_licence/valid_until"
+              },
+              "copy": "CPY-doc-status-expiring"
+            },
+            "storage": "phone",
+            "storage_label": {
+              "copy": "CPY-doc-storage-phone"
+            },
+            "title": {
+              "copy": "CPY-doc-type-driving-licence"
+            },
+            "title_en": {
+              "copy": "CPY-doc-name-en-driving-licence"
+            },
+            "variant": "full"
+          },
+          "events": [
+            {
+              "emits": "OPEN_DOCUMENT_DL",
+              "on": "open"
+            }
+          ]
+        }
+      ],
+      "body": [
+        {
+          "id": "empty-title",
+          "element": "EL-text",
+          "props": {
+            "text": {
+              "copy": "CPY-home-empty-title"
+            },
+            "variant": "heading"
+          },
+          "a11y": {
+            "heading": 2
+          }
+        },
+        {
+          "id": "empty-text",
+          "element": "EL-text",
+          "props": {
+            "text": {
+              "copy": "CPY-home-empty-text"
+            },
+            "variant": "body"
+          }
+        },
+        {
+          "id": "add-document",
+          "element": "EL-button",
+          "props": {
+            "label": {
+              "copy": "CPY-home-empty-primary"
+            },
+            "variant": "primary"
+          },
+          "events": [
+            {
+              "emits": "ADD_DOCUMENT",
+              "on": "press"
+            }
+          ]
+        }
+      ],
+      "footer": [
+        {
+          "id": "history",
+          "element": "EL-link",
+          "props": {
+            "href": {
+              "bind": "/links/log"
+            },
+            "label": {
+              "copy": "CPY-log-title"
+            }
+          },
+          "events": [
+            {
+              "emits": "OPEN_LOG",
+              "on": "activate"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "bottom-bar",
+          "element": "EL-bottom-bar",
+          "props": {
+            "action": "menu",
+            "action_label": {
+              "copy": "CPY-home-actions-label"
+            },
+            "label": {
+              "copy": "CPY-home-nav-label"
+            },
+            "tabs": {
+              "bind": "/nav/tabs"
+            }
+          },
+          "events": [
+            {
+              "emits": "OPEN_ACTIONS",
+              "on": "action"
+            }
+          ]
+        }
+      ]
+    },
+    "rules": [
+      {
+        "id": "RUL-home-notifications-read",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "appbar-unread"
+          }
+        ],
+        "when": {
+          "op": "is_false",
+          "path": "/notifications/unread"
+        }
+      },
+      {
+        "id": "RUL-home-notifications-unread",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "appbar"
+          }
+        ],
+        "when": {
+          "op": "is_true",
+          "path": "/notifications/unread"
+        }
+      },
+      {
+        "id": "RUL-home-online",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "notice-offline"
+          },
+          {
+            "effect": "hide",
+            "node": "notice-offline-phone"
+          }
+        ],
+        "when": {
+          "op": "is_true",
+          "path": "/network/online"
+        }
+      },
+      {
+        "id": "RUL-home-storage-phone",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-id"
+          },
+          {
+            "effect": "hide",
+            "node": "card-id-revoked"
+          },
+          {
+            "effect": "hide",
+            "node": "card-id-suspended"
+          },
+          {
+            "effect": "hide",
+            "node": "card-id-stale"
+          },
+          {
+            "effect": "hide",
+            "node": "card-dl"
+          },
+          {
+            "effect": "hide",
+            "node": "card-dl-expired"
+          },
+          {
+            "effect": "hide",
+            "node": "card-dl-expiring"
+          },
+          {
+            "effect": "hide",
+            "node": "card-pid"
+          },
+          {
+            "effect": "hide",
+            "node": "documents-heading"
+          },
+          {
+            "effect": "hide",
+            "node": "all-documents"
+          }
+        ],
+        "when": {
+          "op": "neq",
+          "path": "/storage/selected",
+          "value": "phone"
+        }
+      },
+      {
+        "id": "RUL-home-storage-cloud",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-pid-cloud"
+          }
+        ],
+        "when": {
+          "op": "neq",
+          "path": "/storage/selected",
+          "value": "cloud"
+        }
+      },
+      {
+        "id": "RUL-home-document-valid",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-dl-expired"
+          }
+        ],
+        "when": {
+          "op": "neq",
+          "path": "/documents/dl_status",
+          "value": "expired"
+        }
+      },
+      {
+        "id": "RUL-home-document-invalid",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-dl"
+          }
+        ],
+        "when": {
+          "op": "eq",
+          "path": "/documents/dl_status",
+          "value": "expired"
+        }
+      },
+      {
+        "id": "RUL-home-all-valid",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "notice-invalid"
+          }
+        ],
+        "when": {
+          "all": [
+            {
+              "op": "neq",
+              "path": "/documents/dl_status",
+              "value": "expired"
+            },
+            {
+              "op": "eq",
+              "path": "/documents/id_status",
+              "value": "valid"
+            }
+          ]
+        }
+      },
+      {
+        "id": "RUL-home-id-valid",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-id"
+          }
+        ],
+        "when": {
+          "op": "neq",
+          "path": "/documents/id_status",
+          "value": "valid"
+        }
+      },
+      {
+        "id": "RUL-home-id-revoked",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-id-revoked"
+          }
+        ],
+        "when": {
+          "op": "neq",
+          "path": "/documents/id_status",
+          "value": "revoked"
+        }
+      },
+      {
+        "id": "RUL-home-id-suspended",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-id-suspended"
+          }
+        ],
+        "when": {
+          "op": "neq",
+          "path": "/documents/id_status",
+          "value": "suspended"
+        }
+      },
+      {
+        "id": "RUL-home-id-stale",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-id-stale"
+          }
+        ],
+        "when": {
+          "op": "neq",
+          "path": "/documents/id_status",
+          "value": "stale"
+        }
+      },
+      {
+        "id": "RUL-home-id-deleted",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-id"
+          },
+          {
+            "effect": "hide",
+            "node": "card-id-revoked"
+          },
+          {
+            "effect": "hide",
+            "node": "card-id-suspended"
+          },
+          {
+            "effect": "hide",
+            "node": "card-id-stale"
+          }
+        ],
+        "when": {
+          "op": "is_false",
+          "path": "/documents/id_present"
+        }
+      },
+      {
+        "id": "RUL-home-dl-deleted",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-dl"
+          },
+          {
+            "effect": "hide",
+            "node": "card-dl-expired"
+          },
+          {
+            "effect": "hide",
+            "node": "card-dl-expiring"
+          }
+        ],
+        "when": {
+          "op": "is_false",
+          "path": "/documents/dl_present"
+        }
+      },
+      {
+        "id": "RUL-home-pid-deleted",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-pid"
+          }
+        ],
+        "when": {
+          "op": "is_false",
+          "path": "/documents/pid_present"
+        }
+      },
+      {
+        "id": "RUL-home-not-empty",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "empty-title"
+          },
+          {
+            "effect": "hide",
+            "node": "empty-text"
+          },
+          {
+            "effect": "hide",
+            "node": "add-document"
+          }
+        ],
+        "when": {
+          "op": "is_false",
+          "path": "/documents/empty"
+        }
+      },
+      {
+        "id": "RUL-home-empty",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-id"
+          },
+          {
+            "effect": "hide",
+            "node": "card-id-revoked"
+          },
+          {
+            "effect": "hide",
+            "node": "card-id-suspended"
+          },
+          {
+            "effect": "hide",
+            "node": "card-id-stale"
+          },
+          {
+            "effect": "hide",
+            "node": "card-dl"
+          },
+          {
+            "effect": "hide",
+            "node": "card-dl-expired"
+          },
+          {
+            "effect": "hide",
+            "node": "card-pid"
+          },
+          {
+            "effect": "hide",
+            "node": "documents-heading"
+          },
+          {
+            "effect": "hide",
+            "node": "all-documents"
+          },
+          {
+            "effect": "hide",
+            "node": "card-pid-cloud"
+          }
+        ],
+        "when": {
+          "op": "is_true",
+          "path": "/documents/empty"
+        }
+      },
+      {
+        "id": "RUL-home-dl-expiring",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-dl-expiring"
+          }
+        ],
+        "when": {
+          "op": "neq",
+          "path": "/documents/dl_status",
+          "value": "expiring"
+        }
+      },
+      {
+        "id": "RUL-home-dl-not-expiring",
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-dl"
+          }
+        ],
+        "when": {
+          "op": "eq",
+          "path": "/documents/dl_status",
+          "value": "expiring"
+        }
+      }
+    ],
+    "ui_states": [
+      "default",
+      "cloud",
+      "offline",
+      "empty",
+      "cloud-empty",
+      "document-invalid",
+      "id-revoked",
+      "id-suspended",
+      "id-stale",
+      "without-id",
+      "without-pid",
+      "without-dl",
+      "notifications-unread",
+      "dl-expiring"
+    ],
+    "a11y": {
+      "focus_order": [
+        "appbar",
+        "appbar-unread",
+        "title",
+        "notice-offline",
+        "notice-offline-phone",
+        "notice-invalid",
+        "card-pid",
+        "documents-heading",
+        "all-documents",
+        "card-id",
+        "card-id-revoked",
+        "card-id-suspended",
+        "card-id-stale",
+        "card-dl",
+        "card-dl-expired",
+        "card-pid-cloud",
+        "card-dl-expiring",
+        "empty-title",
+        "empty-text",
+        "add-document",
+        "history",
+        "bottom-bar"
+      ],
+      "heading": "title",
+      "on_enter": "focus-heading"
+    }
+  },
+  "expected": {
+    "eudiw_v1": {
+      "cloud": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-phone",
+          "RUL-home-document-valid",
+          "RUL-home-all-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "card-pid-cloud",
+          "history",
+          "bottom-bar"
+        ]
+      },
+      "cloud-empty": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-phone",
+          "RUL-home-document-valid",
+          "RUL-home-all-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "empty-title",
+          "empty-text",
+          "add-document",
+          "history",
+          "bottom-bar"
+        ]
+      },
+      "default": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-all-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "card-id",
+          "card-dl",
+          "history",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
+        ]
+      },
+      "dl-expiring": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-all-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-not-empty",
+          "RUL-home-dl-not-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "card-id",
+          "history",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents",
+          "card-dl-expiring"
+        ]
+      },
+      "document-invalid": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-invalid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "notice-invalid",
+          "card-id",
+          "card-dl-expired",
+          "history",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
+        ]
+      },
+      "empty": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-all-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "empty-title",
+          "empty-text",
+          "add-document",
+          "history",
+          "bottom-bar"
+        ]
+      },
+      "id-revoked": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-id-valid",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "notice-invalid",
+          "card-id-revoked",
+          "card-dl",
+          "history",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
+        ]
+      },
+      "id-stale": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-id-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "notice-invalid",
+          "card-id-stale",
+          "card-dl",
+          "history",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
+        ]
+      },
+      "id-suspended": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-id-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-stale",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "notice-invalid",
+          "card-id-suspended",
+          "card-dl",
+          "history",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
+        ]
+      },
+      "notifications-unread": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-unread",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-all-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar-unread",
+          "title",
+          "card-id",
+          "card-dl",
+          "history",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
+        ]
+      },
+      "offline": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-all-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "notice-offline",
+          "notice-offline-phone",
+          "card-id",
+          "card-dl",
+          "history",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
+        ]
+      },
+      "without-dl": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-all-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-dl-deleted",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "card-id",
+          "history",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
+        ]
+      },
+      "without-id": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-all-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-id-deleted",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "card-dl",
+          "history",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
+        ]
+      },
+      "without-pid": {
+        "copy": {},
+        "disabled": [],
+        "rules_fired": [
+          "RUL-home-notifications-read",
+          "RUL-home-online",
+          "RUL-home-storage-cloud",
+          "RUL-home-document-valid",
+          "RUL-home-all-valid",
+          "RUL-home-id-revoked",
+          "RUL-home-id-suspended",
+          "RUL-home-id-stale",
+          "RUL-home-pid-deleted",
+          "RUL-home-not-empty",
+          "RUL-home-dl-expiring"
+        ],
+        "visible": [
+          "appbar",
+          "title",
+          "card-id",
+          "card-dl",
+          "history",
+          "bottom-bar",
+          "documents-heading",
+          "all-documents"
+        ]
+      }
+    }
+  },
+  "assets": {
+    "all-documents": [
+      "icon.chevron-right"
+    ],
+    "appbar": [
+      "icon.navigation-menu",
+      "icon.notifications"
+    ],
+    "appbar-unread": [
+      "icon.navigation-menu",
+      "icon.notifications"
+    ],
+    "bottom-bar": [
+      "icon.add",
+      "icon.icon-case",
+      "icon.icon-id-card"
+    ],
+    "card-dl": [
+      "document-art.driving-licence",
+      "icon.arrow-forward-ios",
+      "icon.check-circle",
+      "icon.smartphone"
+    ],
+    "card-dl-expired": [
+      "document-art.driving-licence",
+      "icon.arrow-forward-ios",
+      "icon.error-outline",
+      "icon.smartphone"
+    ],
+    "card-dl-expiring": [
+      "document-art.driving-licence",
+      "icon.arrow-forward-ios",
+      "icon.error-outline",
+      "icon.smartphone"
+    ],
+    "card-id": [
+      "document-art.id-card",
+      "icon.arrow-forward-ios",
+      "icon.check-circle",
+      "icon.smartphone"
+    ],
+    "card-id-revoked": [
+      "document-art.id-card",
+      "icon.arrow-forward-ios",
+      "icon.highlight-off",
+      "icon.smartphone"
+    ],
+    "card-id-stale": [
+      "document-art.id-card",
+      "icon.arrow-forward-ios",
+      "icon.error-outline",
+      "icon.smartphone"
+    ],
+    "card-id-suspended": [
+      "document-art.id-card",
+      "icon.arrow-forward-ios",
+      "icon.error-outline",
+      "icon.smartphone"
+    ],
+    "card-pid": [
+      "document-art.pid",
+      "icon.arrow-forward-ios",
+      "icon.check-circle"
+    ],
+    "card-pid-cloud": [
+      "document-art.pid",
+      "icon.arrow-forward-ios",
+      "icon.check-circle",
+      "icon.cloud"
+    ],
+    "history": [
+      "icon.chevron-right"
+    ],
+    "notice-invalid": [
+      "icon.warning"
+    ],
+    "notice-offline": [
+      "icon.warning"
+    ],
+    "notice-offline-phone": [
+      "icon.info"
+    ]
+  },
+  "copy": {
+    "brand_overrides": {
+      "eudiw_v1": {
+        "CPY-home-card-valid": {
+          "res": "cpy_home_card_valid__eudiw_v1"
+        },
+        "CPY-home-title": {
+          "res": "cpy_home_title__eudiw_v1"
+        }
+      }
+    },
+    "keys": {
+      "CPY-doc-name-en-driving-licence": {
+        "res": "cpy_doc_name_en_driving_licence"
+      },
+      "CPY-doc-name-en-id-card": {
+        "res": "cpy_doc_name_en_id_card"
+      },
+      "CPY-doc-status-expired": {
+        "res": "cpy_doc_status_expired"
+      },
+      "CPY-doc-status-expiring": {
+        "placeholders": [
+          "date"
+        ],
+        "res": "cpy_doc_status_expiring"
+      },
+      "CPY-doc-status-revoked": {
+        "res": "cpy_doc_status_revoked"
+      },
+      "CPY-doc-status-stale": {
+        "res": "cpy_doc_status_stale"
+      },
+      "CPY-doc-status-suspended": {
+        "res": "cpy_doc_status_suspended"
+      },
+      "CPY-doc-status-valid": {
+        "res": "cpy_doc_status_valid"
+      },
+      "CPY-doc-storage-cloud": {
+        "res": "cpy_doc_storage_cloud"
+      },
+      "CPY-doc-storage-phone": {
+        "res": "cpy_doc_storage_phone"
+      },
+      "CPY-doc-type-driving-licence": {
+        "res": "cpy_doc_type_driving_licence"
+      },
+      "CPY-doc-type-id-card": {
+        "res": "cpy_doc_type_id_card"
+      },
+      "CPY-doc-type-pid": {
+        "res": "cpy_doc_type_pid"
+      },
+      "CPY-home-actions-label": {
+        "res": "cpy_home_actions_label"
+      },
+      "CPY-home-all-documents": {
+        "res": "cpy_home_all_documents"
+      },
+      "CPY-home-card-valid": {
+        "placeholders": [
+          "date"
+        ],
+        "res": "cpy_home_card_valid"
+      },
+      "CPY-home-documents-heading": {
+        "res": "cpy_home_documents_heading"
+      },
+      "CPY-home-empty-primary": {
+        "res": "cpy_home_empty_primary"
+      },
+      "CPY-home-empty-text": {
+        "res": "cpy_home_empty_text"
+      },
+      "CPY-home-empty-title": {
+        "res": "cpy_home_empty_title"
+      },
+      "CPY-home-identity-status-valid": {
+        "res": "cpy_home_identity_status_valid"
+      },
+      "CPY-home-invalid-notice": {
+        "res": "cpy_home_invalid_notice"
+      },
+      "CPY-home-menu-label": {
+        "res": "cpy_home_menu_label"
+      },
+      "CPY-home-nav-documents": {
+        "res": "cpy_home_nav_documents"
+      },
+      "CPY-home-nav-label": {
+        "res": "cpy_home_nav_label"
+      },
+      "CPY-home-nav-services": {
+        "res": "cpy_home_nav_services"
+      },
+      "CPY-home-notifications-label": {
+        "res": "cpy_home_notifications_label"
+      },
+      "CPY-home-notifications-unread-label": {
+        "res": "cpy_home_notifications_unread_label"
+      },
+      "CPY-home-offline-phone": {
+        "res": "cpy_home_offline_phone"
+      },
+      "CPY-home-offline-text": {
+        "res": "cpy_home_offline_text"
+      },
+      "CPY-home-offline-title": {
+        "res": "cpy_home_offline_title"
+      },
+      "CPY-home-switch-cloud": {
+        "res": "cpy_home_switch_cloud"
+      },
+      "CPY-home-switch-cloud-offline": {
+        "res": "cpy_home_switch_cloud_offline"
+      },
+      "CPY-home-switch-phone": {
+        "res": "cpy_home_switch_phone"
+      },
+      "CPY-home-title": {
+        "res": "cpy_home_title"
+      },
+      "CPY-log-title": {
+        "res": "cpy_log_title"
+      }
+    }
+  }
+}

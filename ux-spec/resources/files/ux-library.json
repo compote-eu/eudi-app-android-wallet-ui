@@ -1,0 +1,1638 @@
+{
+  "brand_selections": {
+    "eudiw_v1": {
+      "EL-attribute-item.checkbox": "outline",
+      "EL-attribute-list.pairs": "columns",
+      "EL-segmented-switch.selected": "plain",
+      "EL-status-chip.mark": "dot",
+      "EL-status-chip.ring": "ring",
+      "TPL-sheet.decision-steps": "sheet",
+      "bottom-nav": "bar",
+      "card-face": "centered",
+      "detail-actions": "menu"
+    },
+    "idsk": {
+      "EL-attribute-item.checkbox": "filled",
+      "EL-attribute-list.pairs": "stacked",
+      "EL-segmented-switch.selected": "accented",
+      "EL-status-chip.mark": "icon",
+      "EL-status-chip.ring": "none",
+      "TPL-sheet.decision-steps": "sheet",
+      "bottom-nav": "action-button",
+      "card-face": "band",
+      "detail-actions": "list"
+    }
+  },
+  "elements": {
+    "EL-app-bar": {
+      "a11y": {
+        "keyboard": [
+          "Tab",
+          "Enter",
+          "Space"
+        ],
+        "min_target_px": 48,
+        "name_from": "prop",
+        "name_prop": "leading_label",
+        "role": "button (leading and trailing controls); the title is a paragraph"
+      },
+      "assets": [
+        {
+          "map": {
+            "back": "icon.arrow-back-ios",
+            "close": "icon.close",
+            "menu": "icon.navigation-menu"
+          },
+          "part": "leading control",
+          "prop": "leading"
+        },
+        {
+          "map": {
+            "help": "icon.help",
+            "notifications": "icon.notifications"
+          },
+          "part": "trailing control",
+          "prop": "trailing"
+        }
+      ],
+      "event_controls": {
+        "leading": "leading",
+        "trailing": "trailing"
+      },
+      "events": [
+        "leading",
+        "trailing"
+      ],
+      "kind": "navigation",
+      "maturity": "candidate",
+      "name": "App bar",
+      "props": {
+        "badge": {
+          "default": false,
+          "type": "boolean"
+        },
+        "leading": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "back",
+            "close",
+            "menu",
+            "none"
+          ]
+        },
+        "leading_label": {
+          "required": false,
+          "type": "text"
+        },
+        "title": {
+          "required": false,
+          "type": "text"
+        },
+        "trailing": {
+          "default": "none",
+          "type": "enum",
+          "values": [
+            "none",
+            "notifications",
+            "help"
+          ]
+        },
+        "trailing_label": {
+          "required": false,
+          "type": "text"
+        }
+      },
+      "slots": [],
+      "token_groups": [
+        "comp.app-bar"
+      ]
+    },
+    "EL-attribute-item": {
+      "a11y": {
+        "keyboard": [
+          "Space",
+          "Tab"
+        ],
+        "min_target_px": 48,
+        "name_from": "content",
+        "role": "checkbox (native <input type=checkbox> wrapped in its <label>)"
+      },
+      "assets": [
+        {
+          "id": "icon.check",
+          "part": "tick"
+        },
+        {
+          "id": "icon.lock",
+          "part": "mandatory lock"
+        }
+      ],
+      "event_controls": {},
+      "events": [
+        "toggle"
+      ],
+      "kind": "input",
+      "maturity": "candidate",
+      "name": "Requested attribute",
+      "props": {
+        "label": {
+          "required": true,
+          "type": "text"
+        },
+        "requirement": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "mandatory",
+            "optional"
+          ]
+        },
+        "requirement_label": {
+          "required": false,
+          "type": "text"
+        },
+        "selected": {
+          "default": false,
+          "type": "boolean"
+        },
+        "value": {
+          "required": false,
+          "type": "text"
+        }
+      },
+      "slots": [],
+      "styles": {
+        "checkbox": {
+          "attr": "checkbox",
+          "default": "filled",
+          "label": "Checked checkbox",
+          "options": {
+            "filled": {
+              "draws": [
+                "filled box",
+                "tick"
+              ],
+              "label": "Filled box, tick in the control foreground",
+              "ref": "eval-idsk-nl fix B"
+            },
+            "outline": {
+              "a11y": "the native checkbox carries the checked state; the tick shape marks it (not colour alone)",
+              "draws": [
+                "box outline",
+                "tick"
+              ],
+              "label": "Outline box + tick on white",
+              "ref": "eDoklady flows/app.css:20-27 (CD-28)",
+              "tokens": [
+                "comp.attribute-item.box-bg",
+                "comp.attribute-item.box-ring"
+              ]
+            }
+          }
+        }
+      },
+      "token_groups": [
+        "comp.attribute-item"
+      ]
+    },
+    "EL-attribute-list": {
+      "a11y": {
+        "keyboard": [
+          "Space",
+          "Tab"
+        ],
+        "min_target_px": 48,
+        "name_from": "content",
+        "role": "group per requirement class (role=group labelled by its heading) containing a list of native checkboxes; readonly - a plain list (role=list) of label / value pairs, no controls"
+      },
+      "assets": [
+        {
+          "id": "icon.content-content-copy",
+          "part": "copy button"
+        }
+      ],
+      "event_controls": {
+        "copy": "copy"
+      },
+      "events": [
+        "copy",
+        "toggle"
+      ],
+      "kind": "input",
+      "maturity": "candidate",
+      "name": "Requested attribute list",
+      "partials": [
+        {
+          "each": "items",
+          "element": "EL-attribute-item"
+        }
+      ],
+      "props": {
+        "copy_label": {
+          "required": false,
+          "type": "text"
+        },
+        "items": {
+          "item": {
+            "copyable": {
+              "default": false,
+              "description": "readonly only: a copy button after the value (named by copy_label + the label); drawn where the brand's detail-layout variant is cards (CAN-084)",
+              "type": "boolean"
+            },
+            "id": {
+              "description": "Stable attribute key (e.g. birth_date); exposed as data-item for events and tests",
+              "required": false,
+              "type": "id"
+            },
+            "label_copy": {
+              "description": "Copy id of the attribute name in user terms (principle 5) — resolved through the copy table; G5 checks it exists",
+              "required": true,
+              "type": "copy"
+            },
+            "media": {
+              "default": "none",
+              "description": "readonly only: photo = the value is the accessible name of a portrait drawn in its place (a placeholder in the prototype; CAN-084)",
+              "type": "enum",
+              "values": [
+                "none",
+                "photo"
+              ]
+            },
+            "requirement": {
+              "description": "Ignored when readonly (nothing to choose)",
+              "required": true,
+              "type": "enum",
+              "values": [
+                "mandatory",
+                "optional"
+              ]
+            },
+            "selected": {
+              "default": false,
+              "description": "Initial checked state of an optional item; ignored for mandatory items. ARF: optional data unselected by default",
+              "type": "boolean"
+            },
+            "value": {
+              "description": "Value that would be shared (holder data, not product copy); omit to show only the label",
+              "required": false,
+              "type": "text"
+            }
+          },
+          "required": true,
+          "type": "list"
+        },
+        "mandatory_heading": {
+          "required": false,
+          "type": "text"
+        },
+        "mandatory_label": {
+          "required": false,
+          "type": "text"
+        },
+        "optional_heading": {
+          "required": false,
+          "type": "text"
+        },
+        "optional_label": {
+          "required": false,
+          "type": "text"
+        },
+        "readonly": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "slots": [],
+      "styles": {
+        "pairs": {
+          "attr": "pairs",
+          "default": "stacked",
+          "label": "Readonly label / value pairs",
+          "options": {
+            "columns": {
+              "a11y": "reading order unchanged (label, then value); a pair too long for two columns at the text size stacks",
+              "draws": [
+                "label column",
+                "value column"
+              ],
+              "label": "Two columns; a long pair stacks",
+              "ref": "eDoklady data row, components/edoklady.css:925-938",
+              "tokens": [
+                "comp.attribute-list.pair-column-gap"
+              ]
+            },
+            "stacked": {
+              "draws": [
+                "label",
+                "value"
+              ],
+              "label": "Label over value",
+              "ref": "DEC-021 (amended, eval-idsk-nl round 4)"
+            }
+          }
+        }
+      },
+      "token_groups": [
+        "comp.attribute-list"
+      ]
+    },
+    "EL-bottom-bar": {
+      "a11y": {
+        "keyboard": [
+          "Tab",
+          "Enter",
+          "Space"
+        ],
+        "min_target_px": 48,
+        "name_from": "prop",
+        "name_prop": "label",
+        "role": "navigation landmark (nav, named by label) of native buttons; the current one carries aria-current=page; the action button is a native button with aria-haspopup=menu"
+      },
+      "assets": [
+        {
+          "field": "icon",
+          "kind": "icon",
+          "part": "destination icon",
+          "prop": "tabs"
+        },
+        {
+          "id": "icon.add",
+          "part": "action button"
+        }
+      ],
+      "event_controls": {
+        "action": "action",
+        "select": "tab"
+      },
+      "events": [
+        "action",
+        "select"
+      ],
+      "kind": "navigation",
+      "maturity": "candidate",
+      "name": "Bottom bar",
+      "props": {
+        "action": {
+          "default": "none",
+          "type": "enum",
+          "values": [
+            "none",
+            "menu"
+          ]
+        },
+        "action_label": {
+          "required": false,
+          "type": "text"
+        },
+        "label": {
+          "required": true,
+          "type": "text"
+        },
+        "tabs": {
+          "item": {
+            "icon": {
+              "description": "Icon name <name> of an id icon.<name> of library/assets.yaml drawn above the label (decorative)",
+              "required": true,
+              "type": "id"
+            },
+            "id": {
+              "description": "Stable destination key (e.g. documents, services); exposed as data-item",
+              "required": true,
+              "type": "id"
+            },
+            "label_copy": {
+              "description": "Copy id of the destination label (one or two words)",
+              "required": true,
+              "type": "copy"
+            },
+            "selected": {
+              "default": false,
+              "description": "The current destination (aria-current=page)",
+              "type": "boolean"
+            }
+          },
+          "required": true,
+          "type": "list"
+        }
+      },
+      "slots": [],
+      "token_groups": [
+        "comp.bottom-bar"
+      ]
+    },
+    "EL-button": {
+      "a11y": {
+        "keyboard": [
+          "Enter",
+          "Space"
+        ],
+        "min_target_px": 48,
+        "name_from": "content",
+        "role": "button"
+      },
+      "assets": [
+        {
+          "kind": "icon",
+          "part": "leading icon",
+          "prop": "icon"
+        }
+      ],
+      "event_controls": {},
+      "events": [
+        "press"
+      ],
+      "kind": "action",
+      "maturity": "candidate",
+      "name": "Button",
+      "props": {
+        "disabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "icon": {
+          "required": false,
+          "type": "icon"
+        },
+        "label": {
+          "required": true,
+          "type": "text"
+        },
+        "popup": {
+          "default": false,
+          "type": "boolean"
+        },
+        "variant": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "primary",
+            "secondary",
+            "icon",
+            "icon-primary",
+            "search"
+          ]
+        }
+      },
+      "slots": [],
+      "token_groups": [
+        "comp.button"
+      ]
+    },
+    "EL-document-card": {
+      "a11y": {
+        "keyboard": [
+          "Tab",
+          "Enter",
+          "Space"
+        ],
+        "min_target_px": 48,
+        "name_from": "content",
+        "role": "button when interactive (else a group of text); art and glyphs are aria-hidden"
+      },
+      "assets": [
+        {
+          "kind": "document-art",
+          "part": "card art",
+          "prop": "doc_type"
+        },
+        {
+          "map": {
+            "cloud": "icon.cloud",
+            "phone": "icon.smartphone"
+          },
+          "part": "storage glyph",
+          "prop": "storage"
+        },
+        {
+          "id": "icon.arrow-forward-ios",
+          "part": "chevron"
+        }
+      ],
+      "event_controls": {},
+      "events": [
+        "open"
+      ],
+      "kind": "content",
+      "maturity": "candidate",
+      "name": "Document card",
+      "partials": [
+        {
+          "element": "EL-status-chip",
+          "props": {
+            "label": "status_label",
+            "status": "status"
+          }
+        }
+      ],
+      "props": {
+        "art": {
+          "default": "brand",
+          "type": "enum",
+          "values": [
+            "synthetic",
+            "brand"
+          ]
+        },
+        "doc_type": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "id-card",
+            "driving-licence",
+            "pid"
+          ]
+        },
+        "holder": {
+          "required": false,
+          "type": "text"
+        },
+        "initials": {
+          "required": false,
+          "type": "text"
+        },
+        "interactive": {
+          "default": true,
+          "type": "boolean"
+        },
+        "number": {
+          "required": false,
+          "type": "text"
+        },
+        "status": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "valid",
+            "expiring",
+            "invalid",
+            "expired",
+            "revoked",
+            "suspended",
+            "stale"
+          ]
+        },
+        "status_label": {
+          "required": true,
+          "type": "text"
+        },
+        "storage": {
+          "required": false,
+          "type": "enum",
+          "values": [
+            "phone",
+            "cloud"
+          ]
+        },
+        "storage_label": {
+          "required": false,
+          "type": "text"
+        },
+        "title": {
+          "required": true,
+          "type": "text"
+        },
+        "title_en": {
+          "required": false,
+          "type": "text"
+        },
+        "variant": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "full",
+            "mini",
+            "hero",
+            "holder"
+          ]
+        }
+      },
+      "slots": [],
+      "token_groups": [
+        "comp.document-card"
+      ]
+    },
+    "EL-link": {
+      "a11y": {
+        "keyboard": [
+          "Enter",
+          "Tab"
+        ],
+        "min_target_px": 48,
+        "name_from": "content",
+        "role": "link"
+      },
+      "assets": [
+        {
+          "map": {
+            "false": "icon.chevron-right",
+            "true": "icon.open-in-new"
+          },
+          "part": "marker",
+          "prop": "external"
+        }
+      ],
+      "event_controls": {},
+      "events": [
+        "activate"
+      ],
+      "kind": "navigation",
+      "maturity": "candidate",
+      "name": "Link",
+      "props": {
+        "external": {
+          "default": false,
+          "type": "boolean"
+        },
+        "external_label": {
+          "required": false,
+          "type": "text"
+        },
+        "href": {
+          "required": true,
+          "type": "url"
+        },
+        "label": {
+          "required": true,
+          "type": "text"
+        }
+      },
+      "slots": [],
+      "token_groups": [
+        "comp.link"
+      ]
+    },
+    "EL-notice": {
+      "a11y": {
+        "name_from": "none",
+        "role": "note (role=alert only when inserted after user action — not in v0)"
+      },
+      "assets": [
+        {
+          "map": {
+            "error": "icon.error-outline",
+            "info": "icon.info",
+            "success": "icon.verified-user",
+            "warning": "icon.warning"
+          },
+          "part": "tone icon",
+          "prop": "tone"
+        }
+      ],
+      "event_controls": {},
+      "events": [],
+      "kind": "feedback",
+      "maturity": "candidate",
+      "name": "Notice",
+      "props": {
+        "text": {
+          "required": true,
+          "type": "text"
+        },
+        "title": {
+          "required": false,
+          "type": "text"
+        },
+        "tone": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "info",
+            "warning",
+            "error",
+            "success"
+          ]
+        }
+      },
+      "slot_specs": {
+        "extra": {
+          "accepts": [
+            "EL-text",
+            "EL-link"
+          ],
+          "max": 2,
+          "min": 0
+        }
+      },
+      "slots": [
+        "extra"
+      ],
+      "token_groups": [
+        "comp.notice"
+      ]
+    },
+    "EL-qr-viewfinder": {
+      "a11y": {
+        "name_from": "prop",
+        "name_prop": "label",
+        "role": "img"
+      },
+      "event_controls": {},
+      "events": [],
+      "kind": "media",
+      "maturity": "candidate",
+      "name": "QR viewfinder",
+      "props": {
+        "label": {
+          "required": true,
+          "type": "text"
+        },
+        "scanning": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "slots": [],
+      "token_groups": [
+        "comp.viewfinder"
+      ]
+    },
+    "EL-rp-identity": {
+      "a11y": {
+        "name_from": "content",
+        "role": "none (section of paragraphs: name, trust badge, service, reason; badge is text)"
+      },
+      "assets": [
+        {
+          "id": "icon.apartment",
+          "part": "organisation avatar"
+        },
+        {
+          "map": {
+            "trusted": "icon.verified-user",
+            "unknown": "icon.help",
+            "untrusted": "icon.warning"
+          },
+          "part": "trust glyph",
+          "prop": "trust"
+        }
+      ],
+      "event_controls": {},
+      "events": [],
+      "kind": "content",
+      "maturity": "candidate",
+      "name": "Relying-party identity",
+      "props": {
+        "caption": {
+          "required": false,
+          "type": "text"
+        },
+        "logo": {
+          "required": false,
+          "type": "url"
+        },
+        "name": {
+          "required": true,
+          "type": "text"
+        },
+        "reason": {
+          "required": false,
+          "type": "text"
+        },
+        "reason_label": {
+          "required": false,
+          "type": "text"
+        },
+        "service": {
+          "required": false,
+          "type": "text"
+        },
+        "service_label": {
+          "required": false,
+          "type": "text"
+        },
+        "trust": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "trusted",
+            "untrusted",
+            "unknown"
+          ]
+        },
+        "trust_label": {
+          "required": true,
+          "type": "text"
+        }
+      },
+      "slots": [],
+      "token_groups": [
+        "comp.rp-identity"
+      ]
+    },
+    "EL-segmented-switch": {
+      "a11y": {
+        "keyboard": [
+          "Tab",
+          "Arrow keys",
+          "Space"
+        ],
+        "min_target_px": 48,
+        "name_from": "prop",
+        "name_prop": "label",
+        "role": "radiogroup (role=radiogroup labelled by the group label) of native radio buttons"
+      },
+      "assets": [
+        {
+          "id": "icon.check",
+          "part": "selected check"
+        }
+      ],
+      "event_controls": {},
+      "events": [
+        "change"
+      ],
+      "kind": "input",
+      "maturity": "candidate",
+      "name": "Segmented switch",
+      "props": {
+        "label": {
+          "required": true,
+          "type": "text"
+        },
+        "label_visible": {
+          "default": false,
+          "type": "boolean"
+        },
+        "layout": {
+          "default": "auto",
+          "type": "enum",
+          "values": [
+            "auto",
+            "segmented",
+            "chips"
+          ]
+        },
+        "options": {
+          "item": {
+            "disabled": {
+              "default": false,
+              "description": "Option cannot be chosen now (e.g. cloud while offline); the label says why",
+              "type": "boolean"
+            },
+            "id": {
+              "description": "Stable option key (e.g. phone, cloud); exposed as data-item",
+              "required": true,
+              "type": "id"
+            },
+            "label_copy": {
+              "description": "Copy id of the option label; an unavailable option states why in its label (e.g. 'Cloud – nedostupné offline')",
+              "required": true,
+              "type": "copy"
+            },
+            "selected": {
+              "default": false,
+              "description": "The currently selected option (a ui_state sets it through data)",
+              "type": "boolean"
+            }
+          },
+          "required": true,
+          "type": "list"
+        }
+      },
+      "slots": [],
+      "styles": {
+        "selected": {
+          "attr": "selected-segment",
+          "default": "accented",
+          "label": "Selected option of a two-option switch",
+          "options": {
+            "accented": {
+              "draws": [
+                "thumb",
+                "accent ring",
+                "check icon"
+              ],
+              "label": "Raised thumb + accent ring + check icon",
+              "ref": "eval-idsk-nl fix A"
+            },
+            "plain": {
+              "a11y": "the native radio carries the selection; the raised thumb is the visual cue (no colour-only cue)",
+              "draws": [
+                "thumb"
+              ],
+              "label": "Raised thumb only",
+              "ref": "eDoklady storage switcher, design-system/measured.md",
+              "tokens": [
+                "comp.segmented-switch.thumb-shadow"
+              ]
+            }
+          }
+        }
+      },
+      "token_groups": [
+        "comp.segmented-switch"
+      ]
+    },
+    "EL-status-chip": {
+      "a11y": {
+        "name_from": "content",
+        "role": "none (inline text); the glyph is aria-hidden"
+      },
+      "assets": [
+        {
+          "map": {
+            "expired": "icon.error-outline",
+            "expiring": "icon.error-outline",
+            "failed": "icon.highlight-off",
+            "info": "icon.info",
+            "invalid": "icon.highlight-off",
+            "refused": "icon.highlight-off",
+            "revoked": "icon.highlight-off",
+            "stale": "icon.error-outline",
+            "success": "icon.check-circle",
+            "suspended": "icon.error-outline",
+            "unverified": "icon.error-outline",
+            "upcoming": null,
+            "valid": "icon.check-circle"
+          },
+          "part": "tone glyph",
+          "prop": "status"
+        }
+      ],
+      "event_controls": {},
+      "events": [],
+      "kind": "feedback",
+      "maturity": "candidate",
+      "name": "Status chip",
+      "props": {
+        "label": {
+          "required": true,
+          "type": "text"
+        },
+        "status": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "valid",
+            "expiring",
+            "invalid",
+            "expired",
+            "revoked",
+            "suspended",
+            "stale",
+            "success",
+            "failed",
+            "refused",
+            "unverified",
+            "info",
+            "upcoming"
+          ]
+        }
+      },
+      "slots": [],
+      "styles": {
+        "mark": {
+          "attr": "status-mark",
+          "default": "icon",
+          "label": "Mark of a status chip",
+          "options": {
+            "dot": {
+              "a11y": "colour-only mark: the label alone carries the status (1.4.1); the neutral tone draws no dot",
+              "draws": [
+                "container",
+                "tone dot",
+                "label"
+              ],
+              "label": "Tone dot before the status",
+              "ref": "DEC-052; EXP-029-r2 1a, page.html:1713",
+              "tokens": [
+                "comp.status-chip.dot-size",
+                "comp.status-chip.success-dot",
+                "comp.status-chip.error-dot",
+                "comp.status-chip.warning-dot",
+                "comp.status-chip.info-dot"
+              ]
+            },
+            "icon": {
+              "a11y": "the glyph shape repeats the tone: a second non-colour cue next to the label",
+              "draws": [
+                "container",
+                "tone glyph",
+                "label"
+              ],
+              "label": "Tone icon before the status",
+              "ref": "EL-status-chip (Arm A E-9)"
+            }
+          }
+        },
+        "ring": {
+          "attr": "status-ring",
+          "default": "none",
+          "label": "Edge of a status chip",
+          "options": {
+            "none": {
+              "draws": [],
+              "label": "No ring",
+              "ref": "EL-status-chip (Arm A E-9)"
+            },
+            "ring": {
+              "a11y": "decorative edge; the label carries the status",
+              "draws": [
+                "ring"
+              ],
+              "label": "1 px ring of the tone inside the chip",
+              "ref": "DEC-053; EXP-029-r2, page.html:1702, :1713",
+              "tokens": [
+                "comp.status-chip.success-ring",
+                "comp.status-chip.error-ring",
+                "comp.status-chip.warning-ring",
+                "comp.status-chip.info-ring"
+              ]
+            }
+          }
+        }
+      },
+      "token_groups": [
+        "comp.status-chip"
+      ]
+    },
+    "EL-status-hero": {
+      "a11y": {
+        "name_from": "content",
+        "role": "status when tone=pending (polite live region, so a step in progress is announced without moving focus — REV-002 G-02, WCAG 4.1.3); none for the other tones (section with h1 + paragraph); glyph aria-hidden"
+      },
+      "assets": [
+        {
+          "map": {
+            "error": "illustration.error",
+            "info": "illustration.info",
+            "pending": "illustration.wait",
+            "success": "illustration.success",
+            "warning": "illustration.warning"
+          },
+          "part": "art",
+          "prop": "tone"
+        },
+        {
+          "map": {
+            "error": "icon.close",
+            "info": "icon.info",
+            "pending": "icon.update",
+            "success": "icon.check",
+            "warning": "icon.priority-high"
+          },
+          "part": "tone glyph",
+          "prop": "tone"
+        }
+      ],
+      "event_controls": {},
+      "events": [],
+      "kind": "feedback",
+      "maturity": "candidate",
+      "name": "Status hero",
+      "props": {
+        "art": {
+          "default": "illustration",
+          "type": "enum",
+          "values": [
+            "glyph",
+            "illustration"
+          ]
+        },
+        "text": {
+          "required": false,
+          "type": "text"
+        },
+        "title": {
+          "required": true,
+          "type": "text"
+        },
+        "tone": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "success",
+            "error",
+            "warning",
+            "info",
+            "pending"
+          ]
+        }
+      },
+      "slots": [],
+      "token_groups": [
+        "comp.status-hero"
+      ]
+    },
+    "EL-text": {
+      "a11y": {
+        "name_from": "content",
+        "role": "none (h1 when variant=title, h2 when variant=heading)"
+      },
+      "event_controls": {},
+      "events": [],
+      "kind": "content",
+      "maturity": "candidate",
+      "name": "Text",
+      "props": {
+        "text": {
+          "required": true,
+          "type": "text"
+        },
+        "tone": {
+          "default": "default",
+          "type": "enum",
+          "values": [
+            "default",
+            "secondary",
+            "link"
+          ]
+        },
+        "variant": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "title",
+            "heading",
+            "body",
+            "small",
+            "display"
+          ]
+        }
+      },
+      "slots": [],
+      "token_groups": [
+        "comp.text"
+      ]
+    },
+    "EL-trust-mark": {
+      "a11y": {
+        "keyboard": [
+          "Tab",
+          "Enter"
+        ],
+        "min_target_px": 48,
+        "name_from": "prop",
+        "name_prop": "label",
+        "role": "link when href is set, else a figure-like group of text; the drawing is aria-hidden"
+      },
+      "assets": [
+        {
+          "id": "trust-mark.colour",
+          "part": "mark"
+        },
+        {
+          "id": "icon.chevron-right",
+          "part": "chevron"
+        }
+      ],
+      "event_controls": {},
+      "events": [
+        "activate"
+      ],
+      "kind": "media",
+      "maturity": "candidate",
+      "name": "EU Digital Identity Wallet Trust Mark",
+      "props": {
+        "art": {
+          "default": "official",
+          "type": "enum",
+          "values": [
+            "placeholder",
+            "official"
+          ]
+        },
+        "href": {
+          "required": false,
+          "type": "url"
+        },
+        "label": {
+          "required": true,
+          "type": "text"
+        },
+        "variant": {
+          "required": true,
+          "type": "enum",
+          "values": [
+            "badge",
+            "full"
+          ]
+        }
+      },
+      "slots": [],
+      "token_groups": [
+        "comp.trust-mark"
+      ]
+    }
+  },
+  "library_dirty": false,
+  "library_schema_version": 1,
+  "source_commit": "b55be659455f936456632cea230d6fc0ee58f9c5",
+  "source_dir": "ux/library",
+  "source_repo": "dvm-edoklady-eudiw-analysis",
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
+  "templates": {
+    "TPL-home": {
+      "maturity": "candidate",
+      "name": "Home (document wallet)",
+      "region_specs": {
+        "actions": {
+          "accepts": [
+            "EL-button",
+            "EL-snackbar",
+            "EL-bottom-bar"
+          ],
+          "max": 3,
+          "min": 0,
+          "order": 9,
+          "placement": "bottom-fixed"
+        },
+        "appbar": {
+          "accepts": [
+            "EL-app-bar"
+          ],
+          "max": 1,
+          "min": 0,
+          "order": 0,
+          "placement": "top"
+        },
+        "body": {
+          "accepts": [
+            "EL-text",
+            "EL-button",
+            "EL-illustration"
+          ],
+          "max": 3,
+          "min": 0,
+          "order": 7,
+          "placement": "scroll"
+        },
+        "cards": {
+          "accepts": [
+            "EL-document-card"
+          ],
+          "max": 6,
+          "min": 0,
+          "order": 6,
+          "placement": "scroll"
+        },
+        "documents-heading": {
+          "accepts": [
+            "EL-text",
+            "EL-link"
+          ],
+          "group_rows": false,
+          "max": 2,
+          "min": 0,
+          "order": 5,
+          "placement": "scroll"
+        },
+        "footer": {
+          "accepts": [
+            "EL-trust-mark",
+            "EL-link"
+          ],
+          "max": 2,
+          "min": 0,
+          "order": 8,
+          "placement": "scroll"
+        },
+        "header": {
+          "accepts": [
+            "EL-text"
+          ],
+          "max": 1,
+          "min": 1,
+          "order": 1,
+          "placement": "top"
+        },
+        "identity": {
+          "accepts": [
+            "EL-document-card"
+          ],
+          "max": 1,
+          "min": 0,
+          "order": 4,
+          "placement": "scroll"
+        },
+        "notice": {
+          "accepts": [
+            "EL-notice"
+          ],
+          "max": 2,
+          "min": 0,
+          "order": 3,
+          "placement": "scroll"
+        },
+        "switch": {
+          "accepts": [
+            "EL-segmented-switch"
+          ],
+          "max": 1,
+          "min": 0,
+          "order": 2,
+          "placement": "top"
+        }
+      },
+      "regions": [
+        "appbar",
+        "header",
+        "switch",
+        "notice",
+        "identity",
+        "documents-heading",
+        "cards",
+        "body",
+        "footer",
+        "actions"
+      ],
+      "responsive": "Cards and footer scroll under the fixed action; the app bar, title and switch scroll with the content (no nested scroll areas). Empty regions take no space.",
+      "token_groups": []
+    },
+    "TPL-outcome": {
+      "maturity": "candidate",
+      "name": "Outcome screen",
+      "region_specs": {
+        "actions": {
+          "accepts": [
+            "EL-button"
+          ],
+          "max": 3,
+          "min": 1,
+          "order": 3,
+          "placement": "bottom-fixed"
+        },
+        "appbar": {
+          "accepts": [
+            "EL-app-bar"
+          ],
+          "max": 1,
+          "min": 0,
+          "order": 0,
+          "placement": "top"
+        },
+        "body": {
+          "accepts": [
+            "EL-text",
+            "EL-notice",
+            "EL-illustration",
+            "EL-icon",
+            "EL-link"
+          ],
+          "max": 3,
+          "min": 0,
+          "order": 2,
+          "placement": "scroll"
+        },
+        "hero": {
+          "accepts": [
+            "EL-status-hero"
+          ],
+          "max": 1,
+          "min": 1,
+          "order": 1,
+          "placement": "scroll"
+        }
+      },
+      "regions": [
+        "appbar",
+        "hero",
+        "body",
+        "actions"
+      ],
+      "responsive": "Hero is centred in the remaining height; when hero + body exceed it, both scroll under the fixed actions.",
+      "token_groups": []
+    },
+    "TPL-progress": {
+      "maturity": "candidate",
+      "name": "Progress screen",
+      "region_specs": {
+        "actions": {
+          "accepts": [
+            "EL-button"
+          ],
+          "max": 1,
+          "min": 0,
+          "order": 3,
+          "placement": "bottom-fixed"
+        },
+        "appbar": {
+          "accepts": [
+            "EL-app-bar"
+          ],
+          "max": 1,
+          "min": 0,
+          "order": 0,
+          "placement": "top"
+        },
+        "hero": {
+          "accepts": [
+            "EL-status-hero",
+            "EL-nfc-prompt"
+          ],
+          "max": 1,
+          "min": 1,
+          "order": 2,
+          "placement": "scroll"
+        },
+        "steps": {
+          "accepts": [
+            "EL-progress-steps"
+          ],
+          "max": 1,
+          "min": 0,
+          "order": 1,
+          "placement": "top"
+        }
+      },
+      "regions": [
+        "appbar",
+        "steps",
+        "hero",
+        "actions"
+      ],
+      "responsive": "Hero is centred in the remaining height; without an action the hero uses the full height.",
+      "token_groups": []
+    },
+    "TPL-scan": {
+      "maturity": "candidate",
+      "name": "Scan screen",
+      "region_specs": {
+        "actions": {
+          "accepts": [
+            "EL-button"
+          ],
+          "max": 1,
+          "min": 1,
+          "order": 2,
+          "placement": "bottom-fixed"
+        },
+        "camera": {
+          "accepts": [
+            "EL-qr-viewfinder"
+          ],
+          "max": 1,
+          "min": 1,
+          "order": 1,
+          "placement": "scroll"
+        },
+        "instruction": {
+          "accepts": [
+            "EL-text"
+          ],
+          "max": 2,
+          "min": 1,
+          "order": 0,
+          "placement": "top"
+        }
+      },
+      "regions": [
+        "instruction",
+        "camera",
+        "actions"
+      ],
+      "responsive": "Camera region takes all height left by instruction and actions (min 240px); on very small heights the instruction body may scroll above the camera (v0: not implemented, recorded).",
+      "token_groups": []
+    },
+    "TPL-sheet": {
+      "layouts": {
+        "decision-steps": {
+          "attr": "decision-steps",
+          "default": "sheet",
+          "label": "Decision steps (request, authentication, confirmation)",
+          "options": {
+            "page": {
+              "a11y": "the same dialog, labelled by the header h1; nothing behind it",
+              "arranges": "header, body and actions fill the screen; no backdrop, no scrim, no sheet edge",
+              "back": "flow",
+              "label": "Full screen page, no backdrop (same dialog DOM)",
+              "presents": "destination",
+              "ref": "DEC-030 option B; the page layout of TPL-task"
+            },
+            "sheet": {
+              "a11y": "a modal dialog (aria-modal) labelled by the header h1; the backdrop is inert and hidden from assistive technology",
+              "arranges": "appbar: the inert, dimmed app behind a scrim that takes every tap; header, body and actions: the sheet on the bottom edge, as tall as its content",
+              "back": "flow",
+              "label": "Bottom sheet over the dimmed app (modal dialog)",
+              "presents": "modal-dialog",
+              "ref": "DEC-030; eDoklady Rollup, components/edoklady.css:700-709"
+            }
+          }
+        }
+      },
+      "maturity": "candidate",
+      "name": "Task step in a bottom sheet",
+      "region_specs": {
+        "actions": {
+          "accepts": [
+            "EL-button"
+          ],
+          "max": 2,
+          "min": 1,
+          "order": 3,
+          "placement": "bottom-fixed"
+        },
+        "appbar": {
+          "accepts": [
+            "EL-app-bar"
+          ],
+          "max": 1,
+          "min": 0,
+          "order": 0,
+          "placement": "top"
+        },
+        "body": {
+          "accepts": [
+            "EL-text",
+            "EL-notice",
+            "EL-rp-identity",
+            "EL-attribute-item",
+            "EL-attribute-list",
+            "EL-link"
+          ],
+          "max": 12,
+          "min": 0,
+          "order": 2,
+          "placement": "scroll"
+        },
+        "header": {
+          "accepts": [
+            "EL-text"
+          ],
+          "max": 1,
+          "min": 1,
+          "order": 1,
+          "placement": "top"
+        }
+      },
+      "regions": [
+        "appbar",
+        "header",
+        "body",
+        "actions"
+      ],
+      "responsive": "The sheet is as tall as its content and sits on the bottom edge; when the content is taller than the space under the app bar (200 % text), the screen scrolls as on every template (the one scroll container) and the actions stay pinned at the bottom.",
+      "token_groups": [
+        "comp.sheet"
+      ]
+    }
+  },
+  "variant_axes": {
+    "bottom-nav": {
+      "default": "action-button",
+      "elements": [
+        "EL-bottom-bar"
+      ],
+      "options": {
+        "action-button": {
+          "label": "Bottom-fixed primary action (present)",
+          "omits": [
+            {
+              "element": "EL-bottom-bar"
+            }
+          ]
+        },
+        "bar": {
+          "label": "Floating bottom bar: destinations + round action button",
+          "omits": [
+            {
+              "element": "EL-button",
+              "region": "actions",
+              "template": "TPL-home",
+              "with": "EL-bottom-bar"
+            }
+          ]
+        }
+      },
+      "templates": [
+        "TPL-home"
+      ]
+    },
+    "card-face": {
+      "default": "band",
+      "elements": [
+        "EL-document-card"
+      ],
+      "options": {
+        "band": {
+          "label": "Title, holder and number on the artwork; a band at the foot with the status chip and the storage"
+        },
+        "centered": {
+          "label": "Title, English name and number centred on the artwork; the status chip at its foot; no holder, no storage"
+        }
+      },
+      "templates": [
+        "TPL-home"
+      ]
+    },
+    "detail-actions": {
+      "default": "list",
+      "elements": [
+        "EL-button",
+        "EL-action-menu"
+      ],
+      "options": {
+        "list": {
+          "label": "Rows under «Akcie nad eDokladom» in the detail (object-actions region), Predložiť at the bottom"
+        },
+        "menu": {
+          "label": "Floating toolbar: Predložiť pill + round ⋮ opening the action menu (SCR-doc-actions)"
+        }
+      },
+      "templates": [
+        "TPL-detail"
+      ]
+    }
+  }
+}

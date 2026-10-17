@@ -1,0 +1,623 @@
+{
+  "assets_schema_version": 1,
+  "brands": {
+    "eudiw_v1": {
+      "document-art.driving-licence": {
+        "file": "drawable/ux_eudiw_v1_document_art_driving_licence.png",
+        "format": "png",
+        "kind": "document-art",
+        "paint": "image",
+        "resource": "ux_eudiw_v1_document_art_driving_licence",
+        "source": "SRC-EDK-DOCART:02-dl-150dpi.png",
+        "source_sha256": "71454057223f6830b1bc4f00ed7f747e8f0f5310bf1a38c2eb6d087cbc81448e"
+      },
+      "document-art.id-card": {
+        "file": "drawable/ux_eudiw_v1_document_art_id_card.png",
+        "format": "png",
+        "kind": "document-art",
+        "paint": "image",
+        "resource": "ux_eudiw_v1_document_art_id_card",
+        "source": "SRC-EDK-DOCART:01-id-150dpi.png",
+        "source_sha256": "fac58e89f9e88aac1310628c74bc9c782c635ea8185a391fa35a23f46b2c6854"
+      },
+      "document-art.pid": {
+        "file": "drawable/ux_eudiw_v1_document_art_pid.svg",
+        "format": "svg",
+        "kind": "document-art",
+        "note": "shipped as SVG: not a plain path icon, so not converted to a vector drawable; Compose Multiplatform loads SVG on iOS, desktop and web, not on Android",
+        "paint": "image",
+        "resource": "ux_eudiw_v1_document_art_pid",
+        "source": "SRC-UX-SYNTH-ART:pid.svg",
+        "source_sha256": "5f9c82708a36687c941aa55b92b420a9bab331fbc11976bfd4f4a90d4a65db4c"
+      },
+      "icon.add": {
+        "file": "drawable/ux_eudiw_v1_icon_add.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_add",
+        "source": "SRC-EDK-ICONS:add.svg",
+        "source_sha256": "e9532de2b9be01ce951e899e98ee673bb97acd574f0db118feb72fe074a1c376"
+      },
+      "icon.apartment": {
+        "file": "drawable/ux_eudiw_v1_icon_apartment.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_apartment",
+        "source": "SRC-EDK-ICONS:apartment.svg",
+        "source_sha256": "b13f84bafce194ad836ba6e3f5cc62723d35c6f07db597ff37a1368feeedb2d4"
+      },
+      "icon.arrow-forward-ios": {
+        "file": "drawable/ux_eudiw_v1_icon_arrow_forward_ios.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_arrow_forward_ios",
+        "source": "SRC-EDK-ICONS:arrow-forward-ios.svg",
+        "source_sha256": "0e95da0975951ea5cac1de73802c18c3330cb26aca83cbfae7182f1ce460c46b"
+      },
+      "icon.check": {
+        "file": "drawable/ux_eudiw_v1_icon_check.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_check",
+        "source": "SRC-MATERIAL-SYMBOLS:check.svg",
+        "source_sha256": "01edd53418816632be08e9565b8ca40d9028c230a8a67baaf4b8a1de20db00e6"
+      },
+      "icon.check-circle": {
+        "file": "drawable/ux_eudiw_v1_icon_check_circle.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_check_circle",
+        "source": "SRC-EDK-ICONS:check-circle.svg",
+        "source_sha256": "42bf0950bc12ecf7952a8c3be86e0131f225095a7dc6c824a659a13df442e373"
+      },
+      "icon.chevron-right": {
+        "file": "drawable/ux_eudiw_v1_icon_chevron_right.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_chevron_right",
+        "source": "SRC-EDK-ICONS:chevron-right.svg",
+        "source_sha256": "f6b777ee0ce9059b5f8eea987d813ab12c4f309ba431063153841c742e668ac0"
+      },
+      "icon.close": {
+        "file": "drawable/ux_eudiw_v1_icon_close.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_close",
+        "source": "SRC-EDK-ICONS:close.svg",
+        "source_sha256": "a82592b0faa0b104a4d4b0530bb05c6a4bfed5728f5aad03ae8e7a19f32b5511"
+      },
+      "icon.cloud": {
+        "file": "drawable/ux_eudiw_v1_icon_cloud.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_cloud",
+        "source": "SRC-MATERIAL-SYMBOLS:cloud.svg",
+        "source_sha256": "a432f176f21f1f8b66fb55ba64507d4280f3ea82c3e4df0e360ead8907f8c27c"
+      },
+      "icon.content-content-copy": {
+        "file": "drawable/ux_eudiw_v1_icon_content_content_copy.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_content_content_copy",
+        "source": "SRC-EDK-ICONS:content-content-copy.svg",
+        "source_sha256": "3575c3fdb035a66097bed9a7597620e313ed1efa051eb586a7335348c3fdff35"
+      },
+      "icon.error-outline": {
+        "file": "drawable/ux_eudiw_v1_icon_error_outline.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_error_outline",
+        "source": "SRC-EDK-ICONS:error-outline.svg",
+        "source_sha256": "f02b30c23e0c004e47a128526ab417832b2fd475c4cfbcdfff58e9df8f6c30ab"
+      },
+      "icon.highlight-off": {
+        "file": "drawable/ux_eudiw_v1_icon_highlight_off.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_highlight_off",
+        "source": "SRC-EDK-ICONS:highlight-off.svg",
+        "source_sha256": "1f12eb865f787d805c0611ad9a4db706e2201cfc6d480a0d083bd2235425d07e"
+      },
+      "icon.icon-case": {
+        "file": "drawable/ux_eudiw_v1_icon_icon_case.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_icon_case",
+        "source": "SRC-EDK-ICONS:icon-case.svg",
+        "source_sha256": "6ad26ac0e4b0111be140de7193d2c439cc5839438655429d50c2b574c84ac43c"
+      },
+      "icon.icon-id-card": {
+        "file": "drawable/ux_eudiw_v1_icon_icon_id_card.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_icon_id_card",
+        "source": "SRC-EDK-ICONS:icon-id-card.svg",
+        "source_sha256": "15b484d7473628ed578e1c79d4e82e9071289fc89c477b9411ca0011b08969ad"
+      },
+      "icon.info": {
+        "file": "drawable/ux_eudiw_v1_icon_info.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_info",
+        "source": "SRC-EDK-ICONS:info.svg",
+        "source_sha256": "33c77c7a4f193445d0136b970ad4b5a80ba8cc340603465d4cb46a1f8abec4ec"
+      },
+      "icon.lock": {
+        "file": "drawable/ux_eudiw_v1_icon_lock.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_lock",
+        "source": "SRC-EDK-ICONS:lock.svg",
+        "source_sha256": "148a3da500ee74920d4f80984e8f73830b1f4e613bac095502d854b9c700315c"
+      },
+      "icon.navigation-menu": {
+        "file": "drawable/ux_eudiw_v1_icon_navigation_menu.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_navigation_menu",
+        "source": "SRC-EDK-ICONS:navigation-menu.svg",
+        "source_sha256": "30f1250c0ee5bfc0c4eaf6d4f2b4c25701b84c55af69929e93a5e751084f224d"
+      },
+      "icon.notifications": {
+        "file": "drawable/ux_eudiw_v1_icon_notifications.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_notifications",
+        "source": "SRC-EDK-ICONS:notifications.svg",
+        "source_sha256": "f6e1380c76f85851dbeafde7f8eb106c799d72232cd046bf30fabae4f0a0c821"
+      },
+      "icon.open-in-new": {
+        "file": "drawable/ux_eudiw_v1_icon_open_in_new.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_open_in_new",
+        "source": "SRC-EDK-ICONS:open-in-new.svg",
+        "source_sha256": "8b464b3779cc1d22fe0a84d722d6bc0f7fb425e7dafa46298636d376a3808458"
+      },
+      "icon.priority-high": {
+        "file": "drawable/ux_eudiw_v1_icon_priority_high.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_priority_high",
+        "source": "SRC-EDK-ICONS:priority-high.svg",
+        "source_sha256": "3ff1e4546f4ec678ff6f63ec22a664e1702987394067052afc314b84b33a689b"
+      },
+      "icon.smartphone": {
+        "file": "drawable/ux_eudiw_v1_icon_smartphone.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_smartphone",
+        "source": "SRC-MATERIAL-SYMBOLS:smartphone.svg",
+        "source_sha256": "c33c0f3ca46656e5b48f80a4ef84f8cf9f21e25f0ece62e52732cb1f54e503f5"
+      },
+      "icon.update": {
+        "file": "drawable/ux_eudiw_v1_icon_update.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_update",
+        "source": "SRC-EDK-ICONS:update.svg",
+        "source_sha256": "67601223addbe2d94567344e354d733892715059bebd296bead1d90b4354c084"
+      },
+      "icon.verified-user": {
+        "file": "drawable/ux_eudiw_v1_icon_verified_user.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_verified_user",
+        "source": "SRC-MATERIAL-SYMBOLS:verified-user.svg",
+        "source_sha256": "abd70cab16bbd9d08b455421d32d7fbb6aa5b24c87403ce0dd333109db313752"
+      },
+      "icon.warning": {
+        "file": "drawable/ux_eudiw_v1_icon_warning.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_eudiw_v1_icon_warning",
+        "source": "SRC-EDK-ICONS:warning.svg",
+        "source_sha256": "0212c59cfa1e2da887b0b36c7d89886de94b019feaaba5c063ec8dc7d32be436"
+      },
+      "illustration.error": {
+        "file": "drawable/ux_eudiw_v1_illustration_error.svg",
+        "format": "svg",
+        "kind": "illustration",
+        "note": "shipped as SVG: not a plain path icon, so not converted to a vector drawable; Compose Multiplatform loads SVG on iOS, desktop and web, not on Android",
+        "paint": "image",
+        "resource": "ux_eudiw_v1_illustration_error",
+        "source": "SRC-EDK-ILLU:error.svg",
+        "source_sha256": "8837396c3ea0524609bbea338c483db8598a9511deb0806eb698f85e84a012a8"
+      },
+      "illustration.info": {
+        "file": "drawable/ux_eudiw_v1_illustration_info.png",
+        "format": "png",
+        "kind": "illustration",
+        "paint": "image",
+        "resource": "ux_eudiw_v1_illustration_info",
+        "source": "SRC-EDK-ILLU:wait-info.png",
+        "source_sha256": "9277da9971ffcea6cbf59f82c69214acd54032d30236d140b42c4ff18566d159"
+      },
+      "illustration.success": {
+        "file": "drawable/ux_eudiw_v1_illustration_success.svg",
+        "format": "svg",
+        "kind": "illustration",
+        "note": "shipped as SVG: not a plain path icon, so not converted to a vector drawable; Compose Multiplatform loads SVG on iOS, desktop and web, not on Android",
+        "paint": "image",
+        "resource": "ux_eudiw_v1_illustration_success",
+        "source": "SRC-EDK-ILLU:success.svg",
+        "source_sha256": "7d5f99f4110b2ae1784416468501f1a14be8fc34d1b3aa9fa4ef317f3f0d96b4"
+      },
+      "illustration.wait": {
+        "file": "drawable/ux_eudiw_v1_illustration_wait.svg",
+        "format": "svg",
+        "kind": "illustration",
+        "note": "shipped as SVG: not a plain path icon, so not converted to a vector drawable; Compose Multiplatform loads SVG on iOS, desktop and web, not on Android",
+        "paint": "image",
+        "resource": "ux_eudiw_v1_illustration_wait",
+        "source": "SRC-EDK-ILLU:wait.svg",
+        "source_sha256": "5de0a8b8da5de0861cbddbd20a9c53a5a5cd430a36a6705b2379c59684cd6424"
+      },
+      "illustration.warning": {
+        "file": "drawable/ux_eudiw_v1_illustration_warning.svg",
+        "format": "svg",
+        "kind": "illustration",
+        "note": "shipped as SVG: not a plain path icon, so not converted to a vector drawable; Compose Multiplatform loads SVG on iOS, desktop and web, not on Android",
+        "paint": "image",
+        "resource": "ux_eudiw_v1_illustration_warning",
+        "source": "SRC-EDK-ILLU:warning.svg",
+        "source_sha256": "38d1a7d17cdf95049884e54d321f6f74a3129c862ff522546fdfdd6b7cdcfe83"
+      }
+    },
+    "idsk": {
+      "icon.apartment": {
+        "file": "drawable/ux_idsk_icon_apartment.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_apartment",
+        "source": "SRC-EDK-ICONS:apartment.svg",
+        "source_sha256": "b13f84bafce194ad836ba6e3f5cc62723d35c6f07db597ff37a1368feeedb2d4"
+      },
+      "icon.check": {
+        "file": "drawable/ux_idsk_icon_check.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_check",
+        "source": "SRC-MATERIAL-SYMBOLS:check.svg",
+        "source_sha256": "01edd53418816632be08e9565b8ca40d9028c230a8a67baaf4b8a1de20db00e6"
+      },
+      "icon.chevron-right": {
+        "file": "drawable/ux_idsk_icon_chevron_right.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_chevron_right",
+        "source": "SRC-EDK-ICONS:chevron-right.svg",
+        "source_sha256": "f6b777ee0ce9059b5f8eea987d813ab12c4f309ba431063153841c742e668ac0"
+      },
+      "icon.close": {
+        "file": "drawable/ux_idsk_icon_close.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_close",
+        "source": "SRC-EDK-ICONS:close.svg",
+        "source_sha256": "a82592b0faa0b104a4d4b0530bb05c6a4bfed5728f5aad03ae8e7a19f32b5511"
+      },
+      "icon.content-content-copy": {
+        "file": "drawable/ux_idsk_icon_content_content_copy.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_content_content_copy",
+        "source": "SRC-EDK-ICONS:content-content-copy.svg",
+        "source_sha256": "3575c3fdb035a66097bed9a7597620e313ed1efa051eb586a7335348c3fdff35"
+      },
+      "icon.error-outline": {
+        "file": "drawable/ux_idsk_icon_error_outline.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_error_outline",
+        "source": "SRC-EDK-ICONS:error-outline.svg",
+        "source_sha256": "f02b30c23e0c004e47a128526ab417832b2fd475c4cfbcdfff58e9df8f6c30ab"
+      },
+      "icon.info": {
+        "file": "drawable/ux_idsk_icon_info.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_info",
+        "source": "SRC-EDK-ICONS:info.svg",
+        "source_sha256": "33c77c7a4f193445d0136b970ad4b5a80ba8cc340603465d4cb46a1f8abec4ec"
+      },
+      "icon.lock": {
+        "file": "drawable/ux_idsk_icon_lock.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_lock",
+        "source": "SRC-EDK-ICONS:lock.svg",
+        "source_sha256": "148a3da500ee74920d4f80984e8f73830b1f4e613bac095502d854b9c700315c"
+      },
+      "icon.navigation-menu": {
+        "file": "drawable/ux_idsk_icon_navigation_menu.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_navigation_menu",
+        "source": "SRC-EDK-ICONS:navigation-menu.svg",
+        "source_sha256": "30f1250c0ee5bfc0c4eaf6d4f2b4c25701b84c55af69929e93a5e751084f224d"
+      },
+      "icon.notifications": {
+        "file": "drawable/ux_idsk_icon_notifications.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_notifications",
+        "source": "SRC-EDK-ICONS:notifications.svg",
+        "source_sha256": "f6e1380c76f85851dbeafde7f8eb106c799d72232cd046bf30fabae4f0a0c821"
+      },
+      "icon.open-in-new": {
+        "file": "drawable/ux_idsk_icon_open_in_new.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_open_in_new",
+        "source": "SRC-EDK-ICONS:open-in-new.svg",
+        "source_sha256": "8b464b3779cc1d22fe0a84d722d6bc0f7fb425e7dafa46298636d376a3808458"
+      },
+      "icon.priority-high": {
+        "file": "drawable/ux_idsk_icon_priority_high.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_priority_high",
+        "source": "SRC-EDK-ICONS:priority-high.svg",
+        "source_sha256": "3ff1e4546f4ec678ff6f63ec22a664e1702987394067052afc314b84b33a689b"
+      },
+      "icon.update": {
+        "file": "drawable/ux_idsk_icon_update.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_update",
+        "source": "SRC-EDK-ICONS:update.svg",
+        "source_sha256": "67601223addbe2d94567344e354d733892715059bebd296bead1d90b4354c084"
+      },
+      "icon.verified-user": {
+        "file": "drawable/ux_idsk_icon_verified_user.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_verified_user",
+        "source": "SRC-MATERIAL-SYMBOLS:verified-user.svg",
+        "source_sha256": "abd70cab16bbd9d08b455421d32d7fbb6aa5b24c87403ce0dd333109db313752"
+      },
+      "icon.warning": {
+        "file": "drawable/ux_idsk_icon_warning.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_warning",
+        "source": "SRC-EDK-ICONS:warning.svg",
+        "source_sha256": "0212c59cfa1e2da887b0b36c7d89886de94b019feaaba5c063ec8dc7d32be436"
+      }
+    }
+  },
+  "naming": "resources/drawable/ux_<brand>_<asset id with every non-alphanumeric as _>[__<mode>]; the app looks a resource up by `resource` (Res.allDrawableResources); paint mask = tint with the content colour, image = draw as is",
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
+  "unbound": {
+    "idsk": {
+      "illustration.error": {
+        "fallback": "the neutral status glyph in a tone-coloured circle",
+        "kind": "illustration"
+      },
+      "illustration.info": {
+        "fallback": "the neutral status glyph in a tone-coloured circle",
+        "kind": "illustration"
+      },
+      "illustration.success": {
+        "fallback": "the neutral status glyph in a tone-coloured circle",
+        "kind": "illustration"
+      },
+      "illustration.wait": {
+        "fallback": "the neutral status glyph in a tone-coloured circle",
+        "kind": "illustration"
+      },
+      "illustration.warning": {
+        "fallback": "the neutral status glyph in a tone-coloured circle",
+        "kind": "illustration"
+      }
+    }
+  },
+  "used_by": {
+    "document-art.driving-licence": [
+      "SCR-home/card-dl",
+      "SCR-home/card-dl-expired",
+      "SCR-home/card-dl-expiring"
+    ],
+    "document-art.id-card": [
+      "SCR-home/card-id",
+      "SCR-home/card-id-revoked",
+      "SCR-home/card-id-stale",
+      "SCR-home/card-id-suspended"
+    ],
+    "document-art.pid": [
+      "SCR-home/card-pid",
+      "SCR-home/card-pid-cloud"
+    ],
+    "icon.add": [
+      "SCR-home/bottom-bar"
+    ],
+    "icon.apartment": [
+      "SCR-pres-request/rp-trusted",
+      "SCR-pres-request/rp-untrusted",
+      "SCR-pres-untrusted-confirm/rp"
+    ],
+    "icon.arrow-forward-ios": [
+      "SCR-home/card-dl",
+      "SCR-home/card-dl-expired",
+      "SCR-home/card-dl-expiring",
+      "SCR-home/card-id",
+      "SCR-home/card-id-revoked",
+      "SCR-home/card-id-stale",
+      "SCR-home/card-id-suspended",
+      "SCR-home/card-pid",
+      "SCR-home/card-pid-cloud"
+    ],
+    "icon.check": [
+      "SCR-pres-outcome-success/hero",
+      "SCR-pres-request/attributes"
+    ],
+    "icon.check-circle": [
+      "SCR-home/card-dl",
+      "SCR-home/card-id",
+      "SCR-home/card-pid",
+      "SCR-home/card-pid-cloud"
+    ],
+    "icon.chevron-right": [
+      "SCR-home/all-documents",
+      "SCR-home/history",
+      "SCR-pres-outcome-auth-failed/help",
+      "SCR-pres-outcome-auth-unavailable/help",
+      "SCR-pres-outcome-document-missing/help",
+      "SCR-pres-outcome-error/help",
+      "SCR-pres-outcome-expired/help",
+      "SCR-pres-outcome-invalid-qr/help"
+    ],
+    "icon.close": [
+      "SCR-pres-outcome-auth-failed/hero",
+      "SCR-pres-outcome-auth-unavailable/hero",
+      "SCR-pres-outcome-document-invalid/hero",
+      "SCR-pres-outcome-error/hero"
+    ],
+    "icon.cloud": [
+      "SCR-home/card-pid-cloud"
+    ],
+    "icon.content-content-copy": [
+      "SCR-pres-request/attributes"
+    ],
+    "icon.error-outline": [
+      "SCR-home/card-dl-expired",
+      "SCR-home/card-dl-expiring",
+      "SCR-home/card-id-stale",
+      "SCR-home/card-id-suspended",
+      "SCR-pres-outcome-document-invalid/document",
+      "SCR-pres-request/no-field-error"
+    ],
+    "icon.highlight-off": [
+      "SCR-home/card-id-revoked"
+    ],
+    "icon.icon-case": [
+      "SCR-home/bottom-bar"
+    ],
+    "icon.icon-id-card": [
+      "SCR-home/bottom-bar"
+    ],
+    "icon.info": [
+      "SCR-home/notice-offline-phone",
+      "SCR-pres-outcome-auth-failed/help-note",
+      "SCR-pres-outcome-auth-unavailable/help-note",
+      "SCR-pres-outcome-cancelled/hero",
+      "SCR-pres-outcome-document-missing/document",
+      "SCR-pres-outcome-document-missing/help-note",
+      "SCR-pres-outcome-error/help-note",
+      "SCR-pres-outcome-expired/help-note",
+      "SCR-pres-outcome-invalid-qr/help-note"
+    ],
+    "icon.lock": [
+      "SCR-pres-request/attributes"
+    ],
+    "icon.navigation-menu": [
+      "SCR-home/appbar",
+      "SCR-home/appbar-unread",
+      "SCR-pres-auth/app-bar",
+      "SCR-pres-request/app-bar",
+      "SCR-pres-untrusted-confirm/app-bar",
+      "SCR-pres-verification-code/app-bar"
+    ],
+    "icon.notifications": [
+      "SCR-home/appbar",
+      "SCR-home/appbar-unread",
+      "SCR-pres-auth/app-bar",
+      "SCR-pres-request/app-bar",
+      "SCR-pres-untrusted-confirm/app-bar",
+      "SCR-pres-verification-code/app-bar"
+    ],
+    "icon.open-in-new": [
+      "SCR-pres-request/privacy"
+    ],
+    "icon.priority-high": [
+      "SCR-pres-outcome-document-missing/hero",
+      "SCR-pres-outcome-expired/hero",
+      "SCR-pres-outcome-invalid-qr/hero"
+    ],
+    "icon.smartphone": [
+      "SCR-home/card-dl",
+      "SCR-home/card-dl-expired",
+      "SCR-home/card-dl-expiring",
+      "SCR-home/card-id",
+      "SCR-home/card-id-revoked",
+      "SCR-home/card-id-stale",
+      "SCR-home/card-id-suspended"
+    ],
+    "icon.update": [
+      "SCR-pres-connecting/hero",
+      "SCR-pres-sending/hero"
+    ],
+    "icon.verified-user": [
+      "SCR-pres-request/rp-trusted"
+    ],
+    "icon.warning": [
+      "SCR-home/notice-invalid",
+      "SCR-home/notice-offline",
+      "SCR-pres-request/rp-untrusted",
+      "SCR-pres-request/untrusted-notice",
+      "SCR-pres-untrusted-confirm/rp",
+      "SCR-pres-untrusted-confirm/warning",
+      "SCR-pres-verification-code/url-check"
+    ],
+    "illustration.error": [
+      "SCR-pres-outcome-auth-failed/hero",
+      "SCR-pres-outcome-auth-unavailable/hero",
+      "SCR-pres-outcome-document-invalid/hero",
+      "SCR-pres-outcome-error/hero"
+    ],
+    "illustration.info": [
+      "SCR-pres-outcome-cancelled/hero"
+    ],
+    "illustration.success": [
+      "SCR-pres-outcome-success/hero"
+    ],
+    "illustration.wait": [
+      "SCR-pres-connecting/hero",
+      "SCR-pres-sending/hero"
+    ],
+    "illustration.warning": [
+      "SCR-pres-outcome-document-missing/hero",
+      "SCR-pres-outcome-expired/hero",
+      "SCR-pres-outcome-invalid-qr/hero"
+    ]
+  }
+}

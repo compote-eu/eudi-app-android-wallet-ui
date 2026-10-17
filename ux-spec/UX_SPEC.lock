@@ -7,98 +7,358 @@
   "default_brand": "eudiw_v1",
   "exporter": {
     "path": "tools/export_kmp.py",
-    "version": "0.3.0"
+    "version": "0.5.0"
   },
   "files": [
     {
       "bytes": 3814,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceEvent.kt",
-      "sha256": "3251748f94772a62365462fff49a3eb669429890d9adb3ad18e920ac66ffe3d4"
+      "sha256": "66290d6fd6e74cdd08627ea7b88fb5407b24216f08d24a8e9c868f8bf01e3673"
     },
     {
       "bytes": 1579,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceExit.kt",
-      "sha256": "32799326a0200b7319cdd707c0cf9a4a4708e3a0435abc86a628700842be17aa"
+      "sha256": "82f9ddc16c1ab5fbddb311332debecb804164feb68e6c79cb55961d1641f1a97"
     },
     {
       "bytes": 2389,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceInvoker.kt",
-      "sha256": "619c69e98203b9270a5e7bf520947a390a568db415d23aafc7e55c578d0900b5"
+      "sha256": "34fe7f280b94570630aabb079276742af92d56ef0a17543976d74bdf945f79a7"
+    },
+    {
+      "bytes": 6021,
+      "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceServiceResults.kt",
+      "sha256": "05d8c87592ad8e82077559bb74158d83bd457058c92541854c33b31033d040d3"
     },
     {
       "bytes": 4474,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceServices.kt",
-      "sha256": "978ef90b71fa3fee24c9c67c8dca5ab122234ded3135f960c42393d33786bca3"
+      "sha256": "598877d7ea86985d78127860eadfa05303e7e763975fc7e00dd21110c114f3eb"
     },
     {
-      "bytes": 468,
+      "bytes": 753,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceSpec.kt",
-      "sha256": "d201ac178ddca89c09c4fae43c4c0b6dd2c21e0264dfdb29fae35c31bade4cf8"
+      "sha256": "07d01445830c63e229e836b2a40e0ca3cba8c7725b060c23cc4b7de075e4d928"
     },
     {
       "bytes": 3690,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceState.kt",
-      "sha256": "9e4e4d84d78f803633107b7fbeb2eb2e099bcd52a5e0404d8036d15ab466f065"
+      "sha256": "8a94cd76248d89f152064744f4239f85d9a19ab6fd304119d47e1c5f1118ba12"
     },
     {
       "bytes": 129478,
       "path": "fixtures/model/FLW-pres-cross-device.model.json",
-      "sha256": "9fc3ea67fa669f598be4e1b8ed8b5587ba05f1e3b8946689718c4afe3a8d0349"
+      "sha256": "3e54ff972dcb857d6cf9b33da1a3cd3f8e1f1665a180bb7074da8af69f14b562"
     },
     {
       "bytes": 330,
       "path": "fixtures/scripts/doc-missing.json",
-      "sha256": "e4d7f1fb48304a2dba95997115473031b41a06779496f5c253305dcb3f2f4842"
+      "sha256": "b31d86d944b9096b6d0f742796d605d5202a4976d9fc26f06c45a6ff7b17e690"
     },
     {
       "bytes": 390,
       "path": "fixtures/scripts/expired-at-request.json",
-      "sha256": "91ceb55c7263f116a086b8c5078194af44397aa5637c629c679cf783a15c2197"
+      "sha256": "cab0b8c4473620bd0a1eb59f2c3e85d5e4322dc3aa3f59a17e558f9126ba4a1b"
     },
     {
       "bytes": 2221,
       "path": "fixtures/scripts/expired-at-sending.json",
-      "sha256": "ebcbcf7ffd9d63b6b676f1060a2f0622bbe03421f06f16a437a1e3423f5e0fed"
+      "sha256": "9e102ce548f157f782b19db2fd31900290ea829ea70f218383abf0e27af08835"
     },
     {
       "bytes": 2304,
       "path": "fixtures/scripts/happy.json",
-      "sha256": "3b811725390be400ad0d8396305c111aeac25daf2adaf4b4bd3861a4d6b9ea66"
+      "sha256": "982e9269f216aa7ec8059b074468f8eb4a8df452da5439cb199a71387d6ed8f7"
     },
     {
       "bytes": 2308,
       "path": "fixtures/scripts/slow.json",
-      "sha256": "c192aee9747a4b28c7ab19b06b76e03c4fb1e9e97a5d033168d37e85d6f96ad0"
+      "sha256": "87d8498db4bc0013c343092c9d5e2d0876e0444f819fdc255b87ce2aba1d6c99"
     },
     {
       "bytes": 1459,
       "path": "fixtures/scripts/untrusted.json",
-      "sha256": "dcee2dae686995a2fa5da956926ba6aca591e8a06a41fc2480465ed222b91ded"
+      "sha256": "55d850bae32609e03820f853f2f3a5c6ed5871b47011d526eecb11a8e5d6077d"
+    },
+    {
+      "bytes": 902350,
+      "path": "resources/drawable/ux_eudiw_v1_document_art_driving_licence.png",
+      "sha256": "71454057223f6830b1bc4f00ed7f747e8f0f5310bf1a38c2eb6d087cbc81448e"
+    },
+    {
+      "bytes": 841565,
+      "path": "resources/drawable/ux_eudiw_v1_document_art_id_card.png",
+      "sha256": "fac58e89f9e88aac1310628c74bc9c782c635ea8185a391fa35a23f46b2c6854"
+    },
+    {
+      "bytes": 23526,
+      "path": "resources/drawable/ux_eudiw_v1_document_art_pid.svg",
+      "sha256": "5f9c82708a36687c941aa55b92b420a9bab331fbc11976bfd4f4a90d4a65db4c"
+    },
+    {
+      "bytes": 527,
+      "path": "resources/drawable/ux_eudiw_v1_icon_add.xml",
+      "sha256": "c7cf4c97a1f6ce09ab86a410c80355617a2e25284e4f4c1d96b321c57c8dd8d9"
+    },
+    {
+      "bytes": 773,
+      "path": "resources/drawable/ux_eudiw_v1_icon_apartment.xml",
+      "sha256": "770036013934187a8838c95d347db0316f83464b0d3319aecf3f37a89e07296f"
+    },
+    {
+      "bytes": 535,
+      "path": "resources/drawable/ux_eudiw_v1_icon_arrow_forward_ios.xml",
+      "sha256": "004919e12059e8e73b7d1da380535f36621e341d21bca5ed86899f4baa634d02"
+    },
+    {
+      "bytes": 532,
+      "path": "resources/drawable/ux_eudiw_v1_icon_check.xml",
+      "sha256": "fef2f08faeb1877525a8b196fe5e095e354cb8a11c6bfbb08d6b9da2cc2460ee"
+    },
+    {
+      "bytes": 817,
+      "path": "resources/drawable/ux_eudiw_v1_icon_check_circle.xml",
+      "sha256": "41d7c0ebf8655e4fea9544c22c82867a4b2386a33b4c55f3b23a411656c1c295"
+    },
+    {
+      "bytes": 533,
+      "path": "resources/drawable/ux_eudiw_v1_icon_chevron_right.xml",
+      "sha256": "243a48eb2b6fb36b5be72f49ea35a38ac6cf079302bf28ee3707e5d309be37db"
+    },
+    {
+      "bytes": 569,
+      "path": "resources/drawable/ux_eudiw_v1_icon_close.xml",
+      "sha256": "9cdecc7a1a65337af894814ac7236b0d544151580d9452a30f3baf2c266a1b05"
+    },
+    {
+      "bytes": 778,
+      "path": "resources/drawable/ux_eudiw_v1_icon_cloud.xml",
+      "sha256": "025aad1e8ee4ee14544c07b002a350a1bdae80ed051a37bcef8f61a1450e086b"
+    },
+    {
+      "bytes": 702,
+      "path": "resources/drawable/ux_eudiw_v1_icon_content_content_copy.xml",
+      "sha256": "c17248e81eb84627b3b0f7081d74766533190d1b7b124e69f1673139686e4632"
+    },
+    {
+      "bytes": 892,
+      "path": "resources/drawable/ux_eudiw_v1_icon_error_outline.xml",
+      "sha256": "f0b6bb07f80b96abcd414e5e83d9274d8b52e7c121ab0d144fb835bbfb6b3901"
+    },
+    {
+      "bytes": 862,
+      "path": "resources/drawable/ux_eudiw_v1_icon_highlight_off.xml",
+      "sha256": "54217365b05aedf7b0c004c7cb80e7954dfb5af06a01f2596b16012345497bfd"
+    },
+    {
+      "bytes": 1782,
+      "path": "resources/drawable/ux_eudiw_v1_icon_icon_case.xml",
+      "sha256": "3aa6757142d069dfcd354da36bae2a982df850a5caa0ca8dd30a36c051d6a927"
+    },
+    {
+      "bytes": 1623,
+      "path": "resources/drawable/ux_eudiw_v1_icon_icon_id_card.xml",
+      "sha256": "16d99b51aa4fa44eea3686b394e28fa4e5ab3f30966ea87ee4b17183830aaaba"
+    },
+    {
+      "bytes": 881,
+      "path": "resources/drawable/ux_eudiw_v1_icon_info.xml",
+      "sha256": "a1ffa274b8e9bdb283b49903ee9c9d31c4653d6f128586745fbced28a6fc99be"
+    },
+    {
+      "bytes": 845,
+      "path": "resources/drawable/ux_eudiw_v1_icon_lock.xml",
+      "sha256": "0ecfe2242ceccf3f7be7cfc0e43016986cc322e99d60291f21400ab183668d66"
+    },
+    {
+      "bytes": 550,
+      "path": "resources/drawable/ux_eudiw_v1_icon_navigation_menu.xml",
+      "sha256": "4b5708773898fb9cddf8257dc2d7f7d182377081a22878653b3eace96fb59b1b"
+    },
+    {
+      "bytes": 742,
+      "path": "resources/drawable/ux_eudiw_v1_icon_notifications.xml",
+      "sha256": "f4932dd01620cbadb0756259d2c3bb069645a6ffd4c1982ac445c5f11bd399a2"
+    },
+    {
+      "bytes": 653,
+      "path": "resources/drawable/ux_eudiw_v1_icon_open_in_new.xml",
+      "sha256": "9fcad774e4e0270ca03deb9cc1c4c7988584d0b46c7382fe75833b32072da9b4"
+    },
+    {
+      "bytes": 608,
+      "path": "resources/drawable/ux_eudiw_v1_icon_priority_high.xml",
+      "sha256": "2326eb409bd81d54d863d8c0b7b720e6bd1231e108bb31c197f1ffab19694d7b"
+    },
+    {
+      "bytes": 799,
+      "path": "resources/drawable/ux_eudiw_v1_icon_smartphone.xml",
+      "sha256": "e41a00f977fab7eda9ab4034f6cc7b0321004512e70f845a6b367eb73fcc51ee"
+    },
+    {
+      "bytes": 796,
+      "path": "resources/drawable/ux_eudiw_v1_icon_update.xml",
+      "sha256": "462963623c4a80daa5f67d47c894c537c270d64d0821d6c2972d39a4e848c96e"
+    },
+    {
+      "bytes": 703,
+      "path": "resources/drawable/ux_eudiw_v1_icon_verified_user.xml",
+      "sha256": "da3ae1974c8d52d645a8d44fe84fa5ce48bbe640677910831a1e476ab9d361a8"
+    },
+    {
+      "bytes": 663,
+      "path": "resources/drawable/ux_eudiw_v1_icon_warning.xml",
+      "sha256": "33f1fa776d47883ee6e827f729ce62e569334edb978a61c0a4436c42319a541c"
+    },
+    {
+      "bytes": 1531,
+      "path": "resources/drawable/ux_eudiw_v1_illustration_error.svg",
+      "sha256": "8837396c3ea0524609bbea338c483db8598a9511deb0806eb698f85e84a012a8"
+    },
+    {
+      "bytes": 90981,
+      "path": "resources/drawable/ux_eudiw_v1_illustration_info.png",
+      "sha256": "9277da9971ffcea6cbf59f82c69214acd54032d30236d140b42c4ff18566d159"
+    },
+    {
+      "bytes": 1548,
+      "path": "resources/drawable/ux_eudiw_v1_illustration_success.svg",
+      "sha256": "7d5f99f4110b2ae1784416468501f1a14be8fc34d1b3aa9fa4ef317f3f0d96b4"
+    },
+    {
+      "bytes": 1474,
+      "path": "resources/drawable/ux_eudiw_v1_illustration_wait.svg",
+      "sha256": "5de0a8b8da5de0861cbddbd20a9c53a5a5cd430a36a6705b2379c59684cd6424"
+    },
+    {
+      "bytes": 1989,
+      "path": "resources/drawable/ux_eudiw_v1_illustration_warning.svg",
+      "sha256": "38d1a7d17cdf95049884e54d321f6f74a3129c862ff522546fdfdd6b7cdcfe83"
+    },
+    {
+      "bytes": 773,
+      "path": "resources/drawable/ux_idsk_icon_apartment.xml",
+      "sha256": "770036013934187a8838c95d347db0316f83464b0d3319aecf3f37a89e07296f"
+    },
+    {
+      "bytes": 532,
+      "path": "resources/drawable/ux_idsk_icon_check.xml",
+      "sha256": "fef2f08faeb1877525a8b196fe5e095e354cb8a11c6bfbb08d6b9da2cc2460ee"
+    },
+    {
+      "bytes": 533,
+      "path": "resources/drawable/ux_idsk_icon_chevron_right.xml",
+      "sha256": "243a48eb2b6fb36b5be72f49ea35a38ac6cf079302bf28ee3707e5d309be37db"
+    },
+    {
+      "bytes": 569,
+      "path": "resources/drawable/ux_idsk_icon_close.xml",
+      "sha256": "9cdecc7a1a65337af894814ac7236b0d544151580d9452a30f3baf2c266a1b05"
+    },
+    {
+      "bytes": 702,
+      "path": "resources/drawable/ux_idsk_icon_content_content_copy.xml",
+      "sha256": "c17248e81eb84627b3b0f7081d74766533190d1b7b124e69f1673139686e4632"
+    },
+    {
+      "bytes": 892,
+      "path": "resources/drawable/ux_idsk_icon_error_outline.xml",
+      "sha256": "f0b6bb07f80b96abcd414e5e83d9274d8b52e7c121ab0d144fb835bbfb6b3901"
+    },
+    {
+      "bytes": 881,
+      "path": "resources/drawable/ux_idsk_icon_info.xml",
+      "sha256": "a1ffa274b8e9bdb283b49903ee9c9d31c4653d6f128586745fbced28a6fc99be"
+    },
+    {
+      "bytes": 845,
+      "path": "resources/drawable/ux_idsk_icon_lock.xml",
+      "sha256": "0ecfe2242ceccf3f7be7cfc0e43016986cc322e99d60291f21400ab183668d66"
+    },
+    {
+      "bytes": 550,
+      "path": "resources/drawable/ux_idsk_icon_navigation_menu.xml",
+      "sha256": "4b5708773898fb9cddf8257dc2d7f7d182377081a22878653b3eace96fb59b1b"
+    },
+    {
+      "bytes": 742,
+      "path": "resources/drawable/ux_idsk_icon_notifications.xml",
+      "sha256": "f4932dd01620cbadb0756259d2c3bb069645a6ffd4c1982ac445c5f11bd399a2"
+    },
+    {
+      "bytes": 653,
+      "path": "resources/drawable/ux_idsk_icon_open_in_new.xml",
+      "sha256": "9fcad774e4e0270ca03deb9cc1c4c7988584d0b46c7382fe75833b32072da9b4"
+    },
+    {
+      "bytes": 608,
+      "path": "resources/drawable/ux_idsk_icon_priority_high.xml",
+      "sha256": "2326eb409bd81d54d863d8c0b7b720e6bd1231e108bb31c197f1ffab19694d7b"
+    },
+    {
+      "bytes": 796,
+      "path": "resources/drawable/ux_idsk_icon_update.xml",
+      "sha256": "462963623c4a80daa5f67d47c894c537c270d64d0821d6c2972d39a4e848c96e"
+    },
+    {
+      "bytes": 703,
+      "path": "resources/drawable/ux_idsk_icon_verified_user.xml",
+      "sha256": "da3ae1974c8d52d645a8d44fe84fa5ce48bbe640677910831a1e476ab9d361a8"
+    },
+    {
+      "bytes": 663,
+      "path": "resources/drawable/ux_idsk_icon_warning.xml",
+      "sha256": "33f1fa776d47883ee6e827f729ce62e569334edb978a61c0a4436c42319a541c"
     },
     {
       "bytes": 134638,
       "path": "resources/files/FLW-pres-cross-device.bundle.json",
-      "sha256": "415c7435be51f415f5289679b47ae7e755bb50fe61ab13b7bf93e8142f8fda73"
+      "sha256": "5b288b20664db432f48f3afd00f00f23419175927c57d6f8f449fc604f025beb"
     },
     {
-      "bytes": 8456,
+      "bytes": 51095,
+      "path": "resources/files/SCR-home.probe.json",
+      "sha256": "19cb6744132d91f2397009e83d43a1872b48eaf116f47bd35a50438f8b909ebb"
+    },
+    {
+      "bytes": 23818,
+      "path": "resources/files/ux-assets.json",
+      "sha256": "fc19d433cf1c40c84d79228077be42c8fadaad14fe2ccd6d5441d8f855d24e63"
+    },
+    {
+      "bytes": 41299,
+      "path": "resources/files/ux-library.json",
+      "sha256": "cc812d20e8f9c0995cc51c53f829a00a5caeda68a7f630390d99718b47fe1927"
+    },
+    {
+      "bytes": 545658,
+      "path": "resources/files/ux-tokens.json",
+      "sha256": "be0d4575da79a10e0b7cf848a67d8d626f5b16d67520f6c6b88cdea587d98001"
+    },
+    {
+      "bytes": 11130,
       "path": "resources/values/strings.xml",
-      "sha256": "1b4fe1ae4310e4f932650ef79a75b1618495c9a123dd763a9d568075f86712fa"
+      "sha256": "8c9b649901fec8eff459c5aa8e7b8391513b1cd37c2ab694168eb5e5cacf9b64"
+    },
+    {
+      "bytes": 1649,
+      "path": "services-contract.changes.json",
+      "sha256": "c5eb301f40ec09df9b5a8d5d38474a4af529e0244cab33f17f65e8350d25aa18"
     },
     {
       "bytes": 1910,
       "path": "theme/kotlin/eu/europa/ec/ux/theme/generated/UxBrandConfig.kt",
-      "sha256": "7722efa90a9bd758a325fd18413e8c5a74e813b6cb00949f7fc9254194da737c"
+      "sha256": "a605aae364a17ba65d5edb949ec1dc0936793e6775b5318a7d25be205babd0fc"
     },
     {
-      "bytes": 43576,
+      "bytes": 43575,
       "path": "theme/kotlin/eu/europa/ec/ux/theme/generated/UxBrandTokens.kt",
-      "sha256": "9d9cbd9a1cace78cc827d85793f30f526801a581e20a001dbdb6dcee18ac0059"
+      "sha256": "e20943f8f03eb205696452b759d18e76ffdbd2dd5bb68938764b5f52ea830b21"
     },
     {
       "bytes": 386,
       "path": "theme/kotlin/eu/europa/ec/ux/theme/generated/UxThemeSpec.kt",
-      "sha256": "59ca88e89fd31ea125562c78e6c6533ab38255eb1efacc7885d8f50b3b7997c5"
+      "sha256": "a9af67a2ce35002aa897946ebc1c1cac1b1520a9c2b263160526851878dcb6f5"
     }
   ],
   "flows": [
@@ -106,9 +366,9 @@
   ],
   "gates": {
     "a11y": {
-      "renders": 240,
+      "renders": 352,
       "source": "check",
-      "tree_hash": "sha256:30f22340d8a9cdfa0af337e16a2914776d9e7414d1339682a0badba051e311b0",
+      "tree_hash": "sha256:c8aea1da5b36d2a098074aef5fb6b7a7a222a48cbdac260b6372094f8a6d666d",
       "violations": 0
     },
     "g4_profiles": {
@@ -123,10 +383,423 @@
     "light",
     "high-contrast"
   ],
+  "probes": [
+    "SCR-home"
+  ],
+  "services_contract": {
+    "contract_change": "none",
+    "digest": "sha256:6f3922758d0bfc8e4d5c7cf53705467ae7d8e09a9decba7a2c3344e756a4fb16",
+    "previous_version": "1.0.0",
+    "surface": {
+      "authenticate": {
+        "args": {},
+        "ensures": {},
+        "idempotent": true,
+        "results": {
+          "Authenticated": {},
+          "Error": {
+            "reason": "string?"
+          },
+          "Expired": {},
+          "Failed": {},
+          "NotEnrolled": {}
+        }
+      },
+      "cancel": {
+        "args": {},
+        "ensures": {},
+        "idempotent": true,
+        "results": {
+          "Cancelled": {},
+          "Error": {
+            "reason": "string?"
+          },
+          "NothingToCancel": {}
+        }
+      },
+      "fetchRequest": {
+        "args": {
+          "uri": "url"
+        },
+        "ensures": {
+          "OptionalOnly": {
+            "rule": "RUL-pres-request-optional-unticked",
+            "when": {
+              "op": "eq",
+              "path": "/request/optional_selected_count",
+              "value": 0
+            }
+          },
+          "RequestReady": {
+            "rule": "RUL-pres-request-ready-unticked",
+            "when": {
+              "all": [
+                {
+                  "not": {
+                    "op": "eq",
+                    "path": "/request/mandatory_count",
+                    "value": 0
+                  }
+                },
+                {
+                  "op": "eq",
+                  "path": "/request/optional_selected_count",
+                  "value": 0
+                }
+              ]
+            }
+          },
+          "RpUntrusted": {
+            "rule": "RUL-pres-request-has-mandatory",
+            "when": {
+              "not": {
+                "op": "eq",
+                "path": "/request/mandatory_count",
+                "value": 0
+              }
+            }
+          }
+        },
+        "idempotent": false,
+        "results": {
+          "DocInvalid": {
+            "document_name": "string?"
+          },
+          "DocMissing": {
+            "document_name": "string?"
+          },
+          "Error": {
+            "reason": "string?"
+          },
+          "Expired": {},
+          "OptionalOnly": {
+            "request": {
+              "fields": {
+                "attributes": {
+                  "item": {
+                    "id": {
+                      "required": true,
+                      "type": "id"
+                    },
+                    "label_copy": {
+                      "required": true,
+                      "type": "copy"
+                    },
+                    "requirement": {
+                      "required": true,
+                      "type": "enum",
+                      "values": [
+                        "mandatory",
+                        "optional"
+                      ]
+                    },
+                    "selected": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "list"
+                },
+                "document_name": "string?"
+              },
+              "type": "object"
+            },
+            "verifier": {
+              "fields": {
+                "name": "string?",
+                "privacy_url": "url?",
+                "reason": "string?",
+                "service_name": "string?",
+                "trust": {
+                  "nullable": true,
+                  "type": "enum",
+                  "values": [
+                    "trusted",
+                    "untrusted"
+                  ]
+                }
+              },
+              "type": "object"
+            }
+          },
+          "RequestReady": {
+            "request": {
+              "fields": {
+                "attributes": {
+                  "item": {
+                    "id": {
+                      "required": true,
+                      "type": "id"
+                    },
+                    "label_copy": {
+                      "required": true,
+                      "type": "copy"
+                    },
+                    "requirement": {
+                      "required": true,
+                      "type": "enum",
+                      "values": [
+                        "mandatory",
+                        "optional"
+                      ]
+                    },
+                    "selected": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "list"
+                },
+                "document_name": "string?"
+              },
+              "type": "object"
+            },
+            "verifier": {
+              "fields": {
+                "name": "string?",
+                "privacy_url": "url?",
+                "reason": "string?",
+                "service_name": "string?",
+                "trust": {
+                  "nullable": true,
+                  "type": "enum",
+                  "values": [
+                    "trusted",
+                    "untrusted"
+                  ]
+                }
+              },
+              "type": "object"
+            }
+          },
+          "RpUntrusted": {
+            "request": {
+              "fields": {
+                "attributes": {
+                  "item": {
+                    "id": {
+                      "required": true,
+                      "type": "id"
+                    },
+                    "label_copy": {
+                      "required": true,
+                      "type": "copy"
+                    },
+                    "requirement": {
+                      "required": true,
+                      "type": "enum",
+                      "values": [
+                        "mandatory",
+                        "optional"
+                      ]
+                    },
+                    "selected": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "value": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "list"
+                },
+                "document_name": "string?"
+              },
+              "type": "object"
+            },
+            "verifier": {
+              "fields": {
+                "name": "string?",
+                "privacy_url": "url?",
+                "reason": "string?",
+                "service_name": "string?",
+                "trust": {
+                  "nullable": true,
+                  "type": "enum",
+                  "values": [
+                    "trusted",
+                    "untrusted"
+                  ]
+                }
+              },
+              "type": "object"
+            }
+          }
+        }
+      },
+      "send": {
+        "args": {
+          "selection": {
+            "of": "id",
+            "type": "list"
+          }
+        },
+        "ensures": {},
+        "idempotent": false,
+        "results": {
+          "Error": {
+            "reason": "string?"
+          },
+          "Expired": {},
+          "Sent": {}
+        }
+      },
+      "verificationCode": {
+        "args": {},
+        "ensures": {},
+        "idempotent": true,
+        "results": {
+          "Error": {
+            "reason": "string?"
+          },
+          "Expired": {},
+          "Ready": {
+            "code": "string",
+            "portal_url": "url?"
+          }
+        }
+      }
+    },
+    "version": "1.0.0"
+  },
   "sources": [
+    {
+      "path": "../inputs/ux/edoklady-design/assets/document-art/01-id-150dpi.png",
+      "sha256": "fac58e89f9e88aac1310628c74bc9c782c635ea8185a391fa35a23f46b2c6854"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/document-art/02-dl-150dpi.png",
+      "sha256": "71454057223f6830b1bc4f00ed7f747e8f0f5310bf1a38c2eb6d087cbc81448e"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/add.svg",
+      "sha256": "e9532de2b9be01ce951e899e98ee673bb97acd574f0db118feb72fe074a1c376"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/apartment.svg",
+      "sha256": "b13f84bafce194ad836ba6e3f5cc62723d35c6f07db597ff37a1368feeedb2d4"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/arrow-forward-ios.svg",
+      "sha256": "0e95da0975951ea5cac1de73802c18c3330cb26aca83cbfae7182f1ce460c46b"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/check-circle.svg",
+      "sha256": "42bf0950bc12ecf7952a8c3be86e0131f225095a7dc6c824a659a13df442e373"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/chevron-right.svg",
+      "sha256": "f6b777ee0ce9059b5f8eea987d813ab12c4f309ba431063153841c742e668ac0"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/close.svg",
+      "sha256": "a82592b0faa0b104a4d4b0530bb05c6a4bfed5728f5aad03ae8e7a19f32b5511"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/content-content-copy.svg",
+      "sha256": "3575c3fdb035a66097bed9a7597620e313ed1efa051eb586a7335348c3fdff35"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/error-outline.svg",
+      "sha256": "f02b30c23e0c004e47a128526ab417832b2fd475c4cfbcdfff58e9df8f6c30ab"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/highlight-off.svg",
+      "sha256": "1f12eb865f787d805c0611ad9a4db706e2201cfc6d480a0d083bd2235425d07e"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/icon-case.svg",
+      "sha256": "6ad26ac0e4b0111be140de7193d2c439cc5839438655429d50c2b574c84ac43c"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/icon-id-card.svg",
+      "sha256": "15b484d7473628ed578e1c79d4e82e9071289fc89c477b9411ca0011b08969ad"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/info.svg",
+      "sha256": "33c77c7a4f193445d0136b970ad4b5a80ba8cc340603465d4cb46a1f8abec4ec"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/lock.svg",
+      "sha256": "148a3da500ee74920d4f80984e8f73830b1f4e613bac095502d854b9c700315c"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/navigation-menu.svg",
+      "sha256": "30f1250c0ee5bfc0c4eaf6d4f2b4c25701b84c55af69929e93a5e751084f224d"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/notifications.svg",
+      "sha256": "f6e1380c76f85851dbeafde7f8eb106c799d72232cd046bf30fabae4f0a0c821"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/open-in-new.svg",
+      "sha256": "8b464b3779cc1d22fe0a84d722d6bc0f7fb425e7dafa46298636d376a3808458"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/priority-high.svg",
+      "sha256": "3ff1e4546f4ec678ff6f63ec22a664e1702987394067052afc314b84b33a689b"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/update.svg",
+      "sha256": "67601223addbe2d94567344e354d733892715059bebd296bead1d90b4354c084"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/warning.svg",
+      "sha256": "0212c59cfa1e2da887b0b36c7d89886de94b019feaaba5c063ec8dc7d32be436"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/illustrations/error.svg",
+      "sha256": "8837396c3ea0524609bbea338c483db8598a9511deb0806eb698f85e84a012a8"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/illustrations/success.svg",
+      "sha256": "7d5f99f4110b2ae1784416468501f1a14be8fc34d1b3aa9fa4ef317f3f0d96b4"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/illustrations/wait-info.png",
+      "sha256": "9277da9971ffcea6cbf59f82c69214acd54032d30236d140b42c4ff18566d159"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/illustrations/wait.svg",
+      "sha256": "5de0a8b8da5de0861cbddbd20a9c53a5a5cd430a36a6705b2379c59684cd6424"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/illustrations/warning.svg",
+      "sha256": "38d1a7d17cdf95049884e54d321f6f74a3129c862ff522546fdfdd6b7cdcfe83"
+    },
+    {
+      "path": "../inputs/ux/material-symbols/check.svg",
+      "sha256": "01edd53418816632be08e9565b8ca40d9028c230a8a67baaf4b8a1de20db00e6"
+    },
+    {
+      "path": "../inputs/ux/material-symbols/cloud.svg",
+      "sha256": "a432f176f21f1f8b66fb55ba64507d4280f3ea82c3e4df0e360ead8907f8c27c"
+    },
+    {
+      "path": "../inputs/ux/material-symbols/smartphone.svg",
+      "sha256": "c33c0f3ca46656e5b48f80a4ef84f8cf9f21e25f0ece62e52732cb1f54e503f5"
+    },
+    {
+      "path": "../inputs/ux/material-symbols/verified-user.svg",
+      "sha256": "abd70cab16bbd9d08b455421d32d7fbb6aa5b24c87403ce0dd333109db313752"
+    },
+    {
+      "path": "../inputs/ux/synthetic-art/pid.svg",
+      "sha256": "5f9c82708a36687c941aa55b92b420a9bab331fbc11976bfd4f4a90d4a65db4c"
+    },
     {
       "path": "experience/flows/FLW-pres-cross-device.yaml",
       "sha256": "708b5b6016073377c816406b7d5293418fd71d6ab11de923880c889125ab5860"
+    },
+    {
+      "path": "experience/screens/SCR-home.yaml",
+      "sha256": "af632b6309ebcff243c575abc278b14d55990f244b7877e605925eee4e15070d"
     },
     {
       "path": "experience/screens/SCR-pres-auth.yaml",
@@ -193,28 +866,40 @@
       "sha256": "17c56158098a2b8101a1714c23aee5bfdd346babc126c10c7c6e1a47f1161092"
     },
     {
+      "path": "library/assets.yaml",
+      "sha256": "2495e5e23f8763a448fd5750574bc2a53b67b90c8446093b07c9ae0e00e32791"
+    },
+    {
       "path": "library/elements/EL-app-bar.yaml",
-      "sha256": "288e2b7b67c28ff08563e836b76beb3c449df1f43ca083289a8308465477b6c4"
+      "sha256": "ab3516aa698f35921343d23d4270b36b23d7699c4cad7cf45ef96117284647c2"
     },
     {
       "path": "library/elements/EL-attribute-item.yaml",
-      "sha256": "194140c1c68f1f948d7ab6430d6ace66f32f38a5523fdb560d217c726dc64c24"
+      "sha256": "afbb8cdd091cb20e2e22f476d3e07930d57fbcc2d2d155faca9e8cbd3f170d98"
     },
     {
       "path": "library/elements/EL-attribute-list.yaml",
-      "sha256": "e74bd07e8d6e4dded78a0a5c65449fd25b27a3803e8f3de78f94e54870e4d379"
+      "sha256": "d5787733aa9d0dac152b8914394ff24336bb661621aba3b3fb8bda566e9e7332"
+    },
+    {
+      "path": "library/elements/EL-bottom-bar.yaml",
+      "sha256": "e427e47c93b134ed45c483ecc5309f76e9beb30e1746509e68260c6247ac8f4f"
     },
     {
       "path": "library/elements/EL-button.yaml",
-      "sha256": "f6d904c1d099a4187dd5f0ae0f451fbb010cd360d3b03ef9324ce93078c1ddcb"
+      "sha256": "fb24f91cf35a9ee95949584413455a29f59ee9484d9ccac5a89819f84c38a508"
+    },
+    {
+      "path": "library/elements/EL-document-card.yaml",
+      "sha256": "079a15654e07e0b0d00b5f413ed36087cbd295aa673065b6b09fd5254191390b"
     },
     {
       "path": "library/elements/EL-link.yaml",
-      "sha256": "807de9fcce768778d593e83b2d6b448ee81587788847b9cd44ccc4457a827fba"
+      "sha256": "6737cd256a7d58962f98f903db23401d666025431fb6268a5fbe94a57e38bfa5"
     },
     {
       "path": "library/elements/EL-notice.yaml",
-      "sha256": "73b36068290504f31fcd9a22304bf5a390d6cc04260ab74137b6486912d5ffd1"
+      "sha256": "3d24988be395f8be02328bf9077f915369326d6f3912187636803fefcad51d24"
     },
     {
       "path": "library/elements/EL-qr-viewfinder.yaml",
@@ -222,15 +907,31 @@
     },
     {
       "path": "library/elements/EL-rp-identity.yaml",
-      "sha256": "48d7207fdf0e5f25294789a74fd4407a25ebffab167ea66082785017efcdf906"
+      "sha256": "ed239dea868e186d7c2918d8632f20d9599a03313725d5166fe6544a0e71b19e"
+    },
+    {
+      "path": "library/elements/EL-segmented-switch.yaml",
+      "sha256": "fce2ed63038da7e6f274eb85a75796a99f7e60069e544bed5e8a879da32eaf90"
+    },
+    {
+      "path": "library/elements/EL-status-chip.yaml",
+      "sha256": "9fcb125c6b487d4c1fd67a7d6fcf2278ac850acf911235a1381b3c04ad993519"
     },
     {
       "path": "library/elements/EL-status-hero.yaml",
-      "sha256": "170b93a36b5fefb8ec3c45b97cb7bb2addadd3248b88acf6533657e7e7ede27a"
+      "sha256": "8e7f3f9baf7c6b897a8f0e8ec31d13e9b49aba95080d50765b17f818c61180ce"
     },
     {
       "path": "library/elements/EL-text.yaml",
       "sha256": "bdfa54c2a1d6c91d00d26bd46d1bd92a9b6a8a7648451a83250c6c5b3817630b"
+    },
+    {
+      "path": "library/elements/EL-trust-mark.yaml",
+      "sha256": "2e3f95f652ea9e7634784fccf13b4b879c816232630e6f42ad572d70bad1be64"
+    },
+    {
+      "path": "library/templates/TPL-home.yaml",
+      "sha256": "19232f7d2bd3bd64b3cb84f195e0a7dc792d86daeea97744465611f5e1455dd6"
     },
     {
       "path": "library/templates/TPL-outcome.yaml",
@@ -265,6 +966,10 @@
       "sha256": "42c1d96ab12bd3eb9ab8e7f9dbcf4c884c22443f3d25f6ead3b1042440bb41fb"
     },
     {
+      "path": "product/copy/sk/BRF-006.yaml",
+      "sha256": "03dc3bbc75a55871715b41b2c8c6b8feff96108a95d91269d5bd31a128415335"
+    },
+    {
       "path": "product/copy/sk/brands/eudiw_v1.yaml",
       "sha256": "8345aff8e307860933b4204ebd0225459334c404ab45bc58b6474c1d255c923f"
     },
@@ -274,7 +979,7 @@
     },
     {
       "path": "product/export/kmp.yaml",
-      "sha256": "9cd1c46040c05b5284ad9bf6dad1f1f6c5d37d5675cbe996ed72fb75c4010fd7"
+      "sha256": "b84620403064e751f74aaa7b8b5ec33c4c0ef38bf84a654c3be26a77f7660787"
     },
     {
       "path": "product/profiles/PRF-dvm.yaml",
@@ -283,6 +988,82 @@
     {
       "path": "product/profiles/PRF-eudiw-v1.yaml",
       "sha256": "54b4c2fd4d688775618110ba09e3187b1e28492cff7c4f26da110318d9369d28"
+    },
+    {
+      "path": "product/rules/RUL-home-all-valid.yaml",
+      "sha256": "352e384766340637da3e81ccc1cedd6184ba5b57b8e3e494b10024c18ebffddd"
+    },
+    {
+      "path": "product/rules/RUL-home-dl-deleted.yaml",
+      "sha256": "8ae42111f84c6897eeaaa15382266b62745d740f649f16cbe6e3ac492d4b228e"
+    },
+    {
+      "path": "product/rules/RUL-home-dl-expiring.yaml",
+      "sha256": "74c1bac4f114152483b79169ef800f2cd6e9454f677d39ba66569b0a1755792c"
+    },
+    {
+      "path": "product/rules/RUL-home-dl-not-expiring.yaml",
+      "sha256": "eca7080ceee6e38350c02884f0272b01ba5aedb5ff2013ea8c2036b15848bdfe"
+    },
+    {
+      "path": "product/rules/RUL-home-document-invalid.yaml",
+      "sha256": "6c49cc9734aac3411f647eb7874955d405ccf6c65a2e6ef8ef9347157817abec"
+    },
+    {
+      "path": "product/rules/RUL-home-document-valid.yaml",
+      "sha256": "f3753c6bdb8df45c4d22a64b638fc54c75657c2ac93bfe51e60e2459a0f336b4"
+    },
+    {
+      "path": "product/rules/RUL-home-empty.yaml",
+      "sha256": "7682d086995fe5800ac8d9f7a8bc272bad11ce348ab3c125e70d406b066801d4"
+    },
+    {
+      "path": "product/rules/RUL-home-id-deleted.yaml",
+      "sha256": "d324cf42413d8172efb371854ca264f6ea39550a5b3dcba09e5342536dde8671"
+    },
+    {
+      "path": "product/rules/RUL-home-id-revoked.yaml",
+      "sha256": "9ac0b68fe73d815ec79d93fe0abda513700c58dae594dc4494d9bcdb6eff9990"
+    },
+    {
+      "path": "product/rules/RUL-home-id-stale.yaml",
+      "sha256": "aae9119946734b48cb02fa112be20de9fd1314af8ec64feaace5a6111134ab81"
+    },
+    {
+      "path": "product/rules/RUL-home-id-suspended.yaml",
+      "sha256": "2117bb49846347f335b4b0ef01802665ba568312a02be706033c4a47903812af"
+    },
+    {
+      "path": "product/rules/RUL-home-id-valid.yaml",
+      "sha256": "00f30d86b14335e63aef5f3a0d6fb7fb856a66eb6fc8cb179e59acb2ba53d913"
+    },
+    {
+      "path": "product/rules/RUL-home-not-empty.yaml",
+      "sha256": "c29ecfe17d8b31d42fb54498627440abffcf197d3a23befb7d95587505db2b72"
+    },
+    {
+      "path": "product/rules/RUL-home-notifications-read.yaml",
+      "sha256": "ab90802012bc32700f5359622d1084a25c9c326f209bca8b085ab61293e01734"
+    },
+    {
+      "path": "product/rules/RUL-home-notifications-unread.yaml",
+      "sha256": "262b91483ed2ab784647642c5155f426f30423140d755e20fda49b21ff311879"
+    },
+    {
+      "path": "product/rules/RUL-home-online.yaml",
+      "sha256": "540c21727c672fbdfd5382f0c213b63d75e1d9ea0816764540feb1c8dfbd57b0"
+    },
+    {
+      "path": "product/rules/RUL-home-pid-deleted.yaml",
+      "sha256": "822c65d00d00e0728d6d2475783a88050bf697a4fab1dd4341a1fe16500d8920"
+    },
+    {
+      "path": "product/rules/RUL-home-storage-cloud.yaml",
+      "sha256": "15028447bfa546b593f6ce3a64ce09b042f8eabfac10dd112f2b4f77e5e643de"
+    },
+    {
+      "path": "product/rules/RUL-home-storage-phone.yaml",
+      "sha256": "9bddbeed344fc608e9ae52022059a712110f938b72f036bc79837c403d6aa9bd"
     },
     {
       "path": "product/rules/RUL-pres-request-has-mandatory.yaml",
@@ -389,6 +1170,10 @@
       "sha256": "550be55e56bc4bb9edbd138009768256191542e688fc67e8f2dec09bd1e4894d"
     },
     {
+      "path": "product/theme/eudiw_v1/assets.yaml",
+      "sha256": "e1ddc7ab5663c21af30bdcc2a9d0876e8163fd53e53189e1ca8de1926b5ec5bb"
+    },
+    {
       "path": "product/theme/eudiw_v1/comp.tokens.json",
       "sha256": "0f47ae3330b29f2da0d2365cc97545e6bdd635f26d518660fa91e7058c38377d"
     },
@@ -407,6 +1192,10 @@
     {
       "path": "product/theme/eudiw_v1/sys.light.tokens.json",
       "sha256": "78f8a90b01080db806d01fe5dc357c1da3bdb9c159701804280b8f175b1b4f3a"
+    },
+    {
+      "path": "product/theme/idsk/assets.yaml",
+      "sha256": "fd3bf847bfba39fbfdf12e8bc91d77db409fbeaebbb8d13ae0c9de952939f24e"
     },
     {
       "path": "product/theme/idsk/components.yaml",
@@ -429,12 +1218,79 @@
       "sha256": "4a05f2b216cfea0f47dc507461b38ab2727a8eee8760fa525e2f31143b766834"
     },
     {
+      "path": "product/variants.yaml",
+      "sha256": "723b4ab5222626f50c0eebe5e90b0ee9e36381bdfbb9a7c25112f7e217681988"
+    },
+    {
       "path": "schemas/kmp-bundle.schema.json",
       "sha256": "414231220f679292ecb849aa4eb023838dbf28ea372140c266039b19359ab29a"
+    },
+    {
+      "path": "sources/intake/edoklady-design.yaml",
+      "sha256": "b1c68f256b6a2b508f153c7b40cb8c4826387949d53081f3ef4ac295d4c5b5d4"
+    },
+    {
+      "path": "sources/intake/sources.yaml",
+      "sha256": "bdfb33e7a9bab6442b35c58f21d0e7fbbb60128a39290ee8f55761b9dcf61958"
     }
   ],
-  "spec_hash": "sha256:88e2b61145bd0a2586831e88bab4c5ac0df93c2ac7b6fe85d9cec779f44702d0",
-  "ux_commit": "3d6ecb6e601bae931ce5f6f55be216cf841c0817",
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
+  "token_coverage": {
+    "baseline": "process/kmp-token-coverage.yaml",
+    "consumed_in_scope": 575,
+    "scope": "every sys.* token of the exported brands x modes, and every comp.* token of a group in ux-tokens.json or read by the shell",
+    "scope_tokens": 584,
+    "shell_fields": 143,
+    "shell_without_token": [],
+    "unconsumed": {
+      "sys.radius.document": {
+        "via": [
+          "comp.document-card.radius"
+        ]
+      },
+      "sys.ratio.viewfinder-arm": {
+        "via": [
+          "comp.viewfinder.arm-ratio"
+        ]
+      },
+      "sys.size.viewfinder-stroke": {
+        "via": [
+          "comp.viewfinder.arm-stroke"
+        ]
+      },
+      "sys.type.card-face-name.line": {
+        "via": [
+          "comp.document-card.face-name-line"
+        ]
+      },
+      "sys.type.card-face-name.size": {
+        "via": [
+          "comp.document-card.face-name-size"
+        ]
+      },
+      "sys.type.card-face-number.line": {
+        "via": [
+          "comp.document-card.face-number-line"
+        ]
+      },
+      "sys.type.card-face-number.size": {
+        "via": [
+          "comp.document-card.face-number-size"
+        ]
+      },
+      "sys.type.card-face-title.line": {
+        "via": [
+          "comp.document-card.face-title-line"
+        ]
+      },
+      "sys.type.card-face-title.size": {
+        "via": [
+          "comp.document-card.face-title-size"
+        ]
+      }
+    }
+  },
+  "ux_commit": "b55be659455f936456632cea230d6fc0ee58f9c5",
   "ux_dirty": false,
   "ux_repo": "dvm-edoklady-eudiw-analysis"
 }

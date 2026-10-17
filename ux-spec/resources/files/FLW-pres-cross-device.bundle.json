@@ -1,14 +1,14 @@
 {
   "bundle_schema_version": 1,
   "flow_id": "FLW-pres-cross-device",
-  "spec_hash": "sha256:88e2b61145bd0a2586831e88bab4c5ac0df93c2ac7b6fe85d9cec779f44702d0",
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
   "source": {
     "brief": "BRF-001",
-    "exporter": "tools/export_kmp.py 0.3.0",
+    "exporter": "tools/export_kmp.py 0.5.0",
     "locale": "sk",
     "maturity": "candidate",
     "pattern": "PAT-arf.5.02-remote-cross-device",
-    "ux_commit": "3d6ecb6e601bae931ce5f6f55be216cf841c0817"
+    "ux_commit": "b55be659455f936456632cea230d6fc0ee58f9c5"
   },
   "initial": "scan",
   "entries": {
