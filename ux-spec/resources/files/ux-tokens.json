@@ -1,7 +1,7 @@
 {
   "brands": [
-    "idsk",
-    "eudiw_v1"
+    "eudiw_v1",
+    "idsk"
   ],
   "groups": [
     "comp.app-bar",
@@ -27,7 +27,7 @@
     "light",
     "high-contrast"
   ],
-  "spec_hash": "sha256:73d76c21f959f25519263947e01899daa6a763b04f71e919c2333d8b3838dc4b",
+  "spec_hash": "sha256:0829f1cb6dd08306d29dc98c63679e975238639cc75384c9679640281315d21e",
   "tokens_schema_version": 1,
   "units": "a dimension is DTCG px: read it as sp where its alias chain passes a sys.type.* path (a text size or line height), else as dp; colours are sRGB with an optional alpha",
   "values": {

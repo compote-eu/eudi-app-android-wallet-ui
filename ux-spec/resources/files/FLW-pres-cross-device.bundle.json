@@ -1,14 +1,14 @@
 {
   "bundle_schema_version": 1,
   "flow_id": "FLW-pres-cross-device",
-  "spec_hash": "sha256:73d76c21f959f25519263947e01899daa6a763b04f71e919c2333d8b3838dc4b",
+  "spec_hash": "sha256:0829f1cb6dd08306d29dc98c63679e975238639cc75384c9679640281315d21e",
   "source": {
     "brief": "BRF-001",
     "exporter": "tools/export_kmp.py 0.5.0",
     "locale": "sk",
     "maturity": "candidate",
     "pattern": "PAT-arf.5.02-remote-cross-device",
-    "ux_commit": "a0aeba391f1699eef47ffc051e86e72da1ec4dd8"
+    "ux_commit": "342788f214779d12179751589a5f1407c719e5a5"
   },
   "initial": "scan",
   "entries": {
@@ -5136,10 +5136,10 @@
   },
   "theme": {
     "brands": [
-      "idsk",
-      "eudiw_v1"
+      "eudiw_v1",
+      "idsk"
     ],
-    "default_brand": "idsk",
+    "default_brand": "eudiw_v1",
     "default_mode": "light",
     "kotlin": "eu.europa.ec.ux.theme.generated",
     "modes": [
