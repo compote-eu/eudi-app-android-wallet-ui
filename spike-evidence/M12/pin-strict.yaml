@@ -1,0 +1,13 @@
+appId: eu.compote.euidi.dev
+---
+- extendedWaitUntil:
+    visible:
+      id: "pin_text_field_0"
+    timeout: 30000
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- extendedWaitUntil:
+    notVisible:
+      id: "pin_text_field_0"
+    timeout: 15000

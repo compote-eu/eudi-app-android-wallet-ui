@@ -22,12 +22,14 @@ adding the date and the result under it.
   3. Rule now, in advance: if a D8 mutation grows the generated `Services` interface and the fake engine fails to compile,
      is that (a) a D8 failure (the default: KC1 failed) or (b) an expected seam break that is exempt? Without a ruling,
      (a) applies.
-- **Status:** open
+- **Status:** **closed (superseded, M12, 2026-10-17).** Step 1-2: the boundary went to week 0 and the real export
+  replaced the PROVISIONAL bundle (M6a sync `7a24efacf`, 8 divergences resolved app-side). Step 3: ruled by OR-3 (the fake
+  engine is data-driven and does not count; a real-adapter compile break is a reported cost, per D8 row).
 
 ## Q-003: D3 on a real iPhone (iOS cold start after a kill)
 
 - **Blocks:** row `D3-device` (KC2 evidence).
-- **When:** after M6. The agent posts the exact build and launch steps then.
+- **When:** now. **Build:** the device build at the M12 HEAD (code tree `04e4ba57c`; see SPIKE-LOG M12 for the install status).
 - **Steps (outline):**
   1. Install the Debug build on the iPhone and launch it with `--ux-spike happy`.
   2. Reach `request`, then kill the app with `xcrun devicectl device process terminate --device <udid> --pid <pid>`
@@ -68,61 +70,32 @@ adding the date and the result under it.
 - **Options:** (a) the owner swipes by hand in Simulator.app while the agent records (`simctl io recordVideo`) and reads
   the `UX-SPIKE:` log; (b) allow installing `idb` (`brew install facebook/fb/idb-companion` + `pip install fb-idb`) for
   `idb ui swipe`; (c) run D1-iOS on the real iPhone together with Q-003.
-- **Status:** open
+- **Status:** **closed (superseded, M12, 2026-10-17).** D1-iOS passed formally in M6b with the XCUITest edge-swipe tool
+  (`spike-evidence/tools/ios-edge-swipe.sh`, press at x=0 then drag, `-t` tap-then-swipe mode), and the owner swiped by hand on
+  the iPhone (D1-iOS-device rows, preliminary). No `idb` install needed.
 
-## Q-D7-iOS: VoiceOver walk `request` → `success` on the iPhone (D7-iOS, KC3)
+## Q-D7-iOS: VoiceOver walk `request` → `success` on the iPhone (D7-iOS, KC3) — REQUIRED
 
-- **Blocks:** row `D7-iOS` (KC3 verdict). Automated evidence so far: `D7-iOS-preliminary` in `spike-results.md`.
-- **Build:** the M7 commit (see `SPIKE-LOG.md` M7). **A device rebuild is needed**: the phone still runs `e837f53a7`
-  (M5b). The orchestrator rebuilds and installs it from the device worktree and launches it with the deep link and
-  `--ux-spike slow` (so `auth` lasts 12 s and `sending` 45 s, long enough to hear them).
-- **Before:** phone in Light mode. Settings > Accessibility > VoiceOver: on (or triple-click the side button if the
-  Accessibility Shortcut is set). Start a screen recording with sound (Control Center > Screen Recording, long-press,
-  Microphone on) before the orchestrator launches the app. Use only swipe right/left (next/previous element) and
-  double-tap (activate); no direct touch on items, so focus is what the runtime set.
-- **Expected texts** are the PROVISIONAL sk copy; the app may show the eudiw_v1 brand variant (e.g. "eDoklady"). VoiceOver
-  adds its own role words ("heading", "button", ...); the language of speech is the phone's.
-
-### Steps and what VoiceOver should do after each state change
-
-| # | You do | New state | VoiceOver should say first (without you touching anything) | Focus should be on |
-|---|---|---|---|---|
-| 1 | unlock with the PIN (VoiceOver: double-tap digits) | `connecting` (4 s) | "Načítava sa žiadosť overovateľa. Overuje sa totožnosť overovateľa a dostupnosť vašich eDokladov." once (an announcement; it waits for current speech) | not moved (wherever VoiceOver was) |
-| 2 | wait | `request` (sheet) | "Overenie eDokladu, heading" | the sheet title; swipe right goes to the verifier, privacy link, data, attributes, Continue, Reject. The app bar behind the sheet is never reached |
-| 3 | swipe to "Continue", double-tap | `auth` (12 s) | "Overenie, že ste to vy, heading" | the auth title |
-| 4 | wait | `verification-code` | "Skontrolujte stránku a prepíšte overovací kód, heading" | the title; swipe right reaches the code 4711 and Confirm |
-| 5 | swipe to "Confirm", double-tap | `sending` (45 s) | "Prebieha odoslanie dát eDokladov" exactly **once** | not moved |
-| 6 | wait | `success` | "eDoklady boli predložené, heading" | the success title; swipe right reads "Pokračujte na stránke overovateľa vo webovom prehliadači.", then Close |
-| 7 | swipe to "Close", double-tap | Home | (wallet Home; not part of D7) | — |
-
-After each change also check: swipe left from the new focus never reaches text of the previous screen (no focus on a node
-of the old state), and there is only one heading per screen in the rotor (Rotor > Headings, swipe up/down) apart from
-the two attribute group headings on `request`.
-
-### Fill in (one row per step; send the recording)
-
-| # | State | Said first (as heard) | Said once? (y/n) | Focus on (element) | Any old-screen element reachable? (y/n) | Notes (double speech, delay, silence) |
-|---|---|---|---|---|---|---|
-| 1 | connecting | | | | | |
-| 2 | request | | | | | |
-| 3 | auth | | | | | |
-| 4 | verification-code | | | | | |
-| 5 | sending | | | | | |
-| 6 | success | | | | | |
-
-Also note on `request`: is a mandatory attribute read as "dimmed"? (It should not be.) Is the privacy link read as
-"link" or "button"? (Known gap: Compose Multiplatform 1.12 has no link trait, so "button" is expected.)
-
-- **Pass (SPIKE-PLAN §3 D7):** after each state change focus is on the new heading (2, 3, 4, 6), `sending` is announced
-  once (5) and `success` is announced (6), and no focus remains on a node of the old state.
+- **Blocks:** row `D7-iOS`, so the KC3 verdict and the whole spike verdict. Automated evidence so far: `D7-iOS-preliminary`.
+- **Build (updated M12):** the device build at the spike HEAD of M12 (code tree `04e4ba57c`; M12 commits are docs and evidence
+  only), built from `/Users/roman/code/eudi-kmp-device` (detached at the M12 HEAD). Not the M7 build, not `93c2b9931`. Install
+  status: SPIKE-LOG M12 ("build ready, install pending" until the phone is connected).
+- **Checklist:** `spike-evidence/device/DEVICE-TEST-3-VOICEOVER.md` (steps, expected speech and focus per state, the result
+  table to fill in). Use script `slow` for steps 1–6, then one `happy` pass. Verification code is `482 913`. Send the screen
+  recording with sound.
+- **Pass (SPIKE-PLAN §3 D7):** after each state change focus is on the new heading (request, auth, verification-code, success),
+  `sending` is announced once, `success` is announced, and no focus remains on a node of the old state.
+- **If it fails:** KC3 is hit only if the runtime cannot make it right (a fix outside the runtime or the elements). A failure
+  means Fall back (M12a conditional verdict).
 - **Status:** open
 
 ## Q-D10: Request sub-flow inside the DC API extension, 5 runs on the iPhone (D10, track C)
 
 - **Blocks:** row `D10` (Track C verdict). Not run means Incomplete; run and failed means a declared exception (SPIKE-PLAN R7).
   The simulator harness (`--ux-spike dcapi-harness`, `spike-evidence/M10/`) is preliminary evidence only.
-- **Build:** the M10 commit (see `SPIKE-LOG.md` M10), Debug, from the device worktree (the orchestrator builds and installs it;
-  iPhone, iOS 27.0.1, team D2YJRYD9TA). The flag is **on** when the app-group default `ux-spike` holds a script name.
+- **Build (updated M12):** the device build at the spike HEAD of M12 (code tree `04e4ba57c`), Debug, from
+  `/Users/roman/code/eudi-kmp-device` (the orchestrator installs it; iPhone, iOS 27.0.1, team D2YJRYD9TA). The VoiceOver
+  checklist `spike-evidence/device/DEVICE-TEST-3-VOICEOVER.md` uses the same build, so both walks can run in one session. The flag is **on** when the app-group default `ux-spike` holds a script name.
 - **Steps (owner):**
   1. The orchestrator launches the app once with `--ux-spike happy` (for example
      `xcrun devicectl device process launch --device <id> --terminate-existing eu.compote.euidi.dev --ux-spike happy`).
@@ -167,17 +140,53 @@ Also note on `request`: is a mandatory attribute read as "dimmed"? (It should no
   (`adb logcat | grep UX-SPIKE`: `restore ... -> ...`, one `send#1`).
 - **Status:** open
 
-## Q-D7-Android: TalkBack walk on a real Android phone (optional)
+## Q-D7-Android: TalkBack walk on a real Android phone — REQUIRED (not optional)
 
-- **Blocks:** nothing (the emulator events-only row passed; the brief wants a real device for D7).
+- **Blocks:** row `D7-Android`, which is **unresolved (weaker than brief)**: the emulator trace has events but no speech and
+  no focused-node text, and the brief (§7 D7) asks for TalkBack on a real Android device. Without it the verdict stays
+  Incomplete (M12a). A failure here is not a kill criterion by itself (KC3 names VoiceOver); the owner decides.
 - **Steps:** Debug build and switch as above, script `slow`, TalkBack on. Open the link, then go `request` → `auth` →
   `verification-code` → `sending` → `success` by double tap. After each state change listen: focus on the new heading (or the
   announced status for connecting and sending), no sound from the previous screen, no stray focus on the page behind a sheet.
 - **Fill in:** per state: heard text, focus on heading yes/no, anything old reachable yes/no.
 - **Status:** open
 
-## Later (queued when their milestone arrives)
+## Q-TOUCH: owner approves the touch list T1–T5, T9 (brief §6.4)
 
-- D10 runs 1–5: now queued as Q-D10.
-- M11: queued as Q-D2-LMK and Q-D7-Android (below); the emulator rows are in `spike-results.md`.
-- KC5: the app team's estimate (Martin).
+- **Blocks:** constraint §6.4 ("we approve it at the plan review"); never given.
+- **Files (6 existing files, cap 8):** T1 `settings.gradle.kts` (+6), T2 `shared-ui/build.gradle.kts` (+18, plan +8–12),
+  T3 `SharedEntries.kt` (+18, plan +10–16), T4 `androidApp/build.gradle.kts` (+2, plan +1), T5 `ConsentHost.swift` (+13/−1, plan +10–14,
+  `#if DEBUG`), T9 `EudiComponentActivity.kt` (+32/−1, RULING-W6 and RULING-M11b-0; the guard code ships in Release, inert).
+  Details: `SPIKE-PLAN.md` §2, `spike-report.md` §6 audit.
+- **Answer:** approve / approve with changes / reject (name the file).
+- **Status:** open
+
+## Q-KC-CONFIRM: owner confirms the agent rulings on KC1, KC4, KC2
+
+- **Why:** SPIKE-PLAN §0.5 reserves kill-criterion rulings for the owner; three were made by agents.
+- **Confirm or overrule each:**
+  1. **KC1 — M8r verdict (B):** D8 attempt 1 failed on test pins and an element gap, KC1 not hit; attempt 2 from a new baseline.
+  2. **KC4 — RULING-M9r-1:** the D9 red gates were test pins, not a KC4 signal (D9 = (C), both options 0/0 lines).
+  3. **KC2 — RULING-W6:** F-D2-1 is app intent re-delivery, not a flow handler; widen the touch list by T9.
+- **Status:** open
+
+## Q-DEC: owner rules DEC-069…082 (DEC-076 waiver first)
+
+- **Why:** the week-0 records DEC-069 to DEC-082 (`dvm-week0`, `ux/records/decisions/`) are agent defaults with
+  `provisional: true`, "owner ruling pending". DEC-076 is a waiver (it accepts 24 agreement findings in FLW-pres-same-device and
+  FLW-dashboard), so it needs the owner before anything else.
+- **Order:** DEC-076 first; then DEC-069…075, DEC-077…082.
+- **Status:** open
+
+## Q-KC5: the app team's criterion-5 estimate (Martin)
+
+- **Blocks:** KC5; without it the best possible result is "Go with exceptions" (brief §8).
+- **Ask:** estimate the cost of moving navigation control out of the view models for `FLW-pres-cross-device` (the runtime
+  drives the flow, the app supplies the Services adapter, entry and exits), against the spike's cost (`spike-report.md`,
+  cost model). KC5 is hit if it is more than 2× the spike. Note: Martin proposed compile-time generation; the spike chose
+  runtime interpretation, so the estimate also says whether he accepts that.
+- **Status:** open
+
+## Later
+
+- D10 runs 1–5: queued as Q-D10. M11: queued as Q-D2-LMK and Q-D7-Android. KC5: Q-KC5.

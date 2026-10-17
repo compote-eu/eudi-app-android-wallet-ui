@@ -27,11 +27,11 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M9 | done (D9-brand: 0 lines, flow passed, gate red 12 on Home-probe test pins; D9-sheet-page: 0 TplSheet lines, KC4 signal on 1 sheet-pinned runtime test) | 2026-10-17 | 2026-10-17 | Sonnet | `0f5d5fbdb`, `bbc37a14a`, `997f47a26`, log commit | D9 baseline SHA: `646fea3b8` (tag `d9-baseline`). Spec `dvm-week0` `b55be65`. Option commits applied in place on this branch (no branch switch, per the run's rule) and the baseline `ux-spec/` restored after; numstat per option is `git diff --numstat 646fea3b8..<option commit>`. See M9 notes. |
 | M9r | done (rework, test harness: test-pin sweep, regen-smoke gate step, TplSheet sheet top inset) | 2026-10-17 | 2026-10-17 | Opus | `a652b1565`, `069e596ac`, `391edd84e`, log commit | Verifier ruled D9 = (C): both options pass at 0/0 lines, KC4 not hit, §6.5 breached by test pins. Spike rule T1 (SPIKE-PLAN §0.2b). Full gate GREEN 4360/0 incl. regen-smoke 9/9. See "M9r notes". |
 | M10 | done (harness preliminary; D10 device runs queued as Q-D10) | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | `UxDcApiSubflowViewController` (+ `uxDcApiSubflowEnabled`) in `iosUxSpikeMain`, T5 in `ConsentHost.swift` (import and branch inside `#if DEBUG`, +12 lines), in-app harness `--ux-spike dcapi-harness`, D10 instrumentation (`UX-SPIKE-D10` via NSLog), HTTPS test page `spike-evidence/M10/dcapi-test-page/`. Only T5 touched (T1-T5 used, cap 8). Gate GREEN 4273. ⟲ at end not done. |
-| M11 | not started | — | — | — | — | ⟲ at start; needs emulator/device |
-| M12 | not started | — | — | — | — | ⟲ final |
-| M11 | done (2026-10-17): Android drills D1, D2(a) and D2(b-approx) (launcher root only; link root failed, F-D2-1, fixed and re-run in M11c), D4, D6, D7 passed; real LMK and real-phone TalkBack queued | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | Dev Debug APK on emulator `spike_pixel` (API 37, arm64), sk, Light. P2 (the hook module loads in the first activity, `UX-SPIKE: hook module loaded`) and P6 (`UxFlowRoute` + snapshot restore after process death) verified on Android; Release APK isolation clean again. 0 of 3 hard states needed a Back or restore handler outside the bundle policy: no KC2 signal from Android. No KC3 signal (emulator, events only). Findings F-D2-1, F-M11-1..4 in "M11 notes". Gate GREEN 4360. |
+| M11 | done (2026-10-17): Android drills D1, D2(a) and D2(b-approx) (launcher root only; link root failed, F-D2-1, fixed and re-run in M11c), D4, D6, D7 passed; real LMK and real-phone TalkBack queued. **M12 correction:** D7-Android (emulator events) is unresolved (weaker than brief); D2(b) is an LMK approximation (root kill -9 / memory-factor), not a real LMK | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | Dev Debug APK on emulator `spike_pixel` (API 37, arm64), sk, Light. P2 (the hook module loads in the first activity, `UX-SPIKE: hook module loaded`) and P6 (`UxFlowRoute` + snapshot restore after process death) verified on Android; Release APK isolation clean again. 0 of 3 hard states needed a Back or restore handler outside the bundle policy: no KC2 signal from Android. No KC3 signal (emulator, events only). Findings F-D2-1, F-M11-1..4 in "M11 notes". Gate GREEN 4360. |
 | M11c | done (2026-10-17; rework of M11 D2 after F-D2-1, RULING-W6): D2-Android passed for BOTH task roots after the T9 guard | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | One extra pre-spike file (T9, `EudiComponentActivity.kt`, +28/-1) with a `launchIntentConsumed` flag in `onSaveInstanceState`, active only when a `DebugFlowHook` is bound. D2 re-run on the emulator, 12 runs (2 roots x request/auth/sending x am kill and LMK approximation): request → snapshot, auth → request, sending → error, no new send. D4 passed; switch-off by host test; Release isolation clean. KC2 not hit. See "M11c notes". Gate GREEN 4364. |
 | M11b | done (probe, OR-5; not counted toward the verdict) | 2026-10-17 | 2026-10-17 | Opus | see Commits | Step 0: the T9 guard asks `DebugFlowHook.isEnabled()` (RULING-M11b-0). `InteractorPresCrossDeviceServices` implements the generated services and declaration on the REAL interactors (no interactor changed): 21 results, 5 mapped, 10 lossy, 6 impossible (`undeclared` = authenticate Expired, fetchRequest DocInvalid/Expired, send Expired, verificationCode Ready/Expired, pinned). `--ux-spike real` wired on both hooks, not run against a verifier. Linked into the iOS Debug app and the Android debug APK; release isolation clean. Report: `spike-evidence/M11b/adapter-report.md`. Gate GREEN 4444. |
+| M12a | done (independent verification, read-only, Opus) | 2026-10-17 | 2026-10-17 | Opus | none (read-only; verdict file in the orchestrator's scratchpad) | Verdict **Incomplete: awaiting evidence** at `04e4ba57c`: KC1 passed (caveat), KC2 unresolved, KC3 unresolved, KC4 passed, KC5 missing; D10 not run; D7-Android weaker than the brief. Six integrity issues (agent KC rulings, overstated D7-Android/D2-LMK, broken D2 rows, check-weakening workarounds, provisional DECs, stale queue state). Summarised in `spike-report.md` §2, §10. |
+| M12b | done (close-out; device install pending) | 2026-10-17 | 2026-10-17 | Opus | see Commits | ⟲ `git ls-remote origin feature/kmp` = `b23f6a1f5`, unchanged, no rebase. Full gate at HEAD GREEN 4444/0 (regen-smoke 9/9). Release isolation at HEAD on both platforms clean (iOS graph/symbols/strings/resources; Android dev + demo classpaths and release APKs). D2-Android `am kill` re-run at HEAD for both task roots: 6/6 as §5. `spike-results.md` fixed (D2 column split, LMK-approximation labels, D7-Android unresolved, D8 attempt-2 caveats); HUMAN-QUEUE closed Q-002/Q-006, added Q-TOUCH, Q-KC-CONFIRM, Q-DEC, Q-KC5, Q-D7-Android REQUIRED. Deliverables: `spike-report.md`, `DEC-draft.md`, `spike-evidence/INDEX.md`, copied to the analysis repo (uncommitted). See "M12 notes". |
 
 ## Rulings
 
@@ -145,6 +145,7 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 | 2026-10-17 | 25e2e31dc (+ M11 evidence, docs only) | M11 | full `./spike-gate.sh` (no code change; the run includes regen-smoke) | 4360 | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 | 2026-10-17 | 8ff589aca | M11c | full `./spike-gate.sh` (includes regen-smoke; +4 tests: `LaunchIntentGuardTest` 2 x demo/dev) | 4364 | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 | 2026-10-17 | 44514b4b5 | M11b | full `./spike-gate.sh` (includes regen-smoke 9/9; +6 `LaunchIntentGuardTest` 3 x demo/dev, +74 `InteractorPresCrossDeviceServicesTest` 37 x host/iOS) | 4444 | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+| 2026-10-17 | 04e4ba57c | M12b | full `./spike-gate.sh` (12 min 47 s; regen-smoke 511 s, 9/9 at 358/0) | 4444 | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN (log `spike-evidence/M12/gate-full.log`) |
 
 M6a test delta, 4273 → 4279 (+6): `ExportedModelReplayTest` adds 3 tests on each target. Nothing else changed in count:
 the 2 `ProvisionalBundleResourceTest` tests became the 2 `BundleResourceTest` tests; 17 `Provisional*` runtime classes,
@@ -207,6 +208,7 @@ and M7 (M5c onward: recorded by the milestone itself).
 | M11 | Android drills (verification; no Kotlin change) | about 1 h 55 min (build and install, onboarding, D4, D6, D1 x6, D2 x6, D7, Release isolation check; gate 21 min on top) | 0 Kotlin; tools: `spike-evidence/M11/helpers.sh` (about 35 shell lines), `pin.yaml` +7, `a11y-trace-events.py` +17 | 0 | 0 pre-spike files | 1 full (4360), 1 `assembleDevDebug`, 1 `assembleDevRelease` | 3 loops, all drill timing or tooling, none in the app: (1) `auth` is 1.5 s long and an adb HOME key arrives about 2 s after the tap while `screenrecord` runs, so D2(b) auth hit `verification-code` three times and was repeated without video; (2) `cmd activity kill-all` does not reclaim the wallet, so D2(b) uses root `kill -9` under `memory-factor CRITICAL`; (3) the a11y trace with `IAccessibilityServiceConnection` kept only the last 5 s, `-t IAccessibilityServiceClient` alone keeps all events |
 | M11c | **rework** (F-D2-1 fix and D2 re-run, RULING-W6) | about 1 h 10 min (guard and test 10 min, build 5 min, 12 D2 runs plus D4 about 45 min, release isolation 5 min; gate on top) | 28 Kotlin lines in 1 pre-spike file (T9) + 28 test lines; tool: `d2c_run` in `helpers.sh` +11 | 0 new | 1 pre-spike file (T9) | 1 full gate, 1 `assembleDevDebug`, 1 `assembleDevRelease` (throwaway keystore) | 1 loop: the first batch of 11 runs was void (zsh does not word-split `$r`, so `d2c_run` got empty arguments), repeated with `${=r}`; tooling only | 
 | M11b | **services adapter** (probe, OR-5; one flow's real `Services` adapter on the app's interactors) | about 42 min (18:05 to 18:47: step 0 2 min; reading 15 min; code + tests 10 min; full gate 20 min; release isolation build 2 min 22 s) | adapter main 562 / test 468 lines (code lines 366 / 362), per service main: fetchRequest 166, send 152, authenticate 65, cancel+teardown 30, verificationCode 6, declaration + plumbing 143; wiring +87/−5 (UxFlowEntry 28/5, hooks 19 + 20, builds 13 + 7); step 0: T9 +7/−3, hook interface +3, hooks +4, test +27 | 0 | 1 pre-spike file (`shared-ui/build.gradle.kts`, T2, already on the touch list) + T9 for step 0; 4 spike files | 1 full gate (4444), 1 `assembleDevRelease` | 0 rework; 2 build-configuration compile breaks (AGP 9 `sourceSets` class-cast in `ux-spike-android`, fixed with `androidComponents`), 1 KC1 hit (a state-name literal in a comment), 0 Kotlin compile breaks |
+| M12b | close-out (verification re-runs + report; no code) | about 1 h 35 min (18:46 to about 20:20): gate 13 min, release isolation 3 runs ~10 min, emulator D2 ~55 min of which ~35 min void batches, documents ~30 min; device xcodebuild on top | 0 Kotlin; tools: `M12/release-isolation.sh` (~55 shell lines), `M12/d2-rerun.sh` (~12), `M12/pin-strict.yaml` (11) | 0 | 0 pre-spike files | 1 full gate (4444/0), 3 isolation runs, 1 `assembleDevRelease` + 1 `assembleDemoRelease`, 1 device xcodebuild | 2 loops, tooling only: (1) the isolation script's controls first read 0 (wrong `project ':ux-'` grep), fixed before the counts were used; the iOS graph then showed 5 lines, all test-only configurations; (2) four D2 batches void: the M11 PIN step ran before the PIN field was shown on this cold emulator, so no run reached `request`; fixed with a strict wait-for-field PIN flow |
 
 Reading the table for a new flow (input to the M12 cost model): with no generator, every phase is hand-written; the
 runtime phases (M2 to M4, M5b interpreter) hold about 4.3 k main lines and 2.9 k test lines across six modules, the elements
@@ -354,6 +356,7 @@ Findings for week 0 / the owner (not decided here):
 | 88a79d4ec | 2026-10-17 | M11b | step 0: `DebugFlowHook.isEnabled()`, T9 guard only with the switch ON, `LaunchIntentGuardTest` 5, RULING-M11b-0 | Claude Opus 5.5 | host test green |
 | 44514b4b5 | 2026-10-17 | M11b | `InteractorPresCrossDeviceServices` (`ux-spike/src/realAdapterMain`), tests (`realAdapterTest`), `--ux-spike real` wiring, build wiring | Claude Opus 5.5 | full gate GREEN 4444 |
 | (this commit) | 2026-10-17 | M11b | `spike-evidence/M11b/` (report, gate and isolation logs), SPIKE-LOG M11b | Claude Opus 5.5 | docs only |
+| (M12 commit) | 2026-10-17 | M12b | M12 close-out: gate and isolation logs, D2 re-run, results/queue fixes, spike-report, DEC draft, evidence index | Claude Opus 5.5 | full gate GREEN 4444 at the code tree `04e4ba57c` |
 
 ## M5e notes (Home parts, OR-8; a probe, not counted toward the verdict)
 
@@ -1060,4 +1063,38 @@ private).
 
 Not run against a verifier, because that is out of scope. The adapter is linked into the iOS Debug app and the
 Android debug APK. Release isolation is clean (`spike-evidence/M11b/logs/m11b-release-isolation.log`).
+
+## M12 notes (close-out)
+
+**⟲.** `git ls-remote origin feature/kmp` → `b23f6a1f5…`, the base; no movement, no rebase.
+
+**Gate at HEAD.** `spike-evidence/M12/gate-full.log`: every step PASS, 4444 executed / 0 failed, regen-smoke 9/9.
+
+**Release isolation at HEAD** (`spike-evidence/M12/release-isolation.{sh,log}`). iOS: Release `:shared-ui` graph 0 `:ux-`
+lines in shipping configurations (5 in test-only `androidHostTest*`/`allTestSourceSets*` configurations, the M11b adapter
+tests; Debug control 173); `EudiWallet`, `EudiWalletDocumentProvider`, `SharedKit` `nm -gU` 0 and `strings` 0 against the
+plan patterns plus every spike name; `.app`/`.appex` resources only `eu.europa.ec.shared.resources`. Android:
+`dev`/`demoReleaseRuntimeClasspath` 0 (debug controls 8); `assembleDevRelease` and `assembleDemoRelease` (throwaway
+keystore) both built: dex 0, files 0, no `ux-spike-init` provider (dev debug control 9 663 / 85 / present). T9 ships in
+release by design and is inert with no hook.
+
+**D2-Android re-run at HEAD** (T9 changed in 88a79d4ec after the M11c run). Emulator `spike_pixel`, Dev Debug APK at
+`04e4ba57c`, `slow`; `am kill` for the launcher root and the link root in request, auth, sending: 6/6 as brief §5
+(snapshot, request, error; no new authenticate or send; the guard skipped the cold-boot link each time; no new flow).
+The LMK approximation was not repeated (the task asked for `am kill`); the real LMK stays Q-D2-LMK. Emulator shut down.
+
+**Corrections.** `spike-results.md`: the four after-fix D2 rows had a `<a|b>` cell that split the table (now `<a/b>`);
+every LMK row is labelled "LMK approximation (root kill -9 / memory-factor), not a real LMK"; D7-Android is
+"unresolved (weaker than brief)"; the D8 attempt-2 rows say "not blind" and the logo row "logo image not rendered
+(example URL serves HTML), a11y-hidden inferred". The milestone table lost its duplicate "not started" M11/M12 rows; the
+M11 row carries a correction note. HUMAN-QUEUE: Q-002 and Q-006 closed as superseded; Q-D7-iOS and Q-D10 point to the
+HEAD device build and `spike-evidence/device/DEVICE-TEST-3-VOICEOVER.md`; Q-D7-Android is REQUIRED; new Q-TOUCH,
+Q-KC-CONFIRM, Q-DEC, Q-KC5.
+
+**Deliverables (brief §10).** `spike-report.md` (verdict Incomplete: awaiting evidence, missing rows and owners,
+conditional verdicts, drill and KC tables, §6 audit, central claim, M11b, Home probe, lessons, phase metrics and the cost
+model, integrity issues, deviations, open decisions), `DEC-draft.md`, `spike-evidence/INDEX.md`. Copied to
+`dvm-edoklady-eudiw-analysis/ux/evaluation/kmp-ui-from-spec/` uncommitted, with `SPIKE-PLAN.md` and `spike-results.md`.
+
+**Device build.** ⟨DEVICE⟩
 

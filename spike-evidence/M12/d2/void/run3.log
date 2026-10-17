@@ -1,0 +1,8 @@
+# M12 D2 re-run, HEAD 04e4ba57c, APK Oct 17 18:19
+## D2c root=launcher state=request kill=a 2026-10-17T19:43:01+02:00
+pin done
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+TIMEOUT waiting request (got )
+pid before kill: 18637
+pid after am kill: ''
+-- relaunch (recents)

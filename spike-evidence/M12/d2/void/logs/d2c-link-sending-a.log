@@ -1,0 +1,6 @@
+## D2c root=link state=sending kill=a 2026-10-17T19:22:28+02:00
+TIMEOUT waiting request (got )
+TIMEOUT waiting verification-code (got )
+pid before kill: 10688
+pid after: ''
+-- relaunch (recents)

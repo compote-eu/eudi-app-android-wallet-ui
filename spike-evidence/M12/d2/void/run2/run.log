@@ -1,0 +1,29 @@
+# M12 D2 re-run, HEAD 04e4ba57c, APK Oct 17 18:19
+## D2c root=launcher state=request kill=a 2026-10-17T19:31:23+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+TIMEOUT waiting request (got )
+pid before kill: 14128
+pid after am kill: ''
+-- relaunch (recents)
+shot d2c-launcher-request-a
+pid: 15244 gate=1 state=
+10-17 19:34:19.587 UX-SPIKE: hook module loaded
+10-17 19:34:19.942 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+## D2c root=launcher state=auth kill=a 2026-10-17T19:34:29+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+TIMEOUT waiting request (got )
+pid before kill: 15342
+pid after: ''
+-- relaunch (recents)
+shot d2c-launcher-auth-a
+pid: 16459 gate=1 state=
+10-17 19:37:24.860 UX-SPIKE: hook module loaded
+10-17 19:37:25.223 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+## D2c root=launcher state=sending kill=a 2026-10-17T19:37:34+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+TIMEOUT waiting request (got )
+TIMEOUT waiting verification-code (got )
+pid before kill: 16560
+pid after: ''
+-- relaunch (recents)
+shot d2c-launcher-sending-a

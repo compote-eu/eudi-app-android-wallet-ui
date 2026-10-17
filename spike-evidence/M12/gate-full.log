@@ -1,0 +1,60 @@
+PASS kc1-guard (0s)
+PASS style-guard (0s)
+PASS uxspec-lock (1s)
+PASS gradle-tests (135s)
+PASS gradle-ios-demo (47s)
+PASS lint (1s)
+PASS ios-project (1s)
+PASS xcode-debug (37s)
+PASS xcode-release (32s)
+PASS regen-smoke (511s)
+PASS baseline 358/0 (44s)
+PASS d8b-1 358/0 (61s)
+PASS d8b-2 358/0 (61s)
+PASS d8b-3 358/0 (53s)
+PASS d8b-4 358/0 (63s)
+PASS d8b-5-unseen 358/0 (60s)
+PASS m9-1-brand 358/0 (53s)
+PASS m9-2-sheet-page 358/0 (45s)
+PASS m9-2b-page-idsk 358/0 (48s)
+regen-smoke (all): 511s, scratch /var/folders/1t/xlrc9d_97ts6w7syc220npdw0000gn/T/regen-smoke.NqJfFWNNIc
+--- test counts (tests/failures/errors/skipped per task dir) ---
+authentication-logic:testDemoDebugUnitTest: 45/0/0/0
+authentication-logic:testDevDebugUnitTest: 45/0/0/0
+business-logic:testDemoDebugUnitTest: 80/0/0/0
+business-logic:testDevDebugUnitTest: 80/0/0/0
+common-feature:testDemoDebugUnitTest: 139/0/0/0
+common-feature:testDevDebugUnitTest: 139/0/0/0
+core-logic:testDemoDebugUnitTest: 176/0/0/0
+core-logic:testDevDebugUnitTest: 176/0/0/0
+dashboard-feature:testDemoDebugUnitTest: 255/0/0/0
+dashboard-feature:testDevDebugUnitTest: 255/0/0/0
+issuance-feature:testDemoDebugUnitTest: 56/0/0/0
+issuance-feature:testDevDebugUnitTest: 56/0/0/0
+network-logic:testDemoDebugUnitTest: 1/0/0/0
+network-logic:testDevDebugUnitTest: 1/0/0/0
+presentation-feature:testDemoDebugUnitTest: 54/0/0/0
+presentation-feature:testDevDebugUnitTest: 54/0/0/0
+proximity-feature:testDemoDebugUnitTest: 62/0/0/0
+proximity-feature:testDevDebugUnitTest: 62/0/0/0
+shared-logic:iosSimulatorArm64Test: 832/0/0/0
+shared-logic:testAndroidHostTest: 166/0/0/0
+shared-ui:iosSimulatorArm64Test: 685/0/0/0
+shared-ui:testAndroidHostTest: 599/0/0/0
+startup-feature:testDemoDebugUnitTest: 9/0/0/0
+startup-feature:testDevDebugUnitTest: 9/0/0/0
+ui-logic:testDemoDebugUnitTest: 25/0/0/0
+ui-logic:testDevDebugUnitTest: 25/0/0/0
+ux-contract:iosSimulatorArm64Test: 2/0/0/0
+ux-contract:testAndroidHostTest: 2/0/0/0
+ux-elements:iosSimulatorArm64Test: 55/0/0/0
+ux-elements:testAndroidHostTest: 54/0/0/0
+ux-runtime:iosSimulatorArm64Test: 99/0/0/0
+ux-runtime:testAndroidHostTest: 97/0/0/0
+ux-spike:iosSimulatorArm64Test: 12/0/0/0
+ux-spike:testAndroidHostTest: 19/0/0/0
+ux-theme:iosSimulatorArm64Test: 9/0/0/0
+ux-theme:testAndroidHostTest: 9/0/0/0
+TOTAL: 4444/0/0/0
+GATE GREEN
+./spike-gate.sh  34.43s user 28.12s system 8% cpu 12:47.29 total

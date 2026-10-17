@@ -1,0 +1,8 @@
+## D2c root=launcher state=sending kill=a 2026-10-17T19:37:34+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+TIMEOUT waiting request (got )
+TIMEOUT waiting verification-code (got )
+pid before kill: 16560
+pid after: ''
+-- relaunch (recents)
+shot d2c-launcher-sending-a

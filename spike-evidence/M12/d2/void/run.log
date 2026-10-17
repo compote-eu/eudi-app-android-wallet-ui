@@ -1,0 +1,56 @@
+# M12 D2 re-run, HEAD 04e4ba57c, APK Oct 17 18:19
+## D2c root=launcher state=request kill=a 2026-10-17T19:06:15+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+TIMEOUT waiting request (got )
+pid before kill: 3852
+pid after am kill: ''
+-- relaunch (recents)
+shot d2c-launcher-request-a
+pid: 5050 gate=1 state=
+10-17 19:09:07.469 UX-SPIKE: hook module loaded
+10-17 19:09:07.825 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+## D2c root=launcher state=auth kill=a 2026-10-17T19:09:17+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+TIMEOUT waiting request (got )
+pid before kill: 5150
+pid after: ''
+-- relaunch (recents)
+shot d2c-launcher-auth-a
+pid: 6378 gate=1 state=
+10-17 19:12:08.206 UX-SPIKE: hook module loaded
+10-17 19:12:08.558 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+## D2c root=launcher state=sending kill=a 2026-10-17T19:12:17+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+TIMEOUT waiting request (got )
+TIMEOUT waiting verification-code (got )
+pid before kill: 6479
+pid after: ''
+-- relaunch (recents)
+shot d2c-launcher-sending-a
+pid: 8129 gate=1 state=
+10-17 19:16:23.980 UX-SPIKE: hook module loaded
+10-17 19:16:24.337 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+## D2c root=link state=request kill=a 2026-10-17T19:16:33+02:00
+TIMEOUT waiting request (got )
+pid before kill: 8231
+pid after am kill: ''
+-- relaunch (recents)
+shot d2c-link-request-a
+pid: 9339 gate=1 state=
+10-17 19:19:21.378 UX-SPIKE: hook module loaded
+10-17 19:19:21.739 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+## D2c root=link state=auth kill=a 2026-10-17T19:19:31+02:00
+TIMEOUT waiting request (got )
+pid before kill: 9437
+pid after: ''
+-- relaunch (recents)
+shot d2c-link-auth-a
+pid: 10587 gate=1 state=
+10-17 19:22:19.224 UX-SPIKE: hook module loaded
+10-17 19:22:19.576 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+## D2c root=link state=sending kill=a 2026-10-17T19:22:28+02:00
+TIMEOUT waiting request (got )
+TIMEOUT waiting verification-code (got )
+pid before kill: 10688
+pid after: ''
+-- relaunch (recents)
