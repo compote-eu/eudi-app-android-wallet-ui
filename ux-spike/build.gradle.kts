@@ -63,8 +63,17 @@ kotlin {
     }
 }
 
-// The PROVISIONAL fake-engine scripts (files/scripts/*.json) until ux-spec/fixtures/scripts supplies them (M6).
+// boundary §3 / Q14: the fake engine plays the exported scripts (ux-spec/fixtures/scripts, read as data) as
+// files/scripts/<name>.json, beside this module's own resources (the M5d Home-probe fragments). ux-spec/ stays
+// exporter-only: the scripts are copied into build/, never edited.
+val uxSpikeResources = tasks.register<Sync>("uxSpikeComposeResources") {
+    from("src/commonMain/composeResources")
+    from(rootProject.layout.projectDirectory.dir("ux-spec/fixtures/scripts")) { into("files/scripts") }
+    into(layout.buildDirectory.dir("generated/ux-spike-compose-resources"))
+}
+
 compose.resources {
     packageOfResClass = "eu.europa.ec.uxspike.resources"
+    customDirectory("commonMain", layout.dir(uxSpikeResources.map { it.destinationDir }))
 }
 

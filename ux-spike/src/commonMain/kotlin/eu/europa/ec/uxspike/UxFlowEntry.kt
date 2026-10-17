@@ -62,7 +62,7 @@ sealed interface UxSpikeFlow {
     data class Failed(val reason: String) : UxSpikeFlow
 
     companion object {
-        /** Script resources, `files/scripts/<name>.json` in this module (ux-spec/fixtures/scripts after M6). */
+        /** Script resources, `files/scripts/<name>.json`: the exported `ux-spec/fixtures/scripts` (build.gradle.kts). */
         fun scriptPath(name: String): String = "files/scripts/$name.json"
 
         /**
@@ -89,6 +89,9 @@ sealed interface UxSpikeFlow {
                 .getOrElse { return Failed("no script '$script' (${it.message})") }
             val parsed = FakeScript.parse(text)
             if (parsed.flowId != bundle.flowId) return Failed("script '$script' is for ${parsed.flowId}")
+            if (parsed.specHash != null && parsed.specHash != bundle.specHash) {
+                return Failed("script '$script' is for spec ${parsed.specHash}, the bundle is ${bundle.specHash}")
+            }
             log.log("flow ${bundle.flowId} loaded (provisional=${bundle.provisional}), script ${parsed.script}")
             return Ready(bundle, FakePresCrossDeviceServices(FakeScriptPlayer(parsed) { log.log(it) }), exportedCopy())
         }

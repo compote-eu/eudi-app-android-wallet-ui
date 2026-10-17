@@ -25,7 +25,8 @@ import kotlinx.serialization.json.JsonObject
 
 /**
  * A fake-engine script (boundary §3, `ux-spec/fixtures/scripts/<name>.json`, Q14): per service, the steps its calls
- * play in order; the last step repeats. Data only, so a new step or script needs no Kotlin (D8).
+ * play in order; the last step repeats. Data only, so a new step or script needs no Kotlin (D8). A service a script
+ * leaves out is not scripted (V23): calling it throws, which the engine treats as that service's error (RULING-2).
  */
 @Serializable
 data class FakeScript(
@@ -34,6 +35,9 @@ data class FakeScript(
     val flowId: String,
     val calls: Map<String, List<FakeStep>>,
     val description: String? = null,
+    /** The export stamps each script with its spec hash (V23); the host refuses a script from another export. */
+    @SerialName("spec_hash")
+    val specHash: String? = null,
 ) {
     companion object {
         private val json = Json { ignoreUnknownKeys = true }

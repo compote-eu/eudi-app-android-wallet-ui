@@ -14,8 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M4): the hand-written scripts and the boundary bundle; re-run on ux-spec/ in M6. Host only: it reads
-// the resource files from disk.
+// M4 test (was ProvisionalFakeScriptsTest), re-run at M6a on the exported scripts and bundle (ux-spec/). Host only: it
+// reads the files from disk.
 package eu.europa.ec.uxspike
 
 import eu.europa.ec.ux.contract.pres.AuthenticateResult
@@ -24,6 +24,7 @@ import eu.europa.ec.ux.runtime.bundle.FlowBundle
 import eu.europa.ec.ux.runtime.bundle.LoadResult
 import eu.europa.ec.ux.runtime.engine.FlowEngine
 import eu.europa.ec.ux.runtime.engine.FlowStatus
+import eu.europa.ec.ux.theme.generated.UxThemeSpec
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -39,15 +40,15 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-/** Plays every shipped script through the real engine on the PROVISIONAL bundle, behind the ServicePort seam. */
-class ProvisionalFakeScriptsTest {
+/** Plays every exported script through the real engine on the exported bundle, behind the ServicePort seam. */
+class FakeScriptsTest {
 
     private val module = listOf(File("."), File("ux-spike")).first { File(it, "src/commonMain/composeResources").isDirectory }
-    private val scriptsDir = File(module, "src/commonMain/composeResources/files/scripts")
+    private val scriptsDir = File(module, "../ux-spec/fixtures/scripts")
 
     private val bundle: FlowBundle by lazy {
         val bytes = File(module, "../ux-spec/resources/${PresCrossDeviceSpec.BUNDLE_PATH}").readBytes()
-        val r = FlowBundle.load(bytes, PresCrossDeviceSpec.FLOW_ID, PresCrossDeviceSpec.SPEC_HASH, PresCrossDeviceSpec.SPEC_HASH, allowProvisional = true)
+        val r = FlowBundle.load(bytes, PresCrossDeviceSpec.FLOW_ID, PresCrossDeviceSpec.SPEC_HASH, UxThemeSpec.SPEC_HASH)
         (r as? LoadResult.Loaded)?.bundle ?: fail("bundle refused: $r")
     }
 
@@ -101,9 +102,15 @@ class ProvisionalFakeScriptsTest {
             val s = script(name)
             assertEquals(name, s.script)
             assertEquals(PresCrossDeviceSpec.FLOW_ID, s.flowId)
+            assertEquals(bundle.specHash, s.specHash, "$name is from another export")
             assertTrue(s.calls.keys.all { it in bundle.services }, "$name names a service the bundle lacks: ${s.calls.keys}")
-            assertIs<AuthenticateResult.Authenticated>(FakeScriptPlayer(s).play("authenticate", AuthenticateResult.serializer()))
+            // V23: a script leaves out a service it never reaches (doc-missing has fetchRequest only); where it scripts
+            // authentication, authentication succeeds.
+            if ("authenticate" in s.calls) {
+                assertIs<AuthenticateResult.Authenticated>(FakeScriptPlayer(s).play("authenticate", AuthenticateResult.serializer()))
+            }
         }
+        assertEquals(setOf("fetchRequest"), script("doc-missing").calls.keys)
     }
 
     @Test
