@@ -89,6 +89,8 @@ internal class AndroidUxSpikeHook(private val context: Context) : DebugFlowHook 
         }
     }
 
+    override fun isEnabled(): Boolean = script() != null
+
     private fun script(): String? =
         File(context.filesDir, SWITCH_FILE).takeIf { it.isFile }?.readText()?.trim()?.takeIf { it.isNotEmpty() }
 

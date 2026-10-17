@@ -67,11 +67,12 @@ open class EudiComponentActivity : FragmentActivity() {
 
     // UX spike (T9): after process death the system re-creates the activity with the ORIGINAL launch
     // intent, because `setIntent(Intent())` below does not survive the kill. Remember across the kill
-    // that the cold-boot link was already handled. Active only when a DebugFlowHook is bound (debug).
+    // that the cold-boot link was already handled. Active only when a DebugFlowHook is bound (debug) AND
+    // its switch is on (M11b step 0: a debug build with the switch off behaves as upstream, brief §6.3).
     private var launchIntentConsumed = false
 
     private fun launchGuardActive(): Boolean =
-        KoinPlatform.getKoinOrNull()?.getOrNull<DebugFlowHook>() != null
+        launchGuardActive(KoinPlatform.getKoinOrNull()?.getOrNull<DebugFlowHook>())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -207,7 +208,10 @@ open class EudiComponentActivity : FragmentActivity() {
 
 private const val KEY_LAUNCH_INTENT_CONSUMED = "launchIntentConsumed"
 
-/** The cold-boot link is skipped only when the debug hook is present and a restore says it was consumed. */
+/** The guard is active only when a debug hook is bound and its switch is on; null (release) or off: inactive. */
+internal fun launchGuardActive(hook: DebugFlowHook?): Boolean = hook?.isEnabled() == true
+
+/** The cold-boot link is skipped only when the guard is active and a restore says it was consumed. */
 internal fun shouldHandleLaunchIntent(guardActive: Boolean, consumed: Boolean): Boolean =
     !(guardActive && consumed)
 

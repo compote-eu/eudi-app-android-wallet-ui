@@ -39,6 +39,8 @@ class DebugFlowHookTest {
                 override fun EntryProviderScope<NavKey>.entries(navigator: AppNavigator) = Unit
 
                 override fun redirect(route: NavKey): NavKey? = null
+
+                override fun isEnabled(): Boolean = true
             },
         )
         assertNotNull(debugFlowHookOrNull(koin))

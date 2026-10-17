@@ -26,12 +26,15 @@ import org.koin.mp.KoinPlatform
  *
  * It is deliberately neutral: it names no flow, and nothing in a release build binds it, so every call below is a
  * no-op there. [entries] adds destinations to the nav host; [redirect] may answer a different destination for
- * [route], or null to leave the route alone.
+ * [route], or null to leave the route alone. [isEnabled] says whether the debug flow is switched on right now; a bound
+ * hook with the switch off must leave the app as it was (brief §6.3).
  */
 interface DebugFlowHook {
     fun EntryProviderScope<NavKey>.entries(navigator: AppNavigator)
 
     fun redirect(route: NavKey): NavKey?
+
+    fun isEnabled(): Boolean
 }
 
 /** The bound hook, or null when no module provides one (every release build). */

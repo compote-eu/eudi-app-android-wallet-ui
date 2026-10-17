@@ -98,6 +98,8 @@ class IosUxSpikeHook : DebugFlowHook {
         }
     }
 
+    override fun isEnabled(): Boolean = IosUxSpikeSwitch.script() != null
+
     private companion object {
         const val DEFAULT_SCRIPT = "happy"
     }

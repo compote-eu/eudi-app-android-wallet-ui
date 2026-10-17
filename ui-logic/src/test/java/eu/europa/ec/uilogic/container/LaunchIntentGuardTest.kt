@@ -16,6 +16,10 @@
 
 package eu.europa.ec.uilogic.container
 
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
+import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.DebugFlowHook
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -32,5 +36,30 @@ class LaunchIntentGuardTest {
     fun `hook present handles the first launch and skips a restore after consumption`() {
         assertTrue(shouldHandleLaunchIntent(guardActive = true, consumed = false))
         assertFalse(shouldHandleLaunchIntent(guardActive = true, consumed = true))
+    }
+
+    @Test
+    fun `guard is inactive with no hook (release)`() {
+        assertFalse(launchGuardActive(null))
+    }
+
+    @Test
+    fun `guard is inactive with a bound hook whose switch is off (debug, switch off = upstream)`() {
+        val hook = FakeHook(enabled = false)
+        assertFalse(launchGuardActive(hook))
+        assertTrue(shouldHandleLaunchIntent(launchGuardActive(hook), consumed = true))
+    }
+
+    @Test
+    fun `guard is active with a bound hook whose switch is on`() {
+        val hook = FakeHook(enabled = true)
+        assertTrue(launchGuardActive(hook))
+        assertFalse(shouldHandleLaunchIntent(launchGuardActive(hook), consumed = true))
+    }
+
+    private class FakeHook(private val enabled: Boolean) : DebugFlowHook {
+        override fun EntryProviderScope<NavKey>.entries(navigator: AppNavigator) = Unit
+        override fun redirect(route: NavKey): NavKey? = null
+        override fun isEnabled(): Boolean = enabled
     }
 }
