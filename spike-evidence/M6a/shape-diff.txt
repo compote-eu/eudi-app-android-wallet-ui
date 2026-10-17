@@ -1,0 +1,41 @@
+shape diff (ids folded, week-0 tests/kmp_paths.py): provisional 197 paths, export 231 paths, same 195
+absent  provisional                                             V15
+absent  services/*/results/*/*/*                                V14
+added   context/*/values                                        V16
+added   copy/claims                                             V17
+added   copy/claims/*                                           V17
+added   events/*/description                                    V18
+added   invariants                                              V6
+added   invariants/[]/accepts                                   V30
+added   invariants/[]/description                               V6
+added   invariants/[]/id                                        V6
+added   invariants/[]/in                                        V6
+added   invariants/[]/rule                                      V6
+added   invariants/[]/when                                      V6
+added   layouts/*/*/options/*/a11y                              V8
+added   layouts/*/*/options/*/arranges                          V8
+added   layouts/*/*/options/*/back                              V8
+added   layouts/*/*/options/*/presents                          V8
+added   services/*/args/*/of                                    V12
+added   services/*/args/*/type                                  V12
+added   services/*/ensures                                      V5
+added   services/*/ensures/*                                    V5
+added   services/*/ensures/*/rule                               V5
+added   services/*/ensures/*/when                               V5
+added   services/*/results/*/*/fields                           V14
+added   services/*/results/*/*/fields/*                         V14
+added   services/*/results/*/*/fields/*/item                    V14
+added   services/*/results/*/*/fields/*/item/*                  V14
+added   services/*/results/*/*/fields/*/item/*/default          V14
+added   services/*/results/*/*/fields/*/item/*/required         V14
+added   services/*/results/*/*/fields/*/item/*/type             V14
+added   services/*/results/*/*/fields/*/item/*/values           V14
+added   services/*/results/*/*/fields/*/nullable                V14
+added   services/*/results/*/*/fields/*/type                    V14
+added   services/*/results/*/*/fields/*/values                  V14
+added   services/*/results/*/*/type                             V14
+added   states/*/invoke/on/*/assign/[]/value                    V31
+added   states/*/ui_state_when/[]/rule                          V4
+added   theme/modes                                             V19
+unlisted: []
+listed but not occurring: []

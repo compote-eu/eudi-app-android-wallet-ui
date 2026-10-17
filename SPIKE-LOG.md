@@ -17,7 +17,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M5b | done | 2026-10-16 | 2026-10-16 | Opus | see Commits | Screen interpreter in `:ux-runtime` (`screen`, `a11y`), generic EL-*/TPL-* registry in `:ux-elements`, FlowHost draws every described screen; PROVISIONAL `PresRequestScreen` + registration in `:ux-spike` (the one KC1 exception); deferred exits; invoker `encodeDefaults`; KC1 guard step in `spike-gate.sh`. Tests (i) (ii) (iii) green. Drills D6-iOS-provisional (happy, expired), D8-added-state-preliminary, D1-iOS-preliminary rerun with the edge-swipe tool: all as brief §5. No pre-spike file touched. |
 | M5c | done | 2026-10-16 | 2026-10-16 | Sonnet | see Commits | Styling hardening (OR-2): `style-guard` step in `spike-gate.sh` (13 source lines of hard-coded dp/alpha/FontWeight fixed, a planted literal turns it red); `wireEnum` and unknown variants, props, events, slots and regions fail loudly (tagged `ux-error.<id>` node); registry schemas tested against the library YAML snapshot (spec commit `ec5e58e3`); `UxTokens` shell grown (elevation drawn, fonts, `comp.*`, four modes); `spike-evidence/M5c/exporter-requirements.md`. No pre-spike file touched. Gate GREEN 4273. |
 | M5d | done (probe, OR-1, not counted toward the verdict) | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | SCR-home drawn from generated fragment bundles by the generic interpreter (`--ux-spike gallery-home[-<ui state>|-full|-high-contrast]`, spike files only). Coverage of 10 parts: 3 present, 2 partial, 5 missing; about 1.7 k LOC to close for Home alone. `spike-evidence/M5d/`. No pre-spike file touched. Gate: see Gate results. |
-| M6 | not started | — | — | — | — | blocked on `ux-spec/`; ⟲ after sync |
+| M6 | M6a done (2026-10-17) | 2026-10-17 | — | Opus | see Commits | **M6a**: first real export synced (sync commit `7a24efacf`, ux@3d6ecb6, spec `sha256:88e2b611…02d0`, exporter 0.3.0, 19 files, lock check green); provisional contract, theme, copy, bundle and scripts deleted; one-time consumer list of DEC-075 applied; every provisional assertion re-run on the export (8 divergences, all resolved on the spike side, no exporter change); KC1 guard on the real bundle; ⟲ no movement (`b23f6a1f5`); full gate GREEN 4279; release isolation clean. See "M6a notes". |
 | M7 | in progress (walk queued) | 2026-10-16 | — | Opus | see Commits | `AccessibilityBridge` expect/actual in `:ux-runtime` (iOS ScreenChanged on the h1 element + queued announcements; Android view announcements), settle-time focus/announce from the bundle a11y, leaving state cleared during the crossfade, TplSheet dialog semantics, list/group semantics, mandatory items not "dimmed", link label once; FlowHost-level D7 tests; scripted Inspector audit; Q-D7-iOS queued (device rebuild needed). No KC3 kill-signal. ⟲ at end not done (no rebase in this run). |
 | M8 | not started | — | — | — | — | D8 baseline SHA: _to be named when cut_ |
 | M9 | not started | — | — | — | — | D9 baseline SHA: _to be named when cut_ |
@@ -30,6 +30,14 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | Id | Date | Question | Minimal-footprint view | Faithful-to-brief view | Judgement | Touch list widened? |
 |---|---|---|---|---|---|---|
 | RULING-1 | 2026-10-16 | M1a review panel (brief-compliance + technical reviews, merged) on `SPIKE-PLAN.md` | technical review: hook renamed to `DebugFlowHook` (release grep with no exemption); `#if DEBUG` around the ConsentHost import; one `backHandler(` call; KMP skeleton details; ui-test without a catalog touch; QrScan redirect null for Issuance/Signature; F2 run-once guard; no `simctl defaults write`; Koin hook-absent/present test; iOS Gradle-graph + Android dev/demo classpath checks | brief-compliance review: verdict needs D4, D5, D6 on both platforms and D7-Android; KC3 per the brief (VoiceOver); every code milestone closes with a §7 drill (preliminary allowed, not counted); KC1 fails on any non-`ux-spec` D8 diff unless the owner ruled in advance, data-driven scripts; wider KC1 and D1 greps; pre-D8 baseline grep, brand-selection path; graph-only Android check = unresolved, APK required; extra ⟲ after M7 and before M11, named D8 baseline; rows split; D3 device queued; D10 not run = Incomplete; D9 common lines count per platform; `--diff-filter=MDRT`; ≤ 1 file per ruling | all 21 points accepted and folded in; M1b defaults adopted (boundary §7 Q1–Q17); refinements F1–F5 accepted | no (5 planned + 3 reserved, cap 8) |
+| RULING-M6a-1 | 2026-10-17 | The sync commit (ux-spec/ only) would flip `:ux-contract` off the provisional copy (keyed on the lock) before the consumer is adopted: a red commit. | key the provisional srcDir on its own directory in a prep commit | the sync commit stays verbatim | Prep commit `2da2ca566` keys it on `provisional/kotlin`; the sync commit adds ux-spec/ only and is green; the adoption commit deletes the directory. | no |
+| RULING-M6a-2 | 2026-10-17 | V29: the P3 probe file `files/ux-probe.txt` no longer ships with `customDirectory`. | drop it | keep it elsewhere | Dropped with `UxContractModule.PROBE_PATH` (nothing read it in code); the exported bundle read at run time proves the resource crossing. | no |
+| RULING-M6a-3 | 2026-10-17 | The fake engine reads scripts from `:ux-spike` resources; the export puts them in `ux-spec/fixtures/scripts` (outside `ux-spec/resources`). | Sync task copies them into build/ beside the module's own resources | — | `uxSpikeComposeResources` (Sync: `src/commonMain/composeResources` + the exported scripts) is the `customDirectory`; ux-spec/ is never edited. The host also refuses a script whose `spec_hash` differs from the bundle's (V23). | no |
+| RULING-M6a-4 | 2026-10-17 | The M5d Home probe's copy came from the deleted `ProvisionalBundleCopy`. | keep the probe readable | — | `UxHomeProbe` reads the exported strings first, then the fragment's own `_sk` texts (probe data, not an export); its marker is "Probe data (M5d)". | no |
+| RULING-M6a-5 | 2026-10-17 | `git grep PROVISIONAL` clean (boundary §6.6) vs the permanent H7 guard and the M5d probe data. | exclude both | — | Clean with `':!spike-evidence' ':!*.md' ':!ux-spike/src/commonMain/composeResources/files/home-probe'` and the identifier `FlowBundle.PROVISIONAL_PREFIX` (H7 stays a runtime guard; `ProvisionalNotAllowed` likewise). | no |
+| RULING-M6a-6 | 2026-10-17 | The registry-vs-YAML snapshot shows the library's new `EL-rp-identity.logo` (week-0 X15 / RULING-W1). | list it as a GAP | add the prop now | GAP until M8 D8-logo: adding and drawing it is what that drill measures; no node of the export binds it. | no |
+| RULING-M6a-7 | 2026-10-17 | The snapshot tool records the spec repo HEAD (874b4f9), the export's spec commit is 3d6ecb6. | record 3d6ecb6 | — | `git diff 3d6ecb6 874b4f9 -- ux/library` is empty; the snapshot records `source_commit` 3d6ecb6. | no |
+| RULING-M6a-8 | 2026-10-17 | The exporter's model fixture (V6/R5) has no consumer yet. | add one replay test | — | `ExportedModelReplayTest`: the 84 sequences replay to the same states in this engine and the plain invariants hold (+3 tests per target). | no |
 | RULING-2 | 2026-10-16 | M3 finding 3: what does a service that throws mean? | — (orchestrator ruling, no panel) | — | A service that throws, or a coroutine failure other than cancellation, is converted into the `ServiceResult` type `Error` with payload `{class: unexpected}` and follows the bundle's declared error branch. If a state declares no error branch, the bundle is refused at load. Implemented in M4: `FlowEngine.callPort` (a `CancellationException` while the state job is still active counts as a failure); `BundleValidator.requireErrorBranch` requires, for every **state-scoped** invoke, an `Error` result on the service and an `invoke.on.Error` mapped to an event of the state's `on` (detached invokes are exempt: their results are ignored). `Error` becomes the single engine-convention name, exempted in `ProvisionalRuntimeLiteralGuardTest`. Tests: `ProvisionalRuling2Test` (9). Queued for week 0 / owner as Q-004 with this default. | no |
 
 ## Owner rulings (2026-10-16, given in chat)
@@ -73,6 +81,20 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 | 2026-10-17 | ab7011ada | M10 | `./spike-gate.sh --fast` | 4273 (as M5c; no new tests) | 0 | 0 | pass | pass | Debug build | GATE GREEN |
 | 2026-10-17 | ab7011ada + this commit (docs) | M10 | full `./spike-gate.sh` | 4273 (as the fast run) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 
+| 2026-10-17 | 909ccf460 | M6a | full `./spike-gate.sh` (+ kc1-guard on the real bundle, style-guard, new uxspec-lock) | 4279 (ux-runtime 89/91, ux-contract 4/2, ux-elements 31/32, ux-spike 12/4, ux-theme 6/6; rest as M10) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+
+M6a test delta, 4273 → 4279 (+6): `ExportedModelReplayTest` adds 3 tests on each target. Nothing else changed in count:
+the 2 `ProvisionalBundleResourceTest` tests became the 2 `BundleResourceTest` tests; 17 `Provisional*` runtime classes,
+`ProvisionalInvokerDefaultsTest` and `ProvisionalFakeScriptsTest` were renamed with the same test methods; one theme test was
+rewritten in place (V19). No test was deleted.
+
+M6a release-isolation check (⟲): iOS `CONFIGURATION=Release :shared-ui:dependencies` 0 `project ':ux-` lines (control without
+it: 168); Release `EudiWallet` and `.appex` binaries `nm -gU` 0 and `strings` 0 (spike patterns plus `UxBrandConfig`,
+`UxThemeSpec`, `PresCrossDevice`, `UX-SPIKE`); `.app`/`.appex` compose resources only `eu.europa.ec.shared.resources`.
+Android `devReleaseRuntimeClasspath` / `demoReleaseRuntimeClasspath` 0 (control `devDebugRuntimeClasspath` 8);
+`assembleDevRelease` with a throwaway keystore: `apkanalyzer` dex 0, files 0, no `ux-spike-init` provider (control dev
+debug APK: 7574 dex hits, 24 files, provider present). Behaviour-off screenshot not retaken: no pre-spike file changed.
+
 M10 Release spot check: `strings` on the Release app and extension binaries finds 0 patterns (`UxDcApi`, `UX-SPIKE`, `uxDcApiSubflow`, `IosUxSpike`).
 
 M5c Release spot check: `strings` on the Release app binary finds 0 spike patterns (`ProvisionalEudiwV1`, `SchemaCheck`, `UxElementRegistry`, `ux-error`, `UxTokens`, `IosAccessibilityBridge`, `PresRequestScreen`, `UX-SPIKE`).
@@ -110,6 +132,7 @@ and M7 (M5c onward: recorded by the milestone itself).
 | M5c | elements+templates (token shell, hardening) + runtime (schema check) | about 1 h 10 min, first (`87d397d22`, rulings and plan) to last (this commit) commit timestamp, approximate; the code commits are 23:49, the rest is gate waiting and documentation (since M7: 1 h 25 min) | ux-theme 518/101 (382 of the main lines are the four-mode PROVISIONAL value transcription); ux-elements 251/344; ux-runtime 106/95; root 57 (`spike-gate.sh`) | 0 | 0 | 3 (fast 4273 on the working tree before the commits, the `--style-guard` mutation run, full 4273) | 0 redone work; one re-scope inside the milestone: the registry-vs-YAML comparison first read `EL-attribute-item` as a registry element and was re-scoped to the record fields of `EL-attribute-list.items` |
 | M5d | runtime probe (generator, hook, coverage; elements not implemented) | about 50 min (first to last commit is shorter; most of it is two xcodebuilds, 8 simulator runs and the gate) | ux-spike 87/0 (`UxHomeProbe.kt` 81 incl. licence header, `UxFlowEntry.kt` 6); root 3 (`spike-gate.sh`) | 0 (the 15 fragment bundles, 7 of them packaged, are generated by a scratchpad script `spike-evidence/M5d/tools/make_home_fragment.py`, about 190 lines Python, not counted) | 1 spike file (`UxFlowEntry.kt`), `spike-gate.sh`; 0 pre-spike | 2 (fast RED on the KC1 guard, then fast, full) | 1: the KC1 guard grepped `SCR-` in the fragment bundle data under `ux-spike`; the guard now skips that data directory |
 | M10 | track C host (view controller, instrumentation, harness, test page) | about 35 min (two xcodebuilds, a log-stream crash from `NSLog` varargs, simulator drive, gate) | shared-ui iosUxSpikeMain 217 (3 files incl. licence headers, hook +4); ConsentHost.swift +12; test page 120 HTML/JS | 0 | 1 pre-spike (`ConsentHost.swift`, T5), 1 spike file (`IosUxSpikeHook.kt`) | 2 (fast 4273, full) | 2: `return` missing in the Swift edit, `NSLog` vararg crash |
+| M6a | sync / one-time consumer adoption | 14 min first to last code commit (09:05 to 09:19), about 1 h incl. gate and release check (since M10: 34 min to the first commit) | **one-time adoption (prep + 3 commits): 480 added / 1002 deleted** — ux-contract 11/59 main/test (−411 provisional), ux-theme 20/11 (−389 `ProvisionalEudiwV1`), ux-runtime 74/159 (main 4 = BundleParser; 70 = build.gradle.kts fixture task), ux-spike 72/15, tool 59 (`make-offline-loading-bundle.py`); DEC-075 list proper (commit `19776bbc2`) 154 added / 929 deleted; gate step `uxspec-lock` 33; re-run renames, snapshot and KC1 61/49 | 12 698 lines synced (Kotlin 510 contract + 1 200 theme; bundle, strings, scripts, model, lock) | 0 pre-spike files | 1 full (4279) plus module runs | 0 redone work; 2 small loops: `allStringResources` needs its extension import; the rename script also renamed `ProvisionalNotAllowed` in main sources, reverted before commit |
 
 Reading the table for a new flow (input to the M12 cost model): with no generator, every phase is hand-written; the
 runtime phases (M2 to M4, M5b interpreter) hold about 4.3 k main lines and 2.9 k test lines across six modules, the elements
@@ -215,6 +238,15 @@ Findings for week 0 / the owner (not decided here):
 | (this commit) | 2026-10-16 | M5c | SPIKE-LOG M5c, metrics row, gate rows | Claude Sonnet 5.5 | full gate (see Gate results) |
 | f0c52dc83 | 2026-10-17 | M5d | Home probe: fragment generator, bundles, `gallery-home` hook, KC1 guard data exclusion, coverage, screenshots | Claude Sonnet 5.5 | fast GREEN (4273) |
 | (this commit) | 2026-10-17 | M5d | SPIKE-LOG M5d, metrics row | Claude Sonnet 5.5 | full gate (see Gate results) |
+| 2da2ca566 | 2026-10-17 | M6a | prep: provisional contract keyed on its directory | Claude Opus 5.5 | module tests |
+| 7a24efacf | 2026-10-17 | M6a | **sync commit**: ux-spec/ from ux@3d6ecb6 (spec 88e2b611…02d0, exporter 0.3.0) | Claude Opus 5.5 | lock check |
+| 04515c33f | 2026-10-17 | M6a | uxspec-lock gate step + mutation log | Claude Opus 5.5 | lock check, 4 mutations red |
+| 19776bbc2 | 2026-10-17 | M6a | one-time consumer changes (DEC-075), provisional contract/theme/copy/bundle deleted | Claude Opus 5.5 | module tests, lint |
+| c202d0c68 | 2026-10-17 | M6a | fake engine plays the exported scripts; 8th test fixed per V23 | Claude Opus 5.5 | module tests, lint |
+| 6cd58495b | 2026-10-17 | M6a | handshake on the real SPEC_HASH; runtime tests on the export; model replay | Claude Opus 5.5 | all ux tests, lint |
+| e1ccc57e3 | 2026-10-17 | M6a | provisional test names dropped; registry snapshot at 3d6ecb6 | Claude Opus 5.5 | all ux tests, lint |
+| 909ccf460 | 2026-10-17 | M6a | KC1 guard on the exported bundle | Claude Opus 5.5 | full gate GREEN (4279) |
+| (this commit) | 2026-10-17 | M6a | SPIKE-LOG M6a, metrics row, rulings | Claude Opus 5.5 | — |
 | ab7011ada | 2026-10-17 | M10 | track C view controller, T5, harness, instrumentation, test page, Q-D10 | Claude Sonnet 5.5 | fast GREEN (4273) |
 | (this commit) | 2026-10-17 | M10 | SPIKE-LOG M10, metrics row, results row | Claude Sonnet 5.5 | full gate (see Gate results) |
 
@@ -486,3 +518,47 @@ and the PROVISIONAL brand has no dark token set (`UxBrand.dark = null` → light
 Light whatever the system mode: no readability risk inside the flow. Residual: the M4 `StatePlaceholder` (still used
 for an undrawable state) uses `BasicText` with no colour or background, so it stays unreadable in dark; and the system
 status bar follows the system mode over a light flow surface. Not fixed (out of scope).
+
+## M6a notes (first real export; boundary §6 re-check)
+
+**Input.** `dvm-week0/ux/build/kmp-export/ux-spec`, clean export of ux@`3d6ecb6` (dvm-week0 HEAD `874b4f9` differs only in
+two docs; all 77 lock sources re-hashed equal to the tree, so not stale; no regeneration). Copied verbatim
+(`diff -r` empty) in sync commit `7a24efacf`. **Lock check** (`spike-gate.sh` step `uxspec-lock`): 18 files match sha256
+and bytes, none missing or unlisted, lock `spec_hash` = bundle = `PresCrossDeviceSpec.SPEC_HASH` = `UxThemeSpec.SPEC_HASH`,
+`ux_dirty` false. Mutations (edit, lock hash, unlisted file, dirty) each red: `spike-evidence/M6a/uxspec-lock-mutations.log`.
+
+**Shape diff** (boundary §6.2, week-0 `tests/kmp_paths.py`, ids folded): 197 provisional paths, 231 exported, 195 same;
+2 absent + 36 added, every one listed in `divergences.yaml` (V4, V5, V6, V8, V12, V14–V19, V30, V31), none unlisted, none
+stale: `spike-evidence/M6a/shape-diff.txt`. **API diff** (§6.3): 120 provisional declarations, 165 generated, 106 same name;
+the differences are exactly V14 (nullable verifier fields, `documentName`), V25 (`PresCrossDeviceEvent`, `Sys*`), V26
+(`VerifierData`/`VerifierPayload`, `RequestAttributeData`/`…Payload`, enum `Channel`, alphabetical constructor order):
+`spike-evidence/M6a/api-diff.txt`. The export passed detekt and ktlint in the gate (0 findings, as F4 said).
+
+**Divergences found by re-running every provisional assertion** (classification of boundary §6.5; all (a), none (b) or (c)):
+
+| # | V | Found by | Resolution |
+|---|---|---|---|
+| 1 | V25/V26 | `InvokerDefaultsTest` did not compile (`Verifier`, `RequestedAttribute`, positional `(verifier, request)`) | named arguments and the generated names (RULING-W4) |
+| 2 | V14 | `PresRequestScreen` (`verifier.name` nullable) | `.orEmpty()` |
+| 3 | V12 | the loader refused `services.send.args.selection` in object form | `BundleParser.argType` keeps a scalar or the object's JSON text |
+| 4 | V9/V27/V29 | the generated theme fills a 34-role `UxColors`; resources now from `ux-spec/resources` | `UxColors` +9 roles; `customDirectory`; probe file dropped (RULING-M6a-2) |
+| 5 | V19 | `UxTokensShellTest` asserted four distinct modes | the export binds light and high-contrast; dark falls back (test rewritten to assert the fallback) |
+| 6 | V15 | copy text came from `_sk` annotations (app and tests) | app: `Res.allStringResources` → `CopyProvider`; tests: strings.xml embedded by the fixture task |
+| 7 | V23 | `FakeScriptsTest` test 1 (the 8th): `doc-missing` scripts only `fetchRequest` | in the test: authentication is checked only where scripted; the fake throws for an unscripted service (RULING-2 path) |
+| 8 | — (new, informational) | `StateChangeA11yScenario` took a node's *first* copy prop as its h1 text; the export writes props in sorted key order (`text` before `title` in EL-status-hero) | the check matches any of the node's copy texts. No runtime change; not a boundary break (the boundary never promised prop order). Candidate note for week 0's §6 table, no exporter change |
+| 9 | X15 | `RegistrySchemaTest` against the 3d6ecb6 library: `EL-rp-identity.logo` | GAP until M8 D8-logo (RULING-M6a-6) |
+
+Everything else held unchanged on the real bundle: H1–H12 (H7 by a planted prefix), the M3 engine tests (async, semantics,
+L58 model check incl. the pre-fix counterexample, RULING-2, back/restore, V21 now closed by RULING-W2, V31's constant `set`),
+M4 host and P4 round trips (both targets), the M5b interpreter incl. the bundle-only render and the added-state copy
+(re-derived from the export: `spike-evidence/M6a/make-offline-loading-bundle.py`), M7 a11y, M5c schema check (0 problems on
+the export) and the token shell values (light, high-contrast, elevation, fonts, `comp.*`), the six exported scripts through
+the real engine, and the new model replay (84 sequences). **No exporter change is needed** and no generated file was edited.
+
+**KC1.** The guard reads its 25 state names from `ux-spec/…bundle.json`: 0 hits; a planted state literal turns it red
+(`spike-evidence/M6a/kc1-guard-mutation.log`). `RuntimeLiteralGuardTest` now checks `:ux-runtime` against the real bundle:
+green. No screen-specific code was added; the only screen file touched is `PresRequestScreen.kt` (one `.orEmpty()`). No KC1
+signal.
+
+**⟲** `git fetch origin feature/kmp`: still `b23f6a1f5`, no rebase. No pre-spike file touched by M6a.
+
