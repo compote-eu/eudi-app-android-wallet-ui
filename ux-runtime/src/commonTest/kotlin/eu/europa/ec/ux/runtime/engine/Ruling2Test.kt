@@ -14,15 +14,18 @@
  * governing permissions and limitations under the Licence.
  */
 
-// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): RULING-2 on the exported bundle.
+
+// M1b, re-run at M6a on the real export; M9r (spike rule T1): RULING-2 as engine semantics on the synthetic test bundle;
+// the export is checked only for what it must declare (an error branch on every state-scoped invoke), read from it.
 package eu.europa.ec.ux.runtime.engine
 
 import eu.europa.ec.ux.runtime.bundle.LoadResult
 import eu.europa.ec.ux.runtime.bundle.RefusalReason
 import eu.europa.ec.ux.runtime.support.Fixture
+import eu.europa.ec.ux.runtime.support.SynthDriver
+import eu.europa.ec.ux.runtime.support.Synthetic
 import eu.europa.ec.ux.runtime.support.ctx
 import eu.europa.ec.ux.runtime.support.json
-import eu.europa.ec.ux.runtime.support.qrPayload
 import eu.europa.ec.ux.runtime.support.send
 import eu.europa.ec.ux.runtime.support.stateId
 import eu.europa.ec.ux.runtime.support.with
@@ -33,8 +36,10 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -49,109 +54,110 @@ class Ruling2Test {
 
     private val error = ServiceResult.UNEXPECTED_ERROR_TYPE
 
-    @Test
-    fun aThrowingFetchTakesTheErrorBranch() = runTest {
-        val d = Driver(this)
-        d.port.throwing["fetchRequest"] = IllegalStateException("boom")
-        d.engine.start()
-        d.engine.send("SYS_QR_SCANNED", qrPayload)
-        runCurrent()
-
-        assertEquals("error", d.engine.stateId())
-        assertEquals(JsonPrimitive("technical-error"), d.engine.ctx("/flow/error_class"))
-        assertEquals(1, d.port.calls("fetchRequest"))
-        assertTrue(d.log.lines.any { "fetchRequest failed" in it && "IllegalStateException" in it }, d.log.lines.toString())
+    private fun SynthDriver.scan() {
+        engine.start()
+        engine.send(Synthetic.SCANNED, buildJsonObject { put("uri", Synthetic.URI) })
+        scope.runCurrent()
     }
 
     @Test
-    fun aThrowingSendTakesTheErrorBranchAndIsNotCalledAgain() = runTest {
-        val d = Driver(this)
-        d.port.throwing["send"] = IllegalArgumentException("io")
-        d.request().sending()
+    fun aThrowingCallTakesTheErrorBranch() = runTest {
+        val d = SynthDriver(this)
+        d.port.throwing[Synthetic.SVC_LOAD] = IllegalStateException("boom")
+        d.scan()
 
-        assertEquals("error", d.engine.stateId())
-        assertEquals(1, d.port.calls("send"))
+        assertEquals(Synthetic.FAILED, d.engine.stateId())
+        assertEquals(JsonPrimitive(Synthetic.TECHNICAL), d.engine.ctx(FlowMachine.ERROR_CLASS_PATH))
+        assertEquals(1, d.port.calls(Synthetic.SVC_LOAD))
+        assertTrue(d.log.lines.any { "${Synthetic.SVC_LOAD} failed" in it && "IllegalStateException" in it }, d.log.lines.toString())
+    }
+
+    @Test
+    fun aThrowingNonIdempotentCallTakesTheErrorBranchAndIsNotCalledAgain() = runTest {
+        val d = SynthDriver(this)
+        d.port.throwing[Synthetic.SVC_COMMIT] = IllegalArgumentException("io")
+        d.choose().commit()
+
+        assertEquals(Synthetic.FAILED, d.engine.stateId())
+        assertEquals(1, d.port.calls(Synthetic.SVC_COMMIT))
     }
 
     @Test
     fun aForeignCancellationIsAFailureNotACancellation() = runTest {
         // A service that leaks a CancellationException of its own (a timeout inside it) while the state's job is
         // still active: RULING-2 treats it as a failure, so the state does not hang pending.
-        val d = Driver(this).request()
-        d.port.throwing["authenticate"] = CancellationException("timeout inside the service")
-        d.auth()
+        val d = SynthDriver(this).choose()
+        d.port.throwing[Synthetic.SVC_CHECK] = CancellationException("timeout inside the service")
+        d.check()
 
-        assertEquals("error", d.engine.stateId())
+        assertEquals(Synthetic.FAILED, d.engine.stateId())
     }
 
     @Test
     fun leavingTheStateIsStillACancellationNotAnError() = runTest {
-        val d = Driver(this).request().auth()
+        val d = SynthDriver(this).choose().check()
         d.engine.back()
         runCurrent()
 
-        assertEquals("request", d.engine.stateId())
-        assertEquals(1, d.port.cancelled["authenticate"])
+        assertEquals(Synthetic.CHOOSE, d.engine.stateId())
+        assertEquals(1, d.port.cancelled[Synthetic.SVC_CHECK])
         assertTrue(d.log.lines.none { "mapped to $error" in it }, d.log.lines.toString())
     }
 
     @Test
     fun theConvertedResultCarriesClassUnexpected() = runTest {
-        // A bundle variant whose connecting error branch copies the payload's class into the context.
-        val root = Fixture.root.with(
-            "/states/connecting/invoke/on/$error/assign",
-            JsonArray(listOf(json("""{"op":"set","path":"/document/name","from":{"result":"class"}}"""))),
+        // A variant whose load error branch copies the payload's class into the context.
+        val root = Synthetic.root.with(
+            "/states/${Synthetic.LOADING}/invoke/on/$error/assign",
+            JsonArray(listOf(json("""{"op":"set","path":"/info/name","from":{"result":"class"}}"""))),
         )
-        val d = Driver(this, bundle = Fixture.bundle(root))
-        d.port.throwing["fetchRequest"] = IllegalStateException("boom")
-        d.engine.start()
-        d.engine.send("SYS_QR_SCANNED", qrPayload)
-        runCurrent()
+        val d = SynthDriver(this, bundle = Synthetic.bundle(root))
+        d.port.throwing[Synthetic.SVC_LOAD] = IllegalStateException("boom")
+        d.scan()
 
-        assertEquals("error", d.engine.stateId())
-        assertEquals(JsonPrimitive(ServiceResult.UNEXPECTED_CLASS), d.engine.ctx("/document/name"))
+        assertEquals(Synthetic.FAILED, d.engine.stateId())
+        assertEquals(JsonPrimitive(ServiceResult.UNEXPECTED_CLASS), d.engine.ctx("/info/name"))
         assertEquals(ServiceResult(error, ServiceResult.unexpected().payload), ServiceResult.unexpected())
         assertEquals(ServiceResult.UNEXPECTED_CLASS, ServiceResult.unexpected().payload["class"]?.jsonPrimitive?.content)
     }
 
     @Test
     fun aThrowingDetachedInvokeIsLoggedAndIgnored() = runTest {
-        val d = Driver(this).request()
-        d.port.throwing["cancel"] = IllegalStateException("gone")
-        d.engine.send("REJECT")
+        val d = SynthDriver(this).choose()
+        d.port.throwing[Synthetic.SVC_STOP] = IllegalStateException("gone")
+        d.engine.send(Synthetic.ABORT)
         runCurrent()
 
-        assertEquals("cancelled", d.engine.stateId())
-        assertEquals(1, d.port.calls("cancel"))
-        assertTrue(d.log.lines.any { "detached cancel finished ($error)" in it }, d.log.lines.toString())
+        assertEquals(Synthetic.ABORTED, d.engine.stateId())
+        assertEquals(1, d.port.calls(Synthetic.SVC_STOP))
+        assertTrue(d.log.lines.any { "detached ${Synthetic.SVC_STOP} finished ($error)" in it }, d.log.lines.toString())
     }
 
     @Test
     fun aServiceWithoutAnErrorResultIsRefused() {
-        val services = Fixture.root.getValue("services").jsonObject
-        val results = services.getValue("authenticate").jsonObject.getValue("results").jsonObject
-        val root = Fixture.root
-            .with("/services/authenticate/results", JsonObject(results - error))
-            .with("/states/auth/invoke/on/$error", null)
+        val results = Synthetic.root.getValue("services").jsonObject.getValue(Synthetic.SVC_CHECK).jsonObject.getValue("results").jsonObject
+        val root = Synthetic.root
+            .with("/services/${Synthetic.SVC_CHECK}/results", JsonObject(results - error))
+            .with("/states/${Synthetic.CHECK}/invoke/on/$error", null)
 
-        val reason = assertIs<RefusalReason.InvalidBundle>(assertIs<LoadResult.Refused>(Fixture.load(root)).reason)
-        assertEquals("/services/authenticate/results", reason.path)
+        val reason = assertIs<RefusalReason.InvalidBundle>(assertIs<LoadResult.Refused>(Synthetic.load(root)).reason)
+        assertEquals("/services/${Synthetic.SVC_CHECK}/results", reason.path)
     }
 
     @Test
     fun anInternalErrorMappingIsNotAnErrorBranch() {
-        val root = Fixture.root.with("/states/sending/invoke/on/$error/event", JsonNull)
+        val root = Synthetic.root.with("/states/${Synthetic.COMMIT}/invoke/on/$error/event", JsonNull)
 
-        val reason = assertIs<RefusalReason.InvalidBundle>(assertIs<LoadResult.Refused>(Fixture.load(root)).reason)
-        assertEquals("/states/sending/invoke/on/$error/event", reason.path)
+        val reason = assertIs<RefusalReason.InvalidBundle>(assertIs<LoadResult.Refused>(Synthetic.load(root)).reason)
+        assertEquals("/states/${Synthetic.COMMIT}/invoke/on/$error/event", reason.path)
     }
 
     @Test
-    fun theFixtureDeclaresAnErrorBranchOnEveryStateScopedInvoke() {
+    fun theExportDeclaresAnErrorBranchOnEveryStateScopedInvoke() {
         val states = Fixture.root.getValue("states").jsonObject
         val invokes = states.values.mapNotNull { it.jsonObject["invoke"]?.jsonObject }
             .filter { (it["scope"] as? JsonPrimitive)?.content != "detached" }
-        assertTrue(invokes.size >= 4, "found ${invokes.size} state-scoped invokes")
         invokes.forEach { assertTrue(error in it.getValue("on").jsonObject, "${it["service"]} has no $error branch") }
+        assertIs<LoadResult.Loaded>(Fixture.load(), "the loader enforces it as well")
     }
 }

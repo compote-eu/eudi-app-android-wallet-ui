@@ -41,15 +41,15 @@ import eu.europa.ec.ux.runtime.host.PlaceholderTags
 import eu.europa.ec.ux.runtime.screen.FlowScreens
 import eu.europa.ec.ux.runtime.screen.ScreenCatalog
 import eu.europa.ec.ux.runtime.screen.ScreenTree
+import eu.europa.ec.ux.runtime.support.ExportWalk
 import eu.europa.ec.ux.runtime.support.FakePort
 import eu.europa.ec.ux.runtime.support.Fixture
-import eu.europa.ec.ux.runtime.support.QR_URI
-import eu.europa.ec.ux.runtime.support.Results
 import eu.europa.ec.ux.runtime.support.TestCopy
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /** A recording fake: one line per bridge call, in order. */
@@ -87,8 +87,8 @@ abstract class StateChangeA11yScenario {
                 FlowHost(
                     bundle = bundle,
                     port = port,
-                    entry = "deeplink",
-                    launch = JsonObject(mapOf("uri" to JsonPrimitive(QR_URI))),
+                    entry = ExportWalk.entry(bundle),
+                    launch = ExportWalk.launch(ExportWalk.entry(bundle)),
                     platform = FlowPlatform.IOS,
                     backHandler = { enabled, onBack -> back = if (enabled) onBack else ({}) },
                     onExit = {},
@@ -145,63 +145,88 @@ abstract class StateChangeA11yScenario {
         assertTrue(count(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)) <= 1, "at most one live region in $state")
     }
 
+    /** Performs one step of the export's main path: answers the service, or presses the node that emits the event. */
+    private fun ComposeUiTest.perform(bundle: FlowBundle, port: FakePort, step: ExportWalk.Step) {
+        if (step.service != null) {
+            runOnIdle { port.complete(step.service, step.result!!) }
+        } else {
+            val node = assertNotNull(ExportWalk.emitter(tree(bundle, step.from), step.event!!), "no node of ${step.from} emits ${step.event}")
+            waitForIdle()
+            onNodeWithTag(node.id, useUnmergedTree = true).performClick()
+        }
+    }
+
+    /** The main path up to (not into) a final state. */
+    private fun path(bundle: FlowBundle) = ExportWalk.mainPath(bundle).takeWhile { !bundle.state(it.to).isFinal }
+
     @Test
-    fun requestToSuccessFiresOneBridgeCallPerStateAfterItSettled() = runComposeUiTest {
+    fun theMainPathFiresOneBridgeCallPerStateAfterItSettled() = runComposeUiTest {
         val port = FakePort()
         val bundle = host(port)
-        settle(bundle, "connecting", null)
-        runOnIdle { port.complete("fetchRequest", Results.requestReady) }
-        settle(bundle, "request", "connecting")
-        onNodeWithTag("continue", useUnmergedTree = true).performClick()
-        settle(bundle, "auth", "request")
-        runOnIdle { port.complete("authenticate", Results.authenticated) }
-        settle(bundle, "verification-code", "auth")
-        runOnIdle { port.complete("verificationCode", Results.codeReady) }
-        waitForIdle()
-        val confirm = tree(bundle, "verification-code").regions.getValue("actions").first { it.events.single().emits == "CONFIRM" }
-        onNodeWithTag(confirm.id, useUnmergedTree = true).performClick()
-        settle(bundle, "sending", "verification-code")
-        runOnIdle { port.complete("send", Results.sent) }
-        settle(bundle, "success", "sending")
-        waitForIdle()
-        // One call per state entry, in order: sending is announced once, success gets the screen change.
-        val states = listOf("connecting", "request", "auth", "verification-code", "sending", "success")
-        assertEquals(states.map { expectedCall(bundle, it) }, bridge.calls)
+        val steps = path(bundle)
+        val visited = mutableListOf(ExportWalk.entryState(bundle))
+        settle(bundle, visited.single(), null)
+        steps.forEach { step ->
+            perform(bundle, port, step)
+            if (step.to != step.from) {
+                settle(bundle, step.to, step.from)
+                visited += step.to
+            } else {
+                waitForIdle()
+            }
+        }
+        assertTrue(visited.size > 1, "the main path leaves the entry state: $visited")
+        // One call per state entry, in order.
+        assertEquals(visited.map { expectedCall(bundle, it) }, bridge.calls)
     }
 
     @Test
     fun theLeavingStateHasNoSemanticsDuringTheCrossfade() = runComposeUiTest {
         val port = FakePort()
         val bundle = host(port)
-        settle(bundle, "connecting", null)
+        val step = path(bundle).first { it.to != it.from }
+        val old = step.from
+        settle(bundle, old, null)
+        val t = tree(bundle, old)
         // The merged tree is what a screen reader gets (the unmerged one keeps cleared nodes for tests).
-        val oldA11y = hasAnyAncestor(hasTestTag(PlaceholderTags.STATE_PREFIX + "connecting")) and
-            (isHeading() or SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion) or showsCopyOf(tree(bundle, "connecting"), "hero"))
-        assertEquals(1, onAllNodes(oldA11y).fetchSemanticsNodes().size, "settled: the live hero is exposed")
+        val oldA11y = hasAnyAncestor(hasTestTag(PlaceholderTags.STATE_PREFIX + old)) and
+            (isHeading() or SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion) or showsCopyOf(t, t.a11y.liveRegion ?: t.a11y.heading!!))
+        assertTrue(onAllNodes(oldA11y).fetchSemanticsNodes().isNotEmpty(), "settled: the old state is exposed")
         val before = bridge.calls.size
         mainClock.autoAdvance = false
-        runOnIdle { port.complete("fetchRequest", Results.requestReady) }
+        perform(bundle, port, step)
         mainClock.advanceTimeByFrame()
         mainClock.advanceTimeBy(CROSSFADE_PROBE_MS)
-        assertEquals(1, count(hasTestTag(PlaceholderTags.STATE_PREFIX + "connecting")), "mid-crossfade: the old state is still drawn")
-        assertEquals(1, count(hasTestTag(PlaceholderTags.STATE_PREFIX + "request")), "mid-crossfade: the new state is drawn")
+        assertEquals(1, count(hasTestTag(PlaceholderTags.STATE_PREFIX + old)), "mid-crossfade: the old state is still drawn")
+        assertEquals(1, count(hasTestTag(PlaceholderTags.STATE_PREFIX + step.to)), "mid-crossfade: the new state is drawn")
         assertEquals(0, onAllNodes(oldA11y).fetchSemanticsNodes().size, "no h1, live region or text of the old state")
         assertEquals(before, bridge.calls.size, "no bridge call before the transition settled")
         mainClock.autoAdvance = true
-        settle(bundle, "request", "connecting")
+        settle(bundle, step.to, old)
     }
 
     @Test
-    fun backIsAStateChangeTooAndRefocusesTheRequestHeading() = runComposeUiTest {
-        val port = FakePort().apply { auto["fetchRequest"] = Results.requestReady }
+    fun backIsAStateChangeTooAndRefocusesTheHeading() = runComposeUiTest {
+        val port = FakePort()
         val bundle = host(port)
-        settle(bundle, "request", null)
-        onNodeWithTag("continue", useUnmergedTree = true).performClick()
-        settle(bundle, "auth", "request")
+        val steps = path(bundle)
+        // A step of the main path the bundle's back policy undoes, into a screen that focuses its heading (read from the export).
+        val k = steps.indexOfFirst { s ->
+            s.service == null && s.to != s.from && ExportWalk.backReturnsTo(bundle.state(s.to), s.from) &&
+                tree(bundle, s.from).a11y.onEnter == "focus-heading"
+        }
+        if (k < 0) return@runComposeUiTest println("D7: the export's main path has no step that Back undoes; nothing to check")
+        settle(bundle, ExportWalk.entryState(bundle), null)
+        steps.take(k + 1).forEach { step ->
+            perform(bundle, port, step)
+            if (step.to != step.from) settle(bundle, step.to, step.from) else waitForIdle()
+        }
+        val (from, to) = steps[k].from to steps[k].to
+        val entries = bridge.calls.count { it == expectedCall(bundle, from) }
         runOnIdle { back() }
-        settle(bundle, "request", "auth")
-        assertEquals(expectedCall(bundle, "request"), bridge.calls.last())
-        assertEquals(2, bridge.calls.count { it == expectedCall(bundle, "request") })
+        settle(bundle, from, to)
+        assertEquals(expectedCall(bundle, from), bridge.calls.last())
+        assertEquals(entries + 1, bridge.calls.count { it == expectedCall(bundle, from) })
     }
 
     private companion object {

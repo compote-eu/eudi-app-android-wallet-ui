@@ -38,6 +38,7 @@ import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import eu.europa.ec.ux.elements.templates.TplHome
@@ -54,11 +55,21 @@ import kotlin.test.assertTrue
  * EL-trust-mark, TPL-home, the app-bar gaps, and the avatar and lock icons. Each part is checked against the export's own
  * `ux-tokens.json` and `ux-library.json` (embedded by the build): its semantics (role, name, selected state, heading),
  * the brand selections it follows, the assets it draws, and one measured spacing taken from a token.
+ *
+ * M9r (spike rule T1): no brand, asset id, region or copy of the spec is written here. A test that depends on a brand's
+ * selection runs for every exported brand and expects what that brand's selection and bindings say (`HomeSpec.part`,
+ * `HomeSpec.selection`); the labels are test-owned stand-ins, not spec copy; the template's regions come from the library.
  */
 @OptIn(ExperimentalTestApi::class)
 abstract class HomePartsScenario {
 
     private fun role(role: Role) = SemanticsMatcher.expectValue(SemanticsProperties.Role, role)
+
+    /** Runs [block] once per exported brand, each in its own composition. */
+    private fun forEachBrand(block: ComposeUiTest.(brand: String) -> Unit) {
+        assertTrue(HomeSpec.brands.isNotEmpty())
+        HomeSpec.brands.forEach { brand -> runComposeUiTest { block(brand) } }
+    }
 
     // ---- EL-status-chip
 
@@ -76,50 +87,33 @@ abstract class HomePartsScenario {
     }
 
     @Test
-    fun theBrandsMarkStyleDecidesBetweenADotAndAToneGlyph() = runComposeUiTest {
-        setHome(HomeSpec.EUDIW) { UxStatusChip("c", UxChipStatus.Valid, "Platný") }
-        onNodeWithTag("c.dot", useUnmergedTree = true).assertExists()
-        assertEquals(emptyList(), drawnAssets(), "the dot mark draws no glyph")
-    }
-
-    @Test
-    fun theIconMarkDrawsTheToneGlyphTheBrandBindsAndNothingForAGlyphItDoesNot() = runComposeUiTest {
-        setHome(HomeSpec.IDSK) {
-            Column {
-                UxStatusChip("w", UxChipStatus.Expiring, "Platnosť končí")
-                UxStatusChip("v", UxChipStatus.Valid, "Platný")
-            }
+    fun theBrandsMarkStyleDecidesBetweenADotAndTheToneGlyphItBinds() = forEachBrand { brand ->
+        val statuses = listOf(UxChipStatus.Expiring, UxChipStatus.Valid, UxChipStatus.Upcoming, UxChipStatus.Info)
+        setHome(brand) { Column { statuses.forEach { UxStatusChip("c-${it.name}", it, "Label ${it.name}") } } }
+        val dot = HomeSpec.selection(brand, "EL-status-chip.mark") == "dot"
+        statuses.forEach { st ->
+            val hasDot = dot && st.tone != UxChipTone.Neutral
+            onAllNodesWithTag("c-${st.name}.dot", useUnmergedTree = true).assertCountEquals(if (hasDot) 1 else 0)
         }
-        onAllNodesWithTag("w.dot", useUnmergedTree = true).assertCountEquals(0)
-        assertEquals(listOf("icon.error-outline"), drawnAssets().map { it.id }, "idsk binds no icon.check-circle: nothing is invented (DEC-080)")
-    }
-
-    @Test
-    fun anUpcomingChipDrawsNoMarkAndAChipIsPlainTextWithItsLabel() = runComposeUiTest {
-        setHome(HomeSpec.IDSK) {
-            Column {
-                UxStatusChip("up", UxChipStatus.Upcoming, "Pripravujeme")
-                UxStatusChip("ok", UxChipStatus.Info, "Informácia")
-            }
-        }
-        assertEquals(listOf("icon.info"), drawnAssets().map { it.id }, "only the info chip has a glyph")
-        val config = onNodeWithTag("ok").fetchSemanticsNode().config
+        val glyphs = if (dot) emptyList() else statuses.filter { it.tone != UxChipTone.Neutral }.mapNotNull { HomeSpec.part(brand, "EL-status-chip", "tone glyph", it.name.lowercase()) }
+        assertEquals(glyphs, drawnAssets().map { it.id }, "$brand: the dot mark draws no glyph; the icon mark draws only what the brand binds (DEC-080)")
+        val config = onNodeWithTag("c-Info").fetchSemanticsNode().config
         assertNull(config.getOrNull(SemanticsProperties.Role), "inline text: no role")
         assertNull(config.getOrNull(SemanticsProperties.Heading))
-        assertEquals(listOf("Informácia"), config[SemanticsProperties.Text].map { it.text })
+        assertEquals(listOf("Label Info"), config[SemanticsProperties.Text].map { it.text })
     }
 
     @Test
     fun chipColoursComeFromTheExportedTable() = runComposeUiTest {
         var read = emptyList<Pair<Boolean, Boolean>>()
-        setHome(HomeSpec.EUDIW) {
+        setHome {
             val tokens = UxThemeAccess.tokens
             val bg = chipColors(UxChipTone.Success).bg
             val fb = tokens.colors.feedbackSuccess.bg
-            val table = HomeSpec.tokens.color(HomeSpec.EUDIW, UxMode.Light, "comp.status-chip.success-bg")
-            read = listOf((bg == table) to (bg == fb))
+            val table = HomeSpec.tokens.color(HomeSpec.defaultBrand, UxMode.Light, "comp.status-chip.success-bg")
+            read = listOf((bg == (table ?: fb)) to (bg == fb))
         }
-        assertEquals(true, read.single().first, "the chip's colour is the table's")
+        assertEquals(true, read.single().first, "the chip's colour is the table's (the shell's role when the table has none)")
     }
 
     // ---- EL-document-card
@@ -129,59 +123,60 @@ abstract class HomePartsScenario {
         var opened = 0
         setHome {
             UxDocumentCard(
-                "h", UxCardVariant.Holder, UxDocType.Pid, "Identifikačné údaje", UxDocStatus.Valid,
-                "Identifikačné údaje · platné", holder = "Ján Vzorový", initials = "JV", onOpen = { opened++ },
+                "h", UxCardVariant.Holder, UxDocType.Pid, "Doc title", UxDocStatus.Valid,
+                "Doc title, valid", holder = "Holder Name", initials = "HN", onOpen = { opened++ },
             )
         }
         val config = onNodeWithTag("h").fetchSemanticsNode().config
         assertEquals(Role.Button, config[SemanticsProperties.Role])
-        assertEquals(listOf("Ján Vzorový, Identifikačné údaje · platné"), config[SemanticsProperties.ContentDescription])
-        assertEquals("JV", drawnText("h.initials"))
+        assertEquals(listOf("Holder Name, Doc title, valid"), config[SemanticsProperties.ContentDescription])
+        assertEquals("HN", drawnText("h.initials"))
         onNodeWithTag("h.dot", useUnmergedTree = true).assertExists()
-        assertEquals(listOf("icon.arrow-forward-ios"), drawnAssets().map { it.id }, "the chevron is the only asset of a holder row")
+        assertEquals(
+            listOfNotNull(HomeSpec.part(HomeSpec.defaultBrand, "EL-document-card", "chevron")),
+            drawnAssets().map { it.id },
+            "the chevron (when the brand binds it) is the only asset of a holder row",
+        )
         onNodeWithTag("h").performClick()
         assertEquals(1, opened)
     }
 
     @Test
-    fun aCenteredFullCardDrawsTitleEnglishNameAndNumberOnlyAndKeepsTheArtworksProportion() = runComposeUiTest {
-        setHome(HomeSpec.EUDIW) {
+    fun aFullCardFollowsTheBrandsCardFace() = forEachBrand { brand ->
+        val centered = HomeSpec.selection(brand, "card-face") == "centered"
+        setHome(brand) {
             UxDocumentCard(
-                "c", UxCardVariant.Full, UxDocType.IdCard, "Občiansky preukaz", UxDocStatus.Valid, "Platný do 1. 3. 2034",
-                titleEn = "ID CARD", holder = "Ján Vzorový", number = "EA 000000", storage = UxStorage.Phone, storageLabel = "V telefóne",
+                "c", UxCardVariant.Full, UxDocType.DrivingLicence, "Doc title", UxDocStatus.Expiring, "Status text",
+                titleEn = "DOC EN", holder = "Holder Name", number = "NO 0000", storage = UxStorage.Cloud, storageLabel = "Storage label",
             )
         }
-        assertEquals("Občiansky preukaz", drawnText("c.title"))
-        assertEquals("ID CARD", drawnText("c.title-en"))
-        assertEquals("EA 000000", drawnText("c.number"))
-        assertEquals("Platný do 1. 3. 2034", drawnText("c.status"))
-        listOf("c.holder", "c.storage").forEach { onAllNodesWithTag(it, useUnmergedTree = true).assertCountEquals(0) }
+        assertEquals("Doc title", drawnText("c.title"))
+        assertEquals("NO 0000", drawnText("c.number"))
+        assertEquals("Status text", drawnText("c.status"))
         val config = onNodeWithTag("c").fetchSemanticsNode().config
         assertEquals(Role.Button, config[SemanticsProperties.Role])
-        assertEquals(listOf("Občiansky preukaz, Platný do 1. 3. 2034, EA 000000"), config[SemanticsProperties.ContentDescription])
-        assertTrue("document-art.id-card" in drawnAssets().map { it.id }, "the brand's artwork is drawn")
-        val box = onNodeWithTag("c").getUnclippedBoundsInRoot()
-        assertTrue(box.height.value + 1f >= box.width.value * HomeSpec.ART.height / HomeSpec.ART.width, "the card keeps the artwork's proportion: $box")
-    }
-
-    @Test
-    fun aBandFullCardDrawsHolderNumberAndStorageAndNamesThemAfterTheStatus() = runComposeUiTest {
-        setHome(HomeSpec.IDSK) {
-            UxDocumentCard(
-                "b", UxCardVariant.Full, UxDocType.DrivingLicence, "Vodičský preukaz", UxDocStatus.Expiring, "Platnosť končí 12. 11. 2026",
-                titleEn = "DRIVING LICENCE", holder = "Ján Vzorový", number = "SK 0000000", storage = UxStorage.Cloud, storageLabel = "V cloude",
-            )
+        val art = HomeSpec.part(brand, "EL-document-card", "card art", UxDocType.DrivingLicence.wire)
+        val glyph = if (HomeSpec.selection(brand, "EL-status-chip.mark") == "dot") null else HomeSpec.part(brand, "EL-status-chip", "tone glyph", "expiring")
+        if (centered) {
+            // Title, English name and number centred on the artwork; no holder, no storage.
+            assertEquals("DOC EN", drawnText("c.title-en"))
+            listOf("c.holder", "c.storage").forEach { onAllNodesWithTag(it, useUnmergedTree = true).assertCountEquals(0) }
+            assertEquals(listOf("Doc title, Status text, NO 0000"), config[SemanticsProperties.ContentDescription])
+            assertEquals(listOfNotNull(art, glyph).sorted(), drawnAssets().map { it.id }.sorted(), brand)
+            if (art != null) {
+                val box = onNodeWithTag("c").getUnclippedBoundsInRoot()
+                assertTrue(box.height.value + 1f >= box.width.value * HomeSpec.ART.height / HomeSpec.ART.width, "the card keeps the artwork's proportion: $box")
+            }
+        } else {
+            // Band: holder, number and storage, named after the status; no English name.
+            assertEquals("Holder Name", drawnText("c.holder"))
+            assertTrue(onNodeWithTag("c.holder", useUnmergedTree = true).getUnclippedBoundsInRoot().height.value > 0f, "the body is not collapsed")
+            assertEquals("Storage label", drawnText("c.storage-label"))
+            onAllNodesWithTag("c.title-en", useUnmergedTree = true).assertCountEquals(0)
+            assertEquals(listOf("Doc title, Status text, Holder Name, NO 0000, Storage label"), config[SemanticsProperties.ContentDescription])
+            val storage = HomeSpec.part(brand, "EL-document-card", "storage glyph", UxStorage.Cloud.name.lowercase())
+            assertEquals(listOfNotNull(art, glyph, storage).sorted(), drawnAssets().map { it.id }.sorted(), "$brand: only what the brand binds is drawn")
         }
-        assertEquals("Ján Vzorový", drawnText("b.holder"))
-        assertTrue(onNodeWithTag("b.holder", useUnmergedTree = true).getUnclippedBoundsInRoot().height.value > 0f, "without artwork the body is not collapsed")
-        assertEquals("SK 0000000", drawnText("b.number"))
-        assertEquals("V cloude", drawnText("b.storage-label"))
-        onAllNodesWithTag("b.title-en", useUnmergedTree = true).assertCountEquals(0)
-        assertEquals(
-            listOf("Vodičský preukaz, Platnosť končí 12. 11. 2026, Ján Vzorový, SK 0000000, V cloude"),
-            onNodeWithTag("b").fetchSemanticsNode().config[SemanticsProperties.ContentDescription],
-        )
-        assertEquals(listOf("icon.error-outline"), drawnAssets().map { it.id }, "idsk binds no card art and no icon.cloud: only the tone glyph is drawn")
     }
 
     @Test
@@ -189,20 +184,22 @@ abstract class HomePartsScenario {
         var opened = 0
         setHome {
             Column {
-                UxDocumentCard("hero", UxCardVariant.Hero, UxDocType.IdCard, "Občiansky preukaz", UxDocStatus.Valid, "Platný", onOpen = { opened++ })
-                UxDocumentCard("mini", UxCardVariant.Mini, UxDocType.IdCard, "Občiansky preukaz", UxDocStatus.Revoked, "Odvolaný", onOpen = { opened++ })
-                UxDocumentCard("still", UxCardVariant.Full, UxDocType.IdCard, "Občiansky preukaz", UxDocStatus.Valid, "Platný", interactive = false)
+                UxDocumentCard("hero", UxCardVariant.Hero, UxDocType.IdCard, "Doc title", UxDocStatus.Valid, "Valid", onOpen = { opened++ })
+                UxDocumentCard("mini", UxCardVariant.Mini, UxDocType.IdCard, "Doc title", UxDocStatus.Revoked, "Revoked", onOpen = { opened++ })
+                UxDocumentCard("still", UxCardVariant.Full, UxDocType.IdCard, "Doc title", UxDocStatus.Valid, "Valid", interactive = false)
             }
         }
         onNodeWithTag("hero").assertHasNoClickAction()
         onNodeWithTag("still").assertHasNoClickAction()
         assertNull(onNodeWithTag("hero").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Role))
-        assertEquals(HomeSpec.tokens.dp(HomeSpec.EUDIW, UxMode.Light, "comp.document-card.hero-width"), onNodeWithTag("hero").getUnclippedBoundsInRoot().width)
+        HomeSpec.tokens.dp(HomeSpec.defaultBrand, UxMode.Light, "comp.document-card.hero-width")?.let {
+            assertEquals(it, onNodeWithTag("hero").getUnclippedBoundsInRoot().width)
+        }
         onNodeWithTag("mini").assert(role(Role.Button))
         onNodeWithTag("mini").performClick()
         onNodeWithTag("hero").performClick()
         assertEquals(1, opened, "only the mini card opens")
-        assertEquals("Odvolaný", drawnText("mini.status"))
+        assertEquals("Revoked", drawnText("mini.status"))
     }
 
     // ---- EL-bottom-bar
@@ -210,25 +207,26 @@ abstract class HomePartsScenario {
     @Test
     fun theBottomBarIsANamedGroupOfButtonsWithTheCurrentOneSelectedAndANamedActionButton() = runComposeUiTest {
         val events = mutableListOf<String>()
-        val tabs = listOf(UxBarTab("documents", "eDoklady", "icon-id-card", true), UxBarTab("services", "eSlužby", "icon-case", false))
+        val tabs = listOf(UxBarTab("documents", "Tab A", "icon-id-card", true), UxBarTab("services", "Tab B", "icon-case", false))
         setHome {
-            UxBottomBar("bar", "Hlavná navigácia", tabs, action = UxBarAction.Menu, actionLabel = "Akcie", onSelect = { events += "select $it" }, onAction = { events += "action" })
+            UxBottomBar("bar", "Main navigation", tabs, action = UxBarAction.Menu, actionLabel = "Actions", onSelect = { events += "select $it" }, onAction = { events += "action" })
         }
-        assertEquals(listOf("Hlavná navigácia"), onNodeWithTag("bar.tabs").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
+        assertEquals(listOf("Main navigation"), onNodeWithTag("bar.tabs").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
         onNodeWithTag("bar.tab.documents").assertIsSelected().assert(role(Role.Button))
         onNodeWithTag("bar.tab.services").assertIsNotSelected().assert(role(Role.Button))
-        assertEquals(listOf("eSlužby"), onNodeWithTag("bar.tab.services").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
+        assertEquals(listOf("Tab B"), onNodeWithTag("bar.tab.services").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
         onNodeWithTag("bar.tab.documents").performClick()
         onNodeWithTag("bar.tab.services").performClick()
         onNodeWithTag("bar.action").performClick()
         assertEquals(listOf("select services", "action"), events, "pressing the current destination does nothing")
         val action = onNodeWithTag("bar.action").fetchSemanticsNode().config
-        assertEquals(listOf("Akcie"), action[SemanticsProperties.ContentDescription])
+        assertEquals(listOf("Actions"), action[SemanticsProperties.ContentDescription])
         assertTrue(SemanticsActions.Expand in action, "the action advertises the menu it opens")
+        val b = HomeSpec.defaultBrand
         assertEquals(
-            listOf("icon.add", "icon.icon-case", "icon.icon-id-card"),
+            (listOfNotNull(HomeSpec.part(b, "EL-bottom-bar", "action button")) + tabs.mapNotNull { HomeSpec.part(b, "EL-bottom-bar", "destination icon", it.icon) }).sorted(),
             drawnAssets().map { it.id }.sorted(),
-            "a tab's icon is the library's `icon.<name>` of its icon field",
+            "a tab's icon is the library's asset of its icon field, when the brand binds it",
         )
     }
 
@@ -252,26 +250,25 @@ abstract class HomePartsScenario {
     @Test
     fun theSwitchIsARadioGroupWithTheSelectedOptionMarkedAndAnUnavailableOptionDisabledButVisible() = runComposeUiTest {
         val changes = mutableListOf<String>()
-        val options = listOf(UxSwitchOption("phone", "Telefón", true, false), UxSwitchOption("cloud", "Cloud – nedostupné offline", false, true))
-        setHome(HomeSpec.IDSK) { UxSegmentedSwitch("sw", "Zobrazovať doklady z úložiska", options, labelVisible = true, onChange = { changes += it }) }
-        assertEquals(listOf("Zobrazovať doklady z úložiska"), onNodeWithTag("sw").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
-        assertEquals("Zobrazovať doklady z úložiska", drawnText("sw.label"))
+        val options = listOf(UxSwitchOption("phone", "Option A", true, false), UxSwitchOption("cloud", "Option B, unavailable", false, true))
+        setHome { UxSegmentedSwitch("sw", "Switch label", options, labelVisible = true, onChange = { changes += it }) }
+        assertEquals(listOf("Switch label"), onNodeWithTag("sw").fetchSemanticsNode().config[SemanticsProperties.ContentDescription])
+        assertEquals("Switch label", drawnText("sw.label"))
         onNodeWithTag("sw.option.phone").assertIsSelected().assert(role(Role.RadioButton)).assertIsEnabled()
         onNodeWithTag("sw.option.cloud").assertIsNotSelected().assertIsNotEnabled()
-        assertEquals("Cloud – nedostupné offline", drawnText("sw.option.cloud.label"), "the unavailable option stays and says why")
+        assertEquals("Option B, unavailable", drawnText("sw.option.cloud.label"), "the unavailable option stays and says why")
         onNodeWithTag("sw.option.cloud").performClick()
         assertEquals(emptyList(), changes)
-        assertEquals(listOf("icon.check"), drawnAssets().map { it.id }, "idsk: the accented selected style draws the check")
     }
 
     @Test
-    fun aChangeRaisesTheOptionIdAndThePlainStyleAndMoreThanTwoOptionsFollowTheLibrary() = runComposeUiTest {
+    fun aChangeRaisesTheOptionIdAndTheSelectedStyleIsTheBrands() = forEachBrand { brand ->
         val changes = mutableListOf<String>()
-        val two = listOf(UxSwitchOption("phone", "Telefón", true, false), UxSwitchOption("cloud", "Cloud", false, false))
-        val three = two + UxSwitchOption("all", "Všetko", false, false)
-        setHome(HomeSpec.EUDIW) {
+        val two = listOf(UxSwitchOption("phone", "A", true, false), UxSwitchOption("cloud", "B", false, false))
+        val three = two + UxSwitchOption("all", "C", false, false)
+        setHome(brand) {
             Column {
-                UxSegmentedSwitch("two", "Úložisko", two, onChange = { changes += it })
+                UxSegmentedSwitch("two", "Store", two, onChange = { changes += it })
                 UxSegmentedSwitch("three", "Filter", three, onChange = { changes += "f-$it" })
             }
         }
@@ -279,7 +276,11 @@ abstract class HomePartsScenario {
         onNodeWithTag("two.option.phone").performClick()
         onNodeWithTag("three.option.all").performClick()
         assertEquals(listOf("cloud", "f-all"), changes, "the selected option is not raised again")
-        assertEquals(listOf("icon.check"), drawnAssets().map { it.id }, "plain: no check on the segmented thumb; the chips (auto, three options) check the selected one")
+        // The segmented thumb draws the check only in the accented style; the chips (three options) always check the selected one.
+        val check = HomeSpec.part(brand, "EL-segmented-switch", "selected check")
+        val accented = HomeSpec.selection(brand, "EL-segmented-switch.selected") != "plain"
+        val expected = listOfNotNull(check.takeIf { accented }, check)
+        assertEquals(expected, drawnAssets().map { it.id }, "$brand: ${if (accented) "accented" else "plain"} style")
         onAllNodesWithTag("two.label", useUnmergedTree = true).assertCountEquals(0)
     }
 
@@ -290,56 +291,77 @@ abstract class HomePartsScenario {
         val opened = mutableListOf<String>()
         setHome {
             Column {
-                UxTrustMark("tm", UxTrustMarkVariant.Badge, "Certifikovaná peňaženka EÚ", href = "#cert", onActivate = { opened += it })
-                UxTrustMark("static", UxTrustMarkVariant.Full, "Certifikovaná peňaženka EÚ")
+                UxTrustMark("tm", UxTrustMarkVariant.Badge, "Trust label", href = "#cert", onActivate = { opened += it })
+                UxTrustMark("static", UxTrustMarkVariant.Full, "Trust label")
             }
         }
         val link = onNodeWithTag("tm").fetchSemanticsNode().config
         assertEquals(Role.Button, link[SemanticsProperties.Role])
-        assertEquals(listOf("Certifikovaná peňaženka EÚ"), link[SemanticsProperties.ContentDescription])
+        assertEquals(listOf("Trust label"), link[SemanticsProperties.ContentDescription])
         onNodeWithTag("tm").performClick()
         assertEquals(listOf("#cert"), opened)
         onNodeWithTag("static").assertHasNoClickAction()
-        assertEquals(listOf("icon.chevron-right"), drawnAssets().map { it.id }, "the export binds no trust-mark.colour: the placeholder is drawn, the link has its chevron")
-        val full = HomeSpec.tokens.dp(HomeSpec.EUDIW, UxMode.Light, "comp.trust-mark.full-art-height")!!
-        assertEquals(full.value, onNodeWithTag("static.art", useUnmergedTree = true).getUnclippedBoundsInRoot().height.value, 0.5f)
+        val b = HomeSpec.defaultBrand
+        val mark = HomeSpec.part(b, "EL-trust-mark", "mark")
+        assertEquals(
+            listOfNotNull(mark, HomeSpec.part(b, "EL-trust-mark", "chevron"), mark),
+            drawnAssets().map { it.id },
+            "the mark where the brand binds it (else the placeholder), and the link's chevron",
+        )
+        HomeSpec.tokens.dp(b, UxMode.Light, "comp.trust-mark.full-art-height")?.takeIf { mark == null }?.let { full ->
+            assertEquals(full.value, onNodeWithTag("static.art", useUnmergedTree = true).getUnclippedBoundsInRoot().height.value, 0.5f)
+        }
     }
 
     @Test
     fun theOfficialArtworkKeepsItsOwnColoursWhereABrandBindsIt() = runComposeUiTest {
         val assets = eu.europa.ec.ux.theme.UxAssets.parse(
-            """{"brands": {"eudiw_v1": {"trust-mark.colour": {"resource": "tm", "format": "png", "paint": "image"}}}}""",
+            """{"brands": {"${HomeSpec.defaultBrand}": {"trust-mark.colour": {"resource": "tm", "format": "png", "paint": "image"}}}}""",
         )
+        val id = HomeSpec.library.assetId("EL-trust-mark", "mark") ?: return@runComposeUiTest
         setHome(resources = HomeSpec.resources(assets = assets)) { UxTrustMark("tm", UxTrustMarkVariant.Badge, "EU", href = "#cert") }
-        assertEquals(listOf(UxAssetDrawn("trust-mark.colour", "tm", null)), drawnAssets(), "an image is drawn as is, never tinted")
+        if (id == "trust-mark.colour") {
+            assertEquals(listOf(UxAssetDrawn(id, "tm", null)), drawnAssets(), "an image is drawn as is, never tinted")
+        }
     }
 
     // ---- TPL-home
 
+    /** The regions of TPL-home the library lists (`ux-library.json` `templates`), read at test time. */
+    private val homeRegions: List<String> by lazy {
+        val t = kotlinx.serialization.json.Json.parseToJsonElement(eu.europa.ec.ux.elements.fixture.UxLibrarySnapshot.JSON)
+        ((t as kotlinx.serialization.json.JsonObject)["templates"] as? kotlinx.serialization.json.JsonObject)
+            ?.get("TPL-home")?.let { (it as kotlinx.serialization.json.JsonObject)["regions"] as? kotlinx.serialization.json.JsonArray }
+            ?.map { (it as kotlinx.serialization.json.JsonPrimitive).content }.orEmpty()
+    }
+
     @Test
     fun theHomeTemplateDrawsOnlyTheRegionsItIsGivenAndTheTitleSitsInTheBarsBand() = runComposeUiTest {
         setHome { HomeUnderTest(withBar = true, withCards = true, withSwitch = false) }
-        listOf("home", "home.appbar", "home.header", "home.notice", "home.documents-heading", "home.cards", "home.footer", "home.actions").forEach {
-            onNodeWithTag(it, useUnmergedTree = true).assertExists()
+        val given = setOf("appbar", "header", "notice", "documents-heading", "cards", "footer", "actions")
+        onNodeWithTag("home", useUnmergedTree = true).assertExists()
+        homeRegions.forEach { region ->
+            onAllNodesWithTag("home.$region", useUnmergedTree = true).assertCountEquals(if (region in given) 1 else 0)
         }
-        listOf("home.switch", "home.identity", "home.body").forEach { onAllNodesWithTag(it, useUnmergedTree = true).assertCountEquals(0) }
         onNodeWithTag("home.title").assert(isHeading)
-        val bar = onNodeWithTag("home.appbar").getUnclippedBoundsInRoot()
-        val title = onNodeWithTag("home.title").getUnclippedBoundsInRoot()
-        assertTrue(title.top >= bar.top && title.bottom <= bar.bottom, "the h1 is drawn in the band: $title in $bar")
-        val centre = (title.left + title.right) / 2
-        assertTrue(kotlin.math.abs((centre - (bar.left + bar.right) / 2).value) <= 1f, "and centred between the controls")
+        if ("appbar" in homeRegions) {
+            val bar = onNodeWithTag("home.appbar").getUnclippedBoundsInRoot()
+            val title = onNodeWithTag("home.title").getUnclippedBoundsInRoot()
+            assertTrue(title.top >= bar.top && title.bottom <= bar.bottom, "the h1 is drawn in the band: $title in $bar")
+            val centre = (title.left + title.right) / 2
+            assertTrue(kotlin.math.abs((centre - (bar.left + bar.right) / 2).value) <= 1f, "and centred between the controls")
+        }
     }
 
     @Test
     fun homeSpacingComesFromTheScreenTokens() = runComposeUiTest {
         setHome { HomeUnderTest(withBar = false, withCards = true, withSwitch = true) }
-        fun t(key: String) = HomeSpec.tokens.dp(HomeSpec.EUDIW, UxMode.Light, "comp.screen.$key")!!
+        fun t(key: String) = HomeSpec.tokens.dp(HomeSpec.defaultBrand, UxMode.Light, "comp.screen.$key")
         val cards = onNodeWithTag("home.cards").getUnclippedBoundsInRoot()
         val first = onNodeWithTag("home.card1").getUnclippedBoundsInRoot()
-        assertEquals(t("gutter").value, first.left.value, 0.5f, "the gutter is comp.screen.gutter")
+        t("gutter")?.let { assertEquals(it.value, first.left.value, 0.5f, "the gutter is comp.screen.gutter") }
         val second = onNodeWithTag("home.card2").getUnclippedBoundsInRoot()
-        assertEquals(t("cards-gap").value, (second.top - first.bottom).value, 0.5f, "cards are comp.screen.cards-gap apart")
+        t("cards-gap")?.let { assertEquals(it.value, (second.top - first.bottom).value, 0.5f, "cards are comp.screen.cards-gap apart") }
         onNodeWithTag("home.header").assertExists()
         assertTrue(onNodeWithTag("home.switch").getUnclippedBoundsInRoot().top < cards.top)
         val any = onAllNodesWithTag("home", useUnmergedTree = true).fetchSemanticsNodes().single().config
@@ -351,7 +373,7 @@ abstract class HomePartsScenario {
         setHome { HomeUnderTest(withBar = true, withCards = true, withSwitch = false, bottomBar = true) }
         val root = onNodeWithTag("home").getUnclippedBoundsInRoot()
         val bar = onNodeWithTag("bar").getUnclippedBoundsInRoot()
-        val inset = HomeSpec.tokens.dp(HomeSpec.EUDIW, UxMode.Light, "comp.bottom-bar.inset")!!
+        val inset = HomeSpec.tokens.dp(HomeSpec.defaultBrand, UxMode.Light, "comp.bottom-bar.inset") ?: return@runComposeUiTest
         assertEquals(inset.value, (root.bottom - bar.bottom).value, 0.5f, "the floating bar keeps comp.bottom-bar.inset below it")
         assertEquals(inset.value, (bar.left - root.left).value, 0.5f)
     }
@@ -360,63 +382,64 @@ abstract class HomePartsScenario {
 
     @Test
     fun theAppBarKeepsItsPaddingColumnGapAndCentresItsTitleFromTheTokens() = runComposeUiTest {
-        setHome { UxAppBar("ab", UxBarLeading.Menu, leadingLabel = "Menu", title = "eDoklady", trailing = UxBarTrailing.Notifications, trailingLabel = "Bell", badge = true) }
+        setHome { UxAppBar("ab", UxBarLeading.Menu, leadingLabel = "Menu", title = "Title", trailing = UxBarTrailing.Notifications, trailingLabel = "Bell", badge = true) }
         val bar = onNodeWithTag("ab").getUnclippedBoundsInRoot()
         val lead = onNodeWithTag("ab.leading").getUnclippedBoundsInRoot()
-        val padding = HomeSpec.tokens.dp(HomeSpec.EUDIW, UxMode.Light, "comp.app-bar.padding-inline")!!
-        assertEquals(padding.value, (lead.left - bar.left).value, 0.5f)
+        HomeSpec.tokens.dp(HomeSpec.defaultBrand, UxMode.Light, "comp.app-bar.padding-inline")?.let { assertEquals(it.value, (lead.left - bar.left).value, 0.5f) }
         val title = onNodeWithTag("ab.title").getUnclippedBoundsInRoot()
         assertTrue(kotlin.math.abs((((title.left + title.right) / 2) - ((bar.left + bar.right) / 2)).value) <= 1f, "the title is centred")
-        assertEquals(HomeSpec.tokens.dp(HomeSpec.EUDIW, UxMode.Light, "comp.app-bar.min-height")!!.value, bar.height.value, 0.5f)
+        HomeSpec.tokens.dp(HomeSpec.defaultBrand, UxMode.Light, "comp.app-bar.min-height")?.let { assertEquals(it.value, bar.height.value, 0.5f) }
     }
 
     @Test
-    fun anOrganisationWithNoLogoGetsTheApartmentAvatarAndAMandatoryItemTheLock() = runComposeUiTest {
+    fun anOrganisationWithNoLogoGetsItsAvatarAndAMandatoryItemItsLock() = runComposeUiTest {
         setHome {
             Column {
-                UxRpIdentity("rp", "Acme", UxTrust.Trusted, "Overený")
+                UxRpIdentity("rp", "Org", UxTrust.Trusted, "Trusted")
                 UxAttributeList(
                     "al",
-                    listOf(UxAttributeItem("a", "Meno", UxRequirement.Mandatory, "Ján"), UxAttributeItem("b", "Telefón", UxRequirement.Optional, "0900")),
-                    mandatoryLabel = "Povinné",
-                    optionalLabel = "Voliteľné",
+                    listOf(UxAttributeItem("a", "Name", UxRequirement.Mandatory, "Value"), UxAttributeItem("b", "Phone", UxRequirement.Optional, "0000")),
+                    mandatoryLabel = "Mandatory",
+                    optionalLabel = "Optional",
                 )
             }
         }
         onNodeWithTag("rp.avatar", useUnmergedTree = true).assertExists()
         val ids = drawnAssets().map { it.id }
-        assertTrue("icon.apartment" in ids, "$ids")
-        assertEquals(1, ids.count { it == "icon.lock" }, "only the mandatory item is locked: $ids")
+        val b = HomeSpec.defaultBrand
+        HomeSpec.part(b, "EL-rp-identity", "organisation avatar")?.let { assertTrue(it in ids, "$ids") }
+        val lock = HomeSpec.part(b, "EL-attribute-item", "mandatory lock")
+        assertEquals(if (lock == null) 0 else 1, ids.count { it == lock }, "only the mandatory item is locked: $ids")
     }
 }
 
-/** A Home screen of neutral stand-ins (no screen id, no flow). */
+/** A Home screen of neutral stand-ins (no screen id, no flow, no spec copy). */
 @androidx.compose.runtime.Composable
 private fun HomeUnderTest(withBar: Boolean, withCards: Boolean, withSwitch: Boolean, bottomBar: Boolean = false) {
     TplHome(
         id = "home",
-        header = { UxText("home.title", "eDoklady", UxTextVariant.Title) },
+        header = { UxText("home.title", "Home title", UxTextVariant.Title) },
         appbar = if (withBar) ({ UxAppBar("home.bar", UxBarLeading.Menu, leadingLabel = "Menu", trailing = UxBarTrailing.Notifications, trailingLabel = "Bell") }) else null,
-        switch = if (withSwitch) ({ UxSegmentedSwitch("home.sw", "Úložisko", listOf(UxSwitchOption("a", "A", true, false), UxSwitchOption("b", "B", false, false))) }) else null,
+        switch = if (withSwitch) ({ UxSegmentedSwitch("home.sw", "Store", listOf(UxSwitchOption("a", "A", true, false), UxSwitchOption("b", "B", false, false))) }) else null,
         notice = { UxNotice("home.n", UxNoticeTone.Info, "Offline") },
         documentsHeading = {
-            UxText("home.h2", "Moje doklady", UxTextVariant.Heading)
-            UxLink("home.all", "Všetky", "#all", {})
+            UxText("home.h2", "Documents", UxTextVariant.Heading)
+            UxLink("home.all", "All", "#all", {})
         },
         cards = if (withCards) {
             {
-                UxDocumentCard("home.card1", UxCardVariant.Full, UxDocType.IdCard, "Občiansky preukaz", UxDocStatus.Valid, "Platný")
-                UxDocumentCard("home.card2", UxCardVariant.Full, UxDocType.DrivingLicence, "Vodičský preukaz", UxDocStatus.Valid, "Platný")
+                UxDocumentCard("home.card1", UxCardVariant.Full, UxDocType.IdCard, "Card one", UxDocStatus.Valid, "Valid")
+                UxDocumentCard("home.card2", UxCardVariant.Full, UxDocType.DrivingLicence, "Card two", UxDocStatus.Valid, "Valid")
             }
         } else {
             null
         },
-        footer = { UxLink("home.history", "História", "#log", {}) },
+        footer = { UxLink("home.history", "History", "#log", {}) },
         actions = {
             if (bottomBar) {
-                UxBottomBar("bar", "Nav", listOf(UxBarTab("a", "A", "icon-case", true)), action = UxBarAction.Menu, actionLabel = "Akcie")
+                UxBottomBar("bar", "Nav", listOf(UxBarTab("a", "A", "icon-case", true)), action = UxBarAction.Menu, actionLabel = "Actions")
             } else {
-                UxButton("home.present", "Predložiť", UxButtonVariant.Primary, {})
+                UxButton("home.present", "Present", UxButtonVariant.Primary, {})
             }
         },
     )

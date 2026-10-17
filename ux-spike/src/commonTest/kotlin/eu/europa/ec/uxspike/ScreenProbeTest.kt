@@ -58,21 +58,46 @@ private fun load(brand: String, uiState: String, mode: String = "light"): LoadRe
 /** The screen probe as data: selection, gating, the bundle it builds and its load through the handshake. */
 class ScreenProbeTest {
 
+    // M9r (spike rule T1): ui states, brands, gating, variants and context paths are read from the export's probe and
+    // library at test time; nothing here names a brand, a node or a ui state of the spec.
+
     @Test
     fun theScriptNamesTheUiStateTheBrandAndTheMode() {
         val brands = UxBrandConfig.brands.map { it.id }.toSet()
+        val other = brands.firstOrNull { it != probe.defaultBrand } ?: probe.defaultBrand
+        val ui = probe.uiStates.last()
         assertEquals(ProbeSelection(probe.uiStates.first(), probe.defaultBrand, "light"), ProbeSelection.parse("", probe, brands))
-        assertEquals(ProbeSelection("dl-expiring", "idsk", "high-contrast"), ProbeSelection.parse("-dl-expiring.idsk.hc", probe, brands))
-        assertEquals(ProbeSelection("offline", probe.defaultBrand, "dark"), ProbeSelection.parse("-offline.dark", probe, brands))
+        assertEquals(ProbeSelection(ui, other, "high-contrast"), ProbeSelection.parse("-$ui.$other.hc", probe, brands))
+        assertEquals(ProbeSelection(ui, probe.defaultBrand, "dark"), ProbeSelection.parse("-$ui.dark", probe, brands))
     }
+
+    private val raw: JsonObject by lazy { kotlinx.serialization.json.Json.parseToJsonElement(files.HOME) as JsonObject }
+    private val library: JsonObject by lazy { kotlinx.serialization.json.Json.parseToJsonElement(files.LIBRARY) as JsonObject }
+
+    private fun JsonObject.obj(key: String): JsonObject = this[key] as? JsonObject ?: JsonObject(emptyMap())
+
+    private fun str(e: kotlinx.serialization.json.JsonElement?): String? = (e as? kotlinx.serialization.json.JsonPrimitive)?.content
 
     @Test
     fun theExportsGatingRemovesTheNodesItNamesAndAnUnlistedBrandGetsItsVariantsOmits() {
-        val eudiw = probe.hidden("eudiw_v1")
-        assertEquals(setOf("switch", "trustmark", "present"), eudiw, "the export's gating of the default brand")
-        val ids = probe.nodes().map { it.second.let { n -> (n["id"] as kotlinx.serialization.json.JsonPrimitive).content } }
-        assertTrue(eudiw.none { it in ids }, "the probe's screen already lacks them")
-        assertEquals(setOf("bottom-bar"), probe.hidden("idsk"), "idsk: the library's bottom-nav axis omits the bar")
+        val ids = probe.nodes().map { str(it.second["id"])!! }.toSet()
+        val elementOf = probe.nodes().associate { str(it.second["id"])!! to str(it.second["element"]) }
+        // A brand the export gates: exactly the nodes its gating names, which the probe's screen already lacks.
+        probe.brands.forEach { brand ->
+            val gated = ((raw.obj("gating").obj(brand)["hidden"] as? kotlinx.serialization.json.JsonArray).orEmpty())
+                .map { str((it as JsonObject)["node"])!! }.toSet()
+            assertEquals(gated, probe.hidden(brand), "the export's gating of $brand")
+            assertTrue(gated.none { it in ids }, "the probe's screen already lacks $gated")
+        }
+        // Any other brand: only nodes of the screen whose element an omits rule of the brand's selected options names.
+        UxBrandConfig.brands.map { it.id }.filter { it !in probe.brands }.forEach { brand ->
+            val omittable = library.obj("brand_selections").obj(brand).flatMap { (axis, option) ->
+                ((library.obj("variant_axes").obj(axis).obj("options").obj(str(option)!!)["omits"] as? kotlinx.serialization.json.JsonArray).orEmpty())
+                    .mapNotNull { str((it as JsonObject)["element"]) }
+            }.toSet()
+            val hidden = probe.hidden(brand)
+            assertTrue(hidden.all { it in ids && elementOf[it] in omittable }, "$brand hides $hidden; its options omit $omittable")
+        }
     }
 
     @Test
@@ -90,10 +115,15 @@ class ScreenProbeTest {
 
     @Test
     fun aUiStatesDataOverridesTheContextExample() {
-        val offline = (load(probe.defaultBrand, "offline") as LoadResult.Loaded).bundle.context.getValue("/network/online").default
-        val online = (load(probe.defaultBrand, "default") as LoadResult.Loaded).bundle.context.getValue("/network/online").default
-        assertEquals("false", offline.toString())
-        assertEquals("true", online.toString())
+        val context = raw.obj("context")
+        (raw["ui_states"] as kotlinx.serialization.json.JsonArray).map { it as JsonObject }.forEach { u ->
+            val ui = str(u["id"])!!
+            val bundle = (load(probe.defaultBrand, ui) as LoadResult.Loaded).bundle
+            context.forEach { (path, field) ->
+                val expected = u.obj("data")[path] ?: (field as JsonObject)["value"] ?: kotlinx.serialization.json.JsonNull
+                assertEquals(expected, bundle.context.getValue(path).default, "$ui $path")
+            }
+        }
     }
 }
 
@@ -155,10 +185,10 @@ abstract class ProbeOracleScenario {
 
     @Test
     fun anotherBrandDrawsTheOracleMinusWhatItsVariantsOmit() = runComposeUiTest {
-        val brand = UxBrandConfig.brands.first { it.id != probe.defaultBrand }.id
+        val brand = UxBrandConfig.brands.firstOrNull { it.id != probe.defaultBrand }?.id ?: return@runComposeUiTest
         val selection = androidx.compose.runtime.mutableStateOf(Triple(brand, probe.uiStates.first(), "light"))
         host(selection)
-        listOf("default", "offline", "empty").filter { it in probe.uiStates }.forEach { ui ->
+        probe.uiStates.forEach { ui ->
             selection.value = Triple(brand, ui, "light")
             waitForIdle()
             val expected = probe.expectedVisible(probe.defaultBrand, ui)!! - probe.hidden(brand)

@@ -26,6 +26,7 @@ import eu.europa.ec.ux.runtime.engine.RestoreResult
 import eu.europa.ec.ux.runtime.fixture.ExportedPresBundle
 import eu.europa.ec.ux.runtime.support.FakePort
 import eu.europa.ec.ux.runtime.support.Fixture
+import eu.europa.ec.ux.runtime.support.Synthetic
 import eu.europa.ec.ux.runtime.support.json
 import eu.europa.ec.ux.runtime.support.with
 import kotlinx.coroutines.test.runCurrent
@@ -45,8 +46,11 @@ class HandshakeTest {
     private val hash = Fixture.specHash
     private val flowId = Fixture.flowId
 
-    /** The consent screen's id, read from the bundle so no screen id is written in :ux-runtime (KC1 guard). */
-    private val requestScreen = Fixture.bundle().state("request").screen!!
+    /** A screen of the export with rules, read from the bundle so no screen id is written here (KC1 guard, rule T1). */
+    private val ruledScreen = Fixture.bundle().screens.values.first { it.rules.isNotEmpty() }.id
+
+    /** M9r (rule T1): the loader's refusals are engine semantics, checked on the synthetic bundle's test-owned paths. */
+    private fun loadSynthetic(root: JsonObject) = FlowBundle.load(Fixture.bytes(root), Synthetic.FLOW_ID, Synthetic.SPEC_HASH, Synthetic.SPEC_HASH)
 
     private fun load(root: JsonObject = Fixture.root, expected: String = hash, theme: String = expected, provisional: Boolean = false) =
         FlowBundle.load(Fixture.bytes(root), flowId, expected, theme, provisional)
@@ -123,45 +127,45 @@ class HandshakeTest {
     fun h8_malformedJsonOrWrongTypeRefuses() {
         val bad = FlowBundle.load("{\"bundle_schema_version\": 1,".encodeToByteArray(), flowId, hash, hash, true)
         assertIs<RefusalReason.Malformed>(refusal(bad))
-        val wrongType = refusal(load(Fixture.root.with("/states/request/on", JsonPrimitive("CONTINUE"))))
-        assertEquals("/states/request/on", assertIs<RefusalReason.Malformed>(wrongType).path)
-        val wrongBool = refusal(load(Fixture.root.with("/services/send/idempotent", JsonPrimitive("no"))))
-        assertEquals("/services/send/idempotent", assertIs<RefusalReason.Malformed>(wrongBool).path)
+        val wrongType = refusal(loadSynthetic(Synthetic.root.with("/states/choose/on", JsonPrimitive("GO"))))
+        assertEquals("/states/choose/on", assertIs<RefusalReason.Malformed>(wrongType).path)
+        val wrongBool = refusal(loadSynthetic(Synthetic.root.with("/services/commit/idempotent", JsonPrimitive("no"))))
+        assertEquals("/services/commit/idempotent", assertIs<RefusalReason.Malformed>(wrongBool).path)
     }
 
     @Test
     fun h9_unknownSemanticEnumRefuses() {
         val cases = mapOf(
-            "/states/request/back/policy" to "undo",
-            "/states/request-optional-only/on/CONTINUE/0/guard/when/op" to "gt",
-            "/states/request/kind" to "modal",
-            "/states/request/on/TOGGLE_ITEM/0/assign/0/op" to "append",
-            "/context/~1request~1selected_count/derive/op" to "sum_where",
-            "/states/cancelled/invoke/scope" to "global",
-            "/states/done/exit/kind" to "web",
-            "/states/sending/restore/policy" to "replay",
+            "/states/choose/back/policy" to "undo",
+            "/states/choose-opt/on/GO/0/guard/when/op" to "gt",
+            "/states/choose/kind" to "modal",
+            "/states/choose/on/PICK/0/assign/0/op" to "append",
+            "/context/~1picked_count/derive/op" to "sum_where",
+            "/states/aborted/invoke/scope" to "global",
+            "/states/finished/exit/kind" to "web",
+            "/states/commit/restore/policy" to "replay",
         )
         cases.forEach { (path, value) ->
-            val r = refusal(load(Fixture.root.with(path, JsonPrimitive(value))))
+            val r = refusal(loadSynthetic(Synthetic.root.with(path, JsonPrimitive(value))))
             assertEquals(RefusalReason.UnsupportedFeature(path, value), r, path)
         }
     }
 
     @Test
     fun h10_structuralInvariantRefuses() {
-        val unguardedFirst = Fixture.root.with("/states/request-optional-only/on/CONTINUE/0/guard", null)
-        val snapshotOnSending = Fixture.root.with("/states/sending/restore", json("""{"policy":"snapshot"}"""))
-        val resultEventMissing = Fixture.root.with("/states/sending/invoke/on/Sent/event", JsonPrimitive("SYS_NOPE"))
-        val unknownTarget = Fixture.root.with("/states/request/on/CONTINUE/0/target", JsonPrimitive("nowhere"))
-        val unmappedResult = Fixture.root.with("/states/auth/invoke/on/Failed", null)
+        val unguardedFirst = Synthetic.root.with("/states/choose-opt/on/GO/0/guard", null)
+        val snapshotOnCommit = Synthetic.root.with("/states/commit/restore", json("""{"policy":"snapshot"}"""))
+        val resultEventMissing = Synthetic.root.with("/states/commit/invoke/on/Committed/event", JsonPrimitive("NOPE"))
+        val unknownTarget = Synthetic.root.with("/states/choose/on/GO/0/target", JsonPrimitive("nowhere"))
+        val unmappedResult = Synthetic.root.with("/states/check/invoke/on/Passed", null)
         listOf(
-            unguardedFirst to "/states/request-optional-only/on/CONTINUE/0",
-            snapshotOnSending to "/states/sending/restore/policy",
-            resultEventMissing to "/states/sending/invoke/on/Sent/event",
-            unknownTarget to "/states/request/on/CONTINUE/0/target",
-            unmappedResult to "/states/auth/invoke/on",
+            unguardedFirst to "/states/choose-opt/on/GO/0",
+            snapshotOnCommit to "/states/commit/restore/policy",
+            resultEventMissing to "/states/commit/invoke/on/Committed/event",
+            unknownTarget to "/states/choose/on/GO/0/target",
+            unmappedResult to "/states/check/invoke/on",
         ).forEach { (root, path) ->
-            assertEquals(path, assertIs<RefusalReason.InvalidBundle>(refusal(load(root)), path).path)
+            assertEquals(path, assertIs<RefusalReason.InvalidBundle>(refusal(loadSynthetic(root)), path).path)
         }
     }
 
@@ -169,27 +173,29 @@ class HandshakeTest {
     fun h11_snapshotOfAnotherSpecIsDiscardedAndExitsClosed() = runTest {
         val port = FakePort()
         val engine = FlowEngine(Fixture.bundle(), port, backgroundScope)
-        val foreign = FlowSnapshot(1, "sha256:" + "2".repeat(64), "request", JsonObject(emptyMap()), listOf("request"), 4)
+        val state = Fixture.bundle().initial
+        val foreign = FlowSnapshot(1, "sha256:" + "2".repeat(64), state, JsonObject(emptyMap()), listOf(state), 4)
         val result = engine.restore(FlowSnapshot.fromJson(foreign.toJson()), FlowPlatform.ANDROID)
         runCurrent()
         assertEquals(RestoreResult.Abandoned(AbandonReason.SPEC_HASH_MISMATCH), result)
         val exited = assertIs<FlowStatus.Exited>(engine.current.value)
-        assertEquals("closed", exited.exit?.state)
+        assertEquals(Fixture.bundle().abandonState, exited.exit?.state)
         assertEquals(0, port.total)
     }
 
     @Test
     fun h12_unknownDescriptiveKeyIsIgnored() {
-        val root = Fixture.root.with("/screens/$requestScreen/regions/actions/0/x_note", JsonPrimitive(1))
-            .with("/states/request/x_note", JsonPrimitive("note"))
+        val region = Fixture.bundle().screens.getValue(ruledScreen).let { ((Fixture.root["screens"] as JsonObject)[it.id] as JsonObject)["regions"] as JsonObject }.keys.first()
+        val root = Fixture.root.with("/screens/$ruledScreen/regions/$region/0/x_note", JsonPrimitive(1))
+            .with("/states/${Fixture.bundle().initial}/x_note", JsonPrimitive("note"))
         assertIs<LoadResult.Loaded>(load(root))
     }
 
     @Test
     fun unknownScreenEffectIsLoggedNotRefused() {
         val root = Fixture.root.with(
-            "/screens/$requestScreen/rules/0/then/0",
-            json("""{"effect":"sparkle","node":"instructions"}"""),
+            "/screens/$ruledScreen/rules/0/then/0",
+            json("""{"effect":"sparkle","node":"_test-node"}"""),
         )
         val bundle = assertIs<LoadResult.Loaded>(load(root)).bundle
         assertEquals(1, bundle.warnings.size)

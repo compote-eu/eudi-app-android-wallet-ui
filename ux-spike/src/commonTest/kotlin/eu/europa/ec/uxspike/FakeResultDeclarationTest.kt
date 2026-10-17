@@ -16,7 +16,6 @@
 
 package eu.europa.ec.uxspike
 
-import eu.europa.ec.ux.contract.pres.FetchRequestResult
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceResultDeclaration
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceServiceResults
 import kotlin.test.Test
@@ -24,8 +23,7 @@ import kotlin.test.assertEquals
 
 /**
  * M6c, DEC-081 / V33: the services adapter conformance check the export generates. The fake engine declares every
- * result of every service, so no sealed result of the contract is silently dead behind it; a result the spec adds is
- * reported here until the fake declares it.
+ * result of every service (M9r: from the generated table), so no sealed result of the contract is silently dead behind it.
  */
 class FakeResultDeclarationTest {
 
@@ -38,9 +36,12 @@ class FakeResultDeclarationTest {
 
     @Test
     fun aDeclarationThatOmitsAResultIsReported() {
-        val omitsExpired = object : PresCrossDeviceResultDeclaration by fake {
-            override val fetchRequestResults = fake.fetchRequestResults - FetchRequestResult.Expired::class
+        // M9r (rule T1): the omitted result is the first one the contract lists for the service, read from the table.
+        val dropped = fake.fetchRequestResults.first()
+        val name = PresCrossDeviceServiceResults.results.getValue("fetchRequest").entries.first { it.value == dropped }.key
+        val omits = object : PresCrossDeviceResultDeclaration by fake {
+            override val fetchRequestResults = fake.fetchRequestResults - dropped
         }
-        assertEquals(mapOf("fetchRequest" to listOf("Expired")), PresCrossDeviceServiceResults.undeclared(omitsExpired))
+        assertEquals(mapOf("fetchRequest" to listOf(name)), PresCrossDeviceServiceResults.undeclared(omits))
     }
 }

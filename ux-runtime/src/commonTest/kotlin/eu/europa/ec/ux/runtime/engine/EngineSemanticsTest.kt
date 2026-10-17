@@ -14,24 +14,28 @@
  * governing permissions and limitations under the Licence.
  */
 
-// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): guards, assign-then-guard and derive
-// on the exported bundle's request family (L58 fix).
+
+// M1b, re-run at M6a on the real export; M9r (spike rule T1): guards, assign-then-guard, derive and a shallow merge,
+// on the synthetic test bundle's choose family (the shape of the export's L58 fix, with test-owned names).
 package eu.europa.ec.ux.runtime.engine
 
-import eu.europa.ec.ux.runtime.support.Results
+import eu.europa.ec.ux.runtime.support.SynthDriver
+import eu.europa.ec.ux.runtime.support.SynthResults
+import eu.europa.ec.ux.runtime.support.Synthetic
 import eu.europa.ec.ux.runtime.support.active
 import eu.europa.ec.ux.runtime.support.ctx
 import eu.europa.ec.ux.runtime.support.int
+import eu.europa.ec.ux.runtime.support.pick
 import eu.europa.ec.ux.runtime.support.send
 import eu.europa.ec.ux.runtime.support.stateId
-import eu.europa.ec.ux.runtime.support.toggle
+import eu.europa.ec.ux.runtime.support.strings
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -39,48 +43,48 @@ import kotlin.test.assertEquals
 class EngineSemanticsTest {
 
     @Test
-    fun theRequestFamilyFollowsTheSelection() = runTest {
-        val d = Driver(this).request(Results.optionalOnly)
+    fun theGuardedFamilyFollowsTheDerivedSelection() = runTest {
+        val d = SynthDriver(this).choose(SynthResults.loadedOpt)
         val e = d.engine
-        assertEquals("request-optional-only", e.stateId())
+        assertEquals(Synthetic.CHOOSE_OPT, e.stateId())
 
-        e.toggle("o1")
-        assertEquals("request-optional-selected", e.stateId())
-        assertEquals(1, e.ctx("/request/selected_count").int())
+        e.pick("o1")
+        assertEquals(Synthetic.CHOOSE_OPT_ON, e.stateId())
+        assertEquals(1, e.ctx("/picked_count").int())
 
-        e.toggle("o1")
-        assertEquals("request-optional-only", e.stateId(), "unticking the last item goes back (assign-then-guard)")
+        e.pick("o1")
+        assertEquals(Synthetic.CHOOSE_OPT, e.stateId(), "unpicking the last item goes back (assign-then-guard)")
 
-        assertEquals(EventResult.Transitioned("request-no-selection"), e.send("CONTINUE"))
-        assertEquals(JsonPrimitive(true), e.ctx("/request/attempted"))
-        assertEquals(EventResult.Internal, e.send("CONTINUE"), "pressing again changes nothing")
+        assertEquals(EventResult.Transitioned(Synthetic.CHOOSE_NONE), e.send(Synthetic.GO))
+        assertEquals(JsonPrimitive(true), e.ctx("/tried"))
+        assertEquals(EventResult.Internal, e.send(Synthetic.GO), "pressing again changes nothing")
 
-        e.toggle("o2")
-        assertEquals("request-optional-selected", e.stateId())
-        e.toggle("o2")
-        assertEquals("request-no-selection", e.stateId(), "count 0 after an attempt shows the error again")
+        e.pick("o2")
+        assertEquals(Synthetic.CHOOSE_OPT_ON, e.stateId())
+        e.pick("o2")
+        assertEquals(Synthetic.CHOOSE_NONE, e.stateId(), "count 0 after an attempt shows the error state again")
 
-        e.toggle("o1")
-        assertEquals(EventResult.Transitioned("auth"), e.send("CONTINUE"))
-        assertEquals(listOf("o1"), e.ctx("/request/selection").jsonArray.map { it.jsonPrimitive.content })
+        e.pick("o1")
+        assertEquals(EventResult.Transitioned(Synthetic.CHECK), e.send(Synthetic.GO))
+        assertEquals(listOf("o1"), e.ctx("/picked").jsonArray.strings())
     }
 
     @Test
-    fun sendGetsTheDerivedSelection() = runTest {
-        val d = Driver(this).request()
-        d.engine.toggle("o1")
-        d.sending()
-        assertEquals("sending", d.engine.stateId())
+    fun aCallGetsTheDerivedSelection() = runTest {
+        val d = SynthDriver(this).choose()
+        d.engine.pick("o1")
+        d.commit()
+        assertEquals(Synthetic.COMMIT, d.engine.stateId())
         val (_, args) = d.port.args.last()
-        assertEquals(buildJsonObject { put("selection", buildJsonArray { add(JsonPrimitive("m1")); add(JsonPrimitive("o1")) }) }, args)
+        assertEquals(buildJsonObject { put("picked", buildJsonArray { add("m1"); add("o1") }) }, args)
     }
 
     @Test
     fun aResultMergesIntoTheContext() = runTest {
-        val d = Driver(this).request()
-        assertEquals(JsonPrimitive("Verifier"), d.engine.ctx("/verifier/name"))
-        assertEquals(JsonPrimitive("cross-device"), d.engine.ctx("/request/channel"), "merge is shallow and keeps defaults")
-        assertEquals(1, d.engine.ctx("/request/selected_count").int())
+        val d = SynthDriver(this).choose()
+        assertEquals(JsonPrimitive("Tester"), d.engine.ctx("/info/name"))
+        assertEquals(JsonPrimitive("plain"), d.engine.ctx("/info/kind"), "merge is shallow and keeps defaults")
+        assertEquals(1, d.engine.ctx("/picked_count").int())
         assertEquals(d.engine.active().gen, d.engine.snapshot()?.gen)
         runCurrent()
     }

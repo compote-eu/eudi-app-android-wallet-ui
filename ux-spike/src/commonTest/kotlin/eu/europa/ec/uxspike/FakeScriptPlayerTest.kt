@@ -16,20 +16,33 @@
 
 package eu.europa.ec.uxspike
 
-import eu.europa.ec.ux.contract.pres.SendResult
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
+/** M9r (spike rule T1): a test-owned result type and test-owned service names, so no export can turn this red. */
+@Serializable
+private sealed interface TestResult {
+    @Serializable
+    @SerialName("Early")
+    data object Early : TestResult
+
+    @Serializable
+    @SerialName("Done")
+    data object Done : TestResult
+}
+
 class FakeScriptPlayerTest {
 
     private val script = FakeScript.parse(
         """
         {"script": "t", "flow_id": "F", "x_unknown": 1, "calls": {
-          "send": [{"delay_ms": 5, "result": {"type": "Expired"}}, {"result": {"type": "Sent"}}],
-          "cancel": [{"fail": "scripted"}]
+          "first": [{"delay_ms": 5, "result": {"type": "Early"}}, {"result": {"type": "Done"}}],
+          "second": [{"fail": "scripted"}]
         }}
         """.trimIndent(),
     )
@@ -39,21 +52,21 @@ class FakeScriptPlayerTest {
         val lines = mutableListOf<String>()
         val player = FakeScriptPlayer(script) { lines += it }
 
-        assertIs<SendResult.Expired>(player.play("send", SendResult.serializer()))
-        assertIs<SendResult.Sent>(player.play("send", SendResult.serializer()))
-        assertIs<SendResult.Sent>(player.play("send", SendResult.serializer()))
+        assertIs<TestResult.Early>(player.play("first", TestResult.serializer()))
+        assertIs<TestResult.Done>(player.play("first", TestResult.serializer()))
+        assertIs<TestResult.Done>(player.play("first", TestResult.serializer()))
 
-        assertEquals(3, player.calls("send"))
-        assertEquals(listOf("send#1 (script t)", "send#2 (script t)", "send#3 (script t)"), lines)
+        assertEquals(3, player.calls("first"))
+        assertEquals(listOf("first#1 (script t)", "first#2 (script t)", "first#3 (script t)"), lines)
     }
 
     @Test
     fun aFailStepThrowsAndAMissingServiceThrows() = runTest {
         val player = FakeScriptPlayer(script)
-        assertFailsWith<IllegalStateException> { player.play("cancel", SendResult.serializer()) }
-        assertFailsWith<IllegalStateException> { player.play("authenticate", SendResult.serializer()) }
-        assertEquals(1, player.calls("cancel"))
-        assertEquals(1, player.calls("authenticate"))
+        assertFailsWith<IllegalStateException> { player.play("second", TestResult.serializer()) }
+        assertFailsWith<IllegalStateException> { player.play("_test-missing", TestResult.serializer()) }
+        assertEquals(1, player.calls("second"))
+        assertEquals(1, player.calls("_test-missing"))
         assertEquals(2, player.totalCalls)
     }
 }

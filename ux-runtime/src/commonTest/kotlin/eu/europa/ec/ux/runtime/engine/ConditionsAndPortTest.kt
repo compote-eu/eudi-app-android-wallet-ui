@@ -74,13 +74,13 @@ class ConditionsAndPortTest {
     @Serializable
     sealed interface TypedResult {
         @Serializable
-        @SerialName("Ready")
-        data class Ready(val code: String) : TypedResult
+        @SerialName("Made")
+        data class Made(val code: String) : TypedResult
     }
 
     /** Stands in for a generated typed `Services` method plus its generated invoker (boundary §2.5). */
     private class TypedServices {
-        fun verificationCode(): TypedResult = TypedResult.Ready("1234")
+        fun produce(): TypedResult = TypedResult.Made("1234")
     }
 
     @Test
@@ -88,9 +88,9 @@ class ConditionsAndPortTest {
         val services = TypedServices()
         val json = Json { classDiscriminator = "type" }
         val invoker: suspend (String, JsonObject) -> JsonObject = { _, _ ->
-            json.encodeToJsonElement(TypedResult.serializer(), services.verificationCode()).jsonObject
+            json.encodeToJsonElement(TypedResult.serializer(), services.produce()).jsonObject
         }
-        val result = ServicePort.fromJsonInvoker(invoke = invoker).call("verificationCode", JsonObject(emptyMap()))
-        assertEquals(ServiceResult("Ready", obj("""{"code":"1234"}""")), result)
+        val result = ServicePort.fromJsonInvoker(invoke = invoker).call("produce", JsonObject(emptyMap()))
+        assertEquals(ServiceResult("Made", obj("""{"code":"1234"}""")), result)
     }
 }

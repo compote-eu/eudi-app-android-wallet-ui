@@ -107,7 +107,7 @@ internal object AddedStateFixture {
     private fun retext(e: JsonElement, texts: MutableMap<String, String>): JsonElement = when (e) {
         is JsonObject -> if (e.keys == setOf("copy")) {
             val n = texts.size + 1
-            texts["$RES$n"] = "Pridaný stav, text $n"
+            texts["$RES$n"] = "Added state, text $n"
             buildJsonObject { put("copy", "$COPY$n") }
         } else {
             JsonObject(e.mapValues { retext(it.value, texts) })

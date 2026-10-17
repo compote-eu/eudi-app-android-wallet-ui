@@ -32,11 +32,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -150,51 +147,6 @@ internal class RecordingLog : FlowLog {
     }
 }
 
-/** Service results in the shape of boundary §1.6, small enough for the model check (selected_count in 0..2). */
-internal object Results {
-    private fun attr(id: String, requirement: String) = buildJsonObject {
-        put("id", id)
-        put("label_copy", "CPY-test-$id")
-        put("value", "v-$id")
-        put("requirement", requirement)
-        put("selected", false)
-    }
-
-    private fun verifier(trust: String) = buildJsonObject {
-        put("name", "Verifier")
-        put("service_name", "Service")
-        put("reason", "Reason")
-        put("trust", trust)
-    }
-
-    private fun payload(trust: String, vararg attrs: JsonObject) = buildJsonObject {
-        put("verifier", verifier(trust))
-        put("request", buildJsonObject {
-            put("document_name", "Doc")
-            put("attributes", buildJsonArray { attrs.forEach { add(it) } })
-        })
-    }
-
-    val requestReady = ServiceResult("RequestReady", payload("trusted", attr("m1", "mandatory"), attr("o1", "optional")))
-    val optionalOnly = ServiceResult("OptionalOnly", payload("trusted", attr("o1", "optional"), attr("o2", "optional")))
-    val rpUntrusted = ServiceResult("RpUntrusted", payload("untrusted", attr("m1", "mandatory"), attr("o1", "optional")))
-    val authenticated = ServiceResult("Authenticated")
-    val codeReady = ServiceResult("Ready", obj("""{"code":"1234","portal_url":"https://verifier.example/p"}"""))
-    val sent = ServiceResult("Sent")
-    val cancelled = ServiceResult("Cancelled")
-
-    /** The payloads per service and result name, for the model check. */
-    val byService: Map<String, Map<String, JsonObject>> = mapOf(
-        "fetchRequest" to listOf(requestReady, optionalOnly, rpUntrusted).associate { it.type to it.payload } +
-            mapOf("DocMissing" to obj("""{"document_name":"Doc"}"""), "DocInvalid" to obj("""{"document_name":"Doc"}""")),
-        "verificationCode" to mapOf(codeReady.type to codeReady.payload),
-    )
-}
-
-internal const val QR_URI = "openid4vp://?client_id=spike&request_uri=https://example.invalid/r"
-
-internal val qrPayload: JsonObject = buildJsonObject { put("uri", QR_URI) }
-
 internal fun FlowEngine.active(): FlowStatus.Active = assertIs<FlowStatus.Active>(current.value)
 
 internal fun FlowEngine.stateId(): String? = (current.value as? FlowStatus.Active)?.state
@@ -202,8 +154,6 @@ internal fun FlowEngine.stateId(): String? = (current.value as? FlowStatus.Activ
 /** Sends with the current generation, as a well-behaved host does. */
 internal fun FlowEngine.send(event: String, payload: JsonObject = JsonObject(emptyMap())): EventResult =
     dispatch(event, payload, active().gen)
-
-internal fun FlowEngine.toggle(id: String): EventResult = send("TOGGLE_ITEM", buildJsonObject { put("item_id", id) })
 
 internal fun FlowEngine.ctx(path: String): JsonElement =
     path.trim('/').split('/').fold(active().context as JsonElement) { e, k -> (e as JsonObject).getValue(k) }

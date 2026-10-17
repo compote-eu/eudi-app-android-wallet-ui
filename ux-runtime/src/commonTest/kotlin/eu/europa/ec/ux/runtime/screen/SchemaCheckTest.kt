@@ -20,6 +20,7 @@ package eu.europa.ec.ux.runtime.screen
 
 import eu.europa.ec.ux.elements.registry.UxElementRegistry
 import eu.europa.ec.ux.runtime.support.AddedStateFixture
+import eu.europa.ec.ux.runtime.support.ExportWalk
 import eu.europa.ec.ux.runtime.support.Fixture
 import eu.europa.ec.ux.runtime.support.with
 import kotlinx.serialization.json.JsonObject
@@ -44,14 +45,17 @@ class SchemaCheckTest {
 
     @Test
     fun plantedUnknownVariantPropAndElementAreReportedWithTheirNode() {
-        val screen = Fixture.bundle().state("connecting").screen!!
+        // M9r (rule T1): the planted sites are read from the export and the registry: a node carrying an enum prop, and
+        // another top-level node of the same screen.
+        val (site, prop, keys) = ExportWalk.variantSite()
+        val other = ExportWalk.sites(screen = site.screen).first { it.node.id != site.node.id && it.node.slots.isEmpty() }
         val root = Fixture.root
-            .with("/screens/$screen/regions/hero/0/props/tone", JsonPrimitive("bogus"))
-            .with("/screens/$screen/regions/actions/0/props/colour", JsonPrimitive("red"))
-            .with("/screens/$screen/regions/actions/0/element", JsonPrimitive("EL-not-there"))
+            .with("${site.pointer}/props/$prop", JsonPrimitive("bogus"))
+            .with("${other.pointer}/props/_test_colour", JsonPrimitive("red"))
+            .with("${other.pointer}/element", JsonPrimitive("EL-not-there"))
         val found = problems(root)
-        assertTrue(found.any { it.endsWith("/hero: prop 'tone' has unknown variant 'bogus' (allowed: error, info, pending, success, warning)") }, "$found")
-        assertTrue(found.any { it.endsWith("/cancel: unknown element 'EL-not-there'") }, "$found")
+        assertTrue(found.any { it.endsWith("/${site.node.id}: prop '$prop' has unknown variant 'bogus' (allowed: ${keys.sorted().joinToString()})") }, "$found")
+        assertTrue(found.any { it.endsWith("/${other.node.id}: unknown element 'EL-not-there'") }, "$found")
         assertEquals(2, found.size, "$found")
     }
 }

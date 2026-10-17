@@ -21,6 +21,7 @@ import eu.europa.ec.ux.contract.pres.CancelResult
 import eu.europa.ec.ux.contract.pres.FetchRequestResult
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceInvoker
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceResultDeclaration
+import eu.europa.ec.ux.contract.pres.PresCrossDeviceServiceResults
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceServices
 import eu.europa.ec.ux.contract.pres.SendResult
 import eu.europa.ec.ux.contract.pres.VerificationCodeResult
@@ -32,41 +33,25 @@ import kotlin.reflect.KClass
  * service, decoded with the contract's serializers. Biometric authentication is whatever the script says; every
  * shipped script says `Authenticated` (always succeed). The real presentation interactors are not involved.
  *
- * Conformance (DEC-081, V33): a script may name any result of the contract, so the fake declares every one, by name;
- * `PresCrossDeviceServiceResults.undeclared(fake)` is empty (`FakeResultDeclarationTest`). A result the spec adds fails
- * that test until it is declared here.
+ * Conformance (DEC-081, V33): a script may name any result of the contract, so the fake declares every one, read from
+ * the generated `PresCrossDeviceServiceResults.results` (M9r); `PresCrossDeviceServiceResults.undeclared(fake)` is empty
+ * (`FakeResultDeclarationTest`) for any export.
  */
 class FakePresCrossDeviceServices(val player: FakeScriptPlayer) :
     PresCrossDeviceServices,
     PresCrossDeviceResultDeclaration {
-    override val fetchRequestResults: Set<KClass<out FetchRequestResult>> = setOf(
-        FetchRequestResult.RequestReady::class,
-        FetchRequestResult.OptionalOnly::class,
-        FetchRequestResult.RpUntrusted::class,
-        FetchRequestResult.DocMissing::class,
-        FetchRequestResult.DocInvalid::class,
-        FetchRequestResult.Expired::class,
-        FetchRequestResult.Error::class,
-    )
+    // M9r (spike rule T1): the declarations come from the generated table of every result, so a result the spec adds is
+    // declared with no edit here (the fake plays whatever a script names, decoded by the contract's serializers). The
+    // conformance check stays meaningful for a real adapter, which declares by hand what it handles.
+    override val fetchRequestResults: Set<KClass<out FetchRequestResult>> = declared("fetchRequest")
 
-    override val authenticateResults: Set<KClass<out AuthenticateResult>> = setOf(
-        AuthenticateResult.Authenticated::class,
-        AuthenticateResult.Failed::class,
-        AuthenticateResult.NotEnrolled::class,
-        AuthenticateResult.Expired::class,
-        AuthenticateResult.Error::class,
-    )
+    override val authenticateResults: Set<KClass<out AuthenticateResult>> = declared("authenticate")
 
-    override val verificationCodeResults: Set<KClass<out VerificationCodeResult>> = setOf(
-        VerificationCodeResult.Ready::class,
-        VerificationCodeResult.Expired::class,
-        VerificationCodeResult.Error::class,
-    )
+    override val verificationCodeResults: Set<KClass<out VerificationCodeResult>> = declared("verificationCode")
 
-    override val sendResults: Set<KClass<out SendResult>> = setOf(SendResult.Sent::class, SendResult.Expired::class, SendResult.Error::class)
+    override val sendResults: Set<KClass<out SendResult>> = declared("send")
 
-    override val cancelResults: Set<KClass<out CancelResult>> =
-        setOf(CancelResult.Cancelled::class, CancelResult.NothingToCancel::class, CancelResult.Error::class)
+    override val cancelResults: Set<KClass<out CancelResult>> = declared("cancel")
 
     override suspend fun fetchRequest(uri: String): FetchRequestResult = player.play("fetchRequest", FetchRequestResult.serializer())
 
@@ -82,3 +67,8 @@ class FakePresCrossDeviceServices(val player: FakeScriptPlayer) :
     /** The runtime's only way in: the contract invoker behind [ServicePort] (boundary §2.5). */
     fun port(): ServicePort = ServicePort.fromJsonInvoker(invoke = PresCrossDeviceInvoker(this)::invoke)
 }
+
+/** Every result class the generated contract lists for [service] (the conformance table, DEC-081). */
+@Suppress("UNCHECKED_CAST")
+private fun <T : Any> declared(service: String): Set<KClass<out T>> =
+    PresCrossDeviceServiceResults.results.getValue(service).values.toSet() as Set<KClass<out T>>

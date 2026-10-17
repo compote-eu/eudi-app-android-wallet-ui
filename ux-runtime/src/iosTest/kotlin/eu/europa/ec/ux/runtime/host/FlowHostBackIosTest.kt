@@ -14,8 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): FlowHost back wiring on the exported
-// bundle.
+// M1b, re-run at M6a on the real export; M9r (spike rule T1): FlowHost back wiring on the synthetic test bundle (one
+// state per back policy, drawn by the state placeholder). The export's own back policies: ExportedPoliciesTest.
 package eu.europa.ec.ux.runtime.host
 
 import androidx.compose.runtime.CompositionLocalProvider
@@ -28,11 +28,8 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import eu.europa.ec.ux.runtime.engine.FlowPlatform
 import eu.europa.ec.ux.runtime.support.FakePort
-import eu.europa.ec.ux.runtime.support.Fixture
-import eu.europa.ec.ux.runtime.support.QR_URI
-import eu.europa.ec.ux.runtime.support.Results
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import eu.europa.ec.ux.runtime.support.SynthResults
+import eu.europa.ec.ux.runtime.support.Synthetic
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -40,7 +37,8 @@ import kotlin.test.assertTrue
 /**
  * D1 at the host level (the simulator edge swipe could not be driven, SPIKE-LOG M4): the platform adapter is replaced
  * by a recorder, and a "press" calls the one callback FlowHost registered. The outcome must be the bundle policy only:
- * request = REJECT (cancelled), auth = back to request, sending = blocked (handler still enabled, one send).
+ * an event policy fires its event, to_history returns and cancels the call, blocked keeps the state, the handler enabled
+ * and the one non-idempotent call.
  */
 @OptIn(ExperimentalTestApi::class)
 class FlowHostBackIosTest {
@@ -57,10 +55,10 @@ class FlowHostBackIosTest {
         setContent {
             CompositionLocalProvider(LocalViewModelStoreOwner provides owner) {
                 FlowHost(
-                    bundle = Fixture.bundle(),
+                    bundle = Synthetic.bundle(),
                     port = port,
-                    entry = "deeplink",
-                    launch = JsonObject(mapOf("uri" to JsonPrimitive(QR_URI))),
+                    entry = Synthetic.LINK,
+                    launch = Synthetic.launch,
                     platform = FlowPlatform.IOS,
                     backHandler = { enabled, onBack ->
                         recorder.enabled = enabled
@@ -70,10 +68,10 @@ class FlowHostBackIosTest {
                 )
             }
         }
-        waitUntil(timeoutMillis = TIMEOUT) { onAll("request") }
-        steps.forEach { (node, state) ->
-            // Since M5b the screens are interpreted: a step presses the node (its bundle id is its test tag).
-            onNodeWithTag(node, useUnmergedTree = true).performClick()
+        waitUntil(timeoutMillis = TIMEOUT) { onAll(Synthetic.CHOOSE) }
+        steps.forEach { (event, state) ->
+            // The synthetic bundle has no screens: the placeholder draws each event of the state as a button.
+            onNodeWithTag(PlaceholderTags.EVENT_PREFIX + event, useUnmergedTree = true).performClick()
             waitUntil(timeoutMillis = TIMEOUT) { onAll(state) }
         }
         assertTrue(recorder.enabled, "the handler must be enabled in $last")
@@ -84,8 +82,8 @@ class FlowHostBackIosTest {
     }
 
     private var steps: List<Pair<String, String>> = emptyList()
-    private var last = "request"
-    private var expected = "cancelled"
+    private var last = Synthetic.CHOOSE
+    private var expected = Synthetic.ABORTED
     private var afterPress: (Recorder) -> Unit = {}
 
     private fun androidx.compose.ui.test.ComposeUiTest.onAll(state: String): Boolean =
@@ -95,37 +93,37 @@ class FlowHostBackIosTest {
         onAllNodes(androidx.compose.ui.test.hasTestTag(tag)).fetchSemanticsNodes().size
 
     @Test
-    fun backInRequestRejects() {
-        val port = FakePort().apply { auto["fetchRequest"] = Results.requestReady }
-        expected = "cancelled"
+    fun anEventPolicyFiresItsEvent() {
+        val port = FakePort().apply { auto[Synthetic.SVC_LOAD] = SynthResults.loaded }
+        expected = Synthetic.ABORTED
         host(port, Recorder())
-        assertEquals(1, port.calls("cancel"))
+        assertEquals(1, port.calls(Synthetic.SVC_STOP))
     }
 
     @Test
-    fun backInAuthReturnsToRequestAndCancelsTheAuthentication() {
-        val port = FakePort().apply { auto["fetchRequest"] = Results.requestReady }
-        steps = listOf("continue" to "auth")
-        last = "auth"
-        expected = "request"
+    fun aToHistoryPolicyReturnsAndCancelsTheCall() {
+        val port = FakePort().apply { auto[Synthetic.SVC_LOAD] = SynthResults.loaded }
+        steps = listOf(Synthetic.GO to Synthetic.CHECK)
+        last = Synthetic.CHECK
+        expected = Synthetic.CHOOSE
         host(port, Recorder())
-        assertEquals(1, port.cancelled["authenticate"])
+        assertEquals(1, port.cancelled[Synthetic.SVC_CHECK])
     }
 
     @Test
-    fun backInSendingIsBlocked() {
+    fun aBlockedPolicyKeepsTheStateAndTheHandler() {
         val port = FakePort().apply {
-            auto["fetchRequest"] = Results.requestReady
-            auto["authenticate"] = Results.authenticated
-            auto["verificationCode"] = Results.codeReady
+            auto[Synthetic.SVC_LOAD] = SynthResults.loaded
+            auto[Synthetic.SVC_CHECK] = SynthResults.passed
+            auto[Synthetic.SVC_PRODUCE] = SynthResults.made
         }
-        steps = listOf("continue" to "verification-code", "confirm" to "sending")
-        last = "sending"
-        expected = "sending"
+        steps = listOf(Synthetic.GO to Synthetic.CODE, Synthetic.CONFIRM to Synthetic.COMMIT)
+        last = Synthetic.COMMIT
+        expected = Synthetic.COMMIT
         afterPress = { r -> assertTrue(r.enabled, "blocked keeps the handler enabled") }
         host(port, Recorder())
-        assertEquals(1, port.calls("send"))
-        assertEquals(null, port.cancelled["send"])
+        assertEquals(1, port.calls(Synthetic.SVC_COMMIT))
+        assertEquals(null, port.cancelled[Synthetic.SVC_COMMIT])
     }
 
     private companion object {

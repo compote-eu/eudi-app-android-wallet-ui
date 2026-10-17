@@ -26,11 +26,10 @@ import eu.europa.ec.ux.runtime.engine.FlowLog
 import eu.europa.ec.ux.runtime.engine.FlowPlatform
 import eu.europa.ec.ux.runtime.host.FlowHost
 import eu.europa.ec.ux.runtime.screen.FlowScreens
-import eu.europa.ec.ux.runtime.screen.ScreenCatalog
+import eu.europa.ec.ux.runtime.screen.ScreenTree
 import eu.europa.ec.ux.runtime.support.FakePort
 import eu.europa.ec.ux.runtime.support.Fixture
-import eu.europa.ec.ux.runtime.support.QR_URI
-import eu.europa.ec.ux.runtime.support.Results
+import eu.europa.ec.ux.runtime.support.ExportWalk
 import eu.europa.ec.ux.runtime.support.TestCopy
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
@@ -112,7 +111,10 @@ class IosAccessibilityBridgeTest {
         assertEquals(listOf<Pair<UIAccessibilityNotifications, Any?>>(UIAccessibilityScreenChangedNotification to "Review"), posted)
     }
 
-    /** The actual inside FlowHost (real frames, UIKit post replaced): connecting is announced, request posts ScreenChanged. */
+    /**
+     * The actual inside FlowHost (real frames, UIKit post replaced): the entry state and the next state of the export's
+     * main path each post what their screen's `a11y.on_enter` asks (M9r, rule T1: states and texts read from ux-spec/).
+     */
     @OptIn(ExperimentalTestApi::class)
     @Test
     fun flowHostDrivesTheIosActual() = runComposeUiTest {
@@ -125,21 +127,30 @@ class IosAccessibilityBridgeTest {
         setContent {
             CompositionLocalProvider(LocalViewModelStoreOwner provides owner) {
                 FlowHost(
-                    bundle = bundle, port = port, entry = "deeplink",
-                    launch = JsonObject(mapOf("uri" to JsonPrimitive(QR_URI))), platform = FlowPlatform.IOS,
+                    bundle = bundle, port = port, entry = ExportWalk.entry(bundle),
+                    launch = ExportWalk.launch(ExportWalk.entry(bundle)), platform = FlowPlatform.IOS,
                     backHandler = { _, _ -> }, onExit = {},
                     screens = FlowScreens(copy = TestCopy.provider(Fixture.root), accessibility = bridge), log = FlowLog.NONE,
                 )
             }
         }
+        val first = ExportWalk.mainPath(bundle).first()
         waitUntil(timeoutMillis = 5_000) { posted.size == 1 }
-        runOnIdle { port.complete("fetchRequest", Results.requestReady) }
+        runOnIdle { port.complete(first.service!!, first.result!!) }
         waitUntil(timeoutMillis = 5_000) { posted.size == 2 }
-        val catalog = ScreenCatalog(bundle)
-        val request = catalog.screens.getValue(bundle.state("request").screen!!)
-        val title = ((request.node(request.a11y.heading!!)!!.props["text"] as JsonObject)["copy"] as JsonPrimitive).content
-        assertEquals(UIAccessibilityAnnouncementNotification, posted[0].first)
-        assertTrue(assertIs<NSAttributedString>(posted[0].second).queued())
-        assertEquals(UIAccessibilityScreenChangedNotification to TestCopy.sk(Fixture.root, title), posted[1])
+        listOf(first.from, first.to).forEachIndexed { i, state ->
+            val tree = ExportWalk.tree(bundle, state)
+            if (tree.a11y.onEnter == "focus-heading") {
+                assertEquals(UIAccessibilityScreenChangedNotification to spoken(tree, tree.a11y.heading!!), posted[i], state)
+            } else {
+                assertEquals(UIAccessibilityAnnouncementNotification, posted[i].first, state)
+                assertTrue(assertIs<NSAttributedString>(posted[i].second).queued(), state)
+            }
+        }
     }
+
+    /** What a node says, from the bundle: its `{copy}` props' exported texts, joined (as the runtime builds the heading text). */
+    private fun spoken(tree: ScreenTree, node: String): String =
+        tree.node(node)!!.props.values.mapNotNull { v -> ((v as? JsonObject)?.get("copy") as? JsonPrimitive)?.content }
+            .mapNotNull { TestCopy.sk(Fixture.root, it) }.joinToString(". ")
 }

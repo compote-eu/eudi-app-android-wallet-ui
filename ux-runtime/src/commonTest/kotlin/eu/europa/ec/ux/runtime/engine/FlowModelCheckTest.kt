@@ -14,92 +14,115 @@
  * governing permissions and limitations under the Licence.
  */
 
-// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): D5-engine. The bounded model check
-// over the exported bundle (L58), and over a pre-fix variant.
+
+// M1b, re-run at M6a on the real export; M9r (spike rule T1): D5-engine with the property read from the export. The
+// bounded model check runs every invariant of the exported bundle (`invariants`: a state property, or an `accepts`
+// property), and a variant of the export with the guards into an invariant's states removed must fail it with a path.
 package eu.europa.ec.ux.runtime.engine
 
+import eu.europa.ec.ux.runtime.bundle.BundleParser
+import eu.europa.ec.ux.runtime.bundle.Condition
+import eu.europa.ec.ux.runtime.bundle.Node
+import eu.europa.ec.ux.runtime.support.ExportWalk
 import eu.europa.ec.ux.runtime.support.Fixture
-import eu.europa.ec.ux.runtime.support.QR_URI
-import eu.europa.ec.ux.runtime.support.Results
-import eu.europa.ec.ux.runtime.support.int
-import eu.europa.ec.ux.runtime.support.json
 import eu.europa.ec.ux.runtime.support.with
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/**
- * The L58 property (analysis repo `evaluation/kmp-ui-from-spec/spike-plan.md` §5.4): with event sequences up to
- * depth 8 and `selected_count` in {0, 1, 2}, no path reaches `auth` with `selected_count == 0`.
- */
 class FlowModelCheckTest {
 
-    private val launch = buildJsonObject { put("uri", QR_URI) }
+    private class Invariant(val id: String, val states: Set<String>, val holds: Condition, val accepts: String?)
 
-    private fun check(root: JsonObject, property: (Config) -> Boolean): FlowModelChecker.Outcome {
+    private val invariants: List<Invariant> = (Fixture.root["invariants"] as? JsonArray).orEmpty().map { it.jsonObject }.map { i ->
+        val id = i.getValue("id").jsonPrimitive.content
+        Invariant(
+            id = id,
+            states = i.getValue("in").jsonArray.map { it.jsonPrimitive.content }.toSet(),
+            holds = BundleParser(Fixture.root).condition(Node("/invariants/$id/when", i.getValue("when"))),
+            accepts = (i["accepts"] as? JsonPrimitive)?.content,
+        )
+    }
+
+    private fun check(root: JsonObject, property: (FlowMachine, Config) -> Boolean): FlowModelChecker.Outcome {
         val bundle = Fixture.bundle(root)
-        return FlowModelChecker(bundle, Results.byService, DEPTH).check(FlowModelChecker.starts(bundle, launch), property)
+        val machine = FlowMachine(bundle, FlowLog.NONE)
+        return FlowModelChecker(bundle, ExportWalk.payloads(bundle), DEPTH)
+            .check(FlowModelChecker.starts(bundle, ExportWalk.launch())) { property(machine, it) }
     }
 
-    private val l58: (Config) -> Boolean = { cfg ->
-        cfg.state != "auth" || FlowContext.get(cfg.context, "/request/selected_count").int() != 0
+    /** Whether [cfg] keeps [inv]: a state property holds, or the `accepts` event is not a silent no-op where it should act. */
+    private fun keeps(machine: FlowMachine, inv: Invariant, cfg: Config): Boolean {
+        if (cfg.state !in inv.states) return true
+        if (!Conditions.eval(inv.holds, cfg.context)) return inv.accepts != null
+        val event = inv.accepts ?: return true
+        return when (val f = machine.fire(machine.bundle.state(cfg.state), cfg.context, event, AssignInputs())) {
+            is Fired.Moved -> true
+            is Fired.Internal -> f.context != cfg.context
+            Fired.NoBranch, Fired.NotAccepted -> false
+        }
     }
+
+    private fun violated(machine: FlowMachine, cfg: Config): Invariant? = invariants.firstOrNull { !keeps(machine, it, cfg) }
 
     @Test
-    fun theExportedFixHoldsTheL58Property() {
-        val outcome = check(Fixture.root, l58)
-        println("D5-engine fixed: explored ${outcome.explored} nodes, counterexample ${outcome.counterexample}")
-        assertNull(outcome.counterexample, "L58 on the fixed bundle: ${outcome.counterexample?.trace}")
+    fun everyExportedInvariantHoldsWithinTheBound() {
+        val outcome = check(Fixture.root) { m, cfg -> violated(m, cfg) == null }
+        println("D5-engine: ${invariants.size} invariants, explored ${outcome.explored} nodes, counterexample ${outcome.counterexample}")
+        assertNull(outcome.counterexample, "${outcome.counterexample?.trace}")
     }
 
+    /** The check has reach: each invariant's states are reachable within the bound. */
     @Test
-    fun thePreFixVariantFailsTheL58PropertyWithAPath() {
-        val outcome = check(preFix(), l58)
-        val cex = assertNotNull(outcome.counterexample, "the pre-fix bundle must fail L58")
-        println("D5-engine pre-fix: explored ${outcome.explored} nodes, counterexample ${cex.trace}")
-        assertEquals("auth", cex.state)
-        assertEquals(0, FlowContext.get(cex.context, "/request/selected_count").int())
-        assertTrue(cex.trace.any { it.startsWith("TOGGLE_ITEM") } && cex.trace.last().startsWith("CONTINUE"), "${cex.trace}")
-        assertTrue(cex.trace.size - 1 <= DEPTH)
-    }
-
-    /** The check has reach: `auth` is reachable within the bound, with a selection. */
-    @Test
-    fun theBoundReachesAuth() {
-        val outcome = check(Fixture.root) { it.state != "auth" }
-        assertNotNull(outcome.counterexample)
+    fun theBoundReachesTheStatesOfEveryInvariant() {
+        invariants.forEach { inv ->
+            assertNotNull(check(Fixture.root) { _, cfg -> cfg.state !in inv.states }.counterexample, "${inv.id}: ${inv.states} not reached")
+        }
     }
 
     /**
-     * FLW-pres-cross-device.yaml before the fix (L58-63): ticking is "local screen state", so `request-optional-selected`
-     * keeps the user's unticking without a transition, and its `CONTINUE -> auth` is unguarded; `request-optional-only`
-     * moves on any tick, and `request-no-selection` has no `CONTINUE`. Built here from the fixed fixture.
+     * The check finds what it is for (L58): in a variant of the export where every guarded branch into an invariant's
+     * states becomes the event's only branch, unguarded, the check finds a path that breaks that invariant, for at least
+     * one invariant whose guards could be removed. Every counterexample found must be in the invariant's states, break
+     * it, and fit the bound. (Not every guard is load-bearing; an export with no guard into any invariant's states has
+     * nothing to remove, and the test then checks nothing.)
      */
-    private fun preFix(): JsonObject {
-        val toggle = """[{"op":"toggle_item","list":"/request/attributes","key":"id","key_from":{"event":"item_id"},"field":"selected"}]"""
-        val zero = """{"path":"/request/selected_count","op":"eq","value":0}"""
-        return Fixture.root
-            .with("/states/request-optional-selected/on/TOGGLE_ITEM", json("""[{"target":null,"kind":"alt","assign":$toggle}]"""))
-            .with("/states/request-optional-selected/on/CONTINUE", json("""[{"target":"auth","kind":"main"}]"""))
-            .with(
-                "/states/request-optional-only/on/TOGGLE_ITEM",
-                json("""[{"target":"request-optional-selected","kind":"alt","assign":$toggle}]"""),
-            )
-            .with(
-                "/states/request-optional-only/on/CONTINUE",
-                json(
-                    """[{"target":"request-no-selection","kind":"alt","guard":{"when":$zero},
-                    "assign":[{"op":"set","path":"/request/attempted","value":true}]}]""",
-                ),
-            )
-            .with("/states/request-no-selection/on/CONTINUE", null)
-            .with("/states/request/on/TOGGLE_ITEM", null)
-            .with("/states/request-untrusted/on/TOGGLE_ITEM", null)
+    @Test
+    fun aVariantWithoutTheGuardsIntoAnInvariantsStatesFailsItWithAPath() {
+        val tried = mutableListOf<String>()
+        val failed = mutableListOf<String>()
+        invariants.filter { it.accepts == null }.forEach { inv ->
+            var root = Fixture.root
+            var removed = 0
+            Fixture.root.getValue("states").jsonObject.forEach { (sid, s) ->
+                ((s.jsonObject["on"] as? JsonObject).orEmpty()).forEach { (event, branches) ->
+                    val guarded = branches.jsonArray.map { it.jsonObject }
+                        .firstOrNull { b -> (b["target"] as? JsonPrimitive)?.content in inv.states && b["guard"] != null }
+                    if (guarded != null) {
+                        root = root.with("/states/$sid/on/$event", JsonArray(listOf(JsonObject(guarded - "guard"))))
+                        removed++
+                    }
+                }
+            }
+            if (removed == 0) return@forEach println("D5-engine: ${inv.id} has no guarded branch into ${inv.states}")
+            val outcome = check(root) { m, cfg -> keeps(m, inv, cfg) }
+            tried += inv.id
+            val cex = outcome.counterexample ?: return@forEach println("D5-engine variant ${inv.id}: no counterexample")
+            failed += inv.id
+            println("D5-engine variant ${inv.id}: explored ${outcome.explored} nodes, counterexample ${cex.trace}")
+            assertTrue(cex.state in inv.states, "${inv.id}: ${cex.state}")
+            assertFalse(Conditions.eval(inv.holds, cex.context), "${inv.id}: the counterexample breaks it")
+            assertTrue(cex.trace.size - 1 <= DEPTH)
+        }
+        if (tried.isNotEmpty()) assertTrue(failed.isNotEmpty(), "no variant of $tried fails its invariant")
     }
 
     private companion object {

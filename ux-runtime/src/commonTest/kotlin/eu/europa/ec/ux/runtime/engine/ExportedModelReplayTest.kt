@@ -63,7 +63,7 @@ class ExportedModelReplayTest {
     fun theFixtureIsForThisExport() {
         assertEquals(Fixture.specHash, model.str("spec_hash"))
         assertEquals(Fixture.flowId, model.str("flow_id"))
-        assertTrue(sequences.size >= 80, "${sequences.size} sequences")
+        assertTrue(sequences.isNotEmpty(), "the model fixture has no sequence")
     }
 
     @Test

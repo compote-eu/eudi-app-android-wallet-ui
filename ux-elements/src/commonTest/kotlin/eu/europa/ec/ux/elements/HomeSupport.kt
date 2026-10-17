@@ -38,12 +38,29 @@ import eu.europa.ec.ux.theme.UxTheme
 import eu.europa.ec.ux.theme.generated.UxBrandConfig
 import kotlin.test.assertTrue
 
-/** The export's own data (M5e): the `comp.*` table, the asset bindings, the library rules and the brand selections. */
+/**
+ * The export's own data (M5e): the `comp.*` table, the asset bindings, the library rules and the brand selections. M9r
+ * (spike rule T1): no brand is named here; the brands, the default one and what each binds come from the export.
+ */
 internal object HomeSpec {
-    const val EUDIW = "eudiw_v1"
-    const val IDSK = "idsk"
+    /** The exported brands, the default first; [defaultBrand] is `default_brand` of the export. */
+    val brands: List<String> = UxBrandConfig.brands.map { it.id }
+    val defaultBrand: String = UxBrandConfig.defaultBrand.id
 
     val tokens: UxComponentTokenTable = UxComponentTokenTable.parse(UxTokensSnapshot.JSON)
+    val assets: UxAssets = UxAssets.parse(UxAssetsSnapshot.JSON)
+    val library: UxLibraryAssets = UxLibraryAssets.parse(UxLibrarySnapshot.JSON)
+    val selections: UxBrandSelections = UxBrandSelections.parse(UxLibrarySnapshot.JSON)
+
+    /**
+     * The asset id [element]'s [part] draws in [brand] for [value]: the library's rule, if the brand binds that id (an
+     * unbound id draws nothing, DEC-080; an SVG is not offered where the platform cannot load it). Null when nothing.
+     */
+    fun part(brand: String, element: String, part: String, value: String? = null): String? =
+        library.assetId(element, part, value)?.takeIf { assets.asset(brand, it) != null }
+
+    /** [brand]'s library selection for [key] (`EL-status-chip.mark`, `card-face`, ...), or null. */
+    fun selection(brand: String, key: String): String? = selections.of(brand, key)
 
     /** The artwork's own proportion the stand-in painter reports, so the card's minimum height can be asserted. */
     val ART = Size(width = 1250f, height = 788f)
@@ -55,11 +72,11 @@ internal object HomeSpec {
     }
 
     /** The resources of the export; [drawn] records each drawable the elements ask the painter for. */
-    fun resources(drawn: MutableList<String> = mutableListOf(), assets: UxAssets = UxAssets.parse(UxAssetsSnapshot.JSON)): UxSpecResources = UxSpecResources(
+    fun resources(drawn: MutableList<String> = mutableListOf(), assets: UxAssets = this.assets): UxSpecResources = UxSpecResources(
         assets = assets,
-        library = UxLibraryAssets.parse(UxLibrarySnapshot.JSON),
+        library = library,
         componentTokens = tokens,
-        selections = UxBrandSelections.parse(UxLibrarySnapshot.JSON),
+        selections = selections,
         painter = { resource ->
             drawn += resource
             Art(if (resource.contains("document_art")) ART else Size.Unspecified)
@@ -70,7 +87,7 @@ internal object HomeSpec {
 /** Draws [content] in [brand] and [mode] with the export's data; the PID art is an SVG, which the stand-in painter also offers. */
 @OptIn(ExperimentalTestApi::class)
 internal fun ComposeUiTest.setHome(
-    brand: String = HomeSpec.EUDIW,
+    brand: String = HomeSpec.defaultBrand,
     mode: UxMode = UxMode.Light,
     resources: UxSpecResources = HomeSpec.resources(),
     content: @Composable () -> Unit,

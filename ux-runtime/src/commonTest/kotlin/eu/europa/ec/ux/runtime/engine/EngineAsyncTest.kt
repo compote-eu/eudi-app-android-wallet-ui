@@ -14,199 +14,156 @@
  * governing permissions and limitations under the Licence.
  */
 
-// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): the async rules of SPIKE-PLAN §1.3
-// on the exported bundle.
+
+// M1b, re-run at M6a on the real export; M9r (spike rule T1): the async rules of SPIKE-PLAN §1.3 on the synthetic
+// test bundle (support/SyntheticFlow.kt), whose names are test-owned, so no spec change can turn them red.
 package eu.europa.ec.ux.runtime.engine
 
-import eu.europa.ec.ux.runtime.bundle.FlowBundle
-import eu.europa.ec.ux.runtime.support.FakePort
-import eu.europa.ec.ux.runtime.support.Fixture
-import eu.europa.ec.ux.runtime.support.RecordingLog
-import eu.europa.ec.ux.runtime.support.Results
+import eu.europa.ec.ux.runtime.support.SynthDriver
+import eu.europa.ec.ux.runtime.support.SynthResults
+import eu.europa.ec.ux.runtime.support.Synthetic
 import eu.europa.ec.ux.runtime.support.active
 import eu.europa.ec.ux.runtime.support.ctx
-import eu.europa.ec.ux.runtime.support.qrPayload
+import eu.europa.ec.ux.runtime.support.pick
 import eu.europa.ec.ux.runtime.support.send
 import eu.europa.ec.ux.runtime.support.stateId
-import eu.europa.ec.ux.runtime.support.toggle
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.test.TestScope
+import eu.europa.ec.ux.runtime.support.strings
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** Drives the provisional flow to a named state through the engine's public API only. */
-internal class Driver(
-    val scope: TestScope,
-    val port: FakePort = FakePort(),
-    engineScope: CoroutineScope = scope.backgroundScope,
-    bundle: FlowBundle = Fixture.bundle(),
-) {
-    val log = RecordingLog()
-    val engine = FlowEngine(bundle, port, engineScope, log)
-
-    fun request(result: ServiceResult = Results.requestReady): Driver = apply {
-        port.auto["fetchRequest"] = result
-        engine.start()
-        engine.send("SYS_QR_SCANNED", qrPayload)
-        scope.runCurrent()
-    }
-
-    fun auth(): Driver = apply {
-        engine.send("CONTINUE")
-        scope.runCurrent()
-    }
-
-    fun verification(): Driver = apply {
-        port.auto["authenticate"] = Results.authenticated
-        port.auto["verificationCode"] = Results.codeReady
-        auth()
-    }
-
-    fun sending(): Driver = apply {
-        verification()
-        engine.send("CONFIRM")
-        scope.runCurrent()
-    }
-}
-
 class EngineAsyncTest {
 
     @Test
     fun leavingAStateCancelsItsInvoke() = runTest {
-        val d = Driver(this).request().auth()
-        assertEquals("auth", d.engine.stateId())
+        val d = SynthDriver(this).choose().check()
+        assertEquals(Synthetic.CHECK, d.engine.stateId())
         assertTrue(d.engine.active().pending)
-        assertEquals(1, d.port.waiting("authenticate"))
+        assertEquals(1, d.port.waiting(Synthetic.SVC_CHECK))
 
         d.engine.back()
         runCurrent()
 
-        assertEquals("request", d.engine.stateId())
-        assertEquals(1, d.port.cancelled["authenticate"])
-        assertEquals(0, d.port.waiting("authenticate"))
+        assertEquals(Synthetic.CHOOSE, d.engine.stateId())
+        assertEquals(1, d.port.cancelled[Synthetic.SVC_CHECK])
+        assertEquals(0, d.port.waiting(Synthetic.SVC_CHECK))
         assertFalse(d.engine.active().pending)
     }
 
     @Test
-    fun cancelInConnectingCancelsTheFetch() = runTest {
-        val d = Driver(this)
+    fun anEventThatLeavesAPendingStateCancelsItsCall() = runTest {
+        val d = SynthDriver(this)
         d.engine.start()
-        d.engine.send("SYS_QR_SCANNED", qrPayload)
+        d.engine.send(Synthetic.SCANNED, buildJsonObject { put("uri", Synthetic.URI) })
         runCurrent()
-        assertEquals(1, d.port.waiting("fetchRequest"))
+        assertEquals(1, d.port.waiting(Synthetic.SVC_LOAD))
 
-        d.engine.send("CANCEL")
+        d.engine.send(Synthetic.ABORT)
         runCurrent()
 
-        assertEquals("cancelled", d.engine.stateId())
-        assertEquals(1, d.port.cancelled["fetchRequest"])
+        assertEquals(Synthetic.ABORTED, d.engine.stateId())
+        assertEquals(1, d.port.cancelled[Synthetic.SVC_LOAD])
     }
 
     @Test
     fun aLateCompletionIsIgnoredEvenInALaterEntryOfTheSameState() = runTest {
-        val d = Driver(this).request()
+        val d = SynthDriver(this).choose()
         d.port.cancellable = false
-        d.auth()
+        d.check()
         val firstGen = d.engine.active().gen
         d.engine.back()
-        d.auth()
-        assertEquals("auth", d.engine.stateId())
+        d.check()
+        assertEquals(Synthetic.CHECK, d.engine.stateId())
         assertTrue(d.engine.active().gen > firstGen)
-        assertEquals(2, d.port.waiting("authenticate"))
+        assertEquals(2, d.port.waiting(Synthetic.SVC_CHECK))
 
-        d.port.complete("authenticate", ServiceResult("Failed"))
+        d.port.complete(Synthetic.SVC_CHECK, ServiceResult(ServiceResult.UNEXPECTED_ERROR_TYPE))
         runCurrent()
 
-        assertEquals("auth", d.engine.stateId(), "the first entry's result must not move the second entry")
-        assertTrue(d.log.lines.any { it.startsWith("late result Failed") }, d.log.lines.joinToString("\n"))
+        assertEquals(Synthetic.CHECK, d.engine.stateId(), "the first entry's result must not move the second entry")
+        assertTrue(d.log.lines.any { it.startsWith("late result ${ServiceResult.UNEXPECTED_ERROR_TYPE}") }, d.log.lines.joinToString("\n"))
 
-        d.port.complete("authenticate", Results.authenticated)
+        d.port.complete(Synthetic.SVC_CHECK, SynthResults.passed)
         runCurrent()
-        assertEquals("verification-code", d.engine.stateId())
+        assertEquals(Synthetic.CODE, d.engine.stateId())
     }
 
     @Test
-    fun aDoubleConsentTapSendsOnce() = runTest {
-        val d = Driver(this).request()
+    fun aDoubleTapSendsOnce() = runTest {
+        val d = SynthDriver(this).choose()
         val gen = d.engine.active().gen
-        assertEquals(EventResult.Transitioned("auth"), d.engine.dispatch("CONTINUE", gen = gen))
-        assertEquals(EventResult.Dropped(DropReason.STALE_GENERATION), d.engine.dispatch("CONTINUE", gen = gen))
+        assertEquals(EventResult.Transitioned(Synthetic.CHECK), d.engine.dispatch(Synthetic.GO, gen = gen))
+        assertEquals(EventResult.Dropped(DropReason.STALE_GENERATION), d.engine.dispatch(Synthetic.GO, gen = gen))
         runCurrent()
-        assertEquals(1, d.port.calls("authenticate"))
+        assertEquals(1, d.port.calls(Synthetic.SVC_CHECK))
 
-        d.port.complete("authenticate", Results.authenticated)
-        d.port.auto["verificationCode"] = Results.codeReady
+        d.port.complete(Synthetic.SVC_CHECK, SynthResults.passed)
+        d.port.auto[Synthetic.SVC_PRODUCE] = SynthResults.made
         runCurrent()
-        assertEquals("verification-code", d.engine.stateId())
+        assertEquals(Synthetic.CODE, d.engine.stateId())
         val confirmGen = d.engine.active().gen
-        assertEquals(EventResult.Transitioned("sending"), d.engine.dispatch("CONFIRM", gen = confirmGen))
-        assertEquals(EventResult.Dropped(DropReason.STALE_GENERATION), d.engine.dispatch("CONFIRM", gen = confirmGen))
-        assertEquals(EventResult.Dropped(DropReason.NOT_ACCEPTED), d.engine.send("CONFIRM"))
+        assertEquals(EventResult.Transitioned(Synthetic.COMMIT), d.engine.dispatch(Synthetic.CONFIRM, gen = confirmGen))
+        assertEquals(EventResult.Dropped(DropReason.STALE_GENERATION), d.engine.dispatch(Synthetic.CONFIRM, gen = confirmGen))
+        assertEquals(EventResult.Dropped(DropReason.NOT_ACCEPTED), d.engine.send(Synthetic.CONFIRM))
         runCurrent()
 
-        assertEquals(1, d.port.calls("send"))
+        assertEquals(1, d.port.calls(Synthetic.SVC_COMMIT))
     }
 
     @Test
     fun internalEventsMayRepeatInOneGeneration() = runTest {
-        val d = Driver(this).request()
+        val d = SynthDriver(this).choose()
         val gen = d.engine.active().gen
-        repeat(3) { assertEquals(EventResult.Internal, d.engine.toggle("o1")) }
+        repeat(3) { assertEquals(EventResult.Internal, d.engine.pick("o1")) }
         assertEquals(gen, d.engine.active().gen)
-        assertEquals(listOf("m1", "o1"), d.engine.ctx("/request/selection").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(listOf("m1", "o1"), d.engine.ctx("/picked").jsonArray.strings())
     }
 
     @Test
     fun onlyAcceptedEventsPassWhileAnInvokeIsPending() = runTest {
-        val d = Driver(this).request()
-        d.port.auto["authenticate"] = Results.authenticated
-        d.auth()
-        assertEquals("verification-code", d.engine.stateId())
+        val d = SynthDriver(this).choose()
+        d.port.auto[Synthetic.SVC_CHECK] = SynthResults.passed
+        d.check()
+        assertEquals(Synthetic.CODE, d.engine.stateId())
         assertTrue(d.engine.active().pending)
 
-        assertFalse(d.engine.isAccepted("CONFIRM"))
-        assertEquals(EventResult.Dropped(DropReason.PENDING), d.engine.send("CONFIRM"))
-        assertTrue(d.engine.isAccepted("CANCEL"))
+        assertFalse(d.engine.isAccepted(Synthetic.CONFIRM))
+        assertEquals(EventResult.Dropped(DropReason.PENDING), d.engine.send(Synthetic.CONFIRM))
+        assertTrue(d.engine.isAccepted(Synthetic.ABORT))
 
         val gen = d.engine.active().gen
-        d.port.complete("verificationCode", Results.codeReady)
+        d.port.complete(Synthetic.SVC_PRODUCE, SynthResults.made)
         runCurrent()
 
-        assertEquals("verification-code", d.engine.stateId())
+        assertEquals(Synthetic.CODE, d.engine.stateId())
         assertEquals(gen, d.engine.active().gen, "an internal result keeps the generation")
-        assertEquals(JsonPrimitive("1234"), d.engine.ctx("/verification/code"))
-        assertEquals("default", d.engine.active().uiState)
-        assertTrue(d.engine.isAccepted("CONFIRM"))
+        assertEquals(JsonPrimitive("1234"), d.engine.ctx("/code"))
+        assertEquals(Synthetic.DEFAULT_UI, d.engine.active().uiState)
+        assertTrue(d.engine.isAccepted(Synthetic.CONFIRM))
     }
 
     @Test
     fun uiStateWhenPicksTheFirstMatch() = runTest {
-        val d = Driver(this).request()
-        d.port.auto["authenticate"] = Results.authenticated
-        d.port.auto["verificationCode"] = ServiceResult("Ready", buildJsonObject {
-            put("code", JsonPrimitive("1234"))
-            put("portal_url", JsonNull)
-        })
-        d.auth()
-        assertEquals("no-url", d.engine.active().uiState)
+        val d = SynthDriver(this).choose()
+        d.port.auto[Synthetic.SVC_CHECK] = SynthResults.passed
+        d.port.auto[Synthetic.SVC_PRODUCE] = SynthResults.madeNoUrl
+        d.check()
+        assertEquals(Synthetic.NO_URL, d.engine.active().uiState)
     }
 
     @Test
     fun anUnknownResultIsAContractErrorAndMovesNothing() = runTest {
-        val d = Driver(this).request()
-        d.auth()
-        d.port.complete("authenticate", ServiceResult("Teleported"))
+        val d = SynthDriver(this).choose().check()
+        d.port.complete(Synthetic.SVC_CHECK, ServiceResult("Teleported"))
         runCurrent()
-        assertEquals("auth", d.engine.stateId())
+        assertEquals(Synthetic.CHECK, d.engine.stateId())
         assertTrue(d.log.lines.any { it.startsWith("contract error") })
     }
 }
