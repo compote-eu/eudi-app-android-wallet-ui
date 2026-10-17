@@ -1,6 +1,6 @@
 # M5b D6-iOS-provisional, happy path (script `happy`), opened with Maestro openLink ${LINK}: connecting -> request
 # (hand-written) -> auth -> verification-code -> sending -> success -> Home. Each interpreted screen is checked by its
-# bundle node ids and its PROVISIONAL sk copy.
+# bundle node ids (the exported bundle and copy since M6a).
 appId: eu.compote.euidi.dev
 ---
 - openLink: ${LINK}
@@ -15,7 +15,8 @@ appId: eu.compote.euidi.dev
       - tapOn:
           id: "pin_text_field_0"
       - inputText: "123456"
-# connecting lasts 800 ms in these scripts: seen when the poll is fast enough, always proven by the interpreter log.
+# connecting is optional here: the exported happy / expired-at-request scripts answer at once (no delay_ms, M6a);
+# it is always proven by the interpreter log.
 - extendedWaitUntil:
     visible:
       id: "ux-state-connecting"

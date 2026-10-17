@@ -14,15 +14,15 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M5b): helpers over the boundary fixture and its offline-loading test copy; re-pointed in M6.
+// Helpers over the exported bundle and its offline-loading test copy (M5b; re-pointed at the export in M6a).
 package eu.europa.ec.ux.runtime.support
 
+import eu.europa.ec.ux.runtime.fixture.ExportedPresBundle
 import eu.europa.ec.ux.runtime.fixture.OfflineLoadingTestBundle
 import eu.europa.ec.ux.runtime.screen.CopyProvider
 import eu.europa.ec.ux.runtime.screen.ScreenNode
 import eu.europa.ec.ux.runtime.screen.ScreenTree
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -33,25 +33,23 @@ internal object OfflineFixture {
     val root: JsonObject by lazy { Json.parseToJsonElement(OfflineLoadingTestBundle.JSON).jsonObject }
 }
 
-/** PROVISIONAL copy for tests: the `_sk` annotations of a bundle's copy table, `{name}` → `%n$s` (boundary §1.8). */
+/**
+ * The exported copy for tests: `strings.xml` as embedded by the fixture task (resource name to text), plus a test copy's
+ * own `copy._test_strings` (the offline-loading copy adds three keys the export does not have).
+ */
 internal object TestCopy {
     fun table(root: JsonObject): Map<String, String> {
-        val copy = root["copy"] as JsonObject
-        val keys = (copy["keys"] as JsonObject).values +
-            (copy["brand_overrides"] as? JsonObject).orEmpty().values.flatMap { (it as JsonObject).values }
-        return keys.map { it.jsonObject }.mapNotNull { k ->
-            val res = (k["res"] as? JsonPrimitive)?.content ?: return@mapNotNull null
-            val sk = (k["_sk"] as? JsonPrimitive)?.content ?: return@mapNotNull null
-            val names = (k["placeholders"] as? JsonArray).orEmpty().map { (it as JsonPrimitive).content }
-            res to names.foldIndexed(sk) { i, t, n -> t.replace("{$n}", "%${i + 1}\$s") }
-        }.toMap()
+        val own = ((root["copy"] as JsonObject)["_test_strings"] as? JsonObject).orEmpty()
+        return ExportedPresBundle.STRINGS + own.mapValues { (it.value as JsonPrimitive).content }
     }
 
     fun provider(root: JsonObject): CopyProvider = CopyProvider.of(table(root))
 
-    /** The `_sk` text of a copy key with no placeholders. */
-    fun sk(root: JsonObject, key: String): String? =
-        (((root["copy"] as JsonObject)["keys"] as JsonObject)[key] as? JsonObject)?.get("_sk")?.let { (it as JsonPrimitive).content }
+    /** The text of a copy key with no placeholders, through its resource name. */
+    fun sk(root: JsonObject, key: String): String? {
+        val res = (((root["copy"] as JsonObject)["keys"] as JsonObject)[key] as? JsonObject)?.get("res") as? JsonPrimitive
+        return res?.let { table(root)[it.content] }
+    }
 }
 
 /**

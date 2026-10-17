@@ -14,7 +14,8 @@ appId: eu.compote.euidi.dev
       - tapOn:
           id: "pin_text_field_0"
       - inputText: "123456"
-# connecting lasts 800 ms in these scripts: seen when the poll is fast enough, always proven by the interpreter log.
+# connecting is optional here: the exported happy / expired-at-request scripts answer at once (no delay_ms, M6a);
+# it is always proven by the interpreter log.
 - extendedWaitUntil:
     visible:
       id: "ux-state-connecting"

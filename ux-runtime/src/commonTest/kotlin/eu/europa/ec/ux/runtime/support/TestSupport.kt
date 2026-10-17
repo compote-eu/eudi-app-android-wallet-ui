@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): helpers over the boundary fixture; re-pointed at the real export in M6.
+// Helpers over the exported bundle (M1b wrote them over the PROVISIONAL boundary fixture; re-pointed at M6a).
 package eu.europa.ec.ux.runtime.support
 
 import eu.europa.ec.ux.runtime.bundle.FlowBundle
@@ -25,7 +25,7 @@ import eu.europa.ec.ux.runtime.engine.FlowStatus
 import eu.europa.ec.ux.runtime.engine.EventResult
 import eu.europa.ec.ux.runtime.engine.ServicePort
 import eu.europa.ec.ux.runtime.engine.ServiceResult
-import eu.europa.ec.ux.runtime.fixture.ProvisionalPresBundle
+import eu.europa.ec.ux.runtime.fixture.ExportedPresBundle
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -44,18 +44,18 @@ import kotlin.test.assertIs
 import kotlin.test.fail
 
 internal object Fixture {
-    val root: JsonObject by lazy { Json.parseToJsonElement(ProvisionalPresBundle.JSON).jsonObject }
+    val root: JsonObject by lazy { Json.parseToJsonElement(ExportedPresBundle.JSON).jsonObject }
     val flowId: String get() = root.getValue("flow_id").jsonPrimitive.content
     val specHash: String get() = root.getValue("spec_hash").jsonPrimitive.content
 
     fun bytes(root: JsonObject = this.root): ByteArray = Json.encodeToString(JsonObject.serializer(), root).encodeToByteArray()
 
     fun load(root: JsonObject = this.root): LoadResult =
-        FlowBundle.load(bytes(root), flowId, specHash, specHash, allowProvisional = true)
+        FlowBundle.load(bytes(root), flowId, specHash, specHash)
 
     fun bundle(root: JsonObject = this.root): FlowBundle = when (val r = load(root)) {
         is LoadResult.Loaded -> r.bundle
-        is LoadResult.Refused -> fail("PROVISIONAL bundle refused: ${r.reason}")
+        is LoadResult.Refused -> fail("exported bundle refused: ${r.reason}")
     }
 }
 

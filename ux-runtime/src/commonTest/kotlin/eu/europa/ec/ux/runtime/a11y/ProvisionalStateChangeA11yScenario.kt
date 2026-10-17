@@ -110,9 +110,13 @@ abstract class ProvisionalStateChangeA11yScenario {
         tree.node(node)!!.props.values.mapNotNull { v -> ((v as? JsonObject)?.get("copy") as? JsonPrimitive)?.content }
             .mapNotNull { TestCopy.sk(Fixture.root, it) }.joinToString(". ")
 
-    private fun firstCopy(tree: ScreenTree, node: String): String =
-        tree.node(node)!!.props.values.firstNotNullOf { v -> ((v as? JsonObject)?.get("copy") as? JsonPrimitive)?.content }
-            .let { TestCopy.sk(Fixture.root, it)!! }
+    /**
+     * Matches a node showing one of [node]'s copy texts. Order-free: the export writes props in sorted key order (M6a),
+     * so the first copy prop is no longer the heading's (EL-status-hero: `text` sorts before `title`).
+     */
+    private fun showsCopyOf(tree: ScreenTree, node: String): SemanticsMatcher =
+        tree.node(node)!!.props.values.mapNotNull { v -> ((v as? JsonObject)?.get("copy") as? JsonPrimitive)?.content }
+            .map { hasText(TestCopy.sk(Fixture.root, it)!!, substring = true) }.reduce { a, b -> a or b }
 
     /** The line the runtime must send when [state] has settled, built from the bundle's screen `a11y`. */
     private fun expectedCall(bundle: FlowBundle, state: String): String {
@@ -132,8 +136,7 @@ abstract class ProvisionalStateChangeA11yScenario {
         if (from != null) assertEquals(0, count(hasTestTag(PlaceholderTags.STATE_PREFIX + from)), "$from is gone at $state's call")
         val t = tree(bundle, state)
         if (t.a11y.onEnter == "focus-heading") {
-            val h1 = firstCopy(t, t.a11y.heading!!)
-            assertEquals(1, count(isFocused() and isHeading() and hasText(h1, substring = true)), "focus on the h1 of $state")
+            assertEquals(1, count(isFocused() and isHeading() and showsCopyOf(t, t.a11y.heading!!)), "focus on the h1 of $state")
             assertEquals(1, count(isFocused()), "one focused node in $state")
         } else {
             assertEquals(0, count(isFocused()), "announce-live does not move focus ($state)")
@@ -170,10 +173,9 @@ abstract class ProvisionalStateChangeA11yScenario {
         val port = FakePort()
         val bundle = host(port)
         settle(bundle, "connecting", null)
-        val oldText = firstCopy(tree(bundle, "connecting"), "hero")
         // The merged tree is what a screen reader gets (the unmerged one keeps cleared nodes for tests).
         val oldA11y = hasAnyAncestor(hasTestTag(PlaceholderTags.STATE_PREFIX + "connecting")) and
-            (isHeading() or SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion) or hasText(oldText, substring = true))
+            (isHeading() or SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion) or showsCopyOf(tree(bundle, "connecting"), "hero"))
         assertEquals(1, onAllNodes(oldA11y).fetchSemanticsNodes().size, "settled: the live hero is exposed")
         val before = bridge.calls.size
         mainClock.autoAdvance = false

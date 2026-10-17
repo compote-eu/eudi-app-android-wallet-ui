@@ -41,6 +41,7 @@ import eu.europa.ec.ux.runtime.host.FlowHost
 import eu.europa.ec.ux.runtime.screen.CopyProvider
 import eu.europa.ec.ux.runtime.screen.FlowScreens
 import eu.europa.ec.ux.theme.generated.UxBrandConfig
+import eu.europa.ec.ux.theme.generated.UxThemeSpec
 import eu.europa.ec.uxspike.resources.Res
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -66,8 +67,9 @@ sealed interface UxSpikeFlow {
         fun scriptPath(name: String): String = "files/scripts/$name.json"
 
         /**
-         * Loads the PROVISIONAL bundle with `allowProvisional = true`. This code exists only in debug builds (the hooks
-         * are debug-only), so no release host can accept a provisional bundle.
+         * Loads the exported bundle with the spec-hash handshake (boundary §4): the bundle, the generated contract
+         * (`PresCrossDeviceSpec.SPEC_HASH`) and the generated theme (`UxThemeSpec.SPEC_HASH`) must carry one hash, and a
+         * provisional hash is refused (H7). This code exists only in debug builds (the hooks are debug-only).
          */
         suspend fun load(script: String, log: FlowLog = UxSpikeLog): UxSpikeFlow {
             val bytes = ContractRes.readBytes(PresCrossDeviceSpec.BUNDLE_PATH)
@@ -76,9 +78,7 @@ sealed interface UxSpikeFlow {
                     bytes,
                     expectedFlowId = PresCrossDeviceSpec.FLOW_ID,
                     expectedSpecHash = PresCrossDeviceSpec.SPEC_HASH,
-                    // No generated theme yet (M6): the contract hash stands in for the theme's.
-                    themeSpecHash = PresCrossDeviceSpec.SPEC_HASH,
-                    allowProvisional = true,
+                    themeSpecHash = UxThemeSpec.SPEC_HASH,
                 )
             ) {
                 is LoadResult.Loaded -> r.bundle

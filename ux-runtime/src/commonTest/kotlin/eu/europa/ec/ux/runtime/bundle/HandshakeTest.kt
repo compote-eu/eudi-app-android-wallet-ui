@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): H1-H12 of spike-contract-boundary.md §4, on the boundary fixture; re-run on the real export in M6.
+// H1-H12 of spike-contract-boundary.md §4 (M1b, on the PROVISIONAL fixture), re-run at M6a on the real export.
 package eu.europa.ec.ux.runtime.bundle
 
 import eu.europa.ec.ux.runtime.engine.AbandonReason
@@ -23,7 +23,7 @@ import eu.europa.ec.ux.runtime.engine.FlowPlatform
 import eu.europa.ec.ux.runtime.engine.FlowSnapshot
 import eu.europa.ec.ux.runtime.engine.FlowStatus
 import eu.europa.ec.ux.runtime.engine.RestoreResult
-import eu.europa.ec.ux.runtime.fixture.ProvisionalPresBundle
+import eu.europa.ec.ux.runtime.fixture.ExportedPresBundle
 import eu.europa.ec.ux.runtime.support.FakePort
 import eu.europa.ec.ux.runtime.support.Fixture
 import eu.europa.ec.ux.runtime.support.json
@@ -34,11 +34,12 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class ProvisionalHandshakeTest {
+class HandshakeTest {
 
     private val hash = Fixture.specHash
     private val flowId = Fixture.flowId
@@ -46,15 +47,17 @@ class ProvisionalHandshakeTest {
     /** The consent screen's id, read from the bundle so no screen id is written in :ux-runtime (KC1 guard). */
     private val requestScreen = Fixture.bundle().state("request").screen!!
 
-    private fun load(root: JsonObject = Fixture.root, expected: String = hash, theme: String = expected, provisional: Boolean = true) =
+    private fun load(root: JsonObject = Fixture.root, expected: String = hash, theme: String = expected, provisional: Boolean = false) =
         FlowBundle.load(Fixture.bytes(root), flowId, expected, theme, provisional)
 
     private fun refusal(result: LoadResult): RefusalReason = assertIs<LoadResult.Refused>(result).reason
 
     @Test
-    fun fixtureIsTheBoundaryFile() {
-        assertEquals("31bfda6579b2a388de96e4a52a618362c53b18b883a1ab239f6856c0dbcf8d71", ProvisionalPresBundle.SHA256)
-        assertTrue(hash.startsWith(FlowBundle.PROVISIONAL_PREFIX))
+    fun fixtureIsTheExportedFile() {
+        // The fixture task already refused any other sha256 than UX_SPEC.lock's; the hash is a real one.
+        assertEquals(64, ExportedPresBundle.SHA256.length)
+        assertTrue(hash.startsWith("sha256:"))
+        assertFalse(hash.startsWith(FlowBundle.PROVISIONAL_PREFIX))
     }
 
     @Test
@@ -63,7 +66,7 @@ class ProvisionalHandshakeTest {
         assertEquals(25, bundle.states.size)
         assertEquals(16, bundle.screens.size)
         assertEquals(hash, bundle.specHash)
-        assertTrue(bundle.provisional)
+        assertFalse(bundle.provisional)
     }
 
     @Test
@@ -103,7 +106,11 @@ class ProvisionalHandshakeTest {
 
     @Test
     fun h7_provisionalHashRefusedWhenNotAllowed() {
-        assertEquals(RefusalReason.ProvisionalNotAllowed, refusal(load(provisional = false)))
+        // The export has no provisional hash any more: plant one, as a leftover provisional bundle would carry it.
+        val planted = FlowBundle.PROVISIONAL_PREFIX + hash
+        val root = Fixture.root.with("/spec_hash", JsonPrimitive(planted))
+        assertEquals(RefusalReason.ProvisionalNotAllowed, refusal(load(root, expected = planted)))
+        assertIs<LoadResult.Loaded>(load(root, expected = planted, provisional = true))
     }
 
     @Test
