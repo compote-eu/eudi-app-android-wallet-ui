@@ -18,6 +18,18 @@
 package eu.europa.ec.uxspike
 
 import androidx.compose.foundation.layout.Column
+import eu.europa.ec.ux.elements.UxDocStatus
+import eu.europa.ec.ux.elements.UxDocType
+import eu.europa.ec.ux.elements.UxCardVariant
+import eu.europa.ec.ux.elements.UxDocumentCard
+import eu.europa.ec.ux.elements.UxChipStatus
+import eu.europa.ec.ux.elements.UxStatusChip
+import eu.europa.ec.ux.elements.UxTrustMarkVariant
+import eu.europa.ec.ux.elements.UxTrustMark
+import eu.europa.ec.ux.elements.UxSwitchOption
+import eu.europa.ec.ux.elements.UxSegmentedSwitch
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,7 +68,10 @@ import eu.europa.ec.ux.elements.templates.TplOutcome
 import eu.europa.ec.ux.elements.templates.TplProgress
 import eu.europa.ec.ux.elements.templates.TplScan
 import eu.europa.ec.ux.elements.templates.TplSheet
+import eu.europa.ec.ux.theme.UxBrand
 import eu.europa.ec.ux.theme.UxDecisionSteps
+import eu.europa.ec.ux.theme.UxMode
+import eu.europa.ec.ux.theme.generated.UxBrandConfig
 import eu.europa.ec.ux.theme.UxSpecResources
 import eu.europa.ec.ux.theme.UxTheme
 
@@ -70,6 +85,7 @@ enum class UxGalleryPage(private val explicitKey: String? = null) {
     Progress,
     Outcome,
     Scan,
+    Parts,
     ;
 
     /** The script suffix: the entry name in lower case (no flow-state-like literal, KC1 guard), `page` for SheetPage. */
@@ -78,7 +94,7 @@ enum class UxGalleryPage(private val explicitKey: String? = null) {
     companion object {
         /** `gallery` -> sheet, `gallery-outcome` -> outcome; an unknown suffix falls back to the sheet. */
         fun fromScript(script: String): UxGalleryPage =
-            entries.firstOrNull { it.key == script.removePrefix(UX_GALLERY_PREFIX).trimStart('-') } ?: Sheet
+            entries.firstOrNull { it.key == script.removePrefix(UX_GALLERY_PREFIX).trimStart('-').substringBefore('.') } ?: Sheet
     }
 }
 
@@ -88,10 +104,10 @@ enum class UxGalleryPage(private val explicitKey: String? = null) {
  * screenshots; no flow, bundle or engine is involved.
  */
 @Composable
-fun UxGallery(initial: UxGalleryPage = UxGalleryPage.Sheet) {
+fun UxGallery(initial: UxGalleryPage = UxGalleryPage.Sheet, brand: UxBrand = UxBrandConfig.defaultBrand, mode: UxMode = UxMode.Light) {
     var page by remember { mutableStateOf(initial) }
     val resources by produceState(UxSpecResources.NONE) { value = exportedSpecResources() }
-    UxTheme(resources = resources) {
+    UxTheme(brand, mode, resources) {
         Column(Modifier.fillMaxSize()) {
             Row(
                 Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing).horizontalScroll(rememberScrollState())
@@ -113,6 +129,7 @@ fun UxGallery(initial: UxGalleryPage = UxGalleryPage.Sheet) {
                 UxGalleryPage.Progress -> GalleryProgress()
                 UxGalleryPage.Outcome -> GalleryOutcome()
                 UxGalleryPage.Scan -> GalleryScan()
+                UxGalleryPage.Parts -> GalleryParts()
             }
         }
     }
@@ -187,4 +204,27 @@ private fun GalleryScan() {
         camera = { UxQrViewfinder("g-camera", "Camera, looking for a QR code") },
         actions = { UxButton("g-cancel", "Cancel", UxButtonVariant.Secondary, {}) },
     )
+}
+
+/** The Home parts the screen probe never draws for the default brand (the storage switch, the trust mark) beside the chip, in neutral data. */
+@Composable
+private fun GalleryParts() {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        UxSegmentedSwitch(
+            "g-switch", "Documents from", listOf(UxSwitchOption("phone", "In the phone", true, false), UxSwitchOption("cloud", "In the cloud", false, false)),
+            labelVisible = true,
+        )
+        UxSegmentedSwitch(
+            "g-chips", "Filter", listOf(UxSwitchOption("a", "All", true, false), UxSwitchOption("b", "Shared", false, false), UxSwitchOption("c", "Cloud, unavailable offline", false, true)),
+        )
+        UxTrustMark("g-trust", UxTrustMarkVariant.Badge, "Certified EU wallet", href = "#cert")
+        UxTrustMark("g-trust-full", UxTrustMarkVariant.Full, "Certified EU wallet")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            UxStatusChip("g-c1", UxChipStatus.Valid, "Valid")
+            UxStatusChip("g-c2", UxChipStatus.Expiring, "Expiring")
+            UxStatusChip("g-c3", UxChipStatus.Revoked, "Revoked")
+        }
+        UxStatusChip("g-c4", UxChipStatus.Upcoming, "Upcoming")
+        UxDocumentCard("g-mini", UxCardVariant.Mini, UxDocType.IdCard, "Identity card", UxDocStatus.Stale, "Needs updating")
+    }
 }

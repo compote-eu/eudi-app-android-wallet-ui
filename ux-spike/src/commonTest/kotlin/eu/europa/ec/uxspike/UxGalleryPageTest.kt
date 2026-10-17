@@ -28,6 +28,7 @@ class UxGalleryPageTest {
         assertEquals(UxGalleryPage.Progress, UxGalleryPage.fromScript("gallery-progress"))
         assertEquals(UxGalleryPage.Outcome, UxGalleryPage.fromScript("gallery-outcome"))
         assertEquals(UxGalleryPage.Scan, UxGalleryPage.fromScript("gallery-scan"))
+        assertEquals(UxGalleryPage.Parts, UxGalleryPage.fromScript("gallery-parts.idsk.hc"))
         assertEquals(UxGalleryPage.Sheet, UxGalleryPage.fromScript("gallery-unknown"))
     }
 }

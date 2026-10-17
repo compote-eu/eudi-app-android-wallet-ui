@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""SUPERSEDED (M5e): the Home probe now reads the exporter's own home probe (ux-spec/, synced in M6c) through
+ScreenProbe in :ux-spike, with per-brand gating and the visibility oracle. This script and spike-evidence/M5d/bundles are kept
+as the M5d record only; nothing packages or reads them any more."""
 """M5d: PROVISIONAL single-screen bundle fragments for the dashboard Home screen (SCR-home), read-only on the ux/ spec.
 
 Usage: make_home_fragment.py <ux dir> <out dir>

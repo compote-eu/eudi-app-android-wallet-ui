@@ -47,7 +47,7 @@ import kotlin.test.fail
 /** Plays every exported script through the real engine on the exported bundle, behind the ServicePort seam. */
 class FakeScriptsTest {
 
-    private val module = listOf(File("."), File("ux-spike")).first { File(it, "src/commonMain/composeResources").isDirectory }
+    private val module = listOf(File("."), File("ux-spike")).first { File(it, "build.gradle.kts").isFile && File(it, "src/commonMain/kotlin").isDirectory }
     private val scriptsDir = File(module, "../ux-spec/fixtures/scripts")
 
     private val bundle: FlowBundle by lazy {

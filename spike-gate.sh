@@ -25,9 +25,9 @@ kc1_guard() {
   local paths=(ux-theme ux-elements ux-runtime ux-spike ux-spike-android shared-ui/src/iosUxSpikeMain
     shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/DebugFlowHook.kt)
   local except=':(exclude,glob)ux-spike/**/PresRequestScreen.kt' hits states rc=0
-  # M5d: the Home probe's fragment bundles are data (the screen id is their content), not code; the code stays scanned.
-  local data=':(exclude,glob)ux-spike/**/composeResources/files/home-probe/**'
-  hits=$(git grep -n --untracked -E 'SCR-|"pres-' -- "${paths[@]}" "$except" "$data")
+  # M5e: the M5d fragment bundles (and this guard's exclusion for them) are gone; the Home probe is the export's own file,
+  # copied at build time, and no path under the scanned modules carries a screen id any more.
+  hits=$(git grep -n --untracked -E 'SCR-|"pres-' -- "${paths[@]}" "$except")
   [[ -z "$hits" ]] || { echo "KC1: SCR-/screen-name literals:"; echo "$hits"; rc=1; }
   states=$(python3 -I -c 'import json,sys; [print(f"\"{s}\"") for s in json.load(open(sys.argv[1]))["states"]]' \
     ux-spec/resources/files/FLW-pres-cross-device.bundle.json)

@@ -35,7 +35,7 @@ import kotlin.test.assertTrue
 /** ux-assets.json, ux-library.json and ux-tokens.json (V32) through the parsers the elements read them with. */
 class ExportedSpecResourcesTest {
 
-    private val module = listOf(File("."), File("ux-spike")).first { File(it, "src/commonMain/composeResources").isDirectory }
+    private val module = listOf(File("."), File("ux-spike")).first { File(it, "build.gradle.kts").isFile && File(it, "src/commonMain/kotlin").isDirectory }
     private val resources = File(module, "../ux-spec/resources")
     private fun text(name: String) = File(resources, "files/$name").readText()
 

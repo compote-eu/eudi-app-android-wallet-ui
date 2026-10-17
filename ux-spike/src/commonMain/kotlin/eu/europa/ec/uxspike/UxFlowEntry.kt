@@ -42,8 +42,10 @@ import eu.europa.ec.ux.runtime.host.FlowHost
 import eu.europa.ec.ux.runtime.screen.CopyProvider
 import eu.europa.ec.ux.runtime.screen.FlowScreens
 import eu.europa.ec.ux.theme.UxAssets
+import eu.europa.ec.ux.theme.UxBrandSelections
 import eu.europa.ec.ux.theme.UxComponentTokenTable
 import eu.europa.ec.ux.theme.UxLibraryAssets
+import eu.europa.ec.ux.theme.UxMode
 import eu.europa.ec.ux.theme.UxSpecResources
 import eu.europa.ec.ux.theme.generated.UxBrandConfig
 import eu.europa.ec.ux.theme.generated.UxThemeSpec
@@ -128,6 +130,7 @@ suspend fun exportedSpecResources(): UxSpecResources {
         assets = UxAssets.parse(file("ux-assets.json")),
         library = UxLibraryAssets.parse(file("ux-library.json")),
         componentTokens = UxComponentTokenTable.parse(file("ux-tokens.json")),
+        selections = UxBrandSelections.parse(file("ux-library.json")),
         painter = { resource -> drawables[resource]?.let { painterResource(it) } },
     )
 }
@@ -170,7 +173,10 @@ fun UxFlowEntry(
         return
     }
     if (script.startsWith(UX_GALLERY_PREFIX)) {
-        UxGallery(UxGalleryPage.fromScript(script))
+        val suffix = script.substringAfter('.', "").split('.').filter { it.isNotEmpty() }
+        val brand = UxBrandConfig.brands.firstOrNull { it.id in suffix } ?: UxBrandConfig.defaultBrand
+        val mode = if ("hc" in suffix) UxMode.HighContrast else UxMode.Light
+        UxGallery(UxGalleryPage.fromScript(script), brand, mode)
         return
     }
     val flow by produceState<UxSpikeFlow?>(null, route, script) {

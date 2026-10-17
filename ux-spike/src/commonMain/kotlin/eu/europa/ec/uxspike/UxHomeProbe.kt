@@ -14,7 +14,6 @@
  * governing permissions and limitations under the Licence.
  */
 
-
 package eu.europa.ec.uxspike
 
 import androidx.compose.foundation.layout.Box
@@ -36,23 +35,25 @@ import eu.europa.ec.ux.runtime.engine.ServicePort
 import eu.europa.ec.ux.runtime.host.FlowHost
 import eu.europa.ec.ux.runtime.screen.CopyProvider
 import eu.europa.ec.ux.theme.UxSpecResources
+import eu.europa.ec.ux.theme.generated.UxBrandConfig
+import eu.europa.ec.ux.theme.generated.UxThemeSpec
 import eu.europa.ec.uxspike.resources.Res
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
+import eu.europa.ec.ux.contract.resources.Res as ContractRes
 
-/** Script-name prefix of the M5d probe (`--ux-spike gallery-home[-<ui state>]`), checked before the template gallery. */
+/** Script-name prefix of the screen probe (`--ux-spike gallery-home[-<ui state>][.<brand>][.<mode>]`), checked before the template gallery. */
 const val UX_HOME_PROBE_PREFIX = "gallery-home"
 
-/** Probe data (M5d, OR-1): the one-state fragment bundles of the Home probe live here, not in `:ux-contract`. */
-private const val HOME_PROBE_FLOW_ID = "FLW-home-probe"
+/** The probe's name as the export names its file, `<name>.probe.json` (the build copies the export's probes to `files/probes`). */
+private const val PROBE_NAME = "home"
+
+private const val PROBE_FLOW_ID = "probe"
 
 /**
- * The Home-screen probe: a one-screen fragment bundle (`files/home-probe/home-<name>.bundle.json`, from
- * `spike-evidence/M5d`) hosted by the generic [FlowHost] with no services. It measures what the interpreter and
- * the registry lack for a real screen; a missing element or template draws its tagged placeholder. Debug only, no
- * screen-specific code: the name picks a resource, nothing is named here.
+ * The screen probe (M5e, was the M5d fragment bundles): the export's screen probe (`<screen id>.probe.json`) for the screen the prefix names, hosted by
+ * the generic [FlowHost] with no services. [ScreenProbe] builds the one-state bundle of the brand, ui state and mode the
+ * script asks for, applying the brand's profile gating; the interpreter draws it from the exporter's data and the exported
+ * copy. Debug only, no screen-specific code: the probe file and its ids are data.
  */
 @Composable
 fun UxHomeProbe(
@@ -60,58 +61,44 @@ fun UxHomeProbe(
     platform: FlowPlatform,
     backHandler: @Composable (enabled: Boolean, onBack: () -> Unit) -> Unit,
 ) {
-    val name = script.removePrefix(UX_HOME_PROBE_PREFIX).trimStart('-').ifEmpty { "default" }
-    val bundle by produceState<Result<Pair<FlowBundle, CopyProvider>>?>(null, name) {
-        value = runCatching { loadHomeProbe(name).let { it to probeCopy(it) } }
-    }
+    val rest = script.removePrefix(UX_HOME_PROBE_PREFIX)
+    val loaded by produceState<Result<FlowBundle>?>(null, rest) { value = runCatching { loadProbe(rest) } }
     val resources by produceState(UxSpecResources.NONE) { value = exportedSpecResources() }
-    val loaded = bundle
+    val copy by produceState<CopyProvider?>(null) { value = exportedCopy() }
+    val bundle = loaded
+    val strings = copy
     when {
-        loaded == null -> Unit
-        loaded.isFailure -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-            BasicText("UX-SPIKE: ${loaded.exceptionOrNull()?.message}", Modifier.testTag(UX_FLOW_ERROR_TAG))
+        bundle == null || strings == null -> Unit
+        bundle.isFailure -> Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+            BasicText("UX-SPIKE: ${bundle.exceptionOrNull()?.message}", Modifier.testTag(UX_FLOW_ERROR_TAG))
         }
         else -> {
-            val (b, copy) = loaded.getOrThrow()
+            val b = bundle.getOrThrow()
             FlowHost(
                 bundle = b,
-                port = ServicePort { service, _ -> error("the Home probe has no services ($service)") },
+                port = ServicePort { service, _ -> error("the probe has no services ($service)") },
                 entry = "default",
                 launch = JsonObject(emptyMap()),
                 platform = platform,
                 backHandler = backHandler,
                 onExit = { },
-                screens = remember(b, resources) { uxSpikeScreens(copy, resources) },
+                screens = remember(b, resources) { uxSpikeScreens(strings, resources) },
                 log = UxSpikeLog,
             )
         }
     }
 }
 
-private suspend fun loadHomeProbe(name: String): FlowBundle {
-    val bytes = Res.readBytes("files/home-probe/home-$name.bundle.json")
-    val hash = ((Json.parseToJsonElement(bytes.decodeToString()) as JsonObject)["spec_hash"] as JsonPrimitive).content
-    return when (val r = FlowBundle.load(bytes, HOME_PROBE_FLOW_ID, hash, hash, allowProvisional = true)) {
+private suspend fun loadProbe(rest: String): FlowBundle {
+    val probe = ScreenProbe.parse(
+        Res.readBytes("files/probes/$PROBE_NAME.probe.json").decodeToString(),
+        ContractRes.readBytes("files/ux-library.json").decodeToString(),
+    )
+    val selection = ProbeSelection.parse(rest, probe, UxBrandConfig.brands.map { it.id }.toSet())
+    UxSpikeLog.log("probe ${probe.screenId}: ui state ${selection.uiState}, brand ${selection.brand}, mode ${selection.mode}")
+    val bytes = probe.bundle(selection.brand, selection.uiState, selection.mode, PROBE_FLOW_ID).encodeToByteArray()
+    return when (val r = FlowBundle.load(bytes, PROBE_FLOW_ID, probe.specHash, UxThemeSpec.SPEC_HASH)) {
         is LoadResult.Loaded -> r.bundle
-        is LoadResult.Refused -> error("home probe '$name' refused: ${r.reason}")
+        is LoadResult.Refused -> error("probe '${selection.uiState}' refused: ${r.reason}")
     }
-}
-
-/**
- * The probe's copy: the exported strings first, then the text the fragment generator wrote beside each key (`_sk`,
- * `{name}` as positional `%n$s`), because the fragments are spike-evidence data, not an export: the Home copy is
- * only partly in the flow's strings.xml.
- */
-private suspend fun probeCopy(bundle: FlowBundle): CopyProvider {
-    val exported = exportedCopy()
-    val copy = bundle.raw["copy"] as? JsonObject
-    val keys = (copy?.get("keys") as? JsonObject).orEmpty().values +
-        (copy?.get("brand_overrides") as? JsonObject).orEmpty().values.flatMap { (it as? JsonObject).orEmpty().values }
-    val own = keys.filterIsInstance<JsonObject>().mapNotNull { k ->
-        val res = (k["res"] as? JsonPrimitive)?.content ?: return@mapNotNull null
-        val text = (k["_sk"] as? JsonPrimitive)?.content ?: return@mapNotNull null
-        val names = (k["placeholders"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.content }
-        res to names.foldIndexed(text) { i, t, n -> t.replace("{$n}", "%${i + 1}\$s") }
-    }.toMap()
-    return CopyProvider { res -> exported.string(res) ?: own[res] }
 }
