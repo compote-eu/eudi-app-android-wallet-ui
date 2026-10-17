@@ -46,9 +46,11 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import eu.europa.ec.ux.elements.registry.UxElementRegistry
 import eu.europa.ec.ux.runtime.bundle.FlowBundle
+import eu.europa.ec.ux.runtime.engine.FlowEngine
 import eu.europa.ec.ux.runtime.engine.FlowExit
 import eu.europa.ec.ux.runtime.engine.FlowLog
 import eu.europa.ec.ux.runtime.engine.FlowPlatform
+import eu.europa.ec.ux.runtime.engine.FlowStatus
 import eu.europa.ec.ux.runtime.engine.ServiceResult
 import eu.europa.ec.ux.runtime.host.FlowHost
 import eu.europa.ec.ux.runtime.host.PlaceholderTags
@@ -63,12 +65,15 @@ import eu.europa.ec.ux.runtime.support.obj
 import eu.europa.ec.ux.runtime.support.unlinked
 import eu.europa.ec.ux.runtime.support.visibleNodeIds
 import eu.europa.ec.ux.runtime.support.with
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -117,10 +122,20 @@ abstract class InterpreterScenario {
     private fun ComposeUiTest.awaitState(state: String) =
         waitUntil(timeoutMillis = TIMEOUT) { count(hasTestTag(PlaceholderTags.STATE_PREFIX + state)) > 0 }
 
-    /** Every visible node of the state's screen is drawn under its id, with its copy, and nothing is a placeholder. */
-    private fun ComposeUiTest.assertDrawnFromBundle(root: JsonObject, bundle: FlowBundle, state: String, hidden: Set<String> = emptySet()) {
+    /**
+     * Every visible node of the state's screen is drawn under its id, with its copy, and nothing is a placeholder.
+     * With [context] (the engine's context in [state]) the screen's rules are evaluated on it, and a node a rule hides
+     * (with its subtree) is expected absent (M6c: the D8-unseen test pin, RULING-M8b-6).
+     */
+    private fun ComposeUiTest.assertDrawnFromBundle(
+        root: JsonObject,
+        bundle: FlowBundle,
+        state: String,
+        hidden: Set<String> = emptySet(),
+        context: JsonObject? = null,
+    ) {
         val tree = assertNotNull(ScreenCatalog(bundle).screens[bundle.state(state).screen], "no tree for $state")
-        val absent = hidden + unlinked(root, tree)
+        val absent = hidden + unlinked(root, tree) + context?.let { ruleHidden(bundle, tree, it) }.orEmpty()
         waitForIdle()
         visibleNodeIds(tree, absent).forEach { id -> assertTrue(count(hasTestTag(id)) > 0, "node $id of ${tree.id} not drawn") }
         absent.forEach { id -> assertEquals(0, count(hasTestTag(id)), "node $id of ${tree.id} should be absent") }
@@ -152,13 +167,43 @@ abstract class InterpreterScenario {
         assertEquals(1, port.calls("cancel"))
     }
 
+    /** The nodes (with their subtrees) the screen's rules hide in [context]. */
+    private fun ruleHidden(bundle: FlowBundle, tree: ScreenTree, context: JsonObject): Set<String> {
+        val effects = NodeEffects.of(bundle.screens.getValue(tree.id).rules, context)
+        return tree.nodes.filterNot { effects.isVisible(it.id) }.flatMap { n -> n.walk().map(ScreenNode::id).toList() }.toSet()
+    }
+
+    /** The context the engine holds once it settles in [state] for these service results (the host's launch inputs). */
+    private fun settledContext(root: JsonObject, results: Map<String, ServiceResult>, state: String): JsonObject {
+        var context: JsonObject? = null
+        runTest {
+            val engine = FlowEngine(Fixture.bundle(root), FakePort().apply { auto += results }, backgroundScope)
+            engine.start("deeplink", JsonObject(mapOf("uri" to JsonPrimitive(QR_URI))), unlocked = true)
+            runCurrent()
+            val active = assertIs<FlowStatus.Active>(engine.current.value)
+            assertEquals(state, active.state)
+            context = active.context
+        }
+        return assertNotNull(context)
+    }
+
+    private val expired = mapOf("fetchRequest" to ServiceResult("Expired"))
+
+    /** The state `connecting` moves to on SYS_EXPIRED (read from the bundle). */
+    private fun expiredState(bundle: FlowBundle): String = bundle.state("connecting").on.getValue("SYS_EXPIRED").first().target!!
+
     @Test
-    fun outcomeExpiredIsDrawnFromTheBundleAndFocusesItsHeading() = runComposeUiTest {
-        val port = FakePort().apply { auto["fetchRequest"] = ServiceResult("Expired") }
+    fun outcomeExpiredIsDrawnFromTheBundleAndFocusesItsHeading() {
+        val state = expiredState(Fixture.bundle())
+        val context = settledContext(Fixture.root, expired, state)
+        outcomeExpired(state, context)
+    }
+
+    private fun outcomeExpired(state: String, context: JsonObject) = runComposeUiTest {
+        val port = FakePort().apply { auto += expired }
         val bundle = host(Fixture.root, port)
-        val state = bundle.state("connecting").on.getValue("SYS_EXPIRED").first().target!!
         awaitState(state)
-        assertDrawnFromBundle(Fixture.root, bundle, state)
+        assertDrawnFromBundle(Fixture.root, bundle, state, context = context)
         val tree = ScreenCatalog(bundle).screens.getValue(bundle.state(state).screen!!)
         val title = TestCopy.sk(Fixture.root, (tree.node(tree.a11y.heading!!)!!.props.getValue("title") as JsonObject).getValue("copy").jsonPrimitive.content)!!
         assertTrue(count(isHeading() and hasText(title)) > 0, "the heading node is a heading")
@@ -189,6 +234,32 @@ abstract class InterpreterScenario {
         onNodeWithTag(leave.id, useUnmergedTree = true).performClick()
         awaitState("request")
         assertEquals(2, port.calls(AddedStateFixture.service))
+    }
+
+    @Test
+    fun aNodeTheRulesHideInTheTestContextIsExpectedAbsent() {
+        // M6c regression for the D8-unseen pin (RULING-M8b-6): a test copy adds a rule that hides a body node of the
+        // expired outcome exactly in the context of this run (no verifier is known when the request expires while
+        // loading), as the unseen spec change did. The helper must expect the node absent, not drawn.
+        val screen = assertNotNull(Fixture.bundle().state(expiredState(Fixture.bundle())).screen)
+        val tree = ScreenCatalog(Fixture.bundle()).screens.getValue(screen)
+        // A body node the export's own rules leave visible in this context.
+        val hiddenBefore = ruleHidden(Fixture.bundle(), tree, settledContext(Fixture.root, expired, expiredState(Fixture.bundle())))
+        val target = tree.regions.getValue("body").first { it.id !in hiddenBefore }.id
+        val rules = ((Fixture.root["screens"] as JsonObject)[screen] as JsonObject)["rules"] as JsonArray
+        val rule = obj("""{"id": "RUL-_test-hide-without-verifier", "when": {"op": "is_empty", "path": "/verifier/name"},
+            "then": [{"effect": "hide", "node": "$target"}]}""")
+        val root = Fixture.root.with("/screens/$screen/rules", JsonArray(rules + rule))
+        val bundle = Fixture.bundle(root)
+        val state = expiredState(bundle)
+        val context = settledContext(root, expired, state)
+        assertEquals(hiddenBefore + target, ruleHidden(bundle, tree, context), "the planted rule hides its node here")
+        runComposeUiTest {
+            host(root, FakePort().apply { auto += expired })
+            awaitState(state)
+            assertDrawnFromBundle(root, bundle, state, context = context)
+            assertEquals(0, count(hasTestTag(target)), "$target is hidden by the rule")
+        }
     }
 
     @Test
