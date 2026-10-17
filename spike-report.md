@@ -99,7 +99,7 @@ F = formal (counts), P = preliminary (does not count). Platform: sim = iPhone 17
 | KC4 track B outside TPL-sheet or > 150 lines | **passed** | 0/0 lines for both options; the red gates were test pins (RULING-M9r-1, agent ruling, owner to confirm) |
 | KC5 app-team estimate > 2× the spike | **missing** | Q-KC5 (Martin) |
 
-Device build for the owner's walks: ⟨DEVICE⟩.
+Device build for the owner's walks: **build ready, install pending.** `/Users/roman/code/eudi-kmp-device` detached at `f9c8bbc12` (code tree `04e4ba57c`), Debug, signed team D2YJRYD9TA, `DerivedData-device/Build/Products/Debug-iphoneos/EudiWallet.app` (contains the M11b adapter). The command with `-destination id=00008150-000C55591188401C -allowProvisioningUpdates -allowProvisioningDeviceRegistration` failed with exit 70 because the iPhone shows `unavailable` in `xcrun devicectl list devices`; the same command with `-destination generic/platform=iOS` built it (1 min 23 s). Install when the phone is connected: `xcrun devicectl device install app --device 00008150-000C55591188401C <that .app>`..
 
 ## 3. The central claim, stated honestly (M12a)
 

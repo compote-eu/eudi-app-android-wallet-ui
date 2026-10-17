@@ -356,7 +356,8 @@ Findings for week 0 / the owner (not decided here):
 | 88a79d4ec | 2026-10-17 | M11b | step 0: `DebugFlowHook.isEnabled()`, T9 guard only with the switch ON, `LaunchIntentGuardTest` 5, RULING-M11b-0 | Claude Opus 5.5 | host test green |
 | 44514b4b5 | 2026-10-17 | M11b | `InteractorPresCrossDeviceServices` (`ux-spike/src/realAdapterMain`), tests (`realAdapterTest`), `--ux-spike real` wiring, build wiring | Claude Opus 5.5 | full gate GREEN 4444 |
 | (this commit) | 2026-10-17 | M11b | `spike-evidence/M11b/` (report, gate and isolation logs), SPIKE-LOG M11b | Claude Opus 5.5 | docs only |
-| (M12 commit) | 2026-10-17 | M12b | M12 close-out: gate and isolation logs, D2 re-run, results/queue fixes, spike-report, DEC draft, evidence index | Claude Opus 5.5 | full gate GREEN 4444 at the code tree `04e4ba57c` |
+| f9c8bbc12 | 2026-10-17 | M12b | M12 close-out: gate and isolation logs, D2 re-run, results/queue fixes, spike-report, DEC draft, evidence index | Claude Opus 5.5 | full gate GREEN 4444 at the code tree `04e4ba57c` |
+| (this commit) | 2026-10-17 | M12b | device build status (build ready, install pending), copy-back record | Claude Opus 5.5 | docs only |
 
 ## M5e notes (Home parts, OR-8; a probe, not counted toward the verdict)
 
@@ -1094,7 +1095,10 @@ Q-KC-CONFIRM, Q-DEC, Q-KC5.
 **Deliverables (brief §10).** `spike-report.md` (verdict Incomplete: awaiting evidence, missing rows and owners,
 conditional verdicts, drill and KC tables, §6 audit, central claim, M11b, Home probe, lessons, phase metrics and the cost
 model, integrity issues, deviations, open decisions), `DEC-draft.md`, `spike-evidence/INDEX.md`. Copied to
-`dvm-edoklady-eudiw-analysis/ux/evaluation/kmp-ui-from-spec/` uncommitted, with `SPIKE-PLAN.md` and `spike-results.md`.
+`dvm-edoklady-eudiw-analysis/ux/evaluation/kmp-ui-from-spec/` uncommitted: `spike-report.md`, `DEC-draft.md`,
+`spike-results.md`, `spike-evidence-index.md` (= `spike-evidence/INDEX.md`) and `SPIKE-PLAN.spike-branch.md` (= `SPIKE-PLAN.md`;
+renamed because the folder already has `spike-plan.md`, the read-only background study, and the file system is
+case-insensitive, so `SPIKE-PLAN.md` would have overwritten it).
 
-**Device build.** ⟨DEVICE⟩
+**Device build.** **build ready, install pending.** `/Users/roman/code/eudi-kmp-device` detached at `f9c8bbc12` (code tree `04e4ba57c`), Debug, signed team D2YJRYD9TA, `DerivedData-device/Build/Products/Debug-iphoneos/EudiWallet.app` (contains the M11b adapter). The command with `-destination id=00008150-000C55591188401C -allowProvisioningUpdates -allowProvisioningDeviceRegistration` failed with exit 70 because the iPhone shows `unavailable` in `xcrun devicectl list devices`; the same command with `-destination generic/platform=iOS` built it (1 min 23 s). Install when the phone is connected: `xcrun devicectl device install app --device 00008150-000C55591188401C <that .app>`.
 
