@@ -372,6 +372,9 @@ the list by at most one file and must stay inside the cap.
 | T6 | `shared-ui/src/iosMain/kotlin/eu/europa/ec/shared/ui/IosAppRoot.kt` | Koin option B | +1 | reserved (P2) |
 | T7 | `shared-ui/src/commonMain/kotlin/eu/europa/ec/dashboardfeature/ui/dashboard/DashboardViewModel.kt` | redirect option B | +3 to +5 | reserved (P1) |
 | T8 | `iosApp/iosApp/iOSApp.swift` | `#if DEBUG` parse of `--ux-spike` | +6 to +8 | reserved (P5) |
+| T9 | `ui-logic/src/main/java/eu/europa/ec/uilogic/container/EudiComponentActivity.kt` | RULING-W6 widening (+1 file, M11c): after process death the activity is re-created with the original VIEW `openid4vp://` intent (`setIntent(Intent())` does not survive the kill), `Content` re-runs `handleDeepLink(coldBoot = true)`, which pops to Dashboard and drops the restored `UxFlowRoute` (F-D2-1, existing upstream behaviour). A `launchIntentConsumed` flag in `onSaveInstanceState` skips the cold-boot link on restore, **only when a `DebugFlowHook` is bound** (brief §6.3) | +28 / -1 (+ 1 new host test) | used (M11c) |
+
+Used so far: T1-T5 and T9 = 6 files (T6-T8 reserved and unused), inside the cap of 8; the ruling widening is T9 (RULING-W6).
 
 **New locations** (not touches):
 - the modules `ux-theme/`, `ux-contract/` (incl. `provisional/`), `ux-elements/`, `ux-runtime/`, `ux-spike/` and `ux-spike-android/`;
@@ -391,7 +394,7 @@ If the M2 resource probe fails, the fallback is new files under `SUI/commonMain/
   `build-logic/**`, `.github/workflows/**`, `local.properties`.
 
 **Check at every gate (Haiku):** `git diff --name-only --diff-filter=MDRT origin/feature/kmp...spike/ux-runtime` must list
-only T1–T8. Any other path is a failure and goes to the orchestrator.
+only T1–T9. Any other path is a failure and goes to the orchestrator.
 
 ---
 

@@ -1,0 +1,5 @@
+# release isolation after T9 2026-10-17T17:50:31+02:00
+release dex spike packages: 0
+release files spike: 0
+manifest ux-spike-init: 0
+devReleaseRuntimeClasspath / demo: 0 / 0 (unchanged, checked above)

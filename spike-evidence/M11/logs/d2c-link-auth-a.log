@@ -1,0 +1,21 @@
+## D2c root=link state=auth kill=a 2026-10-17T17:42:39+02:00
+at request
+pid before kill: 10052
+pid after: ''
+-- relaunch (recents)
+shot d2c-link-auth-a
+pid: 10329 gate=0 state=resource-id="ux-state-request"
+10-17 17:43:00.119 UX-SPIKE: screen SCR-pres-auth: interpreted from the bundle (TPL-sheet, 4 nodes), state auth, ui_state default
+10-17 17:43:00.517 UX-SPIKE: a11y: SCR-pres-auth focus-heading title (focused)
+10-17 17:43:01.555 UX-SPIKE: enter verification-code (gen 4)
+10-17 17:43:01.555 UX-SPIKE: verificationCode#1 (script slow)
+10-17 17:43:01.587 UX-SPIKE: screen SCR-pres-verification-code: interpreted from the bundle (TPL-sheet, 8 nodes), state verification-code, ui_state no-url
+10-17 17:43:06.412 UX-SPIKE: hook module loaded
+10-17 17:43:06.668 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+10-17 17:43:06.753 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 17:43:06.974 UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 17:43:06.974 UX-SPIKE: restore auth -> request
+10-17 17:43:06.974 UX-SPIKE: enter request (gen 4)
+10-17 17:43:06.975 UX-SPIKE: restore: Restored(state=request, reinvoked=false)
+10-17 17:43:07.225 UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+10-17 17:43:07.348 UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)

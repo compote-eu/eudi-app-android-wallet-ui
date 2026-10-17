@@ -1,0 +1,23 @@
+## D2c root=link state=sending kill=b 2026-10-17T17:47:27+02:00
+at request
+at verification-code
+pid before: 12918
+CRITICAL
+send-trim-memory rc=0
+pid after SIGKILL: ''
+-- relaunch (recents)
+shot d2c-link-sending-b
+pid: 13243 gate=0 state=resource-id="ux-state-error"
+10-17 17:47:52.957 UX-SPIKE: screen SCR-pres-sending: interpreted from the bundle (TPL-progress, 1 nodes), state sending, ui_state default
+10-17 17:47:53.342 UX-SPIKE: a11y: SCR-pres-sending announce-live hero ('Prebieha odoslanie dát eDokladov')
+10-17 17:47:55.936 UX-SPIKE: enter success (gen 6)
+10-17 17:47:55.978 UX-SPIKE: screen SCR-pres-outcome-success: interpreted from the bundle (TPL-outcome, 2 nodes), state success, ui_state default
+10-17 17:48:00.364 UX-SPIKE: hook module loaded
+10-17 17:48:00.620 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+10-17 17:48:00.671 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 17:48:00.922 UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 17:48:00.928 UX-SPIKE: restore sending -> error
+10-17 17:48:00.928 UX-SPIKE: enter error (gen 6)
+10-17 17:48:00.928 UX-SPIKE: restore: Restored(state=error, reinvoked=false)
+10-17 17:48:01.069 UX-SPIKE: screen SCR-pres-outcome-error: interpreted from the bundle (TPL-outcome, 6 nodes), state error, ui_state default
+10-17 17:48:01.141 UX-SPIKE: a11y: SCR-pres-outcome-error focus-heading hero (focused)
