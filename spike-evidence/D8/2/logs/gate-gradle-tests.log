@@ -1,0 +1,2463 @@
+Reusing configuration cache.
+> Task :analytics-logic:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :analytics-logic:generateDevDebugAssets UP-TO-DATE
+> Task :analytics-logic:preBuild UP-TO-DATE
+> Task :analytics-logic:generateDemoDebugAssets UP-TO-DATE
+> Task :analytics-logic:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :analytics-logic:preDemoDebugBuild UP-TO-DATE
+> Task :analytics-logic:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :shared-logic:androidPreBuild UP-TO-DATE
+> Task :shared-logic:preAndroidMainBuild UP-TO-DATE
+> Task :analytics-logic:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :analytics-logic:processDemoDebugNavigationResources UP-TO-DATE
+> Task :analytics-logic:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :analytics-logic:generateDemoDebugResources UP-TO-DATE
+> Task :shared-logic:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :analytics-logic:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :analytics-logic:javaPreCompileDemoDebug UP-TO-DATE
+> Task :analytics-logic:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :analytics-logic:koverFindJar UP-TO-DATE
+> Task :shared-logic:kmpPartiallyResolvedDependenciesChecker
+> Task :analytics-logic:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :shared-logic:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :analytics-logic:processDemoDebugManifest UP-TO-DATE
+> Task :analytics-logic:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :analytics-logic:preDevDebugBuild UP-TO-DATE
+> Task :shared-logic:processAndroidMainManifest UP-TO-DATE
+> Task :analytics-logic:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :analytics-logic:generateDevDebugResources UP-TO-DATE
+> Task :shared-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :analytics-logic:packageDemoDebugResources UP-TO-DATE
+> Task :analytics-logic:generateDevDebugBuildConfig UP-TO-DATE
+> Task :analytics-logic:mergeDemoDebugAssets UP-TO-DATE
+> Task :analytics-logic:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :analytics-logic:packageDevDebugResources UP-TO-DATE
+> Task :analytics-logic:processDevDebugNavigationResources UP-TO-DATE
+> Task :analytics-logic:parseDevDebugLocalResources UP-TO-DATE
+> Task :analytics-logic:javaPreCompileDevDebug UP-TO-DATE
+> Task :analytics-logic:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :analytics-logic:parseDemoDebugLocalResources UP-TO-DATE
+> Task :analytics-logic:generateDevDebugRFile UP-TO-DATE
+> Task :analytics-logic:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :analytics-logic:writeDevDebugAarMetadata UP-TO-DATE
+> Task :analytics-logic:generateDemoDebugRFile UP-TO-DATE
+> Task :analytics-logic:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :analytics-logic:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :analytics-logic:compileDevDebugLibraryResources UP-TO-DATE
+> Task :analytics-logic:extractDeepLinksDevDebug UP-TO-DATE
+> Task :analytics-logic:processDevDebugManifest UP-TO-DATE
+> Task :shared-logic:compileAndroidMain UP-TO-DATE
+> Task :shared-logic:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :analytics-logic:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :analytics-logic:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :analytics-logic:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :analytics-logic:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :shared-logic:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :analytics-logic:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :analytics-logic:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :analytics-logic:mergeDevDebugAssets UP-TO-DATE
+> Task :assembly-logic:preBuild UP-TO-DATE
+> Task :assembly-logic:preDemoDebugBuild UP-TO-DATE
+> Task :androidApp:preBuild UP-TO-DATE
+> Task :assembly-logic:processDemoDebugNavigationResources UP-TO-DATE
+> Task :androidApp:preDemoDebugBuild UP-TO-DATE
+> Task :analytics-logic:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :shared-logic:processAndroidMainJavaRes UP-TO-DATE
+> Task :authentication-logic:preBuild UP-TO-DATE
+> Task :authentication-logic:preDemoDebugBuild UP-TO-DATE
+> Task :androidApp:generateDemoDebugResources UP-TO-DATE
+> Task :androidApp:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :authentication-logic:processDemoDebugNavigationResources UP-TO-DATE
+> Task :androidApp:packageDemoDebugResources UP-TO-DATE
+> Task :business-logic:preBuild UP-TO-DATE
+> Task :business-logic:preDemoDebugBuild UP-TO-DATE
+> Task :common-feature:preBuild UP-TO-DATE
+> Task :business-logic:processDemoDebugNavigationResources UP-TO-DATE
+> Task :core-logic:preBuild UP-TO-DATE
+> Task :dashboard-feature:preBuild UP-TO-DATE
+> Task :dashboard-feature:preDemoDebugBuild UP-TO-DATE
+> Task :dashboard-feature:processDemoDebugNavigationResources UP-TO-DATE
+> Task :issuance-feature:preBuild UP-TO-DATE
+> Task :issuance-feature:preDemoDebugBuild UP-TO-DATE
+> Task :issuance-feature:processDemoDebugNavigationResources UP-TO-DATE
+> Task :network-logic:preBuild UP-TO-DATE
+> Task :network-logic:preDemoDebugBuild UP-TO-DATE
+> Task :core-logic:demoDebugVerifyWalletCoreEtsiVersions
+> Task :core-logic:preDemoDebugBuild
+> Task :network-logic:processDemoDebugNavigationResources UP-TO-DATE
+> Task :common-feature:preDemoDebugBuild UP-TO-DATE
+> Task :common-feature:processDemoDebugNavigationResources UP-TO-DATE
+> Task :core-logic:processDemoDebugNavigationResources UP-TO-DATE
+> Task :presentation-feature:preBuild UP-TO-DATE
+> Task :presentation-feature:preDemoDebugBuild UP-TO-DATE
+> Task :resources-logic:preBuild UP-TO-DATE
+> Task :proximity-feature:preBuild UP-TO-DATE
+> Task :shared-ui:androidPreBuild UP-TO-DATE
+> Task :resources-logic:preDemoDebugBuild UP-TO-DATE
+> Task :shared-ui:preAndroidMainBuild UP-TO-DATE
+> Task :proximity-feature:preDemoDebugBuild UP-TO-DATE
+> Task :presentation-feature:processDemoDebugNavigationResources UP-TO-DATE
+> Task :resources-logic:processDemoDebugNavigationResources UP-TO-DATE
+> Task :shared-ui:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :startup-feature:preBuild UP-TO-DATE
+> Task :startup-feature:preDemoDebugBuild UP-TO-DATE
+> Task :ui-logic:preBuild UP-TO-DATE
+> Task :proximity-feature:processDemoDebugNavigationResources UP-TO-DATE
+> Task :ui-logic:preDemoDebugBuild UP-TO-DATE
+> Task :ui-logic:processDemoDebugNavigationResources UP-TO-DATE
+> Task :storage-logic:preBuild UP-TO-DATE
+> Task :ux-contract:androidPreBuild UP-TO-DATE
+> Task :ux-contract:preAndroidMainBuild UP-TO-DATE
+> Task :ux-elements:androidPreBuild UP-TO-DATE
+> Task :ux-elements:preAndroidMainBuild UP-TO-DATE
+> Task :startup-feature:processDemoDebugNavigationResources UP-TO-DATE
+> Task :storage-logic:preDemoDebugBuild UP-TO-DATE
+> Task :ux-elements:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :ux-contract:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :ux-spike:androidPreBuild UP-TO-DATE
+> Task :ux-runtime:androidPreBuild UP-TO-DATE
+> Task :ux-runtime:preAndroidMainBuild UP-TO-DATE
+> Task :ux-spike-android:preBuild UP-TO-DATE
+> Task :ux-spike-android:preDebugBuild UP-TO-DATE
+> Task :storage-logic:processDemoDebugNavigationResources UP-TO-DATE
+> Task :ux-runtime:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :ux-spike:preAndroidMainBuild UP-TO-DATE
+> Task :ux-theme:androidPreBuild UP-TO-DATE
+> Task :ux-theme:preAndroidMainBuild UP-TO-DATE
+> Task :ux-spike:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :ux-theme:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :assembly-logic:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :assembly-logic:generateDemoDebugResources UP-TO-DATE
+> Task :ux-spike-android:processDebugNavigationResources UP-TO-DATE
+> Task :authentication-logic:generateDemoDebugResources UP-TO-DATE
+> Task :authentication-logic:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :assembly-logic:packageDemoDebugResources UP-TO-DATE
+> Task :authentication-logic:packageDemoDebugResources UP-TO-DATE
+> Task :business-logic:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :assembly-logic:parseDemoDebugLocalResources UP-TO-DATE
+> Task :business-logic:generateDemoDebugResources UP-TO-DATE
+> Task :authentication-logic:parseDemoDebugLocalResources UP-TO-DATE
+> Task :business-logic:packageDemoDebugResources UP-TO-DATE
+> Task :assembly-logic:generateDemoDebugRFile UP-TO-DATE
+> Task :business-logic:parseDemoDebugLocalResources UP-TO-DATE
+> Task :resources-logic:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :resources-logic:generateDemoDebugResources UP-TO-DATE
+> Task :business-logic:generateDemoDebugRFile UP-TO-DATE
+> Task :resources-logic:packageDemoDebugResources UP-TO-DATE
+> Task :authentication-logic:generateDemoDebugRFile UP-TO-DATE
+> Task :shared-ui:kmpPartiallyResolvedDependenciesChecker
+> Task :resources-logic:parseDemoDebugLocalResources UP-TO-DATE
+> Task :shared-ui:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared-ui:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :resources-logic:generateDemoDebugRFile UP-TO-DATE
+> Task :shared-ui:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :shared-ui:generateComposeResClass UP-TO-DATE
+> Task :shared-ui:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :shared-ui:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :resources-logic:javaPreCompileDemoDebug UP-TO-DATE
+> Task :analytics-logic:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :analytics-logic:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :analytics-logic:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :authentication-logic:javaPreCompileDemoDebug UP-TO-DATE
+> Task :business-logic:javaPreCompileDemoDebug UP-TO-DATE
+> Task :analytics-logic:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :common-feature:generateDemoDebugResources UP-TO-DATE
+> Task :common-feature:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :core-logic:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :core-logic:generateDemoDebugResources UP-TO-DATE
+> Task :common-feature:packageDemoDebugResources UP-TO-DATE
+> Task :core-logic:packageDemoDebugResources UP-TO-DATE
+> Task :core-logic:parseDemoDebugLocalResources UP-TO-DATE
+> Task :common-feature:parseDemoDebugLocalResources UP-TO-DATE
+> Task :core-logic:generateDemoDebugRFile UP-TO-DATE
+> Task :shared-ui:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :common-feature:generateDemoDebugRFile UP-TO-DATE
+> Task :network-logic:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :network-logic:generateDemoDebugResources UP-TO-DATE
+> Task :shared-ui:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :network-logic:javaPreCompileDemoDebug UP-TO-DATE
+> Task :network-logic:packageDemoDebugResources UP-TO-DATE
+> Task :shared-ui:copyAndroidMainComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :network-logic:parseDemoDebugLocalResources UP-TO-DATE
+> Task :shared-ui:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :shared-ui:packageAndroidMainResources UP-TO-DATE
+> Task :shared-ui:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :analytics-logic:compileDevDebugKotlin UP-TO-DATE
+> Task :network-logic:generateDemoDebugRFile UP-TO-DATE
+> Task :shared-ui:parseAndroidMainLocalResources UP-TO-DATE
+> Task :storage-logic:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :shared-ui:generateAndroidMainRFile UP-TO-DATE
+> Task :analytics-logic:compileDemoDebugKotlin UP-TO-DATE
+> Task :storage-logic:generateDemoDebugResources UP-TO-DATE
+> Task :analytics-logic:processDevDebugJavaRes UP-TO-DATE
+> Task :analytics-logic:processDemoDebugJavaRes UP-TO-DATE
+> Task :storage-logic:packageDemoDebugResources UP-TO-DATE
+> Task :analytics-logic:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :analytics-logic:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :storage-logic:javaPreCompileDemoDebug UP-TO-DATE
+> Task :storage-logic:parseDemoDebugLocalResources UP-TO-DATE
+> Task :analytics-logic:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :analytics-logic:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :analytics-logic:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :analytics-logic:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :business-logic:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :resources-logic:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :shared-ui:mapAndroidMainSourceSetPaths UP-TO-DATE
+> Task :business-logic:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :shared-ui:compileAndroidMainLibraryResources UP-TO-DATE
+> Task :business-logic:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :resources-logic:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :storage-logic:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :storage-logic:generateDemoDebugRFile UP-TO-DATE
+> Task :resources-logic:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :shared-ui:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :storage-logic:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :storage-logic:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :storage-logic:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :storage-logic:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :business-logic:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :storage-logic:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :resources-logic:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :business-logic:processDemoDebugManifest UP-TO-DATE
+> Task :shared-ui:processAndroidMainManifest UP-TO-DATE
+> Task :resources-logic:processDemoDebugManifest UP-TO-DATE
+> Task :storage-logic:processDemoDebugManifest UP-TO-DATE
+> Task :storage-logic:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :storage-logic:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :business-logic:preDevDebugBuild UP-TO-DATE
+> Task :business-logic:generateDevDebugBuildConfig UP-TO-DATE
+> Task :business-logic:generateDevDebugResources UP-TO-DATE
+> Task :business-logic:packageDevDebugResources UP-TO-DATE
+> Task :business-logic:processDevDebugNavigationResources UP-TO-DATE
+> Task :business-logic:parseDevDebugLocalResources UP-TO-DATE
+> Task :business-logic:generateDevDebugRFile UP-TO-DATE
+> Task :resources-logic:preDevDebugBuild UP-TO-DATE
+> Task :resources-logic:generateDevDebugBuildConfig UP-TO-DATE
+> Task :resources-logic:generateDevDebugResources UP-TO-DATE
+> Task :resources-logic:packageDevDebugResources UP-TO-DATE
+> Task :resources-logic:processDevDebugNavigationResources UP-TO-DATE
+> Task :resources-logic:parseDevDebugLocalResources UP-TO-DATE
+> Task :resources-logic:generateDevDebugRFile UP-TO-DATE
+> Task :resources-logic:javaPreCompileDevDebug UP-TO-DATE
+> Task :business-logic:javaPreCompileDevDebug UP-TO-DATE
+> Task :storage-logic:preDevDebugBuild UP-TO-DATE
+> Task :storage-logic:generateDevDebugBuildConfig UP-TO-DATE
+> Task :storage-logic:generateDevDebugResources UP-TO-DATE
+> Task :storage-logic:packageDevDebugResources UP-TO-DATE
+> Task :storage-logic:processDevDebugNavigationResources UP-TO-DATE
+> Task :storage-logic:parseDevDebugLocalResources UP-TO-DATE
+> Task :storage-logic:generateDevDebugRFile UP-TO-DATE
+> Task :storage-logic:javaPreCompileDevDebug UP-TO-DATE
+> Task :business-logic:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :business-logic:compileDevDebugLibraryResources UP-TO-DATE
+> Task :resources-logic:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :resources-logic:compileDevDebugLibraryResources UP-TO-DATE
+> Task :business-logic:writeDevDebugAarMetadata UP-TO-DATE
+> Task :resources-logic:writeDevDebugAarMetadata UP-TO-DATE
+> Task :storage-logic:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :storage-logic:writeDevDebugAarMetadata UP-TO-DATE
+> Task :androidApp:processDemoDebugNavigationResources UP-TO-DATE
+> Task :androidApp:parseDemoDebugLocalResources UP-TO-DATE
+> Task :storage-logic:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :storage-logic:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :androidApp:generateDemoDebugRFile UP-TO-DATE
+> Task :storage-logic:compileDevDebugLibraryResources UP-TO-DATE
+> Task :storage-logic:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :storage-logic:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :business-logic:extractDeepLinksDevDebug UP-TO-DATE
+> Task :storage-logic:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :business-logic:processDevDebugManifest UP-TO-DATE
+> Task :resources-logic:extractDeepLinksDevDebug UP-TO-DATE
+> Task :resources-logic:processDevDebugManifest UP-TO-DATE
+> Task :storage-logic:extractDeepLinksDevDebug UP-TO-DATE
+> Task :storage-logic:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :storage-logic:processDevDebugManifest UP-TO-DATE
+> Task :storage-logic:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :storage-logic:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :ui-logic:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :core-logic:javaPreCompileDemoDebug UP-TO-DATE
+> Task :ui-logic:generateDemoDebugResources UP-TO-DATE
+> Task :ui-logic:javaPreCompileDemoDebug UP-TO-DATE
+> Task :common-feature:javaPreCompileDemoDebug UP-TO-DATE
+> Task :ui-logic:packageDemoDebugResources UP-TO-DATE
+> Task :dashboard-feature:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :dashboard-feature:generateDemoDebugResources UP-TO-DATE
+> Task :ui-logic:parseDemoDebugLocalResources UP-TO-DATE
+> Task :dashboard-feature:packageDemoDebugResources UP-TO-DATE
+> Task :ui-logic:generateDemoDebugRFile UP-TO-DATE
+> Task :dashboard-feature:javaPreCompileDemoDebug UP-TO-DATE
+> Task :dashboard-feature:parseDemoDebugLocalResources UP-TO-DATE
+> Task :dashboard-feature:generateDemoDebugRFile UP-TO-DATE
+> Task :issuance-feature:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :issuance-feature:javaPreCompileDemoDebug UP-TO-DATE
+> Task :presentation-feature:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :issuance-feature:generateDemoDebugResources UP-TO-DATE
+> Task :presentation-feature:javaPreCompileDemoDebug UP-TO-DATE
+> Task :proximity-feature:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :issuance-feature:packageDemoDebugResources UP-TO-DATE
+> Task :proximity-feature:generateDemoDebugResources UP-TO-DATE
+> Task :issuance-feature:parseDemoDebugLocalResources UP-TO-DATE
+> Task :proximity-feature:packageDemoDebugResources UP-TO-DATE
+> Task :issuance-feature:generateDemoDebugRFile UP-TO-DATE
+> Task :proximity-feature:parseDemoDebugLocalResources UP-TO-DATE
+> Task :proximity-feature:javaPreCompileDemoDebug UP-TO-DATE
+> Task :analytics-logic:processDevDebugUnitTestResources UP-TO-DATE
+> Task :proximity-feature:generateDemoDebugRFile UP-TO-DATE
+> Task :analytics-logic:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :analytics-logic:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :startup-feature:generateDemoDebugResources UP-TO-DATE
+> Task :startup-feature:packageDemoDebugResources UP-TO-DATE
+> Task :analytics-logic:compileDevDebugUnitTestKotlin NO-SOURCE
+> Task :startup-feature:parseDemoDebugLocalResources UP-TO-DATE
+> Task :startup-feature:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :analytics-logic:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :analytics-logic:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :analytics-logic:processDevDebugUnitTestJavaRes NO-SOURCE
+> Task :analytics-logic:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :analytics-logic:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :startup-feature:generateDemoDebugRFile UP-TO-DATE
+> Task :presentation-feature:generateDemoDebugResources UP-TO-DATE
+> Task :analytics-logic:testDevDebugUnitTest NO-SOURCE
+> Task :assembly-logic:javaPreCompileDemoDebug UP-TO-DATE
+> Task :ux-contract:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-contract:kmpPartiallyResolvedDependenciesChecker
+> Task :startup-feature:javaPreCompileDemoDebug UP-TO-DATE
+> Task :ux-contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :analytics-logic:compileDemoDebugUnitTestKotlin NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :analytics-logic:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :analytics-logic:processDemoDebugUnitTestJavaRes NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :ux-contract:generateComposeResClass UP-TO-DATE
+> Task :ux-contract:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :ux-elements:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-elements:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-elements:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :analytics-logic:testDemoDebugUnitTest NO-SOURCE
+> Task :ux-elements:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :analytics-logic:test UP-TO-DATE
+> Task :ux-elements:generateComposeResClass SKIPPED
+> Task :ux-elements:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :presentation-feature:packageDemoDebugResources UP-TO-DATE
+> Task :ux-elements:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :ux-theme:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-elements:generateResourceAccessorsForCommonMain SKIPPED
+> Task :ux-elements:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-theme:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-theme:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :ux-elements:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :presentation-feature:parseDemoDebugLocalResources UP-TO-DATE
+> Task :ux-theme:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :ux-theme:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ux-theme:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForCommonMain SKIPPED
+> Task :ux-theme:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-theme:generateComposeResClass SKIPPED
+> Task :ux-runtime:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForCommonMain
+> Task :presentation-feature:generateDemoDebugRFile UP-TO-DATE
+> Task :ux-runtime:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-runtime:generateComposeResClass SKIPPED
+> Task :ux-runtime:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ux-runtime:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-runtime:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-spike:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-runtime:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-runtime:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForCommonMain SKIPPED
+> Task :ux-runtime:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :ux-spike:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-spike:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared-ui:compileAndroidMain UP-TO-DATE
+> Task :ux-spike:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-spike:generateComposeResClass UP-TO-DATE
+> Task :ux-spike:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :shared-ui:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :ux-spike:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :ux-spike-android:generateDebugResources UP-TO-DATE
+> Task :ux-spike-android:packageDebugResources UP-TO-DATE
+> Task :ux-spike-android:parseDebugLocalResources UP-TO-DATE
+> Task :ux-contract:copyNonXmlValueResourcesForCommonMain
+> Task :ux-spike-android:generateDebugRFile UP-TO-DATE
+> Task :ux-spike-android:javaPreCompileDebug UP-TO-DATE
+> Task :storage-logic:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :storage-logic:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :androidApp:javaPreCompileDemoDebug UP-TO-DATE
+> Task :storage-logic:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :storage-logic:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :assembly-logic:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :authentication-logic:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :ux-contract:prepareComposeResourcesTaskForCommonMain
+> Task :ux-contract:copyAndroidMainComposeResourcesToAndroidAssets
+> Task :ux-contract:packageAndroidMainResources UP-TO-DATE
+> Task :ux-contract:parseAndroidMainLocalResources UP-TO-DATE
+> Task :ux-contract:generateAndroidMainRFile UP-TO-DATE
+> Task :common-feature:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :core-logic:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :dashboard-feature:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :issuance-feature:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :network-logic:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :presentation-feature:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :proximity-feature:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :startup-feature:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :ui-logic:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :ux-contract:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :ux-elements:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :ux-spike:uxSpikeComposeResources
+> Task :ux-runtime:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :ux-spike:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :ux-spike:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-spike-android:writeDebugAarMetadata UP-TO-DATE
+> Task :ux-theme:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :ux-spike:copyNonXmlValueResourcesForCommonMain
+> Task :ux-spike:prepareComposeResourcesTaskForCommonMain
+> Task :resources-logic:compileDevDebugKotlin UP-TO-DATE
+> Task :resources-logic:compileDemoDebugKotlin UP-TO-DATE
+> Task :ux-spike:generateResourceAccessorsForCommonMain
+> Task :ux-spike:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :resources-logic:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :resources-logic:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :resources-logic:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :resources-logic:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :androidApp:checkDemoDebugAarMetadata UP-TO-DATE
+> Task :androidApp:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :androidApp:compileDemoDebugNavigationResources UP-TO-DATE
+> Task :androidApp:createDemoDebugCompatibleScreenManifests UP-TO-DATE
+> Task :androidApp:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :assembly-logic:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :assembly-logic:processDemoDebugManifest UP-TO-DATE
+> Task :authentication-logic:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :authentication-logic:processDemoDebugManifest UP-TO-DATE
+> Task :common-feature:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :common-feature:processDemoDebugManifest UP-TO-DATE
+> Task :core-logic:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :core-logic:processDemoDebugManifest UP-TO-DATE
+> Task :dashboard-feature:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :dashboard-feature:processDemoDebugManifest UP-TO-DATE
+> Task :issuance-feature:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :issuance-feature:processDemoDebugManifest UP-TO-DATE
+> Task :network-logic:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :network-logic:processDemoDebugManifest UP-TO-DATE
+> Task :ux-spike:copyAndroidMainComposeResourcesToAndroidAssets
+> Task :ux-spike:packageAndroidMainResources UP-TO-DATE
+> Task :ux-spike:parseAndroidMainLocalResources UP-TO-DATE
+> Task :presentation-feature:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :ux-spike:generateAndroidMainRFile UP-TO-DATE
+> Task :business-logic:compileDevDebugKotlin UP-TO-DATE
+> Task :presentation-feature:processDemoDebugManifest UP-TO-DATE
+> Task :business-logic:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :proximity-feature:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :business-logic:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :proximity-feature:processDemoDebugManifest UP-TO-DATE
+> Task :startup-feature:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :startup-feature:processDemoDebugManifest UP-TO-DATE
+> Task :ui-logic:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :ui-logic:processDemoDebugManifest UP-TO-DATE
+> Task :ux-contract:processAndroidMainManifest UP-TO-DATE
+> Task :ux-elements:processAndroidMainManifest UP-TO-DATE
+> Task :ux-runtime:processAndroidMainManifest UP-TO-DATE
+> Task :ux-spike:processAndroidMainManifest UP-TO-DATE
+> Task :ux-spike-android:extractDeepLinksDebug UP-TO-DATE
+> Task :ux-spike-android:processDebugManifest UP-TO-DATE
+> Task :business-logic:compileDemoDebugKotlin UP-TO-DATE
+> Task :ux-theme:processAndroidMainManifest UP-TO-DATE
+> Task :business-logic:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :business-logic:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :storage-logic:processDevDebugUnitTestResources UP-TO-DATE
+> Task :androidApp:mergeDemoDebugResources UP-TO-DATE
+> Task :ux-contract:generateResourceAccessorsForCommonMain
+> Task :ux-contract:generateActualResourceCollectorsForAndroidMain
+> Task :storage-logic:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :assembly-logic:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :storage-logic:kspDevDebugKotlin UP-TO-DATE
+> Task :assembly-logic:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :authentication-logic:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :authentication-logic:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :common-feature:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :common-feature:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :core-logic:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :core-logic:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :dashboard-feature:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :dashboard-feature:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :issuance-feature:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :issuance-feature:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :network-logic:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :network-logic:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :presentation-feature:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :presentation-feature:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :proximity-feature:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :proximity-feature:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :startup-feature:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :startup-feature:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :ui-logic:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :ui-logic:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :ux-contract:mapAndroidMainSourceSetPaths UP-TO-DATE
+> Task :ux-contract:compileAndroidMainLibraryResources UP-TO-DATE
+> Task :ux-spike:mapAndroidMainSourceSetPaths UP-TO-DATE
+> Task :ux-spike:compileAndroidMainLibraryResources UP-TO-DATE
+> Task :ux-spike-android:mapDebugSourceSetPaths UP-TO-DATE
+> Task :ux-spike-android:compileDebugLibraryResources UP-TO-DATE
+> Task :androidApp:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :androidApp:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :androidApp:generateDemoDebugAssets UP-TO-DATE
+> Task :assembly-logic:generateDemoDebugAssets UP-TO-DATE
+> Task :assembly-logic:mergeDemoDebugAssets UP-TO-DATE
+> Task :authentication-logic:generateDemoDebugAssets UP-TO-DATE
+> Task :authentication-logic:mergeDemoDebugAssets UP-TO-DATE
+> Task :business-logic:generateDemoDebugAssets UP-TO-DATE
+> Task :business-logic:mergeDemoDebugAssets UP-TO-DATE
+> Task :common-feature:generateDemoDebugAssets UP-TO-DATE
+> Task :common-feature:mergeDemoDebugAssets UP-TO-DATE
+> Task :core-logic:generateDemoDebugAssets UP-TO-DATE
+> Task :core-logic:mergeDemoDebugAssets UP-TO-DATE
+> Task :dashboard-feature:generateDemoDebugAssets UP-TO-DATE
+> Task :dashboard-feature:mergeDemoDebugAssets UP-TO-DATE
+> Task :issuance-feature:generateDemoDebugAssets UP-TO-DATE
+> Task :storage-logic:kspDemoDebugKotlin UP-TO-DATE
+> Task :issuance-feature:mergeDemoDebugAssets UP-TO-DATE
+> Task :network-logic:generateDemoDebugAssets UP-TO-DATE
+> Task :network-logic:mergeDemoDebugAssets UP-TO-DATE
+> Task :presentation-feature:generateDemoDebugAssets UP-TO-DATE
+> Task :network-logic:compileDemoDebugKotlin UP-TO-DATE
+> Task :presentation-feature:mergeDemoDebugAssets UP-TO-DATE
+> Task :proximity-feature:generateDemoDebugAssets UP-TO-DATE
+> Task :proximity-feature:mergeDemoDebugAssets UP-TO-DATE
+> Task :resources-logic:generateDemoDebugAssets UP-TO-DATE
+> Task :resources-logic:mergeDemoDebugAssets UP-TO-DATE
+> Task :shared-ui:generateAndroidMainAssets UP-TO-DATE
+> Task :shared-ui:mergeAndroidMainAssets UP-TO-DATE
+> Task :startup-feature:generateDemoDebugAssets UP-TO-DATE
+> Task :startup-feature:mergeDemoDebugAssets UP-TO-DATE
+> Task :storage-logic:generateDemoDebugAssets UP-TO-DATE
+> Task :storage-logic:mergeDemoDebugAssets UP-TO-DATE
+> Task :ui-logic:generateDemoDebugAssets UP-TO-DATE
+> Task :ui-logic:mergeDemoDebugAssets UP-TO-DATE
+> Task :ux-contract:generateAndroidMainAssets UP-TO-DATE
+> Task :network-logic:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :network-logic:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :ux-spike:generateAndroidMainAssets UP-TO-DATE
+> Task :storage-logic:compileDemoDebugKotlin UP-TO-DATE
+> Task :androidApp:processDemoDebugMainManifest UP-TO-DATE
+> Task :storage-logic:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :androidApp:processDemoDebugManifest UP-TO-DATE
+> Task :storage-logic:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :androidApp:processDemoDebugManifestForPackage UP-TO-DATE
+> Task :storage-logic:kspDemoDebugUnitTestKotlin NO-SOURCE
+> Task :storage-logic:compileDemoDebugUnitTestKotlin NO-SOURCE
+> Task :storage-logic:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ux-spike-android:generateDebugAssets UP-TO-DATE
+> Task :ux-spike-android:mergeDebugAssets UP-TO-DATE
+> Task :authentication-logic:compileDemoDebugKotlin UP-TO-DATE
+> Task :authentication-logic:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :authentication-logic:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :storage-logic:compileDevDebugKotlin UP-TO-DATE
+> Task :ux-contract:mergeAndroidMainAssets
+> Task :authentication-logic:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :authentication-logic:processDemoDebugJavaRes UP-TO-DATE
+> Task :business-logic:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :storage-logic:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :business-logic:processDemoDebugJavaRes UP-TO-DATE
+> Task :storage-logic:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :network-logic:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :network-logic:processDemoDebugJavaRes UP-TO-DATE
+> Task :resources-logic:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :storage-logic:kspDevDebugUnitTestKotlin NO-SOURCE
+> Task :storage-logic:compileDevDebugUnitTestKotlin NO-SOURCE
+> Task :storage-logic:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :androidApp:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :resources-logic:processDemoDebugJavaRes UP-TO-DATE
+> Task :androidApp:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :storage-logic:copyRoomSchemas NO-SOURCE
+> Task :shared-ui:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :storage-logic:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :androidApp:preDevDebugBuild UP-TO-DATE
+> Task :storage-logic:processDemoDebugJavaRes UP-TO-DATE
+> Task :androidApp:generateDevDebugBuildConfig UP-TO-DATE
+> Task :shared-ui:processAndroidMainJavaRes UP-TO-DATE
+> Task :assembly-logic:preDevDebugBuild UP-TO-DATE
+> Task :authentication-logic:preDevDebugBuild UP-TO-DATE
+> Task :androidApp:generateDevDebugResources UP-TO-DATE
+> Task :authentication-logic:processDevDebugNavigationResources UP-TO-DATE
+> Task :common-feature:preDevDebugBuild UP-TO-DATE
+> Task :common-feature:processDevDebugNavigationResources UP-TO-DATE
+> Task :androidApp:packageDevDebugResources UP-TO-DATE
+> Task :dashboard-feature:preDevDebugBuild UP-TO-DATE
+> Task :assembly-logic:processDevDebugNavigationResources UP-TO-DATE
+> Task :issuance-feature:preDevDebugBuild UP-TO-DATE
+> Task :issuance-feature:processDevDebugNavigationResources UP-TO-DATE
+> Task :network-logic:preDevDebugBuild UP-TO-DATE
+> Task :dashboard-feature:processDevDebugNavigationResources UP-TO-DATE
+> Task :presentation-feature:preDevDebugBuild UP-TO-DATE
+> Task :network-logic:processDevDebugNavigationResources UP-TO-DATE
+> Task :proximity-feature:preDevDebugBuild UP-TO-DATE
+> Task :presentation-feature:processDevDebugNavigationResources UP-TO-DATE
+> Task :startup-feature:preDevDebugBuild UP-TO-DATE
+> Task :startup-feature:processDevDebugNavigationResources UP-TO-DATE
+> Task :proximity-feature:processDevDebugNavigationResources UP-TO-DATE
+> Task :ui-logic:preDevDebugBuild UP-TO-DATE
+> Task :assembly-logic:generateDevDebugBuildConfig UP-TO-DATE
+> Task :ui-logic:processDevDebugNavigationResources UP-TO-DATE
+> Task :assembly-logic:generateDevDebugResources UP-TO-DATE
+> Task :authentication-logic:generateDevDebugBuildConfig UP-TO-DATE
+> Task :authentication-logic:generateDevDebugResources UP-TO-DATE
+> Task :assembly-logic:packageDevDebugResources UP-TO-DATE
+> Task :assembly-logic:parseDevDebugLocalResources UP-TO-DATE
+> Task :assembly-logic:generateDevDebugRFile UP-TO-DATE
+> Task :authentication-logic:javaPreCompileDevDebug UP-TO-DATE
+> Task :common-feature:generateDevDebugBuildConfig UP-TO-DATE
+> Task :authentication-logic:packageDevDebugResources UP-TO-DATE
+> Task :common-feature:generateDevDebugResources UP-TO-DATE
+> Task :core-logic:devDebugVerifyWalletCoreEtsiVersions
+> Task :core-logic:preDevDebugBuild
+> Task :common-feature:packageDevDebugResources UP-TO-DATE
+> Task :core-logic:processDevDebugNavigationResources UP-TO-DATE
+> Task :common-feature:parseDevDebugLocalResources UP-TO-DATE
+> Task :authentication-logic:parseDevDebugLocalResources UP-TO-DATE
+> Task :common-feature:generateDevDebugRFile UP-TO-DATE
+> Task :authentication-logic:generateDevDebugRFile UP-TO-DATE
+> Task :core-logic:generateDevDebugBuildConfig UP-TO-DATE
+> Task :androidApp:processDevDebugNavigationResources UP-TO-DATE
+> Task :core-logic:generateDevDebugResources UP-TO-DATE
+> Task :androidApp:parseDevDebugLocalResources UP-TO-DATE
+> Task :androidApp:processDemoDebugResources UP-TO-DATE
+> Task :androidApp:generateDevDebugRFile UP-TO-DATE
+> Task :network-logic:generateDevDebugResources UP-TO-DATE
+> Task :network-logic:generateDevDebugBuildConfig UP-TO-DATE
+> Task :network-logic:javaPreCompileDevDebug UP-TO-DATE
+> Task :core-logic:compileDemoDebugKotlin UP-TO-DATE
+> Task :core-logic:packageDevDebugResources UP-TO-DATE
+> Task :network-logic:packageDevDebugResources UP-TO-DATE
+> Task :core-logic:javaPreCompileDevDebug UP-TO-DATE
+> Task :core-logic:parseDevDebugLocalResources UP-TO-DATE
+> Task :network-logic:parseDevDebugLocalResources UP-TO-DATE
+> Task :core-logic:generateDevDebugRFile UP-TO-DATE
+> Task :core-logic:processDemoDebugJavaRes UP-TO-DATE
+> Task :ui-logic:generateDevDebugResources UP-TO-DATE
+> Task :network-logic:generateDevDebugRFile UP-TO-DATE
+> Task :ui-logic:generateDevDebugBuildConfig UP-TO-DATE
+> Task :ui-logic:javaPreCompileDevDebug UP-TO-DATE
+> Task :ui-logic:packageDevDebugResources UP-TO-DATE
+> Task :common-feature:javaPreCompileDevDebug UP-TO-DATE
+> Task :ui-logic:parseDevDebugLocalResources UP-TO-DATE
+> Task :ux-spike:mergeAndroidMainAssets
+> Task :ui-logic:generateDevDebugRFile UP-TO-DATE
+> Task :dashboard-feature:generateDevDebugBuildConfig UP-TO-DATE
+> Task :core-logic:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :dashboard-feature:generateDevDebugResources UP-TO-DATE
+> Task :dashboard-feature:javaPreCompileDevDebug UP-TO-DATE
+> Task :core-logic:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :core-logic:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :issuance-feature:generateDevDebugBuildConfig UP-TO-DATE
+> Task :issuance-feature:generateDevDebugResources UP-TO-DATE
+> Task :dashboard-feature:packageDevDebugResources UP-TO-DATE
+> Task :issuance-feature:packageDevDebugResources UP-TO-DATE
+> Task :dashboard-feature:parseDevDebugLocalResources UP-TO-DATE
+> Task :issuance-feature:parseDevDebugLocalResources UP-TO-DATE
+> Task :dashboard-feature:generateDevDebugRFile UP-TO-DATE
+> Task :issuance-feature:javaPreCompileDevDebug UP-TO-DATE
+> Task :issuance-feature:generateDevDebugRFile UP-TO-DATE
+> Task :presentation-feature:generateDevDebugBuildConfig UP-TO-DATE
+> Task :presentation-feature:javaPreCompileDevDebug UP-TO-DATE
+> Task :presentation-feature:generateDevDebugResources UP-TO-DATE
+> Task :proximity-feature:generateDevDebugBuildConfig UP-TO-DATE
+> Task :proximity-feature:generateDevDebugResources UP-TO-DATE
+> Task :presentation-feature:packageDevDebugResources UP-TO-DATE
+> Task :presentation-feature:parseDevDebugLocalResources UP-TO-DATE
+> Task :proximity-feature:packageDevDebugResources UP-TO-DATE
+> Task :presentation-feature:generateDevDebugRFile UP-TO-DATE
+> Task :proximity-feature:javaPreCompileDevDebug UP-TO-DATE
+> Task :startup-feature:generateDevDebugBuildConfig UP-TO-DATE
+> Task :proximity-feature:parseDevDebugLocalResources UP-TO-DATE
+> Task :startup-feature:generateDevDebugResources UP-TO-DATE
+> Task :startup-feature:packageDevDebugResources UP-TO-DATE
+> Task :proximity-feature:generateDevDebugRFile UP-TO-DATE
+> Task :startup-feature:javaPreCompileDevDebug UP-TO-DATE
+> Task :startup-feature:parseDevDebugLocalResources UP-TO-DATE
+> Task :assembly-logic:javaPreCompileDevDebug UP-TO-DATE
+> Task :startup-feature:generateDevDebugRFile UP-TO-DATE
+> Task :androidApp:javaPreCompileDevDebug UP-TO-DATE
+> Task :authentication-logic:writeDevDebugAarMetadata UP-TO-DATE
+> Task :common-feature:writeDevDebugAarMetadata UP-TO-DATE
+> Task :assembly-logic:writeDevDebugAarMetadata UP-TO-DATE
+> Task :core-logic:writeDevDebugAarMetadata UP-TO-DATE
+> Task :issuance-feature:writeDevDebugAarMetadata UP-TO-DATE
+> Task :dashboard-feature:writeDevDebugAarMetadata UP-TO-DATE
+> Task :network-logic:writeDevDebugAarMetadata UP-TO-DATE
+> Task :proximity-feature:writeDevDebugAarMetadata UP-TO-DATE
+> Task :startup-feature:writeDevDebugAarMetadata UP-TO-DATE
+> Task :presentation-feature:writeDevDebugAarMetadata UP-TO-DATE
+> Task :ui-logic:writeDevDebugAarMetadata UP-TO-DATE
+> Task :authentication-logic:compileDevDebugKotlin UP-TO-DATE
+> Task :androidApp:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :androidApp:compileDevDebugNavigationResources UP-TO-DATE
+> Task :authentication-logic:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :authentication-logic:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :androidApp:createDevDebugCompatibleScreenManifests UP-TO-DATE
+> Task :androidApp:extractDeepLinksDevDebug UP-TO-DATE
+> Task :assembly-logic:extractDeepLinksDevDebug UP-TO-DATE
+> Task :assembly-logic:processDevDebugManifest UP-TO-DATE
+> Task :authentication-logic:extractDeepLinksDevDebug UP-TO-DATE
+> Task :authentication-logic:processDevDebugManifest UP-TO-DATE
+> Task :common-feature:extractDeepLinksDevDebug UP-TO-DATE
+> Task :common-feature:processDevDebugManifest UP-TO-DATE
+> Task :core-logic:extractDeepLinksDevDebug UP-TO-DATE
+> Task :core-logic:processDevDebugManifest UP-TO-DATE
+> Task :dashboard-feature:extractDeepLinksDevDebug UP-TO-DATE
+> Task :dashboard-feature:processDevDebugManifest UP-TO-DATE
+> Task :issuance-feature:extractDeepLinksDevDebug UP-TO-DATE
+> Task :issuance-feature:processDevDebugManifest UP-TO-DATE
+> Task :androidApp:checkDevDebugAarMetadata UP-TO-DATE
+> Task :androidApp:mergeDevDebugResources UP-TO-DATE
+> Task :presentation-feature:extractDeepLinksDevDebug UP-TO-DATE
+> Task :presentation-feature:processDevDebugManifest UP-TO-DATE
+> Task :proximity-feature:extractDeepLinksDevDebug UP-TO-DATE
+> Task :proximity-feature:processDevDebugManifest UP-TO-DATE
+> Task :startup-feature:extractDeepLinksDevDebug UP-TO-DATE
+> Task :startup-feature:processDevDebugManifest UP-TO-DATE
+> Task :ui-logic:extractDeepLinksDevDebug UP-TO-DATE
+> Task :ui-logic:processDevDebugManifest UP-TO-DATE
+> Task :assembly-logic:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :assembly-logic:compileDevDebugLibraryResources UP-TO-DATE
+> Task :authentication-logic:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :authentication-logic:compileDevDebugLibraryResources UP-TO-DATE
+> Task :network-logic:extractDeepLinksDevDebug UP-TO-DATE
+> Task :network-logic:processDevDebugManifest UP-TO-DATE
+> Task :core-logic:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :core-logic:compileDevDebugLibraryResources UP-TO-DATE
+> Task :dashboard-feature:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :dashboard-feature:compileDevDebugLibraryResources UP-TO-DATE
+> Task :common-feature:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :network-logic:compileDevDebugKotlin UP-TO-DATE
+> Task :issuance-feature:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :common-feature:compileDevDebugLibraryResources UP-TO-DATE
+> Task :ui-logic:compileDemoDebugKotlin UP-TO-DATE
+> Task :androidApp:processDevDebugMainManifest UP-TO-DATE
+> Task :issuance-feature:compileDevDebugLibraryResources UP-TO-DATE
+> Task :ui-logic:processDemoDebugJavaRes UP-TO-DATE
+> Task :androidApp:processDevDebugManifest UP-TO-DATE
+> Task :presentation-feature:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :androidApp:processDevDebugManifestForPackage UP-TO-DATE
+> Task :presentation-feature:compileDevDebugLibraryResources UP-TO-DATE
+> Task :proximity-feature:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :startup-feature:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :proximity-feature:compileDevDebugLibraryResources UP-TO-DATE
+> Task :network-logic:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :startup-feature:compileDevDebugLibraryResources UP-TO-DATE
+> Task :ui-logic:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :ui-logic:compileDevDebugLibraryResources UP-TO-DATE
+> Task :network-logic:compileDevDebugLibraryResources UP-TO-DATE
+> Task :androidApp:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :androidApp:generateDevDebugAssets UP-TO-DATE
+> Task :assembly-logic:generateDevDebugAssets UP-TO-DATE
+> Task :androidApp:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :authentication-logic:generateDevDebugAssets UP-TO-DATE
+> Task :assembly-logic:mergeDevDebugAssets UP-TO-DATE
+> Task :business-logic:generateDevDebugAssets UP-TO-DATE
+> Task :business-logic:mergeDevDebugAssets UP-TO-DATE
+> Task :common-feature:generateDevDebugAssets UP-TO-DATE
+> Task :authentication-logic:mergeDevDebugAssets UP-TO-DATE
+> Task :core-logic:generateDevDebugAssets UP-TO-DATE
+> Task :common-feature:mergeDevDebugAssets UP-TO-DATE
+> Task :dashboard-feature:generateDevDebugAssets UP-TO-DATE
+> Task :dashboard-feature:mergeDevDebugAssets UP-TO-DATE
+> Task :issuance-feature:generateDevDebugAssets UP-TO-DATE
+> Task :issuance-feature:mergeDevDebugAssets UP-TO-DATE
+> Task :network-logic:generateDevDebugAssets UP-TO-DATE
+> Task :network-logic:mergeDevDebugAssets UP-TO-DATE
+> Task :presentation-feature:generateDevDebugAssets UP-TO-DATE
+> Task :presentation-feature:mergeDevDebugAssets UP-TO-DATE
+> Task :proximity-feature:generateDevDebugAssets UP-TO-DATE
+> Task :proximity-feature:mergeDevDebugAssets UP-TO-DATE
+> Task :resources-logic:generateDevDebugAssets UP-TO-DATE
+> Task :core-logic:mergeDevDebugAssets UP-TO-DATE
+> Task :startup-feature:generateDevDebugAssets UP-TO-DATE
+> Task :resources-logic:mergeDevDebugAssets UP-TO-DATE
+> Task :storage-logic:generateDevDebugAssets UP-TO-DATE
+> Task :storage-logic:mergeDevDebugAssets UP-TO-DATE
+> Task :ui-logic:generateDevDebugAssets UP-TO-DATE
+> Task :ui-logic:mergeDevDebugAssets UP-TO-DATE
+> Task :startup-feature:mergeDevDebugAssets UP-TO-DATE
+> Task :network-logic:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :network-logic:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :ui-logic:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :androidApp:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :androidApp:processDevDebugResources UP-TO-DATE
+> Task :ui-logic:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :ui-logic:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :androidApp:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :authentication-logic:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :business-logic:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :authentication-logic:processDevDebugJavaRes UP-TO-DATE
+> Task :business-logic:processDevDebugJavaRes UP-TO-DATE
+> Task :network-logic:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :resources-logic:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :network-logic:processDevDebugJavaRes UP-TO-DATE
+> Task :resources-logic:processDevDebugJavaRes UP-TO-DATE
+> Task :storage-logic:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :assembly-logic:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :storage-logic:processDevDebugJavaRes UP-TO-DATE
+> Task :assembly-logic:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :assembly-logic:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :androidApp:mergeDemoDebugAssets
+> Task :core-logic:compileDevDebugKotlin UP-TO-DATE
+> Task :androidApp:mergeDevDebugAssets
+> Task :assembly-logic:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :core-logic:processDevDebugJavaRes UP-TO-DATE
+> Task :common-feature:compileDemoDebugKotlin UP-TO-DATE
+> Task :common-feature:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :common-feature:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :core-logic:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :assembly-logic:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :dashboard-feature:compileDemoDebugKotlin UP-TO-DATE
+> Task :dashboard-feature:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :dashboard-feature:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :assembly-logic:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :issuance-feature:compileDemoDebugKotlin UP-TO-DATE
+> Task :issuance-feature:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :issuance-feature:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :common-feature:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :common-feature:processDemoDebugJavaRes UP-TO-DATE
+> Task :startup-feature:compileDemoDebugKotlin UP-TO-DATE
+> Task :dashboard-feature:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :dashboard-feature:processDemoDebugJavaRes UP-TO-DATE
+> Task :issuance-feature:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :issuance-feature:processDemoDebugJavaRes UP-TO-DATE
+> Task :startup-feature:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :startup-feature:processDemoDebugJavaRes UP-TO-DATE
+> Task :presentation-feature:compileDemoDebugKotlin UP-TO-DATE
+> Task :presentation-feature:processDemoDebugJavaRes UP-TO-DATE
+> Task :core-logic:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :androidApp:packageDemoDebugUnitTestForUnitTest
+> Task :androidApp:packageDevDebugUnitTestForUnitTest
+> Task :presentation-feature:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :presentation-feature:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :presentation-feature:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :startup-feature:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :core-logic:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :assembly-logic:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :proximity-feature:compileDemoDebugKotlin UP-TO-DATE
+> Task :ui-logic:compileDevDebugKotlin UP-TO-DATE
+> Task :androidApp:generateDevDebugUnitTestConfig
+> Task :proximity-feature:processDemoDebugJavaRes UP-TO-DATE
+> Task :proximity-feature:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :ui-logic:processDevDebugJavaRes UP-TO-DATE
+> Task :proximity-feature:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :proximity-feature:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :assembly-logic:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :assembly-logic:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :assembly-logic:koverFindJar UP-TO-DATE
+> Task :assembly-logic:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :ui-logic:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :ui-logic:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :assembly-logic:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :ui-logic:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :assembly-logic:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :assembly-logic:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :assembly-logic:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :androidApp:generateDemoDebugUnitTestConfig
+> Task :assembly-logic:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :assembly-logic:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :assembly-logic:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :assembly-logic:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :startup-feature:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :assembly-logic:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :authentication-logic:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :assembly-logic:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :test-logic:preBuild UP-TO-DATE
+> Task :test-logic:preDemoDebugBuild UP-TO-DATE
+> Task :authentication-logic:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :common-feature:compileDevDebugKotlin UP-TO-DATE
+> Task :test-logic:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :authentication-logic:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :common-feature:processDevDebugJavaRes UP-TO-DATE
+> Task :test-logic:generateDemoDebugResources UP-TO-DATE
+> Task :test-logic:packageDemoDebugResources UP-TO-DATE
+> Task :common-feature:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :common-feature:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :assembly-logic:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :assembly-logic:processDevDebugUnitTestResources UP-TO-DATE
+> Task :authentication-logic:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :dashboard-feature:compileDevDebugKotlin UP-TO-DATE
+> Task :dashboard-feature:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :dashboard-feature:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :assembly-logic:compileDemoDebugKotlin UP-TO-DATE
+> Task :assembly-logic:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :presentation-feature:compileDevDebugKotlin UP-TO-DATE
+> Task :assembly-logic:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :assembly-logic:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :assembly-logic:processDemoDebugJavaRes UP-TO-DATE
+> Task :common-feature:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :dashboard-feature:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :dashboard-feature:processDevDebugJavaRes UP-TO-DATE
+> Task :presentation-feature:processDevDebugJavaRes UP-TO-DATE
+> Task :presentation-feature:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :presentation-feature:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :presentation-feature:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :assembly-logic:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :assembly-logic:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :assembly-logic:compileDemoDebugUnitTestKotlin NO-SOURCE
+> Task :assembly-logic:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :assembly-logic:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :assembly-logic:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :assembly-logic:processDemoDebugUnitTestJavaRes NO-SOURCE
+> Task :startup-feature:compileDevDebugKotlin UP-TO-DATE
+> Task :assembly-logic:testDemoDebugUnitTest NO-SOURCE
+> Task :startup-feature:processDevDebugJavaRes UP-TO-DATE
+> Task :test-logic:processDemoDebugManifest UP-TO-DATE
+> Task :test-logic:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :test-logic:processDemoDebugNavigationResources UP-TO-DATE
+> Task :test-logic:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :startup-feature:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :startup-feature:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :startup-feature:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :test-logic:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :test-logic:parseDemoDebugLocalResources UP-TO-DATE
+> Task :test-logic:javaPreCompileDemoDebug UP-TO-DATE
+> Task :authentication-logic:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :authentication-logic:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :test-logic:generateDemoDebugAssets UP-TO-DATE
+> Task :test-logic:generateDemoDebugRFile UP-TO-DATE
+> Task :test-logic:mergeDemoDebugAssets UP-TO-DATE
+> Task :authentication-logic:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :proximity-feature:compileDevDebugKotlin UP-TO-DATE
+> Task :authentication-logic:koverFindJar UP-TO-DATE
+> Task :authentication-logic:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :test-logic:preDevDebugBuild UP-TO-DATE
+> Task :test-logic:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :test-logic:writeDevDebugAarMetadata UP-TO-DATE
+> Task :test-logic:compileDemoDebugKotlin UP-TO-DATE
+> Task :proximity-feature:processDevDebugJavaRes UP-TO-DATE
+> Task :proximity-feature:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :issuance-feature:compileDevDebugKotlin UP-TO-DATE
+> Task :authentication-logic:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :proximity-feature:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :proximity-feature:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :authentication-logic:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :issuance-feature:processDevDebugJavaRes UP-TO-DATE
+> Task :issuance-feature:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :authentication-logic:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :authentication-logic:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :test-logic:processDemoDebugJavaRes UP-TO-DATE
+> Task :issuance-feature:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :authentication-logic:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :authentication-logic:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :test-logic:extractDeepLinksDevDebug UP-TO-DATE
+> Task :test-logic:processDevDebugManifest UP-TO-DATE
+> Task :test-logic:generateDevDebugResources UP-TO-DATE
+> Task :test-logic:packageDevDebugResources UP-TO-DATE
+> Task :authentication-logic:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :authentication-logic:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :issuance-feature:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :test-logic:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :test-logic:processDevDebugNavigationResources UP-TO-DATE
+> Task :test-logic:compileDevDebugLibraryResources UP-TO-DATE
+> Task :authentication-logic:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :test-logic:generateDevDebugBuildConfig UP-TO-DATE
+> Task :test-logic:javaPreCompileDevDebug UP-TO-DATE
+> Task :test-logic:parseDevDebugLocalResources UP-TO-DATE
+> Task :authentication-logic:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :test-logic:generateDevDebugAssets UP-TO-DATE
+> Task :authentication-logic:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :test-logic:mergeDevDebugAssets UP-TO-DATE
+> Task :test-logic:generateDevDebugRFile UP-TO-DATE
+> Task :test-logic:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :baseline-profile:test UP-TO-DATE
+> Task :test-logic:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :test-logic:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :business-logic:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :authentication-logic:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :business-logic:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :business-logic:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :assembly-logic:compileDevDebugKotlin UP-TO-DATE
+> Task :business-logic:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :assembly-logic:processDevDebugJavaRes UP-TO-DATE
+> Task :assembly-logic:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :test-logic:compileDevDebugKotlin UP-TO-DATE
+> Task :assembly-logic:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :assembly-logic:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :authentication-logic:processDevDebugUnitTestResources UP-TO-DATE
+> Task :authentication-logic:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :authentication-logic:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :authentication-logic:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :test-logic:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :test-logic:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :authentication-logic:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :assembly-logic:compileDevDebugUnitTestKotlin NO-SOURCE
+> Task :authentication-logic:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :assembly-logic:processDevDebugUnitTestJavaRes NO-SOURCE
+> Task :assembly-logic:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :test-logic:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :assembly-logic:testDevDebugUnitTest NO-SOURCE
+> Task :assembly-logic:test UP-TO-DATE
+> Task :test-logic:processDevDebugJavaRes UP-TO-DATE
+> Task :business-logic:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :business-logic:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :business-logic:koverFindJar UP-TO-DATE
+> Task :business-logic:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :business-logic:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :business-logic:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :business-logic:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :business-logic:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :business-logic:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :business-logic:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :business-logic:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :authentication-logic:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :authentication-logic:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :authentication-logic:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :authentication-logic:processDevDebugUnitTestJavaRes UP-TO-DATE
+> Task :authentication-logic:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :authentication-logic:processDemoDebugUnitTestJavaRes UP-TO-DATE
+> Task :business-logic:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :common-feature:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :business-logic:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :test-feature:preBuild UP-TO-DATE
+> Task :common-feature:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :test-feature:preDemoDebugBuild UP-TO-DATE
+> Task :test-feature:writeDemoDebugAarMetadata UP-TO-DATE
+> Task :common-feature:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:generateDemoDebugResources UP-TO-DATE
+> Task :test-feature:packageDemoDebugResources UP-TO-DATE
+> Task :business-logic:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :business-logic:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :common-feature:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:extractDeepLinksDemoDebug UP-TO-DATE
+> Task :test-feature:processDemoDebugManifest UP-TO-DATE
+> Task :business-logic:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :business-logic:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :common-feature:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :test-feature:mapDemoDebugSourceSetPaths UP-TO-DATE
+> Task :test-feature:processDemoDebugNavigationResources UP-TO-DATE
+> Task :test-feature:compileDemoDebugLibraryResources UP-TO-DATE
+> Task :test-feature:parseDemoDebugLocalResources UP-TO-DATE
+> Task :test-feature:generateDemoDebugRFile UP-TO-DATE
+> Task :test-feature:generateDemoDebugBuildConfig UP-TO-DATE
+> Task :business-logic:processDevDebugUnitTestResources UP-TO-DATE
+> Task :business-logic:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:compileDemoDebugKotlin UP-TO-DATE
+> Task :business-logic:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :business-logic:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :business-logic:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :business-logic:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :test-feature:javaPreCompileDemoDebug UP-TO-DATE
+> Task :test-feature:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :test-feature:bundleLibCompileToJarDemoDebug UP-TO-DATE
+> Task :common-feature:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :common-feature:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :test-feature:generateDemoDebugAssets UP-TO-DATE
+> Task :business-logic:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :common-feature:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :business-logic:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :common-feature:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :business-logic:processDemoDebugUnitTestJavaRes UP-TO-DATE
+> Task :business-logic:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :business-logic:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :business-logic:processDevDebugUnitTestJavaRes UP-TO-DATE
+> Task :test-feature:mergeDemoDebugAssets UP-TO-DATE
+> Task :common-feature:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :common-feature:koverFindJar UP-TO-DATE
+> Task :test-feature:bundleLibRuntimeToJarDemoDebug UP-TO-DATE
+> Task :test-feature:processDemoDebugJavaRes UP-TO-DATE
+> Task :common-feature:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :test-feature:preDevDebugBuild UP-TO-DATE
+> Task :test-feature:writeDevDebugAarMetadata UP-TO-DATE
+> Task :common-feature:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :common-feature:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :common-feature:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:generateDevDebugResources UP-TO-DATE
+> Task :test-feature:packageDevDebugResources UP-TO-DATE
+> Task :common-feature:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :common-feature:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :common-feature:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :common-feature:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :test-feature:extractDeepLinksDevDebug UP-TO-DATE
+> Task :test-feature:processDevDebugManifest UP-TO-DATE
+> Task :common-feature:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :common-feature:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :test-feature:mapDevDebugSourceSetPaths UP-TO-DATE
+> Task :test-feature:processDevDebugNavigationResources UP-TO-DATE
+> Task :test-feature:compileDevDebugLibraryResources UP-TO-DATE
+> Task :test-feature:parseDevDebugLocalResources UP-TO-DATE
+> Task :test-feature:generateDevDebugRFile UP-TO-DATE
+> Task :common-feature:processDevDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:generateDevDebugBuildConfig UP-TO-DATE
+> Task :common-feature:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :common-feature:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :common-feature:processDemoDebugUnitTestJavaRes UP-TO-DATE
+> Task :test-feature:compileDevDebugKotlin UP-TO-DATE
+> Task :test-feature:javaPreCompileDevDebug UP-TO-DATE
+> Task :test-feature:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :test-feature:bundleLibCompileToJarDevDebug UP-TO-DATE
+> Task :common-feature:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :common-feature:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :common-feature:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :common-feature:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :test-feature:generateDevDebugAssets UP-TO-DATE
+> Task :test-feature:mergeDevDebugAssets UP-TO-DATE
+> Task :common-feature:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :common-feature:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :common-feature:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :common-feature:processDevDebugUnitTestJavaRes UP-TO-DATE
+> Task :test-feature:bundleLibRuntimeToJarDevDebug UP-TO-DATE
+> Task :test-feature:processDevDebugJavaRes UP-TO-DATE
+> Task :ux-theme:compileAndroidMain
+> Task :ux-theme:bundleAndroidMainClassesToCompileJar
+> Task :ux-elements:compileAndroidMain
+> Task :ux-elements:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :ux-runtime:compileAndroidMain
+> Task :ux-runtime:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :ux-elements:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :ux-elements:processAndroidMainJavaRes UP-TO-DATE
+> Task :ux-runtime:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :ux-runtime:processAndroidMainJavaRes UP-TO-DATE
+> Task :ux-theme:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-theme:processAndroidMainJavaRes UP-TO-DATE
+> Task :core-logic:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :core-logic:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :core-logic:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :core-logic:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :core-logic:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :core-logic:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :core-logic:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :core-logic:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :core-logic:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :core-logic:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :core-logic:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-logic:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :core-logic:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :core-logic:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :core-logic:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :core-logic:koverFindJar UP-TO-DATE
+> Task :core-logic:processDemoDebugUnitTestJavaRes UP-TO-DATE
+> Task :ux-contract:compileAndroidMain
+> Task :ux-contract:bundleAndroidMainClassesToCompileJar
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :ux-spike:compileAndroidMain
+> Task :ux-spike:bundleAndroidMainClassesToCompileJar
+> Task :ux-spike-android:compileDebugKotlin
+> Task :ux-spike-android:compileDebugJavaWithJavac NO-SOURCE
+> Task :ux-spike-android:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :androidApp:compileDemoDebugKotlin NO-SOURCE
+> Task :androidApp:compileDemoDebugJavaWithJavac UP-TO-DATE
+> Task :androidApp:bundleDemoDebugClassesToRuntimeJar UP-TO-DATE
+> Task :androidApp:bundleDemoDebugClassesToCompileJar UP-TO-DATE
+> Task :androidApp:compileDemoDebugUnitTestKotlin NO-SOURCE
+> Task :androidApp:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :androidApp:processDemoDebugJavaRes NO-SOURCE
+> Task :androidApp:processDemoDebugUnitTestJavaRes NO-SOURCE
+> Task :ux-contract:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-contract:processAndroidMainJavaRes UP-TO-DATE
+> Task :ux-spike:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-spike:processAndroidMainJavaRes UP-TO-DATE
+> Task :ux-spike-android:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :ux-spike-android:processDebugJavaRes UP-TO-DATE
+> Task :androidApp:testDemoDebugUnitTest NO-SOURCE
+> Task :androidApp:compileDevDebugKotlin NO-SOURCE
+> Task :androidApp:compileDevDebugJavaWithJavac UP-TO-DATE
+> Task :androidApp:bundleDevDebugClassesToRuntimeJar UP-TO-DATE
+> Task :androidApp:bundleDevDebugClassesToCompileJar UP-TO-DATE
+> Task :androidApp:compileDevDebugUnitTestKotlin NO-SOURCE
+> Task :androidApp:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :androidApp:processDevDebugJavaRes NO-SOURCE
+> Task :androidApp:processDevDebugUnitTestJavaRes NO-SOURCE
+> Task :androidApp:testDevDebugUnitTest NO-SOURCE
+> Task :androidApp:test UP-TO-DATE
+> Task :core-logic:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :core-logic:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :core-logic:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :core-logic:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :core-logic:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :core-logic:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :core-logic:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :core-logic:processDevDebugUnitTestResources UP-TO-DATE
+> Task :core-logic:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :core-logic:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :core-logic:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core-logic:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :core-logic:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :core-logic:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :core-logic:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :core-logic:processDevDebugUnitTestJavaRes UP-TO-DATE
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :core-logic:testDemoDebugUnitTest
+> Task :dashboard-feature:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :dashboard-feature:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :dashboard-feature:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :dashboard-feature:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :dashboard-feature:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :dashboard-feature:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :dashboard-feature:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :dashboard-feature:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :dashboard-feature:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :dashboard-feature:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :dashboard-feature:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :dashboard-feature:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :dashboard-feature:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :dashboard-feature:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :dashboard-feature:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :dashboard-feature:koverFindJar UP-TO-DATE
+> Task :dashboard-feature:processDemoDebugUnitTestJavaRes UP-TO-DATE
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :core-logic:testDevDebugUnitTest
+> Task :core-logic:test
+> Task :dashboard-feature:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :dashboard-feature:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :dashboard-feature:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :dashboard-feature:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :dashboard-feature:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :dashboard-feature:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :dashboard-feature:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :dashboard-feature:processDevDebugUnitTestResources UP-TO-DATE
+> Task :dashboard-feature:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :dashboard-feature:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :dashboard-feature:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :dashboard-feature:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :dashboard-feature:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :dashboard-feature:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :dashboard-feature:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :dashboard-feature:processDevDebugUnitTestJavaRes UP-TO-DATE
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :authentication-logic:testDevDebugUnitTest
+> Task :authentication-logic:testDemoDebugUnitTest
+> Task :business-logic:testDemoDebugUnitTest
+> Task :business-logic:testDevDebugUnitTest
+> Task :common-feature:testDemoDebugUnitTest
+> Task :common-feature:testDevDebugUnitTest
+
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+> Task :issuance-feature:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :issuance-feature:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :issuance-feature:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :issuance-feature:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :issuance-feature:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :issuance-feature:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :issuance-feature:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :issuance-feature:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :issuance-feature:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :issuance-feature:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :issuance-feature:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :issuance-feature:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :issuance-feature:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :issuance-feature:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :issuance-feature:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :issuance-feature:koverFindJar UP-TO-DATE
+> Task :issuance-feature:processDemoDebugUnitTestJavaRes UP-TO-DATE
+> Task :business-logic:test
+> Task :issuance-feature:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :issuance-feature:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :issuance-feature:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :issuance-feature:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :issuance-feature:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :issuance-feature:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :issuance-feature:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :issuance-feature:processDevDebugUnitTestResources UP-TO-DATE
+> Task :issuance-feature:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :issuance-feature:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :issuance-feature:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :issuance-feature:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :issuance-feature:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :issuance-feature:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :issuance-feature:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :issuance-feature:processDevDebugUnitTestJavaRes UP-TO-DATE
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :dashboard-feature:testDemoDebugUnitTest
+> Task :network-logic:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :network-logic:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :network-logic:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :network-logic:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :network-logic:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :network-logic:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :network-logic:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :network-logic:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :network-logic:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :network-logic:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :network-logic:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :network-logic:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :network-logic:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :network-logic:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :network-logic:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :network-logic:koverFindJar UP-TO-DATE
+> Task :network-logic:processDemoDebugUnitTestJavaRes UP-TO-DATE
+> Task :common-feature:test
+> Task :network-logic:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :network-logic:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :network-logic:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :network-logic:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :network-logic:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :network-logic:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :network-logic:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :network-logic:processDevDebugUnitTestResources UP-TO-DATE
+> Task :network-logic:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :network-logic:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :network-logic:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :network-logic:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :network-logic:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :network-logic:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :network-logic:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :network-logic:processDevDebugUnitTestJavaRes UP-TO-DATE
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :network-logic:testDemoDebugUnitTest
+> Task :presentation-feature:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :presentation-feature:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :presentation-feature:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :presentation-feature:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :presentation-feature:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :presentation-feature:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :presentation-feature:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :presentation-feature:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :presentation-feature:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :presentation-feature:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :presentation-feature:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :presentation-feature:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :presentation-feature:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :presentation-feature:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :presentation-feature:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :presentation-feature:koverFindJar UP-TO-DATE
+> Task :presentation-feature:processDemoDebugUnitTestJavaRes UP-TO-DATE
+> Task :network-logic:testDevDebugUnitTest
+> Task :network-logic:test
+> Task :presentation-feature:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :presentation-feature:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :presentation-feature:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :presentation-feature:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :presentation-feature:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :presentation-feature:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :presentation-feature:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :presentation-feature:processDevDebugUnitTestResources UP-TO-DATE
+> Task :presentation-feature:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :presentation-feature:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :presentation-feature:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :presentation-feature:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :presentation-feature:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :presentation-feature:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :presentation-feature:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :presentation-feature:processDevDebugUnitTestJavaRes UP-TO-DATE
+> Task :issuance-feature:testDemoDebugUnitTest
+> Task :proximity-feature:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :proximity-feature:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :proximity-feature:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :proximity-feature:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :proximity-feature:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :proximity-feature:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :proximity-feature:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :proximity-feature:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :proximity-feature:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :proximity-feature:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :proximity-feature:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :proximity-feature:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :proximity-feature:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :proximity-feature:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :proximity-feature:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :proximity-feature:koverFindJar UP-TO-DATE
+> Task :proximity-feature:processDemoDebugUnitTestJavaRes UP-TO-DATE
+> Task :issuance-feature:testDevDebugUnitTest
+> Task :issuance-feature:test
+> Task :proximity-feature:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :proximity-feature:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :proximity-feature:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :proximity-feature:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :proximity-feature:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :proximity-feature:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :proximity-feature:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :proximity-feature:processDevDebugUnitTestResources UP-TO-DATE
+> Task :proximity-feature:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :proximity-feature:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :proximity-feature:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :proximity-feature:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :proximity-feature:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :proximity-feature:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :proximity-feature:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :proximity-feature:processDevDebugUnitTestJavaRes UP-TO-DATE
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :dashboard-feature:testDevDebugUnitTest
+
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+> Task :presentation-feature:testDemoDebugUnitTest
+> Task :resources-logic:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :resources-logic:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :resources-logic:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :resources-logic:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :resources-logic:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :resources-logic:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :resources-logic:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :resources-logic:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :resources-logic:compileDemoDebugUnitTestKotlin NO-SOURCE
+> Task :resources-logic:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :resources-logic:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :resources-logic:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :presentation-feature:testDevDebugUnitTest
+> Task :presentation-feature:test
+> Task :resources-logic:koverFindJar UP-TO-DATE
+> Task :resources-logic:processDemoDebugUnitTestJavaRes NO-SOURCE
+> Task :resources-logic:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :resources-logic:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :resources-logic:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :resources-logic:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :resources-logic:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :resources-logic:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :resources-logic:testDemoDebugUnitTest NO-SOURCE
+> Task :resources-logic:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :resources-logic:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :resources-logic:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :resources-logic:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :resources-logic:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :resources-logic:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :startup-feature:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :resources-logic:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :startup-feature:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :startup-feature:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :startup-feature:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :resources-logic:processDevDebugUnitTestResources UP-TO-DATE
+> Task :resources-logic:compileDevDebugUnitTestKotlin NO-SOURCE
+> Task :resources-logic:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :resources-logic:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :resources-logic:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :resources-logic:processDevDebugUnitTestJavaRes NO-SOURCE
+> Task :resources-logic:testDevDebugUnitTest NO-SOURCE
+> Task :resources-logic:test UP-TO-DATE
+> Task :startup-feature:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :startup-feature:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :startup-feature:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :startup-feature:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :startup-feature:koverFindJar UP-TO-DATE
+> Task :startup-feature:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :startup-feature:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :startup-feature:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :startup-feature:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :startup-feature:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :startup-feature:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :startup-feature:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :startup-feature:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :startup-feature:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :startup-feature:processDevDebugUnitTestResources UP-TO-DATE
+> Task :startup-feature:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :startup-feature:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :startup-feature:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :startup-feature:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :startup-feature:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :startup-feature:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :startup-feature:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :startup-feature:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :startup-feature:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :startup-feature:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :startup-feature:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :startup-feature:processDemoDebugUnitTestJavaRes UP-TO-DATE
+> Task :startup-feature:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :startup-feature:processDevDebugUnitTestJavaRes UP-TO-DATE
+> Task :storage-logic:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :storage-logic:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :storage-logic:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :storage-logic:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :storage-logic:koverFindJar UP-TO-DATE
+> Task :storage-logic:processDemoDebugUnitTestJavaRes NO-SOURCE
+> Task :storage-logic:testDemoDebugUnitTest NO-SOURCE
+> Task :storage-logic:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :storage-logic:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :storage-logic:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :storage-logic:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :storage-logic:processDevDebugUnitTestJavaRes NO-SOURCE
+> Task :storage-logic:testDevDebugUnitTest NO-SOURCE
+> Task :storage-logic:test UP-TO-DATE
+> Task :test-feature:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :test-feature:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :test-feature:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :test-feature:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :test-feature:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :test-feature:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:compileDemoDebugUnitTestKotlin NO-SOURCE
+> Task :test-feature:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :test-feature:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :test-feature:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :test-feature:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :test-feature:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :test-feature:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :test-feature:koverFindJar UP-TO-DATE
+> Task :test-feature:processDemoDebugUnitTestJavaRes NO-SOURCE
+> Task :test-feature:testDemoDebugUnitTest NO-SOURCE
+> Task :test-feature:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :test-feature:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :test-feature:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :test-feature:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :test-feature:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :test-feature:processDevDebugUnitTestResources UP-TO-DATE
+> Task :test-feature:compileDevDebugUnitTestKotlin NO-SOURCE
+> Task :test-feature:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :test-feature:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :test-feature:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :test-feature:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :test-feature:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :test-feature:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :test-feature:processDevDebugUnitTestJavaRes NO-SOURCE
+> Task :test-feature:testDevDebugUnitTest NO-SOURCE
+> Task :test-feature:test UP-TO-DATE
+> Task :test-logic:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :test-logic:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :test-logic:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :test-logic:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :test-logic:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :test-logic:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :test-logic:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :test-logic:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :test-logic:compileDemoDebugUnitTestKotlin NO-SOURCE
+> Task :test-logic:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :test-logic:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :test-logic:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :test-logic:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :test-logic:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :test-logic:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :test-logic:koverFindJar UP-TO-DATE
+> Task :test-logic:processDemoDebugUnitTestJavaRes NO-SOURCE
+> Task :test-logic:testDemoDebugUnitTest NO-SOURCE
+> Task :test-logic:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :test-logic:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :test-logic:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :test-logic:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :test-logic:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :test-logic:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :test-logic:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :test-logic:processDevDebugUnitTestResources UP-TO-DATE
+> Task :test-logic:compileDevDebugUnitTestKotlin NO-SOURCE
+> Task :test-logic:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :test-logic:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :test-logic:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :test-logic:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :test-logic:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :test-logic:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :test-logic:processDevDebugUnitTestJavaRes NO-SOURCE
+> Task :test-logic:testDevDebugUnitTest NO-SOURCE
+> Task :test-logic:test UP-TO-DATE
+> Task :ui-logic:preDemoDebugUnitTestBuild UP-TO-DATE
+> Task :ui-logic:checkDemoDebugUnitTestAarMetadata UP-TO-DATE
+> Task :ui-logic:mapDemoDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :ui-logic:generateDemoDebugUnitTestResources UP-TO-DATE
+> Task :ui-logic:mergeDemoDebugUnitTestResources UP-TO-DATE
+> Task :ui-logic:mergeDemoDebugUnitTestManifest UP-TO-DATE
+> Task :ui-logic:processDemoDebugUnitTestManifest UP-TO-DATE
+> Task :ui-logic:processDemoDebugUnitTestResources UP-TO-DATE
+> Task :ui-logic:compileDemoDebugUnitTestKotlin UP-TO-DATE
+> Task :ui-logic:javaPreCompileDemoDebugUnitTest UP-TO-DATE
+> Task :ui-logic:compileDemoDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui-logic:generateDemoDebugUnitTestAssets UP-TO-DATE
+> Task :ui-logic:mergeDemoDebugUnitTestAssets UP-TO-DATE
+> Task :ui-logic:packageDemoDebugUnitTestForUnitTest UP-TO-DATE
+> Task :ui-logic:generateDemoDebugUnitTestConfig UP-TO-DATE
+> Task :ui-logic:koverFindJar UP-TO-DATE
+> Task :ui-logic:processDemoDebugUnitTestJavaRes UP-TO-DATE
+> Task :proximity-feature:testDevDebugUnitTest
+> Task :ui-logic:preDevDebugUnitTestBuild UP-TO-DATE
+> Task :ui-logic:checkDevDebugUnitTestAarMetadata UP-TO-DATE
+> Task :ui-logic:mapDevDebugUnitTestSourceSetPaths UP-TO-DATE
+> Task :ui-logic:generateDevDebugUnitTestResources UP-TO-DATE
+> Task :ui-logic:mergeDevDebugUnitTestResources UP-TO-DATE
+> Task :ui-logic:mergeDevDebugUnitTestManifest UP-TO-DATE
+> Task :ui-logic:processDevDebugUnitTestManifest UP-TO-DATE
+> Task :ui-logic:processDevDebugUnitTestResources UP-TO-DATE
+> Task :ui-logic:compileDevDebugUnitTestKotlin UP-TO-DATE
+> Task :ui-logic:javaPreCompileDevDebugUnitTest UP-TO-DATE
+> Task :ui-logic:compileDevDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ui-logic:generateDevDebugUnitTestAssets UP-TO-DATE
+> Task :ui-logic:mergeDevDebugUnitTestAssets UP-TO-DATE
+> Task :ui-logic:packageDevDebugUnitTestForUnitTest UP-TO-DATE
+> Task :ui-logic:generateDevDebugUnitTestConfig UP-TO-DATE
+> Task :ui-logic:processDevDebugUnitTestJavaRes UP-TO-DATE
+> Task :proximity-feature:testDemoDebugUnitTest
+> Task :proximity-feature:test
+> Task :ux-spike-android:preDebugUnitTestBuild UP-TO-DATE
+> Task :ux-spike-android:generateDebugUnitTestStubRFile UP-TO-DATE
+> Task :ux-spike-android:compileDebugUnitTestKotlin NO-SOURCE
+> Task :ux-spike-android:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :ux-spike-android:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :ux-spike-android:processDebugUnitTestJavaRes NO-SOURCE
+> Task :ux-spike-android:testDebugUnitTest NO-SOURCE
+> Task :ux-spike-android:test UP-TO-DATE
+> Task :shared-logic:downloadKotlinNativeDistribution UP-TO-DATE
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :shared-logic:iosSimulatorArm64ProcessResources NO-SOURCE
+> Task :shared-logic:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :shared-logic:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :shared-logic:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :shared-ui:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :ux-contract:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :ux-elements:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :ux-runtime:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :ux-spike:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :ux-theme:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :shared-logic:generateUmbrellaPackageIdentifierBasedResolutionForDefault SKIPPED
+> Task :shared-logic:fetchUmbrellaPackageIdentifierForDefault SKIPPED
+> Task :shared-logic:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :shared-logic:fetchSyntheticImportProjectPackages SKIPPED
+> Task :shared-logic:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :shared-logic:downloadPkixBridge UP-TO-DATE
+> Task :shared-logic:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :shared-ui:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :shared-ui:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :shared-ui:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :ux-contract:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-contract:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-contract:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :ux-contract:generateActualResourceCollectorsForIosSimulatorArm64Main
+> Task :dashboard-feature:test
+> Task :ux-contract:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-elements:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-elements:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-elements:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForAppleMain SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosMain SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForNativeMain SKIPPED
+> Task :ux-elements:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-theme:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-theme:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-theme:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForAppleMain SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosMain SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForNativeMain SKIPPED
+> Task :ux-theme:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :ui-logic:testDevDebugUnitTest
+> Task :ux-theme:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-elements:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-runtime:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-runtime:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-runtime:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForAppleMain SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForIosMain SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForNativeMain SKIPPED
+> Task :ux-runtime:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-runtime:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-spike:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-spike:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-spike:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :ux-spike:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :ux-spike:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :shared-ui:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :shared-ui:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForAppleTest NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForIosTest NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForNativeTest NO-SOURCE
+> Task :ux-contract:assembleIosSimulatorArm64MainResources
+> Task :ux-contract:iosSimulatorArm64CopyHierarchicalMultiplatformResources
+> Task :ux-contract:iosSimulatorArm64ZipMultiplatformResourcesForPublication
+> Task :ux-elements:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :ux-runtime:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-runtime:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-runtime:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :ux-spike:assembleIosSimulatorArm64MainResources
+> Task :ux-spike:iosSimulatorArm64CopyHierarchicalMultiplatformResources
+> Task :ux-spike:iosSimulatorArm64ZipMultiplatformResourcesForPublication
+> Task :ux-theme:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :shared-ui:iosSimulatorArm64ResolveResourcesFromDependencies
+> Task :ui-logic:testDemoDebugUnitTest
+> Task :ui-logic:test
+> Task :shared-ui:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :shared-ui:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :shared-ui:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :shared-ui:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :shared-ui:fetchSyntheticImportProjectPackages SKIPPED
+> Task :shared-ui:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :shared-ui:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :shared-ui:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :shared-ui:androidJar UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForAndroidHostTest NO-SOURCE
+> Task :shared-ui:compileAndroidHostTest UP-TO-DATE
+> Task :shared-ui:preAndroidHostTestBuild UP-TO-DATE
+> Task :shared-ui:processAndroidHostTestJavaRes NO-SOURCE
+> Task :shared-ui:iosSimulatorArm64AggregateResources
+> Task :shared-ui:iosSimulatorArm64ProcessResources
+> Task :shared-ui:copyTestComposeResourcesForIosSimulatorArm64
+> Task :shared-logic:androidJar UP-TO-DATE
+> Task :shared-logic:compileAndroidHostTest UP-TO-DATE
+> Task :shared-logic:preAndroidHostTestBuild UP-TO-DATE
+> Task :shared-logic:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-contract:compileKotlinIosSimulatorArm64
+> Task :ux-theme:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-theme:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForAppleTest SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForCommonTest SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosTest SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForNativeTest SKIPPED
+> Task :ux-theme:iosSimulatorArm64ResolveResourcesFromDependencies UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64AggregateResources UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64ProcessResources UP-TO-DATE
+> Task :ux-theme:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :ux-theme:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-theme:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-theme:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-theme:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :ux-theme:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :ux-theme:copyTestComposeResourcesForIosSimulatorArm64 UP-TO-DATE
+> Task :ux-theme:androidJar UP-TO-DATE
+> Task :ux-theme:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForAndroidHostTest SKIPPED
+> Task :ux-theme:compileAndroidHostTest
+> Task :ux-theme:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-theme:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-theme:compileKotlinIosSimulatorArm64
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+> Task :shared-logic:testAndroidHostTest
+> Task :ux-theme:iosSimulatorArm64MainKlibrary
+> Task :ux-theme:testAndroidHostTest
+> Task :ux-contract:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-contract:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForAppleTest NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForIosTest NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForNativeTest NO-SOURCE
+> Task :ux-contract:iosSimulatorArm64ResolveResourcesFromDependencies UP-TO-DATE
+> Task :ux-contract:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources
+> Task :startup-feature:testDevDebugUnitTest
+> Task :ux-contract:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :ux-contract:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-contract:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-contract:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-contract:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :ux-contract:iosSimulatorArm64AggregateResources
+> Task :ux-contract:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :ux-contract:iosSimulatorArm64ProcessResources
+> Task :ux-contract:copyTestComposeResourcesForIosSimulatorArm64
+> Task :ux-contract:iosSimulatorArm64MainKlibrary
+> Task :ux-contract:androidJar UP-TO-DATE
+> Task :ux-contract:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForAndroidHostTest NO-SOURCE
+> Task :startup-feature:testDemoDebugUnitTest
+> Task :startup-feature:test
+> Task :ux-contract:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-contract:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-elements:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-elements:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForAppleTest SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForCommonTest SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosTest SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForNativeTest SKIPPED
+> Task :ux-elements:iosSimulatorArm64ResolveResourcesFromDependencies UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64AggregateResources UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64ProcessResources UP-TO-DATE
+> Task :ux-elements:specSnapshotFixture UP-TO-DATE
+> Task :ux-elements:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :ux-elements:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-elements:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-elements:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-elements:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :ux-elements:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :ux-elements:copyTestComposeResourcesForIosSimulatorArm64 UP-TO-DATE
+> Task :ux-elements:androidJar UP-TO-DATE
+> Task :ux-elements:generateAndroidHostTestAssets UP-TO-DATE
+> Task :ux-elements:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-elements:mergeAndroidHostTestAssets UP-TO-DATE
+> Task :ux-elements:checkAndroidHostTestAarMetadata UP-TO-DATE
+> Task :ux-elements:mapAndroidHostTestSourceSetPaths UP-TO-DATE
+> Task :ux-elements:generateAndroidHostTestResources UP-TO-DATE
+> Task :ux-elements:mergeAndroidHostTestResources UP-TO-DATE
+> Task :ux-elements:mergeAndroidHostTestManifest UP-TO-DATE
+> Task :ux-elements:processAndroidHostTestManifest UP-TO-DATE
+> Task :ux-elements:processAndroidHostTestResources UP-TO-DATE
+> Task :ux-elements:packageAndroidHostTestForUnitTest UP-TO-DATE
+> Task :ux-elements:generateAndroidHostTestConfig UP-TO-DATE
+> Task :ux-elements:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForAndroidHostTest SKIPPED
+> Task :ux-elements:compileAndroidHostTest
+> Task :ux-elements:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-theme:compileTestKotlinIosSimulatorArm64
+> Task :ux-contract:compileTestKotlinIosSimulatorArm64
+> Task :authentication-logic:test
+> Task :ux-runtime:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-runtime:exportedBundleFixture
+> Task :ux-runtime:exportedModelFixture
+> Task :ux-runtime:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForAppleTest SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForCommonTest SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForIosTest SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForNativeTest SKIPPED
+> Task :ux-runtime:iosSimulatorArm64ResolveResourcesFromDependencies UP-TO-DATE
+> Task :ux-runtime:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-runtime:iosSimulatorArm64AggregateResources UP-TO-DATE
+> Task :ux-runtime:iosSimulatorArm64ProcessResources UP-TO-DATE
+> Task :ux-runtime:offlineLoadingBundleFixture UP-TO-DATE
+> Task :ux-runtime:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :ux-runtime:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-runtime:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-runtime:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-runtime:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :ux-runtime:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :ux-runtime:copyTestComposeResourcesForIosSimulatorArm64 UP-TO-DATE
+> Task :ux-runtime:androidJar UP-TO-DATE
+> Task :ux-runtime:generateAndroidHostTestAssets UP-TO-DATE
+> Task :ux-runtime:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-runtime:mergeAndroidHostTestAssets UP-TO-DATE
+> Task :ux-runtime:checkAndroidHostTestAarMetadata UP-TO-DATE
+> Task :ux-runtime:mapAndroidHostTestSourceSetPaths UP-TO-DATE
+> Task :ux-runtime:generateAndroidHostTestResources UP-TO-DATE
+> Task :ux-runtime:mergeAndroidHostTestResources UP-TO-DATE
+> Task :ux-runtime:mergeAndroidHostTestManifest UP-TO-DATE
+> Task :ux-runtime:processAndroidHostTestManifest UP-TO-DATE
+> Task :ux-runtime:processAndroidHostTestResources UP-TO-DATE
+> Task :ux-runtime:packageAndroidHostTestForUnitTest UP-TO-DATE
+> Task :ux-runtime:generateAndroidHostTestConfig UP-TO-DATE
+> Task :ux-runtime:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForAndroidHostTest SKIPPED
+> Task :ux-contract:compileAndroidHostTest
+> Task :ux-elements:compileKotlinIosSimulatorArm64
+> Task :ux-contract:testAndroidHostTest
+> Task :ux-elements:iosSimulatorArm64MainKlibrary
+> Task :shared-ui:testAndroidHostTest
+> Task :ux-runtime:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-spike:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-spike:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForAppleTest NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForIosTest NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForNativeTest NO-SOURCE
+> Task :ux-spike:iosSimulatorArm64ResolveResourcesFromDependencies
+> Task :ux-spike:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources
+> Task :ux-spike:iosSimulatorArm64AggregateResources
+> Task :ux-spike:iosSimulatorArm64ProcessResources
+> Task :ux-spike:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :ux-spike:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-spike:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-spike:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-spike:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :ux-spike:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :ux-spike:copyTestComposeResourcesForIosSimulatorArm64
+> Task :ux-spike:androidJar UP-TO-DATE
+> Task :ux-spike:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForAndroidHostTest NO-SOURCE
+> Task :ux-elements:compileTestKotlinIosSimulatorArm64
+
+> Task :ux-spike:compileAndroidHostTest
+w: file:///Users/roman/code/eudi-kmp-spike/ux-spike/src/androidHostTest/kotlin/eu/europa/ec/uxspike/FakeScriptsTest.kt:72:32 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-spike/src/androidHostTest/kotlin/eu/europa/ec/uxspike/FakeScriptsTest.kt:87:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-spike/src/androidHostTest/kotlin/eu/europa/ec/uxspike/FakeScriptsTest.kt:88:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+
+> Task :ux-spike:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-spike:processAndroidHostTestJavaRes NO-SOURCE
+
+> Task :ux-runtime:compileAndroidHostTest
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/bundle/HandshakeTest.kt:168:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:53:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:67:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:79:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:101:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:136:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:186:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:198:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:214:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:239:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:60:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:65:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:77:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:91:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:104:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:108:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:127:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:133:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:143:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:148:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:154:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:182:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:208:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineSemanticsTest.kt:85:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedModelReplayTest.kt:85:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedModelReplayTest.kt:96:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:58:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:91:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:109:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:122:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+
+> Task :ux-runtime:compileKotlinIosSimulatorArm64
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonMain/kotlin/eu/europa/ec/ux/runtime/engine/FlowEngine.kt:208:15 'fun CoroutineScope.launch(context: Job, start: CoroutineStart = ..., block: suspend CoroutineScope.() -> Unit): Job' is deprecated. Passing a Job to coroutine builders breaks structured concurrency, leading to hard-to-diagnose errors. This pattern should be avoided. This overload will be deprecated with an error in the future.
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/iosMain/kotlin/eu/europa/ec/ux/runtime/a11y/AccessibilityBridge.ios.kt:92:81 This declaration needs opt-in. Its usage should be marked with '@kotlinx.cinterop.BetaInteropApi' or '@OptIn(kotlinx.cinterop.BetaInteropApi::class)'
+
+> Task :shared-logic:compileKotlinIosSimulatorArm64
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/commonMain/kotlin/eu/europa/ec/shared/platform/PlatformActivity.kt:34:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/commonMain/kotlin/eu/europa/ec/shared/platform/PlatformContext.kt:33:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/commonMain/kotlin/eu/europa/ec/shared/platform/PlatformCryptoObject.kt:28:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/commonMain/kotlin/eu/europa/ec/shared/platform/PlatformIntent.kt:28:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosMain/kotlin/eu/europa/ec/shared/platform/PlatformActivity.ios.kt:28:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosMain/kotlin/eu/europa/ec/shared/platform/PlatformContext.ios.kt:34:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosMain/kotlin/eu/europa/ec/shared/platform/PlatformCryptoObject.ios.kt:27:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosMain/kotlin/eu/europa/ec/shared/platform/PlatformIntent.ios.kt:31:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosMain/kotlin/eu/europa/ec/shared/wallet/multipaz/IosProximityPresenter.kt:240:20 'constructor(eSenderKey: EcPublicKey, version: String): EngagementGenerator' is deprecated. This class is deprecated, use DeviceEngagement instead.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosMain/kotlin/eu/europa/ec/shared/wallet/multipaz/MultipazWalletStore.kt:314:38 This declaration needs opt-in. Its usage should be marked with '@kotlinx.cinterop.BetaInteropApi' or '@OptIn(kotlinx.cinterop.BetaInteropApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosMain/kotlin/eu/europa/ec/shared/wallet/multipaz/harness/DcApiHarness.kt:117:25 'constructor(encodedSessionTranscript: ByteArray): DeviceRequestGenerator' is deprecated. This class is deprecated, use DeviceRequest instead.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosMain/kotlin/eu/europa/ec/shared/wallet/multipaz/harness/MdocFixture.kt:264:15 'constructor(digestAlgorithm: Algorithm, docType: String, deviceKey: EcPublicKey): MobileSecurityObjectGenerator' is deprecated. Deprecated, use MobileSecurityObject instead.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosMain/kotlin/eu/europa/ec/shared/wallet/platform/IosDevicePasscode.kt:83:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.cinterop.BetaInteropApi' or '@OptIn(kotlinx.cinterop.BetaInteropApi::class)'
+
+> Task :shared-logic:iosSimulatorArm64MainKlibrary
+
+> Task :ux-spike:testAndroidHostTest
+
+FakeScriptsTest > theSixScriptsExistForThisFlowAndAuthenticationAlwaysSucceeds FAILED
+    java.lang.AssertionError at FakeScriptsTest.kt:98
+
+12 tests completed, 1 failed
+There were failing tests. See the report at: file:///Users/roman/code/eudi-kmp-spike/ux-spike/build/reports/tests/testAndroidHostTest/index.html
+
+> Task :ux-runtime:iosSimulatorArm64MainKlibrary
+> Task :ux-spike:compileKotlinIosSimulatorArm64
+> Task :ux-theme:linkDebugTestIosSimulatorArm64
+
+> Task :ux-runtime:compileTestKotlinIosSimulatorArm64
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/bundle/HandshakeTest.kt:168:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:53:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:67:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:79:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:101:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:136:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:186:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:198:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:214:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:239:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:60:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:65:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:77:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:91:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:104:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:108:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:127:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:133:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:143:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:148:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:154:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:182:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:208:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineSemanticsTest.kt:85:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedModelReplayTest.kt:85:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedModelReplayTest.kt:96:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:58:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:91:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:109:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:122:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/src/iosTest/kotlin/eu/europa/ec/ux/runtime/host/FlowHostBackIosTest.kt:53:60 'fun runComposeUiTest(effectContext: CoroutineContext = ..., runTestContext: CoroutineContext = ..., testTimeout: Duration = ..., block: suspend ComposeUiTest.() -> Unit): Unit' is deprecated. Use `androidx.compose.ui.test.v2.runComposeUiTest` instead. The v2 APIs use `StandardTestDispatcher` by default to better simulate production behavior where coroutines are queued rather than executed immediately.
+
+> Task :ux-contract:linkDebugTestIosSimulatorArm64
+
+> Task :shared-logic:compileTestKotlinIosSimulatorArm64
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/platform/IosBroadcastsTest.kt:34:32 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosAuthorizationRedirectsTest.kt:96:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosAuthorizationRedirectsTest.kt:110:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosAuthorizationRedirectsTest.kt:112:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosAuthorizationRedirectsTest.kt:144:32 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosBroadcastsTest.kt:124:32 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosDcApiPresenterTest.kt:297:29 'constructor(encodedSessionTranscript: ByteArray): DeviceRequestGenerator' is deprecated. This class is deprecated, use DeviceRequest instead.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosMdocSendTimeoutTest.kt:81:30 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosMdocSendTimeoutTest.kt:102:20 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosMdocSendTimeoutTest.kt:102:50 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosProximityCancelTest.kt:75:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosProximityCancelTest.kt:79:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosProximityPresentmentTest.kt:107:23 'constructor(encodedSessionTranscript: ByteArray): DeviceRequestGenerator' is deprecated. This class is deprecated, use DeviceRequest instead.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosProximityPresentmentTest.kt:263:23 'constructor(encodedSessionTranscript: ByteArray): DeviceRequestGenerator' is deprecated. This class is deprecated, use DeviceRequest instead.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosProximityPresentmentTest.kt:464:26 'constructor(encodedEngagement: ByteArray): EngagementParser' is deprecated. This class is deprecated, use DeviceEngagement instead.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosProximityPresentmentTest.kt:490:23 'constructor(encodedSessionTranscript: ByteArray): DeviceRequestGenerator' is deprecated. This class is deprecated, use DeviceRequest instead.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosProximityRequestTimeoutTest.kt:97:30 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/IosReaderRegistrationTest.kt:41:25 'constructor(encodedSessionTranscript: ByteArray): DeviceRequestGenerator' is deprecated. This class is deprecated, use DeviceRequest instead.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/MultipazRevocationCheckerTest.kt:421:33 Unnecessary non-null assertion (!!) on a non-null receiver of type 'Int'.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/ProcessSharedTest.kt:51:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/RepeatingCheckTest.kt:45:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-spike/shared-logic/src/iosTest/kotlin/eu/europa/ec/shared/wallet/multipaz/RepeatingCheckTest.kt:46:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+
+> Task :ux-elements:testAndroidHostTest
+> Task :ux-spike:iosSimulatorArm64MainKlibrary
+> Task :ux-spike:compileTestKotlinIosSimulatorArm64
+> Task :ux-contract:iosSimulatorArm64Test
+> Task :ux-theme:iosSimulatorArm64Test
+> Task :ux-theme:allTests
+> Task :androidApp:mergeDevDebugNativeDebugMetadata NO-SOURCE
+> Task :ux-contract:allTests
+> Task :androidApp:generateDevDebugGlobalSynthetics UP-TO-DATE
+> Task :androidApp:l8DexDesugarLibDevDebug UP-TO-DATE
+> Task :androidApp:mergeDevDebugJavaResource UP-TO-DATE
+> Task :androidApp:compressDevDebugAssets
+> Task :androidApp:desugarDevDebugFileDependencies UP-TO-DATE
+> Task :ux-spike-android:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :assembly-logic:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :startup-feature:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :dashboard-feature:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :presentation-feature:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :proximity-feature:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :issuance-feature:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :common-feature:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :ui-logic:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :core-logic:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :network-logic:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :authentication-logic:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :storage-logic:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :business-logic:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :resources-logic:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :shared-ui:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :androidApp:checkDevDebugDuplicateClasses UP-TO-DATE
+> Task :ux-spike:bundleLibRuntimeToDirAndroidMain
+> Task :androidApp:mergeExtDexDevDebug UP-TO-DATE
+> Task :analytics-logic:bundleLibRuntimeToDirDevDebug UP-TO-DATE
+> Task :shared-logic:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :ux-runtime:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :ux-elements:bundleLibRuntimeToDirAndroidMain UP-TO-DATE
+> Task :ux-theme:bundleLibRuntimeToDirAndroidMain
+> Task :androidApp:dexBuilderDevDebug UP-TO-DATE
+> Task :androidApp:mergeProjectDexDevDebug UP-TO-DATE
+> Task :analytics-logic:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :analytics-logic:mergeDevDebugNativeLibs NO-SOURCE
+> Task :analytics-logic:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :androidApp:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :assembly-logic:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :assembly-logic:mergeDevDebugNativeLibs NO-SOURCE
+> Task :assembly-logic:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :authentication-logic:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :authentication-logic:mergeDevDebugNativeLibs NO-SOURCE
+> Task :authentication-logic:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :business-logic:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :business-logic:mergeDevDebugNativeLibs NO-SOURCE
+> Task :business-logic:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :common-feature:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :common-feature:mergeDevDebugNativeLibs NO-SOURCE
+> Task :common-feature:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :core-logic:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :core-logic:mergeDevDebugNativeLibs NO-SOURCE
+> Task :core-logic:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :dashboard-feature:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :dashboard-feature:mergeDevDebugNativeLibs NO-SOURCE
+> Task :dashboard-feature:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :issuance-feature:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :issuance-feature:mergeDevDebugNativeLibs NO-SOURCE
+> Task :issuance-feature:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :network-logic:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :network-logic:mergeDevDebugNativeLibs NO-SOURCE
+> Task :network-logic:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :presentation-feature:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :presentation-feature:mergeDevDebugNativeLibs NO-SOURCE
+> Task :presentation-feature:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :proximity-feature:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :proximity-feature:mergeDevDebugNativeLibs NO-SOURCE
+> Task :proximity-feature:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :resources-logic:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :resources-logic:mergeDevDebugNativeLibs NO-SOURCE
+> Task :resources-logic:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :shared-logic:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :shared-logic:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :shared-logic:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :shared-ui:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :shared-ui:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :shared-ui:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :startup-feature:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :startup-feature:mergeDevDebugNativeLibs NO-SOURCE
+> Task :startup-feature:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :storage-logic:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :storage-logic:mergeDevDebugNativeLibs NO-SOURCE
+> Task :storage-logic:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :ui-logic:mergeDevDebugJniLibFolders UP-TO-DATE
+> Task :ui-logic:mergeDevDebugNativeLibs NO-SOURCE
+> Task :ui-logic:copyDevDebugJniLibsProjectOnly UP-TO-DATE
+> Task :ux-contract:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :ux-contract:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :ux-contract:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :ux-elements:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :ux-elements:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :ux-elements:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :ux-runtime:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :ux-runtime:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :ux-runtime:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :ux-spike:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :ux-spike:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :ux-spike:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :ux-spike-android:mergeDebugJniLibFolders UP-TO-DATE
+> Task :ux-spike-android:mergeDebugNativeLibs NO-SOURCE
+> Task :ux-spike-android:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :ux-theme:mergeAndroidMainJniLibFolders UP-TO-DATE
+> Task :ux-theme:mergeAndroidMainNativeLibs NO-SOURCE
+> Task :ux-theme:copyAndroidMainJniLibsProjectOnly UP-TO-DATE
+> Task :ux-contract:bundleLibRuntimeToDirAndroidMain
+> Task :androidApp:mergeDevDebugNativeLibs UP-TO-DATE
+> Task :androidApp:stripDevDebugDebugSymbols UP-TO-DATE
+> Task :androidApp:validateSigningDevDebug UP-TO-DATE
+> Task :androidApp:writeDevDebugAppMetadata UP-TO-DATE
+> Task :androidApp:writeDevDebugSigningConfigVersions UP-TO-DATE
+
+> Task :ux-runtime:testAndroidHostTest
+
+InterpreterAndroidTest > anAddedStateRendersAndTransitionsWithNoKotlinChange FAILED
+    java.lang.AssertionError at Assert.java:89
+
+SchemaCheckTest > theExportedBundleAndTheAddedStateCopyHaveNoSchemaProblems FAILED
+    java.lang.AssertionError at SchemaCheckTest.kt:35
+
+> Task :androidApp:mergeLibDexDevDebug
+> Task :ux-elements:linkDebugTestIosSimulatorArm64
+> Task :androidApp:packageDevDebug
+> Task :androidApp:assembleDevDebug
+> Task :androidApp:createDevDebugApkListingFileRedirect UP-TO-DATE
+
+> Task :ux-runtime:testAndroidHostTest
+
+HandshakeTest > h1_equalHashesAndVersion1Load FAILED
+    java.lang.AssertionError at HandshakeTest.kt:66
+
+> Task :ux-elements:iosSimulatorArm64Test
+> Task :ux-elements:allTests
+> Task :ux-spike:linkDebugTestIosSimulatorArm64
+> Task :ux-spike:iosSimulatorArm64Test
+> Task :ux-spike:allTests FAILED
+
+> Task :ux-runtime:testAndroidHostTest
+
+89 tests completed, 3 failed
+There were failing tests. See the report at: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/build/reports/tests/testAndroidHostTest/index.html
+
+> Task :shared-ui:compileKotlinIosSimulatorArm64
+w: Koin compiler plugin: Kotlin 2.4.10 is newer than the newest tested version (2.4.0) — proceeding with the 2.4.0 adapter. If compilation fails, check for a koin-compiler-plugin update. Supported versions: 2.3.20, 2.4.0.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/ListItem.kt:230:60 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/ListItem.kt:238:53 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/ListItem.kt:248:49 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/iosMain/kotlin/eu/europa/ec/uilogic/component/wrap/QrPainter.ios.kt:85:25 This cast can never succeed.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/iosProbeMain/kotlin/eu/europa/ec/shared/ui/harness/WalletEngineProbe.kt:159:73 Unnecessary safe call on a non-null receiver of type 'IssuerDetailsCardDataUi'.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/iosProbeMain/kotlin/eu/europa/ec/shared/ui/harness/WalletEngineProbe.kt:160:74 Unnecessary safe call on a non-null receiver of type 'IssuerDetailsCardDataUi'.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/iosProbeMain/kotlin/eu/europa/ec/shared/ui/harness/WalletEngineProbe.kt:408:19 This cast can never succeed.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/iosUxSpikeMain/kotlin/eu/europa/ec/uxspike/ios/IosUxSpikeHook.kt:92:106 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/iosUxSpikeMain/kotlin/eu/europa/ec/uxspike/ios/UxDcApiHarness.kt:54:9 'fun <T : UIViewController> UIKitViewController(factory: () -> T, modifier: Modifier, update: (T) -> Unit = ..., background: Color = ..., onRelease: (T) -> Unit = ..., onResize: (T, CValue<CGRect>) -> Unit = ..., interactive: Boolean = ..., accessibilityEnabled: Boolean = ...): Unit' is deprecated. This function was deprecated in favor of newer API.
+
+> Task :shared-ui:iosSimulatorArm64MainKlibrary
+> Task :ux-runtime:linkDebugTestIosSimulatorArm64
+
+> Task :shared-ui:compileTestKotlinIosSimulatorArm64
+w: Koin compiler plugin: Kotlin 2.4.10 is newer than the newest tested version (2.4.0) — proceeding with the 2.4.0 adapter. If compilation fails, check for a koin-compiler-plugin update. Supported versions: 2.3.20, 2.4.0.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/commonTest/kotlin/eu/europa/ec/commonfeature/ui/trustmark/TrustMarkViewModelTest.kt:225:67 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/commonTest/kotlin/eu/europa/ec/commonfeature/ui/trustmark/TrustMarkViewModelTest.kt:226:65 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/commonTest/kotlin/eu/europa/ec/dashboardfeature/ui/dashboard/DashboardViewModelTest.kt:346:60 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/commonTest/kotlin/eu/europa/ec/proximityfeature/ui/request/ProximityRequestViewModelTest.kt:266:51 Unnecessary non-null assertion (!!) on a non-null receiver of type 'RegistrationWarningUi'.
+w: file:///Users/roman/code/eudi-kmp-spike/shared-ui/src/iosTest/kotlin/eu/europa/ec/shared/ui/di/IosDeferredSweepTest.kt:39:30 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+
+eu.europa.ec.ux.runtime.bundle.HandshakeTest.h1_equalHashesAndVersion1Load[iosSimulatorArm64] FAILED
+    kotlin.AssertionError at null:-1
+
+> Task :shared-logic:linkDebugTestIosSimulatorArm64
+
+
+eu.europa.ec.ux.runtime.screen.SchemaCheckTest.theExportedBundleAndTheAddedStateCopyHaveNoSchemaProblems[iosSimulatorArm64] FAILED
+    kotlin.AssertionError at /Users/roman/code/eudi-kmp-spike/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/screen/SchemaCheckTest.kt:35
+
+eu.europa.ec.ux.runtime.screen.InterpreterIosTest.anAddedStateRendersAndTransitionsWithNoKotlinChange[iosSimulatorArm64] FAILED
+    kotlin.AssertionError at null:-1
+
+> Task :ux-runtime:iosSimulatorArm64Test
+
+91 tests completed, 3 failed
+There were failing tests. See the report at: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/build/reports/tests/iosSimulatorArm64Test/index.html
+
+> Task :ux-runtime:allTests FAILED
+
+> Task :shared-logic:linkDebugTestIosSimulatorArm64
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/LocalAuthentication-96P06S25RJAGD5NCGOX8CZH6L.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/LocalAuthentication-96P06S25RJAGD5NCGOX8CZH6L.pcm
+note: Linking a static library that was built with -gmodules, but the module cache was not found.  Redistributable static libraries should never be built with module debugging enabled.  The debug experience will be degraded due to incomplete debug information.
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/DeviceCheck-B7PC6OZ6SRM1QGX501U335RMC.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/DeviceCheck-B7PC6OZ6SRM1QGX501U335RMC.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Foundation-86GWAHL35FTD5DELBNGNBHT15.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Foundation-86GWAHL35FTD5DELBNGNBHT15.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/UIKit-7LYKT3VFG3FET3CHV9SQ64Z3A.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/UIKit-7LYKT3VFG3FET3CHV9SQ64Z3A.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Security-4IDN70428QN0GX8S8FD4PXT2Z.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Security-4IDN70428QN0GX8S8FD4PXT2Z.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreImage-6H2RY8Q5PY8FH1KM4Z2R7KTPX.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreImage-6H2RY8Q5PY8FH1KM4Z2R7KTPX.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CommonCrypto-6K94HOS5JFXF7CJXYK7RMACOU.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CommonCrypto-6K94HOS5JFXF7CJXYK7RMACOU.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/AuthenticationServices-CW656YL5SCLTUC2J3XUYHKOYE.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/AuthenticationServices-CW656YL5SCLTUC2J3XUYHKOYE.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreGraphics-73KSIFEBWC9Q3XSSYPPXEAKC0.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreGraphics-73KSIFEBWC9Q3XSSYPPXEAKC0.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreFoundation-2DIJ2EWU60WUU74MXS1CQWK8S.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreFoundation-2DIJ2EWU60WUU74MXS1CQWK8S.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/_SwiftConcurrencyShims-ELIOTYF5FK33AFEUR6EN0YR6W.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/_SwiftConcurrencyShims-ELIOTYF5FK33AFEUR6EN0YR6W.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/SwiftShims-15S4C0O8AYFRB266MLGKFPPES.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/SwiftShims-15S4C0O8AYFRB266MLGKFPPES.pcm
+
+> Task :shared-ui:linkDebugTestIosSimulatorArm64
+> Task :shared-logic:iosSimulatorArm64Test
+
+> Task :shared-ui:linkDebugTestIosSimulatorArm64
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/LocalAuthentication-96P06S25RJAGD5NCGOX8CZH6L.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/LocalAuthentication-96P06S25RJAGD5NCGOX8CZH6L.pcm
+note: Linking a static library that was built with -gmodules, but the module cache was not found.  Redistributable static libraries should never be built with module debugging enabled.  The debug experience will be degraded due to incomplete debug information.
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/DeviceCheck-B7PC6OZ6SRM1QGX501U335RMC.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/DeviceCheck-B7PC6OZ6SRM1QGX501U335RMC.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Foundation-86GWAHL35FTD5DELBNGNBHT15.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Foundation-86GWAHL35FTD5DELBNGNBHT15.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/UIKit-7LYKT3VFG3FET3CHV9SQ64Z3A.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/UIKit-7LYKT3VFG3FET3CHV9SQ64Z3A.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Security-4IDN70428QN0GX8S8FD4PXT2Z.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Security-4IDN70428QN0GX8S8FD4PXT2Z.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreImage-6H2RY8Q5PY8FH1KM4Z2R7KTPX.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreImage-6H2RY8Q5PY8FH1KM4Z2R7KTPX.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CommonCrypto-6K94HOS5JFXF7CJXYK7RMACOU.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CommonCrypto-6K94HOS5JFXF7CJXYK7RMACOU.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/AuthenticationServices-CW656YL5SCLTUC2J3XUYHKOYE.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/AuthenticationServices-CW656YL5SCLTUC2J3XUYHKOYE.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreGraphics-73KSIFEBWC9Q3XSSYPPXEAKC0.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreGraphics-73KSIFEBWC9Q3XSSYPPXEAKC0.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreFoundation-2DIJ2EWU60WUU74MXS1CQWK8S.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreFoundation-2DIJ2EWU60WUU74MXS1CQWK8S.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/_SwiftConcurrencyShims-ELIOTYF5FK33AFEUR6EN0YR6W.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/_SwiftConcurrencyShims-ELIOTYF5FK33AFEUR6EN0YR6W.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/SwiftShims-15S4C0O8AYFRB266MLGKFPPES.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/SwiftShims-15S4C0O8AYFRB266MLGKFPPES.pcm
+2026-10-17T11:08:08.574182: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+
+> Task :shared-ui:iosSimulatorArm64Test
+
+[Incubating] Problems report is available at: file:///Users/roman/code/eudi-kmp-spike/build/reports/problems/problems-report.html
+
+FAILURE: Build completed with 2 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':ux-spike:allTests' (registered in build file 'ux-spike/build.gradle.kts').
+> There were failing tests. See the report at: file:///Users/roman/code/eudi-kmp-spike/ux-spike/build/reports/tests/allTests/index.html
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':ux-runtime:allTests' (registered in build file 'ux-runtime/build.gradle.kts').
+> There were failing tests. See the report at: file:///Users/roman/code/eudi-kmp-spike/ux-runtime/build/reports/tests/allTests/index.html
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+BUILD FAILED in 3m 15s
+1508 actionable tasks: 147 executed, 1361 up-to-date
+Configuration cache entry reused.

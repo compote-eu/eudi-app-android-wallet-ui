@@ -1,0 +1,51 @@
+diff --git a/ux/product/copy/sk/BRF-001.yaml b/ux/product/copy/sk/BRF-001.yaml
+index d3c9cda..5504d9e 100644
+--- a/ux/product/copy/sk/BRF-001.yaml
++++ b/ux/product/copy/sk/BRF-001.yaml
+@@ -16,8 +16,8 @@ entries:
+     note: Followed by the verifier URL (bound, shown in the notice's extra slot).
+     provenance: {source: SRC-APP-STRINGS, ref: L697, quote: "Pred prepísaním kódu sa uistite, že vo vašom webovom prehliadači sa nachádzate na stránke"}
+   CPY-pres-code-instruction:
+-    text: Prepíšte overovací kód do stránky overovateľa
+-    provenance: {source: SRC-APP-STRINGS, ref: L698, quote: Prepíšte overovací kód do stránky overovateľa}
++    text: Zadajte tento kód na stránke overovateľa
++    provenance: {authored: "UX writer (D8-copy drill: reword)", decision: DEC-005}
+   CPY-pres-code-confirm:
+     text: Predložiť eDoklady
+     note: Based on app L699 "Odoslať doklady"; reworded to the term set (predložiť, eDoklad).
+@@ -41,7 +41,7 @@ entries:
+ 
+   # --- connecting (request fetch + relying-party authentication after the scan) ---
+   CPY-pres-connecting-title:
+-    text: "Načítava sa žiadosť overovateľa"
++    text: "Načítavame žiadosť overovateľa"
+     note: >-
+       Progress title between the scan and the request screen (REV-001 F-12). The app has no remote string for this
+       step: L423 "Pripája sa k čítačke" and L428 "Čaká sa na požiadavku" belong to proximity presentment (reader);
+@@ -58,8 +58,8 @@ entries:
+ 
+   # --- request (RemoteVerifyAuthorization) ---
+   CPY-pres-request-title:
+-    text: "Overenie eDokladu"
+-    provenance: {source: SRC-APP-STRINGS, ref: L685, quote: "Overenie eDokladu"}
++    text: "Žiadosť o údaje z eDokladu"
++    provenance: {authored: "UX writer (D8-copy drill: reword)", decision: DEC-005}
+   CPY-pres-request-verifier-label:
+     text: "Overovateľ"
+     note: Caption above an AUTHENTICATED verifier name only.
+@@ -170,12 +170,12 @@ entries:
+ 
+   # --- sending ---
+   CPY-pres-sending-title:
+-    text: "Prebieha odoslanie dát eDokladov"
+-    provenance: {source: SRC-APP-STRINGS, ref: L703, quote: "Prebieha odoslanie dát eDokladov"}
++    text: "Odosielame údaje z eDokladov"
++    provenance: {authored: "UX writer (D8-copy drill: reword)", decision: DEC-005}
+ 
+   # --- outcomes ---
+   CPY-pres-outcome-success-text:
+-    text: "Pokračujte na stránke overovateľa vo webovom prehliadači."
++    text: "Vráťte sa na stránku overovateľa vo webovom prehliadači."
+     provenance: {authored: "UX writer (composer, REV-001 fix round F-19); next step of the cross-device flow, the app has no cross-device success text", decision: DEC-005}
+   CPY-pres-outcome-cancelled-text:
+     text: "Overovateľovi neboli odoslané žiadne údaje. Ak chcete, môžete predloženie zopakovať."

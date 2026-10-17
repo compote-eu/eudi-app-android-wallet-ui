@@ -19,7 +19,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M5d | done (probe, OR-1, not counted toward the verdict) | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | SCR-home drawn from generated fragment bundles by the generic interpreter (`--ux-spike gallery-home[-<ui state>|-full|-high-contrast]`, spike files only). Coverage of 10 parts: 3 present, 2 partial, 5 missing; about 1.7 k LOC to close for Home alone. `spike-evidence/M5d/`. No pre-spike file touched. Gate: see Gate results. |
 | M6 | M6a, M6b done (2026-10-17) | 2026-10-17 | — | Opus | see Commits | **M6a**: first real export synced (sync commit `7a24efacf`, ux@3d6ecb6, spec `sha256:88e2b611…02d0`, exporter 0.3.0, 19 files, lock check green); provisional contract, theme, copy, bundle and scripts deleted; one-time consumer list of DEC-075 applied; every provisional assertion re-run on the export (8 divergences, all resolved on the spike side, no exporter change); KC1 guard on the real bundle; ⟲ no movement (`b23f6a1f5`); full gate GREEN 4279; release isolation clean. See "M6a notes". **M6b**: formal iOS drills D1-iOS, D3-sim, D4-iOS, D5, D6-iOS all passed on the real export (`spike-results.md`, `spike-evidence/M6b/`); no kill signal; gate GREEN 4279. |
 | M7 | in progress (walk queued) | 2026-10-16 | — | Opus | see Commits | `AccessibilityBridge` expect/actual in `:ux-runtime` (iOS ScreenChanged on the h1 element + queued announcements; Android view announcements), settle-time focus/announce from the bundle a11y, leaving state cleared during the crossfade, TplSheet dialog semantics, list/group semantics, mandatory items not "dimmed", link label once; FlowHost-level D7 tests; scripted Inspector audit; Q-D7-iOS queued (device rebuild needed). No KC3 kill-signal. ⟲ at end not done (no rebase in this run). |
-| M8 | not started | — | — | — | — | D8 baseline SHA: _to be named when cut_ |
+| M8 | done (all 4 D8 rows run; all 4 **failed**; KC1 signal on D8-logo, to be re-derived) | 2026-10-17 | 2026-10-17 | Opus | see Commits | **D8 baseline SHA: app `93c2b9931`, spec `dvm-week0` `874b4f9`** (exporter 0.3.0). ⟲ `origin/feature/kmp` still `b23f6a1f5`, no rebase. Pre-D8 grep 0. Every `spike/d8-n` diff is `ux-spec/**` only (0 hand-written lines) and uxspec-lock is green, but the full gate is red on all four: a spike test fixture pinned to the baseline export (all four), pinned counts (offline), the element schema (logo). Behaviour changed for offline, brand, copy; not for logo (element gap + hand-written consent screen: KC1 kill-signal candidate). See "M8 notes", `spike-evidence/D8/README.md`. |
 | M9 | not started | — | — | — | — | D9 baseline SHA: _to be named when cut_ |
 | M10 | done (harness preliminary; D10 device runs queued as Q-D10) | 2026-10-17 | 2026-10-17 | Sonnet | see Commits | `UxDcApiSubflowViewController` (+ `uxDcApiSubflowEnabled`) in `iosUxSpikeMain`, T5 in `ConsentHost.swift` (import and branch inside `#if DEBUG`, +12 lines), in-app harness `--ux-spike dcapi-harness`, D10 instrumentation (`UX-SPIKE-D10` via NSLog), HTTPS test page `spike-evidence/M10/dcapi-test-page/`. Only T5 touched (T1-T5 used, cap 8). Gate GREEN 4273. ⟲ at end not done. |
 | M11 | not started | — | — | — | — | ⟲ at start; needs emulator/device |
@@ -39,6 +39,11 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | RULING-M6a-7 | 2026-10-17 | The snapshot tool records the spec repo HEAD (874b4f9), the export's spec commit is 3d6ecb6. | record 3d6ecb6 | — | `git diff 3d6ecb6 874b4f9 -- ux/library` is empty; the snapshot records `source_commit` 3d6ecb6. | no |
 | RULING-M6a-8 | 2026-10-17 | The exporter's model fixture (V6/R5) has no consumer yet. | add one replay test | — | `ExportedModelReplayTest`: the 84 sequences replay to the same states in this engine and the plain invariants hold (+3 tests per target). | no |
 | RULING-2 | 2026-10-16 | M3 finding 3: what does a service that throws mean? | — (orchestrator ruling, no panel) | — | A service that throws, or a coroutine failure other than cancellation, is converted into the `ServiceResult` type `Error` with payload `{class: unexpected}` and follows the bundle's declared error branch. If a state declares no error branch, the bundle is refused at load. Implemented in M4: `FlowEngine.callPort` (a `CancellationException` while the state job is still active counts as a failure); `BundleValidator.requireErrorBranch` requires, for every **state-scoped** invoke, an `Error` result on the service and an `invoke.on.Error` mapped to an event of the state's `on` (detached invokes are exempt: their results are ignored). `Error` becomes the single engine-convention name, exempted in `ProvisionalRuntimeLiteralGuardTest`. Tests: `ProvisionalRuling2Test` (9). Queued for week 0 / owner as Q-004 with this default. | no |
+| RULING-M8-1 | 2026-10-17 | Order of the drills. Analysis before running showed D8-logo needs a Kotlin edit (element and hand-written screen), and the M8 brief says to STOP on a screen-code signal; the plan (§5) says a kill signal is re-derived independently before anything stops. | run 1 first and stop | run all four | The four rows are independent (same two baselines), so they ran in the order 3, 4, 2, 1: the STOP point is the last drill, and all rows exist for the independent re-derivation. No Kotlin edit was made anywhere. | no |
+| RULING-M8-2 | 2026-10-17 | D8-offline first try: `make test` red, E12 (the week-0 rehearsal of the same four changes) overlays `connecting.on.SYS_OFFLINE → connecting-offline` and so replaced the drill's own `SYS_OFFLINE → offline-loading` (G4: unreachable). | — | — | The drill's event is named `SYS_NETWORK_LOST` (a name, not a weaker check); then `make fast check test` is fully green. Recorded as a week-0 finding: E12 hard-codes event and field names that a real change may reuse. | no |
+| RULING-M8-3 | 2026-10-17 | D8-logo: `make test` red, E12 expects `logoUrl` to be *added* by its overlay, but the tree already has it. The field name is fixed by the brief. | — | — | Not weakened, not renamed. `make fast` and `make check` are green and the exporter (which runs every gate) accepted the tree, so the export proceeded; the red E12 is recorded in the row and README. | no |
+| RULING-M8-4 | 2026-10-17 | The spec repo's rules make copy and new screens "owner first" (provisional DEC). | — | — | The worktrees are throwaway and never committed, so no DEC/CAN record was written; the spec changes follow the existing record conventions (copy provenance `authored … decision: DEC-005`, sources, satisfies) and pass every gate. | no |
+| RULING-M8-5 | 2026-10-17 | Classification of the red gates. The M8 brief's taxonomy has screen/runtime (kill signal), fake engine (OR-3), element/template gap (failed). The pinned TEST fixture (`spike-evidence/M6a/…offline-loading.TEST.json`, read by `:ux-runtime` commonTest) and the pinned counts (`HandshakeTest.h1` 25 states, `FakeScriptsTest` six names) fit none. | — | — | Strict D8 rule (RULING-1): the gate is red without a non-ux-spec edit, so all four rows are **failed**; classified as *spike test-side pins* (test code only, no screen, runtime-main, element or fake-engine code), not as KC1 product signals. Not fixed here (no rebase during M8; the baseline is fixed). Fix candidate: derive the added-state fixture at build time from `ux-spec/` and assert counts from the bundle; then re-run D8 from a new baseline (owner). | no |
 
 ## Owner rulings (2026-10-16, given in chat)
 
@@ -83,6 +88,10 @@ Counts from `*/build/test-results/**/*.xml`. A task with 0 executed tests where 
 
 | 2026-10-17 | 909ccf460 | M6a | full `./spike-gate.sh` (+ kc1-guard on the real bundle, style-guard, new uxspec-lock) | 4279 (ux-runtime 89/91, ux-contract 4/2, ux-elements 31/32, ux-spike 12/4, ux-theme 6/6; rest as M10) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
 | 2026-10-17 | 8830b6fe7 | M6b | full `./spike-gate.sh` (no code change; Maestro flow, tool and evidence only) | 4279 (as M6a) | 0 | 0 | pass | pass | Debug and Release build | GATE GREEN |
+| 2026-10-17 | f223fad7e (`spike/d8-3`, deleted) | M8 D8-brand | full `./spike-gate.sh` (11 min 33 s) | 4279 | 4 (pinned M6a TEST fixture, host + iOS) | 0 | pass | pass | Debug and Release build | GATE RED |
+| 2026-10-17 | 0541d2e5e (`spike/d8-4`, deleted) | M8 D8-copy | full `./spike-gate.sh` (8 min 31 s) | 4279 | 4 (as D8-brand) | 0 | pass | pass | Debug and Release build | GATE RED |
+| 2026-10-17 | c12e0e2ca (`spike/d8-2`, deleted) | M8 D8-offline | full `./spike-gate.sh` (6 min 33 s) | 4279 | 7 (fixture 4, `HandshakeTest.h1` 2, `FakeScriptsTest` 1) | 0 | pass | pass | Debug and Release build | GATE RED |
+| 2026-10-17 | 8fd57b22d (`spike/d8-1`, deleted) | M8 D8-logo | full `./spike-gate.sh` (5 min 16 s) | 4279 | 6 (`SchemaCheckTest` 2 tests × host/iOS: `unknown prop 'logo'`; `InterpreterScenario` × 2: pinned fixture) | 0 | pass | pass | Debug and Release build | GATE RED |
 
 M6a test delta, 4273 → 4279 (+6): `ExportedModelReplayTest` adds 3 tests on each target. Nothing else changed in count:
 the 2 `ProvisionalBundleResourceTest` tests became the 2 `BundleResourceTest` tests; 17 `Provisional*` runtime classes,
@@ -134,6 +143,7 @@ and M7 (M5c onward: recorded by the milestone itself).
 | M5d | runtime probe (generator, hook, coverage; elements not implemented) | about 50 min (first to last commit is shorter; most of it is two xcodebuilds, 8 simulator runs and the gate) | ux-spike 87/0 (`UxHomeProbe.kt` 81 incl. licence header, `UxFlowEntry.kt` 6); root 3 (`spike-gate.sh`) | 0 (the 15 fragment bundles, 7 of them packaged, are generated by a scratchpad script `spike-evidence/M5d/tools/make_home_fragment.py`, about 190 lines Python, not counted) | 1 spike file (`UxFlowEntry.kt`), `spike-gate.sh`; 0 pre-spike | 2 (fast RED on the KC1 guard, then fast, full) | 1: the KC1 guard grepped `SCR-` in the fragment bundle data under `ux-spike`; the guard now skips that data directory |
 | M10 | track C host (view controller, instrumentation, harness, test page) | about 35 min (two xcodebuilds, a log-stream crash from `NSLog` varargs, simulator drive, gate) | shared-ui iosUxSpikeMain 217 (3 files incl. licence headers, hook +4); ConsentHost.swift +12; test page 120 HTML/JS | 0 | 1 pre-spike (`ConsentHost.swift`, T5), 1 spike file (`IosUxSpikeHook.kt`) | 2 (fast 4273, full) | 2: `return` missing in the Swift edit, `NSLog` vararg crash |
 | M6a | sync / one-time consumer adoption | 14 min first to last code commit (09:05 to 09:19), about 1 h incl. gate and release check (since M10: 34 min to the first commit) | **one-time adoption (prep + 3 commits): 480 added / 1002 deleted** — ux-contract 11/59 main/test (−411 provisional), ux-theme 20/11 (−389 `ProvisionalEudiwV1`), ux-runtime 74/159 (main 4 = BundleParser; 70 = build.gradle.kts fixture task), ux-spike 72/15, tool 59 (`make-offline-loading-bundle.py`); DEC-075 list proper (commit `19776bbc2`) 154 added / 929 deleted; gate step `uxspec-lock` 33; re-run renames, snapshot and KC1 61/49 | 12 698 lines synced (Kotlin 510 contract + 1 200 theme; bundle, strings, scripts, model, lock) | 0 pre-spike files | 1 full (4279) plus module runs | 0 redone work; 2 small loops: `allStringResources` needs its extension import; the rename script also renamed `ProvisionalNotAllowed` in main sources, reverted before commit |
+| M8 | regeneration drills (verification; spec + sync only) | about 1 h 15 min first worktree (10:05) to the last drill (11:18) incl. parallel spec gates; per mutation (spec edit + spec gates + export + sync + full gate + simulator drill, approximate): D8-logo ~16 min (spec gates 7 min 17 s, app gate 5 min 16 s), D8-offline ~25 min (spec gates 6 min 8 s red + 4 min 39 s rerun, app gate 6 min 33 s), D8-brand ~20 min (4 min 33 s, 11 min 33 s), D8-copy ~22 min (4 min 31 s, 8 min 31 s; 3 Maestro tries) | **0 hand-written Kotlin per mutation** (diff outside `ux-spec/**`: 0 lines on all four). Spec LOC (patch +/−): logo +5/−1 (3 files), offline +61/−0 (7 files, 1 new screen), brand +1/−1 (1 file), copy +8/−8 (1 file). Tools only (evidence, not app): `spike-evidence/D8/tools/` (2 Maestro flows ~90 YAML lines, helpers 13 shell lines, pixel sampler 9 Python lines) | generated delta per mutation (`git diff --numstat`, all files / Kotlin): logo +204/−61 / +15/−11; offline +441/−64 / +21/−11; brand +411/−411 / +361/−361; copy +59/−59 / +11/−11 (the −11 Kotlin lines are the regenerated header and SPEC_HASH of the 11 Kotlin files) | 0 | 4 full (all RED, see Gate results) + 5 spec-gate runs | 2 loops: D8-offline renamed its event after E12 collided (RULING-M8-2); D8-copy Maestro flow fixed twice (Maestro refuses absolute screenshot paths; Confirm tapped before the code loaded). No app rework. |
 | M6b | formal iOS drills (verification) | about 1 h 50 min (build, 4 drills with video, D5 mutation suite, gate) | 0 Kotlin; tool: `ios-edge-swipe.sh` +8 (`-t` tap-then-swipe), `m5b-happy.yaml` +7 YAML, `m6b-qr-entry.yaml`, `spike-evidence/M6b/drill-helpers.sh` + `d3-run.sh` (about 45 shell lines) | 0 | 0 pre-spike files | 1 full (4279) plus one Debug xcodebuild | 1 loop: the swipe tool starts slower than the 1.5 s `authenticate` delay, so the first `auth` swipe landed in `verification-code`; fixed in the tool (`-t`), not in the app. A D3 watcher replaced Maestro timing for the same reason |
 
 Reading the table for a new flow (input to the M12 cost model): with no generator, every phase is hand-written; the
@@ -252,6 +262,8 @@ Findings for week 0 / the owner (not decided here):
 | (this commit) | 2026-10-17 | M6a | SPIKE-LOG M6a, metrics row, rulings | Claude Opus 5.5 | — |
 | ab7011ada | 2026-10-17 | M10 | track C view controller, T5, harness, instrumentation, test page, Q-D10 | Claude Sonnet 5.5 | fast GREEN (4273) |
 | (this commit) | 2026-10-17 | M10 | SPIKE-LOG M10, metrics row, results row | Claude Sonnet 5.5 | full gate (see Gate results) |
+| f223fad7e, 0541d2e5e, c12e0e2ca, 8fd57b22d | 2026-10-17 | M8 | D8 sync commits on `spike/d8-3`, `-4`, `-2`, `-1` (ux-spec/ only; branches deleted after the evidence was kept; diffstats in `spike-evidence/D8/<n>/`) | Claude Opus 5.5 | full gate RED ×4 |
+| (this commit) | 2026-10-17 | M8 | D8 evidence, four D8 rows, SPIKE-LOG M8 | Claude Opus 5.5 | docs only |
 
 ## M10 notes (track C, DC-API extension probe)
 
@@ -581,3 +593,51 @@ All five drills passed; no KC2 signal (0 of 3 hard states needed a Back or resto
 | RULING-M6b-5 | D5 "read-only" vs the mutation suite writing temp trees. | `run_model_check.py` run as is (`PYTHONDONTWRITEBYTECODE`); `run_mutations.py` run with `UX_MUTATION_TMP` outside the repo; dvm-week0 `git status` stayed clean. |
 | Finding | macOS `git grep -E` does not support `\b`: the plan's D1 pattern finds nothing. | Run with `-P` (same regex), recorded in `logs/d1-grep.log`. Candidate fix for the plan text. |
 | Finding | The M4 XCUITest edge swipe is reliable on iOS 27 here: it reaches FlowHost's one adapter in all three states. | none |
+
+## M8 notes (D8 regeneration drills)
+
+**Baseline.** App `93c2b9931` (= M6b; ux-spec = export of ux@3d6ecb6), spec `dvm-week0` `874b4f9` (exporter 0.3.0). ⟲
+`git fetch origin feature/kmp`: `b23f6a1f5`, unchanged, no rebase. Pre-D8 grep (`logo_url|logoUrl|idsk` outside ux-spec, md,
+evidence) on `93c2b9931`: **0**. During M8 `spike-week0` moved to `445e38c` (batch 5.x, exporter 0.4.0, another lane); the drills
+stayed on `874b4f9` as briefed. Evidence and reproduction: `spike-evidence/D8/README.md`.
+
+| n | Spec change (worktree of 874b4f9, never committed) | Spec gates | Diff outside ux-spec | Gate | Behaviour | Row |
+|---|---|---|---|---|---|---|
+| 1 logo | `/verifier/logo_url` in context, fetchRequest payload, request data_model, fixture; `logo` bound on `rp-trusted` | check green; test: E12 red (RULING-M8-3) | 0 | RED 6 | not changed | failed |
+| 2 offline | result `Offline`, event `SYS_NETWORK_LOST`, state `offline-loading`, screen SCR-pres-offline-loading, 4 copy keys, script `offline` | green (2nd try) | 0 | RED 7 | changed | failed |
+| 3 brand | `kmp.yaml` `default_brand: idsk` | green | 0 | RED 4 | changed | failed |
+| 4 copy | 5 strings (4 interpreted, 1 consent) | green | 0 | RED 4 | changed | failed |
+
+**What the drills show.** The regeneration path itself held for three of four changes: one sync commit of `ux-spec/` only,
+lock verified, detekt/ktlint 0 on the export, Debug and Release builds green, and the new state, brand and copy appear on the
+simulator with no Kotlin change. The fake engine needed no change (the `offline` script is exported from the SVC fixtures; OR-3
+did not have to be invoked). The runtime and the interpreter drew the new screen, the new brand and the new copy from data.
+
+**Why every row is still failed (RULING-M8-5).** The full gate is part of the KC1 procedure and it is red on every branch, because
+spike *tests* pin the baseline export: the M6a added-state TEST fixture (a hand-derived copy of the baseline bundle, refused by
+spec hash after any re-export), and in D8-offline the state count and script-name set. These are test-side pins, not
+screen, runtime-main, element or fake-engine code, so they are not KC1 product signals; but making the gate green needs an edit
+outside `ux-spec/`, which the D8 rule does not allow. Fix candidate for the owner: derive the added-state fixture at build time from
+`ux-spec/` and read counts from the bundle; then re-run D8 from a new named baseline.
+
+**KC1 signal (D8-logo), for independent re-derivation.** The logo is not drawn. Showing it needs (1) an `EL-rp-identity` image
+capability in `:ux-elements` (`UxRpIdentity` has no image parameter or loader; the registry schema rejects `logo`, which is what
+turned `SchemaCheckTest` red: an **element capability gap**, so D8-logo failed), and (2) an edit to the hand-written consent screen
+`PresRequestScreen.kt`, which builds `UxRpIdentity` from the typed `PresRequestData` and ignores the new `verifier.logoUrl`: a
+**hand-edit in screen code for a regeneration** (brief §1 goal, §8 KC1; the M8 brief classifies screen code as a kill signal). The
+consent screen is hand-written by design (brief §6.6), so any new field on SCR-pres-request will need such an edit; whether that
+counts against KC1 or is an accepted cost of §6.6 is for the independent check and the owner. M8 stopped here (D8-logo was the last
+drill, RULING-M8-1); no Kotlin was edited. Also: the library declares `logo` decorative (alt empty), so the brief's "logo with an
+accessibility label" conflicts with the spec.
+
+**Real `Services` adapter (OR-3) cost per row.** No adapter exists yet (M11b). Logo, brand, copy: no compile break (new fields
+have defaults). Offline: a real adapter mapping app failures to `FetchRequestResult` would compile, but an exhaustive `when` over the
+result (if any) would gain a branch; recorded as the expected cost.
+
+**Spec-side findings for week 0.** E12 hard-codes the names of the four D8 changes, so it goes red on a tree that already contains
+one of them (logo) or reuses a name (offline, `SYS_OFFLINE`). G2 reads an example URL ending in `.png` as an asset path (DEC-014).
+
+**Clean-up.** Branches `spike/d8-1..4` deleted (SHAs above), spec worktrees `/Users/roman/code/dvm-d8-1..4` removed, scratch
+exports in `$TMPDIR/d8` only (archived as `export.tar.gz`). A stray app process had appended 8 lines to the tracked
+`spike-evidence/M6b/logs/d4-qr.log`; restored from the index.
+

@@ -1,0 +1,36 @@
+# D8-offline: script `offline` (exported from the SVC fixtures): fetchRequest#1 answers Offline -> offline-loading
+# (interpreted), RETRY -> connecting -> fetchRequest#2 answers RequestReady -> request.
+appId: eu.compote.euidi.dev
+---
+- openLink: ${LINK}
+- tapOn:
+    text: "Open"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-offline-loading"
+    timeout: 30000
+- assertVisible: "Ste offline"
+- assertVisible:
+    id: "retry"
+- takeScreenshot: d8-2-1-offline-loading
+- tapOn:
+    id: "retry"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-connecting"
+    timeout: 10000
+- takeScreenshot: d8-2-2-connecting-again
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-request"
+    timeout: 30000
+- takeScreenshot: d8-2-3-request

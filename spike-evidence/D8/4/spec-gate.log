@@ -1,0 +1,413 @@
+G1 schema    ok
+G2 refs      ok  (1 warning(s))
+    ! BRF-004: app state RemoteDocumentPresentationPage.RemoteVerifyAuthorization (in scope) has no screen with that source_state
+G5 copy      ok  (4 warning(s))
+    ! 417 authored copy entries under PROVISIONAL decision DEC-005 (owner ruling pending), e.g. sk:CPY-pres-code-instruction, sk:CPY-pres-code-confirm, sk:CPY-pres-scan-title
+    ! 3 authored copy entries under PROVISIONAL decision DEC-007 (owner ruling pending), e.g. sk:CPY-iss-outcome-pin-locked-temporary-text, sk:CPY-home-locked-temporary-text, sk:CPY-iss-pin-auth-error-wrong
+    ! 1 authored copy entry under PROVISIONAL decision DEC-010 (owner ruling pending), e.g. sk:CPY-log-export-integrity
+    ! 1 authored copy entry under PROVISIONAL decision DEC-022 (owner ruling pending), e.g. sk:CPY-cert-trustmark-placeholder
+G7 catalog   ok  (47 warning(s))
+    ! DEC-001: provisional decision (owner ruling pending) — RPA_08 order: keep the as-is app order — the user reviews the request and presse
+    ! DEC-002: provisional decision (owner ruling pending) — RPA_06a untrusted relying party: the wallet ALLOWS the user to present after an 
+    ! DEC-003: provisional decision (owner ruling pending) — RPA_10a (SHOULD, all-or-nothing approval) vs selective disclosure: the wallet of
+    ! DEC-004: provisional decision (owner ruling pending) — Verification code without a verifier URL: follow the as-is app — when the reques
+    ! DEC-005: provisional decision (owner ruling pending) — Authored Slovak copy: every sk entry with `authored` provenance is provisionally
+    ! DEC-007: provisional decision (owner ruling pending) — Wallet PIN policy for BRF-002 (FRAMEWORK-G-019). The as-is app authorises by OS 
+    ! DEC-008: provisional decision (owner ruling pending) — How the user is identified at LoA High during activation (provisional architectu
+    ! DEC-009: provisional decision (owner ruling pending) — App shell for the wallet screens. Applied default, following the as-is eDoklady 
+    ! DEC-010: provisional decision (owner ruling pending) — Transaction log storage and export. Applied default: the log is kept on the phon
+    ! DEC-011: provisional decision (owner ruling pending) — Accessibility statement and lifecycle notices. Applied default: the statement pa
+    ! DEC-012: provisional decision (owner ruling pending) — Brand `edoklady` (eDoklady production design system, SRC-EDK-DS / SRC-EDK-CSS @ 
+    ! DEC-013: provisional decision (owner ruling pending) — Webfonts are loaded for real, for every brand, from Google Fonts. Before, no pag
+    ! DEC-016: provisional decision (owner ruling pending) — Elevation becomes a token type. The token schemas accept the DTCG `shadow` type 
+    ! DEC-017: provisional decision (owner ruling pending) — Radius ladder follows the eDoklady source: control (buttons, inputs, checkbox) 5
+    ! DEC-018: provisional decision (owner ruling pending) — Success text in the edoklady brand is #067A12 (ref.color.positive-text, authored
+    ! DEC-019: provisional decision (owner ruling pending) — In the edoklady brand the document title on a card is set in capitals with lette
+    ! DEC-020: provisional decision (owner ruling pending) — A choice of more than two options (the log's "Druh záznamu" filter, four kinds) 
+    ! DEC-021: provisional decision (owner ruling pending) — The B2 visual layer (Arm A ported into the framework) and the values it authors.
+    ! DEC-022: provisional decision (owner ruling pending) — EL-trust-mark renders the official EU Digital Identity Wallet Trust Mark by defa
+    ! DEC-023: provisional decision (owner ruling pending) — Six Material Symbols the colleague's icon set lacks (check, smartphone, cloud, s
+    ! DEC-024: provisional decision (owner ruling pending) — The eDoklady source has no PID card art (SRC-EDK-DOCART: id, dl, vr, passport), 
+    ! DEC-025: provisional decision (owner ruling pending) — A document that cannot be used (status revoked, suspended, expired or invalid) k
+    ! DEC-026: provisional decision (owner ruling pending) — Neutral outcomes (cancelled, no BOK, export cancelled, presentation cancelled: 8
+    ! DEC-028: provisional decision (owner ruling pending) — CAN-063 size roles. Authored values where a brand publishes none: idsk ref.size.
+    ! DEC-029: provisional decision (owner ruling pending) — CAN-064: the variant layer, and the defaults of its first three axes. Shared def
+    ! DEC-030: provisional decision (owner ruling pending) — Ported from ux-merged DEC-009. Decision steps of a presentation (the incoming re
+    ! DEC-031: provisional decision (owner ruling pending) — Ported from ux-merged DEC-010. TPL-sheet's body region has min 0, where TPL-task
+    ! DEC-032: provisional decision (owner ruling pending) — Ported from ux-merged DEC-008 ("app bar on every screen") as an OPEN QUESTION, n
+    ! DEC-033: provisional decision (owner ruling pending) — Return to the service after a same-device presentation is a USER action, not an 
+    ! DEC-034: provisional decision (owner ruling pending) — Report a suspicious request (ARF 5.02 §5.4 "report it"; DEC-002 recorded that no
+    ! DEC-035: provisional decision (owner ruling pending) — Same-device transport distinction (REV-006 H-01). OIA_01a requires both the redi
+    ! DEC-036: provisional decision (owner ruling pending) — One "as if absent" answer for every denial (REV-006 H-05, ARF-HLR RPA_11 SHALL —
+    ! DEC-037: provisional decision (owner ruling pending) — The same-device "no connection" recovery (offline-loading and offline-sending) i
+    ! DEC-038: provisional decision (owner ruling pending) — CAN-069: element anatomy as component tokens. Naming comp.<element>.<part>-<prop
+    ! DEC-039: provisional decision (owner ruling pending) — CAN-069 / DEC-038: the edoklady brand's anatomy overrides (product/theme/edoklad
+    ! DEC-067: provisional decision (owner ruling pending) — The eudiw_v1 dark palette and its filled primary action (split from DEC-066, who
+    ! DEC-069: provisional decision (owner ruling pending) — Flow schema step 1 (CAN-094; evidence REV-013 F-01, F-02). schemas/flow.schema.j
+    ! DEC-070: provisional decision (owner ruling pending) — Not the dark-mode draft DEC-070. The L58 fix in spec form (REV-013 F-01; the bou
+    ! DEC-071: provisional decision (owner ruling pending) — Gates for flow semantics (CAN-095; evidence REV-013 F-01). Step 4a: the G4 agree
+    ! DEC-072: provisional decision (owner ruling pending) — Flow schema steps 2-3 (CAN-096; evidence REV-013 F-03, F-04, F-06, F-07). schema
+    ! DEC-073: provisional decision (owner ruling pending) — Flow schema step 4: services, invoke, events (CAN-097; evidence REV-013 F-05). A
+    ! DEC-074: provisional decision (owner ruling pending) — Amends DEC-030's placement (CAN-098; evidence REV-013 F-10). decision-steps move
+    ! DEC-075: provisional decision (owner ruling pending) — KMP export targets as spec data (CAN-099 part 1). product/export/kmp.yaml declar
+    ! DEC-076: provisional decision (owner ruling pending) — The agreement-gate waiver (DEC-071, ruling R4). process/agreement-baseline.yaml 
+    ! DEC-077: provisional decision (owner ruling pending) — V21 was a spec defect of the step-3 L58 fix (DEC-070): request-optional-only had
+    ! DEC-078: provisional decision (owner ruling pending) — OQ-1 asked whether a verifier may send optional items pre-ticked. ARF-HLR RPA_07
+    ! DEC-079: provisional decision (owner ruling pending) — RULING-W3: the eight app-shell values that had no spec token (X19: kotlin.not_in
+
+uxcheck: 0 error(s), 52 warning(s) across 4 gate(s) — clean
+G0 intake    ok
+G1 schema    ok
+G2 refs      ok  (1 warning(s))
+    ! BRF-004: app state RemoteDocumentPresentationPage.RemoteVerifyAuthorization (in scope) has no screen with that source_state
+G3 tokens    ok  (7 warning(s))
+    ! brand edoklady does not bind optional mode dark: it shows light (DEC-066)
+    ! brand idsk does not bind optional mode dark: it shows light (DEC-066)
+    ! brand edoklady does not bind optional mode dark-high-contrast: it shows high-contrast (DEC-066)
+    ! brand idsk does not bind optional mode dark-high-contrast: it shows high-contrast (DEC-066)
+    ! brand edoklady: default style(s) / layout(s) EL-status-chip.mark=icon, EL-status-chip.ring=none, TPL-detail.composition=classic, TPL-list.groups=above, TPL-sheet.decision-steps=sheet — no selection in product/theme/edoklady/components.yaml
+    ! brand eudiw_v1: default style(s) / layout(s) TPL-sheet.decision-steps=sheet — no selection in product/theme/eudiw_v1/components.yaml
+    ! brand idsk: default style(s) / layout(s) EL-attribute-item.checkbox=filled, EL-attribute-list.pairs=stacked, EL-segmented-switch.selected=accented, EL-status-chip.mark=icon, EL-status-chip.ring=none, TPL-detail.composition=classic, TPL-list.groups=above, TPL-sheet.decision-steps=sheet — no selection in product/theme/idsk/components.yaml
+G4 flows     ok  (27 warning(s))
+    ! FLW-dashboard.home-offline (SCR-home ui_state offline): a visible, enabled node emits SWITCH_STORAGE, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-dashboard.log-empty (SCR-log ui_state empty): a visible, enabled node emits FILTER, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-dashboard.log-offline (SCR-log ui_state offline-notice): a visible, enabled node emits FILTER, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-dashboard.log-select (SCR-log ui_state select): a visible, enabled node emits TOGGLE_ENTRY, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request (SCR-pres-request ui_state sd-default): a visible, enabled node emits TOGGLE_ITEM, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request-optional-only: CONTINUE guard RUL-pres-request-no-selection-blocks-continue reads /request/selected_count, which the flow's context does not declare — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request-no-selection (SCR-pres-request ui_state sd-no-selection): a visible, enabled node emits CONTINUE, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request-optional-selected (SCR-pres-request ui_state sd-optional-selected): a visible, enabled node emits TOGGLE_ITEM, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request-untrusted: CONTINUE guard RUL-pres-untrusted-explicit-approval reads /verifier/trust, which the flow's context does not declare — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request-untrusted (SCR-pres-request ui_state sd-untrusted): a visible, enabled node emits TOGGLE_ITEM, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.auth: SYS_AUTH_OK guard RUL-pres-sd-transport-redirect reads /request/transport, which the flow's context does not declare — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.auth: SYS_AUTH_OK_DC_API guard RUL-pres-sd-transport-dc-api reads /request/transport, which the flow's context does not declare — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.auth-not-enrolled (SCR-pres-outcome-auth-unavailable ui_state same-device): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.success (SCR-presod-outcome-success ui_state default): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.refused (SCR-presod-outcome-cancelled ui_state refused-report): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.cancelled (SCR-presod-outcome-cancelled ui_state default): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.cancelled-unverified (SCR-presod-outcome-cancelled ui_state refused-untrusted): the state accepts RETURN, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.document-missing (SCR-pres-outcome-document-missing ui_state same-device): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.document-invalid (SCR-pres-outcome-document-invalid ui_state same-device): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.error (SCR-presod-outcome-error ui_state default): the state accepts RETURN, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.error-expired (SCR-presod-outcome-expired ui_state default): the state accepts RETURN, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! PRF-dvm: off feature documents-heading makes 22 listed state(s) unreachable: FLW-dashboard#add-document, FLW-dashboard#add-document-dl-expiring, FLW-dashboard#add-document-document-invalid, FLW-dashboard#add-document-id-revoked, FLW-dashboard#add-document-id-stale, FLW-dashboard#add-document-id-suspended, FLW-dashboard#add-document-notifications-unread, FLW-dashboard#add-document-offline, FLW-dashboard#add-document-without-dl, FLW-dashboard#add-document-without-id, FLW-dashboard#add-document-without-pid, FLW-dashboard#all-documents, FLW-dashboard#all-documents-dl-expiring, FLW-dashboard#all-documents-document-invalid, FLW-dashboard#all-documents-id-revoked, FLW-dashboard#all-documents-id-stale, FLW-dashboard#all-documents-id-suspended, FLW-dashboard#all-documents-notifications-unread, FLW-dashboard#all-documents-offline, FLW-dashboard#all-documents-without-dl, FLW-dashboard#all-documents-without-id, FLW-dashboard#all-documents-without-pid
+    ! PRF-dvm: off feature identity-card makes 10 listed state(s) unreachable: FLW-dashboard#doc-delete-confirm-pid, FLW-dashboard#doc-delete-failed-pid, FLW-dashboard#doc-deleted-pid, FLW-dashboard#doc-detail-pid, FLW-dashboard#doc-detail-pid-actions, FLW-dashboard#doc-detail-pid-offline, FLW-dashboard#doc-detail-pid-offline-actions, FLW-dashboard#home-without-pid, FLW-dashboard#home-without-pid-actions, FLW-dashboard#log-document-pid
+    ! PRF-eudiw-v1: off feature storage-switch makes 10 listed state(s) unreachable: FLW-dashboard#doc-delete-confirm-cloud, FLW-dashboard#doc-delete-failed-cloud, FLW-dashboard#doc-deleted-cloud, FLW-dashboard#doc-detail-cloud, FLW-dashboard#doc-detail-cloud-actions, FLW-dashboard#home-cloud, FLW-dashboard#home-cloud-actions, FLW-dashboard#home-cloud-empty, FLW-dashboard#home-cloud-empty-actions, FLW-dashboard#log-document-cloud
+    ! PRF-eudiw-v1: off feature trust-mark-entry makes 1 listed state(s) unreachable: FLW-dashboard#cert
+    ! PRF-eudiw-v1: ARF-HLR:DASH_09 is unreachable under this profile (FLW-dashboard home --OPEN_CERT-->) — WAIVED by DEC-062 (off feature trust-mark-entry) — legal: true, legal sign-off pending
+    ! PRF-eudiw-v1: UXR:REQ-DASH-013 is unreachable under this profile (FLW-dashboard home --OPEN_CERT-->, FLW-dashboard cert --BACK-->) — WAIVED by DEC-062 (off feature trust-mark-entry) — legal: true, legal sign-off pending
+G5 copy      ok  (4 warning(s))
+    ! 417 authored copy entries under PROVISIONAL decision DEC-005 (owner ruling pending), e.g. sk:CPY-pres-code-instruction, sk:CPY-pres-code-confirm, sk:CPY-pres-scan-title
+    ! 3 authored copy entries under PROVISIONAL decision DEC-007 (owner ruling pending), e.g. sk:CPY-iss-outcome-pin-locked-temporary-text, sk:CPY-home-locked-temporary-text, sk:CPY-iss-pin-auth-error-wrong
+    ! 1 authored copy entry under PROVISIONAL decision DEC-010 (owner ruling pending), e.g. sk:CPY-log-export-integrity
+    ! 1 authored copy entry under PROVISIONAL decision DEC-022 (owner ruling pending), e.g. sk:CPY-cert-trustmark-placeholder
+G6 trace     ok
+G7 catalog   ok  (47 warning(s))
+    ! DEC-001: provisional decision (owner ruling pending) — RPA_08 order: keep the as-is app order — the user reviews the request and presse
+    ! DEC-002: provisional decision (owner ruling pending) — RPA_06a untrusted relying party: the wallet ALLOWS the user to present after an 
+    ! DEC-003: provisional decision (owner ruling pending) — RPA_10a (SHOULD, all-or-nothing approval) vs selective disclosure: the wallet of
+    ! DEC-004: provisional decision (owner ruling pending) — Verification code without a verifier URL: follow the as-is app — when the reques
+    ! DEC-005: provisional decision (owner ruling pending) — Authored Slovak copy: every sk entry with `authored` provenance is provisionally
+    ! DEC-007: provisional decision (owner ruling pending) — Wallet PIN policy for BRF-002 (FRAMEWORK-G-019). The as-is app authorises by OS 
+    ! DEC-008: provisional decision (owner ruling pending) — How the user is identified at LoA High during activation (provisional architectu
+    ! DEC-009: provisional decision (owner ruling pending) — App shell for the wallet screens. Applied default, following the as-is eDoklady 
+    ! DEC-010: provisional decision (owner ruling pending) — Transaction log storage and export. Applied default: the log is kept on the phon
+    ! DEC-011: provisional decision (owner ruling pending) — Accessibility statement and lifecycle notices. Applied default: the statement pa
+    ! DEC-012: provisional decision (owner ruling pending) — Brand `edoklady` (eDoklady production design system, SRC-EDK-DS / SRC-EDK-CSS @ 
+    ! DEC-013: provisional decision (owner ruling pending) — Webfonts are loaded for real, for every brand, from Google Fonts. Before, no pag
+    ! DEC-016: provisional decision (owner ruling pending) — Elevation becomes a token type. The token schemas accept the DTCG `shadow` type 
+    ! DEC-017: provisional decision (owner ruling pending) — Radius ladder follows the eDoklady source: control (buttons, inputs, checkbox) 5
+    ! DEC-018: provisional decision (owner ruling pending) — Success text in the edoklady brand is #067A12 (ref.color.positive-text, authored
+    ! DEC-019: provisional decision (owner ruling pending) — In the edoklady brand the document title on a card is set in capitals with lette
+    ! DEC-020: provisional decision (owner ruling pending) — A choice of more than two options (the log's "Druh záznamu" filter, four kinds) 
+    ! DEC-021: provisional decision (owner ruling pending) — The B2 visual layer (Arm A ported into the framework) and the values it authors.
+    ! DEC-022: provisional decision (owner ruling pending) — EL-trust-mark renders the official EU Digital Identity Wallet Trust Mark by defa
+    ! DEC-023: provisional decision (owner ruling pending) — Six Material Symbols the colleague's icon set lacks (check, smartphone, cloud, s
+    ! DEC-024: provisional decision (owner ruling pending) — The eDoklady source has no PID card art (SRC-EDK-DOCART: id, dl, vr, passport), 
+    ! DEC-025: provisional decision (owner ruling pending) — A document that cannot be used (status revoked, suspended, expired or invalid) k
+    ! DEC-026: provisional decision (owner ruling pending) — Neutral outcomes (cancelled, no BOK, export cancelled, presentation cancelled: 8
+    ! DEC-028: provisional decision (owner ruling pending) — CAN-063 size roles. Authored values where a brand publishes none: idsk ref.size.
+    ! DEC-029: provisional decision (owner ruling pending) — CAN-064: the variant layer, and the defaults of its first three axes. Shared def
+    ! DEC-030: provisional decision (owner ruling pending) — Ported from ux-merged DEC-009. Decision steps of a presentation (the incoming re
+    ! DEC-031: provisional decision (owner ruling pending) — Ported from ux-merged DEC-010. TPL-sheet's body region has min 0, where TPL-task
+    ! DEC-032: provisional decision (owner ruling pending) — Ported from ux-merged DEC-008 ("app bar on every screen") as an OPEN QUESTION, n
+    ! DEC-033: provisional decision (owner ruling pending) — Return to the service after a same-device presentation is a USER action, not an 
+    ! DEC-034: provisional decision (owner ruling pending) — Report a suspicious request (ARF 5.02 §5.4 "report it"; DEC-002 recorded that no
+    ! DEC-035: provisional decision (owner ruling pending) — Same-device transport distinction (REV-006 H-01). OIA_01a requires both the redi
+    ! DEC-036: provisional decision (owner ruling pending) — One "as if absent" answer for every denial (REV-006 H-05, ARF-HLR RPA_11 SHALL —
+    ! DEC-037: provisional decision (owner ruling pending) — The same-device "no connection" recovery (offline-loading and offline-sending) i
+    ! DEC-038: provisional decision (owner ruling pending) — CAN-069: element anatomy as component tokens. Naming comp.<element>.<part>-<prop
+    ! DEC-039: provisional decision (owner ruling pending) — CAN-069 / DEC-038: the edoklady brand's anatomy overrides (product/theme/edoklad
+    ! DEC-067: provisional decision (owner ruling pending) — The eudiw_v1 dark palette and its filled primary action (split from DEC-066, who
+    ! DEC-069: provisional decision (owner ruling pending) — Flow schema step 1 (CAN-094; evidence REV-013 F-01, F-02). schemas/flow.schema.j
+    ! DEC-070: provisional decision (owner ruling pending) — Not the dark-mode draft DEC-070. The L58 fix in spec form (REV-013 F-01; the bou
+    ! DEC-071: provisional decision (owner ruling pending) — Gates for flow semantics (CAN-095; evidence REV-013 F-01). Step 4a: the G4 agree
+    ! DEC-072: provisional decision (owner ruling pending) — Flow schema steps 2-3 (CAN-096; evidence REV-013 F-03, F-04, F-06, F-07). schema
+    ! DEC-073: provisional decision (owner ruling pending) — Flow schema step 4: services, invoke, events (CAN-097; evidence REV-013 F-05). A
+    ! DEC-074: provisional decision (owner ruling pending) — Amends DEC-030's placement (CAN-098; evidence REV-013 F-10). decision-steps move
+    ! DEC-075: provisional decision (owner ruling pending) — KMP export targets as spec data (CAN-099 part 1). product/export/kmp.yaml declar
+    ! DEC-076: provisional decision (owner ruling pending) — The agreement-gate waiver (DEC-071, ruling R4). process/agreement-baseline.yaml 
+    ! DEC-077: provisional decision (owner ruling pending) — V21 was a spec defect of the step-3 L58 fix (DEC-070): request-optional-only had
+    ! DEC-078: provisional decision (owner ruling pending) — OQ-1 asked whether a verifier may send optional items pre-ticked. ARF-HLR RPA_07
+    ! DEC-079: provisional decision (owner ruling pending) — RULING-W3: the eight app-shell values that had no spec token (X19: kotlin.not_in
+G8 snapshot  ok
+G9 visual    ok
+
+uxcheck: 0 error(s), 86 warning(s) across 10 gate(s) — clean
+render: wrote 234 file(s) + 254 asset(s) to /Users/roman/code/dvm-d8-4/ux/build
+a11y: 3888 render(s) = 216 screen(s) x 9 theme(s) x scales 100/200 %; axe 4.11.1
+a11y: 0 violation(s), 0 waived, 9545 needs-review (axe incomplete) -> /Users/roman/code/dvm-d8-4/ux/build/a11y-report.json
+✓ baseline: real ux/ tree is clean
+✓ g0-intake-drift                      G0 tripped (1): SRC-ARF-5.01: sha256 drift (recorded 000000000000, actual e416c36961da)
+✓ g1-screen-missing-purpose            G1 tripped (1): ux/experience/screens/SCR-pres-verification-code.yaml: (root): 'purpose' is a required pro
+✓ g1-element-bad-prop-type             G1 tripped (1): ux/library/elements/EL-button.yaml: props/disabled/type: 'checkbox' is not one of ['text',
+✓ g2-element-not-accepted-by-region    G2 tripped (1): SCR-pres-verification-code/cancel: EL-button not accepted by region TPL-sheet.body
+✓ g2-date-with-breaking-spaces         G2 tripped (1): SCR-doc-list: data_model /id_card/valid_until: date «1. 3. 2034» has breaking spaces — wri
+✓ g2-region-empty-in-a-ui-state        G2 tripped (1): SCR-pres-verification-code: region header has 0 node(s) in ui_state no-url, allowed 1..1
+✓ g2-outcome-three-visible-actions     G2 tripped (2): SCR-pres-outcome-document-missing: region actions shows 3 node(s) at once in ui_state defa
+✓ g2-outcome-body-link-accepted        clean (positive control)
+✓ g2-same-device-return-without-replacing-close G2 tripped (1): SCR-pres-outcome-document-invalid: region actions shows 3 node(s) at once in ui_state same
+✓ g2-set-copy-non-text-prop            G2 tripped (1): SCR-pres-outcome-document-missing: rule RUL-zz-set-copy set_copy targets close.variant, no
+✓ g2-set-copy-text-prop                clean (positive control)
+✓ g2-event-not-emitted                 G2 tripped (1): FLW-pres-cross-device.verification-code: event APPROVE is not emitted by SCR-pres-verifica
+✓ g2-event-undeclared-control          G2 tripped (1): SCR-home/appbar: EL-app-bar has no event or control `notifications` (declared: leading (le
+✓ g2-control-emits-two-events          G2 tripped (1): SCR-home/appbar: control leading emits 2 events (OPEN_MENU, OPEN_NOTIFICATIONS) — one cont
+✓ g2-event-control-not-in-template     G2 tripped (1): EL-app-bar: event trailing names control `bell`, which renderer/templates/EL-app-bar.html.
+✓ g2-unknown-bind-path                 G2 tripped (1): SCR-pres-verification-code/code: bind /verification/otp not in data_model
+✓ g3-contrast-fail-high-contrast-mode  G3 tripped (7): theme idsk/high-contrast: sys.color.text.secondary on sys.color.surface.default = 2.08:1 <
+✓ g3-raw-value-in-library              G3 tripped (1): ux/library/tokens/comp.tokens.json: comp.button.primary-bg: raw value in library (must ali
+✓ g3-provenance-wrong-line             G3 tripped (1): product/theme/idsk/ref.tokens.json: ref.color.blue: quote not found at SRC-IDSK3 _colours-
+✓ g3-unbound-role                      G3 tripped (14): theme idsk/light: contract role sys.color.focus.ring not bound
+✓ g4-unreachable-state                 G4 tripped (3): FLW-pres-cross-device: state orphan is unreachable from scan
+✓ g4-missing-error-class               G4 tripped (3): FLW-pres-cross-device: state document-invalid is unreachable from scan
+✓ g4-error-branch-trap                 G4 tripped (5): FLW-pres-cross-device: alt branch verification-code --CANCEL--> trap never reaches recover
+✓ g4-profile-waiver-removed            G4 tripped (3): PRF-eudiw-v1: feature trust-mark-entry is legal: true and off without an owner ruling (wai
+✓ g4-profile-feature-off-without-waiver G4 tripped (3): PRF-zz-idsk: state FLW-dashboard#cert is unreachable under this profile (off: trust-mark-e
+✓ g4-profile-waiver-provisional        G4 tripped (4): PRF-eudiw-v1: feature trust-mark-entry: waiver DEC-038 is provisional — an owner ruling is
+✓ g4-profile-state-unlisted            G4 tripped (1): PRF-eudiw-v1: state FLW-dashboard#cert is unreachable under this profile (off: storage-swi
+✓ g4-profile-storage-switch-states-unlisted G4 tripped (10): PRF-eudiw-v1: state FLW-dashboard#doc-delete-confirm-cloud is unreachable under this profi
+✓ g4-profile-state-listed-but-reachable G4 tripped (1): PRF-eudiw-v1: feature trust-mark-entry lists state FLW-dashboard#home, which stays reachab
+✓ g4-profile-state-listed-ok           clean (positive control)
+✓ g4-profile-feature-on-no-waiver      clean (positive control)
+✓ g5-text-drifts-from-source           G5 tripped (1): sk:CPY-pres-code-title: text differs from source quote (record an `edit` + decision)
+✓ g5-literal-text-in-screen            G5 tripped (1): SCR-pres-verification-code/instruction.text: literal text 'Prepíšte kód' — text props must
+✓ g5-copy-from-other-brief             G5 tripped (1): SCR-pres-verification-code/instruction.text (BRF-001) uses CPY-act-intro-title from ux/pro
+✓ g5-quote-not-in-source               G5 tripped (1): sk:CPY-pres-code-cancel: quote not found at SRC-APP-STRINGS L690
+✓ g5-file-line-quote-not-in-source     G5 tripped (1): sk:CPY-home-identity-status-valid: quote not found at SRC-EUDIW-V1-EXP029R2 page.html:1690
+✓ g6-unknown-requirement               G6 tripped (1): ARF-HLR:RPA_999: `RPA_999` not found in {ux}/sources/arf-hlr-index.yaml
+✓ g6-active-brief-uncovered            G6 tripped (1): BRF-001: requirement UXR:REQ-PRES-016 not satisfied by any artifact of the brief
+✓ g6-unavailable-namespace             G6 tripped (1): FR:FR-PRES-001: namespace `FR` is unavailable
+✓ g7-candidate-without-record          G7 tripped (1): EL-button: maturity candidate but no candidate record in records/candidates/
+✓ g7-decision-superseded-by-unknown    G7 tripped (1): DEC-015: superseded_by DEC-999 is not another decision record
+✓ g8-promoted-snapshot-tampered        G8 tripped (1): ux/snapshots/SNAP-999/manifest.json: output out.html changed since promotion
+✓ g5-list-item-copy-missing            G5 tripped (1): copy CPY-pres-attr-does-not-exist used by SCR-zz-mutation-list:data_model/request/attribut
+✓ g2-list-prop-binds-non-list          G2 tripped (1): SCR-zz-mutation-list/attributes: list prop `items` binds /request/attributes of type 'stri
+✓ g2-list-item-bad-requirement         G2 tripped (1): SCR-zz-mutation-list: data_model example /request/attributes[0]: item key `requirement`='r
+✓ zz-brand-clean                       clean (positive control)
+✓ g3-second-brand-unbound-role         G3 tripped (14): theme zz/high-contrast: contract role sys.color.focus.ring not bound
+✓ g3-pointer-provenance-missing-path   G3 tripped (1): product/theme/zz/ref.tokens.json: ref.color.black: pointer /zz/color/ghost/$value does not
+✓ g3-authored-ref-unknown-decision     G3 tripped (1): product/theme/zz/ref.tokens.json: ref.color.white: authored provenance cites decision DEC-
+✓ g3-theme-file-not-in-resolver        G3 tripped (1): product/theme/zz/sys.light.tokens.json: not referenced by any theme in product/theme/resol
+✓ g3-mode-optional-falls-back-to-optional G3 tripped (1): resolver.json: optional mode 'dark' falls back to 'dark-high-contrast', which is not a req
+✓ g3-mode-optional-fallback-other-contrast G3 tripped (1): resolver.json: optional mode 'dark' falls back to 'high-contrast' of another contrast
+✓ g3-mode-facets-same-cell             G3 tripped (1): resolver.json: modes 'light' and 'dark' are the same cell light/standard
+✓ g3-mode-optional-file-in-other-brand G3 tripped (136): product/theme/idsk/sys.dark.tokens.json: sys.color.action.floating.bg: alias {ref.color.pr
+✓ g3-mode-optional-file-misnamed       G3 tripped (1): product/theme/eudiw_v1/sys.drak.tokens.json: not referenced by any theme in product/theme/
+✓ g3-dark-contrast-pair                G3 tripped (5): theme eudiw_v1/dark: sys.color.text.primary on sys.color.surface.default = 1.18:1 < 4.5:1 
+✓ g0-external-root-absent              clean (positive control)
+✓ g6-external-source-lines-missing     G6 tripped (1): SRC:SRC-EDK-ASIS#L99990-99999: lines L99990-99999 not in SRC-EDK-ASIS
+✓ g0-external-drift-is-warning         clean (positive control)
+✓ g0-external-unknown-root             G0 tripped (1): SRC-ZZ-EXT: unknown external root NO_SUCH_ROOT (declare it under external_roots)
+✓ g3-ref-value-not-its-quote           G3 tripped (1): product/theme/idsk/ref.tokens.json: ref.color.black: value {"colorSpace": "srgb", "compone
+✓ g3-css-var-undefined                 G3 tripped (1): ux/renderer/brands/edoklady/brand.css: var(--comp-button-raduis) names no comp token and n
+✓ g3-anatomy-token-alias               G3 tripped (1): ux/library/tokens/comp.anatomy.tokens.json: comp.list-item.gap: anatomy tokens are literal
+✓ g3-anatomy-token-unused              G3 tripped (1): library/tokens/comp.anatomy.tokens.json: comp.list-item.unused-gap: no stylesheet uses var
+✓ g3-comp-literal-dimension-outside-anatomy G3 tripped (1): ux/library/tokens/comp.tokens.json: comp.button.radius: raw value in library (must alias s
+✓ g3-comp-token-defined-twice          G3 tripped (1): ux/library/tokens/comp.tokens.json: comp.list-item.gap: defined twice in the library comp 
+✓ g3-px-ratchet-stray-literal          G3 tripped (1): renderer/base.css: 5 element px literals > ceiling 4 (renderer/px-ratchet.yaml) — use an a
+✓ g3-brand-comp-override-not-anatomy   G3 tripped (4): product/theme/edoklady/comp.tokens.json: comp.button.primary-bg: a brand comp override may
+✓ g3-brand-comp-override-not-its-quote G3 tripped (2): product/theme/edoklady/comp.tokens.json: comp.app-bar.padding-inline: value {"value": 24, 
+✓ g3-css-stray-brace                   G3 tripped (1): ux/renderer/base.css line 1042: `}` closes no block — the browser drops the rule after it 
+✓ g3-variant-brand-default-unknown-option G3 tripped (9): EL-attribute-list: style pairs: attr 'pairs' is already used by product/variants.yaml (dat
+✓ g3-variant-option-unstyled           G3 tripped (7): EL-attribute-item: style checkbox: attr 'checkbox' is already used by product/variants.yam
+✓ g3-variant-unknown-template          G3 tripped (1): product/variants.yaml: bottom-nav: template TPL-bottom-sheet does not exist in library/tem
+✓ g3-style-selection-unknown-option    G3 tripped (1): product/theme/eudiw_v1/components.yaml: EL-status-chip.mark = 'square' is not one of its o
+✓ g3-style-option-token-missing        G3 tripped (1): EL-status-chip: style mark: option dot names token comp.status-chip.dot-diameter, which is
+✓ g3-layout-scope-other-template       G3 tripped (1): TPL-detail: layout composition: scope screen SCR-home uses TPL-home, not TPL-detail
+✓ g3-layout-groups-scope-other-template G3 tripped (1): TPL-list: layout groups: scope screen SCR-doc-detail uses TPL-detail, not TPL-list
+✓ g3-layout-selection-unknown-option   G3 tripped (1): product/theme/eudiw_v1/components.yaml: TPL-detail.composition = 'tiles' is not one of its
+✓ g3-style-attr-taken                  G3 tripped (5): EL-status-chip: style ring: attr 'decision-steps' is already used by TPL-sheet layout deci
+✓ g3-brand-css-colour-literal          G3 tripped (1): renderer/brands/edoklady/brand.css line 1: raw colour literal '#126dff' — use var(--comp-…
+✓ g3-brand-css-unscoped-selector       G3 tripped (1): renderer/brands/edoklady/brand.css line 1: selector '.el-button' is not scoped to [data-br
+✓ g3-brand-css-raw-asset-url           G3 tripped (1): renderer/brands/edoklady/brand.css line 1: 'url(' — images come from the asset registry, f
+✓ g3-webfont-unused-family             G3 tripped (3): product/theme/idsk/webfonts.yaml: Source Sans 3: brand idsk's ref tier names none of Comic
+✓ g3-webfont-unpinned-url              G3 tripped (3): product/theme/idsk/webfonts.yaml: Source Sans 3: face 400 latin url 'http://example.com/so
+✓ g3-webfont-shared-registry           G3 tripped (1): product/theme/webfonts.yaml: a shared webfont registry is not read — each brand lists its 
+✓ g3-webfont-brands-disagree           G3 tripped (1): webfont 'Source Sans 3': faces differs between brands idsk and eudiw_v1 (product/theme/<br
+✓ g3-resolver-switch-unknown-brand     G3 tripped (1): resolver.json: brand switch label for 'retired', which is not one of its contexts
+✓ g3-brand-neutral-code                G3 tripped (1): tools/render.py:832: names brand 'idsk' ('idsk') — shared code is brand-neutral; read the 
+✓ g2-screen-raw-asset-path             G2 tripped (1): SCR-home: data_model./links/cert.example = '../assets/edoklady/document-art.id-card.png' n
+✓ g2-icon-unknown-name                 G2 tripped (1): SCR-pres-outcome-success/icon: icon 'no-such-icon' is not an icon of library/assets.yaml (
+✓ g2-icon-known-name                   clean (positive control)
+✓ g3-asset-binding-wrong-scope         G3 tripped (1): product/theme/edoklady/assets.yaml: illustration.success: source SRC-EDK-DS is not registe
+✓ g3-asset-unknown-id                  G3 tripped (1): product/theme/edoklady/assets.yaml: illustration.confetti is not an asset of library/asset
+✓ g3-asset-file-missing                G3 tripped (1): product/theme/edoklady/assets.yaml: illustration.wait: file 'wait-NOPE.svg' not found in S
+✓ g3-shadow-malformed                  G3 tripped (2): product/theme/edoklady/ref.tokens.json: ref.shadow.card: invalid shadow — layer 1: blur mu
+✓ g3-shadow-colour-not-literal         G3 tripped (1): product/theme/idsk/ref.tokens.json: ref.shadow.raised: invalid shadow — layer 0: color mus
+✓ g3-elevation-role-not-a-shadow       G3 tripped (1): theme idsk/light: sys.elevation.card is shadow but binds ref.color.white (color)
+✓ g2-template-text-glyph-icon          G2 tripped (2): ux/renderer/templates/EL-button.html.j2 line 1: text glyph '✓' used as an icon — draw it w
+✓ g2-template-glyph-table              G2 tripped (1): ux/renderer/templates/EL-button.html.j2 line 1: `marks` is a table of text glyphs ('!', 'i
+✓ g2-template-hidden-text-mark         G2 tripped (1): ux/renderer/templates/EL-button.html.j2 line 1: aria-hidden text '!' drawn as an icon — dr
+✓ g2-template-unknown-icon             G2 tripped (1): ux/renderer/templates/EL-button.html.j2: icon 'no-such-icon' is not an icon of library/ass
+✓ g5-copy-text-glyph                   G5 tripped (1): sk:CPY-cert-trustmark-placeholder: text glyph '✓' in copy renders as an icon — use the ele
+✓ g9-outcome-without-picture           G9 tripped (35): SCR-act-device-check--default (edoklady): outcome state draws no picture (no illustration,
+✓ g9-outcome-icon-only-hero            clean (positive control)
+✓ g9-trust-mark-placeholder            G9 tripped (1): SCR-home--default (edoklady): EL-trust-mark trustmark draws its placeholder drawing — bind
+✓ g9-icon-fallback                     G9 tripped (167): SCR-about--default (edoklady): EL-app-bar appbar draws icon.arrow-back-ios, which edoklady
+✓ g9-document-card-synthetic           G9 tripped (1): SCR-home--default (edoklady): EL-document-card card-id has no artwork in edoklady (art: sy
+✓ g9-screen-level-css                  G9 tripped (1): ux/renderer/brands/idsk/brand.css line 1: selector '[data-screen' styles one screen / node
+✓ g9-stale-debt                        G9 tripped (1): process/visual-debt.yaml: debt card-art SCR-log document-art.pid matches no finding any mo
+✓ g9-pid-art-unbound                   G9 tripped (3): SCR-doc-detail--cloud (edoklady): EL-document-card hero-pid has no artwork in edoklady (do
+✓ g5-brand-copy-quote-not-in-source    G5 tripped (1): sk/brands/eudiw_v1:CPY-home-title: quote not found at SRC-EUDIW-V1-EXP029R2 page.html:1690
+✓ g1-brand-copy-unknown-id             G1 tripped (1): ux/product/copy/sk/brands/eudiw_v1.yaml: CPY-home-does-not-exist overrides no shared copy 
+✓ g5-brand-copy-var-not-supplied       G5 tripped (2): SCR-home/card-id.status_label: args [] do not match CPY-home-card-valid vars ['date']
+✓ g4-branch-unguarded-not-last         G4 tripped (1): FLW-pres-cross-device: request-untrusted --CONTINUE--> branch 1 of 2 has no guard — only t
+✓ g2-guard-without-allow-transition    G2 tripped (1): FLW-pres-cross-device.request-untrusted: CONTINUE guard RUL-pres-request-no-selection-erro
+✓ g2-allow-transition-rule-on-screen   G2 tripped (1): SCR-pres-request: rule RUL-pres-untrusted-explicit-approval has the allow_transition effec
+✓ g2-assign-path-not-in-context        G2 tripped (1): FLW-pres-cross-device.request-optional-only: CONTINUE assign[0] set writes /request/tried,
+✓ g2-derive-over-non-list              G2 tripped (1): FLW-pres-cross-device: context /request/selected_count derives count_where over /request/a
+✓ g2-context-type-differs-from-screen  G2 tripped (1): FLW-pres-cross-device: context /request/attempted is string, but SCR-pres-request declares
+✓ g2-ui-state-when-unknown-ui-state    G2 tripped (1): FLW-pres-cross-device.verification-code: ui_state_when[0] ui_state no-such-state is not a 
+✓ g4-internal-transition-on-final      G4 tripped (1): FLW-pres-cross-device: final state done must not have transitions
+✓ g4-internal-error-branch             G4 tripped (1): FLW-pres-cross-device: request --SYS_ERROR--> is internal (target: null) with kind error —
+✓ g1-assign-unknown-op                 G1 tripped (1): ux/experience/flows/FLW-pres-cross-device.yaml: states/request-optional-only/on/CONTINUE: 
+✓ g4-branch-list-guarded-then-internal clean (positive control)
+✓ g4-agree-emitted-event-no-transition G4 tripped (1): FLW-pres-cross-device.request (SCR-pres-request ui_state default): a visible, enabled node
+✓ g4-agree-no-selection-internal-continue-dropped G4 tripped (1): FLW-pres-cross-device.request-no-selection (SCR-pres-request ui_state no-selection): a vis
+✓ g4-agree-transition-without-visible-emitter G4 tripped (1): FLW-pres-cross-device.request-optional-selected (SCR-pres-request ui_state optional-select
+✓ g4-agree-disabled-node-flow-goes     G4 tripped (1): FLW-pres-cross-device.request-optional-selected (SCR-pres-request ui_state optional-select
+✓ g4-agree-disabled-node-internal-noop clean (positive control)
+✓ g4-agree-guard-reads-undeclared-path G4 tripped (2): FLW-pres-cross-device.request-untrusted: CONTINUE guard RUL-pres-untrusted-explicit-approv
+✓ g4-agree-baselined-flow-new-finding  G4 tripped (1): FLW-pres-same-device.request (SCR-pres-request ui_state sd-default): a visible, enabled no
+✓ g4-agree-baseline-stale-key          G4 tripped (1): process/agreement-baseline.yaml: key FLW-pres-same-device/request/sd-default/1/RETURN matc
+✓ g4-agree-baseline-context-flow       G4 tripped (2): FLW-pres-cross-device.request (SCR-pres-request ui_state default): a visible, enabled node
+✓ g4-back-missing-in-back-flow         G4 tripped (1): FLW-pres-cross-device: non-final state request declares no `back` — in a flow that uses `b
+✓ g4-back-event-not-accepted           G4 tripped (1): FLW-pres-cross-device.sending: back fires CANCEL, which is not an `on` event of the state
+✓ g4-back-to-final-state               G4 tripped (1): FLW-pres-cross-device.auth: back to names done, which is final
+✓ g4-restore-to-unknown-state          G4 tripped (1): FLW-pres-cross-device.connecting: restore to names no-such-state, which is not a state of 
+✓ g4-exit-ref-unknown-state            G4 tripped (1): FLW-pres-cross-device.to-help: exit names state no-such-state of FLW-app-info, which does 
+✓ g4-exit-carries-undeclared-path      G4 tripped (1): FLW-pres-cross-device.to-help: exit carries /flow/error_reason, which the flow's context d
+✓ g4-entry-starts-in-final             G4 tripped (1): FLW-pres-cross-device: entry deeplink starts in done, which is final
+✓ g1-back-to-without-target            G1 tripped (1): ux/experience/flows/FLW-pres-cross-device.yaml: states/auth/back: 'target' is a required p
+✓ g2-entry-assign-undeclared-path      G2 tripped (1): FLW-pres-cross-device.entry deeplink assign[0] set writes /launch/url, which the flow's co
+✓ g4-back-history-positive             clean (positive control)
+✓ g4-invoke-probe-positive             clean (positive control)
+✓ g4-invoke-result-event-not-in-on     G4 tripped (1): FLW-pres-cross-device.verification-code: invoke SVC-zz-probe maps Ready to SYS_CODE_READY,
+✓ g4-invoke-result-not-mapped          G4 tripped (1): FLW-pres-cross-device.verification-code: invoke SVC-zz-probe does not map its result Expir
+✓ g4-invoke-error-not-mapped           G4 tripped (1): FLW-pres-cross-device.verification-code: state-scoped invoke SVC-zz-probe does not map its
+✓ g1-service-without-error             G1 tripped (2): ux/product/services/SVC-zz-probe.yaml: results: 'Error' is a required property
+✓ g4-sys-event-without-emitter         G4 tripped (1): FLW-pres-cross-device.scan: SYS_QR_SCANNED has no emitter — no invoke result maps it and t
+✓ g4-snapshot-restore-non-idempotent   G4 tripped (1): FLW-pres-cross-device.verification-code: restores from a snapshot, but its invoke SVC-zz-p
+✓ g4-ensures-reads-unwritten-path      G4 tripped (1): FLW-pres-cross-device.verification-code: SVC-zz-probe Ready ensures RUL-pres-request-has-s
+✓ g4-fixture-unknown-result            G4 tripped (1): SVC-zz-probe: fixture happy[0] names result Nope, which the service does not declare
+✓ g4-accepts-while-pending-unknown     G4 tripped (1): FLW-pres-cross-device.verification-code: accepts_while_pending names RETRY, which is not a
+✓ g2-invoke-unknown-service            G2 tripped (1): FLW-pres-cross-device.verification-code: invoke names unknown service SVC-zz-nothing
+✓ g2-invoke-result-field-missing       G2 tripped (1): FLW-pres-cross-device.verification-code: invoke Ready assign[0] set reads result field cod
+✓ g2-event-payload-field-missing       G2 tripped (1): FLW-pres-cross-device.request: TOGGLE_ITEM assign[0] reads event field id, which the TOGGL
+✓ g4-snapshot-restore-connecting       G4 tripped (1): FLW-pres-cross-device.connecting: restores from a snapshot, but its invoke SVC-pres-fetch-
+✓ g2-merge-field-not-in-context        G2 tripped (3): FLW-pres-cross-device.connecting: invoke OptionalOnly assign[0] merge writes /verifier/cou
+✓ g4-model-l58-reintroduced            G4 tripped (1): FLW-pres-cross-device: invariant request-nonempty-at-auth (RUL-pres-request-has-selection)
+✓ g4-model-guard-dropped               G4 tripped (1): FLW-pres-cross-device: invariant request-nonempty-at-auth (RUL-pres-request-has-selection)
+✓ g4-model-ensures-dropped             G4 tripped (1): FLW-pres-cross-device: invariant request-nonempty-at-auth (RUL-pres-request-has-selection)
+✓ g4-model-untrusted-ensures-dropped   G4 tripped (1): FLW-pres-cross-device: invariant request-nonempty-at-auth (RUL-pres-request-has-selection)
+✓ g4-model-context-deleted             G2+G4 tripped: FLW-pres-cross-device: declares invariants but no `context` — the model check has no data 
+✓ g4-model-invariant-unknown-state     G4 tripped (1): FLW-pres-cross-device: invariant request-nonempty-at-auth names state confirm, which the f
+✓ g4-model-guard-in-request-positive   clean (positive control)
+✓ g4-model-optional-only-continue-dropped G4 tripped (1): FLW-pres-cross-device: invariant continue-accepted-with-selection fails in request-optiona
+✓ g4-model-untrusted-trust-not-set     G4 tripped (1): FLW-pres-cross-device: invariant continue-accepted-with-selection fails in request-untrust
+✓ g4-model-optional-only-ensures-dropped G4 tripped (1): FLW-pres-cross-device: invariant optional-only-arrives-unticked (RUL-pres-request-optional
+✓ g4-model-accepts-event-not-in-states G4 tripped (1): FLW-pres-cross-device: invariant continue-accepted-with-selection requires APPROVE to be a
+✓ g4-layout-back-flow-state-without-back G4 tripped (1): FLW-pres-cross-device: non-final state auth declares no `back` — in a flow that uses `back
+✓ g1-layout-option-back-not-flow       G1 tripped (1): ux/library/templates/TPL-sheet.yaml: layouts/decision-steps/options/page/back: 'app' is no
+✓ g3-layout-decision-steps-page-positive clean (positive control)
+✓ g1-kmp-export-unknown-key            G1 tripped (1): ux/product/export/kmp.yaml: targets/FLW-pres-cross-device: Additional properties are not a
+✓ g2-kmp-export-unknown-flow           G2 tripped (1): product/export/kmp.yaml: target FLW-pres-zz names no flow
+✓ g2-kmp-export-unknown-brand          G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device brand zz is not a brand of product/theme/re
+✓ g2-kmp-export-default-brand-not-exported G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device default_brand edoklady is not one of its br
+✓ g2-kmp-export-unknown-locale         G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device locale en has no product/copy/<locale>/ fol
+✓ g2-kmp-export-mode-not-bound         G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device mode dark is not bound by brand idsk (it wo
+✓ g2-kmp-export-scope-screen-not-in-flow G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device in_brief_scope screen SCR-home is not shown
+✓ g2-kmp-export-brands-reordered-positive clean (positive control)
+✓ g2-kmp-export-typed-screen-not-in-flow G2 tripped (1): product/export/kmp.yaml: FLW-pres-cross-device kotlin.typed_screens screen SCR-home is not
+✓ g1-kmp-export-not-in-spec-unit       G1 tripped (1): ux/product/export/kmp.yaml: targets/FLW-pres-cross-device/kotlin/not_in_spec/effects.hairl
+
+mutation self-test: 182 case(s), 0 failure(s)
+✓ FLW-pres-cross-device: 3 invariant(s) hold — 4517 nodes, 23865 edges, depth 8, lists ≤ 3 items, 0.41 s (budget 2 s)
+✓ D5 pre-fix fixture fails as it must: request-nonempty-at-auth (RUL-pres-request-has-selection) in auth — [start] scan -SYS_QR_SCANNED-> connecting -SYS_REQUEST_READY-> request -CONTINUE-> auth {'/request/selected_count': 0}
+
+model-check self-test: 2 check(s), 0 failure(s)
+✓ E1   two exports byte-identical: 19 files, lock included
+✓ E1   a reordered --brands gives the same bytes (F7: the default brand is spec data)
+✓ E2   18 listed files match sha256 and size; unlisted: none
+✓ E2   spec_hash equal in bundle, lock, model fixture, 6 scripts and the Kotlin SPEC_HASH of ['PresCrossDeviceSpec.kt', 'UxThemeSpec.kt'], and recomputes from the lock's sources
+✓ E2   77 sources match the tree; stale: none
+✓ E2   sources are the files read: 282 other spec files deleted, the bundle is identical
+✓ E3   red gate G4: exit 2, names ['gate G4 (flows) red', 'declares no `back`'], --out untouched
+✓ E4   red per-profile G4: exit 2, names ['per-profile G4 red for PRF-eudiw-v1'], --out untouched
+✓ E5   dirty tree without --allow-dirty: exit 2, names ['the ux tree is dirty'], --out untouched
+✓ E5   hand-edited --out (unlisted): exit 2, names ['is not listed in the previous'], --out untouched
+✓ E5   hand-edited --out (changed): exit 2, names ['differs from the previous'], --out untouched
+✓ E5   hand-edited --out (no-lock): exit 2, names ['but no UX_SPEC.lock'], --out untouched
+✓ E5   service name collision: exit 2, names ['Kotlin name collision', 'share the call name send'], --out untouched
+✓ E5   event name collision is found: ['name collision: event entry SYS_ERROR from event SYS_ERROR and event SYS__ERROR']
+✓ E5   Kotlin type collision: exit 2, names ['Kotlin name collision: type Trust'], --out untouched
+✓ R10  a11y slice not rendered: exit 2, names ['no recorded a11y report covers the slice'], --out untouched
+✓ R10  a11y render of a foreign tree: exit 2, names ["runs on the exporter's own tree"], --out untouched
+✓ R10  a recorded report with a violation: exit 2, names ['no recorded a11y report covers the slice'], --out untouched
+✓ R10  a clean recorded report of the same tree hash covering 30 pages x 4 themes is accepted and the lock records its source ({'renders': 240, 'source': 'check', 'tree_hash': 'sha256:657b695fe9f4a3454a30a97e730ec8f85bdae65eb1256c07265dca16ad0c819a', 'violations': 0})
+✓ E11  the L58 tree: exit 2, names ['gate G4 (flows) red', 'request-nonempty-at-auth'], --out untouched
+✓ E6   the bundle validates (schema + loader invariants): no errors
+✓ E6   seeded unguarded non-last branch is reported: states.request-optional-selected.on.TOGGLE_ITEM[0]: an unguarded branch that is not the last
+✓ E6   seeded snapshot over a non-idempotent invoke is reported: states.connecting.restore: snapshot over the non-idempotent invoke fetchRequest
+✓ E6   seeded invoke result event missing from on is reported: states.auth.invoke.on.Authenticated: event SYS_AUTH_OK is not in the state's on
+✓ E6   seeded state-scoped invoke without Error is reported: states.sending.invoke: state-scoped invoke does not map result Error (Q-004: Error is required)
+✓ E6   seeded unknown target is reported: states.request.on.CONTINUE[0]: unknown target nowhere
+✓ E6   seeded unknown semantic enum (back policy undo) is reported: schema: /states/request/back/policy: 'undo' is not one of ['event', 'to', 'to_history', 'blocked', 'pass']
+✓ E6   seeded unknown semantic enum (guard op gt) is reported: schema: /states/request-optional-selected/on/CONTINUE/0/guard/when: Additional properties are not allowed ('op', 'path', 'value' were unexpected)
+✓ E6   seeded unknown semantic enum (assign op push) is reported: schema: /states/request/on/TOGGLE_ITEM/0/assign/0: Additional properties are not allowed ('field', 'key', 'key_from', 'list' were unexpected)
+✓ E6   seeded unknown semantic enum (derive op sum) is reported: schema: /context//request/selected_count/derive/op: 'sum' is not one of ['count_where', 'ids_where']
+✓ E6   seeded unknown semantic enum (invoke scope global) is reported: schema: /states/cancelled/invoke/scope: 'global' is not one of ['state', 'detached']
+✓ E6   seeded unknown semantic enum (exit kind web) is reported: schema: /states/done/exit/kind: 'web' is not one of ['home', 'flow', 'platform']
+✓ E6   seeded unknown semantic enum (state kind wait) is reported: schema: /states/scan/kind: 'wait' is not one of ['step', 'recovery']
+✓ E7   25 states, 84 branches equal the flow's after normalisation: no difference
+✓ E7   16 screens, every node exported once: none lost or added
+✓ E8   vendored paths and divergences name the same fixture sha256 31bfda6579b2…
+✓ E8   197 provisional paths vs 231: 38 differences, each a listed divergence (13 V-items); unlisted: none; no longer occurring: none
+✓ E11  84 covering sequences (227 steps, explored {'edges': 23865, 'nodes': 4517}) replay in tools/flowmodel.py with 0 violations: ok
+✓ E11  sequence (request-optional-only, CONTINUE, auth) with an optional item that arrives ticked: connecting -> request-optional-only -> auth, /request/selected_count = 1
+✓ E9   9 generated .kt files pass the lint proxy: no finding
+✓ E9   the proxy reports each of 7 seeded breaches: missed none
+✓ E10  86 resources = the bundle's 85 keys + 1 brand override(s), each once, sorted: True
+✓ E10  every resource reads back as its spec text (XML parse, Compose unescape, %n$s fill), the brand overrides as <res>__<brand>: wrong none
+✓ E10  placeholder order ({b} before {a} -> %2$s .. %1$s), ' " & < \ newline and a literal % survive: Ján&apos;s &quot;kód&quot; &amp; &lt;b&gt;%2$s&lt;/b&gt; 50 % \\ %1$s\nend
+✓ E10  an ambiguous text is refused (a literal %1$s, an undeclared {name}): ['Zľava %1$s', 'Ahoj {meno}']
+✓ E12  the D8 tree (4 D8 changes + idsk decision-steps: page) stays gate-green and its Kotlin is additive: 202 symbols, 5 added (SysOffline, SysOnline, VerifierPayload#logoUrl, PresCrossDeviceState.CONNECTING_OFFLINE, VerifierData#logoUrl), removed none, retyped none, new parameters without a default none, expected new symbols missing none
+✓ E12  negative controls: the API comparison sees a removed parameter (VerifierData.serviceName) and a retyped one (RequestData.selectedCount)
+✓ E12  the shell API is unchanged: the same 136 (constructor, argument) pairs of UxColors, UxBrand, UxLayouts, UxStyles, ... in both exports (differ: none); idsk takes UxDecisionSteps.Page, the default brand is idsk
+
+export self-test: 48 check(s), 0 failure(s)
+✓ a11y-rev002-g01-h1-clipped           a11y gate tripped: h1-reachable at 200 % in 1 theme(s)
+✓ a11y-rev004-v02-mid-word-break       a11y gate tripped: mid-word-break at 200 % in 1 theme(s)
+✓ a11y-uxvisual-b3-card-overflow       a11y gate tripped: overlap at 200 % in 1 theme(s)
+✓ a11y-modal-sheet-backdrop-not-inert  a11y gate tripped: modal-dialog at 100/200 % in 1 theme(s)
+✓ a11y-zero-size-vs-left-out           a11y gate tripped: action-reachable + target-size at 100/200 % in 1 theme(s)
+✓ a11y-aria-ref-not-rendered           a11y gate tripped: aria-ref-rendered at 100/200 % in 1 theme(s)
+✓ a11y-behind-floating-band            a11y gate tripped: axe:target-size + target-size at 100/200 % in 1 theme(s)
+token-smoke: edoklady ref.color.primary-400 #126dff -> #c2185b, ref.radius.s 5px -> 13px, comp.button.padding-block 12px -> 19px (temporary copy)
+  ✓ screen                   primary button background rgb(194, 24, 91), radius 13px, padding-top 19px
+  ✓ flow                     primary button background rgb(194, 24, 91), radius 13px, padding-top 19px
+  ✓ browser element preview  primary button background rgb(194, 24, 91), radius 13px, padding-top 19px
+  ✓ browser tokens page      lists #c2185b
+  ✓ browser tokens page      comp.button.padding-block row shows 19px
+token-smoke: one token edit reached the screen, the flow, the browser preview and the tokens page
+make -C ux fast check test  1497.10s user 249.18s system 643% cpu 4:31.44 total

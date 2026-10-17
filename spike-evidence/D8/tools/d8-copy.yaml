@@ -1,0 +1,50 @@
+# D8-copy: the reworded copy is drawn (connecting, request [hand-written], verification-code, sending, success). Script `slow`.
+appId: eu.compote.euidi.dev
+---
+- openLink: ${LINK}
+- tapOn:
+    text: "Open"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+# connecting lasts 3 s (script slow) and the system dialog eats most of it: its new title is asserted from the app log
+# (a11y announce-live line), and this screenshot is best effort.
+- takeScreenshot: d8-4-1-connecting-or-request
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-request"
+    timeout: 30000
+- assertVisible: "Žiadosť o údaje z eDokladu"
+- assertNotVisible: "Overenie eDokladu"
+- takeScreenshot: d8-4-2-request
+- tapOn:
+    id: "continue"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-verification-code"
+    timeout: 30000
+- assertVisible: "Zadajte tento kód na stránke overovateľa"
+- extendedWaitUntil:
+    visible: "482 913"
+    timeout: 10000
+- takeScreenshot: d8-4-3-verification-code
+- tapOn:
+    id: "confirm"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-sending"
+    timeout: 30000
+- assertVisible: "Odosielame údaje z eDokladov"
+- takeScreenshot: d8-4-4-sending
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-success"
+    timeout: 30000
+- assertVisible: "Vráťte sa na stránku overovateľa vo webovom prehliadači."
+- takeScreenshot: d8-4-5-success
