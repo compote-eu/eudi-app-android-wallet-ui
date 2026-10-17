@@ -30,7 +30,7 @@ import kotlinx.serialization.json.JsonObject
 /**
  * What a hand-written screen (brief §6.6: the consent screen) gets from the runtime. The runtime builds [snapshot]
  * from the flow context; the screen reads it and sends intents ([send]) only. It never changes the context or the
- * state itself.
+ * state itself. Parts of the screen that the bundle carries as nodes it draws with [Node] (RULING-W1 / week-0 F3).
  */
 interface ScreenScope {
     val screen: String
@@ -54,6 +54,16 @@ interface ScreenScope {
 
     /** An intent: the flow event and its payload, stamped with [gen]. The engine decides what it does. */
     fun send(event: String, payload: JsonObject = JsonObject(emptyMap()))
+
+    /**
+     * Draws the node [id] of this screen's bundle tree (with its slots) through the interpreter, as an interpreted
+     * screen would: the registry's element, props bound from the flow context, copy, the screen rules (`hide`,
+     * `set_copy`), the schema check and the node's a11y; its element events reach the engine as intents. A node a rule
+     * hides draws nothing; an id the tree lacks draws nothing and is logged. Node ids are bundle data (RULING-W1,
+     * week-0 F3): a prop the spec adds to such a node needs no change in the hand-written screen.
+     */
+    @Composable
+    fun Node(id: String)
 }
 
 typealias CustomScreen = @Composable (ScreenScope) -> Unit

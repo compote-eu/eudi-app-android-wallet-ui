@@ -19,6 +19,7 @@
 package eu.europa.ec.ux.runtime.screen
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -62,6 +63,7 @@ import eu.europa.ec.ux.runtime.support.obj
 import eu.europa.ec.ux.runtime.support.unlinked
 import eu.europa.ec.ux.runtime.support.visibleNodeIds
 import eu.europa.ec.ux.runtime.support.with
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
@@ -244,6 +246,51 @@ abstract class InterpreterScenario {
     }
 
     @Test
+    fun aHandWrittenScreenDrawsItsBundleNodesThroughTheInterpreter() = runComposeUiTest {
+        // RULING-W1 / week-0 F3 (M8r): ScreenScope.Node draws a node of the screen's tree by id, with bindings, copy and
+        // the screen rules. Node ids are read from the bundle (every node of the consent tree); a prop planted in the
+        // bundle (EL-rp-identity `logo`) is drawn with no change to the hand-written screen.
+        val port = FakePort().apply { auto["fetchRequest"] = Results.requestReady }
+        val consent = Fixture.bundle().state("request").screen!!
+        val consentTree = ScreenCatalog(Fixture.bundle()).screens.getValue(consent)
+        val identities = consentTree.nodes.filter { it.element == "EL-rp-identity" }
+        assertTrue(identities.size >= 2, "the consent tree carries its EL-rp-identity nodes")
+        var root = Fixture.root
+        val body = ((Fixture.root["screens"] as JsonObject)[consent] as JsonObject)["regions"] as JsonObject
+        body.forEach { (region, nodes) ->
+            (nodes as JsonArray).forEachIndexed { i, n ->
+                if ((n as JsonObject)["element"]?.jsonPrimitive?.content == "EL-rp-identity") {
+                    root = root.with("/screens/$consent/regions/$region/$i/props/logo", JsonPrimitive(LOGO))
+                }
+            }
+        }
+        host(
+            root,
+            port,
+            custom = mapOf(
+                consent to { scope ->
+                    Column {
+                        identities.forEach { scope.Node(it.id) }
+                        scope.Node("_test-no-such-node")
+                    }
+                },
+            ),
+        )
+        awaitState("request")
+        waitForIdle()
+        // The rules show exactly the identity that matches /verifier/trust (trusted here); the other is hidden.
+        val drawn = identities.filter { count(hasTestTag(it.id)) > 0 }
+        assertEquals(1, drawn.size, "drawn: ${drawn.map { it.id }}")
+        val id = drawn.single().id
+        onNodeWithTag("$id.name", useUnmergedTree = true).assert(hasText("Verifier"))
+        val logo = onNodeWithTag("$id.logo", useUnmergedTree = true).fetchSemanticsNode().config
+        assertTrue(SemanticsProperties.HideFromAccessibility in logo, "the logo is decorative")
+        assertEquals(null, logo.getOrNull(SemanticsProperties.ContentDescription))
+        assertTrue(lines.any { it.contains("has no node '_test-no-such-node'") }, "$lines")
+        assertEquals(0, count(SemanticsMatcher("error node") { n -> n.config.getOrNull(SemanticsProperties.TestTag)?.startsWith(InterpreterTags.ERROR_PREFIX) == true }))
+    }
+
+    @Test
     fun anUnknownElementIsAVisiblePlaceholder() = runComposeUiTest {
         val screen = Fixture.bundle().state("connecting").screen!!
         val root = Fixture.root.with("/screens/$screen/regions/hero/0/element", JsonPrimitive("EL-not-there"))
@@ -304,5 +351,6 @@ abstract class InterpreterScenario {
 
     private companion object {
         const val TIMEOUT = 5_000L
+        const val LOGO = "https://www.example.sk/rp/logo"
     }
 }

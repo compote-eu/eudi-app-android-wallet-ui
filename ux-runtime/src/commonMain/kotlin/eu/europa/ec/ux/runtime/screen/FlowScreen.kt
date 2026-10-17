@@ -58,14 +58,9 @@ internal fun FlowScreen(
             },
         )
     }
-    if (custom != null) {
-        custom(CustomScope(screenId, catalog, copy, status, headingFocus, isAccepted, onEvent, log))
-        return
-    }
-    if (tree == null) return
-    InterpretedScreen(
+    val frame = tree?.let {
         ScreenFrame(
-            tree = tree,
+            tree = it,
             rules = bundle.screens[screenId]?.rules.orEmpty(),
             context = status.context,
             copy = copy,
@@ -77,8 +72,14 @@ internal fun FlowScreen(
             elementSchemas = screens.elementSchemas,
             templateSchemas = screens.templateSchemas,
             log = log,
-        ),
-    )
+        )
+    }
+    if (custom != null) {
+        custom(CustomScope(screenId, catalog, copy, status, headingFocus, isAccepted, onEvent, log, frame))
+        return
+    }
+    if (frame == null) return
+    InterpretedScreen(frame)
 }
 
 /** Whether [FlowScreen] can draw the status: a hand-written screen or a node tree exists for its screen id. */
@@ -94,6 +95,8 @@ private class CustomScope(
     private val accepted: (String) -> Boolean,
     private val onEvent: (String, JsonObject, Long) -> Unit,
     private val log: FlowLog,
+    /** The interpreter frame of this screen's bundle tree (null when the bundle has no tree for it). */
+    private val frame: ScreenFrame?,
 ) : ScreenScope {
     override val state: String = status.state
     override val uiState: String? = status.uiState
@@ -108,6 +111,16 @@ private class CustomScope(
     override fun send(event: String, payload: JsonObject) {
         log.log("intent from $screen: $event $payload (gen $gen)")
         onEvent(event, payload, gen)
+    }
+
+    @Composable
+    override fun Node(id: String) {
+        val f = frame
+        if (f == null) {
+            LaunchedEffect(screen, id) { log.log("screen $screen: no node tree in the bundle, node '$id' not drawn") }
+            return
+        }
+        RenderNodeById(id, f)
     }
 }
 

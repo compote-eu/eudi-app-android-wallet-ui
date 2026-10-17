@@ -15,7 +15,8 @@
  */
 
 // Hand-written against the generated contract (ux-spec/contract, brief §6.6); written in M5b against the provisional
-// copy, re-checked at M6a (one change: the verifier name is nullable, V14).
+// copy, re-checked at M6a (one change: the verifier name is nullable, V14). M8r: the verifier identity is drawn from
+// its bundle nodes through ScreenScope.Node (RULING-W1 / week-0 F3), no longer from the verifier fields.
 package eu.europa.ec.uxspike
 
 import androidx.compose.foundation.layout.Box
@@ -39,10 +40,8 @@ import eu.europa.ec.ux.elements.UxLink
 import eu.europa.ec.ux.elements.UxNotice
 import eu.europa.ec.ux.elements.UxNoticeTone
 import eu.europa.ec.ux.elements.UxRequirement
-import eu.europa.ec.ux.elements.UxRpIdentity
 import eu.europa.ec.ux.elements.UxText
 import eu.europa.ec.ux.elements.UxTextVariant
-import eu.europa.ec.ux.elements.UxTrust
 import eu.europa.ec.ux.elements.templates.TplSheet
 import eu.europa.ec.ux.runtime.screen.CustomScreen
 import eu.europa.ec.ux.runtime.screen.ScreenScope
@@ -66,6 +65,10 @@ object PresRequestScreenIds {
     const val TOGGLE_ITEM: String = "TOGGLE_ITEM"
     const val ITEM_ID: String = "item_id"
     const val UNREADABLE_TAG: String = "pres-request.unreadable"
+
+    /** The EL-rp-identity nodes of the screen's bundle tree, drawn through [ScreenScope.Node]. */
+    const val RP_TRUSTED: String = "rp-trusted"
+    const val RP_UNTRUSTED: String = "rp-untrusted"
 }
 
 private val snapshotJson = Json { ignoreUnknownKeys = true }
@@ -109,17 +112,11 @@ fun PresRequestScreen(scope: ScreenScope) {
                     title = scope.copy("CPY-pres-request-untrusted-notice-title"),
                 )
             }
-            UxRpIdentity(
-                id = if (untrusted) "rp-untrusted" else "rp-trusted",
-                name = data.verifier.name.orEmpty(),
-                trust = if (untrusted) UxTrust.Untrusted else UxTrust.Trusted,
-                trustLabel = scope.copy(if (untrusted) "CPY-pres-request-trust-untrusted" else "CPY-pres-request-trust-trusted"),
-                caption = scope.copy(if (untrusted) "CPY-pres-request-verifier-claimed-label" else "CPY-pres-request-verifier-label"),
-                service = data.verifier.serviceName,
-                serviceLabel = scope.copy("CPY-pres-request-portal-label"),
-                reason = data.verifier.reason,
-                reasonLabel = scope.copy("CPY-pres-request-reason-label"),
-            )
+            // RULING-W1 / week-0 F3 (M8r): the verifier identity is a bundle node, drawn through the interpreter; the
+            // screen rules show the one that matches /verifier/trust, and a prop the spec adds (e.g. the logo) needs no
+            // change here.
+            scope.Node(PresRequestScreenIds.RP_TRUSTED)
+            scope.Node(PresRequestScreenIds.RP_UNTRUSTED)
             data.verifier.privacyUrl?.takeIf { it.isNotEmpty() }?.let { url ->
                 UxLink(
                     "privacy",

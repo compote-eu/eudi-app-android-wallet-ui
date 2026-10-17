@@ -113,6 +113,17 @@ internal fun InterpretedScreen(frame: ScreenFrame) {
     }
 }
 
+/** One node of [frame]'s tree by id, for [ScreenScope.Node]; an unknown id draws nothing and is logged. */
+@Composable
+internal fun RenderNodeById(id: String, frame: ScreenFrame) {
+    val node = frame.tree.node(id)
+    if (node == null) {
+        LaunchedEffect(frame.tree.id, id) { frame.log.log("interpreter: ${frame.tree.id} has no node '$id'") }
+        return
+    }
+    RenderNode(node, frame)
+}
+
 @Composable
 private fun RenderNode(node: ScreenNode, frame: ScreenFrame) {
     if (!frame.effects.isVisible(node.id)) return
