@@ -336,7 +336,7 @@ the list by at most one file and must stay inside the cap.
 | T2 | `shared-ui/build.gradle.kts` | Debug-only iOS srcDir and `implementation(project(":ux-spike"))`, under the existing `CONFIGURATION != "Release"` rule (`:230-251`) | +8 to +12 | planned (M2) |
 | T3 | `shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/SharedEntries.kt` | `debugFlowHookOrNull()?.run { entries(navigator) }`; redirect option A in two entries | +10 to +16 | planned (M2) |
 | T4 | `androidApp/build.gradle.kts` | `debugImplementation(project(":ux-spike-android"))` | +1 | planned (M2) |
-| T5 | `iosApp/DocumentProvider/ConsentHost.swift` | track C, import and branch inside `#if DEBUG` | +10 to +14 | planned (M10) |
+| T5 | `iosApp/DocumentProvider/ConsentHost.swift` | track C, import and branch inside `#if DEBUG` | +10 to +14 | used (M10, +12) |
 | T6 | `shared-ui/src/iosMain/kotlin/eu/europa/ec/shared/ui/IosAppRoot.kt` | Koin option B | +1 | reserved (P2) |
 | T7 | `shared-ui/src/commonMain/kotlin/eu/europa/ec/dashboardfeature/ui/dashboard/DashboardViewModel.kt` | redirect option B | +3 to +5 | reserved (P1) |
 | T8 | `iosApp/iosApp/iOSApp.swift` | `#if DEBUG` parse of `--ux-spike` | +6 to +8 | reserved (P5) |

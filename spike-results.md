@@ -47,6 +47,7 @@ under the drill they support and never count toward the verdict (SPIKE-PLAN §0.
 | D8-copy | — | Regeneration: reword copy | — | — | not run | pending | — |
 | D9-brand | — | Track B: eudiw_v1 ↔ idsk (lines: Android = common+android, iOS = common+ios; ≤ 150 each) | — | — | not run | pending | — |
 | D9-sheet-page | — | Track B: `decision-steps` sheet → page (same counting) | — | — | not run | pending | — |
+| D10-harness-preliminary | 2026-10-17 | M10: the request sub-flow view controller embedded in the app on the simulator, scripted PID request (preliminary, NOT a D10 pass) | `--ux-spike dcapi-harness`, unlock, deep link, Maestro `continue`, `confirm`, `close`; `log stream` for `UX-SPIKE-D10` | iPhone 17, iOS 27.0, sim 3C45E6C6 | passed (preliminary) | renders (first frame 79 ms after creation, 69.9 MB) and completes (`Done`, 85.9 MB, `decision=refused`). Extension process, ExtensionKit and real DC API not involved (R7). | M10/harness-*.png, M10/dcapi-harness*.mp4, M10/harness-d10-log-excerpt.txt |
 | D10-run1 | — | Track C: request sub-flow in the iOS extension host (memory, start time) | — | — | not run | pending | — |
 | D10-run2 | — | Track C, run 2 | — | — | not run | pending | — |
 | D10-run3 | — | Track C, run 3 | — | — | not run | pending | — |
