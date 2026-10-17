@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-// Helpers over the exported bundle (M1b wrote them over the PROVISIONAL boundary fixture; re-pointed at M6a).
+// Helpers over the exported bundle (M1b wrote them over the provisional boundary fixture; re-pointed at M6a).
 package eu.europa.ec.ux.runtime.support
 
 import eu.europa.ec.ux.runtime.bundle.FlowBundle

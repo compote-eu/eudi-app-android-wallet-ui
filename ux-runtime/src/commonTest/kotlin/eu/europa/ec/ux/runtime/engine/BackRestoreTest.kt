@@ -14,7 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): brief §5 back/restore, entries and exits on the boundary fixture (D1-engine, D2-engine).
+// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): brief §5 back/restore, entries and
+// exits on the exported bundle (D1-engine, D2-engine).
 package eu.europa.ec.ux.runtime.engine
 
 import eu.europa.ec.ux.runtime.bundle.ExitKind
@@ -42,7 +43,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-class ProvisionalBackRestoreTest {
+class BackRestoreTest {
 
     /** Process death: the snapshot goes through JSON, and a new engine with a new port restores it. */
     private fun TestScope.reborn(snapshot: FlowSnapshot, platform: FlowPlatform = FlowPlatform.ANDROID): Triple<FlowEngine, FakePort, RestoreResult> {

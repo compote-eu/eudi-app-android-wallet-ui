@@ -14,7 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): D5-engine. The bounded model check over the boundary fixture (L58), and over a pre-fix variant.
+// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): D5-engine. The bounded model check
+// over the exported bundle (L58), and over a pre-fix variant.
 package eu.europa.ec.ux.runtime.engine
 
 import eu.europa.ec.ux.runtime.support.Fixture
@@ -36,7 +37,7 @@ import kotlin.test.assertTrue
  * The L58 property (analysis repo `evaluation/kmp-ui-from-spec/spike-plan.md` §5.4): with event sequences up to
  * depth 8 and `selected_count` in {0, 1, 2}, no path reaches `auth` with `selected_count == 0`.
  */
-class ProvisionalFlowModelCheckTest {
+class FlowModelCheckTest {
 
     private val launch = buildJsonObject { put("uri", QR_URI) }
 
@@ -50,7 +51,7 @@ class ProvisionalFlowModelCheckTest {
     }
 
     @Test
-    fun theProvisionalFixHoldsTheL58Property() {
+    fun theExportedFixHoldsTheL58Property() {
         val outcome = check(Fixture.root, l58)
         println("D5-engine fixed: explored ${outcome.explored} nodes, counterexample ${outcome.counterexample}")
         assertNull(outcome.counterexample, "L58 on the fixed bundle: ${outcome.counterexample?.trace}")

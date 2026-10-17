@@ -14,8 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M5b): the interpreter on the boundary fixture and its offline-loading test copy; re-run on the real
-// export in M6.
+// M5b, re-run at M6a on the real export (was provisional on the boundary fixture): the interpreter on the exported
+// bundle and its offline-loading test copy.
 package eu.europa.ec.ux.runtime.screen
 
 import eu.europa.ec.ux.elements.registry.UxElementRegistry
@@ -28,7 +28,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** M5c (OR-2 (b)): the bundle's node trees against what the registry accepts, on the PROVISIONAL bundle and a planted copy. */
+/** M5c (OR-2 (b)): the bundle's node trees against what the registry accepts, on the exported bundle and a planted copy. */
 class SchemaCheckTest {
 
     private fun problems(root: JsonObject): List<String> =
@@ -37,7 +37,7 @@ class SchemaCheckTest {
         }
 
     @Test
-    fun theProvisionalBundleAndTheAddedStateCopyHaveNoSchemaProblems() {
+    fun theExportedBundleAndTheAddedStateCopyHaveNoSchemaProblems() {
         assertEquals(emptyList(), problems(Fixture.root))
         assertEquals(emptyList(), problems(OfflineFixture.root))
     }

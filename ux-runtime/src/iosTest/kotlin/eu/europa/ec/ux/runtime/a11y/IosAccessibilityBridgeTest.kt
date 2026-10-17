@@ -13,7 +13,7 @@
  * ANY KIND, either express or implied. See the Licence for the specific language
  * governing permissions and limitations under the Licence.
  */
-// PROVISIONAL (M7): the iOS actual of AccessibilityBridge, with UIKit replaced by recorders where VoiceOver is needed.
+// M7: the iOS actual of AccessibilityBridge, with UIKit replaced by recorders where VoiceOver is needed (no bundle).
 package eu.europa.ec.ux.runtime.a11y
 
 import androidx.compose.runtime.CompositionLocalProvider

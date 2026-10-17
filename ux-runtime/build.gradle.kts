@@ -26,7 +26,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Test fixtures (M6a; M1b embedded the PROVISIONAL boundary bundle the same way): the exported bundle and copy,
+// Test fixtures (M6a; M1b embedded the provisional boundary bundle the same way): the exported bundle and copy,
 // embedded as Kotlin strings under build/, so the tracked :ux-runtime sources carry no screen id (KC1 guard,
 // SPIKE-PLAN §3), there is one copy of each file, and the runtime needs no :ux-contract. The task refuses a file whose
 // sha256 is not the expected one: UX_SPEC.lock's for an exported file, the named one for a test copy.

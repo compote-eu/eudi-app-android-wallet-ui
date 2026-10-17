@@ -14,7 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): the async rules of SPIKE-PLAN §1.3 on the boundary fixture; re-run on the real export in M6.
+// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): the async rules of SPIKE-PLAN §1.3
+// on the exported bundle.
 package eu.europa.ec.ux.runtime.engine
 
 import eu.europa.ec.ux.runtime.bundle.FlowBundle
@@ -77,7 +78,7 @@ internal class Driver(
     }
 }
 
-class ProvisionalEngineAsyncTest {
+class EngineAsyncTest {
 
     @Test
     fun leavingAStateCancelsItsInvoke() = runTest {

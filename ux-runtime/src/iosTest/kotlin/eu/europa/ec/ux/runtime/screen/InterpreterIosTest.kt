@@ -13,13 +13,9 @@
  * ANY KIND, either express or implied. See the Licence for the specific language
  * governing permissions and limitations under the Licence.
  */
-// PROVISIONAL (M7): see ProvisionalStateChangeA11yScenario.
-package eu.europa.ec.ux.runtime.a11y
 
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
+// M5b, re-run at M6a on the real export (was provisional on the boundary fixture): see InterpreterScenario.
+package eu.europa.ec.ux.runtime.screen
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
-class ProvisionalStateChangeA11yAndroidTest : ProvisionalStateChangeA11yScenario()
+/** The interpreter tests on the iOS simulator. */
+class InterpreterIosTest : InterpreterScenario()

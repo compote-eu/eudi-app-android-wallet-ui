@@ -14,7 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): reads the names from the boundary fixture; re-pointed at the real export in M6.
+// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): reads the names from the exported
+// bundle.
 package eu.europa.ec.ux.runtime
 
 import eu.europa.ec.ux.runtime.engine.ServiceResult
@@ -29,7 +30,7 @@ import kotlin.test.assertTrue
  * result of the bundle. The repo-wide KC1 grep (SPIKE-PLAN §3) covers the other modules; this one also catches
  * state and event names, which that grep does not look for. Host only: it reads the source tree.
  */
-class ProvisionalRuntimeLiteralGuardTest {
+class RuntimeLiteralGuardTest {
 
     private val main: File = listOf(File("src/commonMain/kotlin"), File("ux-runtime/src/commonMain/kotlin")).first { it.isDirectory }
 

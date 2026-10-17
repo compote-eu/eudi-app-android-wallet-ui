@@ -14,7 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M5b): copy resolution over the boundary fixture's copy table; re-run on ux-spec/resources in M6.
+// M5b, re-run at M6a on the real export (was provisional on the boundary fixture): copy resolution over the exported
+// bundle's copy table.
 package eu.europa.ec.ux.runtime.screen
 
 import eu.europa.ec.ux.runtime.engine.FlowLog
@@ -27,7 +28,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /** Boundary §1.8: brand override first, positional placeholders in `placeholders` order, a gap drawn as ⟦key⟧. */
-class ProvisionalCopyResolverTest {
+class CopyResolverTest {
     private val lines = mutableListOf<String>()
     private val provider = TestCopy.provider(Fixture.root)
     private val copy = (Fixture.root["copy"] as JsonObject)

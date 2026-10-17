@@ -13,7 +13,15 @@
  * ANY KIND, either express or implied. See the Licence for the specific language
  * governing permissions and limitations under the Licence.
  */
-// PROVISIONAL (M7): see ProvisionalStateChangeA11yScenario.
-package eu.europa.ec.ux.runtime.a11y
 
-class ProvisionalStateChangeA11yIosTest : ProvisionalStateChangeA11yScenario()
+// M5b, re-run at M6a on the real export (was provisional on the boundary fixture): see InterpreterScenario.
+package eu.europa.ec.ux.runtime.screen
+
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/** The interpreter tests on the Android host (Robolectric hosts the Compose UI test environment). */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class InterpreterAndroidTest : InterpreterScenario()

@@ -14,7 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): the P4 round trip on the boundary fixture; re-run on the real export in M6.
+// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): the P4 round trip on the exported
+// bundle.
 package eu.europa.ec.ux.runtime.host
 
 import androidx.lifecycle.SavedStateHandle
@@ -52,7 +53,7 @@ import kotlin.test.assertNull
  * abandons. The platform subclasses supply the real saved-state round trip.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-abstract class ProvisionalFlowViewModelSavedStateScenario {
+abstract class FlowViewModelSavedStateScenario {
 
     /** Saves [handle] through its saved-state provider, as the platform does at process death, and restores it. */
     abstract fun processDeath(handle: SavedStateHandle): SavedStateHandle

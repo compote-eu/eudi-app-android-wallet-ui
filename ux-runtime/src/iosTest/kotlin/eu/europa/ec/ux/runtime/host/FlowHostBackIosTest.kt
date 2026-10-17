@@ -14,7 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): FlowHost back wiring on the boundary fixture; re-run on the real export in M6.
+// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): FlowHost back wiring on the exported
+// bundle.
 package eu.europa.ec.ux.runtime.host
 
 import androidx.compose.runtime.CompositionLocalProvider
@@ -42,7 +43,7 @@ import kotlin.test.assertTrue
  * request = REJECT (cancelled), auth = back to request, sending = blocked (handler still enabled, one send).
  */
 @OptIn(ExperimentalTestApi::class)
-class ProvisionalFlowHostBackIosTest {
+class FlowHostBackIosTest {
 
     private class Recorder {
         var enabled = false

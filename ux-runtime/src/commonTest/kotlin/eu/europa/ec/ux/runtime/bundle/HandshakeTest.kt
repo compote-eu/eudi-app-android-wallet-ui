@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-// H1-H12 of spike-contract-boundary.md §4 (M1b, on the PROVISIONAL fixture), re-run at M6a on the real export.
+// H1-H12 of spike-contract-boundary.md §4 (M1b, on the provisional fixture), re-run at M6a on the real export.
 package eu.europa.ec.ux.runtime.bundle
 
 import eu.europa.ec.ux.runtime.engine.AbandonReason

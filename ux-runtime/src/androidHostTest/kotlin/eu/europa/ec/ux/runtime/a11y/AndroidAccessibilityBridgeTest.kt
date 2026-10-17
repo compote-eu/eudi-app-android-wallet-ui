@@ -13,7 +13,7 @@
  * ANY KIND, either express or implied. See the Licence for the specific language
  * governing permissions and limitations under the Licence.
  */
-// PROVISIONAL (M7): the Android actual of AccessibilityBridge with the view's announcement replaced by a recorder.
+// M7: the Android actual of AccessibilityBridge with the view's announcement replaced by a recorder (no bundle).
 package eu.europa.ec.ux.runtime.a11y
 
 import kotlinx.coroutines.test.runTest

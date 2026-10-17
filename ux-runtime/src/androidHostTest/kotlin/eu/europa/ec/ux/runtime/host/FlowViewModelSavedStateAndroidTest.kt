@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): P4 on Android; re-run on the real export in M6.
+// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): P4 on Android.
 package eu.europa.ec.ux.runtime.host
 
 import androidx.lifecycle.SavedStateHandle
@@ -26,7 +26,7 @@ import org.robolectric.RobolectricTestRunner
  * [SavedStateHandle.createHandle], the path the framework takes after process death.
  */
 @RunWith(RobolectricTestRunner::class)
-class ProvisionalFlowViewModelSavedStateAndroidTest : ProvisionalFlowViewModelSavedStateScenario() {
+class FlowViewModelSavedStateAndroidTest : FlowViewModelSavedStateScenario() {
     override fun processDeath(handle: SavedStateHandle): SavedStateHandle =
         SavedStateHandle.createHandle(handle.savedStateProvider().saveState(), null)
 }

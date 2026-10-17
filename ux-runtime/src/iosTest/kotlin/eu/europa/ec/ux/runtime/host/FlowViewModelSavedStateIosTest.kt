@@ -14,14 +14,14 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): P4 on iOS; re-run on the real export in M6.
+// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): P4 on iOS.
 package eu.europa.ec.ux.runtime.host
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.savedstate.read
 
 /** The iOS saved state is a plain Kotlin map, so the round trip is the provider's output read back into a handle. */
-class ProvisionalFlowViewModelSavedStateIosTest : ProvisionalFlowViewModelSavedStateScenario() {
+class FlowViewModelSavedStateIosTest : FlowViewModelSavedStateScenario() {
     override fun processDeath(handle: SavedStateHandle): SavedStateHandle =
         SavedStateHandle(handle.savedStateProvider().saveState().read { toMap() })
 }

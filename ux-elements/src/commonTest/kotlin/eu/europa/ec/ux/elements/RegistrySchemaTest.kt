@@ -155,6 +155,9 @@ class RegistrySchemaTest {
                 "boundary 1.7 record field: `photo` draws the photo placeholder",
             "EL-attribute-list.items: library prop 'requirement_label' is not in the registry" to
                 "GAP: the registry uses the list-level mandatory_label/optional_label; a per-item tag text is not drawn",
+            "EL-rp-identity: library prop 'logo' is not in the registry" to
+                "GAP until M8 D8-logo (M6a): the generic optional image prop of week-0 X15 / RULING-W1; no node of the " +
+                "export binds it, and adding it is what the D8-logo drill measures",
         )
     }
 }

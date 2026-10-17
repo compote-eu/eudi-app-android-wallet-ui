@@ -13,7 +13,8 @@
  * ANY KIND, either express or implied. See the Licence for the specific language
  * governing permissions and limitations under the Licence.
  */
-// PROVISIONAL (M7): FlowHost-level D7 checks on the boundary fixture; re-run on the real export in M6.
+// M7, re-run at M6a on the real export (was provisional on the boundary fixture): FlowHost-level D7 checks on the
+// exported bundle.
 package eu.europa.ec.ux.runtime.a11y
 
 import androidx.compose.runtime.CompositionLocalProvider
@@ -67,10 +68,10 @@ class RecordingBridge : AccessibilityBridge {
 /**
  * D7 at FlowHost level (M7, KC3): real state transitions driven through the engine and the fake port, asserting the
  * bridge calls (a recording fake) and the semantics tree after each settle. Expected texts and node ids are read from
- * the bundle (screen `a11y` and the `_sk` copy), so no test names a screen id. Replaces the same-node checks of M5.
+ * the bundle (screen `a11y` and the exported copy), so no test names a screen id. Replaces the same-node checks of M5.
  */
 @OptIn(ExperimentalTestApi::class)
-abstract class ProvisionalStateChangeA11yScenario {
+abstract class StateChangeA11yScenario {
 
     private val bridge = RecordingBridge()
     private val lines = mutableListOf<String>()
@@ -105,7 +106,7 @@ abstract class ProvisionalStateChangeA11yScenario {
     private fun tree(bundle: FlowBundle, state: String): ScreenTree =
         ScreenCatalog(bundle).screens.getValue(bundle.state(state).screen!!)
 
-    /** What the node says, from the bundle: its `{copy}` props without placeholders, `_sk` text, joined. */
+    /** What the node says, from the bundle: its `{copy}` props without placeholders, their exported text, joined. */
     private fun spoken(tree: ScreenTree, node: String): String =
         tree.node(node)!!.props.values.mapNotNull { v -> ((v as? JsonObject)?.get("copy") as? JsonPrimitive)?.content }
             .mapNotNull { TestCopy.sk(Fixture.root, it) }.joinToString(". ")

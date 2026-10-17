@@ -14,8 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M5b): the interpreter on the boundary fixture and its offline-loading test copy; re-run on the real
-// export in M6.
+// M5b, re-run at M6a on the real export (was provisional on the boundary fixture): the interpreter on the exported
+// bundle and its offline-loading test copy.
 package eu.europa.ec.ux.runtime.screen
 
 import androidx.compose.foundation.clickable
@@ -76,7 +76,7 @@ import kotlin.test.assertTrue
  * test (ii): a state that exists only in a test copy of the bundle renders and transitions with no Kotlin change.
  */
 @OptIn(ExperimentalTestApi::class)
-abstract class ProvisionalInterpreterScenario {
+abstract class InterpreterScenario {
 
     private val lines = mutableListOf<String>()
     private val log = FlowLog { lines += it }

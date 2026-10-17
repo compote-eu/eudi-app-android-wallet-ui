@@ -186,6 +186,9 @@
     "caption": {
      "type": "text"
     },
+    "logo": {
+     "type": "url"
+    },
     "name": {
      "type": "text"
     },
@@ -273,7 +276,7 @@
   }
  },
  "library_dirty": false,
- "source_commit": "ec5e58e3def93cfbd3ba846005ccd3e2c13f53ba",
+ "source_commit": "3d6ecb6e601bae931ce5f6f55be216cf841c0817",
  "source_dir": "ux/library",
  "source_repo": "dvm-edoklady-eudiw-analysis",
  "templates": {

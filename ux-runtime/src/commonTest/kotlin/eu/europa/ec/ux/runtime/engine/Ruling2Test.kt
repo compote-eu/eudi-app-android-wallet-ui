@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): RULING-2 on the boundary fixture; re-run on the real export in M6.
+// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): RULING-2 on the exported bundle.
 package eu.europa.ec.ux.runtime.engine
 
 import eu.europa.ec.ux.runtime.bundle.LoadResult
@@ -45,7 +45,7 @@ import kotlin.test.assertTrue
  * `Error` result with payload `{class: unexpected}` and follows the state's declared error branch. A state-scoped
  * invoke without an error branch refuses the bundle at load.
  */
-class ProvisionalRuling2Test {
+class Ruling2Test {
 
     private val error = ServiceResult.UNEXPECTED_ERROR_TYPE
 

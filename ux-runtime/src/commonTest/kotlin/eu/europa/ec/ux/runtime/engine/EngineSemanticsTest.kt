@@ -14,7 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M1b): guards, assign-then-guard and derive on the boundary fixture's request family (L58 fix).
+// M1b, re-run at M6a on the real export (was provisional on the boundary fixture): guards, assign-then-guard and derive
+// on the exported bundle's request family (L58 fix).
 package eu.europa.ec.ux.runtime.engine
 
 import eu.europa.ec.ux.runtime.support.Results
@@ -35,7 +36,7 @@ import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class ProvisionalEngineSemanticsTest {
+class EngineSemanticsTest {
 
     @Test
     fun theRequestFamilyFollowsTheSelection() = runTest {
