@@ -1,0 +1,13 @@
+diff --git a/ux/product/export/kmp.yaml b/ux/product/export/kmp.yaml
+index 29b9fa4..8ea8454 100644
+--- a/ux/product/export/kmp.yaml
++++ b/ux/product/export/kmp.yaml
+@@ -5,7 +5,7 @@ targets:
+   FLW-pres-cross-device:
+     description: "Spike slice (spike-brief §3): brand eudiw_v1 (ruled 2026-10-16) with the idsk switch (track B), locale sk, modes light and high-contrast (R11; dark out of scope)"
+     brands: [eudiw_v1, idsk]
+-    default_brand: eudiw_v1
++    default_brand: idsk
+     locale: sk
+     modes: [light, high-contrast]
+     # OR-8 (owner, 2026-10-17): Home as a complete generated screen, a probe with no dashboard flow (DEC-080, provisional).

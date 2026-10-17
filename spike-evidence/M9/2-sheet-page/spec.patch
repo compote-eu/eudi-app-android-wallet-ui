@@ -1,0 +1,21 @@
+diff --git a/ux/product/theme/eudiw_v1/components.yaml b/ux/product/theme/eudiw_v1/components.yaml
+index 9278033..cd68268 100644
+--- a/ux/product/theme/eudiw_v1/components.yaml
++++ b/ux/product/theme/eudiw_v1/components.yaml
+@@ -9,5 +9,6 @@ styles:
+   EL-segmented-switch: {selected: plain}
+   EL-status-chip: {mark: dot, ring: ring}   # DEC-052 (dot mark), DEC-053 (ring)
+ layouts:
++  TPL-sheet: {decision-steps: page}   # D9 option 2
+   TPL-detail: {composition: cards}   # DEC-054 (document detail as cards; scope SCR-doc-detail)
+   TPL-list: {groups: cards}          # DEC-059 (heading and rows as one card; scope SCR-doc-add, SCR-log; DEC-065 amendment b)
+diff --git a/ux/product/theme/idsk/components.yaml b/ux/product/theme/idsk/components.yaml
+index 7d54d7b..9c8aed2 100644
+--- a/ux/product/theme/idsk/components.yaml
++++ b/ux/product/theme/idsk/components.yaml
+@@ -2,3 +2,5 @@
+ # element's default (G3 lists them). The brand names its product profile (content choices, product/profiles/, layer C).
+ brand: idsk
+ profile: PRF-dvm   # content choices — owned by product, gated by G4
++layouts:
++  TPL-sheet: {decision-steps: page}   # D9 option 2

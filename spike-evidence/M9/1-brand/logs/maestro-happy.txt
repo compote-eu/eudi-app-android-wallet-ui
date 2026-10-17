@@ -1,0 +1,28 @@
+Running on iPhone 17 - iOS 27.0 - 3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA
+ > Flow m5b-happy
+Open ${LINK}... COMPLETED
+Tap on (Optional) "Open"... WARNED
+Run flow when id: pin_text_field_0 is visible...
+Run flow when id: pin_text_field_0 is visible... SKIPPED
+Assert that (Optional) id: ux-state-connecting is visible... WARNED
+Take screenshot d6-happy-1-connecting-or-request... COMPLETED
+Assert that id: ux-state-request is visible... COMPLETED
+Assert that id: attributes is visible... COMPLETED
+Take screenshot d6-happy-2-request... COMPLETED
+Tap on id: continue... COMPLETED
+Assert that (Optional) id: ux-state-auth is visible... COMPLETED
+Take screenshot d6-happy-2b-auth... COMPLETED
+Assert that id: ux-state-verification-code is visible... COMPLETED
+Assert that id: code is visible... COMPLETED
+Assert that "482 913" is visible... COMPLETED
+Take screenshot d6-happy-3-verification-code... COMPLETED
+Tap on id: confirm... COMPLETED
+Assert that id: ux-state-sending is visible... COMPLETED
+Take screenshot d6-happy-4-sending... COMPLETED
+Assert that id: ux-state-success is visible... COMPLETED
+Assert that id: close is visible... COMPLETED
+Take screenshot d6-happy-5-success... COMPLETED
+Tap on id: close... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Assert that id: ux-state-success is not visible... COMPLETED
+Take screenshot d6-happy-6-home... COMPLETED

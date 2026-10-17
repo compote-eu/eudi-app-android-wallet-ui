@@ -1,10 +1,10 @@
 {
   "brands": [
-    "eudiw_v1",
-    "idsk"
+    "idsk",
+    "eudiw_v1"
   ],
   "bundle_schema_version": 1,
-  "default_brand": "eudiw_v1",
+  "default_brand": "idsk",
   "exporter": {
     "path": "tools/export_kmp.py",
     "version": "0.5.0"
@@ -13,92 +13,72 @@
     {
       "bytes": 3814,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceEvent.kt",
-      "sha256": "66290d6fd6e74cdd08627ea7b88fb5407b24216f08d24a8e9c868f8bf01e3673"
+      "sha256": "e68362ac7f6e09ab243952a33fc16ff8853bb5c7526c74ff72f99b269f3e4920"
     },
     {
       "bytes": 1579,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceExit.kt",
-      "sha256": "82f9ddc16c1ab5fbddb311332debecb804164feb68e6c79cb55961d1641f1a97"
+      "sha256": "cbbc8da77ef330bdd8ac3a223e5c924ffa26e80cd669167c3e9085a41bc5ddc4"
     },
     {
       "bytes": 2389,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceInvoker.kt",
-      "sha256": "34fe7f280b94570630aabb079276742af92d56ef0a17543976d74bdf945f79a7"
+      "sha256": "04f95b7dcbf91b8a347c71583471fc6b4bce9a7b7503cfb496671fad46c0f8e7"
     },
     {
       "bytes": 6021,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceServiceResults.kt",
-      "sha256": "05d8c87592ad8e82077559bb74158d83bd457058c92541854c33b31033d040d3"
+      "sha256": "25b348e9caa66b24f697f7f10e91a8798666d49f229ec9735ee6b805d650173b"
     },
     {
       "bytes": 4474,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceServices.kt",
-      "sha256": "598877d7ea86985d78127860eadfa05303e7e763975fc7e00dd21110c114f3eb"
+      "sha256": "5cac535bb2ab0db1bb726715cee2ab9d507f6febceffb5a5b426d93b9f3ef897"
     },
     {
       "bytes": 753,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceSpec.kt",
-      "sha256": "07d01445830c63e229e836b2a40e0ca3cba8c7725b060c23cc4b7de075e4d928"
+      "sha256": "036d18959b6274ac5e9ce6018c6d58967874459b407420b60b89ef528a173a2b"
     },
     {
       "bytes": 3690,
       "path": "contract/kotlin/eu/europa/ec/ux/contract/pres/PresCrossDeviceState.kt",
-      "sha256": "8a94cd76248d89f152064744f4239f85d9a19ab6fd304119d47e1c5f1118ba12"
+      "sha256": "60a2e3f224170dd12a23a1b98d8969b979e72bf7885e4eeb55cfea5777ab00e6"
     },
     {
       "bytes": 129478,
       "path": "fixtures/model/FLW-pres-cross-device.model.json",
-      "sha256": "3e54ff972dcb857d6cf9b33da1a3cd3f8e1f1665a180bb7074da8af69f14b562"
+      "sha256": "c05feb6b332d19392a4d4b8606a971106a97ae387ffacd30e30b5c4d0e33fa84"
     },
     {
       "bytes": 330,
       "path": "fixtures/scripts/doc-missing.json",
-      "sha256": "b31d86d944b9096b6d0f742796d605d5202a4976d9fc26f06c45a6ff7b17e690"
+      "sha256": "16782f6ad25d0d69e5de8425127f23f84ec2e5e79c5f462cbcf63e3cb6722b36"
     },
     {
       "bytes": 390,
       "path": "fixtures/scripts/expired-at-request.json",
-      "sha256": "cab0b8c4473620bd0a1eb59f2c3e85d5e4322dc3aa3f59a17e558f9126ba4a1b"
+      "sha256": "6f091a28e08bb43d49b0d11f766bf4da2149d345465909197413bd9940b238db"
     },
     {
       "bytes": 2221,
       "path": "fixtures/scripts/expired-at-sending.json",
-      "sha256": "9e102ce548f157f782b19db2fd31900290ea829ea70f218383abf0e27af08835"
+      "sha256": "f1d98cf2c57ffd1648edd4cae114f2edf0ed7d5407090fd8a0d4ae933f8362bf"
     },
     {
       "bytes": 2304,
       "path": "fixtures/scripts/happy.json",
-      "sha256": "982e9269f216aa7ec8059b074468f8eb4a8df452da5439cb199a71387d6ed8f7"
+      "sha256": "180f55305e525b6a281374d08219614d30cfb3d042f6b8bc8143eea2a9bdf503"
     },
     {
       "bytes": 2308,
       "path": "fixtures/scripts/slow.json",
-      "sha256": "87d8498db4bc0013c343092c9d5e2d0876e0444f819fdc255b87ce2aba1d6c99"
+      "sha256": "cb643bb58951e0d4a9670e05cd55dccd4dca3af69ad5519a8ebf257cdc90f43a"
     },
     {
       "bytes": 1459,
       "path": "fixtures/scripts/untrusted.json",
-      "sha256": "55d850bae32609e03820f853f2f3a5c6ed5871b47011d526eecb11a8e5d6077d"
-    },
-    {
-      "bytes": 902350,
-      "path": "resources/drawable/ux_eudiw_v1_document_art_driving_licence.png",
-      "sha256": "71454057223f6830b1bc4f00ed7f747e8f0f5310bf1a38c2eb6d087cbc81448e"
-    },
-    {
-      "bytes": 841565,
-      "path": "resources/drawable/ux_eudiw_v1_document_art_id_card.png",
-      "sha256": "fac58e89f9e88aac1310628c74bc9c782c635ea8185a391fa35a23f46b2c6854"
-    },
-    {
-      "bytes": 23526,
-      "path": "resources/drawable/ux_eudiw_v1_document_art_pid.svg",
-      "sha256": "5f9c82708a36687c941aa55b92b420a9bab331fbc11976bfd4f4a90d4a65db4c"
-    },
-    {
-      "bytes": 527,
-      "path": "resources/drawable/ux_eudiw_v1_icon_add.xml",
-      "sha256": "c7cf4c97a1f6ce09ab86a410c80355617a2e25284e4f4c1d96b321c57c8dd8d9"
+      "sha256": "917ef34ec2b13bfb20133605e979769d3916a273371dccf0a664f2cfe9fb1ea1"
     },
     {
       "bytes": 773,
@@ -106,19 +86,9 @@
       "sha256": "770036013934187a8838c95d347db0316f83464b0d3319aecf3f37a89e07296f"
     },
     {
-      "bytes": 535,
-      "path": "resources/drawable/ux_eudiw_v1_icon_arrow_forward_ios.xml",
-      "sha256": "004919e12059e8e73b7d1da380535f36621e341d21bca5ed86899f4baa634d02"
-    },
-    {
       "bytes": 532,
       "path": "resources/drawable/ux_eudiw_v1_icon_check.xml",
       "sha256": "fef2f08faeb1877525a8b196fe5e095e354cb8a11c6bfbb08d6b9da2cc2460ee"
-    },
-    {
-      "bytes": 817,
-      "path": "resources/drawable/ux_eudiw_v1_icon_check_circle.xml",
-      "sha256": "41d7c0ebf8655e4fea9544c22c82867a4b2386a33b4c55f3b23a411656c1c295"
     },
     {
       "bytes": 533,
@@ -131,11 +101,6 @@
       "sha256": "9cdecc7a1a65337af894814ac7236b0d544151580d9452a30f3baf2c266a1b05"
     },
     {
-      "bytes": 778,
-      "path": "resources/drawable/ux_eudiw_v1_icon_cloud.xml",
-      "sha256": "025aad1e8ee4ee14544c07b002a350a1bdae80ed051a37bcef8f61a1450e086b"
-    },
-    {
       "bytes": 702,
       "path": "resources/drawable/ux_eudiw_v1_icon_content_content_copy.xml",
       "sha256": "c17248e81eb84627b3b0f7081d74766533190d1b7b124e69f1673139686e4632"
@@ -144,21 +109,6 @@
       "bytes": 892,
       "path": "resources/drawable/ux_eudiw_v1_icon_error_outline.xml",
       "sha256": "f0b6bb07f80b96abcd414e5e83d9274d8b52e7c121ab0d144fb835bbfb6b3901"
-    },
-    {
-      "bytes": 862,
-      "path": "resources/drawable/ux_eudiw_v1_icon_highlight_off.xml",
-      "sha256": "54217365b05aedf7b0c004c7cb80e7954dfb5af06a01f2596b16012345497bfd"
-    },
-    {
-      "bytes": 1782,
-      "path": "resources/drawable/ux_eudiw_v1_icon_icon_case.xml",
-      "sha256": "3aa6757142d069dfcd354da36bae2a982df850a5caa0ca8dd30a36c051d6a927"
-    },
-    {
-      "bytes": 1623,
-      "path": "resources/drawable/ux_eudiw_v1_icon_icon_id_card.xml",
-      "sha256": "16d99b51aa4fa44eea3686b394e28fa4e5ab3f30966ea87ee4b17183830aaaba"
     },
     {
       "bytes": 881,
@@ -189,11 +139,6 @@
       "bytes": 608,
       "path": "resources/drawable/ux_eudiw_v1_icon_priority_high.xml",
       "sha256": "2326eb409bd81d54d863d8c0b7b720e6bd1231e108bb31c197f1ffab19694d7b"
-    },
-    {
-      "bytes": 799,
-      "path": "resources/drawable/ux_eudiw_v1_icon_smartphone.xml",
-      "sha256": "e41a00f977fab7eda9ab4034f6cc7b0321004512e70f845a6b367eb73fcc51ee"
     },
     {
       "bytes": 796,
@@ -241,9 +186,19 @@
       "sha256": "770036013934187a8838c95d347db0316f83464b0d3319aecf3f37a89e07296f"
     },
     {
+      "bytes": 535,
+      "path": "resources/drawable/ux_idsk_icon_arrow_forward_ios.xml",
+      "sha256": "004919e12059e8e73b7d1da380535f36621e341d21bca5ed86899f4baa634d02"
+    },
+    {
       "bytes": 532,
       "path": "resources/drawable/ux_idsk_icon_check.xml",
       "sha256": "fef2f08faeb1877525a8b196fe5e095e354cb8a11c6bfbb08d6b9da2cc2460ee"
+    },
+    {
+      "bytes": 817,
+      "path": "resources/drawable/ux_idsk_icon_check_circle.xml",
+      "sha256": "41d7c0ebf8655e4fea9544c22c82867a4b2386a33b4c55f3b23a411656c1c295"
     },
     {
       "bytes": 533,
@@ -256,6 +211,11 @@
       "sha256": "9cdecc7a1a65337af894814ac7236b0d544151580d9452a30f3baf2c266a1b05"
     },
     {
+      "bytes": 778,
+      "path": "resources/drawable/ux_idsk_icon_cloud.xml",
+      "sha256": "025aad1e8ee4ee14544c07b002a350a1bdae80ed051a37bcef8f61a1450e086b"
+    },
+    {
       "bytes": 702,
       "path": "resources/drawable/ux_idsk_icon_content_content_copy.xml",
       "sha256": "c17248e81eb84627b3b0f7081d74766533190d1b7b124e69f1673139686e4632"
@@ -264,6 +224,11 @@
       "bytes": 892,
       "path": "resources/drawable/ux_idsk_icon_error_outline.xml",
       "sha256": "f0b6bb07f80b96abcd414e5e83d9274d8b52e7c121ab0d144fb835bbfb6b3901"
+    },
+    {
+      "bytes": 862,
+      "path": "resources/drawable/ux_idsk_icon_highlight_off.xml",
+      "sha256": "54217365b05aedf7b0c004c7cb80e7954dfb5af06a01f2596b16012345497bfd"
     },
     {
       "bytes": 881,
@@ -296,6 +261,16 @@
       "sha256": "2326eb409bd81d54d863d8c0b7b720e6bd1231e108bb31c197f1ffab19694d7b"
     },
     {
+      "bytes": 797,
+      "path": "resources/drawable/ux_idsk_icon_qr_code.xml",
+      "sha256": "4aa3099640a48fcd37aabea29f031df2bff7fa603e1e3f2b554c14e67445d2d5"
+    },
+    {
+      "bytes": 799,
+      "path": "resources/drawable/ux_idsk_icon_smartphone.xml",
+      "sha256": "e41a00f977fab7eda9ab4034f6cc7b0321004512e70f845a6b367eb73fcc51ee"
+    },
+    {
       "bytes": 796,
       "path": "resources/drawable/ux_idsk_icon_update.xml",
       "sha256": "462963623c4a80daa5f67d47c894c537c270d64d0821d6c2972d39a4e848c96e"
@@ -311,54 +286,59 @@
       "sha256": "33f1fa776d47883ee6e827f729ce62e569334edb978a61c0a4436c42319a541c"
     },
     {
-      "bytes": 134638,
+      "bytes": 20712,
+      "path": "resources/drawable/ux_idsk_trust_mark_colour.jpg",
+      "sha256": "5e00983bca6e46dedc7a13a11bfc5c73d0001384a87267df6738e05e9cfb37ba"
+    },
+    {
+      "bytes": 134634,
       "path": "resources/files/FLW-pres-cross-device.bundle.json",
-      "sha256": "5b288b20664db432f48f3afd00f00f23419175927c57d6f8f449fc604f025beb"
+      "sha256": "b6714c394bf09ff67c4ead79907339775fae1764e6f8908ffb41f4e6910ce2b2"
     },
     {
-      "bytes": 51095,
+      "bytes": 49550,
       "path": "resources/files/SCR-home.probe.json",
-      "sha256": "19cb6744132d91f2397009e83d43a1872b48eaf116f47bd35a50438f8b909ebb"
+      "sha256": "91e0ad494640b75abb71d4e464616fd51967c137dccf6b974b50632a0f160389"
     },
     {
-      "bytes": 23818,
+      "bytes": 22559,
       "path": "resources/files/ux-assets.json",
-      "sha256": "fc19d433cf1c40c84d79228077be42c8fadaad14fe2ccd6d5441d8f855d24e63"
+      "sha256": "4b7a768634d533557a1715b2fa1735cafb67a149676fcded80e77565a45dd9a1"
     },
     {
       "bytes": 41299,
       "path": "resources/files/ux-library.json",
-      "sha256": "cc812d20e8f9c0995cc51c53f829a00a5caeda68a7f630390d99718b47fe1927"
+      "sha256": "264651aaa22fccc28a9879ef86abe57b83d0c6a625f54cb936fd9838c9e04da2"
     },
     {
       "bytes": 545658,
       "path": "resources/files/ux-tokens.json",
-      "sha256": "be0d4575da79a10e0b7cf848a67d8d626f5b16d67520f6c6b88cdea587d98001"
+      "sha256": "ad64e0dc8fdd428ec0d62c8d798f426a358e732d2c0aa27c2b95b01d9f0b14f6"
     },
     {
-      "bytes": 11130,
+      "bytes": 10900,
       "path": "resources/values/strings.xml",
-      "sha256": "8c9b649901fec8eff459c5aa8e7b8391513b1cd37c2ab694168eb5e5cacf9b64"
+      "sha256": "0eda7b2d7e5d567de5ba9b970a031b26e0f587e5c593934e5be34b8d3a494690"
     },
     {
-      "bytes": 1649,
+      "bytes": 1391,
       "path": "services-contract.changes.json",
-      "sha256": "c5eb301f40ec09df9b5a8d5d38474a4af529e0244cab33f17f65e8350d25aa18"
+      "sha256": "0b3a266f4da3c16fadaecaecb182547fc5832d95132dec342635642044c02d1a"
     },
     {
-      "bytes": 1910,
+      "bytes": 1903,
       "path": "theme/kotlin/eu/europa/ec/ux/theme/generated/UxBrandConfig.kt",
-      "sha256": "a605aae364a17ba65d5edb949ec1dc0936793e6775b5318a7d25be205babd0fc"
+      "sha256": "57ef2433d328c14779487ef1af2261535c433bec06975f0bd4dabdc49f6b556c"
     },
     {
       "bytes": 43575,
       "path": "theme/kotlin/eu/europa/ec/ux/theme/generated/UxBrandTokens.kt",
-      "sha256": "e20943f8f03eb205696452b759d18e76ffdbd2dd5bb68938764b5f52ea830b21"
+      "sha256": "bb49ff73e62a127aceefb857686bb350863acb086e025204971dcc8926693baa"
     },
     {
       "bytes": 386,
       "path": "theme/kotlin/eu/europa/ec/ux/theme/generated/UxThemeSpec.kt",
-      "sha256": "a9af67a2ce35002aa897946ebc1c1cac1b1520a9c2b263160526851878dcb6f5"
+      "sha256": "040ba3cdfcc30330125613c8d7ef1fcf086b9ef3b939e97ec3cb246f26f23aea"
     }
   ],
   "flows": [
@@ -367,8 +347,8 @@
   "gates": {
     "a11y": {
       "renders": 352,
-      "source": "check",
-      "tree_hash": "sha256:c8aea1da5b36d2a098074aef5fb6b7a7a222a48cbdac260b6372094f8a6d666d",
+      "source": "slice-render",
+      "tree_hash": "sha256:1445bc7ee585de41c223fc5ab75d02db5cfad8be6fe07ca7aa975bfba4d17934",
       "violations": 0
     },
     "g4_profiles": {
@@ -387,9 +367,9 @@
     "SCR-home"
   ],
   "services_contract": {
-    "contract_change": "none",
+    "contract_change": "initial",
     "digest": "sha256:6f3922758d0bfc8e4d5c7cf53705467ae7d8e09a9decba7a2c3344e756a4fb16",
-    "previous_version": "1.0.0",
+    "previous_version": null,
     "surface": {
       "authenticate": {
         "args": {},
@@ -670,18 +650,6 @@
   },
   "sources": [
     {
-      "path": "../inputs/ux/edoklady-design/assets/document-art/01-id-150dpi.png",
-      "sha256": "fac58e89f9e88aac1310628c74bc9c782c635ea8185a391fa35a23f46b2c6854"
-    },
-    {
-      "path": "../inputs/ux/edoklady-design/assets/document-art/02-dl-150dpi.png",
-      "sha256": "71454057223f6830b1bc4f00ed7f747e8f0f5310bf1a38c2eb6d087cbc81448e"
-    },
-    {
-      "path": "../inputs/ux/edoklady-design/assets/icons/add.svg",
-      "sha256": "e9532de2b9be01ce951e899e98ee673bb97acd574f0db118feb72fe074a1c376"
-    },
-    {
       "path": "../inputs/ux/edoklady-design/assets/icons/apartment.svg",
       "sha256": "b13f84bafce194ad836ba6e3f5cc62723d35c6f07db597ff37a1368feeedb2d4"
     },
@@ -714,14 +682,6 @@
       "sha256": "1f12eb865f787d805c0611ad9a4db706e2201cfc6d480a0d083bd2235425d07e"
     },
     {
-      "path": "../inputs/ux/edoklady-design/assets/icons/icon-case.svg",
-      "sha256": "6ad26ac0e4b0111be140de7193d2c439cc5839438655429d50c2b574c84ac43c"
-    },
-    {
-      "path": "../inputs/ux/edoklady-design/assets/icons/icon-id-card.svg",
-      "sha256": "15b484d7473628ed578e1c79d4e82e9071289fc89c477b9411ca0011b08969ad"
-    },
-    {
       "path": "../inputs/ux/edoklady-design/assets/icons/info.svg",
       "sha256": "33c77c7a4f193445d0136b970ad4b5a80ba8cc340603465d4cb46a1f8abec4ec"
     },
@@ -744,6 +704,10 @@
     {
       "path": "../inputs/ux/edoklady-design/assets/icons/priority-high.svg",
       "sha256": "3ff1e4546f4ec678ff6f63ec22a664e1702987394067052afc314b84b33a689b"
+    },
+    {
+      "path": "../inputs/ux/edoklady-design/assets/icons/qr-code.svg",
+      "sha256": "1befe595a6f699e1646e386a69e0df0d7c93ef791cbc914746e671a15285fb19"
     },
     {
       "path": "../inputs/ux/edoklady-design/assets/icons/update.svg",
@@ -774,6 +738,10 @@
       "sha256": "38d1a7d17cdf95049884e54d321f6f74a3129c862ff522546fdfdd6b7cdcfe83"
     },
     {
+      "path": "../inputs/ux/edoklady-design/assets/trust-mark/annex-vi-colour.jpg",
+      "sha256": "5e00983bca6e46dedc7a13a11bfc5c73d0001384a87267df6738e05e9cfb37ba"
+    },
+    {
       "path": "../inputs/ux/material-symbols/check.svg",
       "sha256": "01edd53418816632be08e9565b8ca40d9028c230a8a67baaf4b8a1de20db00e6"
     },
@@ -788,10 +756,6 @@
     {
       "path": "../inputs/ux/material-symbols/verified-user.svg",
       "sha256": "abd70cab16bbd9d08b455421d32d7fbb6aa5b24c87403ce0dd333109db313752"
-    },
-    {
-      "path": "../inputs/ux/synthetic-art/pid.svg",
-      "sha256": "5f9c82708a36687c941aa55b92b420a9bab331fbc11976bfd4f4a90d4a65db4c"
     },
     {
       "path": "experience/flows/FLW-pres-cross-device.yaml",
@@ -979,7 +943,7 @@
     },
     {
       "path": "product/export/kmp.yaml",
-      "sha256": "b84620403064e751f74aaa7b8b5ec33c4c0ef38bf84a654c3be26a77f7660787"
+      "sha256": "cccf5abe172c04b895377011f4f574acc8a8782295b684e90b68960f41ec76ac"
     },
     {
       "path": "product/profiles/PRF-dvm.yaml",
@@ -1234,7 +1198,7 @@
       "sha256": "bdfb33e7a9bab6442b35c58f21d0e7fbbb60128a39290ee8f55761b9dcf61958"
     }
   ],
-  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
+  "spec_hash": "sha256:73d76c21f959f25519263947e01899daa6a763b04f71e919c2333d8b3838dc4b",
   "token_coverage": {
     "baseline": "process/kmp-token-coverage.yaml",
     "consumed_in_scope": 575,
@@ -1290,7 +1254,7 @@
       }
     }
   },
-  "ux_commit": "b55be659455f936456632cea230d6fc0ee58f9c5",
+  "ux_commit": "a0aeba391f1699eef47ffc051e86e72da1ec4dd8",
   "ux_dirty": false,
   "ux_repo": "dvm-edoklady-eudiw-analysis"
 }
