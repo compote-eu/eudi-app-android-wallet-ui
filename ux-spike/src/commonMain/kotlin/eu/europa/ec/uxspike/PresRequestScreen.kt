@@ -14,8 +14,8 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M5b): written against the provisional contract copy (ux-contract/provisional); re-checked against
-// the generated contract at M6.
+// Hand-written against the generated contract (ux-spec/contract, brief §6.6); written in M5b against the provisional
+// copy, re-checked at M6a (one change: the verifier name is nullable, V14).
 package eu.europa.ec.uxspike
 
 import androidx.compose.foundation.layout.Box
@@ -71,7 +71,7 @@ object PresRequestScreenIds {
 private val snapshotJson = Json { ignoreUnknownKeys = true }
 
 /**
- * SCR-pres-request (consent), PROVISIONAL. It reads the runtime-built consent snapshot as the typed
+ * SCR-pres-request (consent). It reads the runtime-built consent snapshot as the typed
  * [PresRequestData] and the typed [PresRequestUiState], and sends intents only (`TOGGLE_ITEM`, `CONTINUE`, `REJECT`):
  * selection, the no-selection error and every transition stay in the flow. It registers no back handler.
  */
@@ -111,7 +111,7 @@ fun PresRequestScreen(scope: ScreenScope) {
             }
             UxRpIdentity(
                 id = if (untrusted) "rp-untrusted" else "rp-trusted",
-                name = data.verifier.name,
+                name = data.verifier.name.orEmpty(),
                 trust = if (untrusted) UxTrust.Untrusted else UxTrust.Trusted,
                 trustLabel = scope.copy(if (untrusted) "CPY-pres-request-trust-untrusted" else "CPY-pres-request-trust-trusted"),
                 caption = scope.copy(if (untrusted) "CPY-pres-request-verifier-claimed-label" else "CPY-pres-request-verifier-label"),

@@ -40,6 +40,10 @@ kotlin {
     iosSimulatorArm64()
 
     sourceSets {
+        commonMain {
+            // boundary §3: the generated theme objects (ux-spec/theme/kotlin) fill this module's hand-written shell
+            kotlin.srcDir(rootProject.file("ux-spec/theme/kotlin"))
+        }
         commonMain.dependencies {
             api(libs.jetbrains.compose.runtime)
             api(libs.jetbrains.compose.foundation)

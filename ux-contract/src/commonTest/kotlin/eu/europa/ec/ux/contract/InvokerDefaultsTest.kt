@@ -14,7 +14,7 @@
  * governing permissions and limitations under the Licence.
  */
 
-// PROVISIONAL (M5b): the provisional invoker; the generated one must pass the same test at M6.
+// M5b test, re-run at M6a on the generated invoker (V26: VerifierPayload, RequestAttributePayload, named arguments).
 package eu.europa.ec.ux.contract
 
 import eu.europa.ec.ux.contract.pres.AuthenticateResult
@@ -22,13 +22,13 @@ import eu.europa.ec.ux.contract.pres.CancelResult
 import eu.europa.ec.ux.contract.pres.FetchRequestResult
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceInvoker
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceServices
+import eu.europa.ec.ux.contract.pres.RequestAttributePayload
 import eu.europa.ec.ux.contract.pres.RequestPayload
-import eu.europa.ec.ux.contract.pres.RequestedAttribute
 import eu.europa.ec.ux.contract.pres.Requirement
 import eu.europa.ec.ux.contract.pres.SendResult
 import eu.europa.ec.ux.contract.pres.Trust
 import eu.europa.ec.ux.contract.pres.VerificationCodeResult
-import eu.europa.ec.ux.contract.pres.Verifier
+import eu.europa.ec.ux.contract.pres.VerifierPayload
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -39,12 +39,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /** M4 open issue: the invoker must send fields left at their defaults, so the engine never has to guess them. */
-class ProvisionalInvokerDefaultsTest {
+class InvokerDefaultsTest {
 
     private val services = object : PresCrossDeviceServices {
         override suspend fun fetchRequest(uri: String): FetchRequestResult = FetchRequestResult.RequestReady(
-            Verifier(name = "V", serviceName = "S", reason = "R", trust = Trust.TRUSTED),
-            RequestPayload(documentName = "PID", attributes = listOf(RequestedAttribute(id = "a", labelCopy = "L", requirement = Requirement.OPTIONAL))),
+            verifier = VerifierPayload(name = "V", serviceName = "S", reason = "R", trust = Trust.TRUSTED),
+            request = RequestPayload(documentName = "PID", attributes = listOf(RequestAttributePayload(id = "a", labelCopy = "L", requirement = Requirement.OPTIONAL))),
         )
 
         override suspend fun authenticate(): AuthenticateResult = AuthenticateResult.Error()

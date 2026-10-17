@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.Dp
  * (boundary §2.6). Names follow `library/tokens/sys.contract.yaml` (sys.color.*, sys.type.*, sys.space.*, ...).
  */
 
-/** `sys.color.*`: the roles the nine elements and four templates read. */
+/** `sys.color.*`: the full `library/tokens/sys.contract.yaml` colour role set (boundary V9: a D8 change never edits it). */
 data class UxColors(
     val textPrimary: Color,
     val textSecondary: Color,
@@ -37,12 +37,15 @@ data class UxColors(
     val textHeading: Color,
     val textLabel: Color,
     val textOnBrand: Color,
+    val textSelected: Color,
     val textOnAppBar: Color,
     val surfaceDefault: Color,
     val surfaceSubtle: Color,
     val surfaceInverse: Color,
     val surfaceRaised: Color,
+    val surfaceBrand: Color,
     val surfaceAppBar: Color,
+    val surfaceSelected: Color,
     val surfacePage: Color,
     val surfaceCard: Color,
     val overlayScrim: Color,
@@ -55,6 +58,12 @@ data class UxColors(
     val actionFloatingBg: Color,
     val actionFloatingFg: Color,
     val focusRing: Color,
+    val documentIdCardBg: Color,
+    val documentIdCardFg: Color,
+    val documentDrivingLicenceBg: Color,
+    val documentDrivingLicenceFg: Color,
+    val documentPidBg: Color,
+    val documentPidFg: Color,
     val feedbackInfo: UxFeedbackColors,
     val feedbackSuccess: UxFeedbackColors,
     val feedbackWarning: UxFeedbackColors,

@@ -37,7 +37,7 @@ data class UxStyles(
 
 /**
  * A brand as the runtime receives it: id, the token values per mode, and the `styles` and `layouts` selections
- * (generated per brand in `UxBrandConfig`; hand-written only for the PROVISIONAL set). [light] and [highContrast] are
+ * (generated per brand in `UxBrandConfig`, `ux-spec/theme`). [light] and [highContrast] are
  * required; an unbound optional mode falls back as the resolver says (`dark` to light, `dark-high-contrast` to
  * high-contrast).
  */

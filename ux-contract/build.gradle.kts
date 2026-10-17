@@ -44,10 +44,8 @@ kotlin {
 
     sourceSets {
         commonMain {
-            // PROVISIONAL (boundary §6.3): the hand copy of the contract, until ux-spec/ brings the generated one (M6
-            // deletes the directory and this conditional). M6a keys it on the directory, not on the lock, so the sync
-            // commit (ux-spec/ only) leaves the build unchanged and the adoption commit switches it.
-            if (file("provisional/kotlin").isDirectory) kotlin.srcDir("provisional/kotlin")
+            // boundary §3: the generated contract (ux-spec/ is exporter-only, never edited here).
+            kotlin.srcDir(rootProject.file("ux-spec/contract/kotlin"))
             dependencies {
                 api(libs.jetbrains.compose.runtime)
                 api(libs.jetbrains.compose.components.resources)
@@ -64,4 +62,7 @@ kotlin {
 compose.resources {
     publicResClass = true
     packageOfResClass = "eu.europa.ec.ux.contract.resources"
+    // boundary §3 / V29: the export's resources (values/strings.xml, files/<flow>.bundle.json) are this module's
+    // commonMain compose resources; the Res package stays eu.europa.ec.ux.contract.resources.
+    customDirectory("commonMain", provider { rootProject.layout.projectDirectory.dir("ux-spec/resources") })
 }

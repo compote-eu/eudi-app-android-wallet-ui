@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceExit
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceSpec
+import eu.europa.ec.ux.contract.resources.allStringResources
 import eu.europa.ec.ux.runtime.bundle.FlowBundle
 import eu.europa.ec.ux.runtime.bundle.LoadResult
 import eu.europa.ec.ux.runtime.engine.FlowExit
@@ -37,11 +38,13 @@ import eu.europa.ec.ux.runtime.engine.FlowLog
 import eu.europa.ec.ux.runtime.engine.FlowPlatform
 import eu.europa.ec.ux.runtime.engine.ServicePort
 import eu.europa.ec.ux.runtime.host.FlowHost
+import eu.europa.ec.ux.runtime.screen.CopyProvider
 import eu.europa.ec.ux.runtime.screen.FlowScreens
-import eu.europa.ec.ux.theme.provisional.ProvisionalEudiwV1
+import eu.europa.ec.ux.theme.generated.UxBrandConfig
 import eu.europa.ec.uxspike.resources.Res
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import org.jetbrains.compose.resources.getString
 import eu.europa.ec.ux.contract.resources.Res as ContractRes
 
 /** Test tag of the text shown when the bundle or the script cannot be loaded. */
@@ -52,7 +55,7 @@ val UxSpikeLog: FlowLog = FlowLog { println("UX-SPIKE: $it") }
 
 /** What the entry needs before [FlowHost] can run. */
 sealed interface UxSpikeFlow {
-    data class Ready(val bundle: FlowBundle, val services: FakePresCrossDeviceServices) : UxSpikeFlow {
+    data class Ready(val bundle: FlowBundle, val services: FakePresCrossDeviceServices, val copy: CopyProvider) : UxSpikeFlow {
         val port: ServicePort get() = services.port()
     }
 
@@ -87,10 +90,16 @@ sealed interface UxSpikeFlow {
             val parsed = FakeScript.parse(text)
             if (parsed.flowId != bundle.flowId) return Failed("script '$script' is for ${parsed.flowId}")
             log.log("flow ${bundle.flowId} loaded (provisional=${bundle.provisional}), script ${parsed.script}")
-            return Ready(bundle, FakePresCrossDeviceServices(FakeScriptPlayer(parsed) { log.log(it) }))
+            return Ready(bundle, FakePresCrossDeviceServices(FakeScriptPlayer(parsed) { log.log(it) }), exportedCopy())
         }
     }
 }
+
+/**
+ * The exported copy (`ux-spec/resources/values/strings.xml`, boundary §1.8): every string resource of `:ux-contract`,
+ * read once, keyed by resource name, as the runtime's [CopyProvider] wants it (it is synchronous).
+ */
+suspend fun exportedCopy(): CopyProvider = CopyProvider.of(ContractRes.allStringResources.mapValues { (_, r) -> getString(r) })
 
 /** The context path a `to-help` exit carries (boundary Q10). */
 private const val ERROR_CLASS_PATH = "/flow/error_class"
@@ -104,12 +113,12 @@ fun FlowExit.typed(): PresCrossDeviceExit? =
 
 /**
  * How the spike draws the flow's screens: the hand-written consent screen by its screen id ([PresHandWrittenScreens]),
- * every other screen interpreted from the bundle, PROVISIONAL copy and brand until `ux-spec/` exists.
+ * every other screen interpreted from the bundle, with the exported copy and the exported brands (`UxBrandConfig`).
  */
-fun uxSpikeScreens(bundle: FlowBundle): FlowScreens = FlowScreens(
-    copy = ProvisionalBundleCopy.from(bundle),
+fun uxSpikeScreens(copy: CopyProvider): FlowScreens = FlowScreens(
+    copy = copy,
     custom = PresHandWrittenScreens,
-    brands = mapOf(ProvisionalEudiwV1.id to ProvisionalEudiwV1),
+    brands = UxBrandConfig.brands.associateBy { it.id },
 )
 
 /**
@@ -148,7 +157,7 @@ fun UxFlowEntry(
             platform = platform,
             backHandler = backHandler,
             onExit = { exit -> onExit(exit?.typed()) },
-            screens = remember(f.bundle) { uxSpikeScreens(f.bundle) },
+            screens = remember(f.bundle) { uxSpikeScreens(f.copy) },
             log = UxSpikeLog,
         )
     }

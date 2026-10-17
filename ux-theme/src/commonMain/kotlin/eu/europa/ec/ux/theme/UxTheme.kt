@@ -21,17 +21,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
-import eu.europa.ec.ux.theme.provisional.ProvisionalEudiwV1
+import eu.europa.ec.ux.theme.generated.UxBrandConfig
 
-/** The active tokens. Defaults to the PROVISIONAL set so an element never crashes outside a [UxTheme]. */
-val LocalUxTokens = staticCompositionLocalOf { ProvisionalEudiwV1.light.tokens }
+/** The active tokens. Defaults to the exported default brand so an element never crashes outside a [UxTheme]. */
+val LocalUxTokens = staticCompositionLocalOf { UxBrandConfig.defaultBrand.light.tokens }
 
 /** The active brand's `styles` and `layouts` selections. */
-val LocalUxBrand = staticCompositionLocalOf { ProvisionalEudiwV1 }
+val LocalUxBrand = staticCompositionLocalOf { UxBrandConfig.defaultBrand }
 
 /** Applies one brand in one mode. Never touches the wallet's `ThemeManager`. */
 @Composable
-fun UxTheme(brand: UxBrand = ProvisionalEudiwV1, mode: UxMode = UxMode.Light, content: @Composable () -> Unit) {
+fun UxTheme(brand: UxBrand = UxBrandConfig.defaultBrand, mode: UxMode = UxMode.Light, content: @Composable () -> Unit) {
     CompositionLocalProvider(
         LocalUxBrand provides brand,
         LocalUxTokens provides brand.tokens(mode),

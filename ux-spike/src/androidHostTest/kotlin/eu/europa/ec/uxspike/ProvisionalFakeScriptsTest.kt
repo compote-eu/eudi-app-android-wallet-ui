@@ -46,7 +46,7 @@ class ProvisionalFakeScriptsTest {
     private val scriptsDir = File(module, "src/commonMain/composeResources/files/scripts")
 
     private val bundle: FlowBundle by lazy {
-        val bytes = File(module, "../ux-contract/src/commonMain/composeResources/${PresCrossDeviceSpec.BUNDLE_PATH}").readBytes()
+        val bytes = File(module, "../ux-spec/resources/${PresCrossDeviceSpec.BUNDLE_PATH}").readBytes()
         val r = FlowBundle.load(bytes, PresCrossDeviceSpec.FLOW_ID, PresCrossDeviceSpec.SPEC_HASH, PresCrossDeviceSpec.SPEC_HASH, allowProvisional = true)
         (r as? LoadResult.Loaded)?.bundle ?: fail("bundle refused: $r")
     }

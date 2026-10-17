@@ -23,7 +23,7 @@ import kotlinx.serialization.json.JsonObject
 
 /**
  * The text behind a copy resource name (boundary §1.8: `Res.allStringResources[res]`, positional `%1$s` placeholders).
- * The host supplies it; until `ux-spec/resources` exists the spike's hook passes a PROVISIONAL one.
+ * The host supplies it (the spike reads the exported `strings.xml` through `:ux-contract`'s `Res`).
  */
 fun interface CopyProvider {
     fun string(res: String): String?

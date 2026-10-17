@@ -17,12 +17,10 @@
 package eu.europa.ec.ux.contract
 
 /**
- * Empty M2 skeleton of `:ux-contract`. The generated contract arrives with the `ux-spec/` sync (M6); until then
- * the module only carries the probe resource that proves compose resources cross the module boundary (P3).
+ * `:ux-contract`: the generated contract (`ux-spec/contract/kotlin`, package `eu.europa.ec.ux.contract.pres`) and the
+ * export's compose resources (`ux-spec/resources`: the bundle and the copy). The M2 probe file is gone (V29, M6a): the
+ * bundle read at run time proves the resource crossing instead.
  */
 object UxContractModule {
     const val NAME = "ux-contract"
-
-    /** Path of the P3 probe file inside this module's compose resources. */
-    const val PROBE_PATH = "files/ux-probe.txt"
 }

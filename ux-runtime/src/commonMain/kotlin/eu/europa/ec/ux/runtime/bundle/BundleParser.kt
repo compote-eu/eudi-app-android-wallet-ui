@@ -19,6 +19,7 @@ package eu.europa.ec.ux.runtime.bundle
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Reads a bundle tree into the model. Every semantic enum (boundary §1.1) is closed: an unknown value refuses
@@ -84,10 +85,14 @@ internal class BundleParser(private val root: JsonObject) {
     private fun service(name: String, n: Node) = ServiceDef(
         name = name,
         ref = n.optStr("ref"),
-        args = n.strMap("args"),
+        // V12/V14: an argument type is a scalar ("url") or the payload grammar's object form ({type: list, of: id}),
+        // kept as its JSON text; the type is descriptive to the engine (the invoke's `args` carry the values).
+        args = n.opt("args")?.entries()?.associate { (k, v) -> k to argType(v) }.orEmpty(),
         idempotent = n.child("idempotent").bool(),
         results = n.child("results").obj().keys,
     )
+
+    private fun argType(n: Node): String = (n.element as? JsonPrimitive)?.content ?: n.element.toString()
 
     private fun state(id: String, n: Node) = StateDef(
         id = id,

@@ -34,15 +34,17 @@ import eu.europa.ec.ux.runtime.bundle.LoadResult
 import eu.europa.ec.ux.runtime.engine.FlowPlatform
 import eu.europa.ec.ux.runtime.engine.ServicePort
 import eu.europa.ec.ux.runtime.host.FlowHost
+import eu.europa.ec.ux.runtime.screen.CopyProvider
 import eu.europa.ec.uxspike.resources.Res
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /** Script-name prefix of the M5d probe (`--ux-spike gallery-home[-<ui state>]`), checked before the template gallery. */
 const val UX_HOME_PROBE_PREFIX = "gallery-home"
 
-/** PROVISIONAL (M5d, OR-1): the one-state fragment bundles of the Home probe live here, not in `:ux-contract`. */
+/** Probe data (M5d, OR-1): the one-state fragment bundles of the Home probe live here, not in `:ux-contract`. */
 private const val HOME_PROBE_FLOW_ID = "FLW-home-probe"
 
 /**
@@ -58,7 +60,9 @@ fun UxHomeProbe(
     backHandler: @Composable (enabled: Boolean, onBack: () -> Unit) -> Unit,
 ) {
     val name = script.removePrefix(UX_HOME_PROBE_PREFIX).trimStart('-').ifEmpty { "default" }
-    val bundle by produceState<Result<FlowBundle>?>(null, name) { value = runCatching { loadHomeProbe(name) } }
+    val bundle by produceState<Result<Pair<FlowBundle, CopyProvider>>?>(null, name) {
+        value = runCatching { loadHomeProbe(name).let { it to probeCopy(it) } }
+    }
     val loaded = bundle
     when {
         loaded == null -> Unit
@@ -66,7 +70,7 @@ fun UxHomeProbe(
             BasicText("UX-SPIKE: ${loaded.exceptionOrNull()?.message}", Modifier.testTag(UX_FLOW_ERROR_TAG))
         }
         else -> {
-            val b = loaded.getOrThrow()
+            val (b, copy) = loaded.getOrThrow()
             FlowHost(
                 bundle = b,
                 port = ServicePort { service, _ -> error("the Home probe has no services ($service)") },
@@ -75,7 +79,7 @@ fun UxHomeProbe(
                 platform = platform,
                 backHandler = backHandler,
                 onExit = { },
-                screens = remember(b) { uxSpikeScreens(b) },
+                screens = remember(b) { uxSpikeScreens(copy) },
                 log = UxSpikeLog,
             )
         }
@@ -89,4 +93,23 @@ private suspend fun loadHomeProbe(name: String): FlowBundle {
         is LoadResult.Loaded -> r.bundle
         is LoadResult.Refused -> error("home probe '$name' refused: ${r.reason}")
     }
+}
+
+/**
+ * The probe's copy: the exported strings first, then the text the fragment generator wrote beside each key (`_sk`,
+ * `{name}` as positional `%n$s`), because the fragments are spike-evidence data, not an export: the Home copy is
+ * only partly in the flow's strings.xml.
+ */
+private suspend fun probeCopy(bundle: FlowBundle): CopyProvider {
+    val exported = exportedCopy()
+    val copy = bundle.raw["copy"] as? JsonObject
+    val keys = (copy?.get("keys") as? JsonObject).orEmpty().values +
+        (copy?.get("brand_overrides") as? JsonObject).orEmpty().values.flatMap { (it as? JsonObject).orEmpty().values }
+    val own = keys.filterIsInstance<JsonObject>().mapNotNull { k ->
+        val res = (k["res"] as? JsonPrimitive)?.content ?: return@mapNotNull null
+        val text = (k["_sk"] as? JsonPrimitive)?.content ?: return@mapNotNull null
+        val names = (k["placeholders"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.content }
+        res to names.foldIndexed(text) { i, t, n -> t.replace("{$n}", "%${i + 1}\$s") }
+    }.toMap()
+    return CopyProvider { res -> exported.string(res) ?: own[res] }
 }

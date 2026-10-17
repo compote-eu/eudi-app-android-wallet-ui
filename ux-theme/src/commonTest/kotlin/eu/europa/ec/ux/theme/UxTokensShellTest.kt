@@ -20,25 +20,29 @@ package eu.europa.ec.ux.theme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import eu.europa.ec.ux.theme.provisional.ProvisionalEudiwV1
+import eu.europa.ec.ux.theme.generated.UxBrandConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
-/** M5c (OR-2): the token shell holds elevation, fonts, `comp.*` and all four modes (PROVISIONAL eudiw_v1 values). */
+/** M5c (OR-2), re-run at M6a on the generated eudiw_v1: the shell holds elevation, fonts, `comp.*` and the modes. */
 class UxTokensShellTest {
-    private val brand = ProvisionalEudiwV1
+    private val brand = UxBrandConfig.eudiwV1
 
     @Test
-    fun allFourModesAreBoundAndDiffer() {
+    fun theExportedModesAreBoundAndDarkFallsBack() {
+        // V19 (M6a): the export binds light and high-contrast only (R11); the M5c provisional set also had both dark
+        // modes, which now fall back as the resolver says.
         val pages = UxMode.entries.map { brand.tokens(it).colors.surfacePage }
         assertEquals(
-            listOf(Color(0xFFFAFAFA), Color(0xFFFFFFFF), Color(0xFF0F1216), Color(0xFF000000)),
+            listOf(Color(0xFFFAFAFA), Color(0xFFFFFFFF), Color(0xFFFAFAFA), Color(0xFFFFFFFF)),
             pages,
-            "light, high-contrast, dark, dark-high-contrast page grounds of the spec token files",
+            "light, high-contrast, dark (-> light), dark-high-contrast (-> high-contrast) page grounds",
         )
+        assertSame(brand.light.tokens, brand.tokens(UxMode.Dark))
+        assertSame(brand.highContrast.tokens, brand.tokens(UxMode.DarkHighContrast))
         assertEquals(4, UxMode.entries.size)
     }
 
@@ -52,7 +56,7 @@ class UxTokensShellTest {
 
     @Test
     fun anUnboundOptionalModeFallsBackAsTheResolverSays() {
-        val bare = UxBrand("bare", light = ProvisionalEudiwV1.light, highContrast = ProvisionalEudiwV1.highContrast)
+        val bare = UxBrand("bare", light = brand.light, highContrast = brand.highContrast)
         assertSame(bare.light.tokens, bare.tokens(UxMode.Dark))
         assertSame(bare.highContrast.tokens, bare.tokens(UxMode.DarkHighContrast))
     }
