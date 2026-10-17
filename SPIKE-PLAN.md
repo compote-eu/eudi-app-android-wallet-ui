@@ -40,6 +40,20 @@ Hard stops: a confirmed kill criterion (re-derived by an independent Opus agent 
 | eudiw_v1 now has dark modes (DEC-066/067). Dark mode is out of scope (brief §3). | The hosted flow forces `light` (`bundle.theme.default_mode`). |
 | Xcode 27.1 is installed (`xcode-select -p` = `/Applications/Xcode.app/Contents/Developer`); Q-001 is done. The iOS simulator runtime is being installed. | M0 records the available simulator name; the gate's `iPhone 17` destination is replaced if needed (logged). |
 
+### 0.2a Corrections after D8 attempt 1 (M8r, 2026-10-17)
+
+An independent verifier ruled (B), **KC1 not hit**: D8 attempt 1 failed on all four rows for remediable reasons
+(`spike-evidence/D8/README.md`; the four attempt-1 rows stay in `spike-results.md` as **failed**, with their causes).
+Two plan errors caused part of it, and are corrected here:
+
+| Error | What it was | Correction (M8r) |
+|---|---|---|
+| **RULING-M6a-6 was a mistake** | It listed the library's `EL-rp-identity.logo` as a GAP "until M8 D8-logo", i.e. it left an element capability gap open on purpose until the drill that measures regeneration. A D8 drill measures whether a *spec* change needs Kotlin; a library prop the spike knows about must be implemented before the baseline, or D8-logo can only fail on the element. | `UxRpIdentity` and the registry implement `logo` as `EL-rp-identity.yaml` (@ 3d6ecb6) defines it (M8r-2); the GAP entry is gone. |
+| **Week-0 F3 was missing from this plan** | Week-0 plan (`dvm-week0` `ux/evaluation/kmp-ui-from-spec/week0-plan.md:307-308, :418`, RULING-W1 logo route): *"SCR-pres-request carries its EL-rp-identity as a bundle node, which the hand-written consent screen draws through the interpreter."* This plan's §1.4 said only that bindings carry new fields, and `PresRequestScreen` built `UxRpIdentity` from the typed verifier fields, so a new prop on that node needed a screen edit (the D8-logo KC1 signal). | §1.4 now holds the rule: `ScreenScope.Node(id)` (M8r-3), and `PresRequestScreen` draws `rp-trusted` / `rp-untrusted` through it. |
+
+Also corrected: the test pins outside `ux-spec/` that turned every D8 gate red (RULING-M8-5) are removed (M8r-1); test
+expectations come from `ux-spec/` at test time. See §5 "D8 attempt 2".
+
 ### 0.3 Setup milestones (no drill)
 
 M0 (bootstrap, toolchain, baseline gate), M1a (this plan and the state files) and M1b (the interface boundary) are
@@ -203,6 +217,12 @@ The semantics are boundary §1.4–§1.6, adopted as written:
   tests assert.
 - **Bindings**: prop values are literals, `{copy, args}` or `{bind: path}`. Elements receive whole data objects, so a new
   field (`/verifier/logo_url`) reaches `EL-rp-identity` without any screen code.
+- **Bundle nodes inside a hand-written screen (week-0 F3, RULING-W1; added in M8r, §0.2a).** `ScreenScope.Node(id)` draws a
+  node of the screen's bundle tree (`ScreenTree.node`) through the interpreter: registry element, bindings from the flow
+  context, copy, screen rules, schema check, node a11y. It names no screen. `PresRequestScreen` draws its EL-rp-identity
+  nodes (`rp-trusted`, `rp-untrusted`) through it, so a prop the spec adds to them (the logo) needs no screen edit. The
+  node ids are data of the bundle; `PresRequestScreen.kt` is the declared KC1 exception. The consent snapshot still comes
+  from the flow context, and the screen still sends intents only.
 - **Copy**: `Res.allStringResources[res]`, with the brand override (`__<brand>`) first (boundary §1.8).
 - **Rule effects**: `ui_state_when` picks the first match. The effects `hide`, `show`, `enable`, `disable` and `set_copy`
   apply. `allow_transition` and `message` are ignored on screens (boundary Q12). Any other effect is logged and counted for M6.
@@ -393,6 +413,8 @@ Legend:
 | M6 | wait for `ux-spec/` + lock; sync; lock + handshake; lint report; re-check per boundary §6 (shape diff, API diff, re-run, classify, delete provisional); bind the fake to the generated `Services` | divergence list in `SPIKE-LOG.md`; `git grep PROVISIONAL` clean | **D6-iOS**, **D1-iOS**, **D3-sim**, **D4-iOS**, **D5** | ★ `ux-spec/`; ⟲ after sync |
 | M7 | accessibility fixes in runtime/elements only; per-transition semantics assertions; Inspector audit | Inspector clean; walk queued | **D7-iOS** (VoiceOver, real iPhone) | ★ device; ⟲ at end (it is the M8 baseline) |
 | M8 | regeneration drills, all from **one named baseline SHA** (logged in `SPIKE-LOG.md` when cut, right after the M7 rebase); no rebase during M8 | 4 rows (§5 KC1) | **D8-logo**, **D8-offline**, **D8-brand**, **D8-copy** | ★ only if §1.6 case arises |
+| M8r | remediation after D8 attempt 1 (independent ruling (B), KC1 not hit): un-pin the tests (expectations from `ux-spec/` at test time), implement `EL-rp-identity.logo`, `ScreenScope.Node` (week-0 F3) used by `PresRequestScreen`; plan and log corrections (§0.2a) | full gate GREEN; logo grep 0; KC1 guard green; named attempt-2 baseline cut (last M8r commit) | none (remediation; not counted toward the verdict) | — |
+| M8-2 | **D8 attempt 2** from the M8r baseline, protocol in §5 "D8 attempt 2" | 4 known rows + 1 UNSEEN row | **D8-logo**, **D8-offline**, **D8-brand**, **D8-copy** (attempt 2, not blind), **D8-unseen** | ★ only if §1.6 case arises |
 | M9 | track B inside the TPL-sheet implementation | numstat per option per platform | **D9-brand**, **D9-sheet-page** | — |
 | M10 | track C: `UxDcApiSubflowViewController`, T5; in-app harness on the simulator (a scripted request, as in the `DcApiProbeRequest` builder, `shared-logic/.../multipaz/harness/DcApiHarness.kt`). The harness is evidence only, **not** a D10 pass. HTTPS `org-iso-mdoc` page written. | harness completes; steps queued | **D10 run 1–5** (device) | ★ iPhone iOS 26.2+, signing, hosting; ⟲ at end (before M11) |
 | M11 | Android drills (emulator/device); **runs at the end of the spike (OR-4)**, after everything is confirmed on iPhone | rows recorded | **D1-Android**, **D2-Android** (`am kill`, ★ LMK), **D4-Android**, **D6-Android**, **D7-Android** (TalkBack ★) | ⟲ at start; ★ device |
@@ -493,6 +515,26 @@ anything stops. The owner judges everything; the app team gives KC5.
 7. Show the behaviour with a screenshot or video, plus a semantics assertion.
 8. Record `git diff --stat <baseline>..spike/d8-<n>`.
 9. Opus reviews the code of `:ux-runtime`.
+
+**D8 attempt 2 (M8r, 2026-10-17).** Attempt 1 (baseline `93c2b9931`) stays on record as **failed**, with its causes
+(RULING-M8-5: test pins; element gap on `logo`; the consent screen drew the verifier identity from typed fields). Attempt 2:
+- **New named baseline:** git tag `d8-attempt2-baseline` = the last M8r commit (the commit that adds this paragraph; its
+  SHA is in the tag and in `SPIKE-LOG.md` → Commits). It adds `.md` files only, so its code tree is that of `2487ff3c3`
+  (M8r-3). Every attempt-2 mutation starts from this tag; no rebase during attempt 2. The pre-D8 grep on it: 0.
+- **Not blind for the four known drills.** D8-logo, D8-offline, D8-brand and D8-copy are known: their spec patches are in
+  `spike-evidence/D8/<n>/spec.patch`, and M8r was written knowing why each failed (and the M8r agent ran the spike-module
+  tests once against the D8-1 and D8-2 attempt-1 exports to check the un-pinning; SPIKE-LOG M8r). Their attempt-2 rows
+  therefore show that the remediation closed the known causes; they are **not** blind evidence of regeneration.
+- **One additional UNSEEN drill (`D8-unseen`).** A spec change chosen by a **separate agent**, after the baseline is cut,
+  without the M8r agent's input; the M8r agent did not anticipate it and nothing in the baseline was prepared for a
+  specific change. It runs the same KC1 procedure (steps 1-9) from the same tag. It is the blind evidence of attempt 2.
+- Rows go to `spike-results.md` as new rows marked "attempt 2"; the attempt-1 rows are not rewritten.
+
+**D8-logo pass condition (corrected in M8r).** The brief's "logo with an accessibility label" conflicts with the library:
+`EL-rp-identity.logo` is decorative (alt empty, RULING-W1). D8-logo passes, besides the KC1 diff rule, when the semantics
+show **an image node (`<node>.logo`) hidden from accessibility, with the name (`<node>.name`) still naming the party**
+(screenshot or video plus a semantics assertion). A logo with its own accessibility label would be a failure against the
+spec.
 
 **KC4 procedure.**
 - Count with `git diff --numstat <D9-baseline>..<option-commit>`, where `<D9-baseline>` is the SHA right before M9 (named in
