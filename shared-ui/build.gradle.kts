@@ -238,6 +238,9 @@ kotlin {
                 kotlin.srcDir("src/iosProbeMain/kotlin")
                 // The debug-only spike flow glue (SPIKE-PLAN §1.7), under the same rule as the probes.
                 kotlin.srcDir("src/iosUxSpikeMain/kotlin")
+                // M11b (OR-5): the spike's real Services adapter. It needs this module's interactor interfaces,
+                // and this module depends on :ux-spike, so it cannot live in :ux-spike's commonMain (a cycle).
+                kotlin.srcDir(rootProject.file("ux-spike/src/realAdapterMain/kotlin"))
             }
         }
         // iOS adds only Coil's network fetcher. The Compose UI artifacts moved to commonMain with the
@@ -263,6 +266,16 @@ kotlin {
         // through production code rather than around it.
         iosTest.dependencies {
             implementation(libs.ktor.client.mock)
+        }
+        // M11b: the adapter's tests run on both targets: on iOS against the adapter compiled into iosMain above,
+        // on the Android host with the adapter compiled into the TEST source set only (never into this module's AAR).
+        if (providers.environmentVariable("CONFIGURATION").orNull != "Release") {
+            iosTest { kotlin.srcDir(rootProject.file("ux-spike/src/realAdapterTest/kotlin")) }
+        }
+        getByName("androidHostTest") {
+            kotlin.srcDir(rootProject.file("ux-spike/src/realAdapterMain/kotlin"))
+            kotlin.srcDir(rootProject.file("ux-spike/src/realAdapterTest/kotlin"))
+            dependencies { implementation(project(":ux-contract")) }
         }
         // Holds the Android half of `testPlatformContext()` / `testPlatformIntent()` — the test-only
         // factories that let commonTest reach view-model paths whose events carry a `PlatformContext`

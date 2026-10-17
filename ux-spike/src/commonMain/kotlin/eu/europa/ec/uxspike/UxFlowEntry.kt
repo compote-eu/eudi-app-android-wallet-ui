@@ -29,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceExit
+import eu.europa.ec.ux.contract.pres.PresCrossDeviceInvoker
+import eu.europa.ec.ux.contract.pres.PresCrossDeviceServices
 import eu.europa.ec.ux.contract.pres.PresCrossDeviceSpec
 import eu.europa.ec.ux.contract.resources.allDrawableResources
 import eu.europa.ec.ux.contract.resources.allStringResources
@@ -66,11 +68,12 @@ val UxSpikeLog: FlowLog = FlowLog { println("UX-SPIKE: $it") }
 sealed interface UxSpikeFlow {
     data class Ready(
         val bundle: FlowBundle,
-        val services: FakePresCrossDeviceServices,
+        val services: PresCrossDeviceServices,
         val copy: CopyProvider,
         val resources: UxSpecResources,
     ) : UxSpikeFlow {
-        val port: ServicePort get() = services.port()
+        /** The runtime's only way in: the contract invoker behind [ServicePort] (boundary §2.5). */
+        val port: ServicePort get() = ServicePort.fromJsonInvoker(invoke = PresCrossDeviceInvoker(services)::invoke)
     }
 
     data class Failed(val reason: String) : UxSpikeFlow
@@ -80,11 +83,21 @@ sealed interface UxSpikeFlow {
         fun scriptPath(name: String): String = "files/scripts/$name.json"
 
         /**
+         * M11b (OR-5): the switch value that runs the flow on the app's REAL presentation interactors (the hook's
+         * `realServices`) instead of a fake script. A probe: never run against a real verifier in the spike.
+         */
+        const val REAL_SERVICES = "real"
+
+        /**
          * Loads the exported bundle with the spec-hash handshake (boundary §4): the bundle, the generated contract
          * (`PresCrossDeviceSpec.SPEC_HASH`) and the generated theme (`UxThemeSpec.SPEC_HASH`) must carry one hash, and a
          * provisional hash is refused (H7). This code exists only in debug builds (the hooks are debug-only).
          */
-        suspend fun load(script: String, log: FlowLog = UxSpikeLog): UxSpikeFlow {
+        suspend fun load(
+            script: String,
+            log: FlowLog = UxSpikeLog,
+            realServices: (() -> PresCrossDeviceServices)? = null,
+        ): UxSpikeFlow {
             val bytes = ContractRes.readBytes(PresCrossDeviceSpec.BUNDLE_PATH)
             val bundle = when (
                 val r = FlowBundle.load(
@@ -98,6 +111,11 @@ sealed interface UxSpikeFlow {
                 is LoadResult.Refused -> return Failed("bundle refused: ${r.reason}")
             }
             bundle.warnings.forEach { log.log("bundle warning: $it") }
+            if (script == REAL_SERVICES) {
+                val services = realServices?.invoke() ?: return Failed("script '$script': this build binds no real adapter")
+                log.log("flow ${bundle.flowId} loaded (provisional=${bundle.provisional}), REAL services adapter (M11b)")
+                return Ready(bundle, services, exportedCopy(), exportedSpecResources())
+            }
             val text = runCatching { Res.readBytes(scriptPath(script)).decodeToString() }
                 .getOrElse { return Failed("no script '$script' (${it.message})") }
             val parsed = FakeScript.parse(text)
@@ -167,6 +185,7 @@ fun UxFlowEntry(
     platform: FlowPlatform,
     backHandler: @Composable (enabled: Boolean, onBack: () -> Unit) -> Unit,
     onExit: (PresCrossDeviceExit?) -> Unit,
+    realServices: (() -> PresCrossDeviceServices)? = null,
 ) {
     if (script.startsWith(UX_HOME_PROBE_PREFIX)) {
         UxHomeProbe(script, platform, backHandler)
@@ -180,7 +199,7 @@ fun UxFlowEntry(
         return
     }
     val flow by produceState<UxSpikeFlow?>(null, route, script) {
-        value = UxSpikeFlow.load(script).also { (it as? UxSpikeFlow.Failed)?.let { f -> UxSpikeLog.log(f.reason) } }
+        value = UxSpikeFlow.load(script, realServices = realServices).also { (it as? UxSpikeFlow.Failed)?.let { f -> UxSpikeLog.log(f.reason) } }
     }
     when (val f = flow) {
         null -> Unit
@@ -194,7 +213,11 @@ fun UxFlowEntry(
             launch = route.launch?.let { JsonObject(mapOf("uri" to JsonPrimitive(it))) } ?: JsonObject(emptyMap()),
             platform = platform,
             backHandler = backHandler,
-            onExit = { exit -> onExit(exit?.typed()) },
+            onExit = { exit ->
+                // M11b: the real adapter's teardown (the contract has no call for it); a fake has none.
+                (f.services as? AutoCloseable)?.close()
+                onExit(exit?.typed())
+            },
             screens = remember(f.bundle) { uxSpikeScreens(f.copy, f.resources) },
             log = UxSpikeLog,
         )

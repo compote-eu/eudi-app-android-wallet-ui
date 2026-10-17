@@ -17,12 +17,16 @@
 package eu.europa.ec.uxspike.android
 
 import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
 import eu.europa.ec.commonfeature.config.IssuanceUiConfig
 import eu.europa.ec.commonfeature.config.PresentationMode
 import eu.europa.ec.commonfeature.config.QrScanFlow
+import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractor
 import eu.europa.ec.shared.navigation.AddDocumentRoute
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.shared.navigation.DashboardRoute
@@ -39,6 +43,8 @@ import eu.europa.ec.ux.runtime.engine.FlowPlatform
 import eu.europa.ec.uxspike.UxFlowEntry
 import eu.europa.ec.uxspike.UxFlowRoute
 import eu.europa.ec.uxspike.UxSpikeLog
+import eu.europa.ec.uxspike.real.InteractorPresCrossDeviceServices
+import org.koin.mp.KoinPlatform
 import java.io.File
 
 /**
@@ -50,6 +56,8 @@ internal class AndroidUxSpikeHook(private val context: Context) : DebugFlowHook 
     override fun EntryProviderScope<NavKey>.entries(navigator: AppNavigator) {
         entry<UxFlowRoute> { route ->
             val actions = rememberPlatformScreenActions()
+            // M11b: the host activity, for the real adapter's biometric prompts (`--ux-spike real` only).
+            val activity = LocalContext.current
             UxFlowEntry(
                 route = route,
                 script = script() ?: DEFAULT_SCRIPT,
@@ -57,6 +65,7 @@ internal class AndroidUxSpikeHook(private val context: Context) : DebugFlowHook 
                 // The one back-handler adapter of this hook: the runtime decides what a press does (bundle policy).
                 backHandler = { enabled, onBack -> PlatformBackHandler(enabled, onBack) },
                 onExit = { exit -> exitTo(exit, navigator, actions) },
+                realServices = { realServices(activity) },
             )
         }
     }
@@ -74,6 +83,17 @@ internal class AndroidUxSpikeHook(private val context: Context) : DebugFlowHook 
                 UxSpikeLog.log("GAP to-help: the app has no help route (FLW-app-info#help-from-error); home, error_class=${exit.errorClass}")
             else -> Unit
         }
+    }
+
+    /** M11b (OR-5): the generated services on the app's real presentation interactors, resolved from Koin. */
+    private fun realServices(activity: Context): InteractorPresCrossDeviceServices {
+        val koin = KoinPlatform.getKoin()
+        return InteractorPresCrossDeviceServices(
+            request = koin.get<PresentationRequestInteractor>(),
+            loading = koin.get<PresentationLoadingInteractor>(),
+            biometrics = koin.get<BiometricInteractor>(),
+            platformContext = { activity },
+        )
     }
 
     override fun redirect(route: NavKey): NavKey? {

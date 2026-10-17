@@ -36,6 +36,13 @@ android {
     }
 }
 
+// M11b (OR-5): the real Services adapter (shared with the iOS debug build, see shared-ui/build.gradle.kts).
+androidComponents {
+    onVariants { variant ->
+        variant.sources.kotlin?.addStaticSourceDirectory(rootProject.file("ux-spike/src/realAdapterMain/kotlin").path)
+    }
+}
+
 dependencies {
     implementation(project(":shared-ui"))
     implementation(project(":ux-spike"))
