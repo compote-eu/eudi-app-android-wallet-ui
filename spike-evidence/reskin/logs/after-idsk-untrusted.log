@@ -14,3 +14,11 @@ UX-SPIKE: argument --ux-spike=reskin-request-untrusted (persisting)
 2026-10-18T15:02:38.800862: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
 2026-10-18T15:02:38.805036: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
 2026-10-18T15:02:38.805685: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
+2026-10-18T15:17:38.808703: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-18T15:17:38.812281: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-18T15:17:38.817747: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-18T15:17:38.819664: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
+2026-10-18T15:32:38.810849: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-18T15:32:38.81636: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-18T15:32:38.818941: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-18T15:32:38.820077: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
