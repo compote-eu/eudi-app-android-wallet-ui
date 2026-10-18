@@ -1,0 +1,16 @@
+2026-10-18T14:51:35.3419: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-18T14:51:35.348812: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-18T14:51:35.354204: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-18T14:51:35.492312: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/415F22F4-9F96-4178-90F9-D2B209C0CFEF/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-18T14:51:35.498404: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=reskin-request (persisting)
+objc[3935]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x108f10398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x120d28310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-18T14:51:59.62717: INFO: IosAuthorizationRedirects: ignoring an opened URL that is not an authorization redirect
+2026-10-18T14:51:59.628028: INFO: IosDeepLinks: a presentation request is waiting to be opened
+UX-SPIKE: argument --ux-spike=reskin-request (persisting)
+UX-SPIKE: argument --ux-spike=reskin-request (persisting)
+UX-SPIKE: argument --ux-spike=reskin-request (persisting)
+2026-10-18T14:52:05.695199: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-18T14:52:05.695962: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-18T14:52:05.705188: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-18T14:52:05.705933: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0

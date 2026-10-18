@@ -64,6 +64,11 @@ class IosUxSpikeHook : DebugFlowHook {
                 UxDcApiHarness()
                 return@entry
             }
+            // Reskin probe (option B): the app's own consent screen and view model over a canned interactor.
+            IosUxSpikeSwitch.script()?.takeIf { it.startsWith(RESKIN_REQUEST_PREFIX) }?.let { script ->
+                ReskinRequestHarness(script, navigator)
+                return@entry
+            }
             UxFlowEntry(
                 route = route,
                 script = IosUxSpikeSwitch.script() ?: DEFAULT_SCRIPT,

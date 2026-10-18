@@ -1,0 +1,17 @@
+# Reskin probe: open ${LINK} (system dialog, unlock gate if shown); the debug hook redirects it to the consent harness.
+appId: eu.compote.euidi.dev
+---
+- openLink: ${LINK}
+- tapOn:
+    text: "Open"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+- waitForAnimationToEnd:
+    timeout: 5000
