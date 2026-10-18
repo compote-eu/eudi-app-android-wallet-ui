@@ -1,7 +1,7 @@
 {
   "brands": [
-    "idsk",
-    "eudiw_v1"
+    "eudiw_v1",
+    "idsk"
   ],
   "groups": [
     "comp.app-bar",
@@ -27,7 +27,7 @@
     "light",
     "high-contrast"
   ],
-  "spec_hash": "sha256:a68afddc4f10ff8e90325a04000e535012d1d1a3a658ac191fb9b9a634cfe708",
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
   "tokens_schema_version": 1,
   "units": "a dimension is DTCG px: read it as sp where its alias chain passes a sys.type.* path (a text size or line height), else as dp; colours are sRGB with an optional alpha",
   "values": {
@@ -17157,17 +17157,17 @@
         "comp.attribute-item.control": {
           "alias": [
             "sys.color.action.primary.bg",
-            "ref.color.dark-green"
+            "ref.color.blue"
           ],
           "type": "color",
           "value": {
             "colorSpace": "srgb",
             "components": [
-              0.0118,
-              0.2118,
-              0.0314
+              0.0706,
+              0.4275,
+              1.0
             ],
-            "hex": "#033608"
+            "hex": "#126dff"
           }
         },
         "comp.attribute-item.control-fg": {
@@ -18151,17 +18151,17 @@
         "comp.button.primary-bg": {
           "alias": [
             "sys.color.action.primary.bg",
-            "ref.color.dark-green"
+            "ref.color.blue"
           ],
           "type": "color",
           "value": {
             "colorSpace": "srgb",
             "components": [
-              0.0118,
-              0.2118,
-              0.0314
+              0.0706,
+              0.4275,
+              1.0
             ],
-            "hex": "#033608"
+            "hex": "#126dff"
           }
         },
         "comp.button.primary-fg": {
@@ -18194,17 +18194,17 @@
         "comp.button.ring": {
           "alias": [
             "sys.color.action.primary.bg",
-            "ref.color.dark-green"
+            "ref.color.blue"
           ],
           "type": "color",
           "value": {
             "colorSpace": "srgb",
             "components": [
-              0.0118,
-              0.2118,
-              0.0314
+              0.0706,
+              0.4275,
+              1.0
             ],
-            "hex": "#033608"
+            "hex": "#126dff"
           }
         },
         "comp.button.search-bg": {
@@ -18340,17 +18340,17 @@
         "comp.document-card.accent": {
           "alias": [
             "sys.color.action.primary.bg",
-            "ref.color.dark-green"
+            "ref.color.blue"
           ],
           "type": "color",
           "value": {
             "colorSpace": "srgb",
             "components": [
-              0.0118,
-              0.2118,
-              0.0314
+              0.0706,
+              0.4275,
+              1.0
             ],
-            "hex": "#033608"
+            "hex": "#126dff"
           }
         },
         "comp.document-card.art-bg": {
@@ -19129,17 +19129,17 @@
         "comp.document-card.pid-accent": {
           "alias": [
             "sys.color.action.primary.bg",
-            "ref.color.dark-green"
+            "ref.color.blue"
           ],
           "type": "color",
           "value": {
             "colorSpace": "srgb",
             "components": [
-              0.0118,
-              0.2118,
-              0.0314
+              0.0706,
+              0.4275,
+              1.0
             ],
-            "hex": "#033608"
+            "hex": "#126dff"
           }
         },
         "comp.document-card.pid-bg": {
@@ -20785,17 +20785,17 @@
         "comp.segmented-switch.border": {
           "alias": [
             "sys.color.action.primary.bg",
-            "ref.color.dark-green"
+            "ref.color.blue"
           ],
           "type": "color",
           "value": {
             "colorSpace": "srgb",
             "components": [
-              0.0118,
-              0.2118,
-              0.0314
+              0.0706,
+              0.4275,
+              1.0
             ],
-            "hex": "#033608"
+            "hex": "#126dff"
           }
         },
         "comp.segmented-switch.card-radius": {
@@ -21049,17 +21049,17 @@
         "comp.segmented-switch.selected-bg": {
           "alias": [
             "sys.color.action.primary.bg",
-            "ref.color.dark-green"
+            "ref.color.blue"
           ],
           "type": "color",
           "value": {
             "colorSpace": "srgb",
             "components": [
-              0.0118,
-              0.2118,
-              0.0314
+              0.0706,
+              0.4275,
+              1.0
             ],
-            "hex": "#033608"
+            "hex": "#126dff"
           }
         },
         "comp.segmented-switch.selected-fg": {

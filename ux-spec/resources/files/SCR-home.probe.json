@@ -2,62 +2,55 @@
   "probe_schema_version": 1,
   "kind": "screen-probe",
   "screen_id": "SCR-home",
-  "spec_hash": "sha256:a68afddc4f10ff8e90325a04000e535012d1d1a3a658ac191fb9b9a634cfe708",
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
   "source": {
     "brief": "BRF-006",
     "description": "Home (TPL-home, BRF-006) as a standalone screen probe: the default brand's profile and variants applied",
     "exporter": "tools/export_kmp.py 0.5.0",
     "locale": "sk",
     "maturity": "candidate",
-    "ux_commit": "95b03406374edc017cba088bdca6e5f5edff46aa"
+    "ux_commit": "b55be659455f936456632cea230d6fc0ee58f9c5"
   },
   "brands": [
-    "idsk"
+    "eudiw_v1"
   ],
-  "default_brand": "idsk",
+  "default_brand": "eudiw_v1",
   "gating": {
-    "idsk": {
+    "eudiw_v1": {
       "hidden": [
+        {
+          "by": "profile",
+          "feature": "storage-switch",
+          "node": "switch",
+          "profile": "PRF-eudiw-v1"
+        },
+        {
+          "by": "profile",
+          "feature": "trust-mark-entry",
+          "node": "trustmark",
+          "profile": "PRF-eudiw-v1"
+        },
         {
           "axis": "bottom-nav",
           "by": "variant",
-          "node": "bottom-bar",
-          "option": "action-button"
-        },
-        {
-          "by": "profile",
-          "feature": "identity-card",
-          "node": "card-pid",
-          "profile": "PRF-dvm"
-        },
-        {
-          "by": "profile",
-          "feature": "documents-heading",
-          "node": "documents-heading",
-          "profile": "PRF-dvm"
-        },
-        {
-          "by": "profile",
-          "feature": "documents-heading",
-          "node": "all-documents",
-          "profile": "PRF-dvm"
+          "node": "present",
+          "option": "bar"
         }
       ],
       "hidden_events": [
-        "OPEN_ACTIONS",
-        "OPEN_ALL_DOCUMENTS",
-        "OPEN_DOCUMENT_PID"
+        "OPEN_CERT",
+        "PRESENT",
+        "SWITCH_STORAGE"
       ],
-      "profile": "PRF-dvm",
+      "profile": "PRF-eudiw-v1",
       "variants": {
-        "bottom-nav": "action-button",
-        "card-face": "band"
+        "bottom-nav": "bar",
+        "card-face": "centered"
       },
       "visible": [
         "appbar",
         "appbar-unread",
         "title",
-        "switch",
         "notice-offline",
         "notice-offline-phone",
         "notice-invalid",
@@ -71,55 +64,46 @@
         "empty-title",
         "empty-text",
         "add-document",
-        "trustmark",
         "history",
-        "present",
+        "bottom-bar",
+        "card-pid",
+        "documents-heading",
+        "all-documents",
         "card-dl-expiring"
       ]
     }
   },
   "dropped": [
     {
-      "node": "bottom-bar",
+      "node": "switch",
       "reasons": {
-        "idsk": {
+        "eudiw_v1": {
+          "by": "profile",
+          "feature": "storage-switch",
+          "node": "switch",
+          "profile": "PRF-eudiw-v1"
+        }
+      }
+    },
+    {
+      "node": "trustmark",
+      "reasons": {
+        "eudiw_v1": {
+          "by": "profile",
+          "feature": "trust-mark-entry",
+          "node": "trustmark",
+          "profile": "PRF-eudiw-v1"
+        }
+      }
+    },
+    {
+      "node": "present",
+      "reasons": {
+        "eudiw_v1": {
           "axis": "bottom-nav",
           "by": "variant",
-          "node": "bottom-bar",
-          "option": "action-button"
-        }
-      }
-    },
-    {
-      "node": "card-pid",
-      "reasons": {
-        "idsk": {
-          "by": "profile",
-          "feature": "identity-card",
-          "node": "card-pid",
-          "profile": "PRF-dvm"
-        }
-      }
-    },
-    {
-      "node": "documents-heading",
-      "reasons": {
-        "idsk": {
-          "by": "profile",
-          "feature": "documents-heading",
-          "node": "documents-heading",
-          "profile": "PRF-dvm"
-        }
-      }
-    },
-    {
-      "node": "all-documents",
-      "reasons": {
-        "idsk": {
-          "by": "profile",
-          "feature": "documents-heading",
-          "node": "all-documents",
-          "profile": "PRF-dvm"
+          "node": "present",
+          "option": "bar"
         }
       }
     }
@@ -127,23 +111,7 @@
   "rules_pruned": [
     {
       "effects_on": [
-        "all-documents",
-        "card-pid",
-        "documents-heading"
-      ],
-      "rule": "RUL-home-storage-phone"
-    },
-    {
-      "effects_on": [
-        "card-pid"
-      ],
-      "rule": "RUL-home-pid-deleted"
-    },
-    {
-      "effects_on": [
-        "all-documents",
-        "card-pid",
-        "documents-heading"
+        "present"
       ],
       "rule": "RUL-home-empty"
     }
@@ -416,10 +384,19 @@
       ],
       "source": "ui"
     },
-    "OPEN_CERT": {
+    "OPEN_ACTIONS": {
       "nodes": [
         {
-          "node": "trustmark",
+          "node": "bottom-bar",
+          "on": "action"
+        }
+      ],
+      "source": "ui"
+    },
+    "OPEN_ALL_DOCUMENTS": {
+      "nodes": [
+        {
+          "node": "all-documents",
           "on": "activate"
         }
       ],
@@ -472,6 +449,15 @@
       ],
       "source": "ui"
     },
+    "OPEN_DOCUMENT_PID": {
+      "nodes": [
+        {
+          "node": "card-pid",
+          "on": "open"
+        }
+      ],
+      "source": "ui"
+    },
     "OPEN_LOG": {
       "nodes": [
         {
@@ -503,24 +489,6 @@
         {
           "node": "appbar-unread",
           "on": "trailing"
-        }
-      ],
-      "source": "ui"
-    },
-    "PRESENT": {
-      "nodes": [
-        {
-          "node": "present",
-          "on": "press"
-        }
-      ],
-      "source": "ui"
-    },
-    "SWITCH_STORAGE": {
-      "nodes": [
-        {
-          "node": "switch",
-          "on": "change"
         }
       ],
       "source": "ui"
@@ -597,26 +565,6 @@
           }
         }
       ],
-      "switch": [
-        {
-          "id": "switch",
-          "element": "EL-segmented-switch",
-          "props": {
-            "label": {
-              "copy": "CPY-doc-storage-label"
-            },
-            "options": {
-              "bind": "/storage/options"
-            }
-          },
-          "events": [
-            {
-              "emits": "SWITCH_STORAGE",
-              "on": "change"
-            }
-          ]
-        }
-      ],
       "notice": [
         {
           "id": "notice-offline",
@@ -650,6 +598,68 @@
             },
             "tone": "warning"
           }
+        }
+      ],
+      "identity": [
+        {
+          "id": "card-pid",
+          "element": "EL-document-card",
+          "props": {
+            "doc_type": "pid",
+            "holder": {
+              "bind": "/holder/name"
+            },
+            "initials": {
+              "bind": "/holder/initials"
+            },
+            "status": "valid",
+            "status_label": {
+              "copy": "CPY-home-identity-status-valid"
+            },
+            "title": {
+              "copy": "CPY-doc-type-pid"
+            },
+            "variant": "holder"
+          },
+          "events": [
+            {
+              "emits": "OPEN_DOCUMENT_PID",
+              "on": "open"
+            }
+          ]
+        }
+      ],
+      "documents-heading": [
+        {
+          "id": "documents-heading",
+          "element": "EL-text",
+          "props": {
+            "text": {
+              "copy": "CPY-home-documents-heading"
+            },
+            "variant": "heading"
+          },
+          "a11y": {
+            "heading": 2
+          }
+        },
+        {
+          "id": "all-documents",
+          "element": "EL-link",
+          "props": {
+            "href": {
+              "bind": "/links/all_documents"
+            },
+            "label": {
+              "copy": "CPY-home-all-documents"
+            }
+          },
+          "events": [
+            {
+              "emits": "OPEN_ALL_DOCUMENTS",
+              "on": "activate"
+            }
+          ]
         }
       ],
       "cards": [
@@ -972,25 +982,6 @@
       ],
       "footer": [
         {
-          "id": "trustmark",
-          "element": "EL-trust-mark",
-          "props": {
-            "href": {
-              "bind": "/links/cert"
-            },
-            "label": {
-              "copy": "CPY-home-trustmark-label"
-            },
-            "variant": "badge"
-          },
-          "events": [
-            {
-              "emits": "OPEN_CERT",
-              "on": "activate"
-            }
-          ]
-        },
-        {
           "id": "history",
           "element": "EL-link",
           "props": {
@@ -1011,19 +1002,24 @@
       ],
       "actions": [
         {
-          "id": "present",
-          "element": "EL-button",
+          "id": "bottom-bar",
+          "element": "EL-bottom-bar",
           "props": {
-            "icon": "qr-code",
-            "label": {
-              "copy": "CPY-home-present"
+            "action": "menu",
+            "action_label": {
+              "copy": "CPY-home-actions-label"
             },
-            "variant": "primary"
+            "label": {
+              "copy": "CPY-home-nav-label"
+            },
+            "tabs": {
+              "bind": "/nav/tabs"
+            }
           },
           "events": [
             {
-              "emits": "PRESENT",
-              "on": "press"
+              "emits": "OPEN_ACTIONS",
+              "on": "action"
             }
           ]
         }
@@ -1103,6 +1099,18 @@
           {
             "effect": "hide",
             "node": "card-dl-expiring"
+          },
+          {
+            "effect": "hide",
+            "node": "card-pid"
+          },
+          {
+            "effect": "hide",
+            "node": "documents-heading"
+          },
+          {
+            "effect": "hide",
+            "node": "all-documents"
           }
         ],
         "when": {
@@ -1280,7 +1288,12 @@
       },
       {
         "id": "RUL-home-pid-deleted",
-        "then": [],
+        "then": [
+          {
+            "effect": "hide",
+            "node": "card-pid"
+          }
+        ],
         "when": {
           "op": "is_false",
           "path": "/documents/pid_present"
@@ -1336,11 +1349,19 @@
           },
           {
             "effect": "hide",
-            "node": "card-pid-cloud"
+            "node": "card-pid"
           },
           {
             "effect": "hide",
-            "node": "present"
+            "node": "documents-heading"
+          },
+          {
+            "effect": "hide",
+            "node": "all-documents"
+          },
+          {
+            "effect": "hide",
+            "node": "card-pid-cloud"
           }
         ],
         "when": {
@@ -1398,10 +1419,12 @@
         "appbar",
         "appbar-unread",
         "title",
-        "switch",
         "notice-offline",
         "notice-offline-phone",
         "notice-invalid",
+        "card-pid",
+        "documents-heading",
+        "all-documents",
         "card-id",
         "card-id-revoked",
         "card-id-suspended",
@@ -1413,16 +1436,15 @@
         "empty-title",
         "empty-text",
         "add-document",
-        "trustmark",
         "history",
-        "present"
+        "bottom-bar"
       ],
       "heading": "title",
       "on_enter": "focus-heading"
     }
   },
   "expected": {
-    "idsk": {
+    "eudiw_v1": {
       "cloud": {
         "copy": {},
         "disabled": [],
@@ -1441,11 +1463,9 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "card-pid-cloud",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar"
         ]
       },
       "cloud-empty": {
@@ -1466,12 +1486,11 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "empty-title",
           "empty-text",
           "add-document",
-          "trustmark",
-          "history"
+          "history",
+          "bottom-bar"
         ]
       },
       "default": {
@@ -1492,12 +1511,13 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "card-id",
           "card-dl",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
         ]
       },
       "dl-expiring": {
@@ -1518,11 +1538,12 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "card-id",
-          "trustmark",
           "history",
-          "present",
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents",
           "card-dl-expiring"
         ]
       },
@@ -1543,13 +1564,14 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "notice-invalid",
           "card-id",
           "card-dl-expired",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
         ]
       },
       "empty": {
@@ -1570,12 +1592,11 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "empty-title",
           "empty-text",
           "add-document",
-          "trustmark",
-          "history"
+          "history",
+          "bottom-bar"
         ]
       },
       "id-revoked": {
@@ -1595,13 +1616,14 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "notice-invalid",
           "card-id-revoked",
           "card-dl",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
         ]
       },
       "id-stale": {
@@ -1621,13 +1643,14 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "notice-invalid",
           "card-id-stale",
           "card-dl",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
         ]
       },
       "id-suspended": {
@@ -1647,13 +1670,14 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "notice-invalid",
           "card-id-suspended",
           "card-dl",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
         ]
       },
       "notifications-unread": {
@@ -1674,12 +1698,13 @@
         "visible": [
           "appbar-unread",
           "title",
-          "switch",
           "card-id",
           "card-dl",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
         ]
       },
       "offline": {
@@ -1699,14 +1724,15 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "notice-offline",
           "notice-offline-phone",
           "card-id",
           "card-dl",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
         ]
       },
       "without-dl": {
@@ -1728,11 +1754,12 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "card-id",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
         ]
       },
       "without-id": {
@@ -1754,11 +1781,12 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "card-dl",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar",
+          "card-pid",
+          "documents-heading",
+          "all-documents"
         ]
       },
       "without-pid": {
@@ -1780,17 +1808,20 @@
         "visible": [
           "appbar",
           "title",
-          "switch",
           "card-id",
           "card-dl",
-          "trustmark",
           "history",
-          "present"
+          "bottom-bar",
+          "documents-heading",
+          "all-documents"
         ]
       }
     }
   },
   "assets": {
+    "all-documents": [
+      "icon.chevron-right"
+    ],
     "appbar": [
       "icon.navigation-menu",
       "icon.notifications"
@@ -1798,6 +1829,11 @@
     "appbar-unread": [
       "icon.navigation-menu",
       "icon.notifications"
+    ],
+    "bottom-bar": [
+      "icon.add",
+      "icon.icon-case",
+      "icon.icon-id-card"
     ],
     "card-dl": [
       "document-art.driving-licence",
@@ -1841,6 +1877,11 @@
       "icon.error-outline",
       "icon.smartphone"
     ],
+    "card-pid": [
+      "document-art.pid",
+      "icon.arrow-forward-ios",
+      "icon.check-circle"
+    ],
     "card-pid-cloud": [
       "document-art.pid",
       "icon.arrow-forward-ios",
@@ -1858,20 +1899,19 @@
     ],
     "notice-offline-phone": [
       "icon.info"
-    ],
-    "present": [
-      "icon.qr-code"
-    ],
-    "switch": [
-      "icon.check"
-    ],
-    "trustmark": [
-      "icon.chevron-right",
-      "trust-mark.colour"
     ]
   },
   "copy": {
-    "brand_overrides": {},
+    "brand_overrides": {
+      "eudiw_v1": {
+        "CPY-home-card-valid": {
+          "res": "cpy_home_card_valid__eudiw_v1"
+        },
+        "CPY-home-title": {
+          "res": "cpy_home_title__eudiw_v1"
+        }
+      }
+    },
     "keys": {
       "CPY-doc-name-en-driving-licence": {
         "res": "cpy_doc_name_en_driving_licence"
@@ -1903,9 +1943,6 @@
       "CPY-doc-storage-cloud": {
         "res": "cpy_doc_storage_cloud"
       },
-      "CPY-doc-storage-label": {
-        "res": "cpy_doc_storage_label"
-      },
       "CPY-doc-storage-phone": {
         "res": "cpy_doc_storage_phone"
       },
@@ -1918,8 +1955,20 @@
       "CPY-doc-type-pid": {
         "res": "cpy_doc_type_pid"
       },
+      "CPY-home-actions-label": {
+        "res": "cpy_home_actions_label"
+      },
+      "CPY-home-all-documents": {
+        "res": "cpy_home_all_documents"
+      },
       "CPY-home-card-valid": {
+        "placeholders": [
+          "date"
+        ],
         "res": "cpy_home_card_valid"
+      },
+      "CPY-home-documents-heading": {
+        "res": "cpy_home_documents_heading"
       },
       "CPY-home-empty-primary": {
         "res": "cpy_home_empty_primary"
@@ -1930,6 +1979,9 @@
       "CPY-home-empty-title": {
         "res": "cpy_home_empty_title"
       },
+      "CPY-home-identity-status-valid": {
+        "res": "cpy_home_identity_status_valid"
+      },
       "CPY-home-invalid-notice": {
         "res": "cpy_home_invalid_notice"
       },
@@ -1938,6 +1990,9 @@
       },
       "CPY-home-nav-documents": {
         "res": "cpy_home_nav_documents"
+      },
+      "CPY-home-nav-label": {
+        "res": "cpy_home_nav_label"
       },
       "CPY-home-nav-services": {
         "res": "cpy_home_nav_services"
@@ -1957,9 +2012,6 @@
       "CPY-home-offline-title": {
         "res": "cpy_home_offline_title"
       },
-      "CPY-home-present": {
-        "res": "cpy_home_present"
-      },
       "CPY-home-switch-cloud": {
         "res": "cpy_home_switch_cloud"
       },
@@ -1971,9 +2023,6 @@
       },
       "CPY-home-title": {
         "res": "cpy_home_title"
-      },
-      "CPY-home-trustmark-label": {
-        "res": "cpy_home_trustmark_label"
       },
       "CPY-log-title": {
         "res": "cpy_log_title"
