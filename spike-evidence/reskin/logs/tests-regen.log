@@ -1,0 +1,756 @@
+Calculating task graph as no cached configuration is available for tasks: :shared-ui:testAndroidHostTest :shared-ui:iosSimulatorArm64Test :ux-elements:allTests :ux-theme:allTests :ux-runtime:allTests :ux-spike:allTests
+> Task :build-logic:convention:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:convention:compileKotlin UP-TO-DATE
+> Task :build-logic:convention:compileJava NO-SOURCE
+> Task :build-logic:convention:pluginDescriptors UP-TO-DATE
+> Task :build-logic:convention:processResources UP-TO-DATE
+> Task :build-logic:convention:classes UP-TO-DATE
+> Task :build-logic:convention:jar UP-TO-DATE
+
+> Configure project :assembly-logic
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+
+> Configure project :resources-logic
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+
+> Configure project :ui-logic
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+
+> Task :shared-logic:androidPreBuild UP-TO-DATE
+> Task :shared-logic:preAndroidMainBuild UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared-ui:androidPreBuild UP-TO-DATE
+> Task :shared-ui:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :shared-ui:preAndroidMainBuild UP-TO-DATE
+> Task :shared-ui:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared-logic:kmpPartiallyResolvedDependenciesChecker
+> Task :shared-ui:kmpPartiallyResolvedDependenciesChecker
+> Task :shared-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared-ui:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared-ui:generateComposeResClass UP-TO-DATE
+> Task :shared-ui:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :ux-contract:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-contract:androidPreBuild UP-TO-DATE
+> Task :ux-contract:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-contract:preAndroidMainBuild UP-TO-DATE
+> Task :ux-contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-contract:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :ux-contract:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :ux-contract:generateComposeResClass UP-TO-DATE
+> Task :ux-contract:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :ux-contract:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared-ui:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :ux-elements:generateComposeResClass SKIPPED
+> Task :ux-elements:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ux-elements:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-elements:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-theme:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-contract:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :ux-elements:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :ux-elements:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-contract:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :ux-theme:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :ux-elements:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :shared-ui:copyAndroidMainComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :ux-theme:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForCommonMain SKIPPED
+> Task :shared-ui:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :ux-theme:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :ux-elements:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :ux-elements:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :ux-theme:generateComposeResClass SKIPPED
+> Task :ux-theme:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ux-theme:androidPreBuild UP-TO-DATE
+> Task :ux-theme:preAndroidMainBuild UP-TO-DATE
+> Task :ux-elements:androidPreBuild UP-TO-DATE
+> Task :ux-theme:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :shared-ui:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :shared-ui:packageAndroidMainResources UP-TO-DATE
+> Task :ux-elements:preAndroidMainBuild UP-TO-DATE
+> Task :ux-theme:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :shared-ui:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared-ui:androidJar UP-TO-DATE
+> Task :shared-ui:preAndroidHostTestBuild UP-TO-DATE
+> Task :shared-ui:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :shared-ui:parseAndroidMainLocalResources UP-TO-DATE
+> Task :shared-ui:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForCommonMain SKIPPED
+> Task :shared-ui:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-theme:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :shared-ui:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForAndroidHostTest NO-SOURCE
+> Task :shared-ui:generateAndroidMainRFile UP-TO-DATE
+> Task :shared-ui:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :shared-logic:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :shared-ui:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :shared-ui:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared-logic:downloadPkixBridge UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared-logic:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :ux-contract:generateActualResourceCollectorsForAndroidMain
+> Task :shared-ui:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-contract:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :shared-ui:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :shared-ui:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :ux-contract:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-contract:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-contract:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :ux-contract:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-contract:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :ux-elements:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-elements:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-elements:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-elements:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-elements:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-elements:generateResourceAccessorsForAppleMain SKIPPED
+> Task :ux-elements:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosMain SKIPPED
+> Task :ux-contract:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-theme:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-contract:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :ux-elements:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-elements:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-elements:generateResourceAccessorsForNativeMain SKIPPED
+> Task :ux-elements:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-theme:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForAppleMain SKIPPED
+> Task :ux-theme:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosMain SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-theme:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-theme:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-theme:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-theme:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-theme:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForNativeMain SKIPPED
+> Task :ux-elements:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-theme:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-runtime:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-runtime:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-runtime:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForAppleMain SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForCommonMain SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForIosMain SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForNativeMain SKIPPED
+> Task :ux-runtime:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-runtime:generateComposeResClass SKIPPED
+> Task :ux-runtime:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ux-runtime:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-runtime:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-spike:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-spike:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-spike:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-spike:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-spike:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-spike:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-spike:uxSpikeComposeResources UP-TO-DATE
+> Task :ux-spike:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :ux-spike:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :ux-spike:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :ux-spike:generateComposeResClass UP-TO-DATE
+> Task :ux-spike:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :ux-spike:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :ux-spike:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-spike:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared-ui:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :shared-ui:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForAppleTest NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForIosTest NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-contract:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :shared-ui:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-contract:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-contract:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :ux-elements:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :shared-ui:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForNativeTest NO-SOURCE
+> Task :ux-elements:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :ux-runtime:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-spike:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-runtime:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-spike:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-runtime:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :ux-spike:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :shared-ui:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-theme:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :shared-ui:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :shared-ui:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :shared-ui:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :shared-logic:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-contract:copyAndroidMainComposeResourcesToAndroidAssets
+> Task :shared-ui:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :ux-contract:packageAndroidMainResources UP-TO-DATE
+> Task :shared-ui:iosSimulatorArm64ResolveResourcesFromDependencies UP-TO-DATE
+> Task :ux-contract:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :shared-ui:iosSimulatorArm64AggregateResources UP-TO-DATE
+> Task :ux-elements:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :ux-contract:parseAndroidMainLocalResources UP-TO-DATE
+> Task :ux-runtime:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :ux-contract:generateAndroidMainRFile UP-TO-DATE
+> Task :ux-spike:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :ux-theme:serializeSwiftPMDependenciesMetadataForLockFiles UP-TO-DATE
+> Task :shared-logic:generateUmbrellaPackageIdentifierBasedResolutionForDefault SKIPPED
+> Task :shared-logic:fetchUmbrellaPackageIdentifierForDefault SKIPPED
+> Task :shared-ui:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :shared-ui:fetchSyntheticImportProjectPackages SKIPPED
+> Task :shared-ui:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :shared-ui:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :shared-logic:compileAndroidMain UP-TO-DATE
+> Task :shared-logic:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :shared-logic:processAndroidMainJavaRes UP-TO-DATE
+> Task :shared-logic:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :ux-elements:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-elements:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForAppleTest SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForCommonTest SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosTest SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForNativeTest SKIPPED
+> Task :ux-elements:iosSimulatorArm64ResolveResourcesFromDependencies UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64AggregateResources UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64ProcessResources UP-TO-DATE
+> Task :ux-contract:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :ux-theme:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :shared-logic:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :ux-elements:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :ux-elements:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-elements:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-elements:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-elements:specSnapshotFixture
+> Task :ux-elements:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :ux-elements:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :ux-elements:androidJar UP-TO-DATE
+> Task :ux-elements:generateAndroidHostTestAssets UP-TO-DATE
+> Task :ux-elements:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-elements:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :ux-elements:copyTestComposeResourcesForIosSimulatorArm64 UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64MainKlibrary UP-TO-DATE
+> Task :ux-elements:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :ux-theme:writeAndroidMainAarMetadata UP-TO-DATE
+> Task :shared-ui:iosSimulatorArm64ProcessResources
+> Task :ux-runtime:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :ux-elements:mapAndroidHostTestSourceSetPaths UP-TO-DATE
+> Task :ux-elements:generateAndroidHostTestResources UP-TO-DATE
+> Task :ux-elements:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :ux-theme:generateAndroidMainEmptyResourceFiles UP-TO-DATE
+> Task :ux-spike:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :shared-ui:copyTestComposeResourcesForIosSimulatorArm64
+> Task :ux-elements:processAndroidMainManifest UP-TO-DATE
+> Task :ux-theme:processAndroidMainManifest UP-TO-DATE
+> Task :shared-ui:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :shared-ui:iosSimulatorArm64MainKlibrary
+> Task :ux-elements:mergeAndroidHostTestAssets UP-TO-DATE
+> Task :ux-elements:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-elements:checkAndroidHostTestAarMetadata UP-TO-DATE
+> Task :ux-elements:generateResourceAccessorsForAndroidHostTest SKIPPED
+> Task :ux-elements:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-elements:mergeAndroidHostTestResources UP-TO-DATE
+> Task :ux-theme:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-theme:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForCommonTest SKIPPED
+> Task :ux-theme:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-theme:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :ux-theme:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-theme:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForAppleTest SKIPPED
+> Task :ux-theme:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosTest SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForNativeTest SKIPPED
+> Task :ux-theme:iosSimulatorArm64ResolveResourcesFromDependencies UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-theme:computeLocalPackageDependencyInputFiles UP-TO-DATE
+> Task :ux-theme:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-theme:iosSimulatorArm64AggregateResources UP-TO-DATE
+> Task :ux-theme:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-theme:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-theme:iosSimulatorArm64ProcessResources UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64MainKlibrary UP-TO-DATE
+> Task :ux-theme:convertSyntheticImportProjectIntoDefFileIphonesimulator UP-TO-DATE
+> Task :ux-theme:assembleIosSimulatorArm64TestResources UP-TO-DATE
+> Task :ux-theme:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-theme:copyTestComposeResourcesForIosSimulatorArm64 UP-TO-DATE
+> Task :ux-theme:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-theme:androidJar UP-TO-DATE
+> Task :ux-theme:generateResourceAccessorsForAndroidHostTest SKIPPED
+> Task :ux-theme:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-theme:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-runtime:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-runtime:exportedModelFixture
+> Task :ux-runtime:exportedScriptsFixture
+> Task :ux-runtime:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForAppleTest SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForCommonTest SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForIosTest SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForNativeTest SKIPPED
+> Task :ux-runtime:iosSimulatorArm64ResolveResourcesFromDependencies
+> Task :ux-runtime:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources
+> Task :ux-runtime:exportedBundleFixture
+> Task :ux-runtime:iosSimulatorArm64AggregateResources
+> Task :ux-elements:mergeAndroidHostTestManifest UP-TO-DATE
+> Task :ux-elements:processAndroidHostTestManifest UP-TO-DATE
+> Task :ux-runtime:computeLocalPackageDependencyInputFiles
+> Task :ux-runtime:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-runtime:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-runtime:iosSimulatorArm64ProcessResources
+> Task :ux-runtime:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-runtime:iosSimulatorArm64MainKlibrary
+> Task :ux-runtime:convertSyntheticImportProjectIntoDefFileIphonesimulator
+> Task :ux-runtime:assembleIosSimulatorArm64TestResources
+> Task :ux-runtime:copyTestComposeResourcesForIosSimulatorArm64
+> Task :ux-runtime:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :ux-runtime:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :ux-runtime:androidPreBuild UP-TO-DATE
+> Task :ux-runtime:preAndroidMainBuild UP-TO-DATE
+> Task :ux-runtime:androidJar
+> Task :ux-runtime:generateAndroidHostTestAssets UP-TO-DATE
+> Task :ux-runtime:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-runtime:mergeAndroidHostTestAssets
+> Task :ux-elements:tokensFixture
+> Task :ux-runtime:writeAndroidMainAarMetadata
+> Task :ux-elements:processAndroidHostTestResources UP-TO-DATE
+> Task :ux-elements:packageAndroidHostTestForUnitTest UP-TO-DATE
+> Task :ux-elements:generateAndroidHostTestConfig UP-TO-DATE
+> Task :ux-runtime:mapAndroidHostTestSourceSetPaths
+> Task :ux-runtime:generateAndroidHostTestResources
+> Task :ux-runtime:generateAndroidMainEmptyResourceFiles
+> Task :ux-runtime:checkAndroidHostTestAarMetadata
+> Task :ux-runtime:processAndroidMainManifest
+> Task :ux-runtime:mergeAndroidHostTestManifest
+> Task :ux-runtime:processAndroidHostTestManifest
+> Task :ux-runtime:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForAndroidHostTest SKIPPED
+> Task :ux-runtime:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-spike:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-spike:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForAppleTest NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForIosTest NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForNativeTest NO-SOURCE
+> Task :ux-spike:iosSimulatorArm64ResolveResourcesFromDependencies
+> Task :ux-spike:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources
+> Task :ux-spike:iosSimulatorArm64AggregateResources
+> Task :ux-spike:iosSimulatorArm64ProcessResources
+> Task :ux-spike:iosSimulatorArm64MainKlibrary
+> Task :ux-spike:probeFixture
+> Task :ux-runtime:mergeAndroidHostTestResources
+> Task :ux-theme:compileAndroidMain
+> Task :ux-theme:bundleAndroidMainClassesToCompileJar
+> Task :ux-runtime:processAndroidHostTestResources
+> Task :ux-theme:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-theme:processAndroidMainJavaRes UP-TO-DATE
+> Task :ux-elements:compileAndroidMain
+> Task :ux-elements:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :ux-elements:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :ux-elements:processAndroidMainJavaRes UP-TO-DATE
+> Task :ux-theme:compileAndroidHostTest
+> Task :ux-theme:compileTestKotlinIosSimulatorArm64
+> Task :ux-theme:testAndroidHostTest
+> Task :ux-contract:compileAndroidMain
+> Task :ux-contract:bundleAndroidMainClassesToCompileJar
+> Task :shared-ui:compileAndroidMain
+> Task :shared-ui:bundleAndroidMainClassesToRuntimeJar UP-TO-DATE
+> Task :shared-ui:bundleAndroidMainClassesToCompileJar UP-TO-DATE
+> Task :shared-ui:compileAndroidHostTest
+> Task :shared-ui:processAndroidMainJavaRes UP-TO-DATE
+> Task :ux-contract:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-contract:processAndroidMainJavaRes UP-TO-DATE
+> Task :ux-elements:compileAndroidHostTest
+
+> Task :ux-spike:compileTestKotlinIosSimulatorArm64
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-spike/src/commonTest/kotlin/eu/europa/ec/uxspike/ScreenProbeTest.kt:109:33 No cast needed.
+
+> Task :ux-runtime:packageAndroidHostTestForUnitTest
+> Task :ux-runtime:generateAndroidHostTestConfig
+> Task :ux-spike:computeLocalPackageDependencyInputFiles
+> Task :ux-spike:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-spike:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-spike:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-spike:convertSyntheticImportProjectIntoDefFileIphonesimulator
+> Task :ux-spike:assembleIosSimulatorArm64TestResources
+> Task :ux-spike:copyTestComposeResourcesForIosSimulatorArm64
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+> Task :ux-runtime:compileAndroidMain
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonMain/kotlin/eu/europa/ec/ux/runtime/engine/FlowEngine.kt:208:15 'fun CoroutineScope.launch(context: Job, start: CoroutineStart = ..., block: suspend CoroutineScope.() -> Unit): Job' is deprecated. Passing a Job to coroutine builders breaks structured concurrency, leading to hard-to-diagnose errors. This pattern should be avoided. This overload will be deprecated with an error in the future.
+
+> Task :ux-runtime:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-runtime:bundleAndroidMainClassesToCompileJar
+> Task :shared-ui:testAndroidHostTest
+> Task :ux-runtime:processAndroidMainJavaRes
+> Task :ux-spike:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :ux-spike:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :ux-spike:androidPreBuild UP-TO-DATE
+> Task :ux-spike:preAndroidMainBuild UP-TO-DATE
+> Task :ux-spike:generateAndroidMainEmptyResourceFiles
+> Task :ux-spike:copyAndroidMainComposeResourcesToAndroidAssets
+> Task :ux-spike:packageAndroidMainResources
+> Task :ux-spike:parseAndroidMainLocalResources
+> Task :ux-spike:generateAndroidMainRFile
+> Task :ux-elements:compileTestKotlinIosSimulatorArm64
+> Task :ux-spike:compileAndroidMain
+> Task :ux-spike:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-spike:androidJar
+> Task :ux-spike:bundleAndroidMainClassesToCompileJar
+> Task :ux-contract:generateAndroidMainAssets UP-TO-DATE
+> Task :ux-contract:mergeAndroidMainAssets
+> Task :ux-spike:generateAndroidHostTestAssets UP-TO-DATE
+> Task :ux-spike:generateAndroidMainAssets UP-TO-DATE
+> Task :ux-spike:mergeAndroidMainAssets
+> Task :ux-spike:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-spike:mergeAndroidHostTestAssets
+> Task :ux-contract:mapAndroidMainSourceSetPaths
+> Task :ux-contract:compileAndroidMainLibraryResources
+> Task :ux-contract:writeAndroidMainAarMetadata
+> Task :ux-spike:writeAndroidMainAarMetadata
+> Task :ux-spike:checkAndroidHostTestAarMetadata
+> Task :ux-spike:mapAndroidMainSourceSetPaths
+> Task :ux-spike:compileAndroidMainLibraryResources
+> Task :ux-spike:mapAndroidHostTestSourceSetPaths
+> Task :ux-spike:generateAndroidHostTestResources
+> Task :ux-spike:mergeAndroidHostTestResources
+> Task :ux-contract:processAndroidMainManifest
+> Task :ux-spike:processAndroidMainManifest
+> Task :ux-spike:mergeAndroidHostTestManifest
+> Task :ux-spike:processAndroidHostTestManifest
+
+> Task :ux-runtime:compileAndroidHostTest
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/bundle/HandshakeTest.kt:179:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:54:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:67:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:79:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:104:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:147:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:198:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:210:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:227:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:253:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:52:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:65:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:69:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:88:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:94:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:104:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:109:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:115:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:143:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:165:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineSemanticsTest.kt:89:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedModelReplayTest.kt:85:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedModelReplayTest.kt:96:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedPoliciesTest.kt:68:17 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedPoliciesTest.kt:117:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedPoliciesTest.kt:128:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedPoliciesTest.kt:175:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:60:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:100:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:129:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/screen/InterpreterScenario.kt:204:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/support/ExportWalk.kt:145:77 Unnecessary safe call on a non-null receiver of type 'Config'.
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/support/SyntheticFlow.kt:269:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/support/SyntheticFlow.kt:275:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/support/SyntheticFlow.kt:289:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+
+> Task :ux-spike:processAndroidHostTestResources
+> Task :ux-spike:packageAndroidHostTestForUnitTest
+> Task :ux-spike:generateAndroidHostTestConfig
+> Task :ux-spike:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForAndroidHostTest NO-SOURCE
+> Task :ux-theme:linkDebugTestIosSimulatorArm64
+
+> Task :ux-runtime:compileTestKotlinIosSimulatorArm64
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/bundle/HandshakeTest.kt:179:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:54:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:67:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:79:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:104:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:147:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:198:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:210:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:227:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/BackRestoreTest.kt:253:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:52:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:65:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:69:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:88:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:94:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:104:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:109:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:115:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:143:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineAsyncTest.kt:165:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/EngineSemanticsTest.kt:89:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedModelReplayTest.kt:85:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedModelReplayTest.kt:96:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedPoliciesTest.kt:68:17 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedPoliciesTest.kt:117:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedPoliciesTest.kt:128:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/ExportedPoliciesTest.kt:175:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:60:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:100:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/engine/Ruling2Test.kt:129:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/screen/InterpreterScenario.kt:204:13 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/support/ExportWalk.kt:145:77 Unnecessary safe call on a non-null receiver of type 'Config'.
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/support/SyntheticFlow.kt:269:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/support/SyntheticFlow.kt:275:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/commonTest/kotlin/eu/europa/ec/ux/runtime/support/SyntheticFlow.kt:289:15 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-runtime/src/iosTest/kotlin/eu/europa/ec/ux/runtime/host/FlowHostBackIosTest.kt:51:60 'fun runComposeUiTest(effectContext: CoroutineContext = ..., runTestContext: CoroutineContext = ..., testTimeout: Duration = ..., block: suspend ComposeUiTest.() -> Unit): Unit' is deprecated. Use `androidx.compose.ui.test.v2.runComposeUiTest` instead. The v2 APIs use `StandardTestDispatcher` by default to better simulate production behavior where coroutines are queued rather than executed immediately.
+
+> Task :ux-spike:compileAndroidHostTest
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-spike/src/androidHostTest/kotlin/eu/europa/ec/uxspike/FakeScriptsTest.kt:97:32 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-spike/src/androidHostTest/kotlin/eu/europa/ec/uxspike/FakeScriptsTest.kt:115:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-spike/src/androidHostTest/kotlin/eu/europa/ec/uxspike/FakeScriptsTest.kt:116:9 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+w: file:///Users/roman/code/eudi-kmp-reskin/ux-spike/src/commonTest/kotlin/eu/europa/ec/uxspike/ScreenProbeTest.kt:109:33 No cast needed.
+
+> Task :ux-spike:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-spike:processAndroidMainJavaRes
+> Task :ux-elements:testAndroidHostTest
+> Task :ux-theme:iosSimulatorArm64Test
+> Task :ux-theme:allTests
+
+> Task :shared-ui:compileTestKotlinIosSimulatorArm64
+w: Koin compiler plugin: Kotlin 2.4.10 is newer than the newest tested version (2.4.0) — proceeding with the 2.4.0 adapter. If compilation fails, check for a koin-compiler-plugin update. Supported versions: 2.3.20, 2.4.0.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/commonfeature/ui/trustmark/TrustMarkViewModelTest.kt:225:67 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/commonfeature/ui/trustmark/TrustMarkViewModelTest.kt:226:65 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/dashboardfeature/ui/dashboard/DashboardViewModelTest.kt:346:60 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/proximityfeature/ui/request/ProximityRequestViewModelTest.kt:266:51 Unnecessary non-null assertion (!!) on a non-null receiver of type 'RegistrationWarningUi'.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/iosTest/kotlin/eu/europa/ec/shared/ui/di/IosDeferredSweepTest.kt:39:30 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+
+> Task :ux-spike:testAndroidHostTest
+> Task :ux-elements:linkDebugTestIosSimulatorArm64
+> Task :ux-runtime:testAndroidHostTest
+> Task :ux-elements:iosSimulatorArm64Test
+> Task :ux-elements:allTests
+> Task :ux-spike:linkDebugTestIosSimulatorArm64
+> Task :ux-runtime:linkDebugTestIosSimulatorArm64
+> Task :ux-spike:iosSimulatorArm64Test
+> Task :ux-spike:allTests
+> Task :ux-runtime:iosSimulatorArm64Test
+> Task :ux-runtime:allTests
+> Task :shared-ui:linkDebugTestIosSimulatorArm64
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/LocalAuthentication-96P06S25RJAGD5NCGOX8CZH6L.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/LocalAuthentication-96P06S25RJAGD5NCGOX8CZH6L.pcm
+note: Linking a static library that was built with -gmodules, but the module cache was not found.  Redistributable static libraries should never be built with module debugging enabled.  The debug experience will be degraded due to incomplete debug information.
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/DeviceCheck-B7PC6OZ6SRM1QGX501U335RMC.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/DeviceCheck-B7PC6OZ6SRM1QGX501U335RMC.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Foundation-86GWAHL35FTD5DELBNGNBHT15.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Foundation-86GWAHL35FTD5DELBNGNBHT15.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/UIKit-7LYKT3VFG3FET3CHV9SQ64Z3A.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/UIKit-7LYKT3VFG3FET3CHV9SQ64Z3A.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Security-4IDN70428QN0GX8S8FD4PXT2Z.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Security-4IDN70428QN0GX8S8FD4PXT2Z.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreImage-6H2RY8Q5PY8FH1KM4Z2R7KTPX.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreImage-6H2RY8Q5PY8FH1KM4Z2R7KTPX.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CommonCrypto-6K94HOS5JFXF7CJXYK7RMACOU.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CommonCrypto-6K94HOS5JFXF7CJXYK7RMACOU.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/AuthenticationServices-CW656YL5SCLTUC2J3XUYHKOYE.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/AuthenticationServices-CW656YL5SCLTUC2J3XUYHKOYE.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreGraphics-73KSIFEBWC9Q3XSSYPPXEAKC0.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreGraphics-73KSIFEBWC9Q3XSSYPPXEAKC0.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreFoundation-2DIJ2EWU60WUU74MXS1CQWK8S.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreFoundation-2DIJ2EWU60WUU74MXS1CQWK8S.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/_SwiftConcurrencyShims-ELIOTYF5FK33AFEUR6EN0YR6W.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/_SwiftConcurrencyShims-ELIOTYF5FK33AFEUR6EN0YR6W.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/SwiftShims-15S4C0O8AYFRB266MLGKFPPES.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/SwiftShims-15S4C0O8AYFRB266MLGKFPPES.pcm
+2026-10-18T15:03:55.878577: WARNING: MultipazWalletStore: no app-group identifier; the document Keychain namespace falls back to a constant, so dev and demo builds would share one wallet on a device
+2026-10-18T15:03:55.878786: WARNING: IosRemotePresenter: remote presentation failed: IllegalStateException: SecItemCopyMatching(accounts) failed: -25291
+2026-10-18T15:03:55.881778: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+
+> Task :shared-ui:iosSimulatorArm64Test
+
+[Incubating] Problems report is available at: file:///Users/roman/code/eudi-kmp-reskin/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 56s
+262 actionable tasks: 129 executed, 133 up-to-date
+Configuration cache entry stored.

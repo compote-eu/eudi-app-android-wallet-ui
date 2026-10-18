@@ -1,0 +1,93 @@
+diff --git a/ux/experience/screens/SCR-pres-request.yaml b/ux/experience/screens/SCR-pres-request.yaml
+index 0c0379a..ef21763 100644
+--- a/ux/experience/screens/SCR-pres-request.yaml
++++ b/ux/experience/screens/SCR-pres-request.yaml
+@@ -31,6 +31,15 @@ nodes:
+     region: body
+     props: {tone: warning, title: {copy: CPY-pres-request-untrusted-notice-title}, text: {copy: CPY-pres-rp-unverified}}
+     satisfies: ["ARF-HLR:RPA_05", "UXR:REQ-PRES-003"]
++  - id: privacy
++    element: EL-link
++    region: body
++    props:
++      label: {copy: CPY-pres-request-privacy-link}
++      href: {bind: /verifier/privacy_url}
++      external: true
++      external_label: {copy: CPY-pres-link-external-hint}
++    satisfies: ["ARF-HLR:RPA_10", "UXR:REQ-PRES-005"]
+   - id: rp-trusted
+     element: EL-rp-identity
+     region: body
+@@ -57,15 +66,6 @@ nodes:
+       trust: untrusted
+       trust_label: {copy: CPY-pres-request-trust-untrusted}
+     satisfies: ["UXR:REQ-PRES-002", "UXR:REQ-PRES-003"]
+-  - id: privacy
+-    element: EL-link
+-    region: body
+-    props:
+-      label: {copy: CPY-pres-request-privacy-link}
+-      href: {bind: /verifier/privacy_url}
+-      external: true
+-      external_label: {copy: CPY-pres-link-external-hint}
+-    satisfies: ["ARF-HLR:RPA_10", "UXR:REQ-PRES-005"]
+   - id: data-intro
+     element: EL-text
+     region: body
+diff --git a/ux/product/copy/sk/BRF-001.yaml b/ux/product/copy/sk/BRF-001.yaml
+index d3c9cda..b5b341b 100644
+--- a/ux/product/copy/sk/BRF-001.yaml
++++ b/ux/product/copy/sk/BRF-001.yaml
+@@ -58,8 +58,8 @@ entries:
+ 
+   # --- request (RemoteVerifyAuthorization) ---
+   CPY-pres-request-title:
+-    text: "Overenie eDokladu"
+-    provenance: {source: SRC-APP-STRINGS, ref: L685, quote: "Overenie eDokladu"}
++    text: "Žiadosť o údaje"
++    provenance: {authored: "UX writer (reskin probe: reword)", decision: DEC-005}
+   CPY-pres-request-verifier-label:
+     text: "Overovateľ"
+     note: Caption above an AUTHENTICATED verifier name only.
+diff --git a/ux/product/copy/sk/common.yaml b/ux/product/copy/sk/common.yaml
+index 36ff792..bfe9279 100644
+--- a/ux/product/copy/sk/common.yaml
++++ b/ux/product/copy/sk/common.yaml
+@@ -84,9 +84,9 @@ entries:
+ 
+   # --- moved from BRF-006.yaml: used by BRF-006 (the home app bar) and BRF-001 (the home chrome behind its sheets, DEC-030) ---
+   CPY-home-title:
+-    text: "Moje eDoklady"
++    text: "Moja peňaženka"
+     note: "App-bar title of the home screen."
+-    provenance: {source: SRC-APP-STRINGS, ref: L168, quote: "Moje eDoklady"}
++    provenance: {authored: "UX writer (reskin probe: reword)", decision: DEC-005}
+   CPY-home-menu-label:
+     text: "Menu"
+     note: "Accessible name of the app-bar menu button (BRF-017 needs the same; composer moves it to common)."
+diff --git a/ux/product/export/kmp.yaml b/ux/product/export/kmp.yaml
+index 29b9fa4..8ea8454 100644
+--- a/ux/product/export/kmp.yaml
++++ b/ux/product/export/kmp.yaml
+@@ -5,7 +5,7 @@ targets:
+   FLW-pres-cross-device:
+     description: "Spike slice (spike-brief §3): brand eudiw_v1 (ruled 2026-10-16) with the idsk switch (track B), locale sk, modes light and high-contrast (R11; dark out of scope)"
+     brands: [eudiw_v1, idsk]
+-    default_brand: eudiw_v1
++    default_brand: idsk
+     locale: sk
+     modes: [light, high-contrast]
+     # OR-8 (owner, 2026-10-17): Home as a complete generated screen, a probe with no dashboard flow (DEC-080, provisional).
+diff --git a/ux/product/theme/idsk/sys.light.tokens.json b/ux/product/theme/idsk/sys.light.tokens.json
+index 3f3e200..14a633d 100644
+--- a/ux/product/theme/idsk/sys.light.tokens.json
++++ b/ux/product/theme/idsk/sys.light.tokens.json
+@@ -13,7 +13,7 @@
+         },
+         "primary": {
+           "bg": {
+-            "$value": "{ref.color.blue}"
++            "$value": "{ref.color.dark-green}"
+           },
+           "fg": {
+             "$value": "{ref.color.white}"

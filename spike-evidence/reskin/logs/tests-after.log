@@ -1,0 +1,547 @@
+Calculating task graph as no cached configuration is available for tasks: :shared-ui:testAndroidHostTest :shared-ui:iosSimulatorArm64Test :ux-elements:allTests :ux-theme:allTests
+> Task :build-logic:convention:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :build-logic:convention:compileKotlin UP-TO-DATE
+> Task :build-logic:convention:compileJava NO-SOURCE
+> Task :build-logic:convention:pluginDescriptors UP-TO-DATE
+> Task :build-logic:convention:processResources UP-TO-DATE
+> Task :build-logic:convention:classes UP-TO-DATE
+> Task :build-logic:convention:jar UP-TO-DATE
+
+> Configure project :assembly-logic
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+
+> Configure project :resources-logic
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+
+> Configure project :ui-logic
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+WARNING: androidTestImplementation dependencies are ignored because androidTest is disabled.
+Add android.sync.suppressAgpWarnings=GENERIC to the gradle.properties file to suppress this warning.
+
+> Task :shared-ui:androidPreBuild UP-TO-DATE
+> Task :shared-logic:androidPreBuild UP-TO-DATE
+> Task :shared-logic:preAndroidMainBuild UP-TO-DATE
+> Task :shared-ui:preAndroidMainBuild UP-TO-DATE
+> Task :shared-ui:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared-ui:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :shared-ui:generateComposeResClass UP-TO-DATE
+> Task :shared-logic:kmpPartiallyResolvedDependenciesChecker
+> Task :shared-ui:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-contract:kmpPartiallyResolvedDependenciesChecker
+> Task :shared-logic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared-ui:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :shared-ui:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-contract:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :shared-ui:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-contract:androidPreBuild UP-TO-DATE
+> Task :ux-contract:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-contract:preAndroidMainBuild UP-TO-DATE
+> Task :shared-ui:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :ux-contract:generateComposeResClass UP-TO-DATE
+> Task :ux-contract:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :ux-contract:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForAndroidMain NO-SOURCE
+> Task :ux-elements:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-elements:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-elements:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-elements:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-elements:generateComposeResClass SKIPPED
+> Task :ux-elements:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-elements:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ux-elements:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :ux-elements:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForCommonMain SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-elements:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :ux-contract:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :ux-theme:kmpPartiallyResolvedDependenciesChecker
+> Task :shared-ui:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :ux-theme:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ux-theme:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-theme:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-theme:generateComposeResClass SKIPPED
+> Task :ux-theme:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ux-theme:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ux-theme:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-theme:androidPreBuild UP-TO-DATE
+> Task :ux-theme:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :ux-contract:convertXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :ux-theme:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :ux-elements:androidPreBuild UP-TO-DATE
+> Task :shared-ui:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :ux-theme:generateResourceAccessorsForCommonMain SKIPPED
+> Task :ux-theme:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :ux-contract:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :shared-ui:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :shared-ui:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :ux-theme:preAndroidMainBuild UP-TO-DATE
+> Task :ux-contract:generateActualResourceCollectorsForAndroidMain UP-TO-DATE
+> Task :ux-elements:preAndroidMainBuild UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForAndroidHostTest NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForCommonTest NO-SOURCE
+> Task :shared-ui:preAndroidHostTestBuild UP-TO-DATE
+> Task :shared-ui:processAndroidHostTestJavaRes NO-SOURCE
+> Task :shared-ui:androidJar
+> Task :shared-logic:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-contract:generateAndroidMainEmptyResourceFiles
+> Task :shared-ui:generateAndroidMainEmptyResourceFiles
+> Task :shared-logic:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :shared-ui:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :shared-ui:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :shared-ui:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :shared-ui:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :shared-ui:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :ux-contract:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-contract:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :ux-contract:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :shared-ui:copyAndroidMainComposeResourcesToAndroidAssets
+> Task :ux-contract:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-contract:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-contract:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-contract:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-contract:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-contract:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-contract:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-contract:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :ux-contract:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :ux-elements:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-elements:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-elements:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForAppleMain SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosMain SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForNativeMain SKIPPED
+> Task :ux-elements:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-theme:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-theme:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-theme:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForAppleMain SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-contract:copyAndroidMainComposeResourcesToAndroidAssets
+> Task :ux-theme:generateResourceAccessorsForIosMain SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForNativeMain SKIPPED
+> Task :ux-theme:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-theme:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :shared-logic:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :ux-elements:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-theme:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-contract:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :ux-runtime:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-runtime:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-runtime:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-runtime:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :shared-ui:packageAndroidMainResources
+> Task :ux-runtime:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-runtime:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForAppleMain SKIPPED
+> Task :ux-contract:packageAndroidMainResources
+> Task :ux-runtime:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-runtime:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-runtime:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForCommonMain SKIPPED
+> Task :ux-runtime:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-runtime:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-runtime:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForIosMain SKIPPED
+> Task :ux-runtime:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-runtime:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-elements:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :ux-runtime:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-runtime:generateComposeResClass SKIPPED
+> Task :ux-runtime:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-runtime:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ux-runtime:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-runtime:generateResourceAccessorsForNativeMain SKIPPED
+> Task :ux-runtime:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :ux-runtime:generateActualResourceCollectorsForIosSimulatorArm64Main SKIPPED
+> Task :ux-spike:kmpPartiallyResolvedDependenciesChecker
+> Task :ux-spike:checkIosSimulatorArm64MainComposeLibrariesCompatibility
+> Task :ux-spike:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ux-spike:convertXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForAppleMain NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForAppleMain NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForAppleMain NO-SOURCE
+> Task :ux-spike:uxSpikeComposeResources UP-TO-DATE
+> Task :ux-spike:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForCommonMain UP-TO-DATE
+> Task :ux-spike:prepareComposeResourcesTaskForCommonMain UP-TO-DATE
+> Task :ux-spike:downloadKotlinNativeDistribution UP-TO-DATE
+> Task :ux-spike:generateResourceAccessorsForCommonMain UP-TO-DATE
+> Task :ux-spike:convertXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForIosMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForIosMain NO-SOURCE
+> Task :ux-spike:prepareComposeResourcesTaskForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForIosMain NO-SOURCE
+> Task :ux-spike:generateResourceAccessorsForIosSimulatorArm64Main NO-SOURCE
+> Task :ux-spike:convertXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-spike:copyNonXmlValueResourcesForNativeMain NO-SOURCE
+> Task :ux-spike:generateComposeResClass UP-TO-DATE
+> Task :ux-spike:prepareComposeResourcesTaskForNativeMain NO-SOURCE
+> Task :ux-runtime:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :ux-spike:generateResourceAccessorsForNativeMain NO-SOURCE
+> Task :ux-spike:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :ux-spike:generateActualResourceCollectorsForIosSimulatorArm64Main UP-TO-DATE
+> Task :ux-spike:exportCrossCompilationMetadataForIosSimulatorArm64ApiElements UP-TO-DATE
+> Task :shared-ui:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :shared-ui:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :shared-ui:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForAppleTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForIosSimulatorArm64Test NO-SOURCE
+> Task :shared-ui:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :shared-ui:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :shared-ui:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForNativeTest NO-SOURCE
+> Task :shared-ui:generateResourceAccessorsForIosTest NO-SOURCE
+> Task :ux-contract:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-contract:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-contract:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :ux-elements:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-runtime:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-spike:compileKotlinIosSimulatorArm64 UP-TO-DATE
+> Task :ux-runtime:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-runtime:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-spike:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :ux-theme:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :ux-spike:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64CopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :ux-spike:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :ux-theme:iosSimulatorArm64ZipMultiplatformResourcesForPublication UP-TO-DATE
+> Task :shared-ui:assembleIosSimulatorArm64MainResources UP-TO-DATE
+> Task :shared-ui:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources UP-TO-DATE
+> Task :shared-ui:iosSimulatorArm64ResolveResourcesFromDependencies UP-TO-DATE
+> Task :shared-ui:iosSimulatorArm64AggregateResources UP-TO-DATE
+> Task :shared-ui:computeLocalPackageDependencyInputFiles
+> Task :shared-ui:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :shared-logic:serializeSwiftPMDependenciesMetadataForLockFiles
+> Task :shared-ui:serializeSwiftPMDependenciesMetadataForLockFiles
+> Task :ux-contract:serializeSwiftPMDependenciesMetadataForLockFiles
+> Task :ux-elements:serializeSwiftPMDependenciesMetadataForLockFiles
+> Task :ux-runtime:serializeSwiftPMDependenciesMetadataForLockFiles
+> Task :ux-spike:serializeSwiftPMDependenciesMetadataForLockFiles
+> Task :ux-theme:serializeSwiftPMDependenciesMetadataForLockFiles
+> Task :shared-logic:generateUmbrellaPackageIdentifierBasedResolutionForDefault SKIPPED
+> Task :shared-logic:fetchUmbrellaPackageIdentifierForDefault SKIPPED
+> Task :shared-ui:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :shared-ui:fetchSyntheticImportProjectPackages SKIPPED
+> Task :shared-ui:convertSyntheticImportProjectIntoDefFileIphonesimulator
+> Task :shared-ui:assembleIosSimulatorArm64TestResources
+> Task :shared-ui:iosSimulatorArm64ProcessResources
+> Task :shared-ui:copyTestComposeResourcesForIosSimulatorArm64
+> Task :ux-elements:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForAppleTest SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-elements:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-elements:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForCommonTest SKIPPED
+> Task :ux-elements:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-elements:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :ux-elements:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-elements:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForIosTest SKIPPED
+> Task :ux-elements:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForNativeTest SKIPPED
+> Task :ux-elements:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources
+> Task :ux-elements:specSnapshotFixture UP-TO-DATE
+> Task :ux-elements:iosSimulatorArm64ResolveResourcesFromDependencies
+> Task :ux-elements:tokensFixture UP-TO-DATE
+> Task :ux-elements:computeLocalPackageDependencyInputFiles
+> Task :ux-elements:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-elements:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-elements:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-elements:iosSimulatorArm64AggregateResources
+> Task :ux-elements:iosSimulatorArm64ProcessResources
+> Task :ux-elements:iosSimulatorArm64MainKlibrary
+> Task :ux-elements:convertSyntheticImportProjectIntoDefFileIphonesimulator
+> Task :ux-elements:assembleIosSimulatorArm64TestResources
+> Task :ux-elements:copyTestComposeResourcesForIosSimulatorArm64
+> Task :ux-elements:androidJar
+> Task :ux-elements:generateAndroidHostTestAssets UP-TO-DATE
+> Task :ux-elements:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-elements:mergeAndroidHostTestAssets
+> Task :ux-elements:writeAndroidMainAarMetadata
+> Task :ux-theme:writeAndroidMainAarMetadata
+> Task :ux-elements:checkAndroidHostTestAarMetadata
+> Task :ux-elements:mapAndroidHostTestSourceSetPaths
+> Task :ux-elements:generateAndroidHostTestResources
+> Task :ux-elements:generateAndroidMainEmptyResourceFiles
+> Task :ux-theme:generateAndroidMainEmptyResourceFiles
+> Task :shared-ui:parseAndroidMainLocalResources
+> Task :ux-contract:parseAndroidMainLocalResources
+> Task :shared-ui:generateAndroidMainRFile
+> Task :ux-contract:generateAndroidMainRFile
+> Task :shared-logic:downloadPkixBridge
+> Task :ux-theme:processAndroidMainManifest
+> Task :ux-elements:processAndroidMainManifest
+> Task :ux-elements:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-elements:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-elements:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-elements:generateResourceAccessorsForAndroidHostTest SKIPPED
+> Task :ux-elements:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-theme:checkIosSimulatorArm64TestComposeLibrariesCompatibility
+> Task :ux-theme:convertXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForAppleTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForAppleTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForAppleTest SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForCommonTest SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForIosSimulatorArm64Test NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosSimulatorArm64Test SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForIosTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForIosTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForIosTest SKIPPED
+> Task :ux-theme:convertXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForNativeTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForNativeTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForNativeTest SKIPPED
+> Task :ux-theme:iosSimulatorArm64ResolveResourcesFromDependencies
+> Task :ux-theme:iosSimulatorArm64ResolveSelfResourcesCopyHierarchicalMultiplatformResources
+> Task :ux-theme:iosSimulatorArm64AggregateResources
+> Task :ux-theme:iosSimulatorArm64ProcessResources
+> Task :ux-theme:iosSimulatorArm64MainKlibrary
+> Task :ux-elements:mergeAndroidHostTestManifest
+> Task :ux-elements:processAndroidHostTestManifest
+> Task :ux-theme:computeLocalPackageDependencyInputFiles
+> Task :ux-theme:generateSyntheticLinkageSwiftPMImportProjectForCinteropsAndLdDump SKIPPED
+> Task :ux-theme:syncPersistedPackageResolvedToSynthetic SKIPPED
+> Task :ux-theme:fetchSyntheticImportProjectPackages SKIPPED
+> Task :ux-theme:convertSyntheticImportProjectIntoDefFileIphonesimulator
+> Task :ux-theme:assembleIosSimulatorArm64TestResources
+> Task :ux-theme:copyTestComposeResourcesForIosSimulatorArm64
+> Task :ux-theme:androidJar
+> Task :ux-theme:convertXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-theme:copyNonXmlValueResourcesForAndroidHostTest NO-SOURCE
+> Task :ux-theme:prepareComposeResourcesTaskForAndroidHostTest NO-SOURCE
+> Task :ux-theme:generateResourceAccessorsForAndroidHostTest SKIPPED
+> Task :ux-theme:preAndroidHostTestBuild UP-TO-DATE
+> Task :ux-theme:processAndroidHostTestJavaRes NO-SOURCE
+> Task :ux-elements:mergeAndroidHostTestResources
+> Task :ux-elements:processAndroidHostTestResources
+> Task :ux-elements:packageAndroidHostTestForUnitTest
+> Task :ux-elements:generateAndroidHostTestConfig
+> Task :ux-theme:compileTestKotlinIosSimulatorArm64
+> Task :ux-elements:compileTestKotlinIosSimulatorArm64
+> Task :ux-theme:compileAndroidMain
+> Task :ux-theme:processAndroidMainJavaRes
+> Task :ux-theme:bundleAndroidMainClassesToCompileJar
+> Task :ux-theme:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-theme:compileAndroidHostTest
+> Task :ux-contract:compileAndroidMain
+> Task :ux-contract:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-contract:bundleAndroidMainClassesToCompileJar
+> Task :ux-contract:processAndroidMainJavaRes
+> Task :ux-theme:testAndroidHostTest
+
+> Task :shared-logic:compileAndroidMain
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-logic/src/androidMain/kotlin/eu/europa/ec/shared/platform/PlatformActivity.android.kt:26:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-logic/src/androidMain/kotlin/eu/europa/ec/shared/platform/PlatformContext.android.kt:21:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-logic/src/androidMain/kotlin/eu/europa/ec/shared/platform/PlatformCryptoObject.android.kt:21:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-logic/src/androidMain/kotlin/eu/europa/ec/shared/platform/PlatformIntent.android.kt:21:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-logic/src/commonMain/kotlin/eu/europa/ec/shared/platform/PlatformActivity.kt:34:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-logic/src/commonMain/kotlin/eu/europa/ec/shared/platform/PlatformContext.kt:33:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-logic/src/commonMain/kotlin/eu/europa/ec/shared/platform/PlatformCryptoObject.kt:28:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-logic/src/commonMain/kotlin/eu/europa/ec/shared/platform/PlatformIntent.kt:28:1 'expect'/'actual' classes (including interfaces, objects, annotations, enums, and 'actual' typealiases) are in Beta. Consider using the '-Xexpect-actual-classes' flag to suppress this warning. Also see: https://youtrack.jetbrains.com/issue/KT-61573
+
+> Task :shared-logic:processAndroidMainJavaRes
+> Task :shared-logic:bundleAndroidMainClassesToCompileJar
+> Task :shared-logic:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-theme:linkDebugTestIosSimulatorArm64
+> Task :ux-elements:compileAndroidMain
+> Task :ux-elements:processAndroidMainJavaRes
+> Task :ux-elements:bundleAndroidMainClassesToCompileJar
+> Task :ux-elements:bundleAndroidMainClassesToRuntimeJar
+> Task :ux-theme:iosSimulatorArm64Test
+> Task :ux-theme:allTests
+> Task :ux-elements:compileAndroidHostTest
+> Task :ux-elements:linkDebugTestIosSimulatorArm64
+> Task :ux-elements:iosSimulatorArm64Test
+> Task :ux-elements:testAndroidHostTest
+> Task :ux-elements:allTests
+
+> Task :shared-ui:compileKotlinIosSimulatorArm64
+w: Koin compiler plugin: Kotlin 2.4.10 is newer than the newest tested version (2.4.0) — proceeding with the 2.4.0 adapter. If compilation fails, check for a koin-compiler-plugin update. Supported versions: 2.3.20, 2.4.0.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/ListItem.kt:230:60 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/ListItem.kt:238:53 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/ListItem.kt:248:49 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/iosMain/kotlin/eu/europa/ec/uilogic/component/wrap/QrPainter.ios.kt:85:25 This cast can never succeed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/iosProbeMain/kotlin/eu/europa/ec/shared/ui/harness/WalletEngineProbe.kt:159:73 Unnecessary safe call on a non-null receiver of type 'IssuerDetailsCardDataUi'.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/iosProbeMain/kotlin/eu/europa/ec/shared/ui/harness/WalletEngineProbe.kt:160:74 Unnecessary safe call on a non-null receiver of type 'IssuerDetailsCardDataUi'.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/iosProbeMain/kotlin/eu/europa/ec/shared/ui/harness/WalletEngineProbe.kt:408:19 This cast can never succeed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/iosUxSpikeMain/kotlin/eu/europa/ec/uxspike/ios/IosUxSpikeHook.kt:116:106 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/iosUxSpikeMain/kotlin/eu/europa/ec/uxspike/ios/UxDcApiHarness.kt:54:9 'fun <T : UIViewController> UIKitViewController(factory: () -> T, modifier: Modifier, update: (T) -> Unit = ..., background: Color = ..., onRelease: (T) -> Unit = ..., onResize: (T, CValue<CGRect>) -> Unit = ..., interactive: Boolean = ..., accessibilityEnabled: Boolean = ...): Unit' is deprecated. This function was deprecated in favor of newer API.
+
+> Task :shared-ui:iosSimulatorArm64MainKlibrary
+
+> Task :shared-ui:compileAndroidMain
+w: Koin compiler plugin: Kotlin 2.4.10 is newer than the newest tested version (2.4.0) — proceeding with the 2.4.0 adapter. If compilation fails, check for a koin-compiler-plugin update. Supported versions: 2.3.20, 2.4.0.
+w: [Koin] compile-safety validation skipped — no Koin entry point in this compilation.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/ListItem.kt:230:60 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/ListItem.kt:238:53 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/ListItem.kt:248:49 No cast needed.
+
+> Task :shared-ui:processAndroidMainJavaRes
+> Task :shared-ui:bundleAndroidMainClassesToRuntimeJar
+> Task :shared-ui:bundleAndroidMainClassesToCompileJar
+
+> Task :shared-ui:compileTestKotlinIosSimulatorArm64
+w: Koin compiler plugin: Kotlin 2.4.10 is newer than the newest tested version (2.4.0) — proceeding with the 2.4.0 adapter. If compilation fails, check for a koin-compiler-plugin update. Supported versions: 2.3.20, 2.4.0.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/commonfeature/ui/trustmark/TrustMarkViewModelTest.kt:225:67 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/commonfeature/ui/trustmark/TrustMarkViewModelTest.kt:226:65 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/dashboardfeature/ui/dashboard/DashboardViewModelTest.kt:346:60 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/proximityfeature/ui/request/ProximityRequestViewModelTest.kt:266:51 Unnecessary non-null assertion (!!) on a non-null receiver of type 'RegistrationWarningUi'.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/iosTest/kotlin/eu/europa/ec/shared/ui/di/IosDeferredSweepTest.kt:39:30 This declaration needs opt-in. Its usage should be marked with '@kotlinx.coroutines.ExperimentalCoroutinesApi' or '@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)'
+
+> Task :shared-ui:compileAndroidHostTest
+w: Koin compiler plugin: Kotlin 2.4.10 is newer than the newest tested version (2.4.0) — proceeding with the 2.4.0 adapter. If compilation fails, check for a koin-compiler-plugin update. Supported versions: 2.3.20, 2.4.0.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/commonfeature/ui/trustmark/TrustMarkViewModelTest.kt:225:67 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/commonfeature/ui/trustmark/TrustMarkViewModelTest.kt:226:65 Unnecessary non-null assertion (!!) on a non-null receiver of type 'String'.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/dashboardfeature/ui/dashboard/DashboardViewModelTest.kt:346:60 No cast needed.
+w: file:///Users/roman/code/eudi-kmp-reskin/shared-ui/src/commonTest/kotlin/eu/europa/ec/proximityfeature/ui/request/ProximityRequestViewModelTest.kt:266:51 Unnecessary non-null assertion (!!) on a non-null receiver of type 'RegistrationWarningUi'.
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+> Task :shared-ui:testAndroidHostTest
+
+> Task :shared-ui:linkDebugTestIosSimulatorArm64
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/LocalAuthentication-96P06S25RJAGD5NCGOX8CZH6L.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/LocalAuthentication-96P06S25RJAGD5NCGOX8CZH6L.pcm
+note: Linking a static library that was built with -gmodules, but the module cache was not found.  Redistributable static libraries should never be built with module debugging enabled.  The debug experience will be degraded due to incomplete debug information.
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/DeviceCheck-B7PC6OZ6SRM1QGX501U335RMC.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/DeviceCheck-B7PC6OZ6SRM1QGX501U335RMC.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Foundation-86GWAHL35FTD5DELBNGNBHT15.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Foundation-86GWAHL35FTD5DELBNGNBHT15.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/UIKit-7LYKT3VFG3FET3CHV9SQ64Z3A.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/UIKit-7LYKT3VFG3FET3CHV9SQ64Z3A.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Security-4IDN70428QN0GX8S8FD4PXT2Z.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Security-4IDN70428QN0GX8S8FD4PXT2Z.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreImage-6H2RY8Q5PY8FH1KM4Z2R7KTPX.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreImage-6H2RY8Q5PY8FH1KM4Z2R7KTPX.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CommonCrypto-6K94HOS5JFXF7CJXYK7RMACOU.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CommonCrypto-6K94HOS5JFXF7CJXYK7RMACOU.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/AuthenticationServices-CW656YL5SCLTUC2J3XUYHKOYE.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/AuthenticationServices-CW656YL5SCLTUC2J3XUYHKOYE.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreGraphics-73KSIFEBWC9Q3XSSYPPXEAKC0.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreGraphics-73KSIFEBWC9Q3XSSYPPXEAKC0.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreFoundation-2DIJ2EWU60WUU74MXS1CQWK8S.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/CoreFoundation-2DIJ2EWU60WUU74MXS1CQWK8S.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/_SwiftConcurrencyShims-ELIOTYF5FK33AFEUR6EN0YR6W.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/_SwiftConcurrencyShims-ELIOTYF5FK33AFEUR6EN0YR6W.pcm
+warning: /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/SwiftShims-15S4C0O8AYFRB266MLGKFPPES.pcm: No such file or directory
+note: while processing /Users/zeuthen/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/SwiftShims-15S4C0O8AYFRB266MLGKFPPES.pcm
+
+2026-10-18T14:59:51.445955: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-18T14:59:51.446692: WARNING: MultipazWalletStore: no app-group identifier; the document Keychain namespace falls back to a constant, so dev and demo builds would share one wallet on a device
+2026-10-18T14:59:51.4495: WARNING: IosAppGroup: no EUDIAppGroupIdentifier in Info.plist; regenerate the Xcode project with ./gradlew generateIosProject
+
+> Task :shared-ui:iosSimulatorArm64Test
+
+[Incubating] Problems report is available at: file:///Users/roman/code/eudi-kmp-reskin/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 10.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/9.8.0/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 1m 8s
+179 actionable tasks: 112 executed, 67 up-to-date
+Configuration cache entry stored.
