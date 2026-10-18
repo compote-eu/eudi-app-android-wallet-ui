@@ -16,14 +16,20 @@
 
 package eu.europa.ec.commonfeature.ui.request.transformer
 
+import eu.europa.ec.corelogic.model.OveraskedClaimDomain
+import eu.europa.ec.corelogic.model.toDocumentIdentifier
+import eu.europa.ec.uilogic.component.wrap.ColorKey
+import eu.europa.ec.shared.resources.request_claim_not_registered_supporting_text
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.extension.toSelectiveExpandableListItems
 import eu.europa.ec.commonfeature.ui.request.model.DocumentFormatDomain
+import eu.europa.ec.commonfeature.ui.request.model.getFormat
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
+import eu.europa.ec.corelogic.extension.localizedName
 import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimItemId
@@ -32,11 +38,14 @@ import eu.europa.ec.corelogic.model.PresentationCombinationDomain
 import eu.europa.ec.corelogic.model.PresentationMatchDomain
 import eu.europa.ec.corelogic.model.PresentationSelectionDomain
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.resourceslogic.provider.asStringCatalog
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.request_collapsed_supporting_text
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 
@@ -52,23 +61,48 @@ object RequestTransformer {
         uuidProvider: UuidProvider,
         combinationsDomain: List<PresentationCombinationDomain>,
         claimsAreSelectable: Boolean,
+        overaskedClaims: List<OveraskedClaimDomain>,
     ): Result<List<RequestCombinationUi>> {
         return runCatching {
-            combinationsDomain.map { combinationDomain ->
-                val documentsDomain = transformToDomainItems(
-                    storageDocuments = storageDocuments,
+            combinationsDomain.mapIndexed { combinationIndex, combinationDomain ->
+                // Equal match identities can still have different claim coverage.
+                val representedMatches = combinationDomain.matches.mapNotNull { match ->
+                    transformMatchToDomainItem(
+                        storageDocuments = storageDocuments,
+                        resourceProvider = resourceProvider,
+                        uuidProvider = uuidProvider,
+                        presentationMatchDomain = match,
+                    )?.let { documentDomain -> match to documentDomain }
+                }
+                val documentsDomain = representedMatches.map { (_, documentDomain) -> documentDomain }
+
+                val documentsUi = transformToUiItems(
+                    documentsDomain = documentsDomain,
                     resourceProvider = resourceProvider,
-                    uuidProvider = uuidProvider,
-                    requestMatchesDomain = combinationDomain.matches,
-                ).getOrThrow()
+                    claimsAreSelectable = claimsAreSelectable,
+                )
+                val representedDomainMatches = representedMatches.map { (match, _) -> match }
+                val hasTransactionData = representedDomainMatches.any { match ->
+                    match.transactionData.isNotEmpty()
+                }
+                val transactionData = if (hasTransactionData) {
+                    TransactionDataTransformer(strings = resourceProvider.asStringCatalog()).transformToUi(
+                        matches = representedDomainMatches,
+                        sectionId = "transaction-data:${uuidProvider.provideUuid()}:$combinationIndex",
+                    )
+                } else {
+                    null
+                }
 
                 RequestCombinationUi(
-                    documents = transformToUiItems(
-                        documentsDomain = documentsDomain,
+                    documents = markOveraskedClaims(
+                        documentsUi = documentsUi,
+                        overaskedClaims = overaskedClaims,
+                        storageDocuments = storageDocuments,
                         resourceProvider = resourceProvider,
-                        claimsAreSelectable = claimsAreSelectable,
                     ),
                     matches = combinationDomain.matches,
+                    transactionData = transactionData,
                 )
             }
         }
@@ -85,49 +119,47 @@ object RequestTransformer {
         uuidProvider: UuidProvider,
         requestMatchesDomain: List<PresentationMatchDomain>,
     ): Result<List<DocumentPayloadDomain>> = runCatching {
-        val resultList = mutableListOf<DocumentPayloadDomain>()
-
-        requestMatchesDomain.forEach { presentationMatchDomain ->
-
-            val storageDocument = storageDocuments.firstOrNull {
-                it.id == presentationMatchDomain.documentId
-            } ?: return@forEach
-
-            val claimsPaths = storageDocument.data.claims.flatMap { claim ->
-                claim.toClaimPaths()
-            }
-
-            val requestedItemsPaths = presentationMatchDomain.requestedClaims
-
-            val filteredPaths = claimsPaths.filter { available ->
-                requestedItemsPaths.any { requested ->
-                    requested.matches(available)
-                }
-            }
-
-            val domainClaims = transformPathsToDomainClaims(
-                paths = filteredPaths,
-                claims = storageDocument.data.claims,
+        requestMatchesDomain.mapNotNull { presentationMatchDomain ->
+            transformMatchToDomainItem(
+                storageDocuments = storageDocuments,
                 resourceProvider = resourceProvider,
-                uuidProvider = uuidProvider
+                uuidProvider = uuidProvider,
+                presentationMatchDomain = presentationMatchDomain,
             )
+        }
+    }
 
-            if (domainClaims.isNotEmpty()) {
-                resultList.add(
-                    DocumentPayloadDomain(
-                        docName = storageDocument.name,
-                        docId = storageDocument.id,
-                        docFormatDomain = DocumentFormatDomain.getFormat(
-                            format = storageDocument.format,
-                        ),
-                        docClaimsDomain = domainClaims,
-                        queryId = presentationMatchDomain.queryId,
-                    )
-                )
+    private fun transformMatchToDomainItem(
+        storageDocuments: List<IssuedDocument>,
+        resourceProvider: ResourceProvider,
+        uuidProvider: UuidProvider,
+        presentationMatchDomain: PresentationMatchDomain,
+    ): DocumentPayloadDomain? {
+        val storageDocument = storageDocuments.firstOrNull { document ->
+            document.id == presentationMatchDomain.documentId
+        } ?: return null
+
+        val claimsPaths = storageDocument.data.claims.flatMap { claim -> claim.toClaimPaths() }
+        val filteredPaths = claimsPaths.filter { available ->
+            presentationMatchDomain.requestedClaims.any { requested ->
+                requested.matches(available)
             }
         }
+        val domainClaims = transformPathsToDomainClaims(
+            paths = filteredPaths,
+            claims = storageDocument.data.claims,
+            resourceProvider = resourceProvider,
+            uuidProvider = uuidProvider,
+        )
+        if (domainClaims.isEmpty()) return null
 
-        resultList
+        return DocumentPayloadDomain(
+            docName = storageDocument.localizedName(resourceProvider.getLocale()),
+            docId = storageDocument.id,
+            docFormatDomain = DocumentFormatDomain.getFormat(format = storageDocument.format),
+            docClaimsDomain = domainClaims,
+            queryId = presentationMatchDomain.queryId,
+        )
     }
 
 
@@ -151,7 +183,9 @@ object RequestTransformer {
                             queryId = documentDomain.queryId,
                         ).encode(),
                         mainContentData = ListItemMainContentDataUi.Text(text = documentDomain.docName),
-                        supportingText = resourceProvider.getString(R.string.request_collapsed_supporting_text),
+                        supportingContentData = ListItemSupportingContentDataUi.Text(
+                            text = resourceProvider.getString(Res.string.request_collapsed_supporting_text),
+                        ),
                         trailingContentData = ListItemTrailingContentDataUi.Icon(
                             iconData = AppIcons.KeyboardArrowDown
                         )
@@ -165,6 +199,119 @@ object RequestTransformer {
                 ),
             )
         }
+    }
+
+    /**
+     * Applies the overasked ("not registered") mark to every leaf row whose claim satisfies an
+     * overasked claim of the row's document attestation — query-blind on purpose: registrations
+     * key claims by attestation type, so a claim outside the registered scope is marked wherever
+     * it renders. Rows are resolved by re-encoding the stored leaves into ids (same contract as
+     * the backward pass — ids are never parsed).
+     */
+    private fun markOveraskedClaims(
+        documentsUi: List<RequestDocumentItemUi>,
+        overaskedClaims: List<OveraskedClaimDomain>,
+        storageDocuments: List<IssuedDocument>,
+        resourceProvider: ResourceProvider,
+    ): List<RequestDocumentItemUi> {
+        if (overaskedClaims.isEmpty()) return documentsUi
+
+        val commonNotRegisteredSupportingContentMark = ListItemSupportingContentDataUi.Text(
+            text = resourceProvider.getString(Res.string.request_claim_not_registered_supporting_text),
+            textColorKey = ColorKey.Pending,
+        )
+
+        return documentsUi.map { documentUi ->
+            val payload = documentUi.domainPayload
+
+            // every payload was built from a stored document, so this resolves; a rendered
+            // document that cannot be re-resolved just goes unmarked
+            val storageDocument = storageDocuments.firstOrNull { it.id == payload.docId }
+                ?: return@map documentUi
+
+            val documentFormatType = storageDocument.toDocumentIdentifier().formatType
+
+            val overaskedPathsForDocument = overaskedClaims
+                .filter { overasked -> overasked.appliesTo(formatType = documentFormatType) }
+                .map { overasked -> overasked.path }
+            if (overaskedPathsForDocument.isEmpty()) return@map documentUi
+
+            // ids of the leaf rows whose stored path satisfies an overasked claim
+            val overaskedItemIds = payload.docClaimsDomain
+                .flatMap { claim -> claim.leafStoragePaths() }
+                .filter { stored ->
+                    overaskedPathsForDocument.any { overasked -> overasked.matches(stored) }
+                }
+                .map { path ->
+                    ClaimItemId.Claim(
+                        docId = payload.docId,
+                        queryId = payload.queryId,
+                        path = path,
+                    ).encode()
+                }
+                .toSet()
+            if (overaskedItemIds.isEmpty()) return@map documentUi
+
+            documentUi.copy(
+                headerUi = documentUi.headerUi.copy(
+                    nestedItems = documentUi.headerUi.nestedItems.map { item ->
+                        item.withOveraskedMark(
+                            overaskedItemIds = overaskedItemIds,
+                            commonSupportingContentMark = commonNotRegisteredSupportingContentMark,
+                        )
+                    },
+                ),
+            )
+        }
+    }
+
+    private fun ExpandableListItemUi.withOveraskedMark(
+        overaskedItemIds: Set<String>,
+        commonSupportingContentMark: ListItemSupportingContentDataUi,
+    ): ExpandableListItemUi {
+        return when (this) {
+            is ExpandableListItemUi.SingleListItem -> {
+                if (header.itemId in overaskedItemIds) {
+                    copy(
+                        header = header.withOveraskedMark(
+                            supportingContentMark = commonSupportingContentMark,
+                        ),
+                    )
+                } else {
+                    this
+                }
+            }
+
+            is ExpandableListItemUi.NestedListItem -> copy(
+                nestedItems = nestedItems.map { item ->
+                    item.withOveraskedMark(
+                        overaskedItemIds = overaskedItemIds,
+                        commonSupportingContentMark = commonSupportingContentMark,
+                    )
+                },
+            )
+        }
+    }
+
+    /**
+     * The overasked ("not registered") presentation of a leaf row: the warning supporting
+     * line, plus the pending checkbox tint when the row is selectable (read-only rows carry
+     * no checkbox and keep their trailing content unchanged).
+     */
+    private fun ListItemDataUi.withOveraskedMark(
+        supportingContentMark: ListItemSupportingContentDataUi,
+    ): ListItemDataUi {
+        val trailingContent = trailingContentData
+        val markedTrailingContent = if (trailingContent is ListItemTrailingContentDataUi.Checkbox) {
+            trailingContent.copy(tint = ColorKey.Pending)
+        } else {
+            trailingContent
+        }
+
+        return copy(
+            supportingContentData = supportingContentMark,
+            trailingContentData = markedTrailingContent,
+        )
     }
 
     /**

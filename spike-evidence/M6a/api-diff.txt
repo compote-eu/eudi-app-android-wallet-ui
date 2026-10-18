@@ -1,0 +1,113 @@
+API diff: provisional 120 declarations, generated 165; same name 106
+only provisional: class RequestedAttribute (
+only provisional: class Verifier (
+only provisional: val PresRequestData.request : RequestData
+only provisional: val PresRequestData.verifier : Verifier,
+only provisional: val RequestedAttribute.id : String,
+only provisional: val RequestedAttribute.labelCopy : String,
+only provisional: val RequestedAttribute.requirement : Requirement,
+only provisional: val RequestedAttribute.selected : Boolean = false
+only provisional: val RequestedAttribute.value : String? = null,
+only provisional: val Verifier.name : String,
+only provisional: val Verifier.privacyUrl : String? = null
+only provisional: val Verifier.reason : String,
+only provisional: val Verifier.serviceName : String,
+only provisional: val Verifier.trust : Trust,
+only generated:   class Channel 
+only generated:   class PresCrossDeviceEvent.SysQrScanned (val uri: String) : PresCrossDeviceEvent
+only generated:   class PresCrossDeviceEvent.ToggleItem (
+only generated:   class RequestAttributeData (
+only generated:   class RequestAttributePayload (
+only generated:   class VerifierData (
+only generated:   class VerifierPayload (
+only generated:   entry Channel.CROSS_DEVICE CROSS_DEVICE
+only generated:   entry Channel.SAME_DEVICE SAME_DEVICE
+only generated:   interface PresCrossDeviceEvent 
+only generated:   object PresCrossDeviceEvent.AddDocument : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.Approve : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.Cancel : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.Close : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.Confirm : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.Continue : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.Help : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.OpenSettings : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.Reject : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.Retry : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysAuthFailed : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysAuthNotEnrolled : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysAuthOk : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysDocInvalid : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysDocMissing : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysError : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysExpired : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysQrInvalid : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysRequestOptionalOnly : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysRequestReady : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysRpUntrusted : PresCrossDeviceEvent
+only generated:   object PresCrossDeviceEvent.SysSent : PresCrossDeviceEvent
+only generated:   val PresCrossDeviceEvent.ToggleItem.itemId : String
+only generated:   val RequestAttributeData.id : String,
+only generated:   val RequestAttributeData.labelCopy : String,
+only generated:   val RequestAttributeData.requirement : Requirement,
+only generated:   val RequestAttributeData.selected : Boolean = false,
+only generated:   val RequestAttributeData.value : String? = null
+only generated:   val RequestAttributePayload.id : String,
+only generated:   val RequestAttributePayload.labelCopy : String,
+only generated:   val RequestAttributePayload.requirement : Requirement,
+only generated:   val RequestAttributePayload.selected : Boolean = false,
+only generated:   val RequestAttributePayload.value : String? = null
+only generated:   val RequestData.mandatoryCount : Int = 0,
+only generated:   val RequestData.optionalSelectedCount : Int = 0,
+only generated:   val RequestData.selectedSummary : String? = null,
+only generated:   val RequestData.selection : List<String> = emptyList(),
+only generated:   val RequestData.transport : String? = null
+only generated:   val VerifierData.name : String? = null,
+only generated:   val VerifierData.portalUrl : String? = null,
+only generated:   val VerifierData.privacyUrl : String? = null,
+only generated:   val VerifierData.reason : String? = null,
+only generated:   val VerifierData.serviceName : String? = null,
+only generated:   val VerifierData.trust : Trust? = null
+only generated:   val VerifierPayload.name : String? = null,
+only generated:   val VerifierPayload.privacyUrl : String? = null,
+only generated:   val VerifierPayload.reason : String? = null,
+only generated:   val VerifierPayload.serviceName : String? = null,
+only generated:   val VerifierPayload.trust : Trust? = null
+changed: class FetchRequestResult.OptionalOnly 
+    prov: (val verifier: Verifier, val request: RequestPayload) : FetchRequestResult 
+    gen:  (val request: RequestPayload, val verifier: VerifierPayload) : FetchRequestResult
+changed: class FetchRequestResult.RequestReady 
+    prov: (val verifier: Verifier, val request: RequestPayload) : FetchRequestResult 
+    gen:  (val request: RequestPayload, val verifier: VerifierPayload) : FetchRequestResult
+changed: class FetchRequestResult.RpUntrusted 
+    prov: (val verifier: Verifier, val request: RequestPayload) : FetchRequestResult 
+    gen:  (val request: RequestPayload, val verifier: VerifierPayload) : FetchRequestResult
+changed: class PresRequestData 
+    prov: ( 
+    gen:  (val request: RequestData = RequestData(), val verifier: VerifierData = VerifierData())
+changed: fun JsonObject 
+    prov: .strings(key: String): List<String> = getValue(key).jsonArray.map { it.jsonPrimitive.content } 
+    gen:  .strings(key: String): List<String> =
+changed: val FetchRequestResult.DocInvalid.documentName 
+    prov: : String 
+    gen:  : String? = null
+changed: val FetchRequestResult.DocMissing.documentName 
+    prov: : String 
+    gen:  : String? = null
+changed: val PresCrossDeviceSpec.SPEC_HASH 
+    prov: : String = "provisional:sha256:849289280a9851bd69bbff91970996129df868b7a4d29e30b6a5d5386917b7e5" 
+    gen:  : String = "sha256:88e2b61145bd0a2586831e88bab4c5ac0df93c2ac7b6fe85d9cec779f44702d0"
+changed: val RequestData.attributes 
+    prov: : List<RequestedAttribute>, 
+    gen:  : List<RequestAttributeData> = emptyList(),
+changed: val RequestData.channel 
+    prov: : String = "cross-device" 
+    gen:  : Channel = Channel.CROSS_DEVICE,
+changed: val RequestData.documentName 
+    prov: : String, 
+    gen:  : String? = null,
+changed: val RequestPayload.attributes 
+    prov: : List<RequestedAttribute> 
+    gen:  : List<RequestAttributePayload>,
+changed: val RequestPayload.documentName 
+    prov: : String, 
+    gen:  : String? = null

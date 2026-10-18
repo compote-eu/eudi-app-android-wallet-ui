@@ -16,12 +16,29 @@
 
 package eu.europa.ec.testlogic.rule
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import org.junit.rules.TestWatcher
+import org.junit.runner.Description
 
+/**
+ * The rule also owns `Dispatchers.Main` for the duration of a test, so work a subject posts there —
+ * `lifecycleScope`, `viewModelScope` — is driven by [testScope] rather than by a real looper the
+ * test cannot advance.
+ */
 class CoroutineTestRule(
-    private val testDispatcher: TestDispatcher = StandardTestDispatcher(),
+    val testDispatcher: TestDispatcher = StandardTestDispatcher(),
     val testScope: TestScope = TestScope(testDispatcher)
-) : TestWatcher()
+) : TestWatcher() {
+    override fun starting(description: Description) {
+        Dispatchers.setMain(testDispatcher)
+    }
+
+    override fun finished(description: Description) {
+        Dispatchers.resetMain()
+    }
+}

@@ -1,0 +1,33 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+
+package eu.europa.ec.ux.elements
+
+/** The element semantics tests on the iOS simulator. */
+class ElementsSemanticsIosTest : ElementsSemanticsScenario()
+
+/** The template semantics tests and D7-semantics-preliminary on the iOS simulator. */
+class TemplatesSemanticsIosTest : TemplatesSemanticsScenario()
+
+/** M5c: the registry schemas against what the adapters read, on the iOS simulator. */
+class RegistryAdapterIosTest : RegistryAdapterScenario()
+
+/** M6c: part assets by name, tinted masks, on the iOS simulator. */
+class AssetIosTest : AssetScenario()
+
+/** M5e: the Home parts on the iOS simulator. */
+class HomePartsIosTest : HomePartsScenario()

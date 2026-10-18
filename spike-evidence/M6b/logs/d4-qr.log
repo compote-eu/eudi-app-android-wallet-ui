@@ -1,0 +1,50 @@
+2026-10-17T10:03:14.649022: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-17T10:03:14.652124: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-17T10:03:14.65563: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-17T10:03:14.693938: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/93338715-034D-4A10-9F70-FF8BBC4A29F5/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-17T10:03:14.69725: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=slow (persisting)
+objc[82307]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x106ef0398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x107448310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-17T10:03:44.802517: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-17T10:03:44.803338: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-17T10:03:44.80729: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-17T10:03:44.808008: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
+2026-10-17 10:04:10.515 EudiWallet[82307:2953048] Unbalanced calls to begin/end appearance transitions for <SharedKitandroidx.compose.ui.scene.ComposeLayersViewController26: 0x11dc60c00>.
+2026-10-17T10:04:45.009346: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-17T10:04:45.01246: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-17T10:04:45.015877: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-17T10:04:45.054963: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/93338715-034D-4A10-9F70-FF8BBC4A29F5/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-17T10:04:45.058162: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=slow (persisting)
+objc[82825]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x108b98398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x10911c310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-17T10:05:15.16382: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-17T10:05:15.164644: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-17T10:05:15.168599: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-17T10:05:15.169242: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
+2026-10-17 10:05:28.553 EudiWallet[82825:2957926] Unbalanced calls to begin/end appearance transitions for <SharedKitandroidx.compose.ui.scene.ComposeLayersViewController26: 0x11f45c800>.
+2026-10-17T10:05:29.88086: WARNING: BleTransportPeripheralMdoc: Failing transport with error
+EXCEPTION: kotlin.IllegalStateException: Excepted poweredOn, got 2
+2026-10-17T10:05:29.882087: WARNING: IosProximityPresenter: proximity presentation failed: Failed while advertising
+2026-10-17 10:05:30.162 EudiWallet[82825:2957926] Unbalanced calls to begin/end appearance transitions for <SharedKitandroidx.compose.ui.scene.ComposeLayersViewController26: 0x11f45c800>.
+2026-10-17T10:06:03.317803: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-17T10:06:03.320827: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-17T10:06:03.32457: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-17T10:06:03.362356: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/93338715-034D-4A10-9F70-FF8BBC4A29F5/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-17T10:06:03.36562: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=slow (persisting)
+objc[83152]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x10574c398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x105ce4310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-17T10:06:33.466988: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-17T10:06:33.467805: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-17T10:06:33.471795: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-17T10:06:33.472486: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0
+2026-10-17 10:06:46.737 EudiWallet[83152:2961763] Unbalanced calls to begin/end appearance transitions for <SharedKitandroidx.compose.ui.scene.ComposeLayersViewController26: 0x11c84cc00>.
+UX-SPIKE: argument --ux-spike=slow (persisting)
+UX-SPIKE: argument --ux-spike=slow (persisting)
+UX-SPIKE: argument --ux-spike=slow (persisting)
+UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (IOS)
+UX-SPIKE: enter scan (gen 1)
+UX-SPIKE: start default: Started(state=scan)
+UX-SPIKE: screen SCR-pres-scan-qr: interpreted from the bundle (TPL-scan, 3 nodes), state scan, ui_state default
+UX-SPIKE: a11y: SCR-pres-scan-qr focus-heading title (focused)
+2026-10-17 10:06:48.462 EudiWallet[83152:2961763] Unbalanced calls to begin/end appearance transitions for <SharedKitandroidx.compose.ui.scene.ComposeLayersViewController26: 0x11c84cc00>.

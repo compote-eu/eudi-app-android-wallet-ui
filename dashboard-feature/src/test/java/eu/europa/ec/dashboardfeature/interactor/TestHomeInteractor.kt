@@ -20,9 +20,10 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import eu.europa.ec.corelogic.config.WalletCoreConfig
-import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.commonfeature.util.DocumentJsonKeys
+import eu.europa.ec.shared.wallet.WalletDocument
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.testfeature.util.getMockedFullPid
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
 import eu.europa.ec.testfeature.util.mockedGenericErrorMessage
@@ -56,7 +57,7 @@ class TestHomeInteractor {
     private lateinit var resourceProvider: ResourceProvider
 
     @Mock
-    private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
+    private lateinit var walletEngine: WalletEngine
 
     @Mock
     private lateinit var walletCoreConfig: WalletCoreConfig
@@ -74,7 +75,7 @@ class TestHomeInteractor {
 
         interactor = HomeInteractorImpl(
             resourceProvider = resourceProvider,
-            walletCoreDocumentsController = walletCoreDocumentsController,
+            walletEngine = walletEngine,
             walletCoreConfig = walletCoreConfig,
         )
 
@@ -186,6 +187,21 @@ class TestHomeInteractor {
     }
     //endregion
 
+    //region canSignDocuments
+
+    // Android initialises EudiRQESUi in Application.onCreate, so the sign flow is always reachable
+    // here. This is the half of the gate that keeps Home's sign card visible on Android; iOS answers
+    // false until the RQES bridge lands.
+    @Test
+    fun `Given Android, When canSignDocuments is called, Then it returns true`() {
+        // When
+        val actual = interactor.canSignDocuments()
+
+        // Then
+        assertEquals(true, actual)
+    }
+    //endregion
+
     //region getUserNameViaMainPidDocument
 
     // Case 1:
@@ -198,8 +214,13 @@ class TestHomeInteractor {
     fun `Given Case 1, When getUserNameViaMainPidDocument is called, Then Success with the document's first name is returned`() {
         coroutineRule.runTest {
             // Given
-            val pid = getMockedFullPid()
-            whenever(walletCoreDocumentsController.getMainPidDocument()).thenReturn(pid)
+            whenever(walletEngine.getMainPidDocument())
+                .thenReturn(
+                    WalletDocument(
+                        id = "pid_id",
+                        claims = mapOf(DocumentJsonKeys.FIRST_NAME to mockedUserFirstName),
+                    )
+                )
 
             // When
             interactor.getUserNameViaMainPidDocument().runFlowTest {
@@ -221,7 +242,7 @@ class TestHomeInteractor {
     fun `Given Case 2, When getUserNameViaMainPidDocument is called with no PID, Then Success with empty name is returned`() {
         coroutineRule.runTest {
             // Given
-            whenever(walletCoreDocumentsController.getMainPidDocument()).thenReturn(null)
+            whenever(walletEngine.getMainPidDocument()).thenReturn(null)
 
             // When
             interactor.getUserNameViaMainPidDocument().runFlowTest {
@@ -243,7 +264,7 @@ class TestHomeInteractor {
     fun `Given Case 3, When getUserNameViaMainPidDocument is called and throws with message, Then Failure with localized message is returned`() {
         coroutineRule.runTest {
             // Given
-            whenever(walletCoreDocumentsController.getMainPidDocument())
+            whenever(walletEngine.getMainPidDocument())
                 .thenThrow(mockedExceptionWithMessage)
 
             // When
@@ -268,7 +289,7 @@ class TestHomeInteractor {
     fun `Given Case 4, When getUserNameViaMainPidDocument is called and throws without message, Then Failure with generic message is returned`() {
         coroutineRule.runTest {
             // Given
-            whenever(walletCoreDocumentsController.getMainPidDocument())
+            whenever(walletEngine.getMainPidDocument())
                 .thenThrow(mockedExceptionWithNoMessage)
 
             // When

@@ -1,0 +1,27 @@
+## D2b sending 2026-10-17T16:57:41+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+at request
+at verification-code
+pid before: 15810
+CRITICAL
+send-trim-memory rc=0
+pid after SIGKILL: ''
+-- relaunch (recents)
+shot d2b-sending-after
+pid: 16201 gate=0 state=resource-id="ux-state-error"
+10-17 16:58:00.272 UX-SPIKE: enter connecting (gen 1)
+10-17 16:58:00.273 UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 16:58:03.281 UX-SPIKE: enter request (gen 2)
+10-17 16:58:06.432 UX-SPIKE: enter auth (gen 3)
+10-17 16:58:06.434 UX-SPIKE: authenticate#1 (script slow)
+10-17 16:58:07.935 UX-SPIKE: enter verification-code (gen 4)
+10-17 16:58:13.294 UX-SPIKE: enter sending (gen 5)
+10-17 16:58:13.295 UX-SPIKE: send#1 (script slow)
+10-17 16:58:16.300 UX-SPIKE: enter success (gen 6)
+10-17 16:58:21.162 UX-SPIKE: hook module loaded
+10-17 16:58:21.738 UX-SPIKE: restore sending -> error
+10-17 16:58:21.738 UX-SPIKE: enter error (gen 6)
+10-17 16:58:21.738 UX-SPIKE: restore: Restored(state=error, reinvoked=false)
+10-17 16:57:41.343   643   657 I am_kill : [0,15698,eu.compote.euidi.dev,0,stop eu.compote.euidi.dev due to from pid 15795,317516]
+/sdcard/d2b-sending.mp4: 1 file pulled, 0 skipped. 139.9 MB/s (1881671 bytes in 0.013s)
+video d2b-sending

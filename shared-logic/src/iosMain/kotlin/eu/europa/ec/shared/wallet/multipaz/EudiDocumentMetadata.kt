@@ -1,0 +1,332 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+package eu.europa.ec.shared.wallet.multipaz
+
+import eu.europa.ec.shared.wallet.document.IssuerMetadata
+import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
+import kotlinx.io.bytestring.ByteString
+import kotlinx.serialization.json.Json
+import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.CborMap
+import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.buildCborMap
+import org.multipaz.document.AbstractDocumentMetadata
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
+
+/**
+ * The application metadata the iOS wallet attaches to every multipaz `Document` — the KMP
+ * counterpart of the Android document manager's `internal ApplicationMetadata`.
+ *
+ * multipaz stores this as an opaque CBOR blob and never reads it, so the app owns the schema. The
+ * field names match the Android original so the two are easy to compare side by side, but the blobs
+ * are **not interchangeable**, for one reason: Android tags the credential policy with
+ * `javaClass.name`, which has no Kotlin/Native equivalent, so this writes stable literal tags
+ * instead. That is harmless — a wallet's documents are bound to the device's secure area and can
+ * never be read by the other platform anyway.
+ *
+ * Deliberately narrower than the Android original in two ways:
+ *  - **no `issuerProvidedData` copy.** Android caches the first credential's issuer data here and
+ *    re-parses it for `IssuedDocument.data`; on iOS the claims are read straight off the
+ *    `MdocCredential`, so duplicating the blob would only be a second thing to keep in sync.
+ *  - **no `deferredRelatedData` / `keyAttestation`.** Both belong to issuance, which wallet-kit owns
+ *    on iOS for now. [issuedAt] is what distinguishes an issued document from a pending one, exactly
+ *    as `ApplicationMetadata.issue()` sets it on Android.
+ */
+internal class EudiDocumentMetadata private constructor(
+    private var data: Data,
+) : AbstractDocumentMetadata {
+
+    override fun serialize(): ByteString = data.toCbor()
+
+    val documentManagerId: String get() = data.documentManagerId
+    val format: StoredDocumentFormat get() = data.format
+    val credentialPolicy: WalletCredentialPolicy get() = data.credentialPolicy
+    val issuerMetadata: IssuerMetadata? get() = data.issuerMetadata
+    val issuedAt: Instant? get() = data.issuedAt
+
+    /**
+     * The issuer's `transaction_id` for a deferred issuance, when this document is parked waiting for
+     * one. Null on every ordinary document, and cleared by [completeDeferred] once the credential has
+     * been collected — so "has a transaction id" is exactly the set a deferred retry should poll.
+     */
+    val deferredTransactionId: String? get() = data.deferredTransactionId
+
+    /**
+     * How a deferred document can be collected when its issuer gave **no refresh token** — the issuing
+     * session's own access token. Null whenever a refresh token exists (that is the better way back) and
+     * on every document that is not parked; cleared with the handle by [completeDeferred].
+     */
+    val deferredResume: DeferredResume? get() = data.deferredResume
+
+    /**
+     * Who issued this document, as its issuance named them for the History — the verified registration's
+     * party, or the issuer's display name. Kept with the document as wallet-core keeps the registered
+     * issuer (`IssuanceMetadata`) and a deferred document's registration: a deletion row and a deferred
+     * collection row name the issuer from it after the issuance session is gone. Null on a document
+     * issued before it was kept.
+     */
+    val issuerParty: IssuerPartyRecord? get() = data.issuerParty
+
+    /** Whether the user started this document's issuance (TS10 §3.5); null when it was not recorded. */
+    val userTriggered: Boolean? get() = data.userTriggered
+
+    /**
+     * Marks the document issued, stamping [issuedAt]. Mirrors `ApplicationMetadata.issue`, including
+     * its contract: the caller is responsible for persisting the change via `Document.edit`.
+     */
+    fun issue(at: Instant = Clock.System.now()) {
+        data = data.copy(issuedAt = at)
+    }
+
+    /**
+     * Records the handle an issuer gave when it deferred this document, so a later sweep knows what to
+     * ask it for. Same contract as [issue]: the caller persists the change with `Document.edit`.
+     */
+    fun park(transactionId: String, resume: DeferredResume? = data.deferredResume) {
+        data = data.copy(deferredTransactionId = transactionId, deferredResume = resume)
+    }
+
+    /**
+     * Drops the deferred handle once the issuer has finally handed the credential over. Same contract
+     * as [issue]: the caller persists the change with `Document.edit`.
+     */
+    fun completeDeferred() {
+        data = data.copy(deferredTransactionId = null, deferredResume = null)
+    }
+
+    internal data class Data(
+        val documentManagerId: String,
+        val format: StoredDocumentFormat,
+        val credentialPolicy: WalletCredentialPolicy,
+        val issuerMetadata: IssuerMetadata? = null,
+        val issuedAt: Instant? = null,
+        val deferredTransactionId: String? = null,
+        val deferredResume: DeferredResume? = null,
+        val issuerParty: IssuerPartyRecord? = null,
+        val userTriggered: Boolean? = null,
+    ) {
+
+        fun toCbor(): ByteString = ByteString(
+            Cbor.encode(
+                buildCborMap {
+                    put("documentManagerId", documentManagerId)
+                    put("format", format.toDataItem())
+                    put("credentialPolicy", credentialPolicy.toDataItem())
+                    issuerMetadata?.let { put("issuerMetadata", it.toJson()) }
+                    // Seconds since the epoch rather than the Android original's CBOR date-time
+                    // string: it round-trips without a formatter, and whole seconds are all an
+                    // issuance date is ever displayed at.
+                    issuedAt?.let { put("issuedAtEpochSeconds", it.epochSeconds) }
+                    deferredTransactionId?.let { put("deferredTransactionId", it) }
+                    deferredResume?.let { resume ->
+                        put("deferredAccessToken", resume.accessToken)
+                        put("deferredDpopKeyAlias", resume.dpopKeyAlias)
+                        resume.expiresAt?.let { put("deferredAccessTokenExpiresAtEpochSeconds", it.epochSeconds) }
+                    }
+                    issuerParty?.let { put("issuerParty", partyJson.encodeToString(IssuerPartyRecord.serializer(), it)) }
+                    userTriggered?.let { put("userTriggered", it) }
+                },
+            ),
+        )
+
+        companion object {
+
+            fun fromCbor(cbor: ByteString): Data {
+                val item = Cbor.decode(cbor.toByteArray())
+                return Data(
+                    documentManagerId = item["documentManagerId"].asTstr,
+                    format = storedDocumentFormatFromDataItem(item["format"]),
+                    credentialPolicy = credentialPolicyFromDataItem(item["credentialPolicy"]),
+                    issuerMetadata = item.optional("issuerMetadata") {
+                        IssuerMetadata.fromJson(it.asTstr).getOrNull()
+                    },
+                    issuedAt = item.optional("issuedAtEpochSeconds") {
+                        Instant.fromEpochSeconds(it.asNumber)
+                    },
+                    deferredTransactionId = item.optional("deferredTransactionId") { it.asTstr },
+                    // All three or nothing: a token without its DPoP key cannot be presented.
+                    deferredResume = item.optional("deferredAccessToken") { it.asTstr }?.let { token ->
+                        item.optional("deferredDpopKeyAlias") { it.asTstr }?.let { alias ->
+                            DeferredResume(
+                                accessToken = token,
+                                dpopKeyAlias = alias,
+                                expiresAt = item.optional("deferredAccessTokenExpiresAtEpochSeconds") {
+                                    Instant.fromEpochSeconds(it.asNumber)
+                                },
+                            )
+                        }
+                    },
+                    issuerParty = item.optional("issuerParty") {
+                        runCatching { partyJson.decodeFromString(IssuerPartyRecord.serializer(), it.asTstr) }.getOrNull()
+                    },
+                    userTriggered = item.optional("userTriggered") { it.asBoolean },
+                )
+            }
+
+            private val partyJson = Json { ignoreUnknownKeys = true }
+        }
+    }
+
+    companion object {
+
+        /**
+         * Builds the metadata for a document being created. The result is handed to
+         * `DocumentStore.createDocument`, which serializes it.
+         */
+        fun create(
+            documentManagerId: String,
+            format: StoredDocumentFormat,
+            credentialPolicy: WalletCredentialPolicy,
+            issuerMetadata: IssuerMetadata? = null,
+            deferredTransactionId: String? = null,
+            issuerParty: IssuerPartyRecord? = null,
+            userTriggered: Boolean? = null,
+        ): EudiDocumentMetadata = EudiDocumentMetadata(
+            Data(
+                documentManagerId = documentManagerId,
+                format = format,
+                credentialPolicy = credentialPolicy,
+                issuerMetadata = issuerMetadata,
+                deferredTransactionId = deferredTransactionId,
+                issuerParty = issuerParty,
+                userTriggered = userTriggered,
+            ),
+        )
+
+        /**
+         * The factory `DocumentStore.Builder.setDocumentMetadataFactory` needs: rebuilds the
+         * metadata of a document already in the store from its serialized form.
+         */
+        fun restore(
+            @Suppress("UNUSED_PARAMETER") documentId: String,
+            serializedData: ByteString,
+        ): EudiDocumentMetadata = EudiDocumentMetadata(Data.fromCbor(serializedData))
+    }
+}
+
+/**
+ * The format of a stored document. multipaz has no such notion — it stores credentials, not
+ * documents of a format — so, as on Android, the format is application metadata.
+ */
+internal sealed interface StoredDocumentFormat {
+
+    /** The docType or vct, i.e. what `WalletDocument.formatType` carries. */
+    val identifier: String
+
+    data class MsoMdoc(val docType: String) : StoredDocumentFormat {
+        override val identifier: String get() = docType
+    }
+
+    data class SdJwtVc(val vct: String) : StoredDocumentFormat {
+        override val identifier: String get() = vct
+    }
+}
+
+/**
+ * The issuing session's access token, kept with a parked document for an issuer that grants **no refresh
+ * token** — without it such a document could never be collected, and the sweep would delete it.
+ *
+ * Android's openid4vci-kt keeps the same thing in its deferred-issuance context and polls with it while
+ * it is valid. [dpopKeyAlias] is the key the token is bound to (DPoP, RFC 9449), without which it cannot
+ * be presented; [expiresAt] is from the token response's `expires_in`, null when the issuer sent none.
+ *
+ * ⚠️ A bearer of access, if briefly: it is stored only while the document is parked, cleared on
+ * collection, and lives in the same protected store as the credentials themselves.
+ */
+internal data class DeferredResume(
+    val accessToken: String,
+    val dpopKeyAlias: String,
+    val expiresAt: Instant?,
+) {
+    fun isExpired(now: Instant = Clock.System.now()): Boolean = expiresAt?.let { now >= it } ?: false
+
+    /** Never the token itself. */
+    override fun toString(): String = "DeferredResume(dpopKeyAlias=$dpopKeyAlias, expiresAt=$expiresAt)"
+}
+
+/** Same CBOR shape as the Android original's `DocumentFormat.toDataItem()`. */
+private fun StoredDocumentFormat.toDataItem(): DataItem = buildCborMap {
+    when (this@toDataItem) {
+        is StoredDocumentFormat.MsoMdoc -> put("docType", docType)
+        is StoredDocumentFormat.SdJwtVc -> put("vct", vct)
+    }
+}
+
+private fun storedDocumentFormatFromDataItem(item: DataItem): StoredDocumentFormat {
+    require(item is CborMap) { "Expected a CborMap for the document format" }
+    return when {
+        item.hasKey("docType") -> StoredDocumentFormat.MsoMdoc(item["docType"].asTstr)
+        item.hasKey("vct") -> StoredDocumentFormat.SdJwtVc(item["vct"].asTstr)
+        else -> throw IllegalArgumentException("Unknown document format")
+    }
+}
+
+private const val POLICY_ONCE_ONLY = "onceOnly"
+private const val POLICY_LIMITED_TIME = "limitedTime"
+private const val POLICY_ROTATING_BATCH = "rotatingBatch"
+
+private fun WalletCredentialPolicy.toDataItem(): DataItem = buildCborMap {
+    when (val policy = this@toDataItem) {
+        is WalletCredentialPolicy.OnceOnly -> {
+            put("type", POLICY_ONCE_ONLY)
+            put("numberOfCredentials", policy.numberOfCredentials.toLong())
+            policy.reissueTriggerUnused?.let { put("reissueTriggerUnused", it.toLong()) }
+        }
+
+        is WalletCredentialPolicy.LimitedTime -> {
+            put("type", POLICY_LIMITED_TIME)
+            policy.reissueTriggerLifetimeLeft
+                ?.let { put("reissueTriggerLifetimeLeft", it.inWholeSeconds) }
+        }
+
+        is WalletCredentialPolicy.RotatingBatch -> {
+            put("type", POLICY_ROTATING_BATCH)
+            put("numberOfCredentials", policy.numberOfCredentials.toLong())
+            policy.reissueTriggerLifetimeLeft
+                ?.let { put("reissueTriggerLifetimeLeft", it.inWholeSeconds) }
+        }
+    }
+}
+
+private fun credentialPolicyFromDataItem(item: DataItem): WalletCredentialPolicy {
+    require(item is CborMap) { "Expected a CborMap for the credential policy" }
+    return when (val type = item["type"].asTstr) {
+        POLICY_ONCE_ONLY -> WalletCredentialPolicy.OnceOnly(
+            numberOfCredentials = item["numberOfCredentials"].asNumber.toInt(),
+            reissueTriggerUnused = item.optional("reissueTriggerUnused") { it.asNumber.toInt() },
+        )
+
+        POLICY_LIMITED_TIME -> WalletCredentialPolicy.LimitedTime(
+            reissueTriggerLifetimeLeft =
+                item.optional("reissueTriggerLifetimeLeft") { it.asNumber.seconds },
+        )
+
+        POLICY_ROTATING_BATCH -> WalletCredentialPolicy.RotatingBatch(
+            numberOfCredentials = item["numberOfCredentials"].asNumber.toInt(),
+            reissueTriggerLifetimeLeft =
+                item.optional("reissueTriggerLifetimeLeft") { it.asNumber.seconds },
+        )
+
+        else -> throw IllegalArgumentException("Unknown credential policy type: $type")
+    }
+}
+
+/** Reads [key] if present; absent keys are how this schema stays forward-compatible. */
+private inline fun <T> DataItem.optional(key: String, extract: (DataItem) -> T?): T? =
+    if (this is CborMap && hasKey(key)) extract(this[key]) else null

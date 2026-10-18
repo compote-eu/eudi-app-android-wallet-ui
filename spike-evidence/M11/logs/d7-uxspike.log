@@ -1,0 +1,27 @@
+10-17 17:09:32.468 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 17:09:32.591 UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 17:09:32.592 UX-SPIKE: enter connecting (gen 1)
+10-17 17:09:32.593 UX-SPIKE: fetchRequest#1 (script slow)
+10-17 17:09:32.593 UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 17:09:32.610 UX-SPIKE: screen SCR-pres-connecting: interpreted from the bundle (TPL-progress, 2 nodes), state connecting, ui_state default
+10-17 17:09:32.616 UX-SPIKE: a11y: SCR-pres-connecting announce-live hero ('Overuje sa totožnosť overovateľa a dostupnosť vašich eDokladov.. Načítava sa žiadosť overovateľa')
+10-17 17:09:35.607 UX-SPIKE: enter request (gen 2)
+10-17 17:09:35.697 UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+10-17 17:09:36.033 UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)
+10-17 17:09:39.608 UX-SPIKE: intent from SCR-pres-request: CONTINUE {} (gen 2)
+10-17 17:09:39.608 UX-SPIKE: enter auth (gen 3)
+10-17 17:09:39.610 UX-SPIKE: authenticate#1 (script slow)
+10-17 17:09:39.651 UX-SPIKE: screen SCR-pres-auth: interpreted from the bundle (TPL-sheet, 4 nodes), state auth, ui_state default
+10-17 17:09:40.024 UX-SPIKE: a11y: SCR-pres-auth focus-heading title (focused)
+10-17 17:09:41.114 UX-SPIKE: enter verification-code (gen 4)
+10-17 17:09:41.115 UX-SPIKE: verificationCode#1 (script slow)
+10-17 17:09:41.166 UX-SPIKE: screen SCR-pres-verification-code: interpreted from the bundle (TPL-sheet, 8 nodes), state verification-code, ui_state no-url
+10-17 17:09:41.513 UX-SPIKE: a11y: SCR-pres-verification-code focus-heading title (focused)
+10-17 17:09:43.777 UX-SPIKE: interpreter: confirm press -> CONFIRM
+10-17 17:09:43.777 UX-SPIKE: enter sending (gen 5)
+10-17 17:09:43.777 UX-SPIKE: send#1 (script slow)
+10-17 17:09:43.796 UX-SPIKE: screen SCR-pres-sending: interpreted from the bundle (TPL-progress, 1 nodes), state sending, ui_state default
+10-17 17:09:44.185 UX-SPIKE: a11y: SCR-pres-sending announce-live hero ('Prebieha odoslanie dát eDokladov')
+10-17 17:09:46.783 UX-SPIKE: enter success (gen 6)
+10-17 17:09:46.836 UX-SPIKE: screen SCR-pres-outcome-success: interpreted from the bundle (TPL-outcome, 2 nodes), state success, ui_state default
+10-17 17:09:47.208 UX-SPIKE: a11y: SCR-pres-outcome-success focus-heading hero (focused)

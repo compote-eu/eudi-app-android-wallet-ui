@@ -1,0 +1,15 @@
+Running on iPhone 17 - iOS 27.0 - 3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA
+ > Flow d8-offline
+Open ${LINK}... COMPLETED
+Tap on (Optional) "Open"... WARNED
+Run flow when id: pin_text_field_0 is visible...
+Run flow when id: pin_text_field_0 is visible... SKIPPED
+Assert that id: ux-state-offline-loading is visible... COMPLETED
+Assert that "Ste offline" is visible... COMPLETED
+Assert that id: retry is visible... COMPLETED
+Take screenshot d8-2-1-offline-loading... COMPLETED
+Tap on id: retry... COMPLETED
+Assert that id: ux-state-connecting is visible... COMPLETED
+Take screenshot d8-2-2-connecting-again... COMPLETED
+Assert that id: ux-state-request is visible... COMPLETED
+Take screenshot d8-2-3-request... COMPLETED

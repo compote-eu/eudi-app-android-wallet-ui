@@ -1,0 +1,39 @@
+# M5b D6-iOS-provisional, expired path (script `expired-at-request`): connecting -> error-expired (interpreted
+# SCR-pres-outcome-expired) -> Close -> Home.
+appId: eu.compote.euidi.dev
+---
+- openLink: ${LINK}
+- tapOn:
+    text: "Open"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+# connecting is optional here: the exported happy / expired-at-request scripts answer at once (no delay_ms, M6a);
+# it is always proven by the interpreter log.
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-connecting"
+    timeout: 3000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-error-expired"
+    timeout: 20000
+- assertVisible:
+    id: "hero"
+- assertVisible:
+    id: "retry"
+- takeScreenshot: d6-expired-1-error-expired
+- tapOn:
+    id: "close"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible:
+    id: "ux-state-error-expired"
+- takeScreenshot: d6-expired-2-home

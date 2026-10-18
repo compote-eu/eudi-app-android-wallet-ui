@@ -1,0 +1,123 @@
+# TC-01-equivalent (PID-equivalent issuance) — the in-app portion, common to both platforms.
+#
+# Status as of 2026-09-15: PORTED AND VERIFIED WORKING, unmodified, on both a fresh iOS
+# Simulator and a fresh Android emulator, from a clean install through to the document-type
+# catalog list. This is genuinely built and run against THIS app's real live screens — not
+# copied from `eudi-app-ios-wallet-ui`'s tc-01-pid-issuance.yaml (that file lives under
+# `.maestro/issuance/` as unverified reference material; this one replaces it for the steps
+# it actually covers).
+#
+# Does NOT complete TC-01 end to end: continuing past this point (tapping a document type)
+# leads into a live client-attestation bug that currently blocks issuance on both platforms —
+# see `.maestro/PORTING_STATUS.md` and `tc-01-pid-issuance-android-continuation.yaml`'s own
+# header for the two platforms' different failure symptoms of that same root cause.
+#
+# Real divergences found from the native app's reference flow (verified via live
+# `maestro hierarchy` dumps, not assumed):
+# - No `success_screen_title` tag exists on the PIN-success screen; only plain text
+#   "Wallet secured" — asserted by text below instead.
+# - The Documents bottom-nav tab's real id is `dashboard_screen_bottom_navigation_item_documents`
+#   (an enum-driven tag with three tabs: Home/Documents/History), not `documents_tab`.
+# - There is no dedicated "choose from list" screen/button. Tapping "+" opens a bottom sheet
+#   with two generic, position-indexed buttons (`documents_tab_bottom_sheet_button_0`/`_1`);
+#   index 0 is "Choose from list".
+#
+# Bundle id / applicationId is the same string on both platforms for the dev flavor
+# (confirmed in `app.properties` — no Android debug-suffix applied): eu.compote.euidi.dev
+
+appId: eu.compote.euidi.dev
+---
+# --- First run: PIN setup ---
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- assertVisible: "Wallet secured"
+- tapOn:
+    id: "success_screen_primary_button"
+
+# --- Dashboard -> Documents tab -> Add -> Choose from list ---
+- tapOn:
+    id: "dashboard_screen_bottom_navigation_item_documents"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "documents_tab_bottom_sheet_button_0"
+# A long explicit wait, not assertVisible - see tc-01-pid-issuance-android.yaml:
+# while the catalog loads, its content is not in the accessibility tree, and
+# the dev issuer's metadata has taken longer than assertVisible's ~17s wait.
+- extendedWaitUntil:
+    visible:
+      id: "add_document_screen_subtitle"
+    timeout: 60000
+
+# This screen has no dedicated skeleton/loading accessibility id to wait
+# on: AddDocumentViewModel.initialize() seeds the list with hardcoded fake
+# placeholder rows ("Document name 1..4" under a fake "Issuer" header,
+# AddDocumentUIModel.mocks) rendered under the SAME cell identifiers as the
+# real data, with a generic shimmer view modifier - real and fake rows are
+# visually/structurally indistinguishable to a selector, only the actual
+# text differs. Waiting on "PID Combined" itself doesn't work here either:
+# confirmed live that it sits well down the list (behind Certificate of
+# Residence/Diploma/EHIC/Employee ID/Health ID, all alphabetically before
+# it within the same first issuer bucket - ec.dev.issuer.eudiw.dev sorts
+# first since it's the only issuer of a PID doc, see
+# AddDocumentInteractor.swift's bucket-then-alphabetical sort), so it's
+# never visible before the scroll steps below regardless of load state.
+# "Certificate of Residence (MSO Mdoc)" is the actual first real item,
+# confirmed live to render at the very top of this screen with no
+# scrolling needed - waiting for it here confirms the real issuer fetch
+# has replaced the fake placeholder rows before scrolling/tapping races
+# against it. This addresses a real, diagnosed timing gap (TC-01 failed
+# with "Tap on 'PID Combined'" landing on a screenshot showing
+# skeleton/shimmer placeholder bars, not a real regression) - NOT YET
+# reverified locally across multiple runs as of this commit, so treat
+# this as a diagnosed fix pending that confirmation, not a proven one.
+- extendedWaitUntil:
+    visible: "Certificate of Residence (MSO Mdoc)"
+    timeout: 60000    # same 60s catalog budget as the wait above
+
+# --- Select PID Combined (matched by stable text, not the volatile id) ---
+# scrollUntilVisible, not a fixed number of scrolls: how far each plain
+# `scroll` moves this list varies run to run, and two of them have been
+# seen (2026-09-29, saved hierarchy dumps) stopping one row short with the
+# real, fully loaded catalog on screen - PID Combined just below the fold.
+- scrollUntilVisible:
+    element:
+      text: "PID Combined"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "PID Combined"
+
+# --- ASWebAuthenticationSession consent -> FormEU identity-proofing form ->
+#     Review & Send -> Authorize -> success screen -> Done ---
+# Extracted into a shared sub-flow (formeu-identity-proofing-flow.yaml) since
+# TC-57's credential-offer entry point converges on this exact same
+# ASWebAuthenticationSession session once its own "Issue" tap completes -
+# see that file's own header comment for the full rationale. Its individual
+# steps (FormEU vs. a real country, the Birth Date picker's default-today
+# behavior, the "next field" accessory-button tap for the hidden Place Of
+# Birth field, the Allow-dialog's generous optional timeout for a
+# fresh-erased device's slower key generation, etc.) are documented there,
+# not repeated here, to avoid the two files drifting out of sync.
+- runFlow: formeu-identity-proofing-flow.yaml
+
+# --- Verify: PID appears in Documents list with a validity date ---
+# extendedWaitUntil (not a plain assertVisible) because the Documents list
+# takes a moment to refresh right after "Done" — an immediate assertion here
+# is a real observed flake, not a real failure (confirmed by re-checking the
+# screen a couple seconds later during investigation).
+- extendedWaitUntil:
+    visible: "PID (MSO Mdoc)"
+    timeout: 10000
+- assertVisible: "PID (SD-JWT VC)"
+# Maestro's text selectors are a FULL-STRING regex match (Pattern.matches),
+# not a substring search — "Valid until" alone only matches a node whose
+# entire accessible text equals exactly that, so the pattern needs an
+# explicit date-shaped suffix. This app's text comes from the shared-UI
+# string dashboard_document_has_not_expired, "Valid until: %1$s" - with a
+# colon (e.g. "Valid until: 28 Dec 2026"), unlike the iOS reference app's
+# "Valid until 08 Nov 2026" this pattern was first written against.
+- assertVisible: "Valid until: \\d{2} \\w{3} \\d{4}"

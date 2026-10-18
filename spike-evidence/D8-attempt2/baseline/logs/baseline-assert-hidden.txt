@@ -1,0 +1,6 @@
+screen: True
+testTag order (iOS a11y tree): ['hero', 'hint', 'help-note', 'retry', 'close']
+PASS 4 no node tagged verifier
+PASS 4 text nowhere on screen
+verifier.title label: None
+verifier.text label: None

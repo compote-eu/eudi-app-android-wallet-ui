@@ -1,0 +1,363 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+package eu.europa.ec.uilogic.component
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import org.jetbrains.compose.resources.stringResource
+import androidx.compose.ui.unit.dp
+import eu.europa.ec.uilogic.component.preview.PreviewTheme
+import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
+import eu.europa.ec.uilogic.component.utils.SIZE_SMALL
+import eu.europa.ec.uilogic.component.utils.SPACING_EXTRA_SMALL
+import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
+import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
+import eu.europa.ec.uilogic.component.wrap.ButtonConfig
+import eu.europa.ec.uilogic.component.wrap.ButtonType
+import eu.europa.ec.uilogic.component.wrap.WrapButton
+import eu.europa.ec.uilogic.component.wrap.WrapCard
+import eu.europa.ec.uilogic.component.wrap.ColorKey
+import eu.europa.ec.uilogic.component.wrap.WrapExpandableCard
+import eu.europa.ec.uilogic.component.wrap.WrapListItem
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.content_description_issuer_logo_icon
+import eu.europa.ec.shared.resources.document_details_issuer_card_expired_on_text
+import eu.europa.ec.shared.resources.document_details_issuer_card_expired_text
+import eu.europa.ec.shared.resources.document_details_issuer_card_expires_on_text
+import eu.europa.ec.shared.resources.document_details_issuer_card_issued_on_text
+import eu.europa.ec.shared.resources.document_details_issuer_card_revoked_text
+import eu.europa.ec.shared.resources.document_details_issuer_card_unknown_issuer
+
+/**
+ * A composable function that displays an issuer details card.
+ *
+ * This card shows information about an issuer, such as their logo, name,
+ * and document status (e.g., Issued or Revoked). It supports an expandable
+ * state to reveal additional details and action buttons. When
+ * [IssuerDetailsCardDataUi.showsExpandedContentOnly] is true, it shows those details directly
+ * instead.
+ *
+ * @param data The data object containing the issuer details and current state to display.
+ * @param modifier Modifier used to adjust the layout or appearance of the card.
+ * @param shape The shape of the card. Defaults to a rounded corner shape.
+ * @param colors Optional [CardColors] to customize the card's background and content colors.
+ * @param onExpandedChange Callback invoked when the expansion state is toggled.
+ * @param onActionButtonClick Callback invoked when the action button in the expanded view is clicked.
+ */
+@Composable
+fun IssuerDetailsCard(
+    data: IssuerDetailsCardDataUi,
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(SIZE_SMALL.dp),
+    colors: CardColors? = null,
+    onExpandedChange: (() -> Unit),
+    onActionButtonClick: (() -> Unit),
+) {
+    if (data.showsExpandedContentOnly) {
+        WrapCard(
+            modifier = modifier,
+            shape = shape,
+            colors = colors,
+        ) {
+            IssuerDetailsCardExpanded(
+                data = data,
+                onActionButtonClick = onActionButtonClick,
+            )
+        }
+    } else {
+        WrapExpandableCard(
+            modifier = modifier,
+            isExpanded = data.isExpanded,
+            onExpandedChange = onExpandedChange,
+            cardCollapsedContent = {
+                val issuerLogoContentDescription =
+                    stringResource(Res.string.content_description_issuer_logo_icon)
+
+                val leadingContent = remember(data.issuerLogo) {
+                    ListItemLeadingContentDataUi.AsyncImage(
+                        imageUrl = data.issuerLogo.orEmpty(),
+                        contentDescription = issuerLogoContentDescription,
+                        errorImage = AppIcons.Id,
+                    )
+                }
+
+                // Bound to a local: IssuerDetailsCardDataUi now lives in :shared-ui, and a `when` over a
+                // public property of another module's class does not smart-cast.
+                val documentState = data.documentState
+                val supportingContentData: ListItemSupportingContentDataUi? =
+                    when (documentState) {
+                        is IssuerDetailsCardDataUi.DocumentState.Issued -> {
+                            documentState.expirationDate?.let { safeExpirationDate ->
+                                ListItemSupportingContentDataUi.Text(
+                                    text = stringResource(
+                                        Res.string.document_details_issuer_card_expires_on_text,
+                                        safeExpirationDate
+                                    ),
+                                )
+                            }
+                        }
+
+                        is IssuerDetailsCardDataUi.DocumentState.Expired -> {
+                            val expiredText =
+                                documentState.expirationDate?.let { safeExpirationDate ->
+                                    stringResource(
+                                        Res.string.document_details_issuer_card_expired_on_text,
+                                        safeExpirationDate
+                                    )
+                                }
+                                    ?: stringResource(Res.string.document_details_issuer_card_expired_text)
+                            ListItemSupportingContentDataUi.Text(
+                                text = expiredText,
+                                textColorKey = ColorKey.Error,
+                            )
+                        }
+
+                        is IssuerDetailsCardDataUi.DocumentState.Revoked -> {
+                            ListItemSupportingContentDataUi.Text(
+                                text = stringResource(Res.string.document_details_issuer_card_revoked_text),
+                                textColorKey = ColorKey.Error,
+                            )
+                        }
+                    }
+
+                WrapListItem(
+                    modifier = Modifier.fillMaxWidth(),
+                    item = ListItemDataUi(
+                        itemId = ISSUER_DETAILS_CARD_ITEM_ID,
+                        mainContentData = ListItemMainContentDataUi.Text(
+                            text = data.issuerName
+                                ?: stringResource(Res.string.document_details_issuer_card_unknown_issuer)
+                        ),
+                        supportingContentData = supportingContentData,
+                        leadingContentData = leadingContent,
+                        trailingContentData = ListItemTrailingContentDataUi.Icon(
+                            iconData = if (data.isExpanded)
+                                AppIcons.KeyboardArrowUp
+                            else AppIcons.KeyboardArrowDown
+                        )
+                    ),
+                    onItemClick = {
+                        onExpandedChange()
+                    },
+                    mainContentVerticalPadding = SPACING_MEDIUM.dp,
+                    colors = colors,
+                )
+            },
+            cardExpandedContent = {
+                IssuerDetailsCardExpanded(
+                    data = data,
+                    onActionButtonClick = onActionButtonClick
+                )
+            },
+            shape = shape,
+            colors = colors,
+            throttleClicks = true,
+        )
+    }
+}
+
+@Composable
+private fun IssuerDetailsCardExpanded(
+    data: IssuerDetailsCardDataUi,
+    onActionButtonClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                top = SPACING_MEDIUM.dp,
+                bottom = SPACING_SMALL.dp,
+                start = SPACING_MEDIUM.dp,
+                end = SPACING_MEDIUM.dp,
+            ),
+        verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp),
+        horizontalAlignment = Alignment.Start
+    ) {
+        when (val docState = data.documentState) {
+            is IssuerDetailsCardDataUi.DocumentState.Issued -> {
+                IssuedOnText(
+                    issuanceDate = docState.issuanceDate,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            is IssuerDetailsCardDataUi.DocumentState.Expired -> {
+                IssuedOnText(
+                    issuanceDate = docState.issuanceDate,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            is IssuerDetailsCardDataUi.DocumentState.Revoked -> {
+                // Nothing to show
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = SPACING_EXTRA_SMALL.dp),
+                text = stringResource(data.expandedMessageTextRes),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+
+            data.expandedActionButtonTextRes?.let { safeExpandedActionButtonTextRes ->
+                WrapButton(
+                    buttonConfig = ButtonConfig(
+                        type = ButtonType.PRIMARY,
+                        onClick = onActionButtonClick,
+                        buttonColors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                ) {
+                    Text(text = stringResource(safeExpandedActionButtonTextRes))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun IssuedOnText(
+    issuanceDate: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = stringResource(
+            Res.string.document_details_issuer_card_issued_on_text,
+            issuanceDate
+        ),
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyMedium
+    )
+}
+
+private const val ISSUER_DETAILS_CARD_ITEM_ID = "issuerDetailsCardId"
+
+@ThemeModePreviews
+@Composable
+private fun IssuerDetailsCardPreview() {
+    PreviewTheme {
+        var isExpanded by remember {
+            mutableStateOf(false)
+        }
+        val issuerName = "Hellenic Government"
+        val issuedState = IssuerDetailsCardDataUi.DocumentState.Issued(
+            issuanceDate = "16 February 2024 - 13:18",
+            expirationDate = "22 March 2030"
+        )
+        val revokedState = IssuerDetailsCardDataUi.DocumentState.Revoked
+        val expiredState = IssuerDetailsCardDataUi.DocumentState.Expired(
+            issuanceDate = "16 February 2024 - 13:18",
+            expirationDate = "22 March 2024"
+        )
+        val issuedNoNameNoExpiryState = IssuerDetailsCardDataUi.DocumentState.Issued(
+            issuanceDate = "16 February 2024 - 13:18",
+            expirationDate = null
+        )
+
+        val issuerDetailsItems = listOf(
+            IssuerDetailsCardDataUi(
+                issuerName = issuerName,
+                issuerLogo = null,
+                documentState = issuedState,
+                isExpanded = false,
+            ),
+            IssuerDetailsCardDataUi(
+                issuerName = issuerName,
+                issuerLogo = null,
+                documentState = issuedState,
+                isExpanded = true,
+            ),
+            IssuerDetailsCardDataUi(
+                issuerName = issuerName,
+                issuerLogo = null,
+                documentState = revokedState,
+                isExpanded = false,
+            ),
+            IssuerDetailsCardDataUi(
+                issuerName = issuerName,
+                issuerLogo = null,
+                documentState = revokedState,
+                isExpanded = true,
+            ),
+            IssuerDetailsCardDataUi(
+                issuerName = issuerName,
+                issuerLogo = null,
+                documentState = expiredState,
+                isExpanded = false,
+            ),
+            IssuerDetailsCardDataUi(
+                issuerName = issuerName,
+                issuerLogo = null,
+                documentState = expiredState,
+                isExpanded = true,
+            ),
+            IssuerDetailsCardDataUi(
+                issuerName = null,
+                issuerLogo = null,
+                documentState = issuedNoNameNoExpiryState,
+                isExpanded = false,
+            )
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
+        ) {
+            issuerDetailsItems.forEach { issuerDetailsItem ->
+                IssuerDetailsCard(
+                    data = issuerDetailsItem,
+                    onExpandedChange = {
+                        isExpanded = !isExpanded
+                    },
+                    onActionButtonClick = {},
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceDim,
+                    ),
+                )
+            }
+        }
+    }
+}

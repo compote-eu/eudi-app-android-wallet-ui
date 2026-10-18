@@ -1,0 +1,48 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.verifier.dev
+---
+# TC-03 — BLE proximity presentation, full PID (no attribute exclusions).
+#
+# Physical prerequisite (NOT a script step): same one-time camera rig as
+# TC-02 - see README.md in this directory. Already proven working by
+# TC-02; this flow only differs in the request-creation step below.
+#
+# Cross-device orchestration: identical to TC-02's - the iOS half is
+# driven by tc-03-ios-share.py (a copy of TC-02's already-fixed script -
+# confirmed live that full vs. custom PID changes nothing on the iOS
+# side), run by tc-03-ble-full-pid.sh.
+#
+# What's different from TC-02: TC-02 tapped "Custom PID", which opens a
+# per-field checkbox screen (needing a point-tap to deselect Portrait,
+# then TWO "Done" taps to get back past both that subscreen and the
+# "Documents to request" screen). "Full PID" is a separate, sibling
+# button right next to "Custom PID" on the same "Documents to request"
+# screen (bounds confirmed live: Full PID [180,630][303,680] vs. Custom
+# PID [423,630][613,680]) - tapping it selects every PID field with NO
+# subscreen, so getting back home needs only ONE "Done" tap. Confirmed
+# live (2026-08-27): after Full PID -> Done, the home screen's request
+# summary reads "Full PID", and the rest of the flow (Scan QR Code ->
+# Show documents -> OK) is identical to TC-02, since it's the same
+# generic BLE/QR mechanism regardless of which fields were requested.
+
+- launchApp:
+    clearState: true
+- tapOn: "Tap to create request"
+- tapOn: "Full PID"
+- tapOn: "Done"
+
+- tapOn: "Scan QR Code"
+
+# Engagement + BLE connection + the full attribute transfer all happen
+# here with no further Android-side interaction (same mechanism as
+# TC-02 - see that flow's comments), while the iOS script runs
+# concurrently.
+- extendedWaitUntil:
+    visible: "Show documents"
+    timeout: 120000
+
+- tapOn: "OK"

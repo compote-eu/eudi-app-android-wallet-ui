@@ -1,0 +1,198 @@
+# detekt overrides for this repository. Layered on top of detekt's default config
+# (`buildUponDefaultConfig = true`), so this file only records the deliberate departures.
+#
+# WHY SO MUCH IS DISABLED, AND WHAT THE NUMBERS MEAN
+#
+# This repository is a fork that takes upstream changes by HAND-PORTING individual commits, not by
+# merging. Every file touched for cosmetic reasons therefore becomes a conflict in some future port.
+# So the gate was chosen to cost nothing cosmetically: each rule below that reports pre-existing
+# findings is disabled with its measured count, and nothing was reformatted to satisfy it.
+#
+# The counts are a debt ledger, first measured on 2026-08-28 over 773 `.kt` files / ~119k lines with
+# detekt 1.23.8 and re-measured on 2026-09-02, 2026-09-07, 2026-09-14, 2026-09-21 and 2026-10-16. The
+# numbers below are the 2026-10-16 ones and sum to 2315 across 23 rules (1853 on 2026-09-21; the
+# growth is syncs 9-11 and the iOS work, 377 `.kt` files changed); they are the cost of turning a rule
+# back on. Chip away deliberately, in a pass of its own -- do not fold a reformat into an unrelated
+# change.
+#
+# HOW TO RE-MEASURE (the whole ledger, in one run)
+#
+#   cp detekt.yml /tmp/detekt.yml.bak
+#   sed 's/active: false/active: true/' /tmp/detekt.yml.bak > detekt.yml
+#   ./gradlew detekt --rerun-tasks          # fails by design: `ignoreFailures = false`
+#   # parse build/reports/detekt/detekt.xml, counting <error source="..."> per rule
+#   cp /tmp/detekt.yml.bak detekt.yml
+#
+# detekt runs ONCE at the root over the whole tree, so there is a single report to parse.
+#
+# WHAT IS ACTUALLY GATED
+#
+# The four dead-code rules, which is the drift this gate exists to stop: a previous session removed
+# 143 unused imports and 3 dead declarations by hand, and nothing would have caught them coming
+# back. They are all active and all at zero. So are the two import rules, `UnusedImports` and a
+# strict `WildcardImport` (style, below), which detekt has owned since 2026-10-16: ktlint 1.7.0
+# stopped running its `no-unused-imports` by default and 2.0 removes it, so `.editorconfig` now
+# switches ktlint's import rules off. No rule is enabled in both tools.
+#
+# Seven more rules are active because they were brought to zero rather than switched off, which is
+# the cheap half of this ledger and the half to prefer: `FunctionNaming` and `TopLevelPropertyNaming`
+# by configuration, `ThrowingExceptionsWithoutMessageOrCause` by excluding the fixture files, and
+# `EnumNaming` / `EmptyFunctionBlock` / `VariableNaming` / `UseRequire` by fixing or locally
+# suppressing between one and two findings each (chipped 2026-09-02). Every local @Suppress says why
+# it is there. A rule at zero keeps gating; a rule disabled does not.
+
+complexity:
+  # Architectural debt: each of these asks for a refactor, not a reformat.
+  CognitiveComplexMethod:
+    active: false # 47
+  ComplexCondition:
+    active: false # 7
+  CyclomaticComplexMethod:
+    active: false # 47
+  LargeClass:
+    active: false # 15
+  LongMethod:
+    active: false # 143
+  LongParameterList:
+    active: false # 96
+  NestedBlockDepth:
+    active: false # 6
+  TooManyFunctions:
+    active: false # 65
+    # The `ignoreAnnotatedFunctions` / `ignorePrivate` / `ignoreOverridden` family is NOT a way out,
+    # re-measured 2026-10-16: 21 of the 65 are file-level findings and the other 44 are classes and
+    # interfaces carrying 11-41 functions each (`WalletCoreDocumentsController` is 24 in the interface
+    # and 30 in the impl; `OpenID4VciCompatibilityEngine` is the largest at 41). This one is
+    # architectural debt, not a convention mismatch, and any of those flags would read as a
+    # relaxation. (2026-09-21 read 11 of 44 file-level, 2026-09-14 3 of 41.)
+
+empty-blocks:
+  EmptyDefaultConstructor:
+    active: false # 1 -- UuidProviderImpl's `()`, in an upstream-tracked file; cosmetic only
+  EmptyFunctionBlock:
+    active: true
+    # The 2 findings were both EmptyTextToolbar, where doing nothing IS the implementation. They
+    # carry a local @Suppress that says so, which leaves this rule gating every other empty block.
+
+exceptions:
+  SwallowedException:
+    active: false # 2 -- both deliberate: DateUtils.toDateFormatted returns null on any parse
+    # failure, and IosDcApiPresenter's PresentmentCanceledException branch logs "declined by the
+    # user" without the exception, because a cancellation carries no information. Not chippable:
+    # the DateUtils one is an upstream-tracked file, so suppressing it costs a hand-port conflict.
+  ThrowingExceptionsWithoutMessageOrCause:
+    active: true
+    # The 1 finding is `mockedExceptionWithNoMessage`, a fixture whose whole point is the message-less
+    # constructor. Excluding the fixture files leaves 0 and keeps the rule gating production code.
+    # WARNING: `excludes` REPLACES detekt's default list, it does not extend it -- so the default test
+    # source sets are restated here. Dropping them pulled commonTest and iosTest into scope and turned
+    # one finding into three, which is how this was found.
+    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/TestData.kt']
+  TooGenericExceptionCaught:
+    active: false # 40
+  TooGenericExceptionThrown:
+    active: false # 12
+
+naming:
+  EnumNaming:
+    active: true
+    # The 1 finding is `FlavorDimension.contentType`, lowercase because the entry name IS the Gradle
+    # flavour dimension string. It carries a local @Suppress alongside the IDE's `EnumEntryName`.
+  FunctionNaming:
+    active: true
+    # @Composable functions are PascalCase by Compose convention, and the test suites name cases in
+    # snake_case on purpose. Ignoring those two takes this rule from 377 findings to 1, so it stays
+    # on: the one exception carries a local @Suppress that says why.
+    ignoreAnnotated: ['Composable', 'Test']
+  MatchingDeclarationName:
+    active: false # 32
+    # Do not reach for `mustBeFirst: false` -- it reads like a relaxation and is the opposite:
+    # measured 2026-09-07, 2026-09-21 and 2026-10-16, it makes this rule worse (now 32 findings to 39).
+    # `multiplatformTargets` looks KMP-shaped and is not the lever either (checked 2026-09-14): it
+    # only forgives platform-suffixed FILE NAMES (`Foo.ios.kt`), which its default list already
+    # covers: the tree has 46 such files and none of the 32 findings is in one. All 32 are ordinary
+    # mismatches -- `ListItem.kt` declaring `ClickableArea`, `UiModule.kt`
+    # declaring `LogicUiModule`.
+  PackageNaming:
+    active: true
+    # All 17 findings were snake_case package segments -- `document_success`, `qr_scan`,
+    # `document_sign` -- and that is UPSTREAM's own convention for feature packages
+    # (`common-feature/src/main/java/eu/europa/ec/commonfeature/ui/document_success/` exists at
+    # origin/main). Renaming ours would diverge from upstream and break every future hand-port of
+    # those screens, so the default pattern is what is wrong here, not the packages. Allowing `_`
+    # inside a segment takes this rule to 0 with no source change, and it still gates what
+    # matters: an uppercase, camelCase or digit-leading segment is still a finding.
+    packagePattern: '[a-z]+(\.[a-z][A-Za-z0-9_]*)*'
+  TopLevelPropertyNaming:
+    active: true
+    # 64 of the 65 findings are `mockedFoo` fixture constants in TestData.kt files, which read far
+    # better in camelCase than screaming snake. Excluding those files leaves 1, which carries a
+    # local @Suppress.
+    excludes: ['**/TestData.kt']
+  VariableNaming:
+    active: true
+
+performance:
+  SpreadOperator:
+    active: false # 5
+
+style:
+  ForbiddenComment:
+    active: false # 2 -- TODOs that track upstream gates, and are meant to stay until those open
+  LoopWithTooManyJumpStatements:
+    active: false # 14 -- `maxJumpCount: 2` measures 6, not 0, so it is not a chip
+  MagicNumber:
+    active: false # 747 -- overwhelmingly Compose dp/sp literals, where a named constant reads
+    # worse. There is no `ignoreAnnotated` on this rule in detekt 1.23.8 (checked against
+    # default-detekt-config.yml), so the trick that saved FunctionNaming and UnusedPrivateMember
+    # is unavailable here, and `ignoreNamedArgument` is already true by default and misses a
+    # positional `16.dp`, which is most of them.
+  MaxLineLength:
+    active: false # 530
+  NewLineAtEndOfFile:
+    active: false # 367 -- upstream's own style; fixing it would touch nearly every file in the tree
+  ReturnCount:
+    active: false # 86 -- `excludeGuardClauses: true` measures 47, not 0, so it is not a chip
+  ThrowsCount:
+    active: false # 7 -- `excludeGuardClauses: true` measures 6, not 0, so it is not a chip
+  UnusedImports:
+    active: true
+    # Off in detekt's defaults; taken over from ktlint's `no-unused-imports` on 2026-10-16. Measured
+    # equal before the switch: 0 findings over the tree from both, and a planted file got the same
+    # verdicts from both -- an unused import reported; `getValue`/`setValue` used only by a `by`
+    # delegate, and an import used only in KDoc, not reported.
+  UnusedParameter:
+    active: true
+  UnusedPrivateClass:
+    active: true
+  UnusedPrivateMember:
+    active: true
+    # @Preview/@ThemeModePreviews composables are called by the tooling, never by code, so all 110
+    # findings here were previews. Ignoring them left exactly 2, and both were genuinely dead
+    # (`getRelyingPartyData`, deleted) -- which is the whole reason this rule is on.
+    ignoreAnnotated: ['Composable', 'Preview', 'ThemeModePreviews']
+  UnusedPrivateProperty:
+    active: true
+  UseCheckOrError:
+    active: false # 41
+    # The closest thing left to a mechanical chip, and it still does not pass the fork's test
+    # (re-measured 2026-10-16): 37 of the 41 sites are in files upstream does not have -- 16 of them
+    # in `IosOpenID4VciProvisioningClient.kt` alone -- but the SAME 4 as before,
+    # `WalletCorePresentationController.kt:718` (was :709, and :682 before that; our own changes),
+    # `ContextExtensions.kt:83` and `WalletAttestationRepository.kt:71,94`, are BYTE-IDENTICAL to
+    # upstream's own lines, re-verified against `origin/main` line by line. A rule
+    # only becomes a live gate at zero, so taking this one means diverging from upstream on four
+    # untouched lines. Same call as `EmptyDefaultConstructor` below.
+  UseRequire:
+    active: true
+  UtilityClassWithPublicConstructor:
+    active: false # 3 -- the Theme* objects, which the theme DSL wants as classes.
+    # These three files pass the "not tracked upstream" test and are still NOT free: they are
+    # `shared-ui/src/commonMain/.../theme/values/*.kt`, which `feature/kmp-sk` REPLACES
+    # wholesale, so a suppression here costs an sk re-port instead of an upstream one.
+  WildcardImport:
+    active: true
+    # Active in detekt's defaults, which exempt `java.util.*` -- subpackages included, so
+    # `java.util.concurrent.*` passed detekt while ktlint's `no-wildcard-imports` rejected it. An empty
+    # list keeps the gate as strict as ktlint was when it owned this rule: 0 findings.
+    excludeImports: []

@@ -1,0 +1,5 @@
+planted (untracked ux-spike/src/commonMain/.../Kc1Plant.kt: val kc1Plant = "request-optional-only"):
+KC1: state-name literals in main sources:
+ux-spike/src/commonMain/kotlin/eu/europa/ec/uxspike/Kc1Plant.kt:1:val kc1Plant = "request-optional-only"
+removed:
+KC1 guard: 0 hits (25 state names checked)

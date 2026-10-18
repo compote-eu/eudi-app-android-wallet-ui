@@ -1,0 +1,151 @@
+# TC-50 — mDL issuance, ANDROID. Built live against this app's real screens
+# (wiped Pixel_6a, 2026-10-01), using .maestro/issuance/tc-50-mdl-issuance.yaml
+# only as a starting hypothesis.
+#
+# Precondition: wallet already set up and unlocked, Chrome already past its
+# first-run dialogs - i.e. run after tc-01-pid-issuance-android.yaml in the
+# same emulator session (as the CI chain does). Does NOT need the PID itself.
+#
+# Divergences from the reference file, all confirmed live:
+# - The issuer's mDL form is NOT the PID form. Its fields, top to bottom:
+#   Birth Date, Document Number, a Driving Privileges block (Codes > Code /
+#   Sign / Value, Expiry Date, Issue Date, Vehicle Category Code preset to
+#   "AM"), Family Name, Given Name, and a Portrait picker (two sample images
+#   or an upload). No Nationality / Place Of Birth.
+# - Driving Privileges > Codes > Code is an HTML `required` input: leaving
+#   it empty makes Confirm do nothing except scroll back and focus it (seen
+#   2026-10-01, the flow then timed out on "Review & Send"). Sign/Value and
+#   both dates are optional; the issuer fills in estimated dates.
+# - The keyboard is closed with android-chrome-close-keyboard.yaml (a tap on
+#   the page margin, then a check it really closed), never hideKeyboard (a
+#   BACK press) - same as formeu-identity-proofing-flow-android.yaml.
+
+appId: eu.compote.euidi.dev
+---
+# --- Dashboard -> Documents -> Add -> Choose from list ---
+- tapOn:
+    id: "dashboard_screen_bottom_navigation_item_documents"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "documents_tab_bottom_sheet_button_0"
+# Same placeholder-rows race as TC-01: wait for the real catalog first, with
+# the same 60s budget as TC-01's catalog wait (the dev issuer's metadata has
+# taken over 17s to arrive - see tc-01-pid-issuance-android.yaml).
+- extendedWaitUntil:
+    visible: "Certificate of Residence (MSO Mdoc)"
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      text: "mDL (MSO Mdoc)"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "mDL (MSO Mdoc)"
+# Hand-off to Chrome (metadata + PAR to the dev issuer first, see TC-01).
+- extendedWaitUntil:
+    notVisible: "mDL (MSO Mdoc)"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: "FormEU"
+    timeout: 30000
+
+# --- FormEU -> mDL form ---
+- tapOn: "FormEU"
+- tapOn: "Submit"
+- extendedWaitUntil:
+    visible: "Document Number"
+    timeout: 60000
+
+# Birth Date: native date picker, accept the default (today).
+- tapOn:
+    below: "Birth Date"
+- tapOn: "SET"
+# Each text entry is checked in place, pinned between its own label and the
+# next one: a value typed into the wrong field then fails right here instead
+# of at Confirm (2026-10-01: "Maestro" went into Family Name, and the flow
+# only failed at "Review & Send"). The `above:` bound matters - Chrome's
+# autofill bar above the keyboard shows the same values (e.g. a "Maestro"
+# chip remembered from an earlier form) and would satisfy a bare check.
+- tapOn:
+    below: "Document Number"
+- inputText: "123456789"
+- assertVisible:    # the value landed in this field, not a neighbour
+    text: "123456789"
+    below: "Document Number"
+    above: "Driving Privileges"
+- runFlow: android-chrome-close-keyboard.yaml
+
+# Driving Privileges > Codes > Code (required). "Code" is a full-string
+# match, so it doesn't hit "Vehicle Category Code".
+- scrollUntilVisible:
+    element:
+      text: "Sign"
+    direction: DOWN
+- tapOn:
+    below: "Code"
+- inputText: "B"
+- assertVisible:    # the value landed in this field, not a neighbour
+    text: "B"
+    below: "Code"
+    above: "Sign"
+- runFlow: android-chrome-close-keyboard.yaml
+
+- scrollUntilVisible:
+    element:
+      text: "Upload a file"
+    direction: DOWN
+- tapOn:
+    below: "Family Name"
+- inputText: "Testerova"    # same test identity as TC-01's PID
+- assertVisible:    # the value landed in this field, not a neighbour
+    text: "Testerova"
+    below: "Family Name"
+    above: "Given Name"
+- runFlow: android-chrome-close-keyboard.yaml
+- tapOn:
+    below: "Given Name"
+- inputText: "Maestro"
+- assertVisible:    # the value landed in this field, not a neighbour
+    text: "Maestro"
+    below: "Given Name"
+    above: "Portrait"
+- runFlow: android-chrome-close-keyboard.yaml
+# The first sample portrait renders pre-selected; tap it anyway so the
+# flow doesn't depend on that default.
+- tapOn: "image"
+
+- scrollUntilVisible:
+    element:
+      text: "Confirm"
+    direction: DOWN
+- tapOn: "Confirm"
+
+# --- Review & Send -> Authorize ---
+- extendedWaitUntil:
+    visible: "Review & Send"
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      text: "Authorize"
+    direction: DOWN
+- tapOn: "Authorize"
+
+# --- Native success screen -> Close ---
+- extendedWaitUntil:
+    visible: "You have successfully added the following to your wallet"
+    timeout: 60000
+- tapOn:
+    id: "document_success_screen_button"
+
+# --- Verify: mDL in the Documents list, next to TC-01's PIDs ---
+- extendedWaitUntil:
+    visible: "mDL (MSO Mdoc)"
+    timeout: 10000
+- assertVisible: "PID (MSO Mdoc)"
+# The mDL row's own validity line - pinned between the mDL title and the
+# first PID title, since an unanchored "Valid until" also matches the PID
+# rows. Full-string regex; this app's text is "Valid until: 30 Dec 2026".
+- assertVisible:
+    text: "Valid until: \\d{2} \\w{3} \\d{4}"
+    below: "mDL (MSO Mdoc)"
+    above: "PID (MSO Mdoc)"

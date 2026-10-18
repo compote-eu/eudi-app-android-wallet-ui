@@ -16,16 +16,20 @@
 
 package eu.europa.ec.corelogic.config
 
+import eu.europa.ec.shared.wallet.config.SharedWalletConfig
+
 import eu.europa.ec.corelogic.model.DocumentCategories
 import eu.europa.ec.corelogic.model.DocumentCategory
 import eu.europa.ec.corelogic.model.DocumentIdentifier
 import eu.europa.ec.eudi.wallet.EudiWalletConfig
 import eu.europa.ec.eudi.wallet.document.CreateDocumentSettings.CredentialPolicy
 import eu.europa.ec.eudi.wallet.issue.openid4vci.OpenId4VciManager
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkInformation
+import eu.europa.ec.eudi.wallet.trustmark.TrustMarkSource
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
-interface WalletCoreConfig {
+interface WalletCoreConfig : SharedWalletConfig {
 
 
     /**
@@ -34,6 +38,18 @@ interface WalletCoreConfig {
      * and storage locations.
      */
     val config: EudiWalletConfig
+
+    /**
+     * Whether registration certificates are checked in this process — the value [config] was built
+     * with, not a live read of the setting behind it.
+     *
+     * Enforcement must consult this and not `RegistrationCheckProvider`: Wallet Core reads both
+     * registration policies when it builds its managers against a session-scoped wallet, so a
+     * setting flipped mid-session does not reach it until a restart. Enforcement that followed the
+     * setting instead would refuse every issuance while Wallet Core evaluates nothing, or enforce
+     * nothing while it still does.
+     */
+    val isRegistrationCheckEnabled: Boolean
 
     /**
      * A list of configurations for Verifiable Credentials Issuance (VCI) using OpenID4VCI.
@@ -67,96 +83,7 @@ interface WalletCoreConfig {
      * currently defined for that category.
      */
     val documentCategories: DocumentCategories
-        get() = DocumentCategories(
-            value = mapOf(
-                DocumentCategory.Government to listOf(
-                    DocumentIdentifier.MdocPid,
-                    DocumentIdentifier.SdJwtPid,
-                    DocumentIdentifier.OTHER(
-                        formatType = "org.iso.18013.5.1.mDL"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.tax.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "urn:eu.europa.ec.eudi:tax:1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.pseudonym.age_over_18.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "urn:eu.europa.ec.eudi:pseudonym_age_over_18:1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.pseudonym.age_over_18.deferred_endpoint"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.cor.1"
-                    ),
-                ),
-                DocumentCategory.Travel to listOf(
-                    DocumentIdentifier.OTHER(
-                        formatType = "org.iso.23220.2.photoid.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "org.iso.23220.photoID.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "org.iso.18013.5.1.reservation"
-                    ),
-                ),
-                DocumentCategory.Finance to listOf(
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.iban.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "urn:eu.europa.ec.eudi:iban:1"
-                    ),
-                ),
-                DocumentCategory.Education to emptyList(),
-                DocumentCategory.Health to listOf(
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.hiid.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "urn:eu.europa.ec.eudi:hiid:1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.ehic.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "urn:eu.europa.ec.eudi:ehic:1"
-                    ),
-                ),
-                DocumentCategory.SocialSecurity to listOf(
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.pda1.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "urn:eu.europa.ec.eudi:pda1:1"
-                    ),
-                ),
-                DocumentCategory.Retail to listOf(
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.loyalty.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.msisdn.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "urn:eu.europa.ec.eudi:msisdn:1"
-                    ),
-                ),
-                DocumentCategory.Other to listOf(
-                    DocumentIdentifier.OTHER(
-                        formatType = "eu.europa.ec.eudi.por.1"
-                    ),
-                    DocumentIdentifier.OTHER(
-                        formatType = "urn:eu.europa.ec.eudi:por:1"
-                    ),
-                ),
-            )
-        )
+        get() = DocumentCategories.Default
 
     /**
      * The interval at which revocations are checked.
@@ -188,7 +115,22 @@ interface WalletCoreConfig {
     val documentIssuanceConfig: DocumentIssuanceConfig
 
     /**
-     * Host for the Wallet Provider.
+     * Derived from [issuersConfig], so the two cannot name different issuers. Only Android holds the
+     * per-issuer `OpenId4VciManager.Config`; the URLs themselves are shared.
      */
-    val walletProviderHost: String
+    override val issuerUrls: List<String> get() = issuersConfig.map { it.issuerUrl }
+
+    /**
+     * Provides the information used to display the wallet's Trust Mark and link to its
+     * certification page and the list of certified wallets — upstream's default, built from the
+     * shared [trustMarkInformation] so iOS reads the same URLs.
+     */
+    val trustMarkSource: TrustMarkSource
+        get() = TrustMarkSource.Static(
+            information = TrustMarkInformation(
+                trustMarkResourceURL = trustMarkInformation.resourceUrl,
+                listOfCertifiedWalletsURL = trustMarkInformation.certifiedWalletsUrl,
+                walletSolutionInfoPageURL = trustMarkInformation.walletSolutionUrl,
+            )
+        )
 }

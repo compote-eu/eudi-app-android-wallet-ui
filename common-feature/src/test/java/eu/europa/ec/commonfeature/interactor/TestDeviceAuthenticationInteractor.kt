@@ -16,6 +16,7 @@
 
 package eu.europa.ec.commonfeature.interactor
 
+import androidx.biometric.BiometricPrompt
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationController
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
@@ -28,7 +29,9 @@ import org.junit.runner.RunWith
 import org.mockito.Mock
 import org.mockito.Mockito.verify
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.mock
 import org.robolectric.RobolectricTestRunner
+import java.security.Signature
 
 @RunWith(RobolectricTestRunner::class)
 class TestDeviceAuthenticationInteractor {
@@ -52,7 +55,9 @@ class TestDeviceAuthenticationInteractor {
             deviceAuthenticationController = deviceAuthenticationController
         )
 
-        biometricCrypto = BiometricCrypto(cryptoObject = null)
+        // A crypto-backed handle: it is what decides the authenticators, so the no-crypto case
+        // would exercise a different branch of the controller.
+        biometricCrypto = BiometricCrypto(BiometricPrompt.CryptoObject(mock<Signature>()))
     }
 
     @After
@@ -65,20 +70,20 @@ class TestDeviceAuthenticationInteractor {
     fun `Given a BiometricsAvailability listener, When getBiometricsAvailability is called, Then deviceSupportsBiometrics should be triggered`() {
 
         // When
-        interactor.getBiometricsAvailability()
+        interactor.getBiometricsAvailability(biometricCrypto)
 
         // Then
-        verify(deviceAuthenticationController).deviceSupportsBiometrics()
+        verify(deviceAuthenticationController).deviceSupportsBiometrics(biometricCrypto)
     }
 
     // Case: launchBiometricSystemScreen behaviour
     @Test
     fun `When launchBiometricSystemScreen is called, Then deviceAuthenticationController#launchBiometricSystemScreen is invoked`() {
         // When
-        interactor.launchBiometricSystemScreen()
+        interactor.launchBiometricSystemScreen(biometricCrypto)
 
         // Then
-        verify(deviceAuthenticationController).launchBiometricSystemScreen()
+        verify(deviceAuthenticationController).launchBiometricSystemScreen(biometricCrypto)
     }
 
     // Case: authenticateWithBiometrics behaviour

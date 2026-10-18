@@ -1,0 +1,15 @@
+## D2c root=link state=request kill=a 2026-10-17T17:42:02+02:00
+at request
+pid before kill: 9691
+pid after am kill: ''
+-- relaunch (recents)
+shot d2c-link-request-a
+pid: 9956 gate=0 state=resource-id="ux-state-request"
+10-17 17:42:29.731 UX-SPIKE: hook module loaded
+10-17 17:42:29.984 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+10-17 17:42:30.053 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 17:42:30.258 UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 17:42:30.260 UX-SPIKE: restore request -> snapshot
+10-17 17:42:30.260 UX-SPIKE: restore: Restored(state=request, reinvoked=false)
+10-17 17:42:30.440 UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+10-17 17:42:30.592 UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)

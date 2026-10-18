@@ -1,0 +1,19 @@
+## D2c root=launcher state=sending kill=a 2026-10-17T17:41:16+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+at request
+at verification-code
+pid before kill: 9243
+pid after: ''
+-- relaunch (recents)
+shot d2c-launcher-sending-a
+pid: 9594 gate=0 state=resource-id="ux-state-error"
+10-17 17:41:47.293 UX-SPIKE: a11y: SCR-pres-sending announce-live hero ('Prebieha odoslanie dát eDokladov')
+10-17 17:41:53.280 UX-SPIKE: hook module loaded
+10-17 17:41:53.544 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+10-17 17:41:53.607 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 17:41:53.834 UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 17:41:53.835 UX-SPIKE: restore sending -> error
+10-17 17:41:53.835 UX-SPIKE: enter error (gen 6)
+10-17 17:41:53.835 UX-SPIKE: restore: Restored(state=error, reinvoked=false)
+10-17 17:41:54.038 UX-SPIKE: screen SCR-pres-outcome-error: interpreted from the bundle (TPL-outcome, 6 nodes), state error, ui_state default
+10-17 17:41:54.129 UX-SPIKE: a11y: SCR-pres-outcome-error focus-heading hero (focused)

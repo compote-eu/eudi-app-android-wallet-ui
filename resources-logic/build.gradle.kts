@@ -31,6 +31,11 @@ moduleConfig {
 }
 
 dependencies {
+    // Phase 3a: `ResourceProvider`'s string methods take compose-resources `StringResource` and
+    // delegate to the shared `StringCatalog`, so the shared corpus is the single source of truth
+    // for Android too. `api` because the type appears in this module's public signatures.
+    // No cycle: :shared-ui does not depend on :resources-logic.
+    api(project(":shared-ui"))
     api(libs.androidx.compose.material3)
     api(libs.androidx.compose.material.icons.extended)
     api(libs.androidx.compose.material3.windowSizeClass)

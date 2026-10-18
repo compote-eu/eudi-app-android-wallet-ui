@@ -1,0 +1,20 @@
+ ux-spec/UX_SPEC.lock                               | 66 +++++++++++-----------
+ .../ec/ux/contract/pres/PresCrossDeviceEvent.kt    |  2 +-
+ .../ec/ux/contract/pres/PresCrossDeviceExit.kt     |  2 +-
+ .../ec/ux/contract/pres/PresCrossDeviceInvoker.kt  |  2 +-
+ .../ec/ux/contract/pres/PresCrossDeviceServices.kt |  2 +-
+ .../ec/ux/contract/pres/PresCrossDeviceSpec.kt     |  4 +-
+ .../ec/ux/contract/pres/PresCrossDeviceState.kt    |  2 +-
+ .../model/FLW-pres-cross-device.model.json         |  2 +-
+ ux-spec/fixtures/scripts/doc-missing.json          |  2 +-
+ ux-spec/fixtures/scripts/expired-at-request.json   |  2 +-
+ ux-spec/fixtures/scripts/expired-at-sending.json   |  2 +-
+ ux-spec/fixtures/scripts/happy.json                |  2 +-
+ ux-spec/fixtures/scripts/slow.json                 |  2 +-
+ ux-spec/fixtures/scripts/untrusted.json            |  2 +-
+ .../files/FLW-pres-cross-device.bundle.json        |  4 +-
+ ux-spec/resources/values/strings.xml               | 12 ++--
+ .../europa/ec/ux/theme/generated/UxBrandConfig.kt  |  2 +-
+ .../europa/ec/ux/theme/generated/UxBrandTokens.kt  |  2 +-
+ .../eu/europa/ec/ux/theme/generated/UxThemeSpec.kt |  4 +-
+ 19 files changed, 59 insertions(+), 59 deletions(-)

@@ -1,0 +1,9 @@
+screen: True
+testTag order (iOS a11y tree): ['hero', 'hint', 'help-note', 'retry', 'close']
+FAIL 2 verifier exists
+FAIL 2 verifier.title == name
+FAIL 2 verifier.text == text
+FAIL 3 hint < verifier < help-note
+PASS 3 order == expected minus tags absent from the iOS tree
+verifier.title label: None
+verifier.text label: None

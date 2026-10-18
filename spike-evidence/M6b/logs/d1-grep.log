@@ -1,0 +1,21 @@
+# NOTE: macOS git grep -E does not support ; the plan's pattern is run with -P (same regex).
+$ git grep -n -P "backHandler\(" -- ux-runtime
+ux-runtime/src/commonMain/kotlin/eu/europa/ec/ux/runtime/host/FlowHost.kt:87:    backHandler(active?.backEnabled == true) { flow.back() }
+-> count: 1 (FlowHost.kt)
+
+$ git grep -n PlatformBackHandler -- shared-ui/src/iosUxSpikeMain ux-spike-android ux-spike ux-runtime ux-elements ux-theme
+shared-ui/src/iosUxSpikeMain/kotlin/eu/europa/ec/uxspike/ios/IosUxSpikeHook.kt:67:                backHandler = { enabled, onBack -> PlatformBackHandler(enabled, onBack) },
+ux-spike-android/src/main/kotlin/eu/europa/ec/uxspike/android/AndroidUxSpikeHook.kt:58:                backHandler = { enabled, onBack -> PlatformBackHandler(enabled, onBack) },
+-> one adapter per platform (iOS hook, Android hook)
+
+$ git grep -n -P 'BackHandler\(|NavigationEventHandler|NavigationBackHandler|onBack *=' -- 'ux-*' shared-ui/src/iosUxSpikeMain
+shared-ui/src/iosUxSpikeMain/kotlin/eu/europa/ec/uxspike/ios/IosUxSpikeHook.kt:67:                backHandler = { enabled, onBack -> PlatformBackHandler(enabled, onBack) },
+ux-spike-android/src/main/kotlin/eu/europa/ec/uxspike/android/AndroidUxSpikeHook.kt:58:                backHandler = { enabled, onBack -> PlatformBackHandler(enabled, onBack) },
+-> only the two adapters (the backHandler( call in FlowHost is lower-case b and is not matched by BackHandler( )
+
+$ redirect site: git grep -n -i -E "back|debugFlowHookOrNull" -- shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/SharedEntries.kt
+shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/SharedEntries.kt:71: * declines, so the fallback runs and iOS behaves exactly as it did when it passed no lambda at all.
+shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/SharedEntries.kt:78:    debugFlowHookOrNull()?.run { entries(navigator) }
+shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/SharedEntries.kt:293:    val target = remember(route) { debugFlowHookOrNull()?.redirect(route) }
+
+$ git grep -n -i -E "backhandler|navigationevent|onback" -- shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/DebugFlowHook.kt  (hook interface)

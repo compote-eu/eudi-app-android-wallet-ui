@@ -1,0 +1,5156 @@
+{
+  "bundle_schema_version": 1,
+  "flow_id": "FLW-pres-cross-device",
+  "spec_hash": "provisional:sha256:849289280a9851bd69bbff91970996129df868b7a4d29e30b6a5d5386917b7e5",
+  "provisional": true,
+  "source": {
+    "ux_commit": "ec5e58e3def93cfbd3ba846005ccd3e2c13f53ba",
+    "exporter": "m1b-provisional (hand-derived, not tools/export_kmp.py)",
+    "brief": "BRF-001",
+    "pattern": "PAT-arf.5.02-remote-cross-device",
+    "maturity": "candidate",
+    "locale": "sk"
+  },
+  "initial": "scan",
+  "entries": {
+    "default": {
+      "state": "scan"
+    },
+    "deeplink": {
+      "state": "connecting",
+      "schemes": [
+        "openid4vp"
+      ],
+      "requires": [
+        "unlocked"
+      ],
+      "assign": [
+        {
+          "op": "set",
+          "path": "/launch/uri",
+          "from": {
+            "launch": "uri"
+          }
+        }
+      ]
+    }
+  },
+  "process_death": {
+    "android": "restore-per-state",
+    "ios": "abandon"
+  },
+  "context": {
+    "/camera/active": {
+      "type": "boolean",
+      "nullable": false,
+      "declared_by": [
+        "SCR-pres-scan-qr"
+      ],
+      "example": true,
+      "description": "Camera preview is running (false = paused / permission missing; not modelled as a ui_state in the pilot)",
+      "default": false
+    },
+    "/document/name": {
+      "type": "string",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-outcome-document-missing",
+        "SCR-pres-outcome-document-invalid"
+      ],
+      "example": "Občiansky preukaz",
+      "description": "Name of the missing document type",
+      "default": null
+    },
+    "/flow/error_class": {
+      "type": "string",
+      "nullable": true,
+      "default": null,
+      "declared_by": [
+        "(engine)"
+      ],
+      "description": "error_class of the last transition taken that has one; set by the engine (week 0 adds)"
+    },
+    "/launch/uri": {
+      "type": "url",
+      "nullable": true,
+      "default": null,
+      "declared_by": [
+        "(flow)"
+      ],
+      "description": "Request URI from the scanned QR code or the openid4vp:// deep link (week 0 adds: flow context)"
+    },
+    "/links/help": {
+      "type": "url",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-outcome-auth-unavailable",
+        "SCR-pres-outcome-auth-failed",
+        "SCR-pres-outcome-document-missing",
+        "SCR-pres-outcome-error",
+        "SCR-pres-outcome-expired",
+        "SCR-pres-outcome-invalid-qr"
+      ],
+      "example": "#help",
+      "description": "In-app route to help with the details of this error (prototype anchor; the press is HELP)",
+      "default": null
+    },
+    "/request/attempted": {
+      "type": "boolean",
+      "nullable": false,
+      "declared_by": [
+        "SCR-pres-request"
+      ],
+      "example": false,
+      "description": "The user pressed Pokračovať while nothing was selected (error is shown only after such an attempt, REV-001 F-05)",
+      "default": false
+    },
+    "/request/attributes": {
+      "type": "list",
+      "nullable": false,
+      "declared_by": [
+        "SCR-pres-request"
+      ],
+      "example": [
+        {
+          "id": "given_name",
+          "label_copy": "CPY-pres-attr-given-name",
+          "value": "Ján",
+          "requirement": "mandatory"
+        },
+        {
+          "id": "family_name",
+          "label_copy": "CPY-pres-attr-family-name",
+          "value": "Novák",
+          "requirement": "mandatory"
+        },
+        {
+          "id": "birth_date",
+          "label_copy": "CPY-pres-attr-birth-date",
+          "value": "12. 4. 1985",
+          "requirement": "optional",
+          "selected": false
+        },
+        {
+          "id": "nationality",
+          "label_copy": "CPY-pres-attr-nationality",
+          "value": "SK",
+          "requirement": "optional",
+          "selected": false
+        },
+        {
+          "id": "age_over_18",
+          "label_copy": "CPY-pres-attr-age-over-18",
+          "requirement": "optional",
+          "selected": false
+        }
+      ],
+      "description": "Requested items of the eDoklad, in request order — label copy id, holder value that would be shared, mandatory/optional, and the current tick of an optional item (unticked by default, ARF 5.02 §3 L320). Any request shape is this list with other data (REV-001 F-09); EL-attribute-list renders mandatory items first.",
+      "default": [],
+      "item": {
+        "id": {
+          "type": "id",
+          "required": false
+        },
+        "label_copy": {
+          "type": "copy",
+          "required": true
+        },
+        "value": {
+          "type": "text",
+          "required": false
+        },
+        "requirement": {
+          "type": "enum",
+          "values": [
+            "mandatory",
+            "optional"
+          ],
+          "required": true
+        },
+        "selected": {
+          "type": "boolean",
+          "default": false
+        },
+        "copyable": {
+          "type": "boolean",
+          "default": false
+        },
+        "media": {
+          "type": "enum",
+          "values": [
+            "none",
+            "photo"
+          ],
+          "default": "none"
+        }
+      }
+    },
+    "/request/channel": {
+      "type": "string",
+      "nullable": false,
+      "declared_by": [
+        "SCR-pres-request",
+        "SCR-pres-untrusted-confirm",
+        "SCR-pres-outcome-auth-unavailable",
+        "SCR-pres-outcome-document-missing",
+        "SCR-pres-outcome-document-invalid"
+      ],
+      "example": "cross-device",
+      "description": "How the request reached the wallet: cross-device (QR from another device, BRF-001) | same-device (a link or a Digital Credentials API request from an app or browser on this phone, BRF-004); drives the service-line label",
+      "default": "cross-device"
+    },
+    "/request/document_name": {
+      "type": "string",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-request"
+      ],
+      "example": "Občiansky preukaz",
+      "description": "Name of the eDoklad (attestation) the requested data come from (REV-001 F-24)",
+      "default": null
+    },
+    "/request/selected_count": {
+      "type": "number",
+      "nullable": false,
+      "declared_by": [
+        "SCR-pres-request"
+      ],
+      "example": 2,
+      "description": "Number of items that would be shared (mandatory + ticked optional)",
+      "default": 0,
+      "derive": {
+        "op": "count_where",
+        "list": "/request/attributes",
+        "where": {
+          "any": [
+            {
+              "field": "requirement",
+              "op": "eq",
+              "value": "mandatory"
+            },
+            {
+              "field": "selected",
+              "op": "is_true"
+            }
+          ]
+        }
+      }
+    },
+    "/request/selected_summary": {
+      "type": "string",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-untrusted-confirm"
+      ],
+      "example": "Meno, Priezvisko, Dátum narodenia",
+      "description": "Labels of the items that would be sent (mandatory + ticked optional), in request order",
+      "default": null
+    },
+    "/request/selection": {
+      "type": "list",
+      "nullable": false,
+      "default": [],
+      "declared_by": [
+        "(flow)"
+      ],
+      "item": {
+        "id": {
+          "type": "id",
+          "required": true
+        }
+      },
+      "derive": {
+        "op": "ids_where",
+        "list": "/request/attributes",
+        "key": "id",
+        "where": {
+          "any": [
+            {
+              "field": "requirement",
+              "op": "eq",
+              "value": "mandatory"
+            },
+            {
+              "field": "selected",
+              "op": "is_true"
+            }
+          ]
+        }
+      },
+      "description": "Ids of the items that would be shared (week 0 adds: derived)"
+    },
+    "/request/transport": {
+      "type": "string",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-outcome-auth-unavailable",
+        "SCR-pres-outcome-document-missing",
+        "SCR-pres-outcome-document-invalid"
+      ],
+      "example": "redirect",
+      "description": "Same device: redirect (OpenID4VP link; the wallet posts the response itself) | dc-api (Digital Credentials API: the browser / OS handed the request over and takes the response back when the wallet step finishes — no address from the relying party is opened). REV-006 H-01, DEC-035",
+      "default": null
+    },
+    "/response/status": {
+      "type": "string",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-outcome-auth-unavailable",
+        "SCR-pres-outcome-document-missing",
+        "SCR-pres-outcome-document-invalid"
+      ],
+      "example": "denial",
+      "description": "What the wallet has sent the verifier: none (nothing — request not loaded or not authenticated, or failed before a response) | denial (the single as-if-absent answer for refusal, cancellation, missing / invalid document and missing device security, RPA_11, DEC-036) | data (presentation delivered, confirmed by the response endpoint) | unknown (sending started, delivery not confirmed). REV-006 H-02 / H-04 / H-05",
+      "default": null
+    },
+    "/return/url": {
+      "type": "url",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-outcome-auth-unavailable",
+        "SCR-pres-outcome-document-missing",
+        "SCR-pres-outcome-document-invalid"
+      ],
+      "example": null,
+      "description": "Redirect transport only: the redirect_uri the verifier's response endpoint returned AFTER the wallet posted its response (status data or denial), kept only if https (DEC-033). It is not a field of the request: null when nothing was posted, the endpoint returned none, or with the Digital Credentials API (the hand-back replaces it). REV-006 H-02",
+      "default": null
+    },
+    "/verification/code": {
+      "type": "string",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-verification-code"
+      ],
+      "example": "482 913",
+      "description": "Code the user retypes on the verifier page (app field `pin`)",
+      "default": null
+    },
+    "/verifier/name": {
+      "type": "string",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-request",
+        "SCR-pres-untrusted-confirm"
+      ],
+      "example": "Príkladová banka, a.s.",
+      "description": "Verifier trade name from the access certificate (trusted); for an unauthenticated verifier only the name it claims",
+      "default": null
+    },
+    "/verifier/portal_url": {
+      "type": "url",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-verification-code"
+      ],
+      "example": "https://overenie.example.gov.sk",
+      "description": "Verifier portal URL from the authorization request",
+      "default": null
+    },
+    "/verifier/privacy_url": {
+      "type": "url",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-request"
+      ],
+      "example": "https://www.example.sk/ochrana-udajov",
+      "description": "Verifier privacy-policy URL (RPA_10); optional in the request",
+      "default": null
+    },
+    "/verifier/reason": {
+      "type": "string",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-request",
+        "SCR-pres-untrusted-confirm"
+      ],
+      "example": "Overenie totožnosti pri otvorení účtu",
+      "description": "Intended use as stated by the verifier",
+      "default": null
+    },
+    "/verifier/service_name": {
+      "type": "string",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-request",
+        "SCR-pres-untrusted-confirm",
+        "SCR-pres-outcome-auth-unavailable",
+        "SCR-pres-outcome-document-missing",
+        "SCR-pres-outcome-document-invalid"
+      ],
+      "example": "Internetové bankovníctvo",
+      "description": "Service trade name from the access certificate (RPA_06)",
+      "default": null
+    },
+    "/verifier/trust": {
+      "type": "string",
+      "nullable": true,
+      "declared_by": [
+        "SCR-pres-request",
+        "SCR-pres-outcome-auth-unavailable",
+        "SCR-pres-outcome-document-missing",
+        "SCR-pres-outcome-document-invalid"
+      ],
+      "example": "trusted",
+      "description": "Relying-party authentication result: trusted | untrusted (untrusted = authentication failed for any reason, incl. access certificate not chaining to a LoTE trust anchor — RPA_04/RPA_05)",
+      "default": null
+    }
+  },
+  "events": {
+    "ADD_DOCUMENT": {
+      "source": "ui"
+    },
+    "APPROVE": {
+      "source": "ui"
+    },
+    "CANCEL": {
+      "source": "ui"
+    },
+    "CLOSE": {
+      "source": "ui"
+    },
+    "CONFIRM": {
+      "source": "ui"
+    },
+    "CONTINUE": {
+      "source": "ui"
+    },
+    "HELP": {
+      "source": "ui"
+    },
+    "OPEN_SETTINGS": {
+      "source": "ui"
+    },
+    "REJECT": {
+      "source": "ui"
+    },
+    "RETRY": {
+      "source": "ui"
+    },
+    "SYS_AUTH_FAILED": {
+      "source": "service"
+    },
+    "SYS_AUTH_NOT_ENROLLED": {
+      "source": "service"
+    },
+    "SYS_AUTH_OK": {
+      "source": "service"
+    },
+    "SYS_DOC_INVALID": {
+      "source": "service"
+    },
+    "SYS_DOC_MISSING": {
+      "source": "service"
+    },
+    "SYS_ERROR": {
+      "source": "service|platform"
+    },
+    "SYS_EXPIRED": {
+      "source": "service"
+    },
+    "SYS_QR_INVALID": {
+      "source": "platform"
+    },
+    "SYS_QR_SCANNED": {
+      "source": "platform",
+      "payload": {
+        "uri": "url"
+      }
+    },
+    "SYS_REQUEST_OPTIONAL_ONLY": {
+      "source": "service"
+    },
+    "SYS_REQUEST_READY": {
+      "source": "service"
+    },
+    "SYS_RP_UNTRUSTED": {
+      "source": "service"
+    },
+    "SYS_SENT": {
+      "source": "service"
+    },
+    "TOGGLE_ITEM": {
+      "source": "ui",
+      "payload": {
+        "item_id": "id"
+      }
+    },
+    "SYS_OFFLINE": {
+      "source": "service"
+    }
+  },
+  "services": {
+    "fetchRequest": {
+      "ref": "SVC-pres-fetch-request",
+      "args": {
+        "uri": "url"
+      },
+      "idempotent": false,
+      "results": {
+        "RequestReady": {
+          "verifier": {
+            "name": "string",
+            "service_name": "string",
+            "reason": "string",
+            "trust": "enum:trusted|untrusted",
+            "privacy_url": "url?"
+          },
+          "request": {
+            "document_name": "string",
+            "attributes": "list:/request/attributes"
+          }
+        },
+        "OptionalOnly": {
+          "verifier": {
+            "name": "string",
+            "service_name": "string",
+            "reason": "string",
+            "trust": "enum:trusted|untrusted",
+            "privacy_url": "url?"
+          },
+          "request": {
+            "document_name": "string",
+            "attributes": "list:/request/attributes"
+          }
+        },
+        "RpUntrusted": {
+          "verifier": {
+            "name": "string",
+            "service_name": "string",
+            "reason": "string",
+            "trust": "enum:trusted|untrusted",
+            "privacy_url": "url?"
+          },
+          "request": {
+            "document_name": "string",
+            "attributes": "list:/request/attributes"
+          }
+        },
+        "DocMissing": {
+          "document_name": "string"
+        },
+        "DocInvalid": {
+          "document_name": "string"
+        },
+        "Expired": {},
+        "Error": {
+          "reason": "string?"
+        },
+        "Offline": {}
+      }
+    },
+    "authenticate": {
+      "ref": "SVC-pres-authenticate",
+      "args": {},
+      "idempotent": true,
+      "results": {
+        "Authenticated": {},
+        "Failed": {},
+        "NotEnrolled": {},
+        "Expired": {},
+        "Error": {
+          "reason": "string?"
+        }
+      }
+    },
+    "verificationCode": {
+      "ref": "SVC-pres-verification-code",
+      "args": {},
+      "idempotent": true,
+      "results": {
+        "Ready": {
+          "code": "string",
+          "portal_url": "url?"
+        },
+        "Expired": {},
+        "Error": {
+          "reason": "string?"
+        }
+      }
+    },
+    "send": {
+      "ref": "SVC-pres-send",
+      "args": {
+        "selection": "list:id"
+      },
+      "idempotent": false,
+      "results": {
+        "Sent": {},
+        "Expired": {},
+        "Error": {
+          "reason": "string?"
+        }
+      }
+    },
+    "cancel": {
+      "ref": "SVC-pres-cancel",
+      "args": {},
+      "idempotent": true,
+      "results": {
+        "Cancelled": {},
+        "NothingToCancel": {},
+        "Error": {
+          "reason": "string?"
+        }
+      }
+    }
+  },
+  "states": {
+    "scan": {
+      "kind": "step",
+      "description": "Camera step; scanning completes automatically. A code that is not a presentation request is rejected here; a usable code moves on to loading the request.",
+      "screen": "SCR-pres-scan-qr",
+      "ui_state": "default",
+      "on": {
+        "SYS_QR_SCANNED": [
+          {
+            "target": "connecting",
+            "kind": "main",
+            "satisfies": [
+              "UXR:REQ-PRES-001"
+            ],
+            "assign": [
+              {
+                "op": "set",
+                "path": "/launch/uri",
+                "from": {
+                  "event": "uri"
+                }
+              }
+            ]
+          }
+        ],
+        "SYS_QR_INVALID": [
+          {
+            "target": "error-invalid-qr",
+            "kind": "error",
+            "error_class": "technical-error",
+            "satisfies": [
+              "UXR:REQ-PRES-001"
+            ]
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ],
+        "CANCEL": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal"
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CANCEL"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "connecting": {
+      "kind": "step",
+      "description": "The wallet fetches the request, authenticates the relying party and checks the requested eDoklady before the request screen opens (visible system status, REV-001 F-12). The user may cancel; nothing has been shared.",
+      "screen": "SCR-pres-connecting",
+      "ui_state": "default",
+      "invoke": {
+        "service": "fetchRequest",
+        "args": {
+          "uri": {
+            "context": "/launch/uri"
+          }
+        },
+        "on": {
+          "RequestReady": {
+            "event": "SYS_REQUEST_READY",
+            "assign": [
+              {
+                "op": "merge",
+                "path": "/verifier",
+                "from": {
+                  "result": "verifier"
+                }
+              },
+              {
+                "op": "merge",
+                "path": "/request",
+                "from": {
+                  "result": "request"
+                }
+              }
+            ]
+          },
+          "OptionalOnly": {
+            "event": "SYS_REQUEST_OPTIONAL_ONLY",
+            "assign": [
+              {
+                "op": "merge",
+                "path": "/verifier",
+                "from": {
+                  "result": "verifier"
+                }
+              },
+              {
+                "op": "merge",
+                "path": "/request",
+                "from": {
+                  "result": "request"
+                }
+              }
+            ]
+          },
+          "RpUntrusted": {
+            "event": "SYS_RP_UNTRUSTED",
+            "assign": [
+              {
+                "op": "merge",
+                "path": "/verifier",
+                "from": {
+                  "result": "verifier"
+                }
+              },
+              {
+                "op": "merge",
+                "path": "/request",
+                "from": {
+                  "result": "request"
+                }
+              }
+            ]
+          },
+          "DocMissing": {
+            "event": "SYS_DOC_MISSING",
+            "assign": [
+              {
+                "op": "set",
+                "path": "/request/document_name",
+                "from": {
+                  "result": "document_name"
+                }
+              }
+            ]
+          },
+          "DocInvalid": {
+            "event": "SYS_DOC_INVALID",
+            "assign": [
+              {
+                "op": "set",
+                "path": "/request/document_name",
+                "from": {
+                  "result": "document_name"
+                }
+              }
+            ]
+          },
+          "Expired": {
+            "event": "SYS_EXPIRED"
+          },
+          "Error": {
+            "event": "SYS_ERROR"
+          },
+          "Offline": {
+            "event": "SYS_OFFLINE"
+          }
+        }
+      },
+      "on": {
+        "SYS_REQUEST_READY": [
+          {
+            "target": "request",
+            "kind": "main",
+            "satisfies": [
+              "UXR:REQ-PRES-001"
+            ]
+          }
+        ],
+        "SYS_REQUEST_OPTIONAL_ONLY": [
+          {
+            "target": "request-optional-only",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-001",
+              "UXR:REQ-PRES-004"
+            ]
+          }
+        ],
+        "SYS_RP_UNTRUSTED": [
+          {
+            "target": "request-untrusted",
+            "kind": "error",
+            "error_class": "rp-untrusted",
+            "satisfies": [
+              "ARF-HLR:RPA_05",
+              "UXR:REQ-PRES-003"
+            ]
+          }
+        ],
+        "SYS_DOC_MISSING": [
+          {
+            "target": "document-missing",
+            "kind": "error",
+            "error_class": "document-missing",
+            "satisfies": [
+              "UXR:REQ-PRES-011"
+            ]
+          }
+        ],
+        "SYS_DOC_INVALID": [
+          {
+            "target": "document-invalid",
+            "kind": "error",
+            "error_class": "document-invalid",
+            "satisfies": [
+              "UXR:REQ-PRES-012"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ],
+        "CANCEL": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal"
+          }
+        ],
+        "SYS_OFFLINE": [
+          {
+            "target": "offline-loading",
+            "kind": "error",
+            "error_class": "offline"
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CANCEL"
+      },
+      "restore": {
+        "policy": "to",
+        "target": "error"
+      }
+    },
+    "request": {
+      "kind": "step",
+      "description": "Authenticated verifier, request with mandatory items — who asks, why, which data of which eDoklad; continue or refuse. Ticking optional items is local screen state (TOGGLE_ITEM is not a flow transition here).",
+      "screen": "SCR-pres-request",
+      "ui_state": "default",
+      "on": {
+        "CONTINUE": [
+          {
+            "target": "auth",
+            "kind": "main",
+            "satisfies": [
+              "ARF-HLR:RPA_07",
+              "UXR:REQ-PRES-006"
+            ]
+          }
+        ],
+        "REJECT": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal",
+            "satisfies": [
+              "ARF-HLR:RPA_07",
+              "UXR:REQ-PRES-006"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ],
+        "TOGGLE_ITEM": [
+          {
+            "target": null,
+            "kind": "alt",
+            "assign": [
+              {
+                "op": "toggle_item",
+                "list": "/request/attributes",
+                "key": "id",
+                "key_from": {
+                  "event": "item_id"
+                },
+                "field": "selected"
+              }
+            ]
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "REJECT"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "request-optional-only": {
+      "kind": "step",
+      "description": "Request with optional items only, nothing ticked yet — neutral instruction, no error on first view (REV-001 F-05).",
+      "screen": "SCR-pres-request",
+      "ui_state": "optional-only",
+      "on": {
+        "TOGGLE_ITEM": [
+          {
+            "target": null,
+            "kind": "alt",
+            "assign": [
+              {
+                "op": "toggle_item",
+                "list": "/request/attributes",
+                "key": "id",
+                "key_from": {
+                  "event": "item_id"
+                },
+                "field": "selected"
+              }
+            ],
+            "guard": {
+              "when": {
+                "path": "/request/selected_count",
+                "op": "eq",
+                "value": 0
+              }
+            }
+          },
+          {
+            "target": "request-optional-selected",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-004"
+            ],
+            "assign": [
+              {
+                "op": "toggle_item",
+                "list": "/request/attributes",
+                "key": "id",
+                "key_from": {
+                  "event": "item_id"
+                },
+                "field": "selected"
+              }
+            ]
+          }
+        ],
+        "CONTINUE": [
+          {
+            "target": "request-no-selection",
+            "kind": "alt",
+            "guard": {
+              "rule": "RUL-pres-request-no-selection-blocks-continue",
+              "when": {
+                "path": "/request/selected_count",
+                "op": "eq",
+                "value": 0
+              }
+            },
+            "satisfies": [
+              "UXR:REQ-PRES-004"
+            ],
+            "assign": [
+              {
+                "op": "set",
+                "path": "/request/attempted",
+                "value": true
+              }
+            ]
+          },
+          {
+            "target": "auth",
+            "kind": "main",
+            "guard": {
+              "when": {
+                "not": {
+                  "path": "/request/selected_count",
+                  "op": "eq",
+                  "value": 0
+                }
+              }
+            }
+          }
+        ],
+        "REJECT": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal",
+            "satisfies": [
+              "ARF-HLR:RPA_07",
+              "UXR:REQ-PRES-006"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired"
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "REJECT"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "request-no-selection": {
+      "kind": "step",
+      "description": "Pokračovať was pressed with nothing ticked — the no-field error is shown and the request stays open (pressing Pokračovať again changes nothing); ticking an item clears the error, Odmietnuť refuses.",
+      "screen": "SCR-pres-request",
+      "ui_state": "no-selection",
+      "on": {
+        "TOGGLE_ITEM": [
+          {
+            "target": "request-optional-selected",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-004"
+            ],
+            "assign": [
+              {
+                "op": "toggle_item",
+                "list": "/request/attributes",
+                "key": "id",
+                "key_from": {
+                  "event": "item_id"
+                },
+                "field": "selected"
+              }
+            ]
+          }
+        ],
+        "REJECT": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal",
+            "satisfies": [
+              "ARF-HLR:RPA_07",
+              "UXR:REQ-PRES-006"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired"
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ],
+        "CONTINUE": [
+          {
+            "target": null,
+            "kind": "alt",
+            "guard": {
+              "rule": "RUL-pres-request-no-selection-blocks-continue",
+              "when": {
+                "path": "/request/selected_count",
+                "op": "eq",
+                "value": 0
+              }
+            }
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "REJECT"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "request-optional-selected": {
+      "kind": "step",
+      "description": "Optional-only request with at least one item ticked — Pokračovať proceeds to authentication.",
+      "screen": "SCR-pres-request",
+      "ui_state": "optional-selected",
+      "on": {
+        "CONTINUE": [
+          {
+            "target": "auth",
+            "kind": "main",
+            "satisfies": [
+              "ARF-HLR:RPA_07",
+              "UXR:REQ-PRES-006"
+            ],
+            "guard": {
+              "when": {
+                "not": {
+                  "path": "/request/selected_count",
+                  "op": "eq",
+                  "value": 0
+                }
+              }
+            }
+          }
+        ],
+        "REJECT": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal",
+            "satisfies": [
+              "ARF-HLR:RPA_07",
+              "UXR:REQ-PRES-006"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired"
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ],
+        "TOGGLE_ITEM": [
+          {
+            "target": "request-no-selection",
+            "kind": "alt",
+            "assign": [
+              {
+                "op": "toggle_item",
+                "list": "/request/attributes",
+                "key": "id",
+                "key_from": {
+                  "event": "item_id"
+                },
+                "field": "selected"
+              }
+            ],
+            "guard": {
+              "when": {
+                "all": [
+                  {
+                    "path": "/request/selected_count",
+                    "op": "eq",
+                    "value": 0
+                  },
+                  {
+                    "path": "/request/attempted",
+                    "op": "is_true"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "target": "request-optional-only",
+            "kind": "alt",
+            "assign": [
+              {
+                "op": "toggle_item",
+                "list": "/request/attributes",
+                "key": "id",
+                "key_from": {
+                  "event": "item_id"
+                },
+                "field": "selected"
+              }
+            ],
+            "guard": {
+              "when": {
+                "path": "/request/selected_count",
+                "op": "eq",
+                "value": 0
+              }
+            }
+          },
+          {
+            "target": null,
+            "kind": "alt",
+            "assign": [
+              {
+                "op": "toggle_item",
+                "list": "/request/attributes",
+                "key": "id",
+                "key_from": {
+                  "event": "item_id"
+                },
+                "field": "selected"
+              }
+            ]
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "REJECT"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "request-untrusted": {
+      "kind": "step",
+      "description": "Relying-party authentication failed — RPA_05 notice, claimed name labelled unverified; Pokračovať goes to the explicit-approval step, never straight to authentication (DEC-002, provisional).",
+      "screen": "SCR-pres-request",
+      "ui_state": "untrusted",
+      "on": {
+        "CONTINUE": [
+          {
+            "target": "untrusted-confirm",
+            "kind": "main",
+            "guard": {
+              "rule": "RUL-pres-untrusted-explicit-approval",
+              "when": {
+                "path": "/verifier/trust",
+                "op": "eq",
+                "value": "untrusted"
+              }
+            },
+            "satisfies": [
+              "ARF-HLR:RPA_07b"
+            ]
+          }
+        ],
+        "REJECT": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal",
+            "satisfies": [
+              "ARF-HLR:RPA_07",
+              "UXR:REQ-PRES-003"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired"
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ],
+        "TOGGLE_ITEM": [
+          {
+            "target": null,
+            "kind": "alt",
+            "assign": [
+              {
+                "op": "toggle_item",
+                "list": "/request/attributes",
+                "key": "id",
+                "key_from": {
+                  "event": "item_id"
+                },
+                "field": "selected"
+              }
+            ]
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "REJECT"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "untrusted-confirm": {
+      "kind": "step",
+      "description": "Explicit approval for an unverified verifier (RPA_06a choice, RPA_07b) — Odmietnuť is the primary action, the approval is secondary (DEC-002, provisional).",
+      "screen": "SCR-pres-untrusted-confirm",
+      "ui_state": "default",
+      "on": {
+        "REJECT": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal",
+            "satisfies": [
+              "ARF-HLR:RPA_07",
+              "UXR:REQ-PRES-003"
+            ]
+          }
+        ],
+        "APPROVE": [
+          {
+            "target": "auth",
+            "kind": "main",
+            "satisfies": [
+              "ARF-HLR:RPA_07b",
+              "ARF-HLR:RPA_06a",
+              "UXR:REQ-PRES-003"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired"
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "REJECT"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "auth": {
+      "kind": "step",
+      "description": "System biometric prompt over the authentication screen. App order — the user authenticates after Pokračovať; this deviates from RPA_08 (DEC-001, provisional), so no transition claims RPA_08.",
+      "screen": "SCR-pres-auth",
+      "ui_state": "default",
+      "invoke": {
+        "service": "authenticate",
+        "args": {},
+        "on": {
+          "Authenticated": {
+            "event": "SYS_AUTH_OK"
+          },
+          "Failed": {
+            "event": "SYS_AUTH_FAILED"
+          },
+          "NotEnrolled": {
+            "event": "SYS_AUTH_NOT_ENROLLED"
+          },
+          "Expired": {
+            "event": "SYS_EXPIRED"
+          },
+          "Error": {
+            "event": "SYS_ERROR"
+          }
+        }
+      },
+      "on": {
+        "SYS_AUTH_OK": [
+          {
+            "target": "verification-code",
+            "kind": "main",
+            "satisfies": [
+              "UXR:REQ-PRES-008"
+            ]
+          }
+        ],
+        "SYS_AUTH_FAILED": [
+          {
+            "target": "auth-failed",
+            "kind": "error",
+            "error_class": "user-auth-failure",
+            "satisfies": [
+              "UXR:REQ-PRES-013"
+            ]
+          }
+        ],
+        "SYS_AUTH_NOT_ENROLLED": [
+          {
+            "target": "auth-not-enrolled",
+            "kind": "error",
+            "error_class": "user-auth-failure",
+            "satisfies": [
+              "UXR:REQ-PRES-008"
+            ]
+          }
+        ],
+        "CANCEL": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal"
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired"
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ]
+      },
+      "back": {
+        "policy": "to_history",
+        "candidates": [
+          "request",
+          "request-optional-only",
+          "request-no-selection",
+          "request-optional-selected",
+          "request-untrusted"
+        ],
+        "fallback": "request"
+      },
+      "restore": {
+        "policy": "to_history",
+        "candidates": [
+          "request",
+          "request-optional-only",
+          "request-no-selection",
+          "request-optional-selected",
+          "request-untrusted"
+        ],
+        "fallback": "request"
+      }
+    },
+    "auth-not-enrolled": {
+      "kind": "step",
+      "description": "Device has no biometrics / screen lock — nothing is released; the user can open the device security settings or close (no detour through the cancelled outcome, REV-001 F-14). 'Získať pomoc' opens help with the error details (to-help).",
+      "screen": "SCR-pres-outcome-auth-unavailable",
+      "ui_state": "default",
+      "on": {
+        "OPEN_SETTINGS": [
+          {
+            "target": "device-settings",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-008"
+            ]
+          }
+        ],
+        "CLOSE": [
+          {
+            "target": "closed",
+            "kind": "alt"
+          }
+        ],
+        "HELP": [
+          {
+            "target": "to-help",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired"
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CLOSE"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "auth-failed": {
+      "kind": "recovery",
+      "description": "Biometric failed or interrupted — try again or cancel. 'Získať pomoc' opens help with the error details (to-help).",
+      "screen": "SCR-pres-outcome-auth-failed",
+      "ui_state": "default",
+      "on": {
+        "RETRY": [
+          {
+            "target": "auth",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-013"
+            ]
+          }
+        ],
+        "CANCEL": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal"
+          }
+        ],
+        "HELP": [
+          {
+            "target": "to-help",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired"
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CANCEL"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "verification-code": {
+      "kind": "step",
+      "description": "Check the verifier page and retype the code; send or cancel.",
+      "screen": "SCR-pres-verification-code",
+      "ui_state": "default",
+      "ui_state_when": [
+        {
+          "when": {
+            "path": "/verifier/portal_url",
+            "op": "is_empty"
+          },
+          "ui_state": "no-url"
+        }
+      ],
+      "invoke": {
+        "service": "verificationCode",
+        "args": {},
+        "accepts_while_pending": [
+          "CANCEL",
+          "SYS_EXPIRED",
+          "SYS_ERROR"
+        ],
+        "on": {
+          "Ready": {
+            "event": null,
+            "assign": [
+              {
+                "op": "set",
+                "path": "/verification/code",
+                "from": {
+                  "result": "code"
+                }
+              },
+              {
+                "op": "set",
+                "path": "/verifier/portal_url",
+                "from": {
+                  "result": "portal_url"
+                }
+              }
+            ]
+          },
+          "Expired": {
+            "event": "SYS_EXPIRED"
+          },
+          "Error": {
+            "event": "SYS_ERROR"
+          }
+        }
+      },
+      "on": {
+        "CONFIRM": [
+          {
+            "target": "sending",
+            "kind": "main",
+            "satisfies": [
+              "ARF-HLR:RPA_07",
+              "UXR:REQ-PRES-009"
+            ]
+          }
+        ],
+        "CANCEL": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal",
+            "satisfies": [
+              "UXR:REQ-PRES-006"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired"
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error"
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CANCEL"
+      },
+      "restore": {
+        "policy": "to_history",
+        "candidates": [
+          "request",
+          "request-optional-only",
+          "request-no-selection",
+          "request-optional-selected",
+          "request-untrusted"
+        ],
+        "fallback": "request"
+      }
+    },
+    "sending": {
+      "kind": "step",
+      "description": "The response is being sent; success is shown only once delivery is confirmed (REV-001 F-12). Not interruptible — the response is already being submitted, so no cancel is offered (TPL-progress without action).",
+      "screen": "SCR-pres-sending",
+      "ui_state": "default",
+      "invoke": {
+        "service": "send",
+        "args": {
+          "selection": {
+            "context": "/request/selection"
+          }
+        },
+        "on": {
+          "Sent": {
+            "event": "SYS_SENT"
+          },
+          "Expired": {
+            "event": "SYS_EXPIRED"
+          },
+          "Error": {
+            "event": "SYS_ERROR"
+          }
+        }
+      },
+      "on": {
+        "SYS_SENT": [
+          {
+            "target": "success",
+            "kind": "main",
+            "satisfies": [
+              "UXR:REQ-PRES-010"
+            ]
+          }
+        ],
+        "SYS_ERROR": [
+          {
+            "target": "error",
+            "kind": "error",
+            "error_class": "technical-error",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ],
+        "SYS_EXPIRED": [
+          {
+            "target": "error-expired",
+            "kind": "error",
+            "error_class": "request-expired"
+          }
+        ]
+      },
+      "back": {
+        "policy": "blocked"
+      },
+      "restore": {
+        "policy": "to",
+        "target": "error"
+      }
+    },
+    "success": {
+      "kind": "step",
+      "screen": "SCR-pres-outcome-success",
+      "ui_state": "default",
+      "on": {
+        "CLOSE": [
+          {
+            "target": "done",
+            "kind": "main",
+            "satisfies": [
+              "UXR:REQ-PRES-010"
+            ]
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CLOSE"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "cancelled": {
+      "kind": "step",
+      "screen": "SCR-pres-outcome-cancelled",
+      "ui_state": "default",
+      "invoke": {
+        "service": "cancel",
+        "args": {},
+        "scope": "detached",
+        "on": {}
+      },
+      "on": {
+        "CLOSE": [
+          {
+            "target": "closed",
+            "kind": "main",
+            "satisfies": [
+              "UXR:REQ-PRES-010"
+            ]
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CLOSE"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "document-missing": {
+      "kind": "recovery",
+      "description": "Requested document not in the wallet — add it or close. 'Získať pomoc' opens help with the error details (to-help).",
+      "screen": "SCR-pres-outcome-document-missing",
+      "ui_state": "default",
+      "on": {
+        "ADD_DOCUMENT": [
+          {
+            "target": "add-document",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-011"
+            ]
+          }
+        ],
+        "CLOSE": [
+          {
+            "target": "closed",
+            "kind": "alt"
+          }
+        ],
+        "HELP": [
+          {
+            "target": "to-help",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CLOSE"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "document-invalid": {
+      "kind": "step",
+      "screen": "SCR-pres-outcome-document-invalid",
+      "ui_state": "default",
+      "on": {
+        "CLOSE": [
+          {
+            "target": "closed",
+            "kind": "alt"
+          }
+        ],
+        "HELP": [
+          {
+            "target": "to-help",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CLOSE"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "error": {
+      "kind": "recovery",
+      "description": "Generic error — scan a new QR code (the old one may be used up) or close. 'Získať pomoc' opens help with the error details (to-help).",
+      "screen": "SCR-pres-outcome-error",
+      "ui_state": "default",
+      "on": {
+        "RETRY": [
+          {
+            "target": "scan",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ],
+        "CLOSE": [
+          {
+            "target": "closed",
+            "kind": "alt"
+          }
+        ],
+        "HELP": [
+          {
+            "target": "to-help",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CLOSE"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "error-expired": {
+      "kind": "recovery",
+      "description": "Request expired — request it again on the verifier page and scan the new QR code, or close. 'Získať pomoc' opens help with the error details (to-help).",
+      "screen": "SCR-pres-outcome-expired",
+      "ui_state": "default",
+      "on": {
+        "RETRY": [
+          {
+            "target": "scan",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ],
+        "CLOSE": [
+          {
+            "target": "closed",
+            "kind": "alt"
+          }
+        ],
+        "HELP": [
+          {
+            "target": "to-help",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CLOSE"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "error-invalid-qr": {
+      "kind": "recovery",
+      "description": "Unusable QR code — scan again or close. 'Získať pomoc' opens help with the error details (to-help).",
+      "screen": "SCR-pres-outcome-invalid-qr",
+      "ui_state": "default",
+      "on": {
+        "RETRY": [
+          {
+            "target": "scan",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-001"
+            ]
+          }
+        ],
+        "CLOSE": [
+          {
+            "target": "closed",
+            "kind": "alt"
+          }
+        ],
+        "HELP": [
+          {
+            "target": "to-help",
+            "kind": "alt",
+            "satisfies": [
+              "UXR:REQ-PRES-014"
+            ]
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CLOSE"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    },
+    "done": {
+      "kind": "final",
+      "exit": {
+        "kind": "home",
+        "ref": null,
+        "result": "presented",
+        "note": "Wallet home; the verifier website continues the user's session"
+      }
+    },
+    "closed": {
+      "kind": "final",
+      "exit": {
+        "kind": "home",
+        "ref": null,
+        "result": "not-presented",
+        "note": "Wallet home"
+      }
+    },
+    "add-document": {
+      "kind": "final",
+      "exit": {
+        "kind": "flow",
+        "ref": "FLW-dashboard#add-document",
+        "result": "not-presented",
+        "note": "Wallet — add (download) eDoklad flow"
+      }
+    },
+    "device-settings": {
+      "kind": "final",
+      "exit": {
+        "kind": "platform",
+        "ref": "security-settings",
+        "result": "not-presented",
+        "note": "Device security settings (biometrics / screen lock); the presentation is abandoned, nothing was released"
+      }
+    },
+    "to-help": {
+      "kind": "final",
+      "exit": {
+        "kind": "flow",
+        "ref": "FLW-app-info#help-from-error",
+        "result": "not-presented",
+        "carries": [
+          "/flow/error_class"
+        ],
+        "note": "Help and support with the details of this error (FLW-app-info help-from-error, BRF-017); the presentation is abandoned, nothing was released"
+      }
+    },
+    "offline-loading": {
+      "kind": "recovery",
+      "description": "No network: wait, then retry the request (D8-offline shape, M5b test copy)",
+      "screen": "SCR-pres-offline-loading",
+      "ui_state": "default",
+      "on": {
+        "RETRY": [
+          {
+            "target": "connecting",
+            "kind": "main"
+          }
+        ],
+        "CANCEL": [
+          {
+            "target": "cancelled",
+            "kind": "alt",
+            "error_class": "user-refusal"
+          }
+        ]
+      },
+      "back": {
+        "policy": "event",
+        "event": "CANCEL"
+      },
+      "restore": {
+        "policy": "snapshot"
+      }
+    }
+  },
+  "screens": {
+    "SCR-pres-scan-qr": {
+      "name": "Scan the verifier's QR code",
+      "template": "TPL-scan",
+      "in_brief_scope": true,
+      "regions": {
+        "instruction": [
+          {
+            "id": "title",
+            "element": "EL-text",
+            "props": {
+              "variant": "title",
+              "text": {
+                "copy": "CPY-pres-scan-title"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "camera": [
+          {
+            "id": "viewfinder",
+            "element": "EL-qr-viewfinder",
+            "props": {
+              "label": {
+                "copy": "CPY-pres-scan-viewfinder-label"
+              },
+              "scanning": true
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "cancel",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-scan-cancel"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CANCEL"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": "title",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "title",
+          "viewfinder",
+          "cancel"
+        ]
+      }
+    },
+    "SCR-pres-connecting": {
+      "name": "Loading the verifier's request",
+      "template": "TPL-progress",
+      "in_brief_scope": true,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "pending",
+              "title": {
+                "copy": "CPY-pres-connecting-title"
+              },
+              "text": {
+                "copy": "CPY-pres-connecting-text"
+              }
+            },
+            "a11y": {
+              "live": "polite"
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "cancel",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-connecting-cancel"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CANCEL"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": null,
+        "on_enter": "announce-live",
+        "live_region": "hero",
+        "focus_order": [
+          "hero",
+          "cancel"
+        ]
+      }
+    },
+    "SCR-pres-request": {
+      "name": "Who is asking and for which data",
+      "template": "TPL-sheet",
+      "in_brief_scope": true,
+      "regions": {
+        "appbar": [
+          {
+            "id": "app-bar",
+            "element": "EL-app-bar",
+            "props": {
+              "title": {
+                "copy": "CPY-home-title"
+              },
+              "leading": "menu",
+              "leading_label": {
+                "copy": "CPY-home-menu-label"
+              },
+              "trailing": "notifications",
+              "trailing_label": {
+                "copy": "CPY-home-notifications-label"
+              }
+            },
+            "a11y": {
+              "inert": true
+            }
+          }
+        ],
+        "header": [
+          {
+            "id": "title",
+            "element": "EL-text",
+            "props": {
+              "variant": "title",
+              "text": {
+                "copy": "CPY-pres-request-title"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "untrusted-notice",
+            "element": "EL-notice",
+            "props": {
+              "tone": "warning",
+              "title": {
+                "copy": "CPY-pres-request-untrusted-notice-title"
+              },
+              "text": {
+                "copy": "CPY-pres-rp-unverified"
+              }
+            }
+          },
+          {
+            "id": "rp-trusted",
+            "element": "EL-rp-identity",
+            "props": {
+              "caption": {
+                "copy": "CPY-pres-request-verifier-label"
+              },
+              "name": {
+                "bind": "/verifier/name"
+              },
+              "service_label": {
+                "copy": "CPY-pres-request-portal-label"
+              },
+              "service": {
+                "bind": "/verifier/service_name"
+              },
+              "reason_label": {
+                "copy": "CPY-pres-request-reason-label"
+              },
+              "reason": {
+                "bind": "/verifier/reason"
+              },
+              "trust": "trusted",
+              "trust_label": {
+                "copy": "CPY-pres-request-trust-trusted"
+              }
+            }
+          },
+          {
+            "id": "rp-untrusted",
+            "element": "EL-rp-identity",
+            "props": {
+              "caption": {
+                "copy": "CPY-pres-request-verifier-claimed-label"
+              },
+              "name": {
+                "bind": "/verifier/name"
+              },
+              "service_label": {
+                "copy": "CPY-pres-request-portal-label"
+              },
+              "service": {
+                "bind": "/verifier/service_name"
+              },
+              "reason_label": {
+                "copy": "CPY-pres-request-reason-label"
+              },
+              "reason": {
+                "bind": "/verifier/reason"
+              },
+              "trust": "untrusted",
+              "trust_label": {
+                "copy": "CPY-pres-request-trust-untrusted"
+              }
+            }
+          },
+          {
+            "id": "privacy",
+            "element": "EL-link",
+            "props": {
+              "label": {
+                "copy": "CPY-pres-request-privacy-link"
+              },
+              "href": {
+                "bind": "/verifier/privacy_url"
+              },
+              "external": true,
+              "external_label": {
+                "copy": "CPY-pres-link-external-hint"
+              }
+            }
+          },
+          {
+            "id": "data-intro",
+            "element": "EL-text",
+            "props": {
+              "variant": "body",
+              "text": {
+                "copy": "CPY-pres-request-data-intro",
+                "args": {
+                  "document": "/request/document_name"
+                }
+              }
+            }
+          },
+          {
+            "id": "instructions",
+            "element": "EL-text",
+            "props": {
+              "variant": "small",
+              "text": {
+                "copy": "CPY-pres-request-instructions"
+              }
+            }
+          },
+          {
+            "id": "no-field-error",
+            "element": "EL-notice",
+            "props": {
+              "tone": "error",
+              "text": {
+                "copy": "CPY-pres-request-no-field-error"
+              }
+            }
+          },
+          {
+            "id": "attributes",
+            "element": "EL-attribute-list",
+            "props": {
+              "items": {
+                "bind": "/request/attributes"
+              },
+              "optional_heading": {
+                "copy": "CPY-pres-request-optional-heading"
+              },
+              "mandatory_label": {
+                "copy": "CPY-pres-request-mandatory-tag"
+              }
+            },
+            "events": [
+              {
+                "on": "toggle",
+                "emits": "TOGGLE_ITEM"
+              }
+            ]
+          }
+        ],
+        "actions": [
+          {
+            "id": "continue",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-request-continue"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CONTINUE"
+              }
+            ]
+          },
+          {
+            "id": "reject",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-request-reject"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "REJECT"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [
+        {
+          "id": "RUL-pres-request-trusted-identity",
+          "when": {
+            "path": "/verifier/trust",
+            "op": "neq",
+            "value": "trusted"
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "rp-trusted"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-request-untrusted-identity",
+          "when": {
+            "path": "/verifier/trust",
+            "op": "neq",
+            "value": "untrusted"
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "untrusted-notice"
+            },
+            {
+              "effect": "hide",
+              "node": "rp-untrusted"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-request-privacy-link",
+          "when": {
+            "path": "/verifier/privacy_url",
+            "op": "is_empty"
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "privacy"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-request-no-selection-error",
+          "when": {
+            "not": {
+              "all": [
+                {
+                  "path": "/request/selected_count",
+                  "op": "eq",
+                  "value": 0
+                },
+                {
+                  "path": "/request/attempted",
+                  "op": "is_true"
+                }
+              ]
+            }
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "no-field-error"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-request-instructions-visible",
+          "when": {
+            "all": [
+              {
+                "path": "/request/selected_count",
+                "op": "eq",
+                "value": 0
+              },
+              {
+                "path": "/request/attempted",
+                "op": "is_true"
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "instructions"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-request-no-selection-blocks-continue",
+          "when": {
+            "path": "/request/selected_count",
+            "op": "eq",
+            "value": 0
+          },
+          "then": [
+            {
+              "effect": "allow_transition"
+            },
+            {
+              "effect": "message",
+              "copy": "CPY-pres-request-no-field-error"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-request-service-line-same-device",
+          "when": {
+            "path": "/request/channel",
+            "op": "eq",
+            "value": "same-device"
+          },
+          "then": [
+            {
+              "effect": "set_copy",
+              "node": "rp-trusted",
+              "prop": "service_label",
+              "copy": "CPY-pres-request-service-label"
+            },
+            {
+              "effect": "set_copy",
+              "node": "rp-untrusted",
+              "prop": "service_label",
+              "copy": "CPY-pres-request-service-label"
+            }
+          ]
+        }
+      ],
+      "ui_states": [
+        "default",
+        "untrusted",
+        "optional-only",
+        "no-selection",
+        "optional-selected",
+        "sd-default",
+        "sd-untrusted",
+        "sd-optional-only",
+        "sd-no-selection",
+        "sd-optional-selected"
+      ],
+      "a11y": {
+        "heading": "title",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "title",
+          "untrusted-notice",
+          "rp-trusted",
+          "rp-untrusted",
+          "privacy",
+          "data-intro",
+          "instructions",
+          "no-field-error",
+          "attributes",
+          "continue",
+          "reject"
+        ],
+        "dialog": {
+          "labelled_by": "title"
+        }
+      },
+      "layout_axes": [
+        "decision-steps"
+      ]
+    },
+    "SCR-pres-untrusted-confirm": {
+      "name": "Confirm presenting to an unverified verifier",
+      "template": "TPL-sheet",
+      "in_brief_scope": false,
+      "regions": {
+        "appbar": [
+          {
+            "id": "app-bar",
+            "element": "EL-app-bar",
+            "props": {
+              "title": {
+                "copy": "CPY-home-title"
+              },
+              "leading": "menu",
+              "leading_label": {
+                "copy": "CPY-home-menu-label"
+              },
+              "trailing": "notifications",
+              "trailing_label": {
+                "copy": "CPY-home-notifications-label"
+              }
+            },
+            "a11y": {
+              "inert": true
+            }
+          }
+        ],
+        "header": [
+          {
+            "id": "title",
+            "element": "EL-text",
+            "props": {
+              "variant": "title",
+              "text": {
+                "copy": "CPY-pres-untrusted-confirm-title"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "warning",
+            "element": "EL-notice",
+            "props": {
+              "tone": "warning",
+              "title": {
+                "copy": "CPY-pres-request-untrusted-notice-title"
+              },
+              "text": {
+                "copy": "CPY-pres-untrusted-confirm-warning"
+              }
+            }
+          },
+          {
+            "id": "rp",
+            "element": "EL-rp-identity",
+            "props": {
+              "caption": {
+                "copy": "CPY-pres-request-verifier-claimed-label"
+              },
+              "name": {
+                "bind": "/verifier/name"
+              },
+              "service_label": {
+                "copy": "CPY-pres-request-portal-label"
+              },
+              "service": {
+                "bind": "/verifier/service_name"
+              },
+              "reason_label": {
+                "copy": "CPY-pres-request-reason-label"
+              },
+              "reason": {
+                "bind": "/verifier/reason"
+              },
+              "trust": "untrusted",
+              "trust_label": {
+                "copy": "CPY-pres-request-trust-untrusted"
+              }
+            }
+          },
+          {
+            "id": "data-summary",
+            "element": "EL-text",
+            "props": {
+              "variant": "body",
+              "text": {
+                "copy": "CPY-pres-untrusted-confirm-data",
+                "args": {
+                  "items": "/request/selected_summary"
+                }
+              }
+            }
+          },
+          {
+            "id": "security-info",
+            "element": "EL-text",
+            "props": {
+              "variant": "small",
+              "tone": "secondary",
+              "text": {
+                "copy": "CPY-pres-untrusted-confirm-security"
+              }
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "reject",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-request-reject"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "REJECT"
+              }
+            ]
+          },
+          {
+            "id": "approve",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-request-untrusted-approve"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "APPROVE"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [
+        {
+          "id": "RUL-pres-untrusted-confirm-service-line-same-device",
+          "when": {
+            "path": "/request/channel",
+            "op": "eq",
+            "value": "same-device"
+          },
+          "then": [
+            {
+              "effect": "set_copy",
+              "node": "rp",
+              "prop": "service_label",
+              "copy": "CPY-pres-request-service-label"
+            }
+          ]
+        }
+      ],
+      "ui_states": [
+        "default",
+        "same-device"
+      ],
+      "a11y": {
+        "heading": "title",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "title",
+          "warning",
+          "rp",
+          "data-summary",
+          "security-info",
+          "reject",
+          "approve"
+        ],
+        "dialog": {
+          "labelled_by": "title"
+        }
+      },
+      "layout_axes": [
+        "decision-steps"
+      ]
+    },
+    "SCR-pres-auth": {
+      "name": "Confirm it is you",
+      "template": "TPL-sheet",
+      "in_brief_scope": true,
+      "regions": {
+        "appbar": [
+          {
+            "id": "app-bar",
+            "element": "EL-app-bar",
+            "props": {
+              "title": {
+                "copy": "CPY-home-title"
+              },
+              "leading": "menu",
+              "leading_label": {
+                "copy": "CPY-home-menu-label"
+              },
+              "trailing": "notifications",
+              "trailing_label": {
+                "copy": "CPY-home-notifications-label"
+              }
+            },
+            "a11y": {
+              "inert": true
+            }
+          }
+        ],
+        "header": [
+          {
+            "id": "title",
+            "element": "EL-text",
+            "props": {
+              "variant": "title",
+              "text": {
+                "copy": "CPY-pres-auth-title"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "text",
+            "element": "EL-text",
+            "props": {
+              "variant": "body",
+              "text": {
+                "copy": "CPY-pres-auth-text"
+              }
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "cancel",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-auth-cancel"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CANCEL"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": "title",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "title",
+          "text",
+          "cancel"
+        ],
+        "dialog": {
+          "labelled_by": "title"
+        }
+      },
+      "layout_axes": [
+        "decision-steps"
+      ]
+    },
+    "SCR-pres-outcome-auth-unavailable": {
+      "name": "Device security not set up",
+      "template": "TPL-outcome",
+      "in_brief_scope": false,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "error",
+              "title": {
+                "copy": "CPY-pres-auth-not-enrolled-title"
+              },
+              "text": {
+                "copy": "CPY-pres-auth-not-enrolled-text"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "help-note",
+            "element": "EL-notice",
+            "props": {
+              "tone": "info",
+              "text": {
+                "copy": "CPY-pres-outcome-help-text"
+              }
+            },
+            "slots": {
+              "extra": [
+                {
+                  "id": "help",
+                  "element": "EL-link",
+                  "props": {
+                    "label": {
+                      "copy": "CPY-info-error-help"
+                    },
+                    "href": {
+                      "bind": "/links/help"
+                    }
+                  },
+                  "events": [
+                    {
+                      "on": "activate",
+                      "emits": "HELP"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "no-return",
+            "element": "EL-text",
+            "props": {
+              "variant": "body",
+              "tone": "secondary",
+              "text": {
+                "copy": "CPY-pres-sd-outcome-no-return-text"
+              }
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "settings",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-auth-open-settings"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "OPEN_SETTINGS"
+              }
+            ]
+          },
+          {
+            "id": "return",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-sd-return",
+                "args": {
+                  "service": "/verifier/service_name"
+                }
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "RETURN"
+              }
+            ]
+          },
+          {
+            "id": "close",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-auth-not-enrolled-close"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CLOSE"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [
+        {
+          "id": "RUL-pres-sd-return",
+          "when": {
+            "any": [
+              {
+                "path": "/request/channel",
+                "op": "neq",
+                "value": "same-device"
+              },
+              {
+                "all": [
+                  {
+                    "path": "/request/transport",
+                    "op": "neq",
+                    "value": "dc-api"
+                  },
+                  {
+                    "any": [
+                      {
+                        "path": "/return/url",
+                        "op": "is_empty"
+                      },
+                      {
+                        "not": {
+                          "path": "/response/status",
+                          "op": "in",
+                          "value": [
+                            "data",
+                            "denial"
+                          ]
+                        }
+                      },
+                      {
+                        "all": [
+                          {
+                            "path": "/verifier/trust",
+                            "op": "neq",
+                            "value": "trusted"
+                          },
+                          {
+                            "path": "/response/status",
+                            "op": "neq",
+                            "value": "data"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "return"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-sd-return-label",
+          "when": {
+            "any": [
+              {
+                "path": "/verifier/trust",
+                "op": "neq",
+                "value": "trusted"
+              },
+              {
+                "path": "/verifier/service_name",
+                "op": "is_empty"
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "set_copy",
+              "node": "return",
+              "prop": "label",
+              "copy": "CPY-pres-sd-return-generic"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-sd-no-return-text",
+          "when": {
+            "any": [
+              {
+                "path": "/request/channel",
+                "op": "neq",
+                "value": "same-device"
+              },
+              {
+                "path": "/request/transport",
+                "op": "eq",
+                "value": "dc-api"
+              },
+              {
+                "all": [
+                  {
+                    "path": "/return/url",
+                    "op": "not_empty"
+                  },
+                  {
+                    "path": "/response/status",
+                    "op": "in",
+                    "value": [
+                      "data",
+                      "denial"
+                    ]
+                  },
+                  {
+                    "any": [
+                      {
+                        "path": "/verifier/trust",
+                        "op": "eq",
+                        "value": "trusted"
+                      },
+                      {
+                        "path": "/response/status",
+                        "op": "eq",
+                        "value": "data"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "no-return"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-sd-return-replaces-close",
+          "when": {
+            "all": [
+              {
+                "path": "/request/channel",
+                "op": "eq",
+                "value": "same-device"
+              },
+              {
+                "any": [
+                  {
+                    "path": "/request/transport",
+                    "op": "eq",
+                    "value": "dc-api"
+                  },
+                  {
+                    "all": [
+                      {
+                        "path": "/return/url",
+                        "op": "not_empty"
+                      },
+                      {
+                        "path": "/response/status",
+                        "op": "in",
+                        "value": [
+                          "data",
+                          "denial"
+                        ]
+                      },
+                      {
+                        "any": [
+                          {
+                            "path": "/verifier/trust",
+                            "op": "eq",
+                            "value": "trusted"
+                          },
+                          {
+                            "path": "/response/status",
+                            "op": "eq",
+                            "value": "data"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "close"
+            }
+          ]
+        }
+      ],
+      "ui_states": [
+        "default",
+        "same-device"
+      ],
+      "a11y": {
+        "heading": "hero",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "hero",
+          "help-note",
+          "help",
+          "no-return",
+          "settings",
+          "return",
+          "close"
+        ]
+      }
+    },
+    "SCR-pres-outcome-auth-failed": {
+      "name": "Authentication failed",
+      "template": "TPL-outcome",
+      "in_brief_scope": false,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "error",
+              "title": {
+                "copy": "CPY-pres-outcome-auth-failed-title"
+              },
+              "text": {
+                "copy": "CPY-pres-outcome-auth-failed-text"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "help-note",
+            "element": "EL-notice",
+            "props": {
+              "tone": "info",
+              "text": {
+                "copy": "CPY-pres-outcome-help-text"
+              }
+            },
+            "slots": {
+              "extra": [
+                {
+                  "id": "help",
+                  "element": "EL-link",
+                  "props": {
+                    "label": {
+                      "copy": "CPY-info-error-help"
+                    },
+                    "href": {
+                      "bind": "/links/help"
+                    }
+                  },
+                  "events": [
+                    {
+                      "on": "activate",
+                      "emits": "HELP"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "retry",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-outcome-auth-failed-retry"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "RETRY"
+              }
+            ]
+          },
+          {
+            "id": "cancel",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-outcome-auth-failed-cancel"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CANCEL"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": "hero",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "hero",
+          "help-note",
+          "help",
+          "retry",
+          "cancel"
+        ]
+      }
+    },
+    "SCR-pres-verification-code": {
+      "name": "Check the page and retype the verification code",
+      "template": "TPL-sheet",
+      "in_brief_scope": true,
+      "regions": {
+        "appbar": [
+          {
+            "id": "app-bar",
+            "element": "EL-app-bar",
+            "props": {
+              "title": {
+                "copy": "CPY-home-title"
+              },
+              "leading": "menu",
+              "leading_label": {
+                "copy": "CPY-home-menu-label"
+              },
+              "trailing": "notifications",
+              "trailing_label": {
+                "copy": "CPY-home-notifications-label"
+              }
+            },
+            "a11y": {
+              "inert": true
+            }
+          }
+        ],
+        "header": [
+          {
+            "id": "title",
+            "element": "EL-text",
+            "props": {
+              "variant": "title",
+              "text": {
+                "copy": "CPY-pres-code-title"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "url-check",
+            "element": "EL-notice",
+            "props": {
+              "tone": "warning",
+              "title": {
+                "copy": "CPY-pres-code-warning-title"
+              },
+              "text": {
+                "copy": "CPY-pres-code-url-check"
+              }
+            },
+            "slots": {
+              "extra": [
+                {
+                  "id": "url",
+                  "element": "EL-text",
+                  "props": {
+                    "variant": "body",
+                    "tone": "link",
+                    "text": {
+                      "bind": "/verifier/portal_url"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "instruction",
+            "element": "EL-text",
+            "props": {
+              "variant": "body",
+              "text": {
+                "copy": "CPY-pres-code-instruction"
+              }
+            }
+          },
+          {
+            "id": "code",
+            "element": "EL-text",
+            "props": {
+              "variant": "display",
+              "text": {
+                "bind": "/verification/code"
+              }
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "confirm",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-code-confirm"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CONFIRM"
+              }
+            ]
+          },
+          {
+            "id": "cancel",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-code-cancel"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CANCEL"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [
+        {
+          "id": "RUL-pres-url-check-visible",
+          "when": {
+            "path": "/verifier/portal_url",
+            "op": "is_empty"
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "url-check"
+            }
+          ]
+        }
+      ],
+      "ui_states": [
+        "default",
+        "no-url"
+      ],
+      "a11y": {
+        "heading": "title",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "title",
+          "url-check",
+          "url",
+          "instruction",
+          "code",
+          "confirm",
+          "cancel"
+        ],
+        "dialog": {
+          "labelled_by": "title"
+        }
+      },
+      "layout_axes": [
+        "decision-steps"
+      ]
+    },
+    "SCR-pres-sending": {
+      "name": "Sending the documents",
+      "template": "TPL-progress",
+      "in_brief_scope": true,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "pending",
+              "title": {
+                "copy": "CPY-pres-sending-title"
+              }
+            },
+            "a11y": {
+              "live": "polite"
+            }
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": null,
+        "on_enter": "announce-live",
+        "live_region": "hero",
+        "focus_order": [
+          "hero"
+        ]
+      }
+    },
+    "SCR-pres-outcome-success": {
+      "name": "Documents presented",
+      "template": "TPL-outcome",
+      "in_brief_scope": true,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "success",
+              "title": {
+                "copy": "CPY-pres-outcome-success-title"
+              },
+              "text": {
+                "copy": "CPY-pres-outcome-success-text"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "close",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-outcome-success-close"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CLOSE"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": "hero",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "hero",
+          "close"
+        ]
+      }
+    },
+    "SCR-pres-outcome-cancelled": {
+      "name": "Presentation cancelled",
+      "template": "TPL-outcome",
+      "in_brief_scope": false,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "info",
+              "title": {
+                "copy": "CPY-pres-outcome-cancelled-title"
+              },
+              "text": {
+                "copy": "CPY-pres-outcome-cancelled-text"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "close",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-outcome-cancelled-close"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CLOSE"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": "hero",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "hero",
+          "close"
+        ]
+      }
+    },
+    "SCR-pres-outcome-document-missing": {
+      "name": "Requested document is missing",
+      "template": "TPL-outcome",
+      "in_brief_scope": false,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "warning",
+              "title": {
+                "copy": "CPY-pres-outcome-document-missing-title"
+              },
+              "text": {
+                "copy": "CPY-pres-outcome-document-missing-text"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "document",
+            "element": "EL-notice",
+            "props": {
+              "tone": "info",
+              "title": {
+                "bind": "/document/name"
+              },
+              "text": {
+                "copy": "CPY-pres-outcome-document-missing-detail"
+              }
+            }
+          },
+          {
+            "id": "help-note",
+            "element": "EL-notice",
+            "props": {
+              "tone": "info",
+              "text": {
+                "copy": "CPY-pres-outcome-help-text"
+              }
+            },
+            "slots": {
+              "extra": [
+                {
+                  "id": "help",
+                  "element": "EL-link",
+                  "props": {
+                    "label": {
+                      "copy": "CPY-info-error-help"
+                    },
+                    "href": {
+                      "bind": "/links/help"
+                    }
+                  },
+                  "events": [
+                    {
+                      "on": "activate",
+                      "emits": "HELP"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "no-return",
+            "element": "EL-text",
+            "props": {
+              "variant": "body",
+              "tone": "secondary",
+              "text": {
+                "copy": "CPY-pres-sd-outcome-no-return-text"
+              }
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "add",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-outcome-document-missing-add"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "ADD_DOCUMENT"
+              }
+            ]
+          },
+          {
+            "id": "return",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-sd-return",
+                "args": {
+                  "service": "/verifier/service_name"
+                }
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "RETURN"
+              }
+            ]
+          },
+          {
+            "id": "close",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-outcome-document-missing-close"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CLOSE"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [
+        {
+          "id": "RUL-pres-sd-return",
+          "when": {
+            "any": [
+              {
+                "path": "/request/channel",
+                "op": "neq",
+                "value": "same-device"
+              },
+              {
+                "all": [
+                  {
+                    "path": "/request/transport",
+                    "op": "neq",
+                    "value": "dc-api"
+                  },
+                  {
+                    "any": [
+                      {
+                        "path": "/return/url",
+                        "op": "is_empty"
+                      },
+                      {
+                        "not": {
+                          "path": "/response/status",
+                          "op": "in",
+                          "value": [
+                            "data",
+                            "denial"
+                          ]
+                        }
+                      },
+                      {
+                        "all": [
+                          {
+                            "path": "/verifier/trust",
+                            "op": "neq",
+                            "value": "trusted"
+                          },
+                          {
+                            "path": "/response/status",
+                            "op": "neq",
+                            "value": "data"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "return"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-sd-return-label",
+          "when": {
+            "any": [
+              {
+                "path": "/verifier/trust",
+                "op": "neq",
+                "value": "trusted"
+              },
+              {
+                "path": "/verifier/service_name",
+                "op": "is_empty"
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "set_copy",
+              "node": "return",
+              "prop": "label",
+              "copy": "CPY-pres-sd-return-generic"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-sd-no-return-text",
+          "when": {
+            "any": [
+              {
+                "path": "/request/channel",
+                "op": "neq",
+                "value": "same-device"
+              },
+              {
+                "path": "/request/transport",
+                "op": "eq",
+                "value": "dc-api"
+              },
+              {
+                "all": [
+                  {
+                    "path": "/return/url",
+                    "op": "not_empty"
+                  },
+                  {
+                    "path": "/response/status",
+                    "op": "in",
+                    "value": [
+                      "data",
+                      "denial"
+                    ]
+                  },
+                  {
+                    "any": [
+                      {
+                        "path": "/verifier/trust",
+                        "op": "eq",
+                        "value": "trusted"
+                      },
+                      {
+                        "path": "/response/status",
+                        "op": "eq",
+                        "value": "data"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "no-return"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-sd-return-replaces-close",
+          "when": {
+            "all": [
+              {
+                "path": "/request/channel",
+                "op": "eq",
+                "value": "same-device"
+              },
+              {
+                "any": [
+                  {
+                    "path": "/request/transport",
+                    "op": "eq",
+                    "value": "dc-api"
+                  },
+                  {
+                    "all": [
+                      {
+                        "path": "/return/url",
+                        "op": "not_empty"
+                      },
+                      {
+                        "path": "/response/status",
+                        "op": "in",
+                        "value": [
+                          "data",
+                          "denial"
+                        ]
+                      },
+                      {
+                        "any": [
+                          {
+                            "path": "/verifier/trust",
+                            "op": "eq",
+                            "value": "trusted"
+                          },
+                          {
+                            "path": "/response/status",
+                            "op": "eq",
+                            "value": "data"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "close"
+            }
+          ]
+        }
+      ],
+      "ui_states": [
+        "default",
+        "same-device"
+      ],
+      "a11y": {
+        "heading": "hero",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "hero",
+          "document",
+          "help-note",
+          "help",
+          "no-return",
+          "add",
+          "return",
+          "close"
+        ]
+      }
+    },
+    "SCR-pres-outcome-document-invalid": {
+      "name": "Requested document is not valid",
+      "template": "TPL-outcome",
+      "in_brief_scope": false,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "error",
+              "title": {
+                "copy": "CPY-pres-outcome-document-invalid-title"
+              },
+              "text": {
+                "copy": "CPY-pres-outcome-document-invalid-text"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "document",
+            "element": "EL-notice",
+            "props": {
+              "tone": "error",
+              "title": {
+                "bind": "/document/name"
+              },
+              "text": {
+                "copy": "CPY-pres-outcome-document-invalid-hint"
+              }
+            }
+          },
+          {
+            "id": "no-return",
+            "element": "EL-text",
+            "props": {
+              "variant": "body",
+              "tone": "secondary",
+              "text": {
+                "copy": "CPY-pres-sd-outcome-no-return-text"
+              }
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "return",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-sd-return",
+                "args": {
+                  "service": "/verifier/service_name"
+                }
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "RETURN"
+              }
+            ]
+          },
+          {
+            "id": "close",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-outcome-document-invalid-close"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CLOSE"
+              }
+            ]
+          },
+          {
+            "id": "help",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-info-error-help"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "HELP"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [
+        {
+          "id": "RUL-pres-sd-return",
+          "when": {
+            "any": [
+              {
+                "path": "/request/channel",
+                "op": "neq",
+                "value": "same-device"
+              },
+              {
+                "all": [
+                  {
+                    "path": "/request/transport",
+                    "op": "neq",
+                    "value": "dc-api"
+                  },
+                  {
+                    "any": [
+                      {
+                        "path": "/return/url",
+                        "op": "is_empty"
+                      },
+                      {
+                        "not": {
+                          "path": "/response/status",
+                          "op": "in",
+                          "value": [
+                            "data",
+                            "denial"
+                          ]
+                        }
+                      },
+                      {
+                        "all": [
+                          {
+                            "path": "/verifier/trust",
+                            "op": "neq",
+                            "value": "trusted"
+                          },
+                          {
+                            "path": "/response/status",
+                            "op": "neq",
+                            "value": "data"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "return"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-sd-return-label",
+          "when": {
+            "any": [
+              {
+                "path": "/verifier/trust",
+                "op": "neq",
+                "value": "trusted"
+              },
+              {
+                "path": "/verifier/service_name",
+                "op": "is_empty"
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "set_copy",
+              "node": "return",
+              "prop": "label",
+              "copy": "CPY-pres-sd-return-generic"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-sd-no-return-text",
+          "when": {
+            "any": [
+              {
+                "path": "/request/channel",
+                "op": "neq",
+                "value": "same-device"
+              },
+              {
+                "path": "/request/transport",
+                "op": "eq",
+                "value": "dc-api"
+              },
+              {
+                "all": [
+                  {
+                    "path": "/return/url",
+                    "op": "not_empty"
+                  },
+                  {
+                    "path": "/response/status",
+                    "op": "in",
+                    "value": [
+                      "data",
+                      "denial"
+                    ]
+                  },
+                  {
+                    "any": [
+                      {
+                        "path": "/verifier/trust",
+                        "op": "eq",
+                        "value": "trusted"
+                      },
+                      {
+                        "path": "/response/status",
+                        "op": "eq",
+                        "value": "data"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "no-return"
+            }
+          ]
+        },
+        {
+          "id": "RUL-pres-sd-return-replaces-close",
+          "when": {
+            "all": [
+              {
+                "path": "/request/channel",
+                "op": "eq",
+                "value": "same-device"
+              },
+              {
+                "any": [
+                  {
+                    "path": "/request/transport",
+                    "op": "eq",
+                    "value": "dc-api"
+                  },
+                  {
+                    "all": [
+                      {
+                        "path": "/return/url",
+                        "op": "not_empty"
+                      },
+                      {
+                        "path": "/response/status",
+                        "op": "in",
+                        "value": [
+                          "data",
+                          "denial"
+                        ]
+                      },
+                      {
+                        "any": [
+                          {
+                            "path": "/verifier/trust",
+                            "op": "eq",
+                            "value": "trusted"
+                          },
+                          {
+                            "path": "/response/status",
+                            "op": "eq",
+                            "value": "data"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": [
+            {
+              "effect": "hide",
+              "node": "close"
+            }
+          ]
+        }
+      ],
+      "ui_states": [
+        "default",
+        "same-device"
+      ],
+      "a11y": {
+        "heading": "hero",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "hero",
+          "document",
+          "no-return",
+          "return",
+          "close",
+          "help"
+        ]
+      }
+    },
+    "SCR-pres-outcome-error": {
+      "name": "Something went wrong",
+      "template": "TPL-outcome",
+      "in_brief_scope": false,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "error",
+              "title": {
+                "copy": "CPY-pres-outcome-error-title"
+              },
+              "text": {
+                "copy": "CPY-pres-outcome-error-text"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "hint",
+            "element": "EL-text",
+            "props": {
+              "variant": "body",
+              "tone": "secondary",
+              "text": {
+                "copy": "CPY-pres-outcome-new-qr-hint"
+              }
+            }
+          },
+          {
+            "id": "help-note",
+            "element": "EL-notice",
+            "props": {
+              "tone": "info",
+              "text": {
+                "copy": "CPY-pres-outcome-help-text"
+              }
+            },
+            "slots": {
+              "extra": [
+                {
+                  "id": "help",
+                  "element": "EL-link",
+                  "props": {
+                    "label": {
+                      "copy": "CPY-info-error-help"
+                    },
+                    "href": {
+                      "bind": "/links/help"
+                    }
+                  },
+                  "events": [
+                    {
+                      "on": "activate",
+                      "emits": "HELP"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "retry",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-outcome-rescan"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "RETRY"
+              }
+            ]
+          },
+          {
+            "id": "close",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-outcome-error-close"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CLOSE"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": "hero",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "hero",
+          "hint",
+          "help-note",
+          "help",
+          "retry",
+          "close"
+        ]
+      }
+    },
+    "SCR-pres-outcome-expired": {
+      "name": "Verification expired",
+      "template": "TPL-outcome",
+      "in_brief_scope": true,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "warning",
+              "title": {
+                "copy": "CPY-pres-outcome-error-expired-title"
+              },
+              "text": {
+                "copy": "CPY-pres-outcome-error-expired-text"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "hint",
+            "element": "EL-text",
+            "props": {
+              "variant": "body",
+              "tone": "secondary",
+              "text": {
+                "copy": "CPY-pres-outcome-new-qr-hint"
+              }
+            }
+          },
+          {
+            "id": "help-note",
+            "element": "EL-notice",
+            "props": {
+              "tone": "info",
+              "text": {
+                "copy": "CPY-pres-outcome-help-text"
+              }
+            },
+            "slots": {
+              "extra": [
+                {
+                  "id": "help",
+                  "element": "EL-link",
+                  "props": {
+                    "label": {
+                      "copy": "CPY-info-error-help"
+                    },
+                    "href": {
+                      "bind": "/links/help"
+                    }
+                  },
+                  "events": [
+                    {
+                      "on": "activate",
+                      "emits": "HELP"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "retry",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-outcome-rescan"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "RETRY"
+              }
+            ]
+          },
+          {
+            "id": "close",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-outcome-error-close"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CLOSE"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": "hero",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "hero",
+          "hint",
+          "help-note",
+          "help",
+          "retry",
+          "close"
+        ]
+      }
+    },
+    "SCR-pres-outcome-invalid-qr": {
+      "name": "QR code cannot be used",
+      "template": "TPL-outcome",
+      "in_brief_scope": false,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "warning",
+              "title": {
+                "copy": "CPY-pres-outcome-invalid-qr-title"
+              },
+              "text": {
+                "copy": "CPY-pres-outcome-error-invalid-qr"
+              }
+            },
+            "a11y": {
+              "heading": 1
+            }
+          }
+        ],
+        "body": [
+          {
+            "id": "help-note",
+            "element": "EL-notice",
+            "props": {
+              "tone": "info",
+              "text": {
+                "copy": "CPY-pres-outcome-help-text"
+              }
+            },
+            "slots": {
+              "extra": [
+                {
+                  "id": "help",
+                  "element": "EL-link",
+                  "props": {
+                    "label": {
+                      "copy": "CPY-info-error-help"
+                    },
+                    "href": {
+                      "bind": "/links/help"
+                    }
+                  },
+                  "events": [
+                    {
+                      "on": "activate",
+                      "emits": "HELP"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "retry",
+            "element": "EL-button",
+            "props": {
+              "variant": "primary",
+              "label": {
+                "copy": "CPY-pres-outcome-rescan"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "RETRY"
+              }
+            ]
+          },
+          {
+            "id": "close",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-outcome-error-close"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "CLOSE"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": "hero",
+        "on_enter": "focus-heading",
+        "focus_order": [
+          "hero",
+          "help-note",
+          "help",
+          "retry",
+          "close"
+        ]
+      }
+    },
+    "SCR-pres-offline-loading": {
+      "name": "Offline, waiting to retry",
+      "template": "TPL-progress",
+      "in_brief_scope": false,
+      "regions": {
+        "hero": [
+          {
+            "id": "hero",
+            "element": "EL-status-hero",
+            "props": {
+              "tone": "pending",
+              "title": {
+                "copy": "CPY-pres-offline-title"
+              },
+              "text": {
+                "copy": "CPY-pres-offline-text"
+              }
+            },
+            "a11y": {
+              "live": "polite"
+            }
+          }
+        ],
+        "actions": [
+          {
+            "id": "retry",
+            "element": "EL-button",
+            "props": {
+              "variant": "secondary",
+              "label": {
+                "copy": "CPY-pres-offline-retry"
+              }
+            },
+            "events": [
+              {
+                "on": "press",
+                "emits": "RETRY"
+              }
+            ]
+          }
+        ]
+      },
+      "rules": [],
+      "ui_states": [
+        "default"
+      ],
+      "a11y": {
+        "heading": null,
+        "on_enter": "announce-live",
+        "live_region": "hero",
+        "focus_order": [
+          "hero",
+          "retry"
+        ]
+      }
+    }
+  },
+  "copy": {
+    "keys": {
+      "CPY-home-menu-label": {
+        "res": "cpy_home_menu_label",
+        "_sk": "Menu"
+      },
+      "CPY-home-notifications-label": {
+        "res": "cpy_home_notifications_label",
+        "_sk": "Notifikácie"
+      },
+      "CPY-home-title": {
+        "res": "cpy_home_title",
+        "_sk": "Moje eDoklady"
+      },
+      "CPY-info-error-help": {
+        "res": "cpy_info_error_help",
+        "_sk": "Získať pomoc"
+      },
+      "CPY-pres-attr-age-over-18": {
+        "res": "cpy_pres_attr_age_over_18",
+        "_sk": "Vek 18 a viac"
+      },
+      "CPY-pres-attr-birth-date": {
+        "res": "cpy_pres_attr_birth_date",
+        "_sk": "Dátum narodenia"
+      },
+      "CPY-pres-attr-family-name": {
+        "res": "cpy_pres_attr_family_name",
+        "_sk": "Priezvisko"
+      },
+      "CPY-pres-attr-given-name": {
+        "res": "cpy_pres_attr_given_name",
+        "_sk": "Meno"
+      },
+      "CPY-pres-attr-nationality": {
+        "res": "cpy_pres_attr_nationality",
+        "_sk": "Štátna príslušnosť"
+      },
+      "CPY-pres-auth-cancel": {
+        "res": "cpy_pres_auth_cancel",
+        "_sk": "Zrušiť"
+      },
+      "CPY-pres-auth-not-enrolled-close": {
+        "res": "cpy_pres_auth_not_enrolled_close",
+        "_sk": "Zatvoriť"
+      },
+      "CPY-pres-auth-not-enrolled-text": {
+        "res": "cpy_pres_auth_not_enrolled_text",
+        "_sk": "Aktivujte Face ID, Touch ID alebo zámok obrazovky v nastaveniach zariadenia. Dovtedy nemožno eDoklady predložiť."
+      },
+      "CPY-pres-auth-not-enrolled-title": {
+        "res": "cpy_pres_auth_not_enrolled_title",
+        "_sk": "Zariadenie nemá nastavené zabezpečenie"
+      },
+      "CPY-pres-auth-open-settings": {
+        "res": "cpy_pres_auth_open_settings",
+        "_sk": "Otvoriť nastavenia"
+      },
+      "CPY-pres-auth-text": {
+        "res": "cpy_pres_auth_text",
+        "_sk": "Autentifikácia je nevyhnutná."
+      },
+      "CPY-pres-auth-title": {
+        "res": "cpy_pres_auth_title",
+        "_sk": "Overenie, že ste to vy"
+      },
+      "CPY-pres-code-cancel": {
+        "res": "cpy_pres_code_cancel",
+        "_sk": "Zrušiť"
+      },
+      "CPY-pres-code-confirm": {
+        "res": "cpy_pres_code_confirm",
+        "_sk": "Predložiť eDoklady"
+      },
+      "CPY-pres-code-instruction": {
+        "res": "cpy_pres_code_instruction",
+        "_sk": "Prepíšte overovací kód do stránky overovateľa"
+      },
+      "CPY-pres-code-title": {
+        "res": "cpy_pres_code_title",
+        "_sk": "Skontrolujte stránku a prepíšte overovací kód"
+      },
+      "CPY-pres-code-url-check": {
+        "res": "cpy_pres_code_url_check",
+        "_sk": "Pred prepísaním kódu sa uistite, že vo vašom webovom prehliadači sa nachádzate na stránke"
+      },
+      "CPY-pres-code-warning-title": {
+        "res": "cpy_pres_code_warning_title",
+        "_sk": "Upozornenie"
+      },
+      "CPY-pres-connecting-cancel": {
+        "res": "cpy_pres_connecting_cancel",
+        "_sk": "Zrušiť"
+      },
+      "CPY-pres-connecting-text": {
+        "res": "cpy_pres_connecting_text",
+        "_sk": "Overuje sa totožnosť overovateľa a dostupnosť vašich eDokladov."
+      },
+      "CPY-pres-connecting-title": {
+        "res": "cpy_pres_connecting_title",
+        "_sk": "Načítava sa žiadosť overovateľa"
+      },
+      "CPY-pres-link-external-hint": {
+        "res": "cpy_pres_link_external_hint",
+        "_sk": "otvorí sa v prehliadači"
+      },
+      "CPY-pres-outcome-auth-failed-cancel": {
+        "res": "cpy_pres_outcome_auth_failed_cancel",
+        "_sk": "Zrušiť"
+      },
+      "CPY-pres-outcome-auth-failed-retry": {
+        "res": "cpy_pres_outcome_auth_failed_retry",
+        "_sk": "Skúsiť znova"
+      },
+      "CPY-pres-outcome-auth-failed-text": {
+        "res": "cpy_pres_outcome_auth_failed_text",
+        "_sk": "Autentifikácia bola prerušená alebo neprebehla správne."
+      },
+      "CPY-pres-outcome-auth-failed-title": {
+        "res": "cpy_pres_outcome_auth_failed_title",
+        "_sk": "Používateľ nie je autentifikovaný"
+      },
+      "CPY-pres-outcome-cancelled-close": {
+        "res": "cpy_pres_outcome_cancelled_close",
+        "_sk": "Zatvoriť"
+      },
+      "CPY-pres-outcome-cancelled-text": {
+        "res": "cpy_pres_outcome_cancelled_text",
+        "_sk": "Overovateľovi neboli odoslané žiadne údaje. Ak chcete, môžete predloženie zopakovať."
+      },
+      "CPY-pres-outcome-cancelled-title": {
+        "res": "cpy_pres_outcome_cancelled_title",
+        "_sk": "Predloženie eDokladov bolo zrušené"
+      },
+      "CPY-pres-outcome-document-invalid-close": {
+        "res": "cpy_pres_outcome_document_invalid_close",
+        "_sk": "Zatvoriť"
+      },
+      "CPY-pres-outcome-document-invalid-hint": {
+        "res": "cpy_pres_outcome_document_invalid_hint",
+        "_sk": "Platnosť eDokladu skončila alebo bol zneplatnený. Ak potrebujete platný eDoklad, obráťte sa na úrad, ktorý ho vydal."
+      },
+      "CPY-pres-outcome-document-invalid-text": {
+        "res": "cpy_pres_outcome_document_invalid_text",
+        "_sk": "Tento eDoklad už nie je platný, preto ho nemožno predložiť."
+      },
+      "CPY-pres-outcome-document-invalid-title": {
+        "res": "cpy_pres_outcome_document_invalid_title",
+        "_sk": "Neplatný eDoklad"
+      },
+      "CPY-pres-outcome-document-missing-add": {
+        "res": "cpy_pres_outcome_document_missing_add",
+        "_sk": "Pridať eDoklad"
+      },
+      "CPY-pres-outcome-document-missing-close": {
+        "res": "cpy_pres_outcome_document_missing_close",
+        "_sk": "Zatvoriť"
+      },
+      "CPY-pres-outcome-document-missing-detail": {
+        "res": "cpy_pres_outcome_document_missing_detail",
+        "_sk": "Tento eDoklad nemáte v aplikácii uložený."
+      },
+      "CPY-pres-outcome-document-missing-text": {
+        "res": "cpy_pres_outcome_document_missing_text",
+        "_sk": "Stiahnite si nasledujúci eDoklad a predložte eDoklad znovu."
+      },
+      "CPY-pres-outcome-document-missing-title": {
+        "res": "cpy_pres_outcome_document_missing_title",
+        "_sk": "Chýbajúci eDoklad"
+      },
+      "CPY-pres-outcome-error-close": {
+        "res": "cpy_pres_outcome_error_close",
+        "_sk": "Zatvoriť"
+      },
+      "CPY-pres-outcome-error-expired-text": {
+        "res": "cpy_pres_outcome_error_expired_text",
+        "_sk": "Skúste prosím o eDoklady požiadať znovu."
+      },
+      "CPY-pres-outcome-error-expired-title": {
+        "res": "cpy_pres_outcome_error_expired_title",
+        "_sk": "Platnosť overenia skončila"
+      },
+      "CPY-pres-outcome-error-invalid-qr": {
+        "res": "cpy_pres_outcome_error_invalid_qr",
+        "_sk": "Nie je to žiadosť o predloženie eDokladov, ktorú aplikácia dokáže spracovať. Naskenujte QR kód zo stránky overovateľa."
+      },
+      "CPY-pres-outcome-error-text": {
+        "res": "cpy_pres_outcome_error_text",
+        "_sk": "Predloženie eDokladov sa nepodarilo dokončiť."
+      },
+      "CPY-pres-outcome-error-title": {
+        "res": "cpy_pres_outcome_error_title",
+        "_sk": "Niečo sa pokazilo"
+      },
+      "CPY-pres-outcome-help-text": {
+        "res": "cpy_pres_outcome_help_text",
+        "_sk": "Ak si neviete rady, obráťte sa na podporu."
+      },
+      "CPY-pres-outcome-invalid-qr-title": {
+        "res": "cpy_pres_outcome_invalid_qr_title",
+        "_sk": "Tento QR kód nemožno použiť"
+      },
+      "CPY-pres-outcome-new-qr-hint": {
+        "res": "cpy_pres_outcome_new_qr_hint",
+        "_sk": "Na stránke overovateľa obnovte stránku, aby sa zobrazil nový QR kód, a naskenujte ho."
+      },
+      "CPY-pres-outcome-rescan": {
+        "res": "cpy_pres_outcome_rescan",
+        "_sk": "Naskenovať nový QR kód"
+      },
+      "CPY-pres-outcome-success-close": {
+        "res": "cpy_pres_outcome_success_close",
+        "_sk": "Zatvoriť"
+      },
+      "CPY-pres-outcome-success-text": {
+        "res": "cpy_pres_outcome_success_text",
+        "_sk": "Pokračujte na stránke overovateľa vo webovom prehliadači."
+      },
+      "CPY-pres-outcome-success-title": {
+        "res": "cpy_pres_outcome_success_title",
+        "_sk": "eDoklady boli predložené"
+      },
+      "CPY-pres-request-continue": {
+        "res": "cpy_pres_request_continue",
+        "_sk": "Pokračovať"
+      },
+      "CPY-pres-request-data-intro": {
+        "res": "cpy_pres_request_data_intro",
+        "placeholders": [
+          "document"
+        ],
+        "_sk": "Overovateľ žiada tieto údaje z eDokladu {document}:"
+      },
+      "CPY-pres-request-instructions": {
+        "res": "cpy_pres_request_instructions",
+        "_sk": "Vyberte, ktoré nepovinné údaje chcete predložiť."
+      },
+      "CPY-pres-request-mandatory-tag": {
+        "res": "cpy_pres_request_mandatory_tag",
+        "_sk": "Povinné"
+      },
+      "CPY-pres-request-no-field-error": {
+        "res": "cpy_pres_request_no_field_error",
+        "_sk": "Je potrebné vybrať aspoň 1 údaj z eDokladu. Ak nechcete predložiť žiadne údaje, odmietnite celú žiadosť."
+      },
+      "CPY-pres-request-optional-heading": {
+        "res": "cpy_pres_request_optional_heading",
+        "_sk": "Nepovinné údaje"
+      },
+      "CPY-pres-request-portal-label": {
+        "res": "cpy_pres_request_portal_label",
+        "_sk": "Overenie cez webový portál"
+      },
+      "CPY-pres-request-privacy-link": {
+        "res": "cpy_pres_request_privacy_link",
+        "_sk": "Zásady ochrany osobných údajov overovateľa"
+      },
+      "CPY-pres-request-reason-label": {
+        "res": "cpy_pres_request_reason_label",
+        "_sk": "Dôvod kontroly"
+      },
+      "CPY-pres-request-reject": {
+        "res": "cpy_pres_request_reject",
+        "_sk": "Odmietnuť"
+      },
+      "CPY-pres-request-service-label": {
+        "res": "cpy_pres_request_service_label",
+        "_sk": "Služba"
+      },
+      "CPY-pres-request-title": {
+        "res": "cpy_pres_request_title",
+        "_sk": "Overenie eDokladu"
+      },
+      "CPY-pres-request-trust-trusted": {
+        "res": "cpy_pres_request_trust_trusted",
+        "_sk": "Overený overovateľ"
+      },
+      "CPY-pres-request-trust-untrusted": {
+        "res": "cpy_pres_request_trust_untrusted",
+        "_sk": "Neoverený overovateľ"
+      },
+      "CPY-pres-request-untrusted-approve": {
+        "res": "cpy_pres_request_untrusted_approve",
+        "_sk": "Rozumiem riziku a chcem údaje predložiť"
+      },
+      "CPY-pres-request-untrusted-notice-title": {
+        "res": "cpy_pres_request_untrusted_notice_title",
+        "_sk": "Upozornenie"
+      },
+      "CPY-pres-request-verifier-claimed-label": {
+        "res": "cpy_pres_request_verifier_claimed_label",
+        "_sk": "Uvedený názov overovateľa (neoverený)"
+      },
+      "CPY-pres-request-verifier-label": {
+        "res": "cpy_pres_request_verifier_label",
+        "_sk": "Overovateľ"
+      },
+      "CPY-pres-rp-unverified": {
+        "res": "cpy_pres_rp_unverified",
+        "_sk": "Totožnosť overovateľa sa nepodarilo overiť, preto táto žiadosť nie je dôveryhodná."
+      },
+      "CPY-pres-scan-cancel": {
+        "res": "cpy_pres_scan_cancel",
+        "_sk": "Zrušiť"
+      },
+      "CPY-pres-scan-title": {
+        "res": "cpy_pres_scan_title",
+        "_sk": "Naskenujte QR kód zo stránky, kde chcete predložiť eDoklad"
+      },
+      "CPY-pres-scan-viewfinder-label": {
+        "res": "cpy_pres_scan_viewfinder_label",
+        "_sk": "Kamera na skenovanie QR kódu overovateľa"
+      },
+      "CPY-pres-sd-outcome-no-return-text": {
+        "res": "cpy_pres_sd_outcome_no_return_text",
+        "_sk": "Prepnite sa späť do aplikácie alebo prehliadača, v ktorom ste predloženie začali."
+      },
+      "CPY-pres-sd-return": {
+        "res": "cpy_pres_sd_return",
+        "placeholders": [
+          "service"
+        ],
+        "_sk": "Vrátiť sa do služby {service}"
+      },
+      "CPY-pres-sd-return-generic": {
+        "res": "cpy_pres_sd_return_generic",
+        "_sk": "Vrátiť sa do služby"
+      },
+      "CPY-pres-sending-title": {
+        "res": "cpy_pres_sending_title",
+        "_sk": "Prebieha odoslanie dát eDokladov"
+      },
+      "CPY-pres-untrusted-confirm-data": {
+        "res": "cpy_pres_untrusted_confirm_data",
+        "placeholders": [
+          "items"
+        ],
+        "_sk": "Overovateľovi budú odoslané tieto údaje: {items}"
+      },
+      "CPY-pres-untrusted-confirm-security": {
+        "res": "cpy_pres_untrusted_confirm_security",
+        "_sk": "Ako sa chrániť pred podvodmi, nájdete v aplikácii v časti Základné zásady bezpečnosti."
+      },
+      "CPY-pres-untrusted-confirm-title": {
+        "res": "cpy_pres_untrusted_confirm_title",
+        "_sk": "Naozaj chcete predložiť údaje neoverenému overovateľovi?"
+      },
+      "CPY-pres-untrusted-confirm-warning": {
+        "res": "cpy_pres_untrusted_confirm_warning",
+        "_sk": "Totožnosť overovateľa sa nepodarilo overiť, preto táto žiadosť nie je dôveryhodná. Ak overovateľa nepoznáte alebo ste žiadosť nečakali, údaje nepredkladajte."
+      },
+      "CPY-pres-offline-title": {
+        "res": "cpy_pres_offline_title",
+        "_sk": "Ste offline"
+      },
+      "CPY-pres-offline-text": {
+        "res": "cpy_pres_offline_text",
+        "_sk": "Čakáme na pripojenie k internetu."
+      },
+      "CPY-pres-offline-retry": {
+        "res": "cpy_pres_offline_retry",
+        "_sk": "Skúsiť znova"
+      }
+    },
+    "brand_overrides": {
+      "eudiw_v1": {
+        "CPY-home-title": {
+          "res": "cpy_home_title__eudiw_v1",
+          "_sk": "eDoklady"
+        }
+      }
+    }
+  },
+  "layouts": {
+    "TPL-sheet": {
+      "decision-steps": {
+        "attr": "decision-steps",
+        "default": "sheet",
+        "options": {
+          "sheet": {
+            "label": "Bottom sheet over the dimmed app (modal dialog)"
+          },
+          "page": {
+            "label": "Full screen page, no backdrop (same dialog DOM)"
+          }
+        },
+        "scope": [
+          "SCR-pres-auth",
+          "SCR-pres-request",
+          "SCR-pres-untrusted-confirm",
+          "SCR-pres-verification-code"
+        ],
+        "_source": "product/variants.yaml axes.decision-steps (week 0 moves it to TPL-sheet layouts:)"
+      }
+    }
+  },
+  "theme": {
+    "default_brand": "eudiw_v1",
+    "brands": [
+      "eudiw_v1",
+      "idsk"
+    ],
+    "default_mode": "light",
+    "kotlin": "eu.europa.ec.ux.theme.generated",
+    "profiles": {
+      "eudiw_v1": "PRF-eudiw-v1",
+      "idsk": "PRF-dvm"
+    },
+    "token_contract": "library/tokens/sys.contract.yaml schema_version 1"
+  },
+  "waived": [
+    "rp-registration-invalid",
+    "rp-overasking",
+    "disclosure-policy-denied"
+  ],
+  "_provisional": {
+    "rule": "PROVISIONAL fixture (M1b). Not exporter output. Keys starting with '_' are annotations; the runtime ignores them.",
+    "week0_adds": [
+      "context.*.default",
+      "context.*.derive",
+      "context./launch/uri",
+      "context./request/selection",
+      "context./flow/error_class",
+      "events.*.source",
+      "events.*.payload",
+      "services",
+      "states.*.invoke",
+      "states.*.back",
+      "states.*.restore",
+      "states.*.ui_state_when",
+      "states.*.on.* as ordered branch lists with inline guards and assign",
+      "states.<final>.exit {kind, ref, result}",
+      "entries",
+      "process_death",
+      "screens.*.a11y and nodes.*.a11y",
+      "screens.*.layout_axes",
+      "layouts (from variants.yaml)",
+      "copy.keys.*.res and brand_overrides.*.res",
+      "spec_hash definition"
+    ],
+    "l58_fix": "request-optional-selected TOGGLE_ITEM branches back to request-optional-only / request-no-selection at count 0; its CONTINUE is guarded; request-no-selection CONTINUE is an accepted no-op. Week 0 owns the real fix.",
+    "source_files": [
+      "experience/flows/FLW-pres-cross-device.yaml",
+      "experience/screens/SCR-pres-auth.yaml",
+      "experience/screens/SCR-pres-connecting.yaml",
+      "experience/screens/SCR-pres-outcome-auth-failed.yaml",
+      "experience/screens/SCR-pres-outcome-auth-unavailable.yaml",
+      "experience/screens/SCR-pres-outcome-cancelled.yaml",
+      "experience/screens/SCR-pres-outcome-document-invalid.yaml",
+      "experience/screens/SCR-pres-outcome-document-missing.yaml",
+      "experience/screens/SCR-pres-outcome-error.yaml",
+      "experience/screens/SCR-pres-outcome-expired.yaml",
+      "experience/screens/SCR-pres-outcome-invalid-qr.yaml",
+      "experience/screens/SCR-pres-outcome-success.yaml",
+      "experience/screens/SCR-pres-request.yaml",
+      "experience/screens/SCR-pres-scan-qr.yaml",
+      "experience/screens/SCR-pres-sending.yaml",
+      "experience/screens/SCR-pres-untrusted-confirm.yaml",
+      "experience/screens/SCR-pres-verification-code.yaml",
+      "library/elements/EL-app-bar.yaml",
+      "library/elements/EL-attribute-list.yaml",
+      "library/elements/EL-button.yaml",
+      "library/elements/EL-link.yaml",
+      "library/elements/EL-notice.yaml",
+      "library/elements/EL-qr-viewfinder.yaml",
+      "library/elements/EL-rp-identity.yaml",
+      "library/elements/EL-status-hero.yaml",
+      "library/elements/EL-text.yaml",
+      "library/templates/TPL-outcome.yaml",
+      "library/templates/TPL-progress.yaml",
+      "library/templates/TPL-scan.yaml",
+      "library/templates/TPL-sheet.yaml",
+      "product/copy/sk/BRF-001.yaml",
+      "product/copy/sk/brands/eudiw_v1.yaml",
+      "product/copy/sk/common.yaml",
+      "product/rules/RUL-pres-request-instructions-visible.yaml",
+      "product/rules/RUL-pres-request-no-selection-blocks-continue.yaml",
+      "product/rules/RUL-pres-request-no-selection-error.yaml",
+      "product/rules/RUL-pres-request-privacy-link.yaml",
+      "product/rules/RUL-pres-request-service-line-same-device.yaml",
+      "product/rules/RUL-pres-request-trusted-identity.yaml",
+      "product/rules/RUL-pres-request-untrusted-identity.yaml",
+      "product/rules/RUL-pres-sd-no-return-text.yaml",
+      "product/rules/RUL-pres-sd-return-label.yaml",
+      "product/rules/RUL-pres-sd-return-replaces-close.yaml",
+      "product/rules/RUL-pres-sd-return.yaml",
+      "product/rules/RUL-pres-untrusted-confirm-service-line-same-device.yaml",
+      "product/rules/RUL-pres-untrusted-explicit-approval.yaml",
+      "product/rules/RUL-pres-url-check-visible.yaml",
+      "product/theme/eudiw_v1/components.yaml",
+      "product/theme/idsk/components.yaml",
+      "product/variants.yaml"
+    ]
+  },
+  "_test_copy": "M5b test (ii): the PROVISIONAL bundle plus the state offline-loading; never shipped, never in ux-spec/"
+}

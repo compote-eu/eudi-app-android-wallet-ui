@@ -16,20 +16,22 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
-import android.net.Uri
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
+import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsItemUi
 import eu.europa.ec.dashboardfeature.ui.settings.model.SettingsMenuItemType
 import eu.europa.ec.dashboardfeature.util.mockedChangeLogUrl
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockResourceProviderStrings
-import eu.europa.ec.testfeature.util.mockedUriPath1
-import eu.europa.ec.testfeature.util.mockedUriPath2
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.settings_screen_option_biometrics_authentication
+import eu.europa.ec.shared.resources.settings_screen_option_changelog
+import eu.europa.ec.shared.resources.settings_screen_option_retrieve_logs
+import eu.europa.ec.shared.resources.settings_screen_option_registration_check
+import eu.europa.ec.shared.resources.settings_screen_option_show_batch_issuance_counter
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
@@ -47,6 +49,8 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.io.File
+import org.junit.Assert.assertTrue
 
 class TestSettingsInteractor {
 
@@ -63,12 +67,21 @@ class TestSettingsInteractor {
     private lateinit var logController: LogController
 
     @Mock
-    private lateinit var resourceProvider: ResourceProvider
+    private lateinit var strings: StringCatalog
 
     @Mock
     private lateinit var prefKeys: PrefKeys
 
+    @Mock
+    private lateinit var registrationCheckProvider: RegistrationCheckProvider
+
     private lateinit var interactor: SettingsInteractor
+
+    // The REAL bridge, not a stub: what these cases assert is end-to-end behaviour over ConfigLogic,
+    // LogController, PrefKeys and BiometricInteractor, and that is worth keeping intact now that the
+    // interactor itself is shared. Held as the concrete type because `retrieveLogFiles` is not on
+    // the bridge contract, being an ArrayList<Uri>.
+    private lateinit var platform: AndroidSettingsPlatformBridge
 
     private lateinit var closeable: AutoCloseable
 
@@ -76,13 +89,22 @@ class TestSettingsInteractor {
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
 
-        interactor = SettingsInteractorImpl(
+        platform = AndroidSettingsPlatformBridge(
             biometricInteractor = biometricInteractor,
             configLogic = configLogic,
             logController = logController,
-            resourceProvider = resourceProvider,
             prefKeys = prefKeys,
+            registrationCheckProvider = registrationCheckProvider,
         )
+
+        interactor = SettingsInteractorImpl(
+            strings = strings,
+            platform = platform,
+        )
+
+        // Every getSettingsItemsUi call reads it for the switch position; the tests that care about
+        // the value override this.
+        mockRegistrationCheckPreference(response = false)
     }
 
     @After
@@ -142,21 +164,33 @@ class TestSettingsInteractor {
     }
     //endregion
 
-    //region retrieveLogFileUris
+    //region logFilePaths
     @Test
-    fun `Given a list of logs via logController, When retrieveLogFileUris is called, Then expected logs are returned`() {
+    fun `Given log files via logController, When logFilePaths is called, Then paths are returned`() {
+        // The bridge used to hand back FileProvider Uris; building those moved to
+        // `PlatformScreenActions.shareFiles`, so what it owes the shared contract is paths — which is
+        // the shape iOS can answer too.
         // Given
-        val mockedArrayList = arrayListOf(
-            Uri.parse(mockedUriPath1),
-            Uri.parse(mockedUriPath2)
+        val files = listOf(
+            File("/data/logs/eudi-android-wallet-logs0.txt"),
+            File("/data/logs/eudi-android-wallet-logs1.txt"),
         )
-        whenever(logController.retrieveLogFileUris()).thenReturn(mockedArrayList)
+        whenever(logController.retrieveLogFiles()).thenReturn(files)
 
         // When
-        val expectedLogFileUris = interactor.retrieveLogFileUris()
+        val paths = platform.logFilePaths()
 
         // Then
-        assertEquals(mockedArrayList, expectedLogFileUris)
+        assertEquals(files.map { it.absolutePath }, paths)
+    }
+
+    @Test
+    fun `Given no log files, When logFilePaths is called, Then it is empty so the row is not offered`() {
+        // Given
+        whenever(logController.retrieveLogFiles()).thenReturn(emptyList())
+
+        // When & Then
+        assertTrue(platform.logFilePaths().isEmpty())
     }
     //endregion
 
@@ -170,7 +204,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = true)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = true,
             )
 
@@ -178,15 +211,18 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
             // Then
-            // 1. Size = 2 (SHOW_BATCH_ISSUANCE_COUNTER + RETRIEVE_LOGS)
-            assertEquals(2, settingsItems.size)
+            // 1. Size = 3 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS)
+            assertEquals(3, settingsItems.size)
 
             // 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
             val firstItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(firstItem, isChecked = true)
 
             // 3. Second item: RETRIEVE_LOGS
-            val secondItem = settingsItems[1]
+            // By type, not position: inserting a row above used to break these.
+            val secondItem = settingsItems.first {
+                it.type == SettingsMenuItemType.RETRIEVE_LOGS
+            }
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, secondItem.type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS.itemId, secondItem.data.itemId)
             val mainContent2 =
@@ -211,7 +247,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = true)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = false,
             )
 
@@ -221,15 +256,19 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = sampleChangelogUrl)
 
             // Then
-            // 1. Size = 3 (SHOW_BATCH_ISSUANCE_COUNTER + RETRIEVE_LOGS + CHANGELOG)
-            assertEquals(3, settingsItems.size)
+            // 1. Size = 4 (SHOW_BATCH_ISSUANCE_COUNTER + REGISTRATION_CHECK + RETRIEVE_LOGS
+            //    + CHANGELOG)
+            assertEquals(4, settingsItems.size)
 
             // 2. First item: SHOW_BATCH_ISSUANCE_COUNTER
             val firstItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(firstItem, isChecked = true)
 
             // 3. Second item: RETRIEVE_LOGS
-            val secondItem = settingsItems[1]
+            // By type, not position: inserting a row above used to break these.
+            val secondItem = settingsItems.first {
+                it.type == SettingsMenuItemType.RETRIEVE_LOGS
+            }
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, secondItem.type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS.itemId, secondItem.data.itemId)
             val mainContent2 =
@@ -243,7 +282,9 @@ class TestSettingsInteractor {
             assertEquals(AppIcons.KeyboardArrowRight, trailingIcon2.iconData)
 
             // 4. Third item: CHANGELOG
-            val thirdItem = settingsItems[2]
+            val thirdItem = settingsItems.first {
+                it.type == SettingsMenuItemType.CHANGELOG
+            }
             assertEquals(SettingsMenuItemType.CHANGELOG, thirdItem.type)
             assertEquals(SettingsMenuItemType.CHANGELOG.itemId, thirdItem.data.itemId)
             val mainContent3 =
@@ -270,7 +311,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = true)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = true,
                 deviceSupportsBiometrics = true,
             )
@@ -279,7 +319,7 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
             // Then
-            assertEquals(3, settingsItems.size)
+            assertEquals(4, settingsItems.size)
 
             val firstItem = settingsItems[0]
             assertEquals(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, firstItem.type)
@@ -301,7 +341,9 @@ class TestSettingsInteractor {
             val secondItem = settingsItems[1]
             assertShowBatchIssuanceCounterItem(secondItem, isChecked = true)
 
-            val thirdItem = settingsItems[2]
+            val thirdItem = settingsItems.first {
+                it.type == SettingsMenuItemType.RETRIEVE_LOGS
+            }
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, thirdItem.type)
             assertEquals(SettingsMenuItemType.RETRIEVE_LOGS.itemId, thirdItem.data.itemId)
             val mainContent3 =
@@ -326,7 +368,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = true)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = true,
                 deviceSupportsBiometrics = true,
             )
@@ -335,7 +376,7 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
 
             // Then
-            assertEquals(3, settingsItems.size)
+            assertEquals(4, settingsItems.size)
 
             val biometricsItem = settingsItems[0]
             assertEquals(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, biometricsItem.type)
@@ -356,7 +397,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = true)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = false,
                 deviceSupportsBiometrics = true,
             )
@@ -367,11 +407,12 @@ class TestSettingsInteractor {
             val settingsItems = interactor.getSettingsItemsUi(changelogUrl = sampleChangelogUrl)
 
             // Then
-            assertEquals(4, settingsItems.size)
+            assertEquals(5, settingsItems.size)
             assertEquals(SettingsMenuItemType.BIOMETRICS_AUTHENTICATION, settingsItems[0].type)
             assertEquals(SettingsMenuItemType.SHOW_BATCH_ISSUANCE_COUNTER, settingsItems[1].type)
-            assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, settingsItems[2].type)
-            assertEquals(SettingsMenuItemType.CHANGELOG, settingsItems[3].type)
+            assertEquals(SettingsMenuItemType.REGISTRATION_CHECK, settingsItems[2].type)
+            assertEquals(SettingsMenuItemType.RETRIEVE_LOGS, settingsItems[3].type)
+            assertEquals(SettingsMenuItemType.CHANGELOG, settingsItems[4].type)
         }
 
     @Test
@@ -383,7 +424,6 @@ class TestSettingsInteractor {
             mockShowBatchIssuanceCounterPreference(response = false)
 
             mockStringsNeededForGetSettingsItemsUi(
-                resourcesProvider = resourceProvider,
                 changeLogUrlIsNull = true,
             )
 
@@ -394,33 +434,73 @@ class TestSettingsInteractor {
             val showBatchItem = settingsItems[0]
             assertShowBatchIssuanceCounterItem(showBatchItem, isChecked = false)
         }
+    @Test
+    fun `Given registration check is enabled, When getSettingsItemsUi is called, Then its switch is checked`() =
+        coroutineRule.runTest {
+            whenever(biometricInteractor.getBiometricsAvailability())
+                .thenReturn(BiometricsAvailability.Failure(biometricsFailureText))
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockRegistrationCheckPreference(response = true)
+            mockStringsNeededForGetSettingsItemsUi(changeLogUrlIsNull = true)
+
+            val settingsItems = interactor.getSettingsItemsUi(changelogUrl = null)
+
+            val registrationItem = settingsItems.first {
+                it.type == SettingsMenuItemType.REGISTRATION_CHECK
+            }
+            val trailingSwitch =
+                registrationItem.data.trailingContentData as ListItemTrailingContentDataUi.Switch
+            assertEquals(true, trailingSwitch.switchData.isChecked)
+        }
+
+    @Test
+    fun `Given registration check is enabled, When toggleRegistrationCheck is called, Then it is disabled`() =
+        coroutineRule.runTest {
+            mockRegistrationCheckPreference(response = true)
+
+            interactor.toggleRegistrationCheck()
+
+            verify(registrationCheckProvider, times(1))
+                .setEnabled(enabled = false)
+        }
     //endregion
 
-    //region toggleBiometricsAuthentication
+    //region setBiometricsAuthentication
+    // These used to drive a `toggle` that read the stored value and inverted it. The caller now says
+    // which value it wants, because it has to choose when the write happens relative to the prompt —
+    // see `SettingsViewModel.confirmBiometricsChange`. So there is nothing to read here any more, and
+    // that absence is the point: no read means no inversion to get the wrong way round.
     @Test
-    fun `Given Biometrics user selection is false, When toggleBiometricsAuthentication is called, Then true is stored`() =
+    fun `When setBiometricsAuthentication is called with true, Then true is stored`() =
         coroutineRule.runTest {
-            // Given
-            whenever(biometricInteractor.getBiometricUserSelection()).thenReturn(false)
-
             // When
-            interactor.toggleBiometricsAuthentication()
+            interactor.setBiometricsAuthentication(enabled = true)
 
             // Then
             verify(biometricInteractor).storeBiometricsUsageDecision(true)
         }
 
     @Test
-    fun `Given Biometrics user selection is true, When toggleBiometricsAuthentication is called, Then false is stored`() =
+    fun `When setBiometricsAuthentication is called with false, Then false is stored`() =
+        coroutineRule.runTest {
+            // When
+            interactor.setBiometricsAuthentication(enabled = false)
+
+            // Then
+            verify(biometricInteractor).storeBiometricsUsageDecision(false)
+        }
+
+    @Test
+    fun `Given biometrics are enabled, When isBiometricsEnabled is called, Then the platform is asked`() =
         coroutineRule.runTest {
             // Given
             whenever(biometricInteractor.getBiometricUserSelection()).thenReturn(true)
 
             // When
-            interactor.toggleBiometricsAuthentication()
+            val enabled = interactor.isBiometricsEnabled()
 
             // Then
-            verify(biometricInteractor).storeBiometricsUsageDecision(false)
+            assertTrue(enabled)
         }
     //endregion
 
@@ -457,35 +537,29 @@ class TestSettingsInteractor {
         whenever(suspend { prefKeys.getShowBatchIssuanceCounter() }).thenReturn(response)
     }
 
+    private fun mockRegistrationCheckPreference(response: Boolean) {
+        whenever(suspend { registrationCheckProvider.isEnabled() }).thenReturn(response)
+    }
+
     private fun mockStringsNeededForGetSettingsItemsUi(
-        resourcesProvider: ResourceProvider,
         changeLogUrlIsNull: Boolean,
         deviceSupportsBiometrics: Boolean = false,
     ) {
-        mockResourceProviderStrings(
-            resourcesProvider,
-            listOf(
-                R.string.settings_screen_option_retrieve_logs to retrieveLogsText,
-                R.string.settings_screen_option_show_batch_issuance_counter to showBatchIssuanceCounterText,
-            )
-        )
+        whenever(strings[Res.string.settings_screen_option_retrieve_logs])
+            .thenReturn(retrieveLogsText)
+        whenever(strings[Res.string.settings_screen_option_show_batch_issuance_counter])
+            .thenReturn(showBatchIssuanceCounterText)
+        whenever(strings[Res.string.settings_screen_option_registration_check])
+            .thenReturn(registrationCheckText)
 
         if (deviceSupportsBiometrics) {
-            mockResourceProviderStrings(
-                resourcesProvider,
-                listOf(
-                    R.string.settings_screen_option_biometrics_authentication to biometricsAuthenticationText,
-                )
-            )
+            whenever(strings[Res.string.settings_screen_option_biometrics_authentication])
+                .thenReturn(biometricsAuthenticationText)
         }
 
         if (!changeLogUrlIsNull) {
-            mockResourceProviderStrings(
-                resourcesProvider,
-                listOf(
-                    R.string.settings_screen_option_changelog to changelogText,
-                )
-            )
+            whenever(strings[Res.string.settings_screen_option_changelog])
+                .thenReturn(changelogText)
         }
     }
     //endregion
@@ -509,6 +583,7 @@ class TestSettingsInteractor {
     //region Mocked objects needed for tests.
     private val biometricsAuthenticationText = "Authenticate with biometrics"
     private val retrieveLogsText = "Retrieve logs"
+    private val registrationCheckText = "Check Registration Certificates"
     private val showBatchIssuanceCounterText = "Batch issuance counter"
     private val changelogText = "Changelog"
     private val biometricsFailureText = "Biometrics unavailable"

@@ -19,29 +19,45 @@ package eu.europa.ec.dashboardfeature.di
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.controller.log.LogController
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
+import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.config.WalletCoreConfig
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
 import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
+import eu.europa.ec.dashboardfeature.interactor.AndroidDocumentDetailsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
 import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
+import eu.europa.ec.dashboardfeature.interactor.AndroidDocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
 import eu.europa.ec.dashboardfeature.interactor.HomeInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.AndroidSettingsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
 import eu.europa.ec.dashboardfeature.interactor.SettingsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
 import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractorImpl
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
+import eu.europa.ec.dashboardfeature.interactor.AndroidTransactionsPlatformBridge
 import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.StringResolver
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -54,97 +70,169 @@ class FeatureDashboardModule
 
 @Factory
 fun provideDashboardInteractor(
-    resourceProvider: ResourceProvider,
+    strings: StringCatalog,
 ): DashboardInteractor = DashboardInteractorImpl(
-    resourceProvider,
+    strings = strings,
+)
+
+/**
+ * Android's half of the settings screen: the build's version and changelog URL, the log files, the
+ * batch-counter preference and the real biometric prompt.
+ */
+@Factory
+fun provideSettingsPlatformBridge(
+    biometricInteractor: BiometricInteractor,
+    configLogic: ConfigLogic,
+    logController: LogController,
+    prefKeys: PrefKeys,
+    registrationCheckProvider: RegistrationCheckProvider,
+): SettingsPlatformBridge = AndroidSettingsPlatformBridge(
+    biometricInteractor = biometricInteractor,
+    configLogic = configLogic,
+    logController = logController,
+    prefKeys = prefKeys,
+    registrationCheckProvider = registrationCheckProvider,
 )
 
 @Factory
 fun provideSettingsInteractor(
-    biometricInteractor: BiometricInteractor,
-    configLogic: ConfigLogic,
-    logController: LogController,
-    resourceProvider: ResourceProvider,
-    prefKeys: PrefKeys,
+    strings: StringCatalog,
+    platform: SettingsPlatformBridge,
 ): SettingsInteractor = SettingsInteractorImpl(
-    biometricInteractor,
-    configLogic,
-    logController,
-    resourceProvider,
-    prefKeys,
+    strings = strings,
+    platform = platform,
 )
 
 @Factory
 fun provideHomeInteractor(
     resourceProvider: ResourceProvider,
-    walletCoreDocumentsController: WalletCoreDocumentsController,
+    walletEngine: WalletEngine,
     walletCoreConfig: WalletCoreConfig,
 ): HomeInteractor = HomeInteractorImpl(
     resourceProvider,
-    walletCoreDocumentsController,
+    walletEngine,
     walletCoreConfig,
 )
 
+/**
+ * Android's half of the documents feature: wallet-core deferred issuance and deletion, plus the
+ * preferences and build config the shared interactor cannot read for itself.
+ */
 @Factory
-fun provideDocumentsInteractor(
+fun provideDocumentsPlatformBridge(
     resourceProvider: ResourceProvider,
     documentsController: WalletCoreDocumentsController,
-    filterValidator: FilterValidator,
+    walletCoreConfig: WalletCoreConfig,
     configLogic: ConfigLogic,
     prefKeys: PrefKeys,
-): DocumentsInteractor =
-    DocumentsInteractorImpl(
-        resourceProvider,
-        documentsController,
-        filterValidator,
-        configLogic,
-        prefKeys,
+): DocumentsPlatformBridge =
+    AndroidDocumentsPlatformBridge(
+        resourceProvider = resourceProvider,
+        walletCoreDocumentsController = documentsController,
+        walletCoreConfig = walletCoreConfig,
+        configLogic = configLogic,
+        prefKeys = prefKeys,
     )
 
 @Factory
-fun provideTransactionInteractor(
-    resourceProvider: ResourceProvider,
+fun provideDocumentsInteractor(
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
     filterValidator: FilterValidator,
-    walletCoreDocumentsController: WalletCoreDocumentsController,
+    platform: DocumentsPlatformBridge,
+): DocumentsInteractor =
+    DocumentsInteractorImpl(
+        strings = strings,
+        walletEngine = walletEngine,
+        filterValidator = filterValidator,
+        platform = platform,
+    )
+
+/** Android's transaction-log reader; see `AndroidTransactionsPlatformBridge` for the mapping. */
+@Factory
+fun provideTransactionsPlatformBridge(
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
+    walletCoreTransactionRecordingController: WalletCoreTransactionRecordingController,
+): TransactionsPlatformBridge = AndroidTransactionsPlatformBridge(
+    walletCoreTransactionLogController = walletCoreTransactionLogController,
+    walletCoreTransactionRecordingController = walletCoreTransactionRecordingController,
+)
+
+@Factory
+fun provideTransactionInteractor(
+    strings: StringCatalog,
+    stringResolver: StringResolver,
+    filterValidator: FilterValidator,
+    platform: TransactionsPlatformBridge,
 ): TransactionsInteractor = TransactionsInteractorImpl(
-    resourceProvider,
-    filterValidator,
-    walletCoreDocumentsController
+    strings = strings,
+    stringResolver = stringResolver,
+    filterValidator = filterValidator,
+    platform = platform,
 )
 
 @Factory
 fun provideDocumentSignInteractor(
-    resourceProvider: ResourceProvider,
+    stringCatalog: StringCatalog,
 ): DocumentSignInteractor = DocumentSignInteractorImpl(
-    resourceProvider,
+    stringCatalog,
 )
 
+/**
+ * Android's half of the details feature: the wallet-core claim tree, deletion, re-issuance and the
+ * biometric prompt.
+ */
 @Factory
-fun provideDocumentDetailsInteractor(
+fun provideDocumentDetailsPlatformBridge(
     walletCoreDocumentsController: WalletCoreDocumentsController,
+    walletEngine: WalletEngine,
     deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
     resourceProvider: ResourceProvider,
     uuidProvider: UuidProvider,
     configLogic: ConfigLogic,
     prefKeys: PrefKeys,
-): DocumentDetailsInteractor =
-    DocumentDetailsInteractorImpl(
-        walletCoreDocumentsController,
-        deviceAuthenticationInteractor,
-        resourceProvider,
-        uuidProvider,
-        configLogic,
-        prefKeys,
+): DocumentDetailsPlatformBridge =
+    AndroidDocumentDetailsPlatformBridge(
+        walletCoreDocumentsController = walletCoreDocumentsController,
+        walletEngine = walletEngine,
+        deviceAuthenticationInteractor = deviceAuthenticationInteractor,
+        resourceProvider = resourceProvider,
+        uuidProvider = uuidProvider,
+        configLogic = configLogic,
+        prefKeys = prefKeys,
     )
 
 @Factory
+fun provideDocumentDetailsInteractor(
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
+    platform: DocumentDetailsPlatformBridge,
+): DocumentDetailsInteractor =
+    DocumentDetailsInteractorImpl(
+        strings = strings,
+        walletEngine = walletEngine,
+        platform = platform,
+    )
+
+/** The shared presentation-history interactor over Android's transaction log. */
+@Factory
+fun provideTransactionHistoryInteractor(
+    platform: TransactionsPlatformBridge,
+    strings: StringCatalog,
+): TransactionHistoryInteractor = TransactionHistoryInteractorImpl(
+    platform = platform,
+    strings = strings,
+)
+
+/** The shared details interactor over Android's transaction-log reader. */
+@Factory
 fun provideTransactionDetailsInteractor(
-    walletCoreDocumentsController: WalletCoreDocumentsController,
-    resourceProvider: ResourceProvider,
-    uuidProvider: UuidProvider
+    platform: TransactionsPlatformBridge,
+    strings: StringCatalog,
+    uuidProvider: UuidProvider,
 ): TransactionDetailsInteractor =
     TransactionDetailsInteractorImpl(
-        walletCoreDocumentsController,
-        resourceProvider,
-        uuidProvider
+        platform = platform,
+        strings = strings,
+        uuidProvider = uuidProvider,
     )

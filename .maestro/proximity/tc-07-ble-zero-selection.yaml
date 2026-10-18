@@ -1,0 +1,42 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.verifier.dev
+---
+# TC-07 — zero attribute selection on the consent screen; Share should
+# become disabled and nothing should ever be sent.
+#
+# Physical prerequisite (NOT a script step): same one-time camera rig as
+# TC-02/03/04/13/14 - see README.md in this directory.
+#
+# Android's half is the same request-creation + QR scan steps as
+# TC-03/13/14 - full PID, no exclusions. What's different is entirely on
+# the iOS side (tc-07-ios-zero-selection.py): every requested field is
+# deselected on the consent screen (not just some, like TC-04's partial
+# scenario), and the test asserts the Share button becomes disabled
+# rather than attempting to tap it.
+#
+# Because Share is expected to never be tappable once zero fields are
+# selected, Android is expected to NEVER receive a response - this
+# flow's own final assertion is expected to FAIL/timeout, same as
+# TC-13/14. The orchestrator (tc-07-ble-zero-selection.sh) does not
+# treat this flow's non-zero exit as fatal.
+
+- launchApp:
+    clearState: true
+- tapOn: "Tap to create request"
+- tapOn: "Full PID"
+- tapOn: "Done"
+
+- tapOn: "Scan QR Code"
+
+# Engagement + BLE connection + the request send happen here exactly as
+# in TC-03/13/14. The response is expected to NEVER arrive, since the
+# iOS script deselects every field and Share is expected to stay
+# disabled the whole time - a 45s bound (matching TC-13/14) is generous
+# enough to rule out "was just slow" without wasting rig time.
+- extendedWaitUntil:
+    visible: "Show documents"
+    timeout: 45000

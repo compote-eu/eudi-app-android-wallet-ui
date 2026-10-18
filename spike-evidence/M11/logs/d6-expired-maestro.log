@@ -1,0 +1,23 @@
+Running on spike_pixel
+ > Flow m5b-expired
+Open ${LINK}... COMPLETED
+Tap on (Optional) "Open"... WARNED
+
+
+ Warning: Element not found: Text matching regex: Open
+Run flow when id: pin_text_field_0 is visible...
+  Tap on id: pin_text_field_0... COMPLETED
+  Input text 123456... COMPLETED
+Run flow when id: pin_text_field_0 is visible... COMPLETED
+Assert that (Optional) id: ux-state-connecting is visible... WARNED
+
+
+ Warning: Assertion is false: id: ux-state-connecting is visible
+Assert that id: ux-state-error-expired is visible... COMPLETED
+Assert that id: hero is visible... COMPLETED
+Assert that id: retry is visible... COMPLETED
+Take screenshot d6-expired-1-error-expired... COMPLETED
+Tap on id: close... COMPLETED
+Wait for animation to end within 5000 ms... COMPLETED
+Assert that id: ux-state-error-expired is not visible... COMPLETED
+Take screenshot d6-expired-2-home... COMPLETED

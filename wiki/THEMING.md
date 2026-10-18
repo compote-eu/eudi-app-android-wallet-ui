@@ -34,7 +34,7 @@ links here for the full detail.
 | Layer | What it covers | Where it lives |
 | --- | --- | --- |
 | 1. Compose theme | Colors, typography, fonts, shapes, dimensions | `resources-logic` module, package `eu.europa.ec.resourceslogic.theme` |
-| 2. Branding assets | In-app logos, launcher icon, app display name, package id, brand strings, splash screen, system bars, host XML theme | `resources-logic` resources + `assembly-logic` + `app` + `build-logic` |
+| 2. Branding assets | In-app logos, launcher icon, app display name, package id, brand strings, splash screen, system bars, host XML theme | `resources-logic` resources + `assembly-logic` + `androidApp` + `build-logic` |
 | 3. Sub-SDK theming | The RQES signing UI carries its own theme and translations | `business-logic` (`RQESConfigImpl`) |
 
 ### The Compose theme: `ThemeManager`
@@ -97,10 +97,10 @@ The minimum set of files to change for a full rebrand. Each row links to its det
 | Fonts                              | [`res/font/`](../resources-logic/src/main/res/font) + [`theme/values/ThemeTypography.kt`](../resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/values/ThemeTypography.kt)                                   | See [Typography and fonts](#typography-and-fonts).                                               |
 | Type scale                         | [`theme/values/ThemeTypography.kt`](../resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/values/ThemeTypography.kt)                                                                                         | 15 Material 3 text styles.                                                                       |
 | Corner shapes                      | [`theme/values/ThemeShapes.kt`](../resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/values/ThemeShapes.kt)                                                                                                 | See [Shapes](#shapes).                                                                           |
-| In-app logos                       | [`res/drawable/ic_logo_icon.xml`](../resources-logic/src/main/res/drawable/ic_logo_icon.xml), `ic_logo_icon_and_text.xml`                                                                                                 | Brand colors are baked into the vectors. See [Logos](#logos-and-in-app-imagery).                 |
+| In-app logos                       | [`composeResources/drawable/ic_logo_icon.xml`](../shared-ui/src/commonMain/composeResources/drawable/ic_logo_icon.xml), `ic_logo_lockup_mark.xml`, `ic_logo_lockup_wordmark.xml`                                           | Mark colors are baked in; the wordmark is tinted from the theme. See [Logos](#logos-and-in-app-imagery). |
 | Launcher icon                      | `resources-logic/src/demo/res/mipmap-*` **and** `resources-logic/src/dev/res/mipmap-*` (foreground per flavor) + shared [`ic_launcher_background.xml`](../resources-logic/src/main/res/values/ic_launcher_background.xml) | Icon bitmaps per flavor; background color is shared. See [Launcher icon](#launcher-icon).        |
 | App display name                   | [`assembly-logic/build.gradle.kts`](../assembly-logic/build.gradle.kts) (`appName`) + [`AppFlavor.kt`](../build-logic/convention/src/main/kotlin/project/convention/logic/AppFlavor.kt) (suffix)                          | See [App name](#app-name-and-package-identity).                                                  |
-| Package / application id           | `app/build.gradle.kts` (`applicationId`) + `AppFlavor.kt` (`.dev` suffix)                                                                                                                                                 | Don't change after public release.                                                               |
+| Package / application id           | `androidApp/build.gradle.kts` (`applicationId`) + `AppFlavor.kt` (`.dev` suffix)                                                                                                                                                 | Don't change after public release.                                                               |
 | Splash (OS window)                 | [`res/values-v31/themes.xml`](../resources-logic/src/main/res/values-v31/themes.xml)                                                                                                                                      | See [Splash screen](#splash-screen).                                                             |
 | Brand strings (product name in UI) | [`res/values/strings.xml`](../resources-logic/src/main/res/values/strings.xml) (+ localized variants)                                                                                                                     | Search for `EUDI`/`Wallet`. See [Brand strings](#brand-strings).                                 |
 | System bars (status/navigation)    | [`MainActivity.kt`](../assembly-logic/src/main/java/eu/europa/ec/assemblylogic/ui/MainActivity.kt) (`enableEdgeToEdge`)                                                                                                   | Edge-to-edge — **not** the XML theme. See [Window chrome](#window-chrome-and-system-bars).       |
@@ -235,15 +235,19 @@ theme. Treat the theme's `screenPadding` as advisory only.
 ### The two brand logos
 
 The wallet uses two vector logos in
-[`resources-logic/src/main/res/drawable/`](../resources-logic/src/main/res/drawable):
+[`shared-ui/src/commonMain/composeResources/drawable/`](../shared-ui/src/commonMain/composeResources/drawable):
 
 | Drawable                    | `AppIcons` key             | Where it appears                                                                                                                                                |
 |-----------------------------|----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `ic_logo_icon.xml`          | `AppIcons.LogoIcon`        | [Splash screen](../startup-feature/src/main/java/eu/europa/ec/startupfeature/ui/splash/SplashScreen.kt) — the icon-only mark                                    |
-| `ic_logo_icon_and_text.xml` | `AppIcons.LogoIconAndText` | Content header, via [`AppIconAndText`](../ui-logic/src/main/java/eu/europa/ec/uilogic/component/AppIconAndText.kt) — a single combined icon-plus-wordmark image |
+| `ic_logo_icon.xml`          | `AppIcons.LogoIcon`        | [Splash screen](../shared-ui/src/commonMain/kotlin/eu/europa/ec/startupfeature/ui/splash/SplashScreen.kt) — the icon-only mark (a shared screen; renders on Android and iOS)                                    |
+| `ic_logo_lockup_mark.xml`     | `AppIcons.LogoIconAndText` | Content header, via [`AppIconAndText`](../ui-logic/src/main/java/eu/europa/ec/uilogic/component/AppIconAndText.kt) — the coloured mark of the lockup |
+| `ic_logo_lockup_wordmark.xml` | *(none — used directly)*   | The lockup's "EU Digital Identity Wallet" text, overlaid by `AppIconAndText` and **tinted from `MaterialTheme.colorScheme.onSurface`** so it follows light/dark |
 
-The mapping from key to drawable lives in
-[`AppIcons.kt`](../ui-logic/src/main/java/eu/europa/ec/uilogic/component/AppIcons.kt).
+The key-to-drawable mapping lives in
+[`AppIconDrawables.kt`](../shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/AppIconDrawables.kt)
+(`AppIconKey.drawableResource`), and the `AppIcons` aliases in
+[`AppIcons.kt`](../shared-ui/src/commonMain/kotlin/eu/europa/ec/uilogic/component/AppIcons.kt).
+Both are commonMain, so one mapping serves Android and iOS.
 
 ### How to swap them
 
@@ -252,12 +256,26 @@ own vectors (keep the file names so the `AppIcons` mapping and all call sites ke
 
 > **Gotcha — logo colors are baked in.** The reference logos hardcode their brand colors inside the
 > `<path android:fillColor="...">` entries (e.g. `#0048D2`). They do **not** follow the color theme.
-> If you want a logo that adapts to light/dark or to `colorPrimary`, author a single-color vector and
-> tint it (e.g. `android:tint="?attr/colorPrimary"` or `fillColor="@android:color/white"` combined
-> with a Compose tint at the call site).
+> If you want a logo that adapts to light/dark, author a single-color vector and apply the tint at the
+> call site in Compose (`WrapIcon(customTint = …)`), **not** in the XML.
+>
+> **These are compose-resources drawables now, and its vector parser is stricter than aapt's.** It
+> supports only literal colors: `?attr/…` theme references, `@color/…` and `@android:color/…` are not
+> resolved, and `android:tint` on the `<vector>` root is **ignored** rather than applied. Inline
+> `<aapt:attr>` gradients are unsupported too. If you bring your own vectors, keep every `fillColor` a
+> literal `#AARRGGBB` and do colouring in Compose.
+>
+> The lockup is the worked example. Upstream it was a single asset painting its wordmark with
+> `?colorOnSurface`; it is now split into `ic_logo_lockup_mark.xml` (brand colours, untinted) and
+> `ic_logo_lockup_wordmark.xml` (tinted at render time). Both keep the original 161x52 viewport, so
+> `AppIconAndText` stacks them with `matchParentSize()` and the artwork is unchanged apart from the
+> wordmark following the theme — on iOS as well, which the XML attribute never did.
 
-The `drawable/` folder also contains ~50 functional UI icons (`ic_*.xml`). These are generally not
-brand-specific, but review them if your design system requires custom iconography.
+The same folder holds ~50 functional UI icons (`ic_*.xml`). These are generally not brand-specific,
+but review them if your design system requires custom iconography. Adding one means: drop the vector
+in `composeResources/drawable/`, add an `AppIconKey` entry, and add a branch to each resolver
+(`AppIconKey.drawableResource` in :shared-ui, `contentDescriptionRes`/`imageVector` in :ui-logic) —
+the `when`s are exhaustive, so a missing branch is a compile error rather than a blank icon.
 
 ## Launcher icon
 
@@ -301,7 +319,7 @@ for your brand; keep suffixes (if any) for non-production builds only.
 
 ### Application id
 
-The package / application id is set in `app/build.gradle.kts` (`applicationId`), with a `.dev`
+The package / application id is set in `androidApp/build.gradle.kts` (`applicationId`), with a `.dev`
 suffix applied to the `dev` flavor via `AppFlavor.kt`. Use a reverse-DNS id you own, e.g.
 `eu.example.wallet`. **Do not change it after public release** unless you intend to publish a
 separate app. See the production table in

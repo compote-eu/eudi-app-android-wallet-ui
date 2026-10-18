@@ -1,0 +1,55 @@
+PASS baseline 358/0 (47s)
+PASS d8b-1 358/0 (43s)
+FAIL d8b-2 358/4 gradle rc=1 (50s) -> build/spike-gate/regen-smoke/d8b-2.log
+  FAILED ux-spike:FakeResultDeclarationTest.aDeclarationThatOmitsAResultIsReported
+  FAILED ux-spike:FakeResultDeclarationTest.aDeclarationThatOmitsAResultIsReported[iosSimulatorArm64]
+  FAILED ux-spike:FakeResultDeclarationTest.theFakeDeclaresEveryResultOfTheContract
+  FAILED ux-spike:FakeResultDeclarationTest.theFakeDeclaresEveryResultOfTheContract[iosSimulatorArm64]
+FAIL d8b-3 358/12 gradle rc=1 (45s) -> build/spike-gate/regen-smoke/d8b-3.log
+  FAILED ux-elements:HomePartsAndroidTest.aBandFullCardDrawsHolderNumberAndStorageAndNamesThemAfterTheStatus
+  FAILED ux-elements:HomePartsAndroidTest.aCenteredFullCardDrawsTitleEnglishNameAndNumberOnlyAndKeepsTheArtworksProportion
+  FAILED ux-elements:HomePartsAndroidTest.theBottomBarIsANamedGroupOfButtonsWithTheCurrentOneSelectedAndANamedActionButton
+  FAILED ux-elements:HomePartsAndroidTest.theHolderCardIsOneButtonNamedByHolderAndStatusWithDecorativeAvatarDotAndChevron
+  FAILED ux-elements:HomePartsAndroidTest.theIconMarkDrawsTheToneGlyphTheBrandBindsAndNothingForAGlyphItDoesNot
+  FAILED ux-elements:HomePartsIosTest.aBandFullCardDrawsHolderNumberAndStorageAndNamesThemAfterTheStatus[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.aCenteredFullCardDrawsTitleEnglishNameAndNumberOnlyAndKeepsTheArtworksProportion[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theBottomBarIsANamedGroupOfButtonsWithTheCurrentOneSelectedAndANamedActionButton[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theHolderCardIsOneButtonNamedByHolderAndStatusWithDecorativeAvatarDotAndChevron[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theIconMarkDrawsTheToneGlyphTheBrandBindsAndNothingForAGlyphItDoesNot[iosSimulatorArm64]
+  FAILED ux-spike:ScreenProbeTest.theExportsGatingRemovesTheNodesItNamesAndAnUnlistedBrandGetsItsVariantsOmits
+  FAILED ux-spike:ScreenProbeTest.theExportsGatingRemovesTheNodesItNamesAndAnUnlistedBrandGetsItsVariantsOmits[iosSimulatorArm64]
+PASS d8b-4 358/0 (48s)
+PASS d8b-5-unseen 358/0 (54s)
+FAIL m9-1-brand 358/12 gradle rc=1 (48s) -> build/spike-gate/regen-smoke/m9-1-brand.log
+  FAILED ux-elements:HomePartsAndroidTest.aBandFullCardDrawsHolderNumberAndStorageAndNamesThemAfterTheStatus
+  FAILED ux-elements:HomePartsAndroidTest.aCenteredFullCardDrawsTitleEnglishNameAndNumberOnlyAndKeepsTheArtworksProportion
+  FAILED ux-elements:HomePartsAndroidTest.theBottomBarIsANamedGroupOfButtonsWithTheCurrentOneSelectedAndANamedActionButton
+  FAILED ux-elements:HomePartsAndroidTest.theHolderCardIsOneButtonNamedByHolderAndStatusWithDecorativeAvatarDotAndChevron
+  FAILED ux-elements:HomePartsAndroidTest.theIconMarkDrawsTheToneGlyphTheBrandBindsAndNothingForAGlyphItDoesNot
+  FAILED ux-elements:HomePartsIosTest.aBandFullCardDrawsHolderNumberAndStorageAndNamesThemAfterTheStatus[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.aCenteredFullCardDrawsTitleEnglishNameAndNumberOnlyAndKeepsTheArtworksProportion[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theBottomBarIsANamedGroupOfButtonsWithTheCurrentOneSelectedAndANamedActionButton[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theHolderCardIsOneButtonNamedByHolderAndStatusWithDecorativeAvatarDotAndChevron[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theIconMarkDrawsTheToneGlyphTheBrandBindsAndNothingForAGlyphItDoesNot[iosSimulatorArm64]
+  FAILED ux-spike:ScreenProbeTest.theExportsGatingRemovesTheNodesItNamesAndAnUnlistedBrandGetsItsVariantsOmits
+  FAILED ux-spike:ScreenProbeTest.theExportsGatingRemovesTheNodesItNamesAndAnUnlistedBrandGetsItsVariantsOmits[iosSimulatorArm64]
+FAIL m9-2-sheet-page 358/2 gradle rc=1 (47s) -> build/spike-gate/regen-smoke/m9-2-sheet-page.log
+  FAILED ux-runtime:InterpreterAndroidTest.rulesAndBindingsFollowTheContext
+  FAILED ux-runtime:InterpreterIosTest.rulesAndBindingsFollowTheContext[iosSimulatorArm64]
+FAIL m9-2b-page-idsk 358/14 gradle rc=1 (49s) -> build/spike-gate/regen-smoke/m9-2b-page-idsk.log
+  FAILED ux-elements:HomePartsAndroidTest.aBandFullCardDrawsHolderNumberAndStorageAndNamesThemAfterTheStatus
+  FAILED ux-elements:HomePartsAndroidTest.aCenteredFullCardDrawsTitleEnglishNameAndNumberOnlyAndKeepsTheArtworksProportion
+  FAILED ux-elements:HomePartsAndroidTest.theBottomBarIsANamedGroupOfButtonsWithTheCurrentOneSelectedAndANamedActionButton
+  FAILED ux-elements:HomePartsAndroidTest.theHolderCardIsOneButtonNamedByHolderAndStatusWithDecorativeAvatarDotAndChevron
+  FAILED ux-elements:HomePartsAndroidTest.theIconMarkDrawsTheToneGlyphTheBrandBindsAndNothingForAGlyphItDoesNot
+  FAILED ux-elements:HomePartsIosTest.aBandFullCardDrawsHolderNumberAndStorageAndNamesThemAfterTheStatus[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.aCenteredFullCardDrawsTitleEnglishNameAndNumberOnlyAndKeepsTheArtworksProportion[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theBottomBarIsANamedGroupOfButtonsWithTheCurrentOneSelectedAndANamedActionButton[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theHolderCardIsOneButtonNamedByHolderAndStatusWithDecorativeAvatarDotAndChevron[iosSimulatorArm64]
+  FAILED ux-elements:HomePartsIosTest.theIconMarkDrawsTheToneGlyphTheBrandBindsAndNothingForAGlyphItDoesNot[iosSimulatorArm64]
+  FAILED ux-runtime:InterpreterAndroidTest.rulesAndBindingsFollowTheContext
+  FAILED ux-runtime:InterpreterIosTest.rulesAndBindingsFollowTheContext[iosSimulatorArm64]
+  FAILED ux-spike:ScreenProbeTest.theExportsGatingRemovesTheNodesItNamesAndAnUnlistedBrandGetsItsVariantsOmits
+  FAILED ux-spike:ScreenProbeTest.theExportsGatingRemovesTheNodesItNamesAndAnUnlistedBrandGetsItsVariantsOmits[iosSimulatorArm64]
+regen-smoke (all): 447s, scratch /var/folders/1t/xlrc9d_97ts6w7syc220npdw0000gn/T/regen-smoke.mqfcDEaDer
+./spike-regen-smoke.sh all  10.53s user 14.62s system 5% cpu 7:27.84 total

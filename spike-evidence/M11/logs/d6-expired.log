@@ -1,0 +1,13 @@
+10-17 16:40:21.363 I/System.out( 5653): UX-SPIKE: hook module loaded
+10-17 16:40:32.960 I/System.out( 5653): UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script expired-at-request
+10-17 16:40:33.293 I/System.out( 5653): UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 16:40:33.294 I/System.out( 5653): UX-SPIKE: enter connecting (gen 1)
+10-17 16:40:33.294 I/System.out( 5653): UX-SPIKE: fetchRequest#1 (script expired-at-request)
+10-17 16:40:33.296 I/System.out( 5653): UX-SPIKE: enter error-expired (gen 2)
+10-17 16:40:33.296 I/System.out( 5653): UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 16:40:33.336 I/System.out( 5653): UX-SPIKE: screen SCR-pres-outcome-expired: interpreted from the bundle (TPL-outcome, 6 nodes), state error-expired, ui_state default
+10-17 16:40:33.344 I/System.out( 5653): UX-SPIKE: a11y: SCR-pres-outcome-expired focus-heading hero (focused)
+10-17 16:40:38.043 I/System.out( 5653): UX-SPIKE: interpreter: close press -> CLOSE
+10-17 16:40:38.043 I/System.out( 5653): UX-SPIKE: enter closed (gen 3)
+10-17 16:40:38.109 I/System.out( 5653): UX-SPIKE: exit closed (FINAL_STATE)
+10-17 16:40:38.109 I/System.out( 5653): UX-SPIKE: exit Closed

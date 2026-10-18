@@ -1,0 +1,10 @@
+## D2c root=launcher state=auth kill=a 2026-10-17T19:34:29+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+TIMEOUT waiting request (got )
+pid before kill: 15342
+pid after: ''
+-- relaunch (recents)
+shot d2c-launcher-auth-a
+pid: 16459 gate=1 state=
+10-17 19:37:24.860 UX-SPIKE: hook module loaded
+10-17 19:37:25.223 UX-SPIKE: launch intent already consumed, cold-boot link skipped

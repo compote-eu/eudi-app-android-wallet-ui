@@ -1,0 +1,27 @@
+# The Xcode project is generated from project.yml by XcodeGen — regenerate with
+# `./gradlew generateIosProject`, which is what puts version.properties / app.properties into the
+# environment XcodeGen expands `${...}` from. project.yml is the committed source of truth.
+iosApp.xcodeproj/
+
+# Xcode build output & per-user state
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+# SwiftPM's own build folder, which an editor's SourceKit-LSP creates inside a local package (e.g.
+# PKIXBridge/) when it indexes it.
+.build/
+
+# Info.plist is generated from project.yml by XcodeGen (see the `info:` block there).
+Info.plist
+
+# And its translations, by `./gradlew generateIosProject` from the shared Compose string catalogue's
+# `ios_permission_` strings (see the purpose-string note in project.yml).
+**/*.lproj/InfoPlist.strings
+
+# Likewise the entitlements, from each target's `entitlements:` block. Committing them would give the
+# Digital Credentials doctype list and the app-group id two homes that could disagree — the same drift
+# the identity work removed when it made version.properties and app.properties the single source for
+# name, id and version.
+*.entitlements

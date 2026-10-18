@@ -1,0 +1,21 @@
+2026-10-16T20:59:50.195342: INFO: MultipazWalletStore: wallet database protection: file=absent (not created yet) directory=unset
+2026-10-16T20:59:50.2: INFO: WalletSqliteStorage: journal_mode=WAL busy_timeout=5000ms
+2026-10-16T20:59:50.20248: INFO: IosDocumentRegistration: registrable documents: 0 ()
+2026-10-16T20:59:50.254809: INFO: IosLogFile: logging to /Users/roman/Library/Developer/CoreSimulator/Devices/3C45E6C6-D0FD-4112-B3BA-CE9B9BDE60DA/data/Containers/Data/Application/203EA563-C041-4C4C-A73C-685678D53100/Library/Caches/logs, up to 10 x 5242880 bytes
+2026-10-16T20:59:50.257943: INFO: IosAnalytics: no analytics provider registered; screen and event reports are dropped
+UX-SPIKE: argument --ux-spike=slow (persisting)
+objc[35125]: Class UIAccessibilityLoaderWebShared is implemented in both /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebKit.axbundle/WebKit (0x105a14398) and /private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.G1G2Hv/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 27.0.simruntime/Contents/Resources/RuntimeRoot/System/Library/AccessibilityBundles/WebCore.axbundle/WebCore (0x11c63c310). This may cause spurious casting failures and mysterious crashes. One of the duplicates must be removed or renamed.
+2026-10-16T21:00:07.428673: INFO: IosAuthorizationRedirects: ignoring an opened URL that is not an authorization redirect
+2026-10-16T21:00:07.429541: INFO: IosDeepLinks: a presentation request is waiting to be opened
+UX-SPIKE: argument --ux-spike=slow (persisting)
+UX-SPIKE: argument --ux-spike=slow (persisting)
+UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=true), script slow
+UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (IOS)
+UX-SPIKE: enter connecting (gen 1)
+UX-SPIKE: fetchRequest#1 (script slow)
+UX-SPIKE: start deeplink: Started(state=connecting)
+UX-SPIKE: enter request (gen 2)
+2026-10-16T21:00:20.362276: INFO: IosBackgroundReIssuance: background re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-16T21:00:20.363122: INFO: IosForegroundChecks: foreground re-issuance: considered=0 due=0 refreshed=0 failed=0 unchanged=0
+2026-10-16T21:00:20.369853: INFO: IosBackgroundRevocation: background revocation: checked=0 newlyRevoked=0
+2026-10-16T21:00:20.370554: INFO: IosForegroundChecks: foreground revocation: checked=0 newlyRevoked=0

@@ -1,0 +1,65 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+// Nav3 Stage 3: moved to :shared-ui commonMain (package unchanged) as the payload of
+// BiometricRoute. KMP-clean now that ConfigNavigation carries a typed AppRoute.
+package eu.europa.ec.commonfeature.config
+
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.uilogic.config.ConfigNavigation
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+/**
+ * The prompt copy for the biometric screen. Every field is a resource, carried as a [UiText] key so
+ * the caller — a request view-model, or `SplashInteractor` — does not have to resolve it just to
+ * build the route it is navigating to.
+ */
+@Serializable
+sealed interface BiometricMode {
+    @Serializable
+    @SerialName("Default")
+    data class Default(
+        val descriptionWhenBiometricsEnabled: UiText,
+        val descriptionWhenBiometricsNotEnabled: UiText,
+        val textAbovePin: UiText,
+    ) : BiometricMode
+
+    @Serializable
+    @SerialName("Login")
+    data class Login(
+        val title: UiText,
+        val subTitleWhenBiometricsEnabled: UiText,
+        val subTitleWhenBiometricsNotEnabled: UiText,
+    ) : BiometricMode
+}
+
+@Serializable
+data class BiometricUiConfig(
+    val mode: BiometricMode,
+    val isPreAuthorization: Boolean = false,
+    val shouldInitializeBiometricAuthOnCreate: Boolean = true,
+    val onSuccessNavigation: ConfigNavigation,
+    val onBackNavigationConfig: OnBackNavigationConfig
+)
+
+@Serializable
+data class OnBackNavigationConfig(
+    val onBackNavigation: ConfigNavigation?,
+    private val hasToolbarBackIcon: Boolean
+) {
+    val isBackable: Boolean get() = hasToolbarBackIcon && onBackNavigation != null
+}

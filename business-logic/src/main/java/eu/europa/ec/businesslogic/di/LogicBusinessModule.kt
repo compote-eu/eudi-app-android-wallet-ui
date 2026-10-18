@@ -17,6 +17,8 @@
 package eu.europa.ec.businesslogic.di
 
 import android.content.Context
+import eu.europa.ec.businesslogic.BuildConfig
+import eu.europa.ec.businesslogic.config.AppBuildType
 import eu.europa.ec.businesslogic.config.ConfigLogic
 import eu.europa.ec.businesslogic.config.ConfigLogicImpl
 import eu.europa.ec.businesslogic.controller.crypto.CryptoController
@@ -29,13 +31,16 @@ import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.controller.storage.PrefKeysImpl
 import eu.europa.ec.businesslogic.controller.storage.PrefsController
 import eu.europa.ec.businesslogic.controller.storage.PrefsControllerImpl
+import eu.europa.ec.businesslogic.controller.storage.TrustMarkIntroductionStore
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.provider.UuidProviderImpl
 import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.businesslogic.validator.FilterValidatorImpl
 import eu.europa.ec.businesslogic.validator.FormValidator
 import eu.europa.ec.businesslogic.validator.FormValidatorImpl
+import eu.europa.ec.eudi.rqes.core.RqesSigningLogger
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -48,17 +53,40 @@ import org.koin.core.annotation.Single
 class LogicBusinessModule
 
 @Single
-fun provideConfigLogic(context: Context): ConfigLogic = ConfigLogicImpl(context)
+fun provideConfigLogic(
+    context: Context,
+    signingLogger: RqesSigningLogger,
+): ConfigLogic = ConfigLogicImpl(
+    context = context,
+    signingLogger = signingLogger,
+)
+
+/**
+ * The same instance under the supertype shared code asks for.
+ *
+ * `ConfigLogic` extends [SharedAppConfig], but Koin resolves by the exact type a provider declares, so
+ * without this binding `get<SharedAppConfig>()` fails even though the object implements it. iOS registers
+ * its own `IosWalletConfig` the same way, which is what lets commonMain read app configuration through one
+ * seam instead of each consumer being handed the one flag it needs.
+ */
+@Single
+fun provideSharedAppConfig(configLogic: ConfigLogic): SharedAppConfig = configLogic
 
 @Single
-fun provideLogController(context: Context, configLogic: ConfigLogic): LogController =
-    LogControllerImpl(context, configLogic)
+// The tag is built here rather than read from ConfigLogic: ConfigLogic now needs the RQES signing
+// logger, whose chain reaches the encrypted database and from there this controller, so depending
+// on ConfigLogic here would be a cycle.
+fun provideLogController(context: Context): LogController =
+    LogControllerImpl(
+        context = context,
+        tag = "EUDI Wallet ${BuildConfig.FLAVOR.uppercase()}-${AppBuildType.getType()}",
+    )
 
 @Single
 fun providePrefsController(resourceProvider: ResourceProvider): PrefsController =
     PrefsControllerImpl(resourceProvider)
 
-@Single
+@Single(binds = [TrustMarkIntroductionStore::class])
 fun providePrefKeys(prefsController: PrefsController): PrefKeys =
     PrefKeysImpl(prefsController)
 

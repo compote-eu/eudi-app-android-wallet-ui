@@ -17,12 +17,12 @@
 package eu.europa.ec.corelogic.extension
 
 import eu.europa.ec.businesslogic.extension.getLocalizedValue
+import eu.europa.ec.businesslogic.extension.isExpired
 import eu.europa.ec.eudi.wallet.document.Document
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
-import java.time.Instant
 import java.util.Locale
-import kotlin.time.toJavaInstant
+import kotlin.time.Instant
 
 fun Document.localizedIssuerMetadata(locale: Locale): IssuerMetadata.IssuerDisplay? {
     return issuerMetadata?.issuerDisplay.getLocalizedValue(
@@ -32,6 +32,17 @@ fun Document.localizedIssuerMetadata(locale: Locale): IssuerMetadata.IssuerDispl
         valueExtractor = { it }
     )
 }
+
+/**
+ * The document's name in [locale]'s language, from the names the issuer published for the
+ * document's configuration ([IssuerMetadata.display]); the first published name when none is in
+ * that language, and [Document.name] when the document has no issuer metadata.
+ *
+ * [Document.name] on its own is the first published name, fixed at issuance whatever the user's
+ * language, so a screen that shows it ignores a name the issuer offers in the user's language.
+ */
+fun Document.localizedName(locale: Locale): String =
+    issuerMetadata.getLocalizedDocumentName(userLocale = locale, fallback = name)
 
 /**
  * The document's expiry instant: the latest `validUntil` across its credentials, or `null` when the
@@ -44,7 +55,7 @@ fun Document.localizedIssuerMetadata(locale: Locale): IssuerMetadata.IssuerDispl
  * actually detect an expired document.
  */
 suspend fun IssuedDocument.getExpiryDate(): Instant? =
-    getCredentials().maxOfOrNull { it.validUntil }?.toJavaInstant()
+    getCredentials().maxOfOrNull { it.validUntil }
 
 /**
  * Whether the document has expired, i.e. its [getExpiryDate] is in the past. A document with no
@@ -52,4 +63,4 @@ suspend fun IssuedDocument.getExpiryDate(): Instant? =
  * rather than an expiry.
  */
 suspend fun IssuedDocument.isExpired(): Boolean =
-    getExpiryDate()?.isBefore(Instant.now()) ?: false
+    getExpiryDate()?.isExpired() ?: false

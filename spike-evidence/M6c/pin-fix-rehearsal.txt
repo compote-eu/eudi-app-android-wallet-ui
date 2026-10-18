@@ -1,0 +1,5 @@
+M6c pin fix rehearsal (after the fix, not a D8 re-run; the D8-unseen row stays FAILED).
+ux-spec/ replaced by spike-evidence/D8-attempt2/5-unseen/export.tar.gz, then restored from git (uxspec-lock green after).
+:ux-runtime:allTests on the D8-unseen export: 184 tests, 0 failures (incl. outcomeExpiredIsDrawnFromTheBundleAndFocusesItsHeading and the new regression test, host + iOS).
+:ux-runtime:allTests on the M6c export: 184 tests, 0 failures.
+First try of the regression test on the unseen export failed: it asserted the planted rule hid exactly its node, but the unseen spec's own rule hides `verifier` too (a pin in the new test); fixed to expect the export's own hidden set plus the planted node.

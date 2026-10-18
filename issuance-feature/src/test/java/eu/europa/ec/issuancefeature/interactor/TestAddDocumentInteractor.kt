@@ -16,17 +16,13 @@
 
 package eu.europa.ec.issuancefeature.interactor
 
-import android.content.Context
-import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
-import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
-import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.commonfeature.config.IssuanceFlowType
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.commonfeature.config.SuccessUIConfig
-import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
+import eu.europa.ec.shared.navigation.SuccessRoute
 import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
 import eu.europa.ec.corelogic.controller.IssuanceMethod
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
-import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.issuancefeature.util.mockedAgeOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedCombinedPid
 import eu.europa.ec.issuancefeature.util.mockedConfigNavigationTypePopToScreen
@@ -35,43 +31,43 @@ import eu.europa.ec.issuancefeature.util.mockedIssuerId
 import eu.europa.ec.issuancefeature.util.mockedMdlOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedPhotoIdOptionItemUi
 import eu.europa.ec.issuancefeature.util.mockedPidOptionItemUi
-import eu.europa.ec.issuancefeature.util.mockedPrimaryButtonText
-import eu.europa.ec.issuancefeature.util.mockedRouteArguments
 import eu.europa.ec.issuancefeature.util.mockedScopedDocuments
-import eu.europa.ec.issuancefeature.util.mockedSuccessContentDescription
-import eu.europa.ec.issuancefeature.util.mockedSuccessDescription
-import eu.europa.ec.issuancefeature.util.mockedSuccessText
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.resourceslogic.theme.values.ThemeColors
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.testfeature.util.mockedDefaultLocale
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
 import eu.europa.ec.testfeature.util.mockedGenericErrorMessage
 import eu.europa.ec.testfeature.util.mockedMdocPidFormat
-import eu.europa.ec.testfeature.util.mockedNotifyOnAuthenticationFailure
 import eu.europa.ec.testfeature.util.mockedPidId
 import eu.europa.ec.testfeature.util.mockedPlainFailureMessage
-import eu.europa.ec.testfeature.util.mockedUriPath1
 import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.utils.PERCENTAGE_25
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import junit.framework.TestCase.assertEquals
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mock
-import org.mockito.Mockito.mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.any
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
+import eu.europa.ec.authenticationlogic.model.BiometricCrypto
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_message
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_description
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_primary_button_text
+import eu.europa.ec.shared.resources.issuance_add_document_deferred_success_text
+import eu.europa.ec.shared.resources.issuance_add_document_no_options
+import eu.europa.ec.shared.resources.issuance_add_document_pid_combined
 
 class TestAddDocumentInteractor {
 
@@ -79,44 +75,30 @@ class TestAddDocumentInteractor {
     val coroutineRule = CoroutineTestRule()
 
     @Mock
-    private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
+    private lateinit var platform: AddDocumentPlatformBridge
 
     @Mock
-    private lateinit var deviceAuthenticationInteractor: DeviceAuthenticationInteractor
-
-    @Mock
-    private lateinit var resourceProvider: ResourceProvider
-
-    @Mock
-    private lateinit var uiSerializer: UiSerializer
-
-    @Mock
-    private lateinit var context: Context
-
-    @Mock
-    private lateinit var resultHandler: DeviceAuthenticationResult
+    private lateinit var strings: StringCatalog
 
     private lateinit var interactor: AddDocumentInteractor
 
     private lateinit var closeable: AutoCloseable
 
-    private lateinit var crypto: BiometricCrypto
+    // Only carried through the state mapping — nothing here authenticates.
+    private val crypto = BiometricCrypto(cryptoObject = null)
+    private val resultHandler = DeviceAuthenticationResult()
 
     @Before
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
 
         interactor = AddDocumentInteractorImpl(
-            walletCoreDocumentsController = walletCoreDocumentsController,
-            deviceAuthenticationInteractor = deviceAuthenticationInteractor,
-            resourceProvider = resourceProvider,
-            uiSerializer = uiSerializer
+            strings = strings,
+            platform = platform,
         )
 
-        crypto = BiometricCrypto(cryptoObject = null)
-
-        whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
-        whenever(resourceProvider.getLocale()).thenReturn(mockedDefaultLocale)
+        whenever(strings[Res.string.generic_error_message]).thenReturn(mockedGenericErrorMessage)
+        whenever(platform.localeTag()).thenReturn(mockedDefaultLocale.toLanguageTag())
     }
 
     @After
@@ -128,7 +110,7 @@ class TestAddDocumentInteractor {
 
     // Case 1:
     // 1. flowType == IssuanceFlowType.NoDocument
-    // 2. walletCoreDocumentsController.getScopedDocuments() returns a non-empty list
+    // 2. the platform bridge reports a non-empty list
 
     // Case 1 Expected Result:
     // AddDocumentInteractorScopedPartialState.Success state, with the following options:
@@ -142,7 +124,7 @@ class TestAddDocumentInteractor {
             )
             mockGetScopedDocumentsResponse(expectedResponse)
 
-            whenever(resourceProvider.getString(R.string.issuance_add_document_pid_combined))
+            whenever(strings[Res.string.issuance_add_document_pid_combined])
                 .thenReturn(mockedCombinedPid)
 
             // When
@@ -164,7 +146,7 @@ class TestAddDocumentInteractor {
 
     // Case 2:
     // 1. flowType == IssuanceFlowType.ExtraDocument with formatType == null
-    // 2. walletCoreDocumentsController.getScopedDocuments() returns a non-empty list
+    // 2. the platform bridge reports a non-empty list
 
     // Case 2 Expected Result:
     // AddDocumentInteractorScopedPartialState.Success state, with the following options:
@@ -181,7 +163,7 @@ class TestAddDocumentInteractor {
             )
             mockGetScopedDocumentsResponse(expectedResponse)
 
-            whenever(resourceProvider.getString(R.string.issuance_add_document_pid_combined))
+            whenever(strings[Res.string.issuance_add_document_pid_combined])
                 .thenReturn(mockedCombinedPid)
 
             // When
@@ -213,7 +195,7 @@ class TestAddDocumentInteractor {
 
     // Case 3:
     // 1. flowType == IssuanceFlowType.ExtraDocument with formatType == PID format type
-    // 2. walletCoreDocumentsController.getScopedDocuments() returns an empty list
+    // 2. the platform bridge reports an empty list
 
     // Case 3 Expected Result:
     // AddDocumentInteractorScopedPartialState.NoOptions state.
@@ -247,7 +229,7 @@ class TestAddDocumentInteractor {
 
     // Case 4:
     // 1. flowType == IssuanceFlowType.ExtraDocument with a non-matching formatType ("NO_MATCHES_FORMAT_TYPE")
-    // 2. walletCoreDocumentsController.getScopedDocuments() returns a non-empty list
+    // 2. the platform bridge reports a non-empty list
 
     // Case 4 Expected Result:
     // AddDocumentInteractorScopedPartialState.NoOptions state.
@@ -281,7 +263,7 @@ class TestAddDocumentInteractor {
 
     // Case 5:
     // 1. flowType == IssuanceFlowType.NoDocument
-    // 2. walletCoreDocumentsController.getScopedDocuments() returns only non-PID documents
+    // 2. the platform bridge reports only non-PID documents
 
     // Case 5 Expected Result:
     // AddDocumentInteractorScopedPartialState.NoOptions state.
@@ -316,7 +298,7 @@ class TestAddDocumentInteractor {
 
     // Case 6:
     // 1. flowType == IssuanceFlowType.NoDocument
-    // 2. walletCoreDocumentsController.getScopedDocuments() returns
+    // 2. the platform bridge reports
     //    FetchScopedDocumentsPartialState.Failure with an error message.
 
     // Case 6 Expected Result:
@@ -356,7 +338,7 @@ class TestAddDocumentInteractor {
         coroutineRule.runTest {
             // Given
             whenever(
-                walletCoreDocumentsController.getScopedDocuments(any())
+                platform.getScopedDocuments(any())
             ).thenThrow(mockedExceptionWithNoMessage)
 
             // When
@@ -385,7 +367,7 @@ class TestAddDocumentInteractor {
         coroutineRule.runTest {
             // Given
             whenever(
-                walletCoreDocumentsController.getScopedDocuments(any())
+                platform.getScopedDocuments(any())
             ).thenThrow(mockedExceptionWithMessage)
 
             // When
@@ -448,7 +430,7 @@ class TestAddDocumentInteractor {
 
     //region issueDocument
     @Test
-    fun `Given an issuance method and a document type, When issueDocument is called, Then it calls walletCoreDocumentsController#issueDocument`() {
+    fun `Given an issuance method and a document type, When issueDocument is called, Then it calls the platform bridge`() {
         coroutineRule.runTest {
             // Given
             val mockedIssuanceMethod = IssuanceMethod.OPENID4VCI
@@ -456,7 +438,7 @@ class TestAddDocumentInteractor {
             val mockedIssuerId = "issuerId"
 
             whenever(
-                walletCoreDocumentsController.issueDocuments(
+                platform.issueDocuments(
                     issuanceMethod = mockedIssuanceMethod,
                     configIds = mockedConfigIds,
                     issuerId = mockedIssuerId
@@ -474,7 +456,7 @@ class TestAddDocumentInteractor {
 
                 // Then
                 @Suppress("UnusedFlow")
-                verify(walletCoreDocumentsController, times(1))
+                verify(platform, times(1))
                     .issueDocuments(
                         issuanceMethod = mockedIssuanceMethod,
                         configIds = mockedConfigIds,
@@ -486,14 +468,14 @@ class TestAddDocumentInteractor {
     //endregion
 
     // Case A:
-    // walletCoreDocumentsController.issueDocuments returns DeferredSuccess
+    // the platform reports DeferredSuccess
     // → AddDocumentInteractorIssueDocumentsPartialState.DeferredSuccess
     @Test
-    fun `Given controller emits DeferredSuccess, When issueDocuments is called, Then DeferredSuccess is emitted`() {
+    fun `Given the platform reports DeferredSuccess, When issueDocuments is called, Then DeferredSuccess is emitted`() {
         coroutineRule.runTest {
             // Given
             whenever(
-                walletCoreDocumentsController.issueDocuments(
+                platform.issueDocuments(
                     issuanceMethod = IssuanceMethod.OPENID4VCI,
                     configIds = listOf("id"),
                     issuerId = "issuerId",
@@ -518,14 +500,14 @@ class TestAddDocumentInteractor {
     }
 
     // Case B:
-    // walletCoreDocumentsController.issueDocuments returns Failure with a message
+    // the platform reports Failure with a message
     // → AddDocumentInteractorIssueDocumentsPartialState.Failure with the same message
     @Test
-    fun `Given controller emits Failure, When issueDocuments is called, Then Failure with the same message is emitted`() {
+    fun `Given the platform reports Failure, When issueDocuments is called, Then Failure with the same message is emitted`() {
         coroutineRule.runTest {
             // Given
             whenever(
-                walletCoreDocumentsController.issueDocuments(
+                platform.issueDocuments(
                     issuanceMethod = IssuanceMethod.OPENID4VCI,
                     configIds = listOf("id"),
                     issuerId = "issuerId",
@@ -553,14 +535,14 @@ class TestAddDocumentInteractor {
     }
 
     // Case C:
-    // walletCoreDocumentsController.issueDocuments returns PartialSuccess with documentIds
+    // the platform reports PartialSuccess with documentIds
     // → AddDocumentInteractorIssueDocumentsPartialState.Success with the same ids
     @Test
-    fun `Given controller emits PartialSuccess, When issueDocuments is called, Then Success with the same ids is emitted`() {
+    fun `Given the platform reports PartialSuccess, When issueDocuments is called, Then Success with the same ids is emitted`() {
         coroutineRule.runTest {
             // Given
             whenever(
-                walletCoreDocumentsController.issueDocuments(
+                platform.issueDocuments(
                     issuanceMethod = IssuanceMethod.OPENID4VCI,
                     configIds = listOf("id"),
                     issuerId = "issuerId",
@@ -588,16 +570,16 @@ class TestAddDocumentInteractor {
     }
 
     // Case C2:
-    // walletCoreDocumentsController.issueDocuments returns PartialSuccessWithUntrustedIssuer
+    // the platform reports PartialSuccessWithUntrustedIssuer
     // → AddDocumentInteractorIssueDocumentsPartialState.Success with the issued ids.
     // Add-document issues a single non-PID or the combined PID set (one signer), so it cannot
     // actually produce this mixed result; this locks in the defensive mapping.
     @Test
-    fun `Given controller emits PartialSuccessWithUntrustedIssuer, When issueDocuments is called, Then Success with the issued ids is emitted`() {
+    fun `Given the platform reports PartialSuccessWithUntrustedIssuer, When issueDocuments is called, Then Success with the issued ids is emitted`() {
         coroutineRule.runTest {
             // Given
             whenever(
-                walletCoreDocumentsController.issueDocuments(
+                platform.issueDocuments(
                     issuanceMethod = IssuanceMethod.OPENID4VCI,
                     configIds = listOf("id"),
                     issuerId = "issuerId",
@@ -625,14 +607,14 @@ class TestAddDocumentInteractor {
     }
 
     // Case D:
-    // walletCoreDocumentsController.issueDocuments returns UserAuthRequired
+    // the platform reports UserAuthRequired
     // → AddDocumentInteractorIssueDocumentsPartialState.UserAuthRequired with the crypto + handler
     @Test
-    fun `Given controller emits UserAuthRequired, When issueDocuments is called, Then UserAuthRequired is emitted`() {
+    fun `Given the platform reports UserAuthRequired, When issueDocuments is called, Then UserAuthRequired is emitted`() {
         coroutineRule.runTest {
             // Given
             whenever(
-                walletCoreDocumentsController.issueDocuments(
+                platform.issueDocuments(
                     issuanceMethod = IssuanceMethod.OPENID4VCI,
                     configIds = listOf("id"),
                     issuerId = "issuerId",
@@ -663,20 +645,20 @@ class TestAddDocumentInteractor {
     }
 
     // Case E:
-    // walletCoreDocumentsController.issueDocuments returns IssuerNotTrusted
-    // → AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted
+    // the platform reports IssuerNotTrusted
+    // → AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE)
     @Test
-    fun `Given controller emits IssuerNotTrusted, When issueDocuments is called, Then IssuerNotTrusted is emitted`() {
+    fun `Given the platform reports IssuerNotTrusted, When issueDocuments is called, Then IssuerNotTrusted is emitted`() {
         coroutineRule.runTest {
             // Given
             whenever(
-                walletCoreDocumentsController.issueDocuments(
+                platform.issueDocuments(
                     issuanceMethod = IssuanceMethod.OPENID4VCI,
                     configIds = listOf("id"),
                     issuerId = "issuerId",
                 )
             ).thenReturn(
-                IssueDocumentsPartialState.IssuerNotTrusted.toFlow()
+                IssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE).toFlow()
             )
 
             // When
@@ -687,7 +669,7 @@ class TestAddDocumentInteractor {
             ).runFlowTest {
                 // Then
                 assertEquals(
-                    AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted,
+                    AddDocumentInteractorIssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE),
                     awaitItem()
                 )
             }
@@ -702,7 +684,7 @@ class TestAddDocumentInteractor {
         coroutineRule.runTest {
             // Given
             whenever(
-                walletCoreDocumentsController.issueDocuments(
+                platform.issueDocuments(
                     issuanceMethod = IssuanceMethod.OPENID4VCI,
                     configIds = listOf("id"),
                     issuerId = "issuerId",
@@ -734,7 +716,7 @@ class TestAddDocumentInteractor {
         coroutineRule.runTest {
             // Given
             whenever(
-                walletCoreDocumentsController.issueDocuments(
+                platform.issueDocuments(
                     issuanceMethod = IssuanceMethod.OPENID4VCI,
                     configIds = listOf("id"),
                     issuerId = "issuerId",
@@ -759,108 +741,14 @@ class TestAddDocumentInteractor {
     }
     //endregion
 
-    //region handleUserAuth
-
-    // Case 1:
-    // 1. deviceAuthenticationInteractor.getBiometricsAvailability returns:
-    // BiometricsAvailability.CanAuthenticate
-
-    // Case 1 Expected Result:
-    // deviceAuthenticationInteractor.authenticateWithBiometrics called once.
-    @Test
-    fun `Given Case 1, When handleUserAuth is called, Then Case 1 expected result is returned`() {
-        // Given
-        mockBiometricsAvailabilityResponse(
-            response = BiometricsAvailability.CanAuthenticate
-        )
-
-        // When
-        interactor.handleUserAuth(
-            context = context,
-            crypto = crypto,
-            notifyOnAuthenticationFailure = mockedNotifyOnAuthenticationFailure,
-            resultHandler = resultHandler
-        )
-
-        // Then
-        verify(deviceAuthenticationInteractor, times(1))
-            .authenticateWithBiometrics(
-                context,
-                crypto,
-                mockedNotifyOnAuthenticationFailure,
-                resultHandler
-            )
-    }
-
-    // Case 2:
-    // 1. deviceAuthenticationInteractor.getBiometricsAvailability returns:
-    // BiometricsAvailability.NonEnrolled
-
-    // Case 2 Expected Result:
-    // deviceAuthenticationInteractor.launchBiometricSystemScreen called once.
-    @Test
-    fun `Given Case 2, When handleUserAuth is called, Then Case 2 expected result is returned`() {
-        // Given
-        mockBiometricsAvailabilityResponse(
-            response = BiometricsAvailability.NonEnrolled
-        )
-
-        // When
-        interactor.handleUserAuth(
-            context = context,
-            crypto = crypto,
-            notifyOnAuthenticationFailure = mockedNotifyOnAuthenticationFailure,
-            resultHandler = resultHandler
-        )
-
-        // Then
-        verify(deviceAuthenticationInteractor, times(1))
-            .launchBiometricSystemScreen()
-    }
-
-    // Case 3:
-    // 1. deviceAuthenticationInteractor.getBiometricsAvailability returns:
-    // BiometricsAvailability.Failed
-
-    // Case 3 Expected Result:
-    // resultHandler.onAuthenticationFailure called once.
-    @Test
-    fun `Given Case 3, When handleUserAuth is called, Then Case 3 expected result is returned`() {
-        // Given
-        val onFailure = mock<() -> Unit>()
-        val resultHandler = DeviceAuthenticationResult(
-            onAuthenticationFailure = onFailure
-        )
-
-        mockBiometricsAvailabilityResponse(
-            response = BiometricsAvailability.Failure(
-                errorMessage = mockedPlainFailureMessage
-            )
-        )
-
-        // When
-        interactor.handleUserAuth(
-            context = context,
-            crypto = crypto,
-            notifyOnAuthenticationFailure = mockedNotifyOnAuthenticationFailure,
-            resultHandler = resultHandler
-        )
-
-        // Then
-        verify(onFailure).invoke()
-    }
-    //endregion
-
     //region buildGenericSuccessRouteForDeferred
 
     // Case 1:
     // 1. ConfigNavigation with NavigationType.PushRoute
     // 2. string resources mocked
     @Test
-    fun `Given Case 1, When buildGenericSuccessRouteForDeferred is called, Then the expected string result is returned`() {
+    fun `Given Case 1, When buildGenericSuccessRouteForDeferred is called, Then the expected SuccessRoute is returned`() {
         // Given
-        mockDocumentIssuanceStrings()
-
         val config = SuccessUIConfig(
             textElementsConfig = mockedTripleObject.first,
             imageConfig = mockedTripleObject.second,
@@ -874,31 +762,21 @@ class TestAddDocumentInteractor {
             onBackScreenToNavigate = mockedConfigNavigationTypePush
         )
 
-        whenever(
-            uiSerializer.toBase64(
-                model = config,
-                parser = SuccessUIConfig.Parser
-            )
-        ).thenReturn(mockedRouteArguments)
-
         val flowType = IssuanceFlowType.NoDocument
 
         // When
         val result = interactor.buildGenericSuccessRouteForDeferred(flowType = flowType)
 
         // Then
-        val expectedResult = "SUCCESS?successConfig=$mockedRouteArguments"
-        assertEquals(expectedResult, result)
+        assertEquals(SuccessRoute(config), result)
     }
 
     // Case 2:
     // 1. ConfigNavigation with NavigationType.PopRoute
     // 2. string resources mocked
     @Test
-    fun `When buildGenericSuccessRouteForDeferred (PopRoute) is called, then the expected string result is returned`() {
+    fun `When buildGenericSuccessRouteForDeferred (PopRoute) is called, then the expected SuccessRoute is returned`() {
         // Given
-        mockDocumentIssuanceStrings()
-
         val config = SuccessUIConfig(
             textElementsConfig = mockedTripleObject.first,
             imageConfig = mockedTripleObject.second,
@@ -912,13 +790,6 @@ class TestAddDocumentInteractor {
             onBackScreenToNavigate = mockedConfigNavigationTypePopToScreen
         )
 
-        whenever(
-            uiSerializer.toBase64(
-                model = config,
-                parser = SuccessUIConfig.Parser
-            )
-        ).thenReturn(mockedRouteArguments)
-
         val flowType = IssuanceFlowType.ExtraDocument(
             formatType = null
         )
@@ -927,111 +798,41 @@ class TestAddDocumentInteractor {
         val result = interactor.buildGenericSuccessRouteForDeferred(flowType = flowType)
 
         // Then
-        val expectedResult = "SUCCESS?successConfig=$mockedRouteArguments"
-        assertEquals(expectedResult, result)
-    }
-
-    // Case 3:
-    // 1. uiSerializer.toBase64 returns null → the `.orEmpty()` fallback path is exercised,
-    //    producing a route with an empty successConfig argument.
-    @Test
-    fun `When buildGenericSuccessRouteForDeferred is called and uiSerializer returns null, Then the route uses the empty fallback`() {
-        // Given
-        mockDocumentIssuanceStrings()
-
-        val config = SuccessUIConfig(
-            textElementsConfig = mockedTripleObject.first,
-            imageConfig = mockedTripleObject.second,
-            buttonConfig = listOf(
-                SuccessUIConfig.ButtonConfig(
-                    text = mockedTripleObject.third,
-                    style = SuccessUIConfig.ButtonConfig.Style.PRIMARY,
-                    navigation = mockedConfigNavigationTypePush
-                )
-            ),
-            onBackScreenToNavigate = mockedConfigNavigationTypePush
-        )
-
-        whenever(
-            uiSerializer.toBase64(
-                model = config,
-                parser = SuccessUIConfig.Parser
-            )
-        ).thenReturn(null)
-
-        val flowType = IssuanceFlowType.NoDocument
-
-        // When
-        val result = interactor.buildGenericSuccessRouteForDeferred(flowType = flowType)
-
-        // Then
-        val expectedResult = "SUCCESS?successConfig="
-        assertEquals(expectedResult, result)
-    }
-    //endregion
-
-    //region resumeOpenId4VciWithAuthorization
-
-    // Case of resumeOpenId4VciWithAuthorization being called on the interactor
-    // the expected result is the resumeOpenId4VciWithAuthorization function to be executed on
-    // the walletCoreDocumentsController
-    @Test
-    fun `When interactor resumeOpenId4VciWithAuthorization is called, Then resumeOpenId4VciWithAuthorization should be invoked on the controller`() {
-        // When
-        interactor.resumeOpenId4VciWithAuthorization(mockedUriPath1)
-
-        verify(walletCoreDocumentsController, times(1))
-            .resumeOpenId4VciWithAuthorization(mockedUriPath1)
+        assertEquals(SuccessRoute(config), result)
     }
     //endregion
 
     //region helper functions
     private suspend fun mockGetScopedDocumentsResponse(response: FetchScopedDocumentsPartialState) {
         whenever(
-            walletCoreDocumentsController.getScopedDocuments(any())
+            platform.getScopedDocuments(any())
         ).thenReturn(response)
-    }
-
-    private fun mockBiometricsAvailabilityResponse(response: BiometricsAvailability) {
-        whenever(deviceAuthenticationInteractor.getBiometricsAvailability()).thenReturn(response)
     }
 
     private fun mockNoDocumentsString(): String {
         val noDocumentsMsg = "No available documents"
 
-        whenever(
-            resourceProvider.getString(R.string.issuance_add_document_no_options)
-        ).thenReturn(noDocumentsMsg)
+        whenever(strings[Res.string.issuance_add_document_no_options]).thenReturn(noDocumentsMsg)
 
         return noDocumentsMsg
     }
 
-    private fun mockDocumentIssuanceStrings() {
-        whenever(resourceProvider.getString(R.string.issuance_add_document_deferred_success_text))
-            .thenReturn(mockedSuccessText)
-        whenever(resourceProvider.getString(R.string.issuance_add_document_deferred_success_primary_button_text))
-            .thenReturn(mockedPrimaryButtonText)
-        whenever(resourceProvider.getString(AppIcons.InProgress.contentDescriptionId))
-            .thenReturn(mockedSuccessContentDescription)
-        whenever(resourceProvider.getString(R.string.issuance_add_document_deferred_success_description))
-            .thenReturn(mockedSuccessDescription)
-    }
     //endregion
 
     //region mocked objects
     private val mockedTripleObject by lazy {
         Triple(
             first = SuccessUIConfig.TextElementsConfig(
-                text = resourceProvider.getString(R.string.issuance_add_document_deferred_success_text),
-                description = resourceProvider.getString(R.string.issuance_add_document_deferred_success_description),
-                color = ThemeColors.pending
+                text = UiText.Resource(Res.string.issuance_add_document_deferred_success_text),
+                description = UiText.Resource(Res.string.issuance_add_document_deferred_success_description),
+                color = ColorKey.Pending
             ),
             second = SuccessUIConfig.ImageConfig(
                 type = SuccessUIConfig.ImageConfig.Type.Drawable(icon = AppIcons.InProgress),
-                tint = ThemeColors.primary,
+                tint = ColorKey.Primary,
                 screenPercentageSize = PERCENTAGE_25,
             ),
-            third = resourceProvider.getString(R.string.issuance_add_document_deferred_success_primary_button_text)
+            third = UiText.Resource(Res.string.issuance_add_document_deferred_success_primary_button_text)
         )
     }
     //endregion

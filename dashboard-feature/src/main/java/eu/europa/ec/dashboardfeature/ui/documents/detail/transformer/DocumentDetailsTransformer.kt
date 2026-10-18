@@ -20,17 +20,18 @@ import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.util.DAY_MONTH_YEAR_FULL_PATTERN
 import eu.europa.ec.businesslogic.util.FULL_DATETIME_PATTERN_24H_SEPARATED_BY_DASH
 import eu.europa.ec.businesslogic.util.formatInstant
-import eu.europa.ec.commonfeature.extension.toExpandableListItems
+import kotlin.time.toKotlinInstant
 import eu.europa.ec.commonfeature.util.transformPathsToDomainClaims
 import eu.europa.ec.corelogic.extension.getExpiryDate
+import eu.europa.ec.corelogic.extension.localizedName
 import eu.europa.ec.corelogic.extension.toClaimPaths
 import eu.europa.ec.corelogic.model.toDocumentIdentifier
 import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsDomain
-import eu.europa.ec.dashboardfeature.ui.documents.detail.model.DocumentDetailsUi
 import eu.europa.ec.dashboardfeature.ui.documents.model.DocumentCredentialsInfoUi
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
-import eu.europa.ec.resourceslogic.R
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_details_document_credentials_info_text
 
 object DocumentDetailsTransformer {
 
@@ -51,35 +52,18 @@ object DocumentDetailsTransformer {
         )
 
         return@runCatching DocumentDetailsDomain(
-            docName = document.name,
+            docName = document.localizedName(resourceProvider.getLocale()),
             docId = document.id,
             issuerId = document.issuerMetadata?.credentialIssuerIdentifier.orEmpty(),
             documentConfigId = document.issuerMetadata?.documentConfigurationIdentifier.orEmpty(),
             documentIdentifier = document.toDocumentIdentifier(),
             documentClaims = domainClaims,
-            documentIssuanceDate = document.issuedAt.formatInstant(
+            documentIssuanceDate = document.issuedAt.toKotlinInstant().formatInstant(
                 pattern = FULL_DATETIME_PATTERN_24H_SEPARATED_BY_DASH
             ),
             documentExpirationDate = document.getExpiryDate()?.formatInstant(
                 pattern = DAY_MONTH_YEAR_FULL_PATTERN
             ),
-        )
-    }
-
-    fun DocumentDetailsDomain.transformToDocumentDetailsUi(): DocumentDetailsUi {
-        val documentDetailsUi = this.documentClaims.map { domainClaim ->
-            domainClaim.toExpandableListItems(
-                docId = this.docId,
-                queryId = null,
-            )
-        }
-        return DocumentDetailsUi(
-            documentId = this.docId,
-            documentName = this.docName,
-            issuerId = this.issuerId,
-            documentConfigId = this.documentConfigId,
-            documentIdentifier = this.documentIdentifier,
-            documentClaims = documentDetailsUi,
         )
     }
 
@@ -94,7 +78,7 @@ object DocumentDetailsTransformer {
             availableCredentials = availableCredentials,
             totalCredentials = totalCredentials,
             title = resourceProvider.getString(
-                R.string.document_details_document_credentials_info_text,
+                Res.string.document_details_document_credentials_info_text,
                 availableCredentials,
                 totalCredentials
             )

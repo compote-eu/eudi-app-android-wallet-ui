@@ -1,0 +1,216 @@
+{
+ "screen": "SCR-home",
+ "template": "TPL-home",
+ "template_regions": [
+  "appbar",
+  "header",
+  "switch",
+  "notice",
+  "identity",
+  "documents-heading",
+  "cards",
+  "body",
+  "footer",
+  "actions"
+ ],
+ "profile_off_nodes": [
+  "switch",
+  "trustmark"
+ ],
+ "bar_replaces": [
+  "present"
+ ],
+ "ui_states": [
+  "default",
+  "cloud",
+  "offline",
+  "empty",
+  "cloud-empty",
+  "document-invalid",
+  "id-revoked",
+  "id-suspended",
+  "id-stale",
+  "without-id",
+  "without-pid",
+  "without-dl",
+  "notifications-unread",
+  "dl-expiring"
+ ],
+ "elements": {
+  "EL-app-bar": {
+   "nodes": [
+    "appbar",
+    "appbar-unread"
+   ],
+   "props": [
+    "badge",
+    "leading",
+    "leading_label",
+    "trailing",
+    "trailing_label"
+   ],
+   "variants": [
+    "leading=menu",
+    "trailing=notifications"
+   ],
+   "events": [
+    "leading",
+    "trailing"
+   ]
+  },
+  "EL-text": {
+   "nodes": [
+    "title",
+    "empty-title",
+    "empty-text",
+    "documents-heading"
+   ],
+   "props": [
+    "text",
+    "variant"
+   ],
+   "variants": [
+    "variant=body",
+    "variant=heading",
+    "variant=title"
+   ],
+   "events": []
+  },
+  "EL-segmented-switch": {
+   "nodes": [
+    "switch"
+   ],
+   "props": [
+    "label",
+    "options"
+   ],
+   "variants": [],
+   "events": [
+    "change"
+   ]
+  },
+  "EL-notice": {
+   "nodes": [
+    "notice-offline",
+    "notice-offline-phone",
+    "notice-invalid"
+   ],
+   "props": [
+    "text",
+    "title",
+    "tone"
+   ],
+   "variants": [
+    "tone=info",
+    "tone=warning"
+   ],
+   "events": []
+  },
+  "EL-document-card": {
+   "nodes": [
+    "card-id",
+    "card-id-revoked",
+    "card-id-suspended",
+    "card-id-stale",
+    "card-dl",
+    "card-dl-expired",
+    "card-pid-cloud",
+    "card-pid",
+    "card-dl-expiring"
+   ],
+   "props": [
+    "doc_type",
+    "holder",
+    "initials",
+    "number",
+    "status",
+    "status_label",
+    "storage",
+    "storage_label",
+    "title",
+    "title_en",
+    "variant"
+   ],
+   "variants": [
+    "doc_type=driving-licence",
+    "doc_type=id-card",
+    "doc_type=pid",
+    "status=expired",
+    "status=expiring",
+    "status=revoked",
+    "status=stale",
+    "status=suspended",
+    "status=valid",
+    "variant=full",
+    "variant=holder"
+   ],
+   "events": [
+    "open"
+   ]
+  },
+  "EL-button": {
+   "nodes": [
+    "add-document",
+    "present"
+   ],
+   "props": [
+    "icon",
+    "label",
+    "variant"
+   ],
+   "variants": [
+    "variant=primary"
+   ],
+   "events": [
+    "press"
+   ]
+  },
+  "EL-trust-mark": {
+   "nodes": [
+    "trustmark"
+   ],
+   "props": [
+    "href",
+    "label",
+    "variant"
+   ],
+   "variants": [
+    "variant=badge"
+   ],
+   "events": [
+    "activate"
+   ]
+  },
+  "EL-link": {
+   "nodes": [
+    "history",
+    "all-documents"
+   ],
+   "props": [
+    "href",
+    "label"
+   ],
+   "variants": [],
+   "events": [
+    "activate"
+   ]
+  },
+  "EL-bottom-bar": {
+   "nodes": [
+    "bottom-bar"
+   ],
+   "props": [
+    "action",
+    "action_label",
+    "label",
+    "tabs"
+   ],
+   "variants": [
+    "action=menu"
+   ],
+   "events": [
+    "action"
+   ]
+  }
+ }
+}

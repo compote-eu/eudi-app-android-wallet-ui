@@ -1,0 +1,1300 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+package eu.europa.ec.shared.wallet.multipaz
+
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.HttpClientEngineBase
+import io.ktor.client.engine.HttpClientEngineConfig
+import io.ktor.client.engine.callContext
+import io.ktor.client.engine.darwin.Darwin
+import io.ktor.client.request.HttpRequestData
+import io.ktor.client.request.HttpResponseData
+import io.ktor.http.Headers
+import io.ktor.http.HeadersBuilder
+import io.ktor.http.HttpProtocolVersion
+import io.ktor.http.HttpMethod
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.isSuccess
+import io.ktor.http.Parameters
+import io.ktor.http.content.OutgoingContent
+import io.ktor.http.content.TextContent
+import io.ktor.http.formUrlEncode
+import io.ktor.http.parseUrlEncodedParameters
+import io.ktor.http.Url
+import io.ktor.client.utils.EmptyContent
+import io.ktor.util.Attributes
+import kotlinx.coroutines.Job
+import io.ktor.utils.io.InternalAPI
+import io.ktor.util.date.GMTDate
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.readBuffer
+import kotlinx.io.readByteArray
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonArray
+import eu.europa.ec.shared.wallet.platform.primaryLanguageSubtag
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import eu.europa.ec.eudi.etsi1196x2.consultation.VerificationContext
+import eu.europa.ec.shared.wallet.document.IssuerMetadata
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
+import eu.europa.ec.shared.wallet.trust.TrustVerdict
+import eu.europa.ec.shared.wallet.trust.toTrustChain
+import kotlinx.io.bytestring.ByteString
+import org.multipaz.crypto.JsonWebSignature
+import org.multipaz.crypto.X509Cert
+import org.multipaz.util.Logger
+import kotlin.io.encoding.Base64
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
+import kotlin.io.encoding.ExperimentalEncodingApi
+
+/**
+ * What an issuer said when it deferred an issuance instead of performing it.
+ *
+ * Written by [OpenID4VciCompatibilityEngine] and read by the caller *after* the attempt has failed. It
+ * exists because only the engine sees the credential endpoint's raw answer: multipaz turns a deferred
+ * response into a plain "unexpected status" error, so without this the reason is a protocol string in a
+ * message rather than something the app can reason about.
+ *
+ * @property transactionId the handle the issuer would honour at its `deferred_credential_endpoint` —
+ *   recorded so it appears in diagnostics, not because anything can redeem it yet.
+ * @property retryAfterSeconds the issuer's own `interval`, in seconds.
+ */
+class DeferredIssuanceNotice {
+    var transactionId: String? = null
+        internal set
+    var retryAfterSeconds: Int? = null
+        internal set
+
+    /**
+     * The document the handler parked rather than deleted, written by `IosDocumentProvisioningHandler`.
+     *
+     * The engine sees the `202` and the handler sees the document; neither sees both, so the notice
+     * that already crosses that gap carries this too.
+     */
+    var parkedDocumentId: String? = null
+        internal set
+
+    /**
+     * How the parked document can be collected later with this session's own access token, set by the
+     * batch client just before its credential request. Null in multipaz's own flows, whose client keeps
+     * the token to itself — for those, [sessionAccessToken] is what the engine saw instead.
+     */
+    internal var resume: DeferredResume? = null
+
+    /**
+     * The access token the session's token response carried, and when it expires, as this engine saw them
+     * — for multipaz's own flows, whose client never hands its token out. The handler pairs it with the DPoP
+     * key named in the document's stored authorization when it parks the document. Without it, a deferral
+     * there could be collected only by refreshing, and a refused refresh (Plaut's Keycloak,
+     * `invalid_grant: Session not active`, 2026-10-05) lost a document whose access token was still valid.
+     */
+    internal var sessionAccessToken: String? = null
+    internal var sessionAccessTokenExpiresAt: Instant? = null
+
+    /** True once the issuer has deferred this attempt. */
+    val wasDeferred: Boolean get() = transactionId != null
+}
+
+/**
+ * The issuer's display data as it published it, which only the raw metadata carries: the per-claim names,
+ * and the document's and the issuer's own display entries in **every** language.
+ *
+ * Written by [OpenID4VciCompatibilityEngine] while it is already reading the metadata JSON, and read by
+ * the provisioning handler when it builds the document's [IssuerMetadata]. It exists for the same reason
+ * [DeferredIssuanceNotice] does: **multipaz parses the credential configuration and throws this part
+ * away** — its `CredentialMetadata` keeps one `display` entry, in one language, and no per-claim display
+ * at all — so the engine is the only place that still sees it. Keeping every language is what lets a
+ * document's names follow the user's language after issuance: both, as in the official iOS wallet;
+ * Android does it for the issuer's name.
+ *
+ * Keyed by **doctype or vct**, not by configuration id: the handler joins on
+ * `StoredDocumentFormat.identifier`, and `CredentialMetadata.format.formatId` is only the *format*
+ * (`mso_mdoc`), which would not distinguish two documents. Configurations that share a doctype — this
+ * issuer's `_deferred` twins do — carry the same claims, so last-one-wins is harmless there; their names
+ * differ, so [documentDisplayFor] tells them apart.
+ */
+internal class IssuerDisplayNotice {
+    var claimsByDocumentType: Map<String, List<IssuerMetadata.Claim>> = emptyMap()
+        internal set
+
+    /** Every configuration's display entries, per doctype or vct, in the issuer's order. */
+    var documentDisplaysByDocumentType: Map<String, List<List<IssuerMetadata.Display>>> = emptyMap()
+        internal set
+
+    /**
+     * The issuer's own display entries: empty when it published none, null until the metadata has been read.
+     *
+     * The difference is the point. multipaz names an issuer that publishes no `display` "Untitled"
+     * (`openid4vci/JsonParsing.kt`, `extractDisplay`), so an empty list here is what tells that stand-in
+     * apart from a name — and only once the metadata was actually read.
+     */
+    var issuerDisplays: List<IssuerMetadata.IssuerDisplay>? = null
+        internal set
+
+    /**
+     * The display entries of the configuration of [documentType] that multipaz named [chosenName] — the one
+     * being issued, since multipaz picked that name from this same metadata. Null when none carries it.
+     */
+    fun documentDisplayFor(documentType: String, chosenName: String): List<IssuerMetadata.Display>? =
+        documentDisplaysByDocumentType[documentType]?.firstOrNull { entries -> entries.any { it.name == chosenName } }
+
+    /**
+     * Whether [chosenName] is multipaz's stand-in rather than a name: no configuration of [documentType]
+     * carries it, and one of them published no `display` at all — the one multipaz named "Untitled".
+     */
+    fun publishedNoDocumentDisplay(documentType: String, chosenName: String): Boolean =
+        documentDisplayFor(documentType, chosenName) == null &&
+            documentDisplaysByDocumentType[documentType]?.any { it.isEmpty() } == true
+}
+
+/**
+ * The issuer's advertised credential reuse policy, per document type.
+ *
+ * Same reason [IssuerDisplayNotice] exists: multipaz's `CredentialMetadata` keeps
+ * `credential_metadata.display` and drops everything beside it, so `credential_reuse_policy` — the
+ * batch size and re-issuance threshold the issuer actually published — is visible only to the engine
+ * that read the raw metadata.
+ *
+ * Keyed by doctype or vct for the same reason as the claim names: the handler joins on
+ * `StoredDocumentFormat.identifier`.
+ */
+internal class IssuerReusePolicyNotice {
+    var policiesByDocumentType: Map<String, SelectedReusePolicy> = emptyMap()
+        internal set
+}
+
+/**
+ * Why the authorization server refused a token exchange, in its own words.
+ *
+ * Written by [OpenID4VciCompatibilityEngine] and read after the attempt has failed, for the same reason
+ * [DeferredIssuanceNotice] exists: multipaz collapses every non-OK token response into one message —
+ * *"Refresh token (seed credential) rejected by the issuer"* — so the OAuth error code that says which
+ * thing was actually rejected is visible only here. It is the difference between "add this document
+ * again" and "try again later".
+ *
+ * @property error the `error` member of the refusal body, e.g. `invalid_grant` or `invalid_client`.
+ */
+class TokenRefusalNotice {
+    var error: String? = null
+        internal set
+}
+
+/**
+ * The HTTP client multipaz's OpenID4VCI code should be given on iOS.
+ *
+ * Two things sit between it and the network, both because the EU dev issuers and multipaz disagree —
+ * measured by running them against each other, not guessed:
+ *
+ * 1. **`dev.issuer-backend.eudiw.dev` serves its issuer metadata as a signed JWT**
+ *    (`Content-Type: application/jwt`, an `x5c` header), which OpenID4VCI permits. multipaz parses the
+ *    body as JSON and fails with *"Element class JsonLiteral is not a JsonObject"*. So a metadata
+ *    response that is a JWT is unwrapped to its payload here.
+ * 2. **`ec.dev.issuer.eudiw.dev`'s metadata points its display logos at `examplestate.com`**, a host
+ *    that does not resolve. multipaz fetches logos *while parsing metadata* and already tolerates a
+ *    non-OK status — but a DNS failure throws out of the engine and takes the whole metadata read with
+ *    it. So a failed optional GET becomes a 502 rather than an exception.
+ * 3. **multipaz reuses the client-attestation challenge across PAR and the token request**, and Keycloak
+ *    treats those challenges as single-use, so authorization-code issuance dies at the token endpoint
+ *    with `401 invalid_client`. See [injectFreshAttestationChallenge] — this one is a multipaz bug and
+ *    the fix here is a stop-gap, not the answer.
+ * 4. **multipaz asks for the credential with `authorization_details` where this server only understands
+ *    `scope`**, which fails the token request with `400 invalid_authorization_details`. See
+ *    [withScopeInsteadOfAuthorizationDetails] — also a multipaz bug, also a stop-gap.
+ * 5. **multipaz never fetches a client-attestation challenge for a credential *refresh* at all**, so
+ *    `grant_type=refresh_token` sends a PoP with no `challenge` claim and is refused `401
+ *    invalid_client`. Same underlying bug as (3), but a refresh makes no PAR request, so (3)'s hook
+ *    never fires. See [armRefreshRetry].
+ *
+ * Both live here rather than in a fork of multipaz because multipaz takes the client from its caller for
+ * every request, which makes this the one seam that needs no patched dependency. Both should disappear:
+ * (1) when multipaz reads signed metadata, (2) when it stops letting a logo fetch fail a metadata read
+ * (or when the issuer fixes its URLs).
+ */
+internal fun openID4VciHttpClient(
+    // Swappable so the compatibility rules can be tested against a `MockEngine` rather than the
+    // network; production always takes the default.
+    engine: HttpClientEngine = Darwin.create(),
+    /** Filled in if the issuer defers an issuance during this client's lifetime. */
+    deferredNotice: DeferredIssuanceNotice? = null,
+    /** Filled in if the authorization server refuses a token exchange. */
+    refusalNotice: TokenRefusalNotice? = null,
+    /** Filled in with the issuer's display data in every language, which multipaz discards. */
+    displayNotice: IssuerDisplayNotice? = null,
+    reusePolicyNotice: IssuerReusePolicyNotice? = null,
+    /**
+     * Checks the signer of signed issuer metadata against the EU trust lists.
+     *
+     * Null disables the check, which is what the compatibility tests use — they serve metadata from a
+     * `MockEngine` and have no business reaching the network.
+     */
+    issuerTrust: IssuerTrustSource? = IosEtsiTrust(),
+): HttpClient =
+    HttpClient(
+        OpenID4VciCompatibilityEngine(
+            engine,
+            deferredNotice,
+            refusalNotice,
+            displayNotice,
+            reusePolicyNotice,
+            issuerTrust,
+        )
+    ) {
+        // multipaz's requirement, not ours: the OAuth redirect must come back to the caller so the
+        // authorization code can be read off it.
+        followRedirects = false
+        // The first request after the user comes back from the browser or eIDENTITA can meet a socket iOS
+        // reclaimed while the wallet was suspended.
+        retryOnceWhenConnectionLost()
+    }
+
+/**
+ * Wraps another engine and applies the two compatibility fixes described on [openID4VciHttpClient].
+ *
+ * An engine rather than an `HttpClientPlugin` deliberately: multipaz reads bodies with
+ * `readRawBytes()`, which bypasses the response-transformation pipeline a plugin would hook, so a
+ * plugin could not rewrite what multipaz actually sees. `HttpClientEngineBase` is the extension point
+ * JetBrains documents for custom engines; `execute` carries `@InternalAPI` for everyone who implements
+ * one, which is why the opt-in below is not a smell.
+ */
+@OptIn(InternalAPI::class)
+internal class OpenID4VciCompatibilityEngine(
+    private val delegate: HttpClientEngine,
+    private val deferredNotice: DeferredIssuanceNotice? = null,
+    private val refusalNotice: TokenRefusalNotice? = null,
+    private val displayNotice: IssuerDisplayNotice? = null,
+    private val reusePolicyNotice: IssuerReusePolicyNotice? = null,
+    private val issuerTrust: IssuerTrustSource? = null,
+) : HttpClientEngineBase("openid4vci-compat") {
+
+    override val config: HttpClientEngineConfig get() = delegate.config
+
+    override val supportedCapabilities get() = delegate.supportedCapabilities
+
+    /**
+     * Endpoints learned from the authorization server's own metadata, so nothing here has to guess at
+     * URL shapes. Plain vars: a provisioning session is sequential, and the only other traffic through
+     * this engine (display logos) never touches them.
+     */
+    private var challengeEndpoint: String? = null
+    private var pushedAuthorizationRequestEndpoint: String? = null
+    private var tokenEndpoint: String? = null
+
+    /** So the retry is armed once per session, not on every 401 the server sends. */
+    private var armedRefreshRetry = false
+
+    /** `credential_configuration_id` → OAuth `scope`, from the credential issuer's own metadata. */
+    private var scopesByConfigurationId: Map<String, String> = emptyMap()
+
+    /** The deferral this engine already handed on, as JSON; null until the issuer defers. See [execute]. */
+    private var deferralAnswer: ByteArray? = null
+
+    override suspend fun execute(data: HttpRequestData): HttpResponseData {
+        // ⛔ Never ask an issuer again for a credential it has already deferred. multipaz's own client
+        // retries any credential answer that is not `200` but carries a `DPoP-Nonce`, and a deferral is such
+        // an answer; the request is not idempotent, so the issuer opens a second deferred transaction and
+        // the first is orphaned (watched against Plaut's issuers with multipaz 0.99 and 0.101). An engine
+        // serves one document, so a credential request after a deferral can only be that retry: it gets the
+        // same deferral back, and the handler parks the transaction the issuer opened first.
+        deferralAnswer?.let { deferral ->
+            if (credentialRequestOf(data) != null) {
+                Logger.i(TAG, "not asking again for a credential already deferred; answering with that deferral")
+                return deferralResponse(deferral)
+            }
+        }
+
+
+        // A credential or deferred credential request to an issuer whose metadata offered encryption.
+        // Looked up per request, and before anything is sent: see [CredentialEncryptionRegistry].
+        val exchange = credentialExchangeFor(data)
+        val request = when {
+            isPushedAuthorizationRequest(data) -> withScopeInsteadOfAuthorizationDetails(data)
+            exchange != null -> encryptedCredentialRequest(data, exchange)
+            else -> data
+        }
+
+        val isTokenExchange = isTokenRequest(data)
+        val isRefreshExchange = isTokenExchange && isRefreshGrant(data)
+        val credentialRequest = credentialRequestOf(data)
+        if (isTokenExchange) traceTokenRequest(data)
+
+        val response = try {
+            delegate.execute(request)
+        } catch (t: Throwable) {
+            if (isOptional(data)) {
+                // A logo, a card art, some display extra. multipaz checks the status, so hand it one.
+                // Keep the log short: Darwin's DNS errors are a screenful each.
+                Logger.w(TAG, "optional GET ${data.url} failed (${t::class.simpleName}); reporting 502")
+                return emptyResponse(HttpStatusCode.BadGateway)
+            }
+            throw t
+        }
+
+        if (isTokenExchange) traceTokenResponse(response)
+        val tokenResponse =
+            if (isTokenExchange && deferredNotice != null && response.statusCode == HttpStatusCode.OK) {
+                noteSessionAccessToken(response)
+            } else {
+                response
+            }
+
+        // Decrypted before anything else reads it, so the deferral note below sees the issuer's JSON.
+        // Only a success is a JWE: an issuer does not encrypt an error to a key it may not trust.
+        val readable =
+            if (exchange != null && response.statusCode.isSuccess()) decryptedCredentialResponse(response, exchange)
+            else tokenResponse
+
+        return when {
+            isWellKnown(data) -> rememberEndpoints(data, readable)
+            isPushedAuthorizationRequest(data) ->
+                injectFreshAttestationChallenge(acceptCreatedOrOk(readable))
+            isRefreshExchange && readable.statusCode != HttpStatusCode.OK ->
+                noteAndMaybeArm(readable)
+
+            isDeferredIssuance(readable) -> noteDeferredIssuance(readable)
+            credentialRequest != null && readable.statusCode == HttpStatusCode.OK ->
+                checkedPidSigners(data, credentialRequest, readable)
+
+            else -> readable
+        }
+    }
+
+    /** The JSON body of a credential request, or null when [data] is not one. */
+    private fun credentialRequestOf(data: HttpRequestData): JsonObject? {
+        if (data.method != HttpMethod.Post) return null
+        val body = (data.body as? OutgoingContent.ByteArrayContent)?.bytes() ?: return null
+        val json = runCatching { Json.parseToJsonElement(body.decodeToString()).jsonObject }.getOrNull()
+        return json?.takeIf { "credential_configuration_id" in it || "credential_identifier" in it }
+    }
+
+    /**
+     * Passes a credential response on only if every PID in it is signed by a recognised PID provider.
+     *
+     * Here, before multipaz certifies anything, because this is the one place every issuance path
+     * meets: multipaz's own client for a single configuration, an offer and a refresh, and
+     * [IosOpenID4VciProvisioningClient] for a batch. A refusal thrown here fails the request, and
+     * multipaz cleans up as for any failed request — a new document is deleted, and a refresh drops
+     * only the credentials it was adding. Android checks at the same point, before `storeIssuedDocument`.
+     *
+     * Null [issuerTrust] skips it, as it does the metadata check, for the tests that serve credentials
+     * from a `MockEngine`.
+     */
+    private suspend fun checkedPidSigners(
+        data: HttpRequestData,
+        request: JsonObject,
+        response: HttpResponseData,
+    ): HttpResponseData {
+        val trust = issuerTrust ?: return response
+        val (bytes, replayable) = replayableBody(response)
+        val credentials = runCatching {
+            Json.parseToJsonElement(bytes.decodeToString()).jsonObject["credentials"]?.jsonArray?.mapNotNull {
+                ((it as? JsonObject)?.get("credential") as? JsonPrimitive)?.contentOrNull
+            }
+        }.getOrNull().orEmpty()
+        val configurationId = (request["credential_configuration_id"] as? JsonPrimitive)?.contentOrNull
+        val requestedPid = configurationId != null &&
+            PidConfigurationRegistry.isPid(data.url.toString(), configurationId)
+        trust.enforcePidSigners(credentials, requestedPid)
+        return replayable
+    }
+
+    /** The encryption this POST needs, begun; null when it is not one the issuer asked to encrypt. */
+    private suspend fun credentialExchangeFor(data: HttpRequestData): CredentialExchange? {
+        if (data.method != HttpMethod.Post) return null
+        val encryption = CredentialEncryptionRegistry.forEndpoint(data.url.toString()) ?: return null
+        return if (encryption.isActive) encryption.begin() else null
+    }
+
+    /**
+     * The same request with its JSON body encrypted, and `credential_response_encryption` added.
+     *
+     * The DPoP proof is unaffected: it signs the method, the URL and the access token, not the body.
+     */
+    private suspend fun encryptedCredentialRequest(
+        data: HttpRequestData,
+        exchange: CredentialExchange,
+    ): HttpRequestData {
+        // Refused rather than sent unencrypted: the answer would be decrypted with a key the issuer was
+        // never given, and an issuer that requires encryption refuses the plain request anyway.
+        val body = checkNotNull(data.body as? OutgoingContent.ByteArrayContent) {
+            "The credential request body could not be read to encrypt it."
+        }
+        val payload = Json.parseToJsonElement(body.bytes().decodeToString()).jsonObject
+        val encoded = exchange.encode(payload)
+        Logger.i(TAG, "encrypting the credential request to ${data.url.encodedPath} (${encoded.contentType})")
+
+        return HttpRequestData(
+            url = data.url,
+            method = data.method,
+            // Content-Length and Content-Type would describe the old body; the new content supplies both.
+            headers = HeadersBuilder().apply {
+                data.headers.forEach { name, values ->
+                    if (!name.equals(CONTENT_LENGTH, ignoreCase = true) &&
+                        !name.equals(CONTENT_TYPE, ignoreCase = true)
+                    ) {
+                        appendAll(name, values)
+                    }
+                }
+            }.build(),
+            body = TextContent(encoded.text, encoded.contentType),
+            executionContext = data.executionContext,
+            attributes = data.attributes,
+        )
+    }
+
+    /**
+     * A successful credential answer as JSON, decrypted when the exchange asked for a JWE — and given back
+     * the status the plain protocol would have used.
+     *
+     * 🚨 An encrypted **deferral** arrives as `200`, not `202`. The EUDI reference issuer answers every
+     * encrypted credential response with `200 OK` (`eudi-srv-pid-issuer` `WalletApi.kt`,
+     * `IssueCredentialResponse.EncryptedJwtIssued -> ok()`), so the `transaction_id` is only visible
+     * *inside* the JWE, while the plain response is `202` exactly when it carries one. Measured against
+     * Plaut's dev issuer 2026-09-28: the `_deferred` configuration came back `200` with no credentials, and
+     * was read as an empty issuance — `List is empty` — instead of being parked. Restoring the `202`
+     * hands the rest of the flow the answer it has always handled, in every path at once.
+     */
+    private suspend fun decryptedCredentialResponse(
+        response: HttpResponseData,
+        exchange: CredentialExchange,
+    ): HttpResponseData {
+        if (!exchange.decryptsResponse) return response
+        val bytes = (response.body as? ByteReadChannel)?.readBuffer()?.readByteArray() ?: ByteArray(0)
+        val json = exchange.decode(bytes.decodeToString())
+        val deferral = runCatching { Json.parseToJsonElement(json).jsonObject }.getOrNull()
+            ?.let { it["transaction_id"] != null && it["credentials"] == null } == true
+        val status = if (deferral) HttpStatusCode.Accepted else response.statusCode
+        Logger.i(
+            TAG,
+            "decrypted the credential response (${response.statusCode.value})" +
+                if (deferral) "; it is a deferral, handed on as 202" else "",
+        )
+        return response.replacingBody(json.encodeToByteArray(), asJson = true, statusCode = status)
+    }
+
+    /**
+     * An issuer that will issue later answers the credential request with `202 Accepted` and a
+     * `transaction_id` instead of credentials (OpenID4VCI's deferred flow).
+     */
+    private fun isDeferredIssuance(response: HttpResponseData): Boolean =
+        deferredNotice != null && response.statusCode == HttpStatusCode.Accepted
+
+    /** Records the session's access token on [deferredNotice] — see its `sessionAccessToken` — and passes the response on. */
+    private suspend fun noteSessionAccessToken(response: HttpResponseData): HttpResponseData {
+        val (bytes, replayable) = replayableBody(response)
+        val body = runCatching { Json.parseToJsonElement(bytes.decodeToString()).jsonObject }.getOrNull()
+        val token = (body?.get("access_token") as? JsonPrimitive)?.contentOrNull ?: return replayable
+        deferredNotice?.sessionAccessToken = token
+        deferredNotice?.sessionAccessTokenExpiresAt = (body["expires_in"] as? JsonPrimitive)?.contentOrNull
+            ?.toLongOrNull()
+            ?.let { seconds -> Clock.System.now() + seconds.seconds }
+        return replayable
+    }
+
+    /**
+     * Records the deferred handle and passes the response through **unchanged**.
+     *
+     * Deliberately an observation rather than a rewrite, unlike the other rules here: multipaz cannot
+     * complete a deferred issuance at all — it never parses `deferred_credential_endpoint` and treats any
+     * non-200 as an error — so there is nothing to paper over. What the note buys is a truthful message
+     * instead of `Error getting a credential issued: 202 Accepted {...}`. The body is kept too, so
+     * multipaz's retry is answered with this deferral rather than sent to the issuer — see [execute].
+     */
+    private suspend fun noteDeferredIssuance(response: HttpResponseData): HttpResponseData {
+        val (bytes, replayable) = replayableBody(response)
+        val body = runCatching {
+            Json.parseToJsonElement(bytes.decodeToString()).jsonObject
+        }.getOrNull()
+
+        body?.get("transaction_id")?.jsonPrimitive?.contentOrNull?.let { transactionId ->
+            deferralAnswer = bytes
+            deferredNotice?.transactionId = transactionId
+            deferredNotice?.retryAfterSeconds =
+                body["interval"]?.jsonPrimitive?.content?.toIntOrNull()
+            Logger.i(TAG, "the issuer deferred this issuance (transaction $transactionId)")
+        }
+        return replayable
+    }
+
+    /** Reads a response body and hands back an equivalent response, since a channel is read once. */
+    private suspend fun replayableBody(response: HttpResponseData): Pair<ByteArray, HttpResponseData> {
+        val bytes = (response.body as? ByteReadChannel)?.readBuffer()?.readByteArray()
+            ?: ByteArray(0)
+        return bytes to HttpResponseData(
+            statusCode = response.statusCode,
+            requestTime = response.requestTime,
+            headers = response.headers,
+            version = response.version,
+            body = ByteReadChannel(bytes),
+            callContext = response.callContext,
+        )
+    }
+
+    override fun close() {
+        delegate.close()
+        super.close()
+    }
+
+    /**
+     * Whether a failure here can be reported instead of thrown.
+     *
+     * Only GETs, and never the protocol's own discovery documents: an unreachable `.well-known` is a
+     * real failure and must not be softened into a confusing parse error further up. Everything else a
+     * GET fetches in this flow is presentation — logos and card art — which multipaz treats as
+     * optional already. POSTs (PAR, token, nonce, credential) always throw.
+     */
+    private fun isOptional(data: HttpRequestData): Boolean =
+        data.method == HttpMethod.Get && !data.url.encodedPath.contains(WELL_KNOWN)
+
+    private fun isWellKnown(data: HttpRequestData): Boolean =
+        data.url.encodedPath.contains(WELL_KNOWN)
+
+    private fun isSignedMetadata(response: HttpResponseData): Boolean =
+        response.statusCode == HttpStatusCode.OK &&
+                response.headers[CONTENT_TYPE]?.contains("jwt", ignoreCase = true) == true
+
+    private fun isPushedAuthorizationRequest(data: HttpRequestData): Boolean =
+        data.method == HttpMethod.Post &&
+                pushedAuthorizationRequestEndpoint?.let { data.url.toString() == it } == true
+
+    private fun isTokenRequest(data: HttpRequestData): Boolean =
+        data.method == HttpMethod.Post &&
+                tokenEndpoint?.let { data.url.toString() == it } == true
+
+    private fun isRefreshGrant(data: HttpRequestData): Boolean =
+        formParametersOf(data)?.get("grant_type") == "refresh_token"
+
+    private fun formParametersOf(data: HttpRequestData): Parameters? =
+        (data.body as? OutgoingContent.ByteArrayContent)
+            ?.bytes()?.decodeToString()?.parseUrlEncodedParameters()
+
+    /**
+     * Unwraps signed metadata if needed, and remembers the two endpoints [injectFreshAttestationChallenge]
+     * depends on.
+     *
+     * Reading the body here means it has to be handed back re-wrapped, which is why every metadata
+     * response goes through [HttpResponseData.replacingBody] even when nothing was rewritten.
+     */
+    private suspend fun rememberEndpoints(
+        data: HttpRequestData,
+        response: HttpResponseData,
+    ): HttpResponseData {
+        if (response.statusCode != HttpStatusCode.OK) return response
+        val unwrapped =
+            if (isSignedMetadata(response)) unwrapSignedMetadata(data, response) else response
+        val bytes = withPrimaryLanguageLocales((unwrapped.body as ByteReadChannel).readBuffer().readByteArray())
+
+        runCatching {
+            val json = Json.parseToJsonElement(bytes.decodeToString()).jsonObject
+            json["challenge_endpoint"]?.jsonPrimitive?.content?.let {
+                challengeEndpoint = it
+                Logger.i(TAG, "learned challenge endpoint")
+            }
+            json["pushed_authorization_request_endpoint"]?.jsonPrimitive?.content?.let {
+                pushedAuthorizationRequestEndpoint = it
+            }
+            json["token_endpoint"]?.jsonPrimitive?.content?.let { tokenEndpoint = it }
+            PidConfigurationRegistry.record(json)
+            CredentialEncryptionRegistry.record(json)?.let { offer ->
+                offer.onSuccess { if (it.isActive) Logger.i(TAG, "the issuer takes encrypted credential exchanges: $it") }
+                    .onFailure { Logger.w(TAG, "the issuer's credential encryption is unusable: ${it.message}") }
+            }
+            json["credential_configurations_supported"]?.jsonObject?.let { configurations ->
+                scopesByConfigurationId = configurations.mapNotNull { (id, configuration) ->
+                    configuration.jsonObject["scope"]?.jsonPrimitive?.content?.let { id to it }
+                }.toMap()
+                Logger.i(TAG, "learned ${scopesByConfigurationId.size} credential scopes")
+                rememberClaimDisplayNames(configurations)
+                rememberDisplays(issuerMetadata = json, configurations = configurations)
+                rememberReusePolicies(configurations)
+            }
+        }
+
+        return unwrapped.replacingBody(bytes, asJson = true)
+    }
+
+    /**
+     * [metadata] with every display `locale` reduced to its language (`sk-SK` → `sk`), or the same bytes
+     * when none carries more than a language. multipaz picks display entries by EXACT match against the
+     * client's locales (`JsonParsing.extractDisplay`, whose TODO says so) and this wallet asks for the
+     * user's bare language, so an issuer writing `sk-SK` would show a Slovak user its English names. Done
+     * after any signature has been checked, and only to `locale` values: multipaz uses them for nothing else.
+     */
+    private fun withPrimaryLanguageLocales(metadata: ByteArray): ByteArray {
+        val json = runCatching { Json.parseToJsonElement(metadata.decodeToString()) }.getOrNull() ?: return metadata
+        var changed = false
+        fun normalised(element: JsonElement): JsonElement = when (element) {
+            is JsonObject -> JsonObject(
+                element.mapValues { (key, value) ->
+                    val tag = (value as? JsonPrimitive)?.takeIf { key == LOCALE && it.isString }?.content
+                    val language = tag?.primaryLanguageSubtag()
+                    if (tag != null && language != null && language != tag) {
+                        changed = true
+                        JsonPrimitive(language)
+                    } else {
+                        normalised(value)
+                    }
+                }
+            )
+            is JsonArray -> JsonArray(element.map { normalised(it) })
+            else -> element
+        }
+        val result = normalised(json)
+        return if (changed) result.toString().encodeToByteArray() else metadata
+    }
+
+    /**
+     * Keeps the per-claim display names out of `credential_metadata.claims`, so a document can show
+     * "Family Name(s)" instead of `family_name`.
+     *
+     * Deserialised straight into [IssuerMetadata.Claim], whose `@SerialName`s already match the wire
+     * shape — the alternative was a hand-rolled parse of the same JSON. Unknown members are ignored
+     * because the issuer publishes more per claim than this needs, and a new one must not fail an
+     * issuance over a cosmetic feature.
+     */
+    private fun rememberClaimDisplayNames(configurations: JsonObject) {
+        val notice = displayNotice ?: return
+        val byDocumentType = configurations.values.mapNotNull { configuration ->
+            val configured = configuration.jsonObject
+            // `doctype` for mdoc, `vct` for SD-JWT VC — whichever this configuration is.
+            val documentType = (configured["doctype"] ?: configured["vct"])
+                ?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val claims = configured["credential_metadata"]?.jsonObject?.get("claims")
+                ?: return@mapNotNull null
+            runCatching {
+                documentType to LenientJson.decodeFromJsonElement(ListSerializer(IssuerMetadata.Claim.serializer()), claims)
+            }.getOrNull()
+        }.toMap()
+
+        if (byDocumentType.isNotEmpty()) {
+            notice.claimsByDocumentType = byDocumentType
+            Logger.i(
+                TAG,
+                "learned claim display names for ${byDocumentType.size} document type(s): " +
+                        byDocumentType.entries.joinToString { "${it.key}=${it.value.size}" }
+            )
+        }
+    }
+
+    /**
+     * Keeps the document's and the issuer's `display` entries in every language the issuer published, where
+     * multipaz keeps one. Read from where multipaz reads them — `credential_metadata`, else the configuration
+     * itself — so the entry multipaz chose is among them. An entry without a name is dropped, as an issuer
+     * must name every one; a malformed list costs only its own document, never the issuance.
+     */
+    private fun rememberDisplays(issuerMetadata: JsonObject, configurations: JsonObject) {
+        val notice = displayNotice ?: return
+        val byDocumentType = configurations.values.mapNotNull { configuration ->
+            val configured = configuration as? JsonObject ?: return@mapNotNull null
+            val documentType = (configured["doctype"] ?: configured["vct"])
+                ?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val described = configured["credential_metadata"] as? JsonObject ?: configured
+            runCatching { documentType to described["display"].documentDisplays() }.getOrNull()
+        }.groupBy({ it.first }, { it.second })
+
+        notice.documentDisplaysByDocumentType = byDocumentType
+        val issuerDisplays = runCatching { issuerMetadata["display"].issuerDisplays() }.getOrDefault(emptyList())
+        notice.issuerDisplays = issuerDisplays
+        Logger.i(
+            TAG,
+            "learned display entries for ${byDocumentType.size} document type(s) and " +
+                    "${issuerDisplays.size} for the issuer: " +
+                    issuerDisplays.joinToString { it.locale ?: "-" }
+        )
+    }
+
+    /**
+     * Keeps the issuer's `credential_metadata.credential_reuse_policy`, which multipaz discards along
+     * with everything else beside `display`.
+     *
+     * The selection — first supported option, in the issuer's order — happens here rather than at
+     * issuance, so what the handler receives is already the option this wallet committed to, and there
+     * is one place that knows the ETSI detail strings.
+     */
+    private fun rememberReusePolicies(configurations: JsonObject) {
+        val notice = reusePolicyNotice ?: return
+        val byDocumentType = configurations.values.mapNotNull { configuration ->
+            val configured = configuration.jsonObject
+            val documentType = (configured["doctype"] ?: configured["vct"])
+                ?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val published = configured["credential_metadata"]?.jsonObject?.get("credential_reuse_policy")
+                ?: return@mapNotNull null
+            runCatching {
+                LenientJson.decodeFromJsonElement(IssuerReusePolicy.serializer(), published)
+            }.getOrNull()
+                ?.firstSupportedOption()
+                ?.let { documentType to it }
+        }.toMap()
+
+        if (byDocumentType.isNotEmpty()) {
+            notice.policiesByDocumentType = byDocumentType
+            Logger.i(
+                TAG,
+                "learned reuse policies for ${byDocumentType.size} document type(s): " +
+                        byDocumentType.entries.joinToString {
+                            "${it.key}=${it.value.detail}/${it.value.option.batchSize}"
+                        }
+            )
+        }
+    }
+
+    /**
+     * Adds an `OAuth-Client-Attestation-Challenge` header carrying a **fresh** challenge to the PAR
+     * response.
+     *
+     * 🩹 **Working around a multipaz bug, and it should be removed when that is fixed.**
+     * `OpenID4VCIProvisioningClient.obtainToken` refreshes the client-attestation challenge only when a
+     * *pre-authorized* code is used:
+     * ```
+     * if (preauthorizedCode != null) { maybeObtainClientAttestationChallenge() }
+     * ```
+     * On the authorization-code path it therefore reuses the challenge minted before PAR. Keycloak
+     * treats attestation challenges as single-use, so the token request's PoP is a replay and the
+     * answer is `401 invalid_client`. Verified by diffing against the Android app, whose call order is
+     * `/challenge → PAR → /challenge → /token` while multipaz's is `/challenge → PAR → /token`.
+     *
+     * The lever is that multipaz *does* pick up a challenge offered in this response header (it reads it
+     * after both PAR and the token request). Keycloak does not send one, so it is fetched and injected
+     * here — leaving multipaz's own logic untouched.
+     */
+    private suspend fun injectFreshAttestationChallenge(
+        response: HttpResponseData,
+    ): HttpResponseData {
+        val endpoint = challengeEndpoint ?: return response
+        if (response.headers[ATTESTATION_CHALLENGE_HEADER] != null) {
+            // The server offered one itself; nothing to do, and it knows better than we do.
+            return response
+        }
+
+        val challenge = runCatching { fetchAttestationChallenge(endpoint) }.getOrNull()
+        if (challenge == null) {
+            Logger.w(TAG, "could not pre-fetch an attestation challenge; the token request may fail")
+            return response
+        }
+
+        Logger.i(TAG, "injected a fresh attestation challenge into the PAR response")
+        return response.withExtraHeaders { append(ATTESTATION_CHALLENGE_HEADER, challenge) }
+    }
+
+    /**
+     * Reports a successful pushed authorization request as `201`, whatever the server called it.
+     *
+     * 🩹 **Working around multipaz.** `performPushedAuthorizationRequest` accepts exactly one status:
+     *
+     * ```kotlin
+     * if (response.status == HttpStatusCode.Created) { break }
+     * …
+     * throw IllegalStateException("Error establishing authenticated channel with issuer")
+     * ```
+     *
+     * RFC 9126 does say 201, so multipaz is not wrong — but an authorization server answering `200 OK`
+     * with a valid `request_uri` is answering successfully, and issuance then fails with a message that
+     * names neither the status nor the server. Observed against a live EU authorization server, which
+     * returns `200 {"expires_in": 3600, "request_uri": "urn:uuid:…"}`.
+     *
+     * ⛔ **Only a body that actually carries `request_uri` is rewritten.** A `200` without one is not a
+     * successful PAR, and turning it into a `201` would convert a real failure into a confusing one
+     * further along — the opposite of what this shim is for.
+     */
+    private suspend fun acceptCreatedOrOk(response: HttpResponseData): HttpResponseData {
+        if (response.statusCode != HttpStatusCode.OK) return response
+
+        val (bytes, replayable) = replayableBody(response)
+        val hasRequestUri = runCatching {
+            Json.parseToJsonElement(bytes.decodeToString())
+                .jsonObject["request_uri"]?.jsonPrimitive?.contentOrNull
+        }.getOrNull() != null
+        if (!hasRequestUri) return replayable
+
+        Logger.i(TAG, "the authorization server answered PAR with 200; reporting it as 201")
+        return HttpResponseData(
+            statusCode = HttpStatusCode.Created,
+            requestTime = replayable.requestTime,
+            headers = replayable.headers,
+            version = replayable.version,
+            body = replayable.body,
+            callContext = replayable.callContext,
+        )
+    }
+
+    /**
+     * Records why a refresh was refused, and arms the retry if the refusal is one a retry can fix.
+     *
+     * Both halves need the body, and a response body can be read once, so they share one read. Only a
+     * `401` is worth retrying: that is the client being rejected, which [armRefreshRetry] can answer.
+     * A `400 invalid_grant` means the refresh token itself is spent or expired, and retrying it with
+     * better client credentials would fail the same way — the honest thing is to let it through and let
+     * the caller say so.
+     */
+    private suspend fun noteAndMaybeArm(response: HttpResponseData): HttpResponseData {
+        val (bytes, replayable) = replayableBody(response)
+        refusalNotice?.error = runCatching {
+            Json.parseToJsonElement(bytes.decodeToString())
+                .jsonObject["error"]?.jsonPrimitive?.contentOrNull
+        }.getOrNull()
+        refusalNotice?.error?.let { Logger.i(TAG, "the refresh was refused: $it") }
+
+        return if (response.statusCode == HttpStatusCode.Unauthorized) armRefreshRetry(replayable)
+        else replayable
+    }
+
+    /**
+     * Makes multipaz retry a refused **refresh** token request with a challenge it never fetched.
+     *
+     * 🩹 **The same multipaz bug as [injectFreshAttestationChallenge], on the path that shim cannot
+     * reach.** `obtainToken` refreshes the client-attestation challenge only when a pre-authorized code
+     * is in play, so on `grant_type=refresh_token` — a brand-new provisioning client, and no PAR
+     * anywhere in the flow — `clientAttestationChallenge` is still null when the PoP is minted, and
+     * `createWalletAttestationPoP` just leaves the claim out.
+     *
+     * Measured against `dev.issuer-backend.eudiw.dev`, not inferred: the refused refresh sends
+     * `OAuth-Client-Attestation-PoP` with `claims=[aud, iat, iss, jti]` and **no `challenge`**, while
+     * the issuance request accepted seconds later by the same endpoint carries one. So `401
+     * invalid_client` is the literal truth — the *client* was rejected, not the refresh token that
+     * multipaz's message blames. Note what this rules out: a PoP with no challenge claim at all fails
+     * the same way one second after issuance as it does a week later, so the wallet attestation's short
+     * life is not what is biting here.
+     *
+     * The only lever left is multipaz's own retry, which fires once per token exchange:
+     * ```
+     * response.headers["DPoP-Nonce"]?.let { authorizationDPoPNonce = it }
+     * response.headers["OAuth-Client-Attestation-Challenge"]?.let { clientAttestationChallenge = it }
+     * if (...) { if (!retried && authorizationDPoPNonce != null) { retried = true; continue } }
+     * ```
+     * It picks a fresh challenge off *this* response before deciding, so the challenge header alone
+     * would make the second attempt correct — but the retry is gated on a DPoP nonce this server never
+     * sends, so the header has to be answered too. See [RETRY_ARMING_DPOP_NONCE] for why that is
+     * tolerable.
+     */
+    private suspend fun armRefreshRetry(response: HttpResponseData): HttpResponseData {
+        if (armedRefreshRetry) return response
+        val endpoint = challengeEndpoint ?: return response
+
+        val challenge = runCatching { fetchAttestationChallenge(endpoint) }.getOrNull()
+        if (challenge == null) {
+            Logger.w(TAG, "no challenge to retry the refused refresh with; reporting the refusal")
+            return response
+        }
+
+        armedRefreshRetry = true
+        Logger.i(TAG, "arming multipaz's retry with a fresh attestation challenge for the refresh")
+        return response.withExtraHeaders {
+            if (response.headers[ATTESTATION_CHALLENGE_HEADER] == null) {
+                append(ATTESTATION_CHALLENGE_HEADER, challenge)
+            }
+            if (response.headers[DPOP_NONCE_HEADER] == null) {
+                append(DPOP_NONCE_HEADER, RETRY_ARMING_DPOP_NONCE)
+            }
+        }
+    }
+
+    /** The same response with more headers, and the body passed straight through unread. */
+    private fun HttpResponseData.withExtraHeaders(
+        extra: HeadersBuilder.() -> Unit,
+    ): HttpResponseData = HttpResponseData(
+        statusCode = statusCode,
+        requestTime = requestTime,
+        headers = HeadersBuilder().apply { appendAll(headers); extra() }.build(),
+        version = version,
+        body = body,
+        callContext = callContext,
+    )
+
+    /**
+     * Replaces `authorization_details` in a PAR body with the equivalent `scope`.
+     *
+     * 🩹 **Working around a second multipaz bug.** `performPushedAuthorizationRequest` drops a
+     * configuration's `scope` whenever another configuration shares that scope *and* format, logging
+     * *"Scope does not uniquely identify credential for configuration id …"*, and falls back to
+     * `authorization_details` with `type=openid_credential`. On this issuer **every** configuration has a
+     * `_deferred` twin with the same scope and format, so the fallback is taken every time — and the
+     * authorization server does not implement that RAR type, answering
+     * `400 invalid_authorization_details: Unsupported type 'openid_credential'`. The Android wallet sends
+     * `scope=…` for the same credential and succeeds.
+     *
+     * Rewriting a *request* body is safe here specifically because the proofs are not over it: the DPoP
+     * and client-attestation PoP JWTs bind the method and URL (`htm`/`htu`), not the payload.
+     *
+     * Anything unexpected — no mapping for the requested configuration, a body that is not form data, a
+     * request that already carries a scope — is left exactly as multipaz built it.
+     */
+    private fun withScopeInsteadOfAuthorizationDetails(data: HttpRequestData): HttpRequestData {
+        val body = data.body as? OutgoingContent.ByteArrayContent ?: return data
+        val parameters = body.bytes().decodeToString().parseUrlEncodedParameters()
+        val details = parameters["authorization_details"] ?: return data
+        if (parameters["scope"] != null) return data
+
+        val configurationIds = runCatching {
+            Json.parseToJsonElement(details).jsonArray.mapNotNull {
+                it.jsonObject["credential_configuration_id"]?.jsonPrimitive?.content
+            }
+        }.getOrElse { emptyList() }
+
+        val scopes = configurationIds.mapNotNull { scopesByConfigurationId[it] }
+        if (scopes.isEmpty() || scopes.size != configurationIds.size) {
+            Logger.w(TAG, "no scope known for $configurationIds; leaving authorization_details alone")
+            return data
+        }
+
+        // Once each: a document and its `_deferred` twin share one scope, and `scope` is a set
+        // (RFC 6749 §3.3), so repeating it asks for nothing more.
+        val scope = scopes.distinct().joinToString(" ")
+        Logger.i(TAG, "sending scope '$scope' instead of authorization_details")
+        val rewritten = Parameters.build {
+            parameters.forEach { name, values ->
+                if (name != "authorization_details") appendAll(name, values)
+            }
+            append("scope", scope)
+        }.formUrlEncode()
+
+        return HttpRequestData(
+            url = data.url,
+            method = data.method,
+            // Content-Length would describe the old body; the new content supplies its own.
+            headers = HeadersBuilder().apply {
+                data.headers.forEach { name, values ->
+                    if (!name.equals(CONTENT_LENGTH, ignoreCase = true)) appendAll(name, values)
+                }
+            }.build(),
+            body = TextContent(rewritten, ContentType.Application.FormUrlEncoded),
+            executionContext = data.executionContext,
+            attributes = data.attributes,
+        )
+    }
+
+    /** POSTs the challenge endpoint through the delegate, so tests can serve it like any other call. */
+    private suspend fun fetchAttestationChallenge(endpoint: String): String? {
+        val response = delegate.execute(
+            HttpRequestData(
+                url = Url(endpoint),
+                method = HttpMethod.Post,
+                headers = Headers.Empty,
+                body = EmptyContent,
+                executionContext = Job(),
+                attributes = Attributes(),
+            )
+        )
+        if (response.statusCode != HttpStatusCode.OK) return null
+        val text = (response.body as ByteReadChannel).readBuffer().readByteArray().decodeToString()
+        return Json.parseToJsonElement(text).jsonObject["attestation_challenge"]?.jsonPrimitive?.content
+    }
+
+    /**
+     * Replaces a `statuslist`-style signed metadata response with the JWT's payload.
+     *
+     * The signer's `x5c` chain **is** checked against the EU trust lists — see [enforceIssuerTrust],
+     * which is also where the one deliberate divergence from Android is written down. Two cheaper
+     * checks sit alongside it and neither is redundant: TLS to the issuer's host, and the check below
+     * that the metadata actually describes the issuer we asked about, which catches a substituted
+     * document whoever signed it. The signer is logged either way, so a run can be audited by eye.
+     */
+    @OptIn(ExperimentalEncodingApi::class)
+    private suspend fun unwrapSignedMetadata(
+        data: HttpRequestData,
+        response: HttpResponseData,
+    ): HttpResponseData {
+        val jwt = (response.body as ByteReadChannel).readBuffer().readByteArray().decodeToString()
+        val parts = jwt.trim().split('.')
+        if (parts.size != 3) {
+            Logger.w(TAG, "signed metadata from ${data.url} is not a JWT; passing it through")
+            return response.replacingBody(jwt.encodeToByteArray())
+        }
+
+        val payload = try {
+            Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL)
+                .decode(parts[1])
+                .decodeToString()
+        } catch (t: Throwable) {
+            Logger.w(TAG, "signed metadata payload from ${data.url} would not decode: ${t.message}")
+            return response.replacingBody(jwt.encodeToByteArray())
+        }
+
+        val json = Json.parseToJsonElement(payload).jsonObject
+        val issuer = json["credential_issuer"]?.jsonPrimitive?.content
+        val expected = "${data.url.protocol.name}://${data.url.host}"
+        if (issuer != null && !issuer.startsWith(expected)) {
+            // Cheap but real: a metadata document for a *different* issuer means something replaced it.
+            throw IllegalStateException(
+                "signed metadata from ${data.url} describes '$issuer', not '$expected'"
+            )
+        }
+        enforceIssuerTrust(jwt.trim(), issuer)
+        Logger.i(TAG, "unwrapped signed metadata for $issuer (signer: ${signerOf(parts[0])})")
+
+        return response.replacingBody(payload.encodeToByteArray(), asJson = true)
+    }
+
+    /**
+     * Rejects signed metadata whose signer the EU trust lists do **not** recognise.
+     *
+     * Android's equivalent is `requireSignedMetadata()` in `configureIssuerTrust`, which hands
+     * openid4vci an `IssuerMetadataPolicy.RequireSigned` over the same trust lists — outside the trust
+     * policy, so a definite "not trusted" is a hard failure there whatever the policy's default. It is
+     * typed ([IssuerNotTrustedException]) because Android shows its "issuer not trusted" sheet for it.
+     *
+     * ⛔ **The context is `WalletRelyingPartyAccessCertificate`, not `PID`** — metadata signing
+     * certificates belong to the WRPAC list; the PID list is for the certificates that sign PID
+     * *credentials*. wallet-core says the same in code and in words: `EtsiCertificateChainTrust`
+     * passes `WalletRelyingPartyAccessCertificate`, "which is the correct context for metadata signing
+     * certificates per the EUDI specification".
+     *
+     * 🪤 This was `VerificationContext.PID` until 2026-09-18, which is a real difference and not a
+     * naming detail: the PID context carries `pidSigningCertificateProfile()`, whose
+     * `mandatoryQcType(ID_ETSI_QCT_PID)` rejects these certificates for having no `qcStatements` at
+     * all. The WRPAC profile asks for QC statements only under the QCP policies, and the EU dev
+     * issuers' metadata signers carry `0.4.0.194118.1.2` (NCP-l-eudiwrp, non-qualified), which is
+     * exempt. So the wrong context is what made the end-entity profiles look unusable here.
+     *
+     * ⚠️ **An *undetermined* verdict is allowed through, and that is a deliberate divergence.** The
+     * check cannot tell "this issuer is not on the list" from "the list was unreachable", and treating
+     * the second as a refusal would make every offline or flaky-network moment look like a hostile
+     * issuer and block issuance outright. So it is logged loudly and permitted.
+     *
+     * The trust lists are cached on disk (see `IosEtsiTrust.loader`), which narrows that window a
+     * great deal — an undetermined verdict now means the wallet has never successfully fetched a list,
+     * not merely that it is offline right now.
+     *
+     * 📌 Note this is the **opposite** choice from reader trust, where undetermined shows as
+     * untrusted. The asymmetry is the point: there, being wrong means vouching for a stranger; here,
+     * it means a wallet that cannot add a document on a train.
+     *
+     * ⛔ **The `x5c` chain is asked about only once the JWS verifies with its first certificate.** A
+     * chain is public; without this, anyone could paste a recognised issuer's into metadata they signed
+     * themselves. A signature that does not verify is refused whatever the lists would say, undetermined
+     * included: it is no list's to answer. Android's `RequireSigned` verifies the JWS too.
+     */
+    private suspend fun enforceIssuerTrust(jwt: String, issuer: String?) {
+        val trust = issuerTrust ?: return
+        val chain = certificateChainOf(jwt.substringBefore('.'))
+        if (chain.isEmpty()) {
+            Logger.w(TAG, "signed metadata for $issuer carries no x5c; cannot check its signer")
+            return
+        }
+        if (!isSignedBy(chain.first()) { key -> JsonWebSignature.verify(jwt, key) }) {
+            throw IssuerNotTrustedException("$issuer's signed metadata is not signed by the certificate chain it carries")
+        }
+        when (trust.verdict(chain.toTrustChain(), VerificationContext.WalletRelyingPartyAccessCertificate)) {
+            TrustVerdict.TRUSTED ->
+                Logger.i(TAG, "the signer of $issuer's metadata is on the EU access-certificate list")
+
+            TrustVerdict.NOT_TRUSTED -> throw IssuerNotTrustedException(
+                "the signer of $issuer's signed metadata is not a recognised access certificate"
+            )
+
+            TrustVerdict.UNDETERMINED -> Logger.w(
+                TAG,
+                "could not establish whether $issuer's metadata signer is trusted; allowing it through",
+            )
+        }
+    }
+
+    /** The `x5c` chain from a JWS header; empty when there is none, or it will not decode. */
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun certificateChainOf(encodedHeader: String): List<X509Cert> = runCatching {
+        val header = Json.parseToJsonElement(
+            Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL)
+                .decode(encodedHeader)
+                .decodeToString()
+        ).jsonObject
+        // `x5c` is standard-alphabet base64 (RFC 7515 §4.1.6), unlike the JWS segments around it.
+        header["x5c"]?.jsonArray?.map {
+            X509Cert(ByteString(Base64.Default.decode(it.jsonPrimitive.content)))
+        }.orEmpty()
+    }.getOrElse { emptyList() }
+
+    /** The `kid`/`x5c` hint from the JWT header, for the log line only. */
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun signerOf(encodedHeader: String): String = try {
+        val header = Json.parseToJsonElement(
+            Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL)
+                .decode(encodedHeader)
+                .decodeToString()
+        ) as JsonObject
+        header["kid"]?.jsonPrimitive?.content
+            ?: header["x5c"]?.let { "x5c(${it.toString().length} bytes)" }
+            ?: "unknown"
+    } catch (_: Throwable) {
+        "unparseable"
+    }
+
+    private fun HttpResponseData.replacingBody(
+        bytes: ByteArray,
+        asJson: Boolean = false,
+        statusCode: HttpStatusCode = this.statusCode,
+    ): HttpResponseData = HttpResponseData(
+        statusCode = statusCode,
+        requestTime = requestTime,
+        headers = HeadersBuilder().apply {
+            headers.forEach { name, values ->
+                // Content-Length and Content-Type no longer describe the body we are handing back.
+                if (!name.equals(CONTENT_LENGTH, ignoreCase = true) &&
+                    !name.equals(CONTENT_TYPE, ignoreCase = true)
+                ) {
+                    appendAll(name, values)
+                }
+            }
+            append(CONTENT_TYPE, if (asJson) "application/json" else "application/jwt")
+            append(CONTENT_LENGTH, bytes.size.toString())
+        }.build(),
+        version = version,
+        body = ByteReadChannel(bytes),
+        callContext = callContext,
+    )
+
+    /**
+     * A synthetic response, built the way ktor's own `MockEngine` builds one.
+     *
+     * `callContext()` matters and is not interchangeable with the request's `executionContext`: the
+     * client waits on the call context's job to finish the call, and handing it the *request's* job
+     * deadlocks — the first tolerated logo failure hung the whole probe until this was fixed.
+     */
+    private suspend fun emptyResponse(status: HttpStatusCode): HttpResponseData = HttpResponseData(
+        statusCode = status,
+        requestTime = GMTDate(),
+        headers = Headers.Empty,
+        version = HttpProtocolVersion.HTTP_1_1,
+        body = ByteReadChannel(ByteArray(0)),
+        callContext = callContext(),
+    )
+
+    /** [deferral] again, as the `202` it was first handed on as; built like [emptyResponse]. */
+    private suspend fun deferralResponse(deferral: ByteArray): HttpResponseData = HttpResponseData(
+        statusCode = HttpStatusCode.Accepted,
+        requestTime = GMTDate(),
+        headers = HeadersBuilder().apply { append(CONTENT_TYPE, ContentType.Application.Json.toString()) }.build(),
+        version = HttpProtocolVersion.HTTP_1_1,
+        body = ByteReadChannel(deferral),
+        callContext = callContext(),
+    )
+
+    /**
+     * Logs the *shape* of a token request, and what the server made of it.
+     *
+     * Values are deliberately absent: the form carries a refresh token and the headers carry a wallet
+     * attestation. What is logged is which parameters and headers are present, and which claims each
+     * proof JWT asserts — because that is what every token-endpoint failure on this stack has turned
+     * on. The first `401 invalid_client` was found by diffing Android's claim set against multipaz's,
+     * and so was the refresh one, which is why `challenge` is called out by name.
+     */
+    private fun traceTokenRequest(data: HttpRequestData) {
+        val parameters = formParametersOf(data)
+        Logger.i(
+            TAG,
+            "token request: grant_type=${parameters?.get("grant_type")} " +
+                    "params=${parameters?.names()?.sorted()} " +
+                    "headers=${data.headers.names().sorted()}"
+        )
+        listOf(DPOP_HEADER, ATTESTATION_POP_HEADER).forEach { header ->
+            data.headers[header]?.let { Logger.i(TAG, "  $header -> ${claimsOf(it)}") }
+        }
+    }
+
+    private fun traceTokenResponse(response: HttpResponseData) {
+        Logger.i(
+            TAG,
+            "token response: ${response.statusCode}" +
+                    ", $DPOP_NONCE_HEADER=${presence(response.headers[DPOP_NONCE_HEADER])}" +
+                    ", $ATTESTATION_CHALLENGE_HEADER=" +
+                    presence(response.headers[ATTESTATION_CHALLENGE_HEADER])
+        )
+    }
+
+    /** The claims a proof JWT asserts, with `challenge` called out since that is the one that bites. */
+    @OptIn(ExperimentalEncodingApi::class)
+    private fun claimsOf(jwt: String): String = runCatching {
+        val payload = Json.parseToJsonElement(
+            Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL)
+                .decode(jwt.split('.')[1])
+                .decodeToString()
+        ).jsonObject
+        "claims=${payload.keys.sorted()}, " +
+                "challenge=${if (payload.containsKey("challenge")) "present" else "ABSENT"}"
+    }.getOrElse { "unparseable" }
+
+    private fun presence(value: String?): String = if (value != null) "present" else "absent"
+
+    private companion object {
+        const val TAG = "OpenID4VciHttpClient"
+
+        /** The issuer publishes more per claim than this reads; ignoring the rest is deliberate. */
+        val LenientJson = Json { ignoreUnknownKeys = true }
+        const val WELL_KNOWN = ".well-known"
+        const val CONTENT_TYPE = "Content-Type"
+        const val CONTENT_LENGTH = "Content-Length"
+        const val ATTESTATION_CHALLENGE_HEADER = "OAuth-Client-Attestation-Challenge"
+        const val ATTESTATION_POP_HEADER = "OAuth-Client-Attestation-PoP"
+        const val DPOP_HEADER = "DPoP"
+        const val DPOP_NONCE_HEADER = "DPoP-Nonce"
+        const val LOCALE = "locale"
+
+        /**
+         * Handed to multipaz as a `DPoP-Nonce` purely so its retry fires; the value is never checked
+         * by anything that matters.
+         *
+         * This authorization server does not use DPoP nonces — it sends none on any response, and
+         * RFC 9449 has a server ignore a `nonce` claim it did not ask for — so the retried proof
+         * carrying one costs nothing. It is confined to the token endpoint too: multipaz keeps the
+         * issuer's nonce in a separate field, so the credential requests that follow are untouched.
+         * If the server ever does start demanding nonces, it will send a real one and this is never
+         * reached.
+         */
+        const val RETRY_ARMING_DPOP_NONCE = "retry"
+    }
+}
+
+/** A `display` array as the document's [IssuerMetadata.Display] entries; empty for anything that is not one. */
+private fun JsonElement?.documentDisplays(): List<IssuerMetadata.Display> =
+    displayObjects().mapNotNull { display ->
+        IssuerMetadata.Display(
+            name = display.text("name") ?: return@mapNotNull null,
+            locale = display.text("locale"),
+            logo = display.logo(),
+            description = display.text("description"),
+            backgroundColor = display.text("background_color"),
+            textColor = display.text("text_color"),
+            backgroundImageUri = (display["background_image"] as? JsonObject)?.text("uri"),
+        )
+    }
+
+/** A `display` array as the issuer's [IssuerMetadata.IssuerDisplay] entries; empty for anything that is not one. */
+private fun JsonElement?.issuerDisplays(): List<IssuerMetadata.IssuerDisplay> =
+    displayObjects().mapNotNull { display ->
+        IssuerMetadata.IssuerDisplay(
+            name = display.text("name") ?: return@mapNotNull null,
+            locale = display.text("locale"),
+            logo = display.logo(),
+        )
+    }
+
+private fun JsonElement?.displayObjects(): List<JsonObject> =
+    (this as? JsonArray)?.filterIsInstance<JsonObject>().orEmpty()
+
+private fun JsonObject.text(key: String): String? =
+    (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
+
+private fun JsonObject.logo(): IssuerMetadata.Logo? =
+    (this["logo"] as? JsonObject)?.let { logo -> IssuerMetadata.Logo(uri = logo.text("uri"), alternativeText = logo.text("alt_text")) }

@@ -31,6 +31,12 @@ moduleConfig {
     module = LibraryModule.AnalyticsLogic
 }
 
+dependencies {
+    // For `AnalyticsLogger`, the platform-neutral half of `AnalyticsController`. `api` because
+    // consumers of this module call `logScreen`/`logEvent` through the supertype.
+    api(project(":shared-logic"))
+}
+
 excludeFromKoverReport(
     excludedClasses = KoverExclusionRules.AnalyticsLogic.classes,
     excludedPackages = KoverExclusionRules.AnalyticsLogic.packages,

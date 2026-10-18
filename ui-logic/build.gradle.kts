@@ -36,6 +36,9 @@ moduleConfig {
 dependencies {
     implementation(project(LibraryModule.ResourcesLogic.path))
     implementation(project(LibraryModule.BusinessLogic.path))
+    // KMP Compose-MP UI module (compose-resources + StringResolver). `api` so feature modules that
+    // depend on :ui-logic can use Res/StringResolver directly in the Phase-3 presentation migration.
+    api(project(":shared-ui"))
     implementation(project(LibraryModule.AnalyticsLogic.path))
     implementation(project(LibraryModule.CoreLogic.path))
     implementation(project(LibraryModule.StorageLogic.path))
@@ -44,6 +47,13 @@ dependencies {
     implementation(libs.zxing)
     implementation(libs.gson)
 
+    // Nav3 host: `NavDisplay` plus the decorator that gives each back-stack entry its own
+    // ViewModelStore (what NavBackStackEntry used to provide for `koinViewModel()`). The Nav3
+    // *runtime* (NavKey/entryProvider) comes through `api(":shared-ui")`, so feature modules can
+    // contribute entries without depending on the host artifacts.
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+
     testImplementation(project(LibraryModule.TestLogic.path))
 }
 
@@ -51,3 +61,18 @@ excludeFromKoverReport(
     excludedClasses = KoverExclusionRules.UiLogic.classes,
     excludedPackages = KoverExclusionRules.UiLogic.packages,
 )
+
+// `AppIdentityParityTest` and `DeepLinkSchemeParityTest` compare the two platforms' build inputs by
+// reading these three files at run time, which Gradle cannot infer: nothing on the test classpath
+// changes when one of them does, so the test task stays UP-TO-DATE and the guard silently does not
+// run. Verified by breaking project.yml and watching the suite pass in 600ms.
+tasks.withType<Test>().configureEach {
+    inputs.files(
+        rootProject.file("version.properties"),
+        rootProject.file("app.properties"),
+        rootProject.file("iosApp/project.yml"),
+        rootProject.file("androidApp/build.gradle.kts"),
+    )
+        .withPropertyName("crossPlatformBuildInputs")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}

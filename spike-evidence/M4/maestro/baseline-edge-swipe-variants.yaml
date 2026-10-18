@@ -1,0 +1,15 @@
+appId: eu.compote.euidi.dev
+---
+- swipe:
+    start: "1,500"
+    end: "350,500"
+    duration: 1500
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: v1
+- swipe:
+    start: "0%,40%"
+    end: "95%,40%"
+    duration: 150
+- waitForAnimationToEnd:
+    timeout: 3000

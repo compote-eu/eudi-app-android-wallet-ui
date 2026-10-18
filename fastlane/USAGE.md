@@ -30,7 +30,7 @@ The Android build still uses the Gradle wrapper and project configuration descri
 | `android upload_firebase` | Uploads the APK to Firebase App Distribution. |
 | `android github_release` | Creates a GitHub release and uploads the APK and optional extra attachments. |
 | `android set_version` | Writes a CalVer-style `VERSION_NAME` into `version.properties`. |
-| `android reset_versioncode` | Resets `versionCode` in `app/build.gradle.kts` to `1`. |
+| `android reset_versioncode` | Resets `versionCode` in `androidApp/build.gradle.kts` to `1`. |
 | `android reset_versionName` | Resets `VERSION_NAME` in `version.properties` to `yyyy.mm.v`. |
 
 ## Required environment variables
@@ -57,7 +57,7 @@ Release signing is configured by Gradle, not Fastlane. Current Gradle signing re
 | `ANDROID_KEY_ALIAS` or `androidKeyAlias` | Release key alias. |
 | `ANDROID_KEY_PASSWORD` or `androidKeyPassword` | Release key password. |
 
-The current `app/build.gradle.kts` also uses `ANDROID_KEY_PASSWORD` / `androidKeyPassword` for the
+The current `androidApp/build.gradle.kts` also uses `ANDROID_KEY_PASSWORD` / `androidKeyPassword` for the
 keystore `storePassword`. If your release keystore uses a separate store password, update the Gradle
 signing config to read a distinct CI secret, for example `ANDROID_KEYSTORE_PASSWORD`.
 

@@ -1,0 +1,45 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-20 — duplicate mDL issuance (no merge/block expected)
+#
+# Precondition: app already unlocked (PIN done in a prior TC-01 run),
+#   AND tc-50-mdl-issuance.yaml already run once in the same simulator
+#   session (one mDL already exists). This flow does NOT re-do PIN
+#   setup, and does not stand alone — it specifically exercises issuing
+#   mDL a SECOND time on top of an existing one.
+# Steps: run the mDL issuance sequence exactly once more.
+# Expected: issuing the same mDL document again creates a second,
+#   independent entry in Documents (2 total, alongside whatever else
+#   exists from earlier flows) — no warning, no merge, no blocking
+#   dialog. This is confirmed app behavior (verified manually), not
+#   something this test is checking for correctness of — it's
+#   exercising that the app doesn't choke on it.
+#
+# Exactly ONE runFlow here, not two: this flow adds ONE duplicate on
+# top of the ONE mDL that tc-50-mdl-issuance.yaml's own standalone run
+# (immediately before this one in the CI/local sequence) already
+# created — 1 + 1 = 2 total. An earlier version of this file had two
+# runFlow calls, intending "issue mDL twice" as this flow's own
+# complete responsibility — but since it's chained after TC-50's own
+# run rather than standing alone, that produced 3 total (1 from TC-50 +
+# 2 from this file), not the intended 2. Reuses
+# tc-50-mdl-issuance.yaml via runFlow rather than duplicating its ~20
+# lines here, so this and TC-50 can't silently diverge.
+- runFlow: tc-50-mdl-issuance.yaml
+
+# --- Verify: a second mDL entry is visible with a validity date ---
+# Same pattern as TC-50's own final assertion. Not asserting an exact
+# count of "2" — Maestro's selector vocabulary doesn't give a reliable
+# way to count matching elements, and a single visibility check is
+# sufficient here since we already know from manual verification that
+# duplication happens silently with nothing to assert against in
+# between (no dialog, no merge behavior to distinguish first vs second).
+- extendedWaitUntil:
+    visible: "mDL (MSO Mdoc)"
+    timeout: 10000
+- assertVisible: "Valid until \\d{2} \\w{3} \\d{4}"

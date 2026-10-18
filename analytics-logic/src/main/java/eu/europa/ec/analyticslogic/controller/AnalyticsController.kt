@@ -19,10 +19,13 @@ package eu.europa.ec.analyticslogic.controller
 import android.app.Application
 import eu.europa.ec.analyticslogic.config.AnalyticsConfig
 
-interface AnalyticsController {
+/**
+ * Android's analytics: [AnalyticsLogger]'s reporting plus the initialization that needs an
+ * `Application`. iOS answers the same two reporting methods through `IosAnalytics`, whose
+ * `initialize()` needs no context — which is the only reason the interface is split at all.
+ */
+interface AnalyticsController : AnalyticsLogger {
     fun initialize(context: Application)
-    fun logScreen(name: String, arguments: Map<String, String> = emptyMap())
-    fun logEvent(eventName: String, arguments: Map<String, String> = emptyMap())
 }
 
 class AnalyticsControllerImpl(

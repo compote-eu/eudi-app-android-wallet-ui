@@ -31,8 +31,19 @@ import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationControllerImpl
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogController
 import eu.europa.ec.corelogic.controller.WalletCoreTransactionLogControllerImpl
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingController
+import eu.europa.ec.corelogic.controller.WalletCoreTransactionRecordingControllerImpl
+import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkController
+import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkControllerImpl
+import eu.europa.ec.corelogic.provider.RegistrationCheckProvider
+import eu.europa.ec.corelogic.provider.RegistrationCheckProviderImpl
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProvider
 import eu.europa.ec.corelogic.provider.WalletCoreAttestationProviderImpl
+import eu.europa.ec.corelogic.wallet.WalletEngineImpl
+import eu.europa.ec.eudi.rqes.core.RqesSigningLogger
+import eu.europa.ec.eudi.wallet.transactionLogging.DefaultTransactionLogManager
+import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLogManager
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.eudi.wallet.EudiWallet
 import eu.europa.ec.networklogic.repository.WalletAttestationRepository
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
@@ -55,6 +66,16 @@ import org.koin.mp.KoinPlatform
 @ComponentScan("eu.europa.ec.corelogic")
 class LogicCoreModule
 
+/**
+ * Phase-2 WalletEngine seam: the app-owned wallet boundary (shared/commonMain). The Android
+ * implementation delegates to the wallet-core controller; consumers can depend on WalletEngine
+ * instead of the Android-only wallet-core types. First capability: revocation.
+ */
+@Factory
+fun provideWalletEngine(
+    walletCoreDocumentsController: WalletCoreDocumentsController,
+): WalletEngine = WalletEngineImpl(walletCoreDocumentsController)
+
 @Scope(WalletCoreScope::class)
 @Scoped
 fun provideEudiWallet(
@@ -67,27 +88,65 @@ fun provideEudiWallet(
 ): EudiWallet = EudiWallet(
     context = context,
     config = walletCoreConfig.config,
-    walletProvider = walletCoreAttestationProvider
+    walletProvider = walletCoreAttestationProvider,
+    trustMarkSource = walletCoreConfig.trustMarkSource,
 ) {
     withLogger(walletCoreLogController)
     withTransactionLogger(walletCoreTransactionLogController)
     withKtorHttpClientFactory { httpClient }
 }
 
+@Factory
+fun provideWalletCoreTrustMarkController(
+    prefKeys: PrefKeys,
+    resourceProvider: ResourceProvider,
+): WalletCoreTrustMarkController = WalletCoreTrustMarkControllerImpl(
+    prefKeys = prefKeys,
+    resourceProvider = resourceProvider,
+)
+
 @Single
-fun provideWalletCoreConfig(): WalletCoreConfig = WalletCoreConfigImpl()
+fun provideWalletCoreConfig(
+    registrationCheckProvider: RegistrationCheckProvider
+): WalletCoreConfig = WalletCoreConfigImpl(
+    registrationCheckProvider = registrationCheckProvider
+)
 
 @Factory
 fun provideWalletCoreLogController(logController: LogController): WalletCoreLogController =
     WalletCoreLogControllerImpl(logController)
 
-@Factory
+// Single, not a factory: the controller owns the queue that keeps transaction writes in order, so
+// a second instance would be a second queue writing the same rows.
+@Single
 fun provideWalletCoreTransactionLogController(
     transactionLogDao: TransactionLogDao,
-    uuidProvider: UuidProvider
+    resourceProvider: ResourceProvider,
+    walletCoreConfig: WalletCoreConfig,
 ): WalletCoreTransactionLogController = WalletCoreTransactionLogControllerImpl(
     transactionLogDao = transactionLogDao,
-    uuidProvider = uuidProvider
+    resourceProvider = resourceProvider,
+    transactionDataTypes = walletCoreConfig.config.openId4VpConfig?.transactionDataTypes.orEmpty(),
+)
+
+@Single
+fun provideWalletCoreTransactionLogManager(
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
+): TransactionLogManager = DefaultTransactionLogManager(
+    storage = walletCoreTransactionLogController,
+)
+
+@Single(binds = [RqesSigningLogger::class])
+fun provideWalletCoreTransactionRecordingController(
+    uuidProvider: UuidProvider,
+    transactionLogManager: TransactionLogManager,
+    walletCoreTransactionLogController: WalletCoreTransactionLogController,
+    resourceProvider: ResourceProvider,
+): WalletCoreTransactionRecordingController = WalletCoreTransactionRecordingControllerImpl(
+    uuidProvider = uuidProvider,
+    transactionLogManager = transactionLogManager,
+    walletCoreTransactionLogController = walletCoreTransactionLogController,
+    resourceProvider = resourceProvider,
 )
 
 @Factory
@@ -101,23 +160,30 @@ fun provideWalletCoreAttestationProvider(
     )
 
 @Factory
+fun provideRegistrationCheckProvider(
+    prefKeys: PrefKeys
+): RegistrationCheckProvider = RegistrationCheckProviderImpl(
+    prefKeys = prefKeys
+)
+
+@Factory
 fun provideWalletCoreDocumentsController(
     resourceProvider: ResourceProvider,
     walletCoreConfig: WalletCoreConfig,
     bookmarkDao: BookmarkDao,
-    transactionLogDao: TransactionLogDao,
     revokedDocumentDao: RevokedDocumentDao,
     failedReIssuedDocumentDao: FailedReIssuedDocumentDao,
-    prefKeys: PrefKeys
+    prefKeys: PrefKeys,
+    logController: LogController,
 ): WalletCoreDocumentsController =
     WalletCoreDocumentsControllerImpl(
         resourceProvider,
         walletCoreConfig,
         bookmarkDao,
-        transactionLogDao,
         revokedDocumentDao,
         failedReIssuedDocumentDao,
-        prefKeys
+        prefKeys,
+        logController,
     )
 
 @Scope(WalletPresentationScope::class)
@@ -152,11 +218,5 @@ class WalletCoreScope
 inline fun <reified T : Any> getOrCreateKoinScope(scopeId: String): org.koin.core.scope.Scope =
     KoinPlatform.getKoin().getOrCreateScope<T>(scopeId)
 
-/**
- * Retrieves an existing Koin scope by its identifier.
- *
- * @param scopeId The unique identifier of the scope to retrieve.
- * @return The [org.koin.core.scope.Scope] instance if it exists, or null if no scope with the given ID is found.
- */
-fun getOrNullKoinScope(scopeId: String): org.koin.core.scope.Scope? =
-    KoinPlatform.getKoin().getScopeOrNull(scopeId)
+// `getOrNullKoinScope` moved to :shared-ui (same package) so commonMain view-models can close their
+// presentation scope. See KoinScopes.kt there.

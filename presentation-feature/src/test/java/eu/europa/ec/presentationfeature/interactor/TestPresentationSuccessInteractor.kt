@@ -21,8 +21,11 @@ import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.ClaimItemId
-import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.document_success_banner_text
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.getMockedFullPid
 import eu.europa.ec.testfeature.util.getMockedSdJwtFullPid
@@ -45,6 +48,7 @@ import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.RelyingPartyDataUi
 import eu.europa.ec.uilogic.component.content.ContentHeaderConfig
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
+import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import org.junit.After
@@ -57,6 +61,12 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.net.URI
+import java.util.Locale
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
+import eu.europa.ec.shared.resources.document_success_header_description
+import eu.europa.ec.shared.resources.document_success_header_description_when_error
+import eu.europa.ec.shared.resources.document_success_relying_party_default_name
 
 class TestPresentationSuccessInteractor {
 
@@ -125,8 +135,8 @@ class TestPresentationSuccessInteractor {
         // When
         val result = interactor.redirectUri
 
-        // Then
-        assertEquals(expectedUri, result)
+        // Then: the interactor exposes it as a String, so the shared contract can name it.
+        assertEquals(expectedUri.toString(), result)
     }
     //endregion
 
@@ -190,7 +200,7 @@ class TestPresentationSuccessInteractor {
     // Case 1:
     // 1. walletCorePresentationController.disclosedDocuments returns null.
     // 2. walletCorePresentationController.verifierName returns null.
-    // 3. walletCorePresentationController.verifierIsTrusted returns null
+    // 3. walletCorePresentationController.verifierIsFullyVerified returns null
     //    (the `== true` check will evaluate to false, so isVerified is false).
 
     // Case 1 Expected Result:
@@ -204,7 +214,7 @@ class TestPresentationSuccessInteractor {
             // Given
             whenever(walletCorePresentationController.disclosedDocuments).thenReturn(null)
             whenever(walletCorePresentationController.verifierName).thenReturn(null)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(null)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(null)
             mockSuccessHeaderStrings()
 
             // When
@@ -212,10 +222,11 @@ class TestPresentationSuccessInteractor {
                 // Then
                 val expectedResult = PresentationSuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
+                    bannerText = UiText.Resource(Res.string.document_success_banner_text),
                     headerConfig = ContentHeaderConfig(
-                        description = mockedErrorDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedDefaultRelyingPartyName,
+                            name = UiText.Resource(Res.string.document_success_relying_party_default_name),
                             isVerified = false,
                         )
                     )
@@ -230,7 +241,7 @@ class TestPresentationSuccessInteractor {
     //    referencing the mocked PID with one non-empty disclosed item.
     // 2. walletCoreDocumentsController.getDocumentById returns the mocked PID IssuedDocument.
     // 3. walletCorePresentationController.verifierName returns a non-empty name.
-    // 4. walletCorePresentationController.verifierIsTrusted returns true.
+    // 4. walletCorePresentationController.verifierIsFullyVerified returns true.
 
     // Case 2 Expected Result:
     // Success state with:
@@ -254,7 +265,7 @@ class TestPresentationSuccessInteractor {
             whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedPidId))
                 .thenReturn(pid)
             whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(true)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(true)
             mockSuccessHeaderStrings()
             mockTransformToUiItemsStrings(resourceProvider)
             whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
@@ -279,7 +290,10 @@ class TestPresentationSuccessInteractor {
                     ListItemMainContentDataUi.Text(text = pid.name),
                     docUi.header.mainContentData
                 )
-                assertEquals(mockedDocumentSupportingText, docUi.header.supportingText)
+                assertEquals(
+                    ListItemSupportingContentDataUi.Text(text = mockedDocumentSupportingText),
+                    docUi.header.supportingContentData
+                )
                 assertEquals(
                     ListItemTrailingContentDataUi.Icon(iconData = AppIcons.KeyboardArrowDown),
                     docUi.header.trailingContentData
@@ -289,13 +303,69 @@ class TestPresentationSuccessInteractor {
 
                 assertEquals(
                     ContentHeaderConfig(
-                        description = mockedNormalDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedVerifierName,
+                            name = mockedVerifierName.asUiText(),
                             isVerified = true,
                         )
                     ),
                     result.headerConfig
+                )
+            }
+        }
+    }
+
+    // Case 2a:
+    // As Case 2, while the issuer names the disclosed document in the user's language as well as in
+    // the language of its stored name.
+
+    // Case 2a Expected Result:
+    // The document's header is its name in the user's language.
+    @Test
+    fun `Given the issuer names the document in the user's language, When getUiItems is called, Then the document is named in that language`() {
+        coroutineRule.runTest {
+            // Given
+            val pid = getMockedFullPid()
+            val storedName = pid.name
+            whenever(pid.issuerMetadata).thenReturn(
+                IssuerMetadata(
+                    documentConfigurationIdentifier = "eu.europa.ec.eudi.pid_mdoc",
+                    display = listOf(
+                        IssuerMetadata.Display(name = storedName, locale = Locale.ENGLISH),
+                        IssuerMetadata.Display(name = "Osobný doklad", locale = Locale.forLanguageTag("sk")),
+                    ),
+                    claims = emptyList(),
+                    credentialIssuerIdentifier = "https://issuer.example",
+                    issuerDisplay = emptyList(),
+                )
+            )
+            val disclosedDocument = mockedMdocPresentationSelection(
+                documentId = mockedPidId,
+                namespace = mockedMdocPidNameSpace,
+                dataElements = listOf("family_name"),
+            )
+
+            whenever(walletCorePresentationController.disclosedDocuments)
+                .thenReturn(mutableListOf(disclosedDocument))
+            whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedPidId))
+                .thenReturn(pid)
+            whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(true)
+            mockSuccessHeaderStrings()
+            mockTransformToUiItemsStrings(resourceProvider)
+            whenever(resourceProvider.getLocale()).thenReturn(Locale.forLanguageTag("sk-SK"))
+            whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
+
+            // When
+            interactor.getUiItems().runFlowTest {
+                // Then
+                val result = awaitItem()
+                assertTrue(result is PresentationSuccessInteractorGetUiItemsPartialState.Success)
+                result as PresentationSuccessInteractorGetUiItemsPartialState.Success
+
+                assertEquals(
+                    ListItemMainContentDataUi.Text(text = "Osobný doklad"),
+                    result.documentsUi.single().header.mainContentData
                 )
             }
         }
@@ -327,7 +397,7 @@ class TestPresentationSuccessInteractor {
             whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedPidId))
                 .thenReturn(pid)
             whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(true)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(true)
             mockSuccessHeaderStrings()
 
             // When
@@ -335,10 +405,11 @@ class TestPresentationSuccessInteractor {
                 // Then
                 val expectedResult = PresentationSuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
+                    bannerText = UiText.Resource(Res.string.document_success_banner_text),
                     headerConfig = ContentHeaderConfig(
-                        description = mockedErrorDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedVerifierName,
+                            name = mockedVerifierName.asUiText(),
                             isVerified = true,
                         )
                     )
@@ -372,7 +443,7 @@ class TestPresentationSuccessInteractor {
             whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedPidId))
                 .thenThrow(mockedExceptionWithMessage)
             whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(false)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(false)
             mockSuccessHeaderStrings()
 
             // When
@@ -380,10 +451,11 @@ class TestPresentationSuccessInteractor {
                 // Then
                 val expectedResult = PresentationSuccessInteractorGetUiItemsPartialState.Success(
                     documentsUi = emptyList(),
+                    bannerText = UiText.Resource(Res.string.document_success_banner_text),
                     headerConfig = ContentHeaderConfig(
-                        description = mockedErrorDescription,
+                        description = UiText.Resource(Res.string.document_success_header_description_when_error),
                         relyingPartyData = RelyingPartyDataUi(
-                            name = mockedVerifierName,
+                            name = mockedVerifierName.asUiText(),
                             isVerified = false,
                         )
                     )
@@ -404,7 +476,7 @@ class TestPresentationSuccessInteractor {
         coroutineRule.runTest {
             // Given
             whenever(walletCorePresentationController.disclosedDocuments).thenReturn(null)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(false)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(false)
             whenever(walletCorePresentationController.verifierName)
                 .thenThrow(mockedExceptionWithMessage)
 
@@ -429,7 +501,7 @@ class TestPresentationSuccessInteractor {
         coroutineRule.runTest {
             // Given
             whenever(walletCorePresentationController.disclosedDocuments).thenReturn(null)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(false)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(false)
             whenever(walletCorePresentationController.verifierName)
                 .thenThrow(mockedExceptionWithNoMessage)
 
@@ -475,7 +547,7 @@ class TestPresentationSuccessInteractor {
             whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedPidId))
                 .thenReturn(pid)
             whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(true)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(true)
             mockSuccessHeaderStrings()
             mockTransformToUiItemsStrings(resourceProvider)
             whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
@@ -537,7 +609,7 @@ class TestPresentationSuccessInteractor {
             whenever(walletCoreDocumentsController.getDocumentById(documentId = mockedSdJwtPidId))
                 .thenReturn(sdJwtPid)
             whenever(walletCorePresentationController.verifierName).thenReturn(mockedVerifierName)
-            whenever(walletCorePresentationController.verifierIsTrusted).thenReturn(true)
+            whenever(walletCorePresentationController.verifierIsFullyVerified).thenReturn(true)
             mockSuccessHeaderStrings()
             mockTransformToUiItemsStrings(resourceProvider)
             whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
@@ -573,13 +645,7 @@ class TestPresentationSuccessInteractor {
     }
 
     private fun mockSuccessHeaderStrings() {
-        whenever(resourceProvider.getString(R.string.document_success_header_description_when_error))
-            .thenReturn(mockedErrorDescription)
-        whenever(resourceProvider.getString(R.string.document_success_header_description))
-            .thenReturn(mockedNormalDescription)
-        whenever(resourceProvider.getString(R.string.document_success_relying_party_default_name))
-            .thenReturn(mockedDefaultRelyingPartyName)
-        whenever(resourceProvider.getString(R.string.document_success_collapsed_supporting_text))
+        whenever(resourceProvider.getString(Res.string.document_success_collapsed_supporting_text))
             .thenReturn(mockedDocumentSupportingText)
     }
     //endregion
@@ -587,9 +653,6 @@ class TestPresentationSuccessInteractor {
     //region mocked objects
     private val mockedInitiatorRoute = "mockedInitiatorRoute"
     private val mockedRedirectUriString = "https://example.com/redirect"
-    private val mockedErrorDescription = "Mocked error description"
-    private val mockedNormalDescription = "Mocked normal description"
-    private val mockedDefaultRelyingPartyName = "Mocked default relying party name"
     private val mockedDocumentSupportingText = "Mocked document supporting text"
     //endregion
 }

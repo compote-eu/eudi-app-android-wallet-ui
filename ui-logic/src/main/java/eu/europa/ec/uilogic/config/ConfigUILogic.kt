@@ -16,16 +16,22 @@
 
 package eu.europa.ec.uilogic.config
 
-import eu.europa.ec.uilogic.navigation.Screen
+import eu.europa.ec.shared.navigation.AppRoute
+import kotlin.reflect.KClass
 
+/**
+ * The two destinations the host has to recognise generically: "the user is in", and "the user is in
+ * but has no documents yet". They are destination *types* rather than instances because that is all
+ * the host does with them — ask whether one is on the back stack, or pop back to it.
+ */
 interface ConfigUILogic {
     /*
-       Define the dashboard identifier
+       Define the dashboard destination
     */
-    val dashboardScreenIdentifier: Screen
+    val dashboardRoute: KClass<out AppRoute>
 
     /*
-   Define the issuance identifier
+   Define the issuance destination
    */
-    val issuanceScreenIdentifier: Screen
+    val issuanceRoute: KClass<out AppRoute>
 }

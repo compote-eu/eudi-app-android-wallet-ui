@@ -1,0 +1,21 @@
+## D2b auth 2026-10-17T17:01:20+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+at request
+pid before: 17778
+CRITICAL
+send-trim-memory rc=0
+pid after SIGKILL: ''
+-- relaunch (recents)
+shot d2b-auth-after
+pid: 18105 gate=0 state=resource-id="ux-state-request"
+10-17 17:01:38.961 UX-SPIKE: enter connecting (gen 1)
+10-17 17:01:38.962 UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 17:01:41.972 UX-SPIKE: enter request (gen 2)
+10-17 17:01:45.161 UX-SPIKE: enter auth (gen 3)
+10-17 17:01:45.162 UX-SPIKE: authenticate#1 (script slow)
+10-17 17:01:46.666 UX-SPIKE: enter verification-code (gen 4)
+10-17 17:01:52.784 UX-SPIKE: hook module loaded
+10-17 17:01:53.331 UX-SPIKE: restore auth -> request
+10-17 17:01:53.331 UX-SPIKE: enter request (gen 4)
+10-17 17:01:53.332 UX-SPIKE: restore: Restored(state=request, reinvoked=false)
+10-17 17:01:20.027   643  1903 I am_kill : [0,17657,eu.compote.euidi.dev,0,stop eu.compote.euidi.dev due to from pid 17763,316964]

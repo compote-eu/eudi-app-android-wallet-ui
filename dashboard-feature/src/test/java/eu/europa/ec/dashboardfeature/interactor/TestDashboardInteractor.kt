@@ -17,9 +17,11 @@
 package eu.europa.ec.dashboardfeature.interactor
 
 import eu.europa.ec.dashboardfeature.ui.dashboard.model.SideMenuTypeUi
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockResourceProviderStrings
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.dashboard_side_menu_option_change_pin
+import eu.europa.ec.shared.resources.dashboard_side_menu_option_settings
+import eu.europa.ec.shared.resources.trust_mark_about_title
 import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.ListItemLeadingContentDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
@@ -32,11 +34,12 @@ import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 class TestDashboardInteractor {
 
     @Mock
-    private lateinit var resourceProvider: ResourceProvider
+    private lateinit var strings: StringCatalog
 
     private lateinit var interactor: DashboardInteractor
 
@@ -47,7 +50,7 @@ class TestDashboardInteractor {
         closeable = MockitoAnnotations.openMocks(this)
 
         interactor = DashboardInteractorImpl(
-            resourceProvider = resourceProvider,
+            strings = strings,
         )
     }
 
@@ -57,16 +60,20 @@ class TestDashboardInteractor {
     }
 
     //region getSideMenuOptions
+    // Case 1:
+    // 1. Side-menu labels are available.
+    // Case 1 Expected Result:
+    // Change PIN and Settings retain their order, followed by About EUDI Wallet.
     @Test
-    fun `When getSideMenuOptions is called, Then it returns two items with correct data`() {
-        // Arrange
-        mockStringsNeededForGetSideMenuOptions(resourceProvider)
+    fun `Given Case 1, When getSideMenuOptions is called, Then Case 1 Expected Result is returned`() {
+        // Given
+        mockStringsNeededForGetSideMenuOptions()
 
         // When
         val sideMenuItems = interactor.getSideMenuOptions()
 
         // Then
-        assertEquals(2, sideMenuItems.size)
+        assertEquals(3, sideMenuItems.size)
 
         // 1. First item: CHANGE_PIN
         val firstItem = sideMenuItems[0]
@@ -91,28 +98,43 @@ class TestDashboardInteractor {
             secondItem.data.trailingContentData as ListItemTrailingContentDataUi.Icon
         assertEquals(AppIcons.KeyboardArrowRight, trailingIcon2.iconData)
 
+        val aboutItem = sideMenuItems[2]
+        assertEquals(SideMenuTypeUi.ABOUT, aboutItem.type)
+        assertEquals(SideMenuTypeUi.ABOUT.itemId, aboutItem.data.itemId)
+        assertEquals(
+            mockedAboutText,
+            (aboutItem.data.mainContentData as ListItemMainContentDataUi.Text).text,
+        )
+        assertEquals(
+            AppIcons.Info,
+            (aboutItem.data.leadingContentData as ListItemLeadingContentDataUi.Icon).iconData,
+        )
+        assertEquals(
+            AppIcons.KeyboardArrowRight,
+            (aboutItem.data.trailingContentData as ListItemTrailingContentDataUi.Icon).iconData,
+        )
+
         // Verify that getString was called exactly once per resource ID
-        verify(resourceProvider, times(1))
-            .getString(R.string.dashboard_side_menu_option_change_pin)
-        verify(resourceProvider, times(1))
-            .getString(R.string.dashboard_side_menu_option_settings)
+        verify(strings, times(1)).get(Res.string.dashboard_side_menu_option_change_pin)
+        verify(strings, times(1)).get(Res.string.dashboard_side_menu_option_settings)
+        verify(strings, times(1)).get(Res.string.trust_mark_about_title)
     }
     //endregion
 
     //region Mock Calls
-    private fun mockStringsNeededForGetSideMenuOptions(resourcesProvider: ResourceProvider) {
-        mockResourceProviderStrings(
-            resourcesProvider,
-            listOf(
-                R.string.dashboard_side_menu_option_change_pin to changePinText,
-                R.string.dashboard_side_menu_option_settings to settingsText,
-            )
-        )
+    private fun mockStringsNeededForGetSideMenuOptions() {
+        whenever(strings.get(Res.string.dashboard_side_menu_option_change_pin))
+            .thenReturn(changePinText)
+        whenever(strings.get(Res.string.dashboard_side_menu_option_settings))
+            .thenReturn(settingsText)
+        whenever(strings.get(Res.string.trust_mark_about_title))
+            .thenReturn(mockedAboutText)
     }
     //endregion
 
     //region Mocked objects needed for tests.
     private val changePinText = "Change PIN"
     private val settingsText = "Settings"
+    private val mockedAboutText = "About EUDI Wallet"
     //endregion
 }

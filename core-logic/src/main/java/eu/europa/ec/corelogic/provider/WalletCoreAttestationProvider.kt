@@ -32,7 +32,7 @@ class WalletCoreAttestationProviderImpl(
     override suspend fun getWalletAttestation(
         keyInfo: KeyInfo
     ): Result<String> = walletAttestationRepository.getWalletAttestation(
-        baseUrl = walletCoreConfig.walletProviderHost,
+        baseUrl = walletCoreConfig.walletProviderUrl,
         keyInfo = keyInfo.publicKey.toJwk()
     )
 
@@ -40,7 +40,7 @@ class WalletCoreAttestationProviderImpl(
         keys: List<KeyInfo>,
         nonce: Nonce?
     ): Result<String> = walletAttestationRepository.getKeyAttestation(
-        baseUrl = walletCoreConfig.walletProviderHost,
+        baseUrl = walletCoreConfig.walletProviderUrl,
         keys = keys.map { it.publicKey.toJwk() },
         nonce = nonce?.value
     )

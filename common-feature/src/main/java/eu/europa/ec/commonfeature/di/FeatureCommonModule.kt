@@ -22,6 +22,7 @@ import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenti
 import eu.europa.ec.authenticationlogic.controller.storage.BiometryStorageController
 import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
 import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
+import eu.europa.ec.businesslogic.controller.storage.TrustMarkIntroductionStore
 import eu.europa.ec.businesslogic.validator.FormValidator
 import eu.europa.ec.commonfeature.interactor.BiometricInteractor
 import eu.europa.ec.commonfeature.interactor.BiometricInteractorImpl
@@ -31,7 +32,10 @@ import eu.europa.ec.commonfeature.interactor.QrScanInteractor
 import eu.europa.ec.commonfeature.interactor.QrScanInteractorImpl
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractorImpl
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.commonfeature.interactor.TrustMarkInteractor
+import eu.europa.ec.commonfeature.interactor.TrustMarkInteractorImpl
+import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkController
+import eu.europa.ec.shared.resources.StringCatalog
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -43,15 +47,27 @@ import org.koin.core.annotation.Module
 class FeatureCommonModule
 
 @Factory
+fun provideTrustMarkInteractor(
+    walletCoreTrustMarkController: WalletCoreTrustMarkController,
+    introductionStore: TrustMarkIntroductionStore,
+    strings: StringCatalog,
+): TrustMarkInteractor = TrustMarkInteractorImpl(
+    walletCoreTrustMarkController = walletCoreTrustMarkController,
+    introductionStore = introductionStore,
+    strings = strings,
+)
+
+// Shared implementation: the PIN policy is the same on both platforms, only the storage differs.
+@Factory
 fun provideQuickPinInteractor(
     pinStorageController: PinStorageController,
-    resourceProvider: ResourceProvider,
+    strings: StringCatalog,
     pinThrottleController: PinThrottleController,
     authenticationConfig: AuthenticationConfig
 ): QuickPinInteractor {
     return QuickPinInteractorImpl(
         pinStorageController,
-        resourceProvider,
+        strings,
         pinThrottleController,
         authenticationConfig
     )

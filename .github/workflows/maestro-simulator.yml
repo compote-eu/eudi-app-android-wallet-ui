@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   android-tests:
-    name: Android — Maestro (TC-01 common flow)
+    name: Android — Maestro E2E
     # Custom label, not bare `self-hosted`: confirmed against the runner's actual registered
     # labels (self-hosted, macOS, ARM64, maestro, mobile-e2e) — `maestro` is provisioned
     # specifically for this kind of workflow, not any self-hosted runner in the fleet, matching
@@ -36,12 +36,12 @@ jobs:
     runs-on: [self-hosted, macOS, maestro]
     permissions:
       contents: read
-    # Generous ceiling, not an expected duration — the flow itself normally finishes in well
-    # under 5 minutes (confirmed interactively this session: PIN setup through the document
-    # catalog, unmodified, passes in seconds). Sized to comfortably absorb a cold Gradle build,
-    # not to tolerate a hung Maestro driver — that failure mode is bounded separately, and much
-    # more tightly, on the flow-run step itself below.
-    timeout-minutes: 30
+    # Generous ceiling, not an expected duration — the eight chained flows (TC-01 through
+    # TC-30) took about 8 minutes on a wiped local emulator on 2026-10-01, plus build, wipe
+    # and boot. Sized to absorb a cold Gradle build and a slow day at the dev issuer (single
+    # metadata requests have taken over 11s), not to tolerate a hung Maestro driver — that
+    # failure mode is bounded separately, and much more tightly, on each flow-run step below.
+    timeout-minutes: 45
     env:
       # Confirmed live on the machine this workflow was authored on (echo $ANDROID_HOME →
       # /Users/martin.cekan/Library/Android/sdk) — but that's this session's interactive dev
@@ -57,6 +57,26 @@ jobs:
       # list — check `$ANDROID_HOME/emulator/emulator -list-avds` there before finalizing.
       AVD_NAME: Pixel_6a
       MAESTRO_VERSION: '2.8.0'
+      # INCIDENT (2026-09-28, job 108955336057 and its re-run 36433600188): this workflow's
+      # first two real CI attempts both failed at "Disable animations" with adb `error: closed`.
+      # Root-caused via local repro on this same runner machine, NOT an AVD boot-timing race:
+      # BlueStacks (an unrelated third-party Android emulator, already running on this shared
+      # persistent Mac for an unrelated reason) was squatting on port 5555 — the Android SDK
+      # emulator's default first-instance ADB bridge port. Our own AVD's console (port 5554)
+      # bound fine and it genuinely booted internally ("Boot completed in 20816 ms" in its own
+      # log), but its ADB bridge collided with BlueStacks' already-there connection, so
+      # `adb devices -l` only ever showed BlueStacks' phantom device, and every unqualified
+      # `adb`/`adb -e` command — including the emulator's own internal post-boot calls — got
+      # routed to BlueStacks' fluctuating connection instead of our AVD. No amount of settle
+      # delay or retry-without-explicit-targeting could ever have fixed this.
+      #
+      # Fix: an explicit, deliberately-unusual port (outside the default 5554-5584 range other
+      # emulator software would try first) claimed by our own AVD and referenced by serial in
+      # EVERY adb/maestro call below — never relying on default single-device resolution again,
+      # so this workflow stays correct even if BlueStacks (or anything else) starts using the
+      # default port again on this shared machine in the future.
+      EMULATOR_PORT: '5580'
+      SERIAL: emulator-5580
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -73,31 +93,57 @@ jobs:
       - name: Build Android app (dev debug)
         run: ./gradlew :androidApp:assembleDevDebug --no-daemon
 
+      # Added directly in response to the 2026-09-28 BlueStacks incident (see the env: block
+      # comment above): logs what's already connected/listening BEFORE we touch anything, and
+      # fails loudly and immediately if our own dedicated port is already occupied by something
+      # foreign, rather than silently launching into a collision and producing the same
+      # hours-to-diagnose "error: closed" symptom again. This is diagnostic-first, not just a
+      # gate: `adb devices -l`'s output lands in the CI log regardless of outcome, so a future
+      # collision (same port or a different one) is immediately visible here instead of requiring
+      # another local-repro investigation like this incident needed.
+      - name: Pre-flight device/port check
+        run: |
+          echo "Currently connected adb devices (before this job touches anything):"
+          "$ANDROID_HOME/platform-tools/adb" devices -l
+          if lsof -i :"$EMULATOR_PORT" >/dev/null 2>&1; then
+            echo "::error::Port $EMULATOR_PORT is already in use by another process — refusing to launch our emulator into a collision. Run 'lsof -i :$EMULATOR_PORT' on the runner to identify it (this is exactly how the 2026-09-28 BlueStacks incident was found)."
+            lsof -i :"$EMULATOR_PORT" || true
+            exit 1
+          fi
+          echo "Port $EMULATOR_PORT is free — safe to proceed."
+
       # Mirrors the iOS job's "Erase and boot simulator" step: this is a persistent runner, not a
       # fresh VM per run, so a leftover emulator from a prior run (or a prior run's app data) is a
       # real possibility, not a theoretical one — wipe first rather than assume a clean slate.
+      # `-port $EMULATOR_PORT` and `-s "$SERIAL" emu kill` (not bare `-e`) are both part of the
+      # 2026-09-28 fix — see the env: block comment above.
       - name: Wipe emulator data
         run: |
-          "$ANDROID_HOME/platform-tools/adb" -e emu kill || true
+          "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" emu kill || true
           sleep 2
-          "$ANDROID_HOME/emulator/emulator" -avd "$AVD_NAME" -wipe-data -no-window -no-audio -no-boot-anim &
+          "$ANDROID_HOME/emulator/emulator" -avd "$AVD_NAME" -port "$EMULATOR_PORT" -wipe-data -no-window -no-audio -no-boot-anim &
           echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
 
       # Android equivalent of the iOS job's confirmed `bootstatus -b` + settle-delay lesson
       # (see its comment below in ios-tests) — `sys.boot_completed` becoming `1` is the Android
       # analogue of `bootstatus -b` returning, and carries the same caveat: it signals the boot
       # sequence completed, not that every system service (package manager, input dispatch) is
-      # necessarily ready to accept commands yet. The settle sleep after the poll is precautionary,
-      # modeled on the iOS incident, NOT itself confirmed as a real Android race in this repo — no
-      # equivalent failure has actually been hit here. Keep it, but don't treat the "20s" iOS
-      # figure as validated for Android; revisit if this step turns out unnecessary or insufficient
-      # once this workflow has actually run a few times.
+      # necessarily ready to accept commands yet.
+      #
+      # CONFIRMED as a real Android race, not just a theoretical iOS-derived precaution: this
+      # workflow's first real CI run (job 108955336057, 2026-09-28) failed at the very next step
+      # ("Disable animations") with `error: closed` on the first `adb shell` call — the ADB
+      # transport itself had dropped moments after `sys.boot_completed` read 1. The settle sleep
+      # below was already 10s (the iOS-derived starting value) and was NOT sufficient on its own;
+      # bumped to 15s here as a modest additional buffer, but see "Disable animations" below for
+      # the fix actually expected to close the gap — a fixed sleep can't deterministically fix a
+      # transport-level drop, only reduce how often it's hit.
       - name: Wait for emulator boot
         run: |
-          "$ANDROID_HOME/platform-tools/adb" wait-for-device
+          "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" wait-for-device
           BOOT_COMPLETED=""
           for i in $(seq 1 60); do
-            BOOT_COMPLETED=$("$ANDROID_HOME/platform-tools/adb" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            BOOT_COMPLETED=$("$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
             if [ "$BOOT_COMPLETED" = "1" ]; then
               echo "Boot completed after ${i} checks."
               break
@@ -108,13 +154,77 @@ jobs:
             echo "::error::Emulator did not report sys.boot_completed=1 within the poll window."
             exit 1
           fi
-          sleep 10
+          sleep 15
 
+      # Retries each command rather than relying on the settle delay above alone: the confirmed
+      # failure here (`error: closed`) is a different class of problem than the iOS
+      # SpringBoard-readiness race that motivated that delay — it's the ADB transport itself
+      # dropping/re-negotiating shortly after boot, not a system service being slow to accept
+      # commands. A longer sleep reduces how often the window is hit but can't guarantee it;
+      # retrying the actual command after a `wait-for-device` re-sync is what directly handles a
+      # transport that closed and needs to be re-established.
       - name: Disable animations
         run: |
-          "$ANDROID_HOME/platform-tools/adb" shell settings put global window_animation_scale 0
-          "$ANDROID_HOME/platform-tools/adb" shell settings put global transition_animation_scale 0
-          "$ANDROID_HOME/platform-tools/adb" shell settings put global animator_duration_scale 0
+          adb_shell_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              if "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" shell "$@"; then
+                return 0
+              fi
+              echo "adb -s $SERIAL shell $* failed (attempt $attempt/3) — re-syncing and retrying..."
+              "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" wait-for-device
+              sleep 3
+            done
+            echo "::error::adb -s $SERIAL shell $* failed after 3 attempts."
+            return 1
+          }
+          adb_shell_retry settings put global window_animation_scale 0
+          adb_shell_retry settings put global transition_animation_scale 0
+          adb_shell_retry settings put global animator_duration_scale 0
+
+      # Stops Play Store (com.android.vending) from auto-updating anything on this freshly wiped
+      # `google_apis_playstore` image while a flow runs. When its background update of Google Play
+      # services (com.google.android.gms) finishes, Android kills Chrome - even in the foreground
+      # (`Process com.android.chrome ... has died: fg TOP`, signal 9, 0.15-0.5s after Finsky's
+      # `state:INSTALLED` for gms) - and TC-01's FormEU form, which runs in Chrome, disappears
+      # mid-flow, dropping the flow back into the app.
+      #
+      # Diagnostic chain, 2026-09-29: local run 11 and CI run 36554995193 both left Chrome during
+      # the form, right around a `hideKeyboard` - which on Android is a BACK key press - so that
+      # BACK was suspected first and the sub-flow was changed to close the keyboard by tapping a
+      # section heading instead. The next fresh run (local run 12) failed the same way with no
+      # BACK sent at all. Reading this CI run's own full device logcat - still on disk because
+      # this Mac is both the dev machine and the self-hosted runner, while the uploaded artifact
+      # left logcat out - showed Chrome being killed by the Play services update, not navigated
+      # away from, in all three failures (update landing 34-53s after the Chrome hand-off, while
+      # the ~60s form was being filled), and no such update in any passing run. Play Store had
+      # started self-updating and then updating Play services on every fresh wipe from about
+      # midday that day, so this stopped being rare.
+      #
+      # `pm disable-user` works here without root (confirmed live: shell uid 2000, `user` build,
+      # "new state: disabled-user"). This app does not need Play Store at runtime - it uses no
+      # Play Integrity (see IosOpenID4VciBackend.kt's note). The check below fails the job if
+      # the package is somehow still enabled, rather than letting the flow race the update again.
+      - name: Disable Play Store auto-updates
+        run: |
+          adb_shell_retry() {
+            local attempt
+            for attempt in 1 2 3; do
+              if "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" shell "$@"; then
+                return 0
+              fi
+              echo "adb -s $SERIAL shell $* failed (attempt $attempt/3) — re-syncing and retrying..."
+              "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" wait-for-device
+              sleep 3
+            done
+            echo "::error::adb -s $SERIAL shell $* failed after 3 attempts."
+            return 1
+          }
+          adb_shell_retry pm disable-user --user 0 com.android.vending
+          if ! "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" shell pm list packages -d | tr -d '\r' | grep -qx 'package:com.android.vending'; then
+            echo "::error::com.android.vending is still enabled - Play services updates could kill Chrome mid-flow."
+            exit 1
+          fi
 
       # Checks the binary's own full path directly, not `command -v maestro`: $GITHUB_PATH
       # additions are job-scoped in GitHub Actions and do NOT carry over between jobs, even on
@@ -139,10 +249,17 @@ jobs:
       - name: Verify Maestro
         run: maestro --version
 
+      # Explicit launch after install, mirroring the ios-tests job's own `xcrun simctl launch`
+      # below — confirmed necessary interactively this session (2026-09-28): on a truly fresh
+      # install, Maestro's `appId:` declaration in the flow file alone does not reliably
+      # auto-launch the app first. Without this, the flow's first `tapOn: pin_text_field_0`
+      # times out against the home screen (app installed, never launched), not a real app bug.
       - name: Install app
         run: |
           APK_PATH="androidApp/build/outputs/apk/dev/debug/androidApp-dev-debug.apk"
-          "$ANDROID_HOME/platform-tools/adb" install -r "$APK_PATH"
+          "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" install -r "$APK_PATH"
+          "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" shell am start -n eu.compote.euidi.dev/eu.europa.ec.assemblylogic.ui.MainActivity
+          sleep 3
 
       # Marks "now" so the artifact-staging step below can find exactly the ~/.maestro/tests
       # folders this job's own flow run creates, via `find -newer`, rather than uploading every
@@ -156,23 +273,99 @@ jobs:
       # continuation file is deliberately NOT included here yet.
       - name: Run Maestro flow (TC-01 common — PIN setup through document catalog)
         timeout-minutes: 10
-        run: maestro test .maestro/kmp/issuance/tc-01-pid-issuance-common.yaml
+        run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-01-pid-issuance-android.yaml
+
+      # TC-22/24/25 wired in mechanically, NOT yet live-verified against this app (each file's own
+      # header still says so) — added at the user's explicit request without device verification;
+      # appId has been corrected to this app's real eu.compote.euidi.dev (was the iOS sibling
+      # project's eu.europa.ec.euidi.dev), but everything else in these three files is still an
+      # unconfirmed reference port. All three run on the SAME $SERIAL as TC-01 above, no erase or
+      # reinstall in between — they depend on that same emulator session still holding TC-01's
+      # issued PID; running any of them in isolation, without TC-01 having issued a PID first,
+      # is expected to fail on a precondition these files assume, not a real bug.
+      #
+      # TC-22 (remote presentation via deep link, OpenID4VP): needs the PID TC-01 just issued
+      # (it requests and shares the PID's family_name claim) — does not depend on any mDL
+      # presence/absence. Fetches a fresh presentation request from the live verifier backend,
+      # opens it as a deep link, shares via the consent screen, then confirms server-side that
+      # the verifier actually received the data.
+      - name: Run Maestro flow (TC-22 remote presentation)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/presentation/tc-22-remote-presentation.yaml
+
+      # TC-24 (user rejects a remote presentation request): reuses TC-22's own setup script
+      # (same PID precondition, same verifier backend call) but taps Back instead of Share on
+      # the consent screen, then confirms both a clean return to Documents and that the verifier
+      # received nothing. Chained directly after TC-22 rather than run standalone so that any
+      # one-time system permission prompt tied to opening this app's deep-link scheme (unconfirmed
+      # whether Android's OS shows an equivalent to iOS's one-time "Open in EUDI Wallet?" dialog —
+      # not yet observed live on this platform) is already resolved by the time this runs.
+      - name: Run Maestro flow (TC-24 reject presentation)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/presentation/tc-24-reject-presentation.yaml
+
+      # TC-25 (RP requests a document the wallet doesn't have): fetches a fresh request for
+      # Photo ID (org.iso.23220.photoid.1), a doctype this wallet holds zero of. PID being
+      # present (from TC-01) is what makes this "wallet has other documents, just not this one,"
+      # matching a real scenario rather than an empty-wallet edge case — the PID itself isn't
+      # what's being requested here. Per the file's own header, this is architecturally distinct
+      # from TC-24's consent-screen-with-reject path, not a variant of it: the app is expected to
+      # show a separate pre-consent error screen and never reach the normal Share/consent UI at
+      # all. Chained after TC-24 for the same shared-session/one-time-dialog reasoning above.
+      - name: Run Maestro flow (TC-25 unsatisfiable request)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/presentation/tc-25-unsatisfiable-request.yaml
+
+      # TC-50, TC-26, TC-20, TC-30 — Android only so far; built and verified live on a wiped
+      # Pixel_6a on 2026-10-01, see each file's header. Same session as everything above, and
+      # each depends on the one before: TC-50 issues an mDL (needs the wallet set up and Chrome
+      # past its first run, from TC-01), TC-26 shares TC-01's PID and TC-50's mDL together,
+      # TC-20 issues the mDL a second time and checks for exactly two cards, and TC-30 deletes
+      # one of them and checks for exactly one left. Verification is ONE clean full-chain round
+      # (TC-01 -> 22 -> 24 -> 25 -> 50 -> 26 -> 20 -> 30, 8/8), not this repo's usual two
+      # consecutive — a second round was stopped partway, not failed. Each passed individually
+      # first; TC-50 also passed two consecutive TC-01 -> ... -> 50 rounds.
+      - name: Run Maestro flow (TC-50 mDL issuance)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-50-mdl-issuance-android.yaml
+
+      - name: Run Maestro flow (TC-26 PID + mDL multi-document share)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/presentation/tc-26-multi-document.yaml
+
+      - name: Run Maestro flow (TC-20 duplicate mDL issuance)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-20-mdl-duplicate-android.yaml
+
+      - name: Run Maestro flow (TC-30 delete document)
+        timeout-minutes: 10
+        run: maestro --device "$SERIAL" test .maestro/kmp/issuance/tc-30-delete-document.yaml
 
       - name: Kill emulator
         if: always()
         run: |
-          "$ANDROID_HOME/platform-tools/adb" -e emu kill || true
+          "$ANDROID_HOME/platform-tools/adb" -s "$SERIAL" emu kill || true
 
-      # `device-logcat.txt` excluded for the same reason the iOS job excludes its own device-level
-      # logs: confirmed directly against this session's own Maestro test-run folders (2026-09-28)
-      # that it's 85-92% of total folder size across three separate runs — dominant, and rarely
-      # the actual diagnostic need. Screenshots and hierarchy dumps (Maestro's own failure-point
-      # captures) are always kept; they're what's small and what's actually useful for diagnosing
-      # a failure.
+      # The full `device-logcat.txt` is excluded: it's 85-92% of total folder size (measured
+      # 2026-09-28), and - more importantly, this repo being public - the dev build logs complete
+      # HTTP headers and bodies into it (access/refresh tokens, DPoP proofs, client attestations,
+      # PID claims), so it must never be uploaded as-is. Screenshots and hierarchy dumps
+      # (Maestro's own failure-point captures) are always kept.
+      #
+      # A filtered `device-logcat-filtered.txt` is staged next to it instead: an ALLOWLIST of the
+      # line types that actually diagnosed this job's failures on 2026-09-29 - activity starts
+      # (Chrome hand-off / first-run / return to app), keyboard show/hide (ImeTracker), injected
+      # key presses (Maestro's hideKeyboard is a BACK key), the app's HTTP request URLs and
+      # response status lines (not their headers/bodies), issuer error_description lines, and
+      # crashes. Checked against three local runs' full logcats: no tokens, attestations,
+      # authorization codes (Android already truncates intent URIs to `/...`) or PID claims
+      # survive it; ~24 KB per run. Extend the allowlist only with line types known to be free
+      # of credential/PII content - never switch it to a denylist.
       - name: Prepare Maestro artifacts for upload
         if: failure()
         run: |
           STAGING="maestro-artifacts-staging"
+          LOGCAT_ALLOW='ActivityTaskManager.*(START u0|Displayed )|ImeTracker|adbd.*keyevent|WindowManager.*(Changing focus|focus changed)|EUDI Wallet[^:]*: (REQUEST|RESPONSE): |"error_description"|AndroidRuntime|FATAL EXCEPTION'
           rm -rf "$STAGING"
           mkdir -p "$STAGING"
           NEW_DIRS=$(find "$HOME/.maestro/tests" -maxdepth 1 -mindepth 1 -type d -newer /tmp/maestro_marker_android)
@@ -181,7 +374,26 @@ jobs:
           else
             for d in $NEW_DIRS; do
               rsync -a --exclude='device-logcat.txt' "$d" "$STAGING/"
+              find "$d" -name device-logcat.txt | while read -r LOG; do
+                OUT="$STAGING/$(basename "$d")/${LOG#"$d"/}"
+                OUT="${OUT%device-logcat.txt}device-logcat-filtered.txt"
+                mkdir -p "$(dirname "$OUT")"
+                grep -E "$LOGCAT_ALLOW" "$LOG" > "$OUT" || true
+              done
             done
+          fi
+          # Mask verifier transaction_ids in every staged text log/JSON (defense in depth - the
+          # tc-22/25/26 setup scripts already log only its length). GET
+          # /ui/presentations/{transaction_id} on the dev verifier returns the shared vp_token
+          # with no auth, and these artifacts are public; confirmed 2026-09-30 that Maestro wrote
+          # the id twice into maestro.log (its logMessages echo and the JsConsole line). Fails
+          # this step - and so skips the upload - if an unmasked id is still present.
+          find "$STAGING" -type f \( -name '*.log' -o -name '*.json' -o -name '*.txt' \) -exec sed -i '' -E \
+            -e 's/(transaction_id=)[A-Za-z0-9_-]+/\1<redacted>/g' \
+            -e 's/("transaction_id"[[:space:]]*:[[:space:]]*")[^"]+/\1<redacted>/g' {} +
+          if grep -rqE 'transaction_id=[A-Za-z0-9_-]{8,}|"transaction_id"[[:space:]]*:[[:space:]]*"[^<"]' "$STAGING"; then
+            echo "::error::Unmasked transaction_id still present in staged artifacts - not uploading."
+            exit 1
           fi
           echo "Staged artifact contents:"
           find "$STAGING" -type f | sort
@@ -195,7 +407,7 @@ jobs:
           retention-days: 3
 
   ios-tests:
-    name: iOS — Maestro (TC-01 common flow)
+    name: iOS — Maestro E2E
     needs: android-tests
     # Critical: must run even if android-tests failed, so a platform-specific Android failure
     # doesn't mask whether the shared flow file is still fine on iOS (or vice versa) — this is
@@ -204,7 +416,9 @@ jobs:
     runs-on: [self-hosted, macOS, maestro]
     permissions:
       contents: read
-    timeout-minutes: 30
+    # Raised from 30 with the TC-50 -> TC-30 steps below: the eight chained flows took about
+    # 7 minutes on CI's simulator locally on 2026-10-01, on top of a full Xcode build.
+    timeout-minutes: 45
     env:
       # Confirmed correct THIS session, by an actual local xcodebuild run that produced
       # "BUILD SUCCEEDED" — not carried over from the old file's guesses.
@@ -334,6 +548,93 @@ jobs:
         run: |
           maestro --udid "$UDID" test .maestro/kmp/issuance/tc-01-pid-issuance-common.yaml
 
+      # TC-22/24/25 wired in mechanically, NOT yet live-verified against this app (each file's own
+      # header still says so) — added at the user's explicit request without device verification;
+      # appId has been corrected to this app's real eu.compote.euidi.dev (was the iOS sibling
+      # project's eu.europa.ec.euidi.dev), but everything else in these three files is still an
+      # unconfirmed reference port. All three run on the SAME booted simulator ($UDID) as TC-01
+      # above, no erase or reinstall in between — they depend on that same simulator session still
+      # holding TC-01's issued PID; running any of them in isolation, without TC-01 having issued a
+      # PID first, is expected to fail on a precondition these files assume, not a real bug.
+      #
+      # TC-22 (remote presentation via deep link, OpenID4VP): needs the PID TC-01 just issued
+      # (it requests and shares the PID's family_name claim) — does not depend on any mDL
+      # presence/absence. Fetches a fresh presentation request from the live verifier backend,
+      # opens it as a deep link, shares via the consent screen, then confirms server-side that
+      # the verifier actually received the data.
+      - name: Run Maestro flow (TC-22 remote presentation)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/presentation/tc-22-remote-presentation.yaml
+
+      # TC-24 (user rejects a remote presentation request): reuses TC-22's own setup script
+      # (same PID precondition, same verifier backend call) but taps Back instead of Share on
+      # the consent screen, then confirms both a clean return to Documents and that the verifier
+      # received nothing. Chained directly after TC-22 rather than run standalone so that a
+      # one-time "Open in EUDI Wallet?" system dialog the reference file's own comments describe
+      # (asserted for the iOS sibling project, NOT independently confirmed against this app) is
+      # already dismissed by the time this runs, same reasoning as the equivalent step in
+      # android-tests.
+      - name: Run Maestro flow (TC-24 reject presentation)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/presentation/tc-24-reject-presentation.yaml
+
+      # TC-25 (RP requests a document the wallet doesn't have): fetches a fresh request for
+      # Photo ID (org.iso.23220.photoid.1), a doctype this wallet holds zero of. PID being
+      # present (from TC-01) is what makes this "wallet has other documents, just not this one,"
+      # matching a real scenario rather than an empty-wallet edge case — the PID itself isn't
+      # what's being requested here. Per the file's own header, this is architecturally distinct
+      # from TC-24's consent-screen-with-reject path, not a variant of it: the app is expected to
+      # show a separate pre-consent error screen and never reach the normal Share/consent UI at
+      # all. Chained after TC-24 for the same shared-session/one-time-dialog reasoning above.
+      - name: Run Maestro flow (TC-25 unsatisfiable request)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/presentation/tc-25-unsatisfiable-request.yaml
+
+      # TC-50, TC-26, TC-20, TC-30 — same chain and dependencies as the android-tests job (see
+      # the comment there). TC-26 and TC-30 are the same files as on Android; TC-50 and TC-20
+      # have iOS variants, since issuing goes through Safari rather than Chrome. Verified on
+      # 2026-10-01 on this job's own simulator (iPhone 16 Pro Max, iOS 18.5) after a fresh
+      # build: two consecutive fresh-erase full-chain rounds, 8/8 each. One open, unexplained
+      # iOS issue that this order cannot hit: run straight after TC-50 as the first deep link
+      # after an erase, TC-26's link was once received but never acted on (see
+      # .maestro/PORTING_STATUS.md, TC-26).
+      - name: Run Maestro flow (TC-50 mDL issuance)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/kmp/issuance/tc-50-mdl-issuance-ios.yaml
+
+      - name: Run Maestro flow (TC-26 PID + mDL multi-document share)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/presentation/tc-26-multi-document.yaml
+
+      - name: Run Maestro flow (TC-20 duplicate mDL issuance)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/kmp/issuance/tc-20-mdl-duplicate-ios.yaml
+
+      - name: Run Maestro flow (TC-30 delete document)
+        timeout-minutes: 10
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          maestro --udid "$UDID" test .maestro/kmp/issuance/tc-30-delete-document.yaml
+
       - name: Prepare Maestro artifacts for upload
         if: failure()
         run: |
@@ -351,6 +652,19 @@ jobs:
                 --exclude='xctest_runner_*.log' \
                 "$d" "$STAGING/"
             done
+          fi
+          # Mask verifier transaction_ids in every staged text log/JSON (defense in depth - the
+          # tc-22/25/26 setup scripts already log only its length). GET
+          # /ui/presentations/{transaction_id} on the dev verifier returns the shared vp_token
+          # with no auth, and these artifacts are public; confirmed 2026-09-30 that Maestro wrote
+          # the id twice into maestro.log (its logMessages echo and the JsConsole line). Fails
+          # this step - and so skips the upload - if an unmasked id is still present.
+          find "$STAGING" -type f \( -name '*.log' -o -name '*.json' -o -name '*.txt' \) -exec sed -i '' -E \
+            -e 's/(transaction_id=)[A-Za-z0-9_-]+/\1<redacted>/g' \
+            -e 's/("transaction_id"[[:space:]]*:[[:space:]]*")[^"]+/\1<redacted>/g' {} +
+          if grep -rqE 'transaction_id=[A-Za-z0-9_-]{8,}|"transaction_id"[[:space:]]*:[[:space:]]*"[^<"]' "$STAGING"; then
+            echo "::error::Unmasked transaction_id still present in staged artifacts - not uploading."
+            exit 1
           fi
           echo "Staged artifact contents:"
           find "$STAGING" -type f | sort

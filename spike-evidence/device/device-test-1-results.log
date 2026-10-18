@@ -1,0 +1,15 @@
+2026-10-16 22:36:32 B happy path: owner reports all ok (connecting>request>auth>verification-code>sending>success>Home). F-dev-1: placeholders unreadable in dark mode; test continued in Light mode.
+2026-10-16 22:37:20 C expired path: owner reports ok (connecting>error-expired>CLOSE>Home).
+2026-10-16 22:37:55 D1 swipe in request: ok (cancelled, CLOSE>Home).
+2026-10-16 22:41:11 D2 swipe in auth: ok (back to request). D3 swipe in sending: owner says swipe-back happened and the original reference-implementation screens appeared -> UNCLEAR, possible policy violation (sending must be blocked); clarification pending.
+2026-10-16 22:44:02 D3 retry (swipe in sending): ok - stayed in sending (blocked), success on its own. First D3 attempt was a misread, not a violation.
+2026-10-16 22:47:44 DEVICE-TEST-2 (M5b e837f53a7) happy path on real screens: owner reports works as described.
+2026-10-16 22:48:22 DEVICE-TEST-2 expired path: ok.
+2026-10-16 22:51:05 DEVICE-TEST-2 swipes on real screens (request/auth/sending): owner reports all ok. E (kill/relaunch) and F (switch off) skipped on device by owner; covered on simulator (M4).
+2026-10-18 14:09:49 D7-iOS VoiceOver (HEAD build 04e4ba57c code, iPhone Air iOS 27.0.1), slow script request..success: owner reports ALL AS EXPECTED (focus on new heading after request/auth/code/success, sending once, success announced, no old-screen nodes).
+2026-10-18 14:12:16 D7-iOS VoiceOver happy script pass: owner reports all as expected. Recording: spike-evidence/device/D7-iOS-voiceover-HEAD.mp4
+2026-10-18 14:13:18 D3-device (iPhone Air): killed in request via app switcher, relaunch from icon -> unlock, Home, nothing restored (owner).
+2026-10-18 14:14:31 D3-device: after kill, fresh deep link (cold) starts new flow at connecting -> request (owner). D3-device PASSED.
+2026-10-18 14:22:40 D10 baseline (switch off, existing extension consent): consent showed fine (owner).
+2026-10-18 14:32:43 D10 run 5 completed (owner); owner believes earlier only 4 runs were done after switch-on (log shows 4 extension starts).
+2026-10-18 14:39:12 D10 analysis: 5/5 spike runs rendered+completed (cold); first Compose view +150..171 ms vs baseline cold +636 ms (system-log proxy); no footprint numbers (instrumentation lines not in unified log); 4 jetsam per-process-limit kills (220 MB) on warm scene reuse in spike runs 1-4; baseline reuse never killed. Tunnel + local server stopped.

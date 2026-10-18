@@ -19,6 +19,7 @@ package eu.europa.ec.resourceslogic.di
 import android.content.Context
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.resourceslogic.provider.ResourceProviderImpl
+import eu.europa.ec.shared.resources.StringCatalog
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Module
@@ -30,6 +31,9 @@ import org.koin.core.annotation.Single
 class LogicResourceModule
 
 @Single
-fun provideResourceProvider(context: Context): ResourceProvider {
-    return ResourceProviderImpl(context)
+fun provideResourceProvider(
+    context: Context,
+    stringCatalog: StringCatalog,
+): ResourceProvider {
+    return ResourceProviderImpl(context, stringCatalog)
 }

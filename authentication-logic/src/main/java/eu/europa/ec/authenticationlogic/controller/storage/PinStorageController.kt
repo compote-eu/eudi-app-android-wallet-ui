@@ -19,12 +19,6 @@ package eu.europa.ec.authenticationlogic.controller.storage
 import eu.europa.ec.authenticationlogic.config.StorageConfig
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 
-interface PinStorageController {
-    suspend fun hasPin(): Boolean
-    suspend fun setPin(pin: SecurePin)
-    suspend fun isPinValid(pin: SecurePin): Boolean
-}
-
 class PinStorageControllerImpl(private val storageConfig: StorageConfig) : PinStorageController {
     override suspend fun hasPin(): Boolean = storageConfig.pinStorageProvider.hasPin()
 

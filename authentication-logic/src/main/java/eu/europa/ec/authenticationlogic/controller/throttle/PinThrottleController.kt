@@ -19,12 +19,6 @@ package eu.europa.ec.authenticationlogic.controller.throttle
 import eu.europa.ec.authenticationlogic.config.StorageConfig
 import eu.europa.ec.authenticationlogic.provider.PinLockoutState
 
-interface PinThrottleController {
-    suspend fun getState(): PinLockoutState
-    suspend fun recordFailure(): PinLockoutState
-    suspend fun recordSuccess()
-}
-
 class PinThrottleControllerImpl(
     private val storageConfig: StorageConfig
 ) : PinThrottleController {

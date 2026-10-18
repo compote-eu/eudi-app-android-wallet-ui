@@ -1,0 +1,223 @@
+G1 schema    ok
+G2 refs      ok  (1 warning(s))
+    ! BRF-004: app state RemoteDocumentPresentationPage.RemoteVerifyAuthorization (in scope) has no screen with that source_state
+G5 copy      ok  (4 warning(s))
+    ! 417 authored copy entries under PROVISIONAL decision DEC-005 (owner ruling pending), e.g. sk:CPY-pres-code-instruction, sk:CPY-pres-code-confirm, sk:CPY-pres-scan-title
+    ! 3 authored copy entries under PROVISIONAL decision DEC-007 (owner ruling pending), e.g. sk:CPY-iss-outcome-pin-locked-temporary-text, sk:CPY-home-locked-temporary-text, sk:CPY-iss-pin-auth-error-wrong
+    ! 1 authored copy entry under PROVISIONAL decision DEC-010 (owner ruling pending), e.g. sk:CPY-log-export-integrity
+    ! 1 authored copy entry under PROVISIONAL decision DEC-022 (owner ruling pending), e.g. sk:CPY-cert-trustmark-placeholder
+G7 catalog   ok  (47 warning(s))
+    ! DEC-001: provisional decision (owner ruling pending) — RPA_08 order: keep the as-is app order — the user reviews the request and presse
+    ! DEC-002: provisional decision (owner ruling pending) — RPA_06a untrusted relying party: the wallet ALLOWS the user to present after an 
+    ! DEC-003: provisional decision (owner ruling pending) — RPA_10a (SHOULD, all-or-nothing approval) vs selective disclosure: the wallet of
+    ! DEC-004: provisional decision (owner ruling pending) — Verification code without a verifier URL: follow the as-is app — when the reques
+    ! DEC-005: provisional decision (owner ruling pending) — Authored Slovak copy: every sk entry with `authored` provenance is provisionally
+    ! DEC-007: provisional decision (owner ruling pending) — Wallet PIN policy for BRF-002 (FRAMEWORK-G-019). The as-is app authorises by OS 
+    ! DEC-008: provisional decision (owner ruling pending) — How the user is identified at LoA High during activation (provisional architectu
+    ! DEC-009: provisional decision (owner ruling pending) — App shell for the wallet screens. Applied default, following the as-is eDoklady 
+    ! DEC-010: provisional decision (owner ruling pending) — Transaction log storage and export. Applied default: the log is kept on the phon
+    ! DEC-011: provisional decision (owner ruling pending) — Accessibility statement and lifecycle notices. Applied default: the statement pa
+    ! DEC-012: provisional decision (owner ruling pending) — Brand `edoklady` (eDoklady production design system, SRC-EDK-DS / SRC-EDK-CSS @ 
+    ! DEC-013: provisional decision (owner ruling pending) — Webfonts are loaded for real, for every brand, from Google Fonts. Before, no pag
+    ! DEC-016: provisional decision (owner ruling pending) — Elevation becomes a token type. The token schemas accept the DTCG `shadow` type 
+    ! DEC-017: provisional decision (owner ruling pending) — Radius ladder follows the eDoklady source: control (buttons, inputs, checkbox) 5
+    ! DEC-018: provisional decision (owner ruling pending) — Success text in the edoklady brand is #067A12 (ref.color.positive-text, authored
+    ! DEC-019: provisional decision (owner ruling pending) — In the edoklady brand the document title on a card is set in capitals with lette
+    ! DEC-020: provisional decision (owner ruling pending) — A choice of more than two options (the log's "Druh záznamu" filter, four kinds) 
+    ! DEC-021: provisional decision (owner ruling pending) — The B2 visual layer (Arm A ported into the framework) and the values it authors.
+    ! DEC-022: provisional decision (owner ruling pending) — EL-trust-mark renders the official EU Digital Identity Wallet Trust Mark by defa
+    ! DEC-023: provisional decision (owner ruling pending) — Six Material Symbols the colleague's icon set lacks (check, smartphone, cloud, s
+    ! DEC-024: provisional decision (owner ruling pending) — The eDoklady source has no PID card art (SRC-EDK-DOCART: id, dl, vr, passport), 
+    ! DEC-025: provisional decision (owner ruling pending) — A document that cannot be used (status revoked, suspended, expired or invalid) k
+    ! DEC-026: provisional decision (owner ruling pending) — Neutral outcomes (cancelled, no BOK, export cancelled, presentation cancelled: 8
+    ! DEC-028: provisional decision (owner ruling pending) — CAN-063 size roles. Authored values where a brand publishes none: idsk ref.size.
+    ! DEC-029: provisional decision (owner ruling pending) — CAN-064: the variant layer, and the defaults of its first three axes. Shared def
+    ! DEC-030: provisional decision (owner ruling pending) — Ported from ux-merged DEC-009. Decision steps of a presentation (the incoming re
+    ! DEC-031: provisional decision (owner ruling pending) — Ported from ux-merged DEC-010. TPL-sheet's body region has min 0, where TPL-task
+    ! DEC-032: provisional decision (owner ruling pending) — Ported from ux-merged DEC-008 ("app bar on every screen") as an OPEN QUESTION, n
+    ! DEC-033: provisional decision (owner ruling pending) — Return to the service after a same-device presentation is a USER action, not an 
+    ! DEC-034: provisional decision (owner ruling pending) — Report a suspicious request (ARF 5.02 §5.4 "report it"; DEC-002 recorded that no
+    ! DEC-035: provisional decision (owner ruling pending) — Same-device transport distinction (REV-006 H-01). OIA_01a requires both the redi
+    ! DEC-036: provisional decision (owner ruling pending) — One "as if absent" answer for every denial (REV-006 H-05, ARF-HLR RPA_11 SHALL —
+    ! DEC-037: provisional decision (owner ruling pending) — The same-device "no connection" recovery (offline-loading and offline-sending) i
+    ! DEC-038: provisional decision (owner ruling pending) — CAN-069: element anatomy as component tokens. Naming comp.<element>.<part>-<prop
+    ! DEC-039: provisional decision (owner ruling pending) — CAN-069 / DEC-038: the edoklady brand's anatomy overrides (product/theme/edoklad
+    ! DEC-067: provisional decision (owner ruling pending) — The eudiw_v1 dark palette and its filled primary action (split from DEC-066, who
+    ! DEC-069: provisional decision (owner ruling pending) — Flow schema step 1 (CAN-094; evidence REV-013 F-01, F-02). schemas/flow.schema.j
+    ! DEC-070: provisional decision (owner ruling pending) — Not the dark-mode draft DEC-070. The L58 fix in spec form (REV-013 F-01; the bou
+    ! DEC-071: provisional decision (owner ruling pending) — Gates for flow semantics (CAN-095; evidence REV-013 F-01). Step 4a: the G4 agree
+    ! DEC-072: provisional decision (owner ruling pending) — Flow schema steps 2-3 (CAN-096; evidence REV-013 F-03, F-04, F-06, F-07). schema
+    ! DEC-073: provisional decision (owner ruling pending) — Flow schema step 4: services, invoke, events (CAN-097; evidence REV-013 F-05). A
+    ! DEC-074: provisional decision (owner ruling pending) — Amends DEC-030's placement (CAN-098; evidence REV-013 F-10). decision-steps move
+    ! DEC-075: provisional decision (owner ruling pending) — KMP export targets as spec data (CAN-099 part 1). product/export/kmp.yaml declar
+    ! DEC-076: provisional decision (owner ruling pending) — The agreement-gate waiver (DEC-071, ruling R4). process/agreement-baseline.yaml 
+    ! DEC-077: provisional decision (owner ruling pending) — V21 was a spec defect of the step-3 L58 fix (DEC-070): request-optional-only had
+    ! DEC-078: provisional decision (owner ruling pending) — OQ-1 asked whether a verifier may send optional items pre-ticked. ARF-HLR RPA_07
+    ! DEC-079: provisional decision (owner ruling pending) — RULING-W3: the eight app-shell values that had no spec token (X19: kotlin.not_in
+
+uxcheck: 0 error(s), 52 warning(s) across 4 gate(s) — clean
+G0 intake    ok
+G1 schema    ok
+G2 refs      ok  (1 warning(s))
+    ! BRF-004: app state RemoteDocumentPresentationPage.RemoteVerifyAuthorization (in scope) has no screen with that source_state
+G3 tokens    ok  (7 warning(s))
+    ! brand edoklady does not bind optional mode dark: it shows light (DEC-066)
+    ! brand idsk does not bind optional mode dark: it shows light (DEC-066)
+    ! brand edoklady does not bind optional mode dark-high-contrast: it shows high-contrast (DEC-066)
+    ! brand idsk does not bind optional mode dark-high-contrast: it shows high-contrast (DEC-066)
+    ! brand edoklady: default style(s) / layout(s) EL-status-chip.mark=icon, EL-status-chip.ring=none, TPL-detail.composition=classic, TPL-list.groups=above, TPL-sheet.decision-steps=sheet — no selection in product/theme/edoklady/components.yaml
+    ! brand eudiw_v1: default style(s) / layout(s) TPL-sheet.decision-steps=sheet — no selection in product/theme/eudiw_v1/components.yaml
+    ! brand idsk: default style(s) / layout(s) EL-attribute-item.checkbox=filled, EL-attribute-list.pairs=stacked, EL-segmented-switch.selected=accented, EL-status-chip.mark=icon, EL-status-chip.ring=none, TPL-detail.composition=classic, TPL-list.groups=above, TPL-sheet.decision-steps=sheet — no selection in product/theme/idsk/components.yaml
+G4 flows     ok  (27 warning(s))
+    ! FLW-dashboard.home-offline (SCR-home ui_state offline): a visible, enabled node emits SWITCH_STORAGE, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-dashboard.log-empty (SCR-log ui_state empty): a visible, enabled node emits FILTER, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-dashboard.log-offline (SCR-log ui_state offline-notice): a visible, enabled node emits FILTER, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-dashboard.log-select (SCR-log ui_state select): a visible, enabled node emits TOGGLE_ENTRY, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request (SCR-pres-request ui_state sd-default): a visible, enabled node emits TOGGLE_ITEM, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request-optional-only: CONTINUE guard RUL-pres-request-no-selection-blocks-continue reads /request/selected_count, which the flow's context does not declare — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request-no-selection (SCR-pres-request ui_state sd-no-selection): a visible, enabled node emits CONTINUE, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request-optional-selected (SCR-pres-request ui_state sd-optional-selected): a visible, enabled node emits TOGGLE_ITEM, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request-untrusted: CONTINUE guard RUL-pres-untrusted-explicit-approval reads /verifier/trust, which the flow's context does not declare — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.request-untrusted (SCR-pres-request ui_state sd-untrusted): a visible, enabled node emits TOGGLE_ITEM, but the state has no transition for it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.auth: SYS_AUTH_OK guard RUL-pres-sd-transport-redirect reads /request/transport, which the flow's context does not declare — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.auth: SYS_AUTH_OK_DC_API guard RUL-pres-sd-transport-dc-api reads /request/transport, which the flow's context does not declare — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.auth-not-enrolled (SCR-pres-outcome-auth-unavailable ui_state same-device): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.success (SCR-presod-outcome-success ui_state default): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.refused (SCR-presod-outcome-cancelled ui_state refused-report): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.cancelled (SCR-presod-outcome-cancelled ui_state default): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.cancelled-unverified (SCR-presod-outcome-cancelled ui_state refused-untrusted): the state accepts RETURN, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.document-missing (SCR-pres-outcome-document-missing ui_state same-device): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.document-invalid (SCR-pres-outcome-document-invalid ui_state same-device): the state accepts CLOSE, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.error (SCR-presod-outcome-error ui_state default): the state accepts RETURN, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! FLW-pres-same-device.error-expired (SCR-presod-outcome-expired ui_state default): the state accepts RETURN, but no visible node of the screen emits it — WAIVED by DEC-076 (process/agreement-baseline.yaml)
+    ! PRF-dvm: off feature documents-heading makes 22 listed state(s) unreachable: FLW-dashboard#add-document, FLW-dashboard#add-document-dl-expiring, FLW-dashboard#add-document-document-invalid, FLW-dashboard#add-document-id-revoked, FLW-dashboard#add-document-id-stale, FLW-dashboard#add-document-id-suspended, FLW-dashboard#add-document-notifications-unread, FLW-dashboard#add-document-offline, FLW-dashboard#add-document-without-dl, FLW-dashboard#add-document-without-id, FLW-dashboard#add-document-without-pid, FLW-dashboard#all-documents, FLW-dashboard#all-documents-dl-expiring, FLW-dashboard#all-documents-document-invalid, FLW-dashboard#all-documents-id-revoked, FLW-dashboard#all-documents-id-stale, FLW-dashboard#all-documents-id-suspended, FLW-dashboard#all-documents-notifications-unread, FLW-dashboard#all-documents-offline, FLW-dashboard#all-documents-without-dl, FLW-dashboard#all-documents-without-id, FLW-dashboard#all-documents-without-pid
+    ! PRF-dvm: off feature identity-card makes 10 listed state(s) unreachable: FLW-dashboard#doc-delete-confirm-pid, FLW-dashboard#doc-delete-failed-pid, FLW-dashboard#doc-deleted-pid, FLW-dashboard#doc-detail-pid, FLW-dashboard#doc-detail-pid-actions, FLW-dashboard#doc-detail-pid-offline, FLW-dashboard#doc-detail-pid-offline-actions, FLW-dashboard#home-without-pid, FLW-dashboard#home-without-pid-actions, FLW-dashboard#log-document-pid
+    ! PRF-eudiw-v1: off feature storage-switch makes 10 listed state(s) unreachable: FLW-dashboard#doc-delete-confirm-cloud, FLW-dashboard#doc-delete-failed-cloud, FLW-dashboard#doc-deleted-cloud, FLW-dashboard#doc-detail-cloud, FLW-dashboard#doc-detail-cloud-actions, FLW-dashboard#home-cloud, FLW-dashboard#home-cloud-actions, FLW-dashboard#home-cloud-empty, FLW-dashboard#home-cloud-empty-actions, FLW-dashboard#log-document-cloud
+    ! PRF-eudiw-v1: off feature trust-mark-entry makes 1 listed state(s) unreachable: FLW-dashboard#cert
+    ! PRF-eudiw-v1: ARF-HLR:DASH_09 is unreachable under this profile (FLW-dashboard home --OPEN_CERT-->) — WAIVED by DEC-062 (off feature trust-mark-entry) — legal: true, legal sign-off pending
+    ! PRF-eudiw-v1: UXR:REQ-DASH-013 is unreachable under this profile (FLW-dashboard home --OPEN_CERT-->, FLW-dashboard cert --BACK-->) — WAIVED by DEC-062 (off feature trust-mark-entry) — legal: true, legal sign-off pending
+G5 copy      ok  (4 warning(s))
+    ! 417 authored copy entries under PROVISIONAL decision DEC-005 (owner ruling pending), e.g. sk:CPY-pres-code-instruction, sk:CPY-pres-code-confirm, sk:CPY-pres-scan-title
+    ! 3 authored copy entries under PROVISIONAL decision DEC-007 (owner ruling pending), e.g. sk:CPY-iss-outcome-pin-locked-temporary-text, sk:CPY-home-locked-temporary-text, sk:CPY-iss-pin-auth-error-wrong
+    ! 1 authored copy entry under PROVISIONAL decision DEC-010 (owner ruling pending), e.g. sk:CPY-log-export-integrity
+    ! 1 authored copy entry under PROVISIONAL decision DEC-022 (owner ruling pending), e.g. sk:CPY-cert-trustmark-placeholder
+G6 trace     ok
+G7 catalog   ok  (47 warning(s))
+    ! DEC-001: provisional decision (owner ruling pending) — RPA_08 order: keep the as-is app order — the user reviews the request and presse
+    ! DEC-002: provisional decision (owner ruling pending) — RPA_06a untrusted relying party: the wallet ALLOWS the user to present after an 
+    ! DEC-003: provisional decision (owner ruling pending) — RPA_10a (SHOULD, all-or-nothing approval) vs selective disclosure: the wallet of
+    ! DEC-004: provisional decision (owner ruling pending) — Verification code without a verifier URL: follow the as-is app — when the reques
+    ! DEC-005: provisional decision (owner ruling pending) — Authored Slovak copy: every sk entry with `authored` provenance is provisionally
+    ! DEC-007: provisional decision (owner ruling pending) — Wallet PIN policy for BRF-002 (FRAMEWORK-G-019). The as-is app authorises by OS 
+    ! DEC-008: provisional decision (owner ruling pending) — How the user is identified at LoA High during activation (provisional architectu
+    ! DEC-009: provisional decision (owner ruling pending) — App shell for the wallet screens. Applied default, following the as-is eDoklady 
+    ! DEC-010: provisional decision (owner ruling pending) — Transaction log storage and export. Applied default: the log is kept on the phon
+    ! DEC-011: provisional decision (owner ruling pending) — Accessibility statement and lifecycle notices. Applied default: the statement pa
+    ! DEC-012: provisional decision (owner ruling pending) — Brand `edoklady` (eDoklady production design system, SRC-EDK-DS / SRC-EDK-CSS @ 
+    ! DEC-013: provisional decision (owner ruling pending) — Webfonts are loaded for real, for every brand, from Google Fonts. Before, no pag
+    ! DEC-016: provisional decision (owner ruling pending) — Elevation becomes a token type. The token schemas accept the DTCG `shadow` type 
+    ! DEC-017: provisional decision (owner ruling pending) — Radius ladder follows the eDoklady source: control (buttons, inputs, checkbox) 5
+    ! DEC-018: provisional decision (owner ruling pending) — Success text in the edoklady brand is #067A12 (ref.color.positive-text, authored
+    ! DEC-019: provisional decision (owner ruling pending) — In the edoklady brand the document title on a card is set in capitals with lette
+    ! DEC-020: provisional decision (owner ruling pending) — A choice of more than two options (the log's "Druh záznamu" filter, four kinds) 
+    ! DEC-021: provisional decision (owner ruling pending) — The B2 visual layer (Arm A ported into the framework) and the values it authors.
+    ! DEC-022: provisional decision (owner ruling pending) — EL-trust-mark renders the official EU Digital Identity Wallet Trust Mark by defa
+    ! DEC-023: provisional decision (owner ruling pending) — Six Material Symbols the colleague's icon set lacks (check, smartphone, cloud, s
+    ! DEC-024: provisional decision (owner ruling pending) — The eDoklady source has no PID card art (SRC-EDK-DOCART: id, dl, vr, passport), 
+    ! DEC-025: provisional decision (owner ruling pending) — A document that cannot be used (status revoked, suspended, expired or invalid) k
+    ! DEC-026: provisional decision (owner ruling pending) — Neutral outcomes (cancelled, no BOK, export cancelled, presentation cancelled: 8
+    ! DEC-028: provisional decision (owner ruling pending) — CAN-063 size roles. Authored values where a brand publishes none: idsk ref.size.
+    ! DEC-029: provisional decision (owner ruling pending) — CAN-064: the variant layer, and the defaults of its first three axes. Shared def
+    ! DEC-030: provisional decision (owner ruling pending) — Ported from ux-merged DEC-009. Decision steps of a presentation (the incoming re
+    ! DEC-031: provisional decision (owner ruling pending) — Ported from ux-merged DEC-010. TPL-sheet's body region has min 0, where TPL-task
+    ! DEC-032: provisional decision (owner ruling pending) — Ported from ux-merged DEC-008 ("app bar on every screen") as an OPEN QUESTION, n
+    ! DEC-033: provisional decision (owner ruling pending) — Return to the service after a same-device presentation is a USER action, not an 
+    ! DEC-034: provisional decision (owner ruling pending) — Report a suspicious request (ARF 5.02 §5.4 "report it"; DEC-002 recorded that no
+    ! DEC-035: provisional decision (owner ruling pending) — Same-device transport distinction (REV-006 H-01). OIA_01a requires both the redi
+    ! DEC-036: provisional decision (owner ruling pending) — One "as if absent" answer for every denial (REV-006 H-05, ARF-HLR RPA_11 SHALL —
+    ! DEC-037: provisional decision (owner ruling pending) — The same-device "no connection" recovery (offline-loading and offline-sending) i
+    ! DEC-038: provisional decision (owner ruling pending) — CAN-069: element anatomy as component tokens. Naming comp.<element>.<part>-<prop
+    ! DEC-039: provisional decision (owner ruling pending) — CAN-069 / DEC-038: the edoklady brand's anatomy overrides (product/theme/edoklad
+    ! DEC-067: provisional decision (owner ruling pending) — The eudiw_v1 dark palette and its filled primary action (split from DEC-066, who
+    ! DEC-069: provisional decision (owner ruling pending) — Flow schema step 1 (CAN-094; evidence REV-013 F-01, F-02). schemas/flow.schema.j
+    ! DEC-070: provisional decision (owner ruling pending) — Not the dark-mode draft DEC-070. The L58 fix in spec form (REV-013 F-01; the bou
+    ! DEC-071: provisional decision (owner ruling pending) — Gates for flow semantics (CAN-095; evidence REV-013 F-01). Step 4a: the G4 agree
+    ! DEC-072: provisional decision (owner ruling pending) — Flow schema steps 2-3 (CAN-096; evidence REV-013 F-03, F-04, F-06, F-07). schema
+    ! DEC-073: provisional decision (owner ruling pending) — Flow schema step 4: services, invoke, events (CAN-097; evidence REV-013 F-05). A
+    ! DEC-074: provisional decision (owner ruling pending) — Amends DEC-030's placement (CAN-098; evidence REV-013 F-10). decision-steps move
+    ! DEC-075: provisional decision (owner ruling pending) — KMP export targets as spec data (CAN-099 part 1). product/export/kmp.yaml declar
+    ! DEC-076: provisional decision (owner ruling pending) — The agreement-gate waiver (DEC-071, ruling R4). process/agreement-baseline.yaml 
+    ! DEC-077: provisional decision (owner ruling pending) — V21 was a spec defect of the step-3 L58 fix (DEC-070): request-optional-only had
+    ! DEC-078: provisional decision (owner ruling pending) — OQ-1 asked whether a verifier may send optional items pre-ticked. ARF-HLR RPA_07
+    ! DEC-079: provisional decision (owner ruling pending) — RULING-W3: the eight app-shell values that had no spec token (X19: kotlin.not_in
+G8 snapshot  ok
+G9 visual    ok
+
+uxcheck: 0 error(s), 86 warning(s) across 10 gate(s) — clean
+render: wrote 234 file(s) + 254 asset(s) to /Users/roman/code/dvm-d8b-4/ux/build
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/concurrent/futures/process.py", line 261, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/concurrent/futures/process.py", line 210, in _process_chunk
+    return [fn(*args) for args in chunk]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/concurrent/futures/process.py", line 210, in <listcomp>
+    return [fn(*args) for args in chunk]
+            ^^^^^^^^^
+  File "/Users/roman/code/dvm-d8b-4/ux/tools/a11y_check.py", line 433, in _render_chunk
+    page.goto(url)
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/site-packages/playwright/sync_api/_generated.py", line 9019, in goto
+    self._sync(
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
+    return task.result()
+           ^^^^^^^^^^^^^
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/site-packages/playwright/_impl/_page.py", line 556, in goto
+    return await self._main_frame.goto(**locals_to_params(locals()))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/site-packages/playwright/_impl/_frame.py", line 153, in goto
+    await self._channel.send(
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/site-packages/playwright/_impl/_connection.py", line 69, in send
+    return await self._connection.wrap_api_call(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/site-packages/playwright/_impl/_connection.py", line 558, in wrap_api_call
+    raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+playwright._impl._errors.TimeoutError: Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "file:///Users/roman/code/dvm-d8b-4/ux/build/screens/SCR-home--without-id.html?brand=eudiw_v1&mode=dark", waiting until "load"
+
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/roman/code/dvm-d8b-4/ux/tools/a11y_check.py", line 595, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/Users/roman/code/dvm-d8b-4/ux/tools/a11y_check.py", line 591, in main
+    return run(a.screens, report, a.quiet, a.brief, a.only)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/roman/code/dvm-d8b-4/ux/tools/a11y_check.py", line 517, in run
+    results = list(pool.map(_render_chunk, [(sh, themes, targets, axe_src) for sh in shares]))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/concurrent/futures/process.py", line 620, in _chain_from_iterable_of_lists
+    for element in iterable:
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/concurrent/futures/_base.py", line 619, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/concurrent/futures/_base.py", line 317, in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Users/roman/.pyenv/versions/3.11.9/lib/python3.11/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+playwright._impl._errors.TimeoutError: Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "file:///Users/roman/code/dvm-d8b-4/ux/build/screens/SCR-home--without-id.html?brand=eudiw_v1&mode=dark", waiting until "load"
+
+make[1]: *** [a11y] Error 1
+make: *** [check] Error 2

@@ -17,9 +17,9 @@
 package eu.europa.ec.authenticationlogic.di
 
 import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
-import eu.europa.ec.authenticationlogic.config.AuthenticationConfigImpl
 import eu.europa.ec.authenticationlogic.config.StorageConfig
 import eu.europa.ec.authenticationlogic.config.StorageConfigImpl
+import eu.europa.ec.authenticationlogic.config.WalletAuthenticationConfig
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricAuthenticationController
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricAuthenticationControllerImpl
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationController
@@ -48,7 +48,7 @@ import org.koin.core.annotation.Single
 class LogicAuthenticationModule
 
 @Single
-fun provideAuthenticationConfig(): AuthenticationConfig = AuthenticationConfigImpl()
+fun provideAuthenticationConfig(): AuthenticationConfig = WalletAuthenticationConfig
 
 @Single
 fun provideStorageConfig(

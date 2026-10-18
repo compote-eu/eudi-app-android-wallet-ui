@@ -33,12 +33,15 @@ moduleConfig {
 }
 
 dependencies {
+    // Shared Kotlin Multiplatform module (Android + iOS). Exposed via `api` so modules that
+    // already depend on business-logic keep transitive access to shared utilities (e.g. safeLet).
+    api(project(":shared-logic"))
+
     implementation(project(LibraryModule.ResourcesLogic.path))
     implementation(libs.gson)
     implementation(libs.androidx.appAuth)
     implementation(libs.google.phonenumber)
     implementation(libs.timber)
-    implementation(libs.treessence)
     implementation(libs.androidx.datastore.prefs)
     implementation(libs.androidx.datastore.core)
     implementation(libs.androidx.datastore.tink)

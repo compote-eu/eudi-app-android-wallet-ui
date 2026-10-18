@@ -1,0 +1,6 @@
+rp-trusted a11y elements: ['rp-trusted', 'rp-trusted.logo', 'rp-trusted.name', 'rp-trusted.reason', 'rp-trusted.service', 'rp-trusted.trust']
+audit tree line(s) for the logo: ["Other, 0x1088aed00, {{35.0, 95.3}, {48.0, 48.0}}, identifier: 'rp-trusted.logo'"]
+audit issues: ["ISSUE type=4 Hit area is too small | The size of this AccessibilityElement is too small for user to interact. | element: 1 id='rp-trusted.trust' label='Overený overovateľ'"]
+PASS a the image node rp-trusted.logo exists, hidden from accessibility (type Other, not Image; no label; no audit issue; nothing else names a logo)
+PASS b the name moved right by the avatar box: x 35 -> 93 (delta 58 pt, expect >= 48)
+PASS c rp-trusted.name names the party: 'Príkladová banka, a.s.'

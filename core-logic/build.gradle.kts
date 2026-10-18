@@ -22,6 +22,7 @@ import project.convention.logic.kover.excludeFromKoverReport
 plugins {
     id("project.android.library")
     id("project.wallet.core")
+    id("project.rqes.sdk")
 }
 
 extensions.configure<LibraryExtension>("android") {
@@ -42,6 +43,7 @@ dependencies {
     implementation(libs.androidx.biometric)
 
     testImplementation(project(LibraryModule.TestLogic.path))
+    testImplementation(libs.ktor.client.mock)
 }
 
 excludeFromKoverReport(

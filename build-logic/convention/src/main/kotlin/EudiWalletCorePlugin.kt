@@ -18,6 +18,7 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.dependencies
 import project.convention.logic.libs
+import project.convention.logic.verifyWalletCoreEtsiAlignment
 
 class EudiWalletCorePlugin : Plugin<Project> {
     override fun apply(target: Project) {
@@ -34,6 +35,8 @@ class EudiWalletCorePlugin : Plugin<Project> {
                 )
                 add("implementation", libs.findLibrary("androidx.credentials.registry").get())
             }
+            // The ETSI request above competes with wallet-core's own; keep it from winning silently.
+            verifyWalletCoreEtsiAlignment()
         }
     }
 }

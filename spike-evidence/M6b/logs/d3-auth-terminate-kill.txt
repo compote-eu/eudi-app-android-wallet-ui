@@ -1,0 +1,1 @@
+simctl terminate at 09:54:56

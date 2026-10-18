@@ -1,0 +1,69 @@
+# M5b D6-iOS-provisional, happy path (script `happy`), opened with Maestro openLink ${LINK}: connecting -> request
+# (hand-written) -> auth -> verification-code -> sending -> success -> Home. Each interpreted screen is checked by its
+# bundle node ids (the exported bundle and copy since M6a).
+appId: eu.compote.euidi.dev
+---
+- openLink: ${LINK}
+- tapOn:
+    text: "Open"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+# connecting is optional here: the exported happy / expired-at-request scripts answer at once (no delay_ms, M6a);
+# it is always proven by the interpreter log.
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-connecting"
+    timeout: 3000
+    optional: true
+- takeScreenshot: d6-happy-1-connecting-or-request
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-request"
+    timeout: 20000
+- assertVisible:
+    id: "attributes"
+- takeScreenshot: d6-happy-2-request
+- tapOn:
+    id: "continue"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-auth"
+    timeout: 3000
+    optional: true
+- takeScreenshot: d6-happy-2b-auth
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-verification-code"
+    timeout: 20000
+- assertVisible:
+    id: "code"
+- assertVisible: "482 913"
+- takeScreenshot: d6-happy-3-verification-code
+- tapOn:
+    id: "confirm"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-sending"
+    timeout: 10000
+- takeScreenshot: d6-happy-4-sending
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-success"
+    timeout: 20000
+- assertVisible:
+    id: "close"
+- takeScreenshot: d6-happy-5-success
+- tapOn:
+    id: "close"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible:
+    id: "ux-state-success"
+- takeScreenshot: d6-happy-6-home

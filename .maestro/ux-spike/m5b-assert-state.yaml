@@ -1,0 +1,9 @@
+# M5b: state ${STATE} is drawn (after an edge swipe: the bundle policy's result).
+appId: eu.compote.euidi.dev
+---
+- waitForAnimationToEnd:
+    timeout: 3000
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-${STATE}"
+    timeout: 8000

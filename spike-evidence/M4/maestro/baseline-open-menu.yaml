@@ -1,0 +1,6 @@
+appId: eu.compote.euidi.dev
+---
+- tapOn:
+    point: "8%,11%"
+- waitForAnimationToEnd:
+    timeout: 3000

@@ -18,6 +18,7 @@ package eu.europa.ec.dashboardfeature.interactor
 
 import android.content.Context
 import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
 import eu.europa.ec.authenticationlogic.model.BiometricCrypto
 import eu.europa.ec.businesslogic.config.ConfigLogic
@@ -28,6 +29,11 @@ import eu.europa.ec.corelogic.controller.DeleteAllDocumentsPartialState
 import eu.europa.ec.corelogic.controller.DeleteDocumentPartialState
 import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletDocument
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.generic_error_message
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.ClaimDomain
 import eu.europa.ec.corelogic.model.ClaimPathDomain
 import eu.europa.ec.corelogic.model.ClaimType
@@ -40,7 +46,7 @@ import eu.europa.ec.dashboardfeature.util.mockedBookmarkId
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocData
 import eu.europa.ec.eudi.wallet.document.format.MsoMdocFormat
-import eu.europa.ec.resourceslogic.R
+import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker
 import eu.europa.ec.testfeature.util.copy
@@ -68,6 +74,7 @@ import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
+import java.util.Locale
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
 import org.junit.After
@@ -77,12 +84,13 @@ import org.junit.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import java.net.URI
+import eu.europa.ec.shared.resources.document_details_document_credentials_info_text
 
 class TestDocumentDetailsInteractor {
 
@@ -90,7 +98,13 @@ class TestDocumentDetailsInteractor {
     val coroutineRule = CoroutineTestRule()
 
     @Mock
+    private lateinit var strings: StringCatalog
+
+    @Mock
     private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
+
+    @Mock
+    private lateinit var walletEngine: WalletEngine
 
     @Mock
     private lateinit var resourceProvider: ResourceProvider
@@ -121,16 +135,27 @@ class TestDocumentDetailsInteractor {
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
 
+        // The REAL Android bridge, wired into the shared interactor — which is exactly the pair that
+        // ships on Android. Keeping it whole means all 43 cases below still assert end-to-end
+        // behaviour against the same wallet-core stubs, instead of being weakened into
+        // "the interactor delegates" checks on one side and bridge unit tests on the other.
         interactor = DocumentDetailsInteractorImpl(
-            walletCoreDocumentsController = walletCoreDocumentsController,
-            deviceAuthenticationInteractor = deviceAuthenticationInteractor,
-            resourceProvider = resourceProvider,
-            uuidProvider = uuidProvider,
-            configLogic = configLogic,
-            prefKeys = prefKeys,
+            strings = strings,
+            walletEngine = walletEngine,
+            platform = AndroidDocumentDetailsPlatformBridge(
+                walletCoreDocumentsController = walletCoreDocumentsController,
+                walletEngine = walletEngine,
+                deviceAuthenticationInteractor = deviceAuthenticationInteractor,
+                resourceProvider = resourceProvider,
+                uuidProvider = uuidProvider,
+                configLogic = configLogic,
+                prefKeys = prefKeys,
+            ),
         )
 
         whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
+        // The interactor's own failures now resolve through the shared string catalog.
+        whenever(strings[Res.string.generic_error_message]).thenReturn(mockedGenericErrorMessage)
         whenever(resourceProvider.getLocale()).thenReturn(mockedDefaultLocale)
         whenever(configLogic.forcePidActivation).thenReturn(true)
     }
@@ -575,6 +600,49 @@ class TestDocumentDetailsInteractor {
                     IssuerDetailsCardDataUi.DocumentState.Revoked,
                     result.issuerDetails.documentState
                 )
+            }
+        }
+    }
+
+    // The issuer names the document in the user's language.
+    //
+    // Expected Result:
+    // DocumentDetailsInteractorPartialState.Success state, with the document named in that language.
+    @Test
+    fun `Given the issuer names the document in the user's language, When getDocumentDetails is called, Then the document is named in that language`() {
+        coroutineRule.runTest {
+            // Given
+            mockShowBatchIssuanceCounterPreference(response = true)
+            mockGetDocumentDetailsStrings(resourceProvider = resourceProvider)
+            whenever(resourceProvider.getLocale()).thenReturn(Locale.forLanguageTag("sk-SK"))
+            val mockedPidWithBasicFields = getMockedPidWithBasicFields()
+            val storedName = mockedPidWithBasicFields.name
+            whenever(mockedPidWithBasicFields.issuerMetadata).thenReturn(
+                IssuerMetadata(
+                    documentConfigurationIdentifier = "eu.europa.ec.eudi.pid_mdoc",
+                    display = listOf(
+                        IssuerMetadata.Display(name = storedName, locale = Locale.ENGLISH),
+                        IssuerMetadata.Display(name = "Osobný doklad", locale = Locale.forLanguageTag("sk")),
+                    ),
+                    claims = emptyList(),
+                    credentialIssuerIdentifier = "https://issuer.example",
+                    issuerDisplay = emptyList(),
+                )
+            )
+            mockGetDocumentByIdCall(response = mockedPidWithBasicFields)
+            mockIsDocumentLowOnCredentialsCall(response = false)
+            mockRetrieveBookmarkCall(response = false)
+            mockIsDocumentRevoked(isRevoked = false)
+
+            // When
+            interactor.getDocumentDetails(
+                documentId = mockedPidId,
+                wasIssuerDetailsExpanded = null,
+            ).runFlowTest {
+                // Then
+                val result = awaitItem()
+                kotlin.test.assertTrue(result is DocumentDetailsInteractorPartialState.Success)
+                assertEquals("Osobný doklad", result.documentDetailsDomain.docName)
             }
         }
     }
@@ -1209,7 +1277,7 @@ class TestDocumentDetailsInteractor {
                     allowAuthorizationFallback = true,
                 )
             ).thenReturn(
-                IssueDocumentsPartialState.IssuerNotTrusted.toFlow()
+                IssueDocumentsPartialState.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE).toFlow()
             )
 
             // When
@@ -1217,7 +1285,9 @@ class TestDocumentDetailsInteractor {
                 .runFlowTest {
                     // Then
                     assertEquals(
-                        DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted,
+                        DocumentDetailsInteractorIssuancePartialState.IssuerNotTrusted(
+                reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE
+            ),
                         awaitItem()
                     )
                 }
@@ -1405,7 +1475,7 @@ class TestDocumentDetailsInteractor {
         val context = mockContext
         val crypto = BiometricCrypto(cryptoObject = null)
         val resultHandler = DeviceAuthenticationResult()
-        whenever(deviceAuthenticationInteractor.getBiometricsAvailability())
+        whenever(deviceAuthenticationInteractor.getBiometricsAvailability(crypto))
             .thenReturn(BiometricsAvailability.CanAuthenticate)
 
         // When
@@ -1427,11 +1497,12 @@ class TestDocumentDetailsInteractor {
     }
 
     @Test
-    fun `Given biometrics availability is NonEnrolled, When handleUserAuth is called, Then launchBiometricSystemScreen is invoked`() {
+    fun `Given biometrics availability is NonEnrolled, When handleUserAuth is called, Then the request ends before enrollment opens`() {
         // Given
         val crypto = BiometricCrypto(cryptoObject = null)
-        val resultHandler = DeviceAuthenticationResult()
-        whenever(deviceAuthenticationInteractor.getBiometricsAvailability())
+        val onError = mock<() -> Unit>()
+        val resultHandler = DeviceAuthenticationResult(onAuthenticationError = onError)
+        whenever(deviceAuthenticationInteractor.getBiometricsAvailability(crypto))
             .thenReturn(BiometricsAvailability.NonEnrolled)
 
         // When
@@ -1443,17 +1514,19 @@ class TestDocumentDetailsInteractor {
         )
 
         // Then
-        verify(deviceAuthenticationInteractor, times(1))
-            .launchBiometricSystemScreen()
+        inOrder(onError, deviceAuthenticationInteractor) {
+            verify(onError).invoke()
+            verify(deviceAuthenticationInteractor).launchBiometricSystemScreen(crypto)
+        }
     }
 
     @Test
-    fun `Given biometrics availability is Failure, When handleUserAuth is called, Then resultHandler#onAuthenticationFailure is invoked`() {
+    fun `Given biometrics availability is Failure, When handleUserAuth is called, Then resultHandler#onAuthenticationError is invoked`() {
         // Given
-        val onFailure = mock<() -> Unit>()
-        val resultHandler = DeviceAuthenticationResult(onAuthenticationFailure = onFailure)
+        val onError = mock<() -> Unit>()
+        val resultHandler = DeviceAuthenticationResult(onAuthenticationError = onError)
         val crypto = BiometricCrypto(cryptoObject = null)
-        whenever(deviceAuthenticationInteractor.getBiometricsAvailability())
+        whenever(deviceAuthenticationInteractor.getBiometricsAvailability(crypto))
             .thenReturn(BiometricsAvailability.Failure(errorMessage = mockedPlainFailureMessage))
 
         // When
@@ -1465,17 +1538,22 @@ class TestDocumentDetailsInteractor {
         )
 
         // Then
-        verify(onFailure).invoke()
+        verify(onError).invoke()
     }
     //endregion
 
     //region resumeOpenId4VciWithAuthorization
     @Test
-    fun `When resumeOpenId4VciWithAuthorization is called, Then it delegates to walletCoreDocumentsController`() {
+    fun `When resumeOpenId4VciWithAuthorization is called, Then it delegates to walletCoreDocumentsController and returns its result`() {
+        // Given
+        whenever(walletCoreDocumentsController.resumeOpenId4VciWithAuthorization(mockedReIssueUri))
+            .thenReturn(true)
+
         // When
-        interactor.resumeOpenId4VciWithAuthorization(mockedReIssueUri)
+        val resumed = interactor.resumeOpenId4VciWithAuthorization(mockedReIssueUri)
 
         // Then
+        assertTrue(resumed)
         verify(walletCoreDocumentsController, times(1))
             .resumeOpenId4VciWithAuthorization(mockedReIssueUri)
     }
@@ -1497,9 +1575,11 @@ class TestDocumentDetailsInteractor {
             .thenReturn(response)
     }
 
-    private fun mockGetMainPidDocument(response: IssuedDocument?) {
-        whenever(walletCoreDocumentsController.getMainPidDocument())
-            .thenReturn(response)
+    private suspend fun mockGetMainPidDocument(response: IssuedDocument?) {
+        // Map outside whenever(): touching the mock's `id` inside the stubbing would trip
+        // Mockito's UnfinishedStubbingException.
+        val mapped = response?.let { WalletDocument(id = it.id) }
+        whenever(walletEngine.getMainPidDocument()).thenReturn(mapped)
     }
 
     private fun mockDeleteAllDocumentsCall(response: DeleteAllDocumentsPartialState) {
@@ -1513,7 +1593,7 @@ class TestDocumentDetailsInteractor {
     }
 
     private suspend fun mockStoreBookmarkCall(bookmarkId: String, throwable: Throwable? = null) {
-        whenever(walletCoreDocumentsController.storeBookmark(bookmarkId))
+        whenever(walletEngine.storeBookmark(bookmarkId))
             .thenAnswer {
                 throwable?.let { throw throwable }
                 Unit
@@ -1521,7 +1601,7 @@ class TestDocumentDetailsInteractor {
     }
 
     private suspend fun mockDeleteBookmarkCall(bookmarkId: String, throwable: Throwable? = null) {
-        whenever(walletCoreDocumentsController.deleteBookmark(bookmarkId))
+        whenever(walletEngine.deleteBookmark(bookmarkId))
             .thenAnswer {
                 throwable?.let { throw throwable }
                 Unit
@@ -1529,12 +1609,12 @@ class TestDocumentDetailsInteractor {
     }
 
     private suspend fun mockRetrieveBookmarkCall(response: Boolean) {
-        whenever(walletCoreDocumentsController.isDocumentBookmarked(ArgumentMatchers.anyString()))
+        whenever(walletEngine.isDocumentBookmarked(ArgumentMatchers.anyString()))
             .thenReturn(response)
     }
 
     private suspend fun mockIsDocumentRevoked(isRevoked: Boolean) {
-        whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenReturn(isRevoked)
+        whenever(walletEngine.isDocumentRevoked(any())).thenReturn(isRevoked)
     }
 
     private suspend fun mockIsDocumentLowOnCredentialsCall(response: Boolean) {
@@ -1555,7 +1635,7 @@ class TestDocumentDetailsInteractor {
             availableCredentials = availableCredentials,
             totalCredentials = totalCredentials,
             title = resourceProvider.getString(
-                R.string.document_details_document_credentials_info_text,
+                Res.string.document_details_document_credentials_info_text,
                 availableCredentials,
                 totalCredentials
             ),
@@ -1564,7 +1644,7 @@ class TestDocumentDetailsInteractor {
 
     private fun getMockedIssuerDetailsCardDataUi(
         issuerName: String? = null,
-        issuerLogo: URI? = null,
+        issuerLogo: String? = null,
         documentState: IssuerDetailsCardDataUi.DocumentState = IssuerDetailsCardDataUi.DocumentState.Issued(
             issuanceDate = mockedFormattedIssuanceDate,
             expirationDate = mockedFormattedExpirationDate

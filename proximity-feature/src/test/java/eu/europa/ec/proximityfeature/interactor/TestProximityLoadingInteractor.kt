@@ -34,6 +34,7 @@ import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
 import eu.europa.ec.testlogic.rule.CoroutineTestRule
 import junit.framework.TestCase.assertEquals
+import kotlinx.coroutines.flow.asFlow
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -41,6 +42,8 @@ import org.junit.Test
 import org.mockito.Mock
 import org.mockito.Mockito.mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.inOrder
+import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -197,6 +200,62 @@ class TestProximityLoadingInteractor {
     }
     //endregion
 
+    //region observeResponse rejection
+
+    // Case 1:
+    // 1. A remote rejection with a URI is followed by a proximity success.
+    // Case 1 Expected Result:
+    // The rejection is ignored and the ordinary success is still emitted.
+    @Test
+    fun `Given rejection with a URI followed by success, When observeResponse is called, Then proximity success is preserved`() {
+        coroutineRule.runTest {
+            // Given
+            mockWalletCorePresentationControllerEventEmissions(
+                events = listOf(
+                    WalletCorePartialState.Rejected(redirectUri = URI(mockedUriPath1)),
+                    WalletCorePartialState.Success,
+                )
+            )
+
+            // When
+            interactor.observeResponse().runFlowTest {
+                // Then
+                assertEquals(ProximityLoadingObserveResponsePartialState.Success, awaitItem())
+                awaitComplete()
+                verify(walletCorePresentationController, never()).stopPresentation()
+                verify(walletCorePresentationController, never()).sendRequestedDocuments()
+            }
+        }
+    }
+
+    // Case 2:
+    // 1. A remote rejection without a URI is followed by a proximity success.
+    // Case 2 Expected Result:
+    // The rejection is ignored and the ordinary success is still emitted.
+    @Test
+    fun `Given rejection without a URI followed by success, When observeResponse is called, Then proximity success is preserved`() {
+        coroutineRule.runTest {
+            // Given
+            mockWalletCorePresentationControllerEventEmissions(
+                events = listOf(
+                    WalletCorePartialState.Rejected(redirectUri = null),
+                    WalletCorePartialState.Success,
+                )
+            )
+
+            // When
+            interactor.observeResponse().runFlowTest {
+                // Then
+                assertEquals(ProximityLoadingObserveResponsePartialState.Success, awaitItem())
+                awaitComplete()
+                verify(walletCorePresentationController, never()).stopPresentation()
+                verify(walletCorePresentationController, never()).sendRequestedDocuments()
+            }
+        }
+    }
+
+    //endregion
+
     //region handleUserAuthentication
     //
     // Case 1:
@@ -235,13 +294,16 @@ class TestProximityLoadingInteractor {
     // BiometricsAvailability.NonEnrolled
 
     // Case 2 Expected Result:
-    // deviceAuthenticationInteractor.launchBiometricSystemScreen called once.
+    // The pending request is ended before enrollment opens, so the caller is not left waiting for a
+    // callback that a trip to Settings will never produce.
     @Test
     fun `Given case 2, When handleUserAuthentication is called, Then Case 2 expected result is returned`() {
         // Given
         mockBiometricsAvailabilityResponse(
             response = BiometricsAvailability.NonEnrolled
         )
+        val onError = mock<() -> Unit>()
+        val resultHandler = DeviceAuthenticationResult(onAuthenticationError = onError)
 
         // When
         interactor.handleUserAuthentication(
@@ -252,8 +314,10 @@ class TestProximityLoadingInteractor {
         )
 
         // Then
-        verify(deviceAuthenticationInteractor, times(1))
-            .launchBiometricSystemScreen()
+        inOrder(onError, deviceAuthenticationInteractor) {
+            verify(onError).invoke()
+            verify(deviceAuthenticationInteractor).launchBiometricSystemScreen(crypto)
+        }
     }
 
     // Case 3:
@@ -261,7 +325,8 @@ class TestProximityLoadingInteractor {
     // BiometricsAvailability.Failure with message
 
     // Case 3 Expected Result:
-    // resultHandler.onAuthenticationFailure called once.
+    // resultHandler.onAuthenticationError called once — an unusable sensor is an error, not the
+    // rejected-scan callback, which not every caller supplies.
     @Test
     fun `Given case 3, When handleUserAuthentication is called, Then Case 3 expected result is returned`() {
         // Given
@@ -271,9 +336,9 @@ class TestProximityLoadingInteractor {
             )
         )
 
-        val onFailure = mock<() -> Unit>()
+        val onError = mock<() -> Unit>()
         val resultHandler = DeviceAuthenticationResult(
-            onAuthenticationFailure = onFailure
+            onAuthenticationError = onError
         )
 
         // When
@@ -285,7 +350,7 @@ class TestProximityLoadingInteractor {
         )
 
         // Then
-        verify(onFailure).invoke()
+        verify(onError).invoke()
     }
 
     //endregion
@@ -411,8 +476,14 @@ class TestProximityLoadingInteractor {
             .thenReturn(event.toFlow())
     }
 
+    private fun mockWalletCorePresentationControllerEventEmissions(events: List<WalletCorePartialState>) {
+        whenever(walletCorePresentationController.observeSentDocumentsRequest())
+            .thenReturn(events.asFlow())
+    }
+
     private fun mockBiometricsAvailabilityResponse(response: BiometricsAvailability) {
-        whenever(deviceAuthenticationInteractor.getBiometricsAvailability()).thenReturn(response)
+        whenever(deviceAuthenticationInteractor.getBiometricsAvailability(crypto))
+            .thenReturn(response)
     }
 
     private fun mockEmissionOfIntentionallyNotHandledEvent() {

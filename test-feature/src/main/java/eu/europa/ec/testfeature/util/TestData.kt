@@ -16,6 +16,8 @@
 
 package eu.europa.ec.testfeature.util
 
+import eu.europa.ec.corelogic.model.RegistrationStatusDomain
+import eu.europa.ec.corelogic.model.RelyingPartyDomain
 import eu.europa.ec.authenticationlogic.secure.SecurePin
 import eu.europa.ec.authenticationlogic.secure.SecurePinImpl
 import eu.europa.ec.corelogic.extension.toClaimPath
@@ -42,6 +44,8 @@ import java.net.URI
 import java.time.Instant
 import java.util.Locale
 import kotlin.time.toKotlinInstant
+import eu.europa.ec.corelogic.model.PresentationTransactionDataDomain
+import eu.europa.ec.corelogic.model.QesDocumentDigestDomain
 
 val mockedExceptionWithMessage = RuntimeException("Exception to test interactor.")
 val mockedExceptionWithNoMessage = RuntimeException()
@@ -85,8 +89,31 @@ const val mockedNoExpirationDateFound = ""
 const val mockedFormattedExpirationDate = "13 May 2030"
 const val mockedDocumentHasExpired = false
 const val mockedVerifierName = "EUDIW Verifier"
+
+/**
+ * The requester as a stock build sees it: a trusted access certificate and no registration
+ * evaluation, because the registration check is off by default. `isFullyVerified` therefore equals
+ * `mockedVerifierIsTrusted`, so the assertions this replaced keep their meaning.
+ */
+val mockedRelyingParty = RelyingPartyDomain(
+    name = mockedVerifierName,
+    uniqueId = null,
+    hasTrustedAccessCertificate = mockedVerifierIsTrusted,
+    logoUri = null,
+    registration = RegistrationStatusDomain.NotEvaluated,
+)
+
+/** A requester whose access certificate did not validate — an mdoc reader that skipped reader auth. */
+val mockedUntrustedRelyingParty = RelyingPartyDomain(
+    name = null,
+    uniqueId = null,
+    hasTrustedAccessCertificate = false,
+    logoUri = null,
+    registration = RegistrationStatusDomain.NotEvaluated,
+)
 const val mockedIssuerName = "EUDIW Issuer"
 const val mockedDocumentSuccessCollapsedSupportingText = "View details"
+const val mockedRequestCollapsedSupportingText = "View details"
 const val mockedUriPath1 = "eudi-wallet://example.com/path1"
 const val mockedUriPath2 = "eudi-wallet://example.com/path2"
 const val mockedUuid = "00000000-0000-0000-0000-000000000000"
@@ -449,6 +476,7 @@ fun mockedMdocPresentationMatch(
         credentialId = credentialId,
         queryId = null,
         requestedClaims = requestedClaims,
+        transactionData = emptyList(),
     )
 }
 
@@ -539,6 +567,28 @@ val mockedValidMdlWithBasicFieldsRequestMatch: PresentationMatchDomain =
             "sex",
         ),
     )
+
+const val mockedTransactionQueryId = "query_0"
+
+val mockedTransactionDataApproval = PresentationTransactionDataDomain.QesApproval(
+    displayName = "QES approval",
+    credentialIds = listOf(mockedTransactionQueryId),
+    credentialId = "signing-credential-id",
+    signatureQualifier = null,
+    numSignatures = 1,
+    hashAlgorithmOid = "2.16.840.1.101.3.4.2.1",
+    documentDigests = listOf(
+        QesDocumentDigestDomain(
+            label = "file-sample_150kB.pdf",
+            hash = "YWJjZA==",
+            hashType = "dtbsr",
+            signedProperties = null,
+            href = null,
+            checksum = null,
+            oneTimePassword = null,
+        ),
+    ),
+)
 
 fun createMockedNamespaceData(
     documentNamespace: String,

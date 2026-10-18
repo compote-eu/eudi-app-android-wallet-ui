@@ -1,0 +1,19 @@
+# M4: after `simctl openurl openid4vp://...`, confirm the system dialog, pass the unlock gate if it shows, and wait
+# for the flow placeholder of state ${STATE} (testTag ux-state-<id>, FlowHost StatePlaceholder).
+appId: eu.compote.euidi.dev
+---
+- tapOn:
+    text: "Open"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-${STATE}"
+    timeout: 20000

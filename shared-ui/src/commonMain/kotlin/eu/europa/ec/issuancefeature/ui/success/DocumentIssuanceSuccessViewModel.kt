@@ -1,0 +1,85 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+// Phase 3b: moved with the `DocumentSuccessViewModel` base. Besides the pending intent, the only
+// thing in the way was `List<DocumentId>` on its interactor, and `DocumentId` is a String typealias.
+package eu.europa.ec.issuancefeature.ui.success
+
+import androidx.lifecycle.viewModelScope
+import eu.europa.ec.commonfeature.config.IssuanceSuccessUiConfig
+import eu.europa.ec.commonfeature.ui.document_success.DocumentSuccessViewModel
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorGetUiItemsPartialState
+import eu.europa.ec.shared.platform.PlatformIntent
+import eu.europa.ec.uilogic.config.ConfigNavigation
+import kotlinx.coroutines.launch
+import org.koin.core.annotation.InjectedParam
+import org.koin.core.annotation.KoinViewModel
+
+@KoinViewModel
+class DocumentIssuanceSuccessViewModel(
+    private val interactor: DocumentIssuanceSuccessInteractor,
+    @InjectedParam private val issuanceSuccessUiConfig: IssuanceSuccessUiConfig,
+) : DocumentSuccessViewModel() {
+
+    // Declared here rather than in DocumentSuccessViewModel because `doWork()` is abstract: calling
+    // it from the base class's `init` would run this override before this subclass is constructed.
+    // Tied to the ViewModel's lifetime, not the composition's — see the note on
+    // `OneTimeLaunchedEffect`'s saveable guard in HomeViewModel.
+    init {
+        doWork()
+    }
+
+    override fun getNextScreenConfigNavigation(): ConfigNavigation =
+        issuanceSuccessUiConfig.onSuccessNavigation
+
+    override fun doWork() {
+        setState {
+            copy(isLoading = true)
+        }
+
+        viewModelScope.launch {
+            interactor.getUiItems(
+                documentIds = issuanceSuccessUiConfig.documentIds
+            ).collect { response ->
+                when (response) {
+                    is DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Failed -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                            )
+                        }
+                    }
+
+                    is DocumentIssuanceSuccessInteractorGetUiItemsPartialState.Success -> {
+                        setState {
+                            copy(
+                                headerConfig = response.headerConfig,
+                                bannerText = response.bannerText,
+                                items = response.documentsUi,
+                                isLoading = false,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun getPendingIntent(): PlatformIntent? {
+        return null
+    }
+}

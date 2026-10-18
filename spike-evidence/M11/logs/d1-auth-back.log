@@ -1,0 +1,13 @@
+## D1 auth / back 2026-10-17T16:42:10+02:00
+at request
+shot d1-auth-back-after
+resource-id="ux-state-request"
+shot d1-auth-back-settled
+10-17 16:42:23.545 UX-SPIKE: enter connecting (gen 1)
+10-17 16:42:26.557 UX-SPIKE: enter request (gen 2)
+10-17 16:42:31.766 UX-SPIKE: enter auth (gen 3)
+10-17 16:42:31.766 UX-SPIKE: authenticate#1 (script slow)
+10-17 16:42:31.799 UX-SPIKE: enter request (gen 4)
+10-17 16:42:31.799 UX-SPIKE: back: Moved(target=request)
+/sdcard/d1-auth-back.mp4: 1 file pulled, 0 skipped. 54.4 MB/s (298642 bytes in 0.005s)
+video d1-auth-back

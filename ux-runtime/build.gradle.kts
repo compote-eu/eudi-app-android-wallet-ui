@@ -1,0 +1,241 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.security.MessageDigest
+
+// Spike module (SPIKE-PLAN.md §1.1). Same plugin block and android { } block as :shared-ui; no Koin.
+plugins {
+    id("org.jetbrains.kotlin.multiplatform")
+    id("com.android.kotlin.multiplatform.library")
+    alias(libs.plugins.jetbrains.compose)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.serialization)
+}
+
+// M9r regen-smoke: -PuxSpecDir=<dir> points this build at a scratch copy of an export (default: the tracked ux-spec/).
+val uxSpec: Directory = rootProject.layout.projectDirectory.dir(providers.gradleProperty("uxSpecDir").getOrElse("ux-spec"))
+// ...and keeps that build apart from the tracked one (its own build directory), so the two never clobber each other.
+if (providers.gradleProperty("uxSpecDir").isPresent) layout.buildDirectory.set(layout.projectDirectory.dir("build/regen-smoke"))
+
+// Test fixtures (M6a; M1b embedded the provisional boundary bundle the same way): the exported bundle and copy,
+// embedded as Kotlin strings under build/, so the tracked :ux-runtime sources carry no screen id (KC1 guard,
+// SPIKE-PLAN §3), there is one copy of each file, and the runtime needs no :ux-contract. The task refuses a file whose
+// sha256 is not the expected one: UX_SPEC.lock's for an exported file, the named one for a test copy.
+abstract class BundleFixture : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val bundle: RegularFileProperty
+
+    @get:Input
+    abstract val expectedSha256: Property<String>
+
+    /** Optional: the exported `strings.xml`, embedded as `STRINGS` (resource name to text, as Compose reads it). */
+    @get:InputFile
+    @get:Optional
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val strings: RegularFileProperty
+
+    @get:Input
+    @get:Optional
+    abstract val expectedStringsSha256: Property<String>
+
+    @get:Input
+    abstract val objectName: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    private fun sha256(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+    private fun literal(text: String) = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("$", "\\$")
+        .replace("\n", "\\n") + "\""
+
+    @TaskAction
+    fun generate() {
+        val bytes = bundle.get().asFile.readBytes()
+        val sha = sha256(bytes)
+        check(sha == expectedSha256.get()) { "bundle fixture sha256 is $sha, expected ${expectedSha256.get()}" }
+        val text = bytes.decodeToString()
+        check('$' !in text && "\"\"\"" !in text) { "the bundle cannot be embedded in a raw string" }
+        val chunks = mutableListOf(StringBuilder())
+        text.lineSequence().forEach { line ->
+            if (chunks.last().length > CHUNK) chunks += StringBuilder()
+            chunks.last().append(line).append('\n')
+        }
+        val q = "\"\"\""
+        val body = chunks.joinToString(",\n") { "        $q$it$q" }
+        val stringsSource = strings.orNull?.asFile?.let { file ->
+            val stringsSha = sha256(file.readBytes())
+            check(stringsSha == expectedStringsSha256.get()) { "strings sha256 is $stringsSha, expected ${expectedStringsSha256.get()}" }
+            val doc = javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file)
+            val nodes = doc.getElementsByTagName("string")
+            val entries = (0 until nodes.length).map { i ->
+                val e = nodes.item(i) as org.w3c.dom.Element
+                // Compose reads the text after the XML parse and unescapes backslash sequences; the export has none of them.
+                check('\\' !in e.textContent) { "a backslash escape in ${e.getAttribute("name")} is not supported here" }
+                "        ${literal(e.getAttribute("name"))} to ${literal(e.textContent)},"
+            }
+            "\n    val STRINGS: Map<String, String> = mapOf(\n${entries.joinToString("\n")}\n    )\n"
+        }.orEmpty()
+        val dir = outputDir.get().asFile.resolve("eu/europa/ec/ux/runtime/fixture").apply { mkdirs() }
+        val name = objectName.get()
+        val source = bundle.get().asFile.name
+        dir.resolve("$name.kt").writeText(
+            """
+            |// Generated by a :ux-runtime bundle-fixture task from .../$source (sha256 $sha). Do not edit.
+            |package eu.europa.ec.ux.runtime.fixture
+            |
+            |internal object $name {
+            |    const val SHA256: String = "$sha"
+            |    val JSON: String = listOf(
+            |$body
+            |    ).joinToString("")
+            |""".trimMargin() + stringsSource + "}\n"
+        )
+    }
+
+    private companion object {
+        const val CHUNK = 16_000
+    }
+}
+
+/** The sha256 UX_SPEC.lock lists for an exported file (boundary §3); the gate's uxspec-lock step checks the files. */
+fun lockedSha256(path: String): Provider<String> =
+    providers.fileContents(uxSpec.file("UX_SPEC.lock")).asText.map { lock ->
+        val entry = Regex("""\{[^{}]*"path": "${Regex.escape(path)}"[^{}]*}""").find(lock)?.value
+            ?: error("UX_SPEC.lock lists no $path")
+        Regex(""""sha256": "([0-9a-f]{64})"""").find(entry)!!.groupValues[1]
+    }
+
+val exportedFixture = tasks.register<BundleFixture>("exportedBundleFixture") {
+    bundle.set(uxSpec.file("resources/files/FLW-pres-cross-device.bundle.json"))
+    expectedSha256.set(lockedSha256("resources/files/FLW-pres-cross-device.bundle.json"))
+    strings.set(uxSpec.file("resources/values/strings.xml"))
+    expectedStringsSha256.set(lockedSha256("resources/values/strings.xml"))
+    objectName.set("ExportedPresBundle")
+    outputDir.set(layout.buildDirectory.dir("generated/exported-fixture/kotlin"))
+}
+
+// V6 / R5: the exported model fixture (invariants and the explored event sequences) for the engine's replay test.
+val exportedModelFixture = tasks.register<BundleFixture>("exportedModelFixture") {
+    bundle.set(uxSpec.file("fixtures/model/FLW-pres-cross-device.model.json"))
+    expectedSha256.set(lockedSha256("fixtures/model/FLW-pres-cross-device.model.json"))
+    objectName.set("ExportedPresModel")
+    outputDir.set(layout.buildDirectory.dir("generated/exported-model-fixture/kotlin"))
+}
+
+// M9r: the exported fake-engine scripts (ux-spec/fixtures/scripts, every file UX_SPEC.lock lists there), embedded the same
+// way, so the export tests answer services with the export's own payloads (realistic copy keys, data and trust).
+abstract class ScriptsFixture : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val scripts: ConfigurableFileCollection
+
+    @get:Input
+    abstract val expected: MapProperty<String, String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val q = "\"\"\""
+        val entries = scripts.files.sortedBy { it.name }.map { f ->
+            val bytes = f.readBytes()
+            val sha = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+            check(sha == expected.get()[f.name]) { "${f.name} sha256 is $sha, UX_SPEC.lock says ${expected.get()[f.name]}" }
+            val text = bytes.decodeToString()
+            check('$' !in text && q !in text) { "${f.name} cannot be embedded in a raw string" }
+            "        \"${f.name.removeSuffix(".json")}\" to $q$text$q,"
+        }
+        val dir = outputDir.get().asFile.resolve("eu/europa/ec/ux/runtime/fixture").apply { mkdirs() }
+        dir.resolve("ExportedPresScripts.kt").writeText(
+            "// Generated from ux-spec/fixtures/scripts. Do not edit.\n" +
+                "package eu.europa.ec.ux.runtime.fixture\n\ninternal object ExportedPresScripts {\n" +
+                "    val BY_NAME: Map<String, String> = mapOf(\n${entries.joinToString("\n")}\n    )\n}\n",
+        )
+    }
+}
+
+val exportedScriptsFixture = tasks.register<ScriptsFixture>("exportedScriptsFixture") {
+    val dir = uxSpec.dir("fixtures/scripts")
+    val names = dir.asFile.listFiles().orEmpty().map { it.name }.filter { it.endsWith(".json") }
+    scripts.from(names.map { dir.file(it) })
+    expected.set(providers.provider { names.associateWith { n -> lockedSha256("fixtures/scripts/$n").get() } })
+    outputDir.set(layout.buildDirectory.dir("generated/exported-scripts-fixture/kotlin"))
+}
+
+// M5b test (ii): the added-state copy is no longer a pinned file (spike-evidence/M6a/…offline-loading.TEST.json, kept as
+// M6a evidence); since M8r the tests build it from the exported bundle at test time (AddedStateFixture).
+
+kotlin {
+    android {
+        namespace = "eu.europa.ec.ux.runtime"
+        compileSdk = 37
+        minSdk = 29
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
+
+    iosArm64()
+    iosSimulatorArm64()
+
+    sourceSets {
+        commonMain.dependencies {
+            api(project(":ux-elements"))
+            api(libs.jetbrains.compose.runtime)
+            api(libs.jetbrains.compose.foundation)
+            implementation(libs.jetbrains.compose.ui)
+            implementation(libs.jetbrains.compose.animation)
+            // viewModel { }, createSavedStateHandle and the saved {} delegate (lifecycle-viewmodel-savedstate) for the host.
+            api(libs.androidx.lifecycle.viewModelCompose)
+            // Not in the version catalog (no catalog touch, SPIKE-PLAN §2): the artifact viewmodel-compose pulls in at
+            // run time, named here for compilation, on the same lifecycle line.
+            api("androidx.lifecycle:lifecycle-viewmodel-savedstate:${libs.versions.androidxLifecycle.get()}")
+            implementation(libs.kotlinx.coroutines)
+            implementation(libs.kotlinx.serialization.json)
+        }
+        commonTest {
+            kotlin.srcDir(exportedFixture.map { it.outputDir })
+            kotlin.srcDir(exportedModelFixture.map { it.outputDir })
+            kotlin.srcDir(exportedScriptsFixture.map { it.outputDir })
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
+                // Compose UI tests of FlowHost and the interpreter, on both targets (no catalog touch, SPIKE-PLAN §1.1).
+                implementation("org.jetbrains.compose.ui:ui-test:${libs.versions.composeMultiplatform.get()}")
+            }
+        }
+        // The Android saved state is a Bundle, so the P4 round trip runs under Robolectric on the host; so do the
+        // interpreter's Compose UI tests (the :ux-elements precedent).
+        getByName("androidHostTest").dependencies {
+            implementation(libs.robolectric)
+            implementation("androidx.compose.ui:ui-test-manifest:1.12.1")
+        }
+    }
+}
+
+
+// Robolectric 4.17+ reaches jdk.internal.access.SharedSecrets for the SDK 37+ application environment (the same
+// flag the convention plugin gives every Android unit-test task, KotlinAndroid.kt).
+tasks.withType<Test>().configureEach {
+    jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
+}

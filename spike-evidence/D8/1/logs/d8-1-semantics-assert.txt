@@ -1,0 +1,3 @@
+rp-trusted nodes: ['rp-trusted', 'rp-trusted.name', 'rp-trusted.reason', 'rp-trusted.service', 'rp-trusted.trust']
+nodes whose id or label mentions logo/image: []
+ASSERT logo shown with a label: False

@@ -1,0 +1,55 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-46 (part 2/2) — submit the final PIN digit while the host is
+# genuinely offline, and confirm the app fails closed rather than
+# falsely claiming success.
+#
+# Run only by tc-46-network-loss-during-share.sh, only after: (1)
+# tc-46-setup-and-share.yaml has already entered 5 of 6 PIN digits, and
+# (2) the orchestrating shell script has independently confirmed the
+# host has no working network path at all (Wi-Fi AND any other active
+# service, e.g. Personal Hotspot/iPhone USB tethering, disabled and
+# verified via `route get default` + a real `curl` failure - see that
+# script's own comments for why Wi-Fi alone was NOT sufficient during
+# this test's development).
+
+# --- Re-focus before typing, same reasoning as TC-01's own re-focus-
+#     before-Confirm-PIN step: a stale/unfocused field can silently drop
+#     the first keystroke across a state transition. Here there's no
+#     screen transition, just a resumed session, but re-focusing is
+#     cheap insurance and costs nothing if already focused. ---
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "6"
+
+# --- This is the actual send attempt: PresentationLoadingViewModel
+#     .doWork() -> PresentationInteractor.onSendResponse() ->
+#     RemoteSessionCoordinatorImpl.sendResponse() ->
+#     OpenId4VpService.sendResponse() -> openId4Vp.dispatch(), which
+#     performs the real HTTPS POST to the verifier's direct_post
+#     endpoint. With no network path at all, this throws before ever
+#     reaching the verifier - confirmed live to surface within a few
+#     seconds as a generic Swift/URLSession-level error, not to hang. ---
+- extendedWaitUntil:
+    visible: "Houston we have a problem!"
+    timeout: 15000
+# Maestro's text selectors are a FULL-STRING regex match
+# (Pattern.matches), not a substring search - same lesson TC-22's own
+# comments already document for its "Valid until ..." assertion. The
+# actual on-screen text is the two-line "The operation couldn't be
+# completed.\n(OpenID4VP.PostError error 0.)" as one element, so a bare
+# "OpenID4VP.PostError" substring fails outright (confirmed live) -
+# needs `.*` wildcards to match the surrounding text too.
+- assertVisible: ".*OpenID4VP\\.PostError.*"
+
+# --- The actual point of this test, mirroring TC-13's false-positive
+#     check but for the opposite (correct) outcome: the app must NEVER
+#     show this success text when the send never reached the verifier.
+#     If this assertion ever fails, that IS the TC-13-class bug, just on
+#     the remote/OpenID4VP transport instead of BLE. ---
+- assertNotVisible: "You successfully shared the following information with"

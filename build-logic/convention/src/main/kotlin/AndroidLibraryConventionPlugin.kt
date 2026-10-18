@@ -30,6 +30,7 @@ import project.convention.logic.configureGradleManagedDevices
 import project.convention.logic.configureKotlinAndroid
 import project.convention.logic.configurePrintApksTask
 import project.convention.logic.disableUnnecessaryAndroidTests
+import project.convention.logic.getProperty
 import project.convention.logic.libs
 
 class AndroidLibraryConventionPlugin : Plugin<Project> {
@@ -61,7 +62,13 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
             val credentialOfferHaipScheme = "haip-vci"
             val credentialOfferHaipHost = "*"
 
-            val openId4VciAuthorizationScheme = "eu.europa.ec.euidi"
+            // From app.properties, which iOS's project.yml reads too — the authorization server only
+            // redirects to the URI registered against our client_id, so the two platforms must claim
+            // the identical scheme. Deliberately NOT derived from APP_ID: the dev flavour's app id
+            // carries `.dev` and this must not. DeepLinkSchemeParityTest guards both halves.
+            val openId4VciAuthorizationScheme = requireNotNull(
+                getProperty<String>("OID4VCI_REDIRECT_SCHEME", "app.properties")
+            ) { "OID4VCI_REDIRECT_SCHEME is missing from app.properties" }
             val openId4VciAuthorizationHost = "authorization"
 
             val rqesScheme = "rqes"

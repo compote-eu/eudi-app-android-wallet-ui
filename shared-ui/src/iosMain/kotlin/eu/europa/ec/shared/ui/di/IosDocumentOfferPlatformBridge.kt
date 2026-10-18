@@ -1,0 +1,236 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+package eu.europa.ec.shared.ui.di
+
+import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
+import eu.europa.ec.corelogic.model.isBlockedForIssuance
+import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
+import eu.europa.ec.authenticationlogic.model.BiometricCrypto
+import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferPlatformBridge
+import eu.europa.ec.issuancefeature.interactor.PlatformOfferResolution
+import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOffer
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
+import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
+import eu.europa.ec.shared.wallet.multipaz.IssuerRegistration
+import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationOutcome
+import eu.europa.ec.shared.wallet.multipaz.IosOfferResolution
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+
+/**
+ * Whether a registration outcome refuses this issuance — Android's offer gate,
+ * `isRegistrationCheckEnabled && isBlockedForIssuance`, in that order.
+ *
+ * 🚨 The flag is the whole subtlety and belongs in one place. `isBlockedForIssuance` answers true for
+ * `NotEvaluated`, which is exactly what a wallet with the check *off* produces, and off is the default:
+ * the rule alone would refuse every issuance in a stock build. With the check *on*, `NotEvaluated` is an
+ * issuer publishing no registration certificate, and Android refuses that like any unverified outcome.
+ * Until 2026-10-05 this gate tested for `NotEvaluated` instead of the flag, which let that issuer through.
+ */
+private fun IssuerRegistrationDomain.refusesIssuance(checkEnabled: Boolean): Boolean =
+    checkEnabled && isBlockedForIssuance
+
+/**
+ * What an offer's issuance tells the offer screen, by Android's rules (`WalletCoreDocumentsController`,
+ * `issueDocumentsByOffer` with `prioritizeDeferred = true`): an untrusted refusal first, then "it will
+ * come later" as soon as anything was deferred, even beside documents issued at once.
+ */
+internal fun IosIssuanceProgress.Issued.toOfferState(): IssueDocumentsPartialState = when {
+    untrusted.isNotEmpty() -> IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+        issuedDocumentIds = documentIds,
+        untrustedDocuments = failures.filterKeys { it in untrusted },
+    )
+
+    deferred.isNotEmpty() -> IssueDocumentsPartialState.DeferredSuccess(deferredDocuments = deferred)
+
+    else -> IssueDocumentsPartialState.Success(documentIds = documentIds)
+}
+
+/**
+ * iOS's [DocumentOfferPlatformBridge]: offers are read and issued through multipaz.
+ *
+ * **It holds the resolved offers**, as the contract requires, though for a different reason than Android:
+ * there the cached object is wallet-core's `Offer`, which cannot cross into shared code, while here the
+ * offer link alone would be enough to issue from. Keeping the map anyway is what makes
+ * [issueResolvedOffer]'s promise true — an offer nobody resolved is refused rather than quietly fetched a
+ * second time, which would risk issuing something other than what the user was shown.
+ */
+internal class IosDocumentOfferPlatformBridge(
+    private val offers: IosCredentialOfferReader,
+    private val credentialIssuer: IosCredentialIssuer,
+    /**
+     * Whether the user asked for issuer registration certificates to be checked. Off by default on
+     * both platforms — see [IosPreferences.isRegistrationCheckEnabled].
+     */
+    private val isRegistrationCheckEnabled: suspend () -> Boolean = {
+        IosPreferences.isRegistrationCheckEnabled()
+    },
+    /**
+     * The check itself, supplied by the DI module rather than defaulted here.
+     *
+     * 🚨 **Not a default, and the reason is the linker.** Referencing the real checker from this file
+     * — even as an unused default — makes `IosEtsiTrust` reachable from **every test binary in this
+     * module**, and the trust stack reaches the `PKIXBridge` cinterop whose Swift half only an Xcode
+     * target can supply. The whole module then fails to link with
+     * `Undefined symbols … _TtC10PKIXBridge13PKIXValidator`, and no test in it runs. Kotlin/Native
+     * drops unreferenced code, so keeping the reference in the DI module keeps the tests linkable.
+     */
+    private val checkRegistration: suspend (IosCredentialOffer) -> IssuerRegistrationOutcome,
+) : DocumentOfferPlatformBridge {
+
+    private val resolvedOffers: MutableMap<String, IosCredentialOffer> = mutableMapOf()
+
+    /**
+     * What the last resolve concluded about each offer's issuer, so issuance can refuse what the
+     * screen refused. Keyed by offer, because a second offer from the same issuer may name different
+     * configurations and so reach a different answer.
+     */
+    private val registrationOutcomes: MutableMap<String, IssuerRegistrationDomain> = mutableMapOf()
+
+    /** The verified registration behind each offer, which names the issuer in the History row. */
+    private val verifiedRegistrations: MutableMap<String, IssuerRegistration> = mutableMapOf()
+
+    override fun localeTag(): String = iosUserLanguage()
+
+    override suspend fun resolveOffer(offerUri: String, locale: String): PlatformOfferResolution =
+        when (val resolution = offers.resolve(offerUri = offerUri, locale = locale)) {
+            is IosOfferResolution.Failure ->
+                PlatformOfferResolution.Failure(errorMessage = resolution.message)
+
+            // Android's `toUntrustedIssuerReasonOrNull()`: refused signed metadata is the access-certificate
+            // layer, and the shared UI answers it with the "issuer not trusted" sheet.
+            is IosOfferResolution.IssuerNotTrusted ->
+                PlatformOfferResolution.IssuerNotTrusted(reason = UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE)
+
+            is IosOfferResolution.Resolved -> {
+                resolvedOffers[offerUri] = resolution.offer
+
+                val checkEnabled = isRegistrationCheckEnabled()
+                val outcome = if (checkEnabled) checkRegistration(resolution.offer) else null
+                // Null — the check off — is not "we looked and found nothing" but "we did not look". The
+                // shared rule reads it together with the settings flag, never on its own.
+                val registration = outcome?.toDomain(locale) ?: IssuerRegistrationDomain.NotEvaluated
+                registrationOutcomes[offerUri] = registration
+                (outcome as? IssuerRegistrationOutcome.Verified)?.let { verifiedRegistrations[offerUri] = it.registration }
+
+                if (registration.refusesIssuance(checkEnabled)) {
+                    // Android refuses here rather than on the offer screen, and the shared UI already
+                    // has the screen for it — the user is told the issuer could not be placed instead
+                    // of being shown an offer they cannot accept.
+                    return PlatformOfferResolution.IssuerNotTrusted(
+                        reason = UntrustedIssuerReasonDomain.REGISTRATION_CERTIFICATE,
+                    )
+                }
+
+                if (resolution.documentNames.isEmpty()) {
+                    PlatformOfferResolution.NoDocuments(
+                        issuerName = resolution.issuerName,
+                        issuerLogoUri = resolution.issuerLogoUri,
+                        issuerRegistration = registration,
+                    )
+                } else {
+                    PlatformOfferResolution.Success(
+                        documentNames = resolution.documentNames,
+                        issuerName = resolution.issuerName,
+                        issuerLogoUri = resolution.issuerLogoUri,
+                        containsPid = resolution.containsPid,
+                        txCodeLength = resolution.offer.txCodeLength,
+                        txCodeIsNumeric = resolution.offer.txCodeIsNumeric,
+                        issuerRegistration = registration,
+                    )
+                }
+            }
+        }
+
+    override fun issueResolvedOffer(
+        offerUri: String,
+        txCode: String?,
+    ): Flow<IssueDocumentsPartialState> {
+        val offer = resolvedOffers[offerUri]
+            ?: return flow {
+                emit(IssueDocumentsPartialState.Failure(errorMessage = OFFER_NOT_RESOLVED))
+            }
+
+        // The screen already refused to offer this, but the screen is not the gate: a deep link or a
+        // resumed flow can reach here without one. Android gates in its controller for the same reason.
+        val registration = registrationOutcomes[offerUri] ?: IssuerRegistrationDomain.NotEvaluated
+
+        val issuance = credentialIssuer.issueOffer(
+            offer = offer,
+            txCode = txCode,
+            registration = verifiedRegistrations[offerUri],
+        ).map { progress ->
+            when (progress) {
+                is IosIssuanceProgress.Failure ->
+                    IssueDocumentsPartialState.Failure(errorMessage = progress.message)
+
+                is IosIssuanceProgress.IssuerNotTrusted -> IssueDocumentsPartialState.IssuerNotTrusted(
+                    reason = progress.certificate.toUntrustedIssuerReason(),
+                )
+
+                is IosIssuanceProgress.Issued -> progress.toOfferState()
+            }
+        }
+        return flow {
+            // Read when the flow runs, since the setting is: the switch can change after the resolve.
+            if (registration.refusesIssuance(checkEnabled = isRegistrationCheckEnabled())) {
+                emit(
+                    IssueDocumentsPartialState.IssuerNotTrusted(
+                        reason = UntrustedIssuerReasonDomain.REGISTRATION_CERTIFICATE,
+                    )
+                )
+            } else {
+                emitAll(issuance)
+            }
+        }
+    }
+
+    /**
+     * Nothing to raise: multipaz's `SecureEnclaveSecureArea` presents the LocalAuthentication dialog
+     * itself when a key is used, so there is no separate prompt — and an offer's own secret is the
+     * transaction code, which the offer-code screen collects rather than this.
+     */
+    override fun handleUserAuth(
+        context: PlatformContext,
+        crypto: BiometricCrypto,
+        notifyOnAuthenticationFailure: Boolean,
+        resultHandler: DeviceAuthenticationResult,
+    ) = resultHandler.onAuthenticationFailure()
+
+    /**
+     * Inert, because the issuer consumes its own redirect: `IosCredentialIssuer` awaits
+     * `IosAuthorizationRedirects` for the flow it started, rather than being pushed a URL from outside as
+     * wallet-core's resume does.
+     *
+     * True all the same: the only resume this screen hears is `IosAuthorizationRedirects` announcing
+     * `VCI_RESUME_ACTION`, which it does only when a flow was waiting for the redirect it queued.
+     */
+    override fun resumeOpenId4VciWithAuthorization(uri: String) = true
+
+    // `internal`, matching the class's own visibility rather than widening anything: these two
+    // strings are the bridge's failure vocabulary, and the gate tests assert on which one came back.
+    internal companion object {
+        const val OFFER_NOT_RESOLVED = "This offer was not read; open it again."
+    }
+}

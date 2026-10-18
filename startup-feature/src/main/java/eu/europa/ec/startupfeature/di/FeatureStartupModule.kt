@@ -16,13 +16,13 @@
 
 package eu.europa.ec.startupfeature.di
 
-import eu.europa.ec.businesslogic.config.ConfigLogic
+import eu.europa.ec.businesslogic.controller.storage.TrustMarkIntroductionStore
 import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
-import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.wallet.WalletEngine
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
 import eu.europa.ec.startupfeature.interactor.SplashInteractor
 import eu.europa.ec.startupfeature.interactor.SplashInteractorImpl
-import eu.europa.ec.uilogic.serializer.UiSerializer
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
@@ -33,17 +33,19 @@ import org.koin.core.annotation.Module
 @ComponentScan("eu.europa.ec.startupfeature")
 class FeatureStartupModule
 
+// Shared implementation, and now shared configuration too: `forcePidActivation` is a member of
+// `SharedAppConfig`, which Android answers with `ConfigLogic` and iOS with `IosWalletConfig`.
 @Factory
 fun provideSplashInteractor(
     quickPinInteractor: QuickPinInteractor,
-    uiSerializer: UiSerializer,
-    resourceProvider: ResourceProvider,
-    walletCoreDocumentsController: WalletCoreDocumentsController,
-    configLogic: ConfigLogic
+    walletEngine: WalletEngine,
+    appConfig: SharedAppConfig,
+    introductionStore: TrustMarkIntroductionStore,
+    strings: StringCatalog,
 ): SplashInteractor = SplashInteractorImpl(
-    quickPinInteractor,
-    uiSerializer,
-    resourceProvider,
-    walletCoreDocumentsController,
-    configLogic
+    quickPinInteractor = quickPinInteractor,
+    walletEngine = walletEngine,
+    appConfig = appConfig,
+    introductionStore = introductionStore,
+    strings = strings,
 )

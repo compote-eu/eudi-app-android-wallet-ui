@@ -1,0 +1,29 @@
+# M12 release isolation at 04e4ba57c 2026-10-17T19:04:35+02:00
+patterns: eu\.europa\.ec\.ux\.|eu/europa/ec/ux/|uxspike|UxSpike|FakePresCrossDevice|UxFlowRoute|ux-theme|ux-contract|ux-runtime|ux-elements|ux-spike|UX-SPIKE|PresCrossDevice|UxBrandConfig|UxThemeSpec|PresRequestScreen|InteractorPresCrossDevice|AdapterGaps|UxElementRegistry|UxTokens|UxComp|IosAccessibilityBridge|UxDcApi|uxDcApiSubflow|IosUxSpike|FlowEngine|FlowHost|ScreenProbe|UxHomeProbe
+== iOS ==
+-- Gradle graph: CONFIGURATION=Release :shared-ui:dependencies, project ':ux-' lines
+release: 5 lines, all configurations (control, Debug graph: 173); in non-test configurations: 0; configurations with ux-: allTestSourceSetsCompileDependenciesMetadata androidHostTestCompileClasspath androidHostTestLintChecksClasspath androidHostTestResolvableDependenciesMetadata androidHostTestRuntimeClasspath 
+Release app binary built: Oct 17 18:51
+EudiWallet: nm -gU spike symbols 0, strings 0 (nm total 30032)
+EudiWalletDocumentProvider: nm -gU spike symbols 0, strings 0 (nm total 4550)
+SharedKit: nm -gU spike symbols 0, strings 0 (nm total 114167)
+-- T9 note: EudiComponentActivity is Android-only; DebugFlowHook symbol present by design: 3
+-- resources: compose-resources packages in .app and .appex
+EudiWallet.app: eu.europa.ec.shared.resources 
+  spike resource files: 0
+EudiWalletDocumentProvider.appex: eu.europa.ec.shared.resources 
+  spike resource files: 0
+== Android ==
+devReleaseRuntimeClasspath: 0   (control devDebugRuntimeClasspath: 8)
+demoReleaseRuntimeClasspath: 0   (control demoDebugRuntimeClasspath: 8)
+-- dev release APK built: androidApp/build/outputs/apk/dev/release/androidApp-dev-release.apk
+dex packages with spike patterns: 0
+files (assets, composeResources) with spike patterns: 0
+manifest ux-spike-init / UxSpikeInit providers: 0
+EudiComponentActivity entries in release dex (T9 ships here; its guard is inert with no hook bound): 0
+-- demo release APK built: androidApp/build/outputs/apk/demo/release/androidApp-demo-release.apk
+dex packages with spike patterns: 0
+files (assets, composeResources) with spike patterns: 0
+manifest ux-spike-init / UxSpikeInit providers: 0
+EudiComponentActivity entries in release dex (T9 ships here; its guard is inert with no hook bound): 0
+-- control, dev debug APK (androidApp/build/outputs/apk/dev/debug/androidApp-dev-debug.apk): dex 9663, files 85, provider 2

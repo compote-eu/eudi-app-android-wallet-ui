@@ -1,0 +1,18 @@
+# D4 2026-10-17T16:38:57+02:00 cold_link: am start -a android.intent.action.VIEW -d 'openid4vp://?client_id=spike&request_uri=https://example.invalid/r' eu.compote.euidi.dev (after am force-stop)
+Starting: Intent { act=android.intent.action.VIEW dat=openid4vp:///... pkg=eu.compote.euidi.dev }
+before PIN: state='' gate=1
+UX-SPIKE lines before PIN: 1
+shot d4-1-unlock-gate
+at request
+shot d4-2-request
+pid: 4866
+10-17 16:39:15.478 I/System.out( 4866): UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 16:39:15.662 I/System.out( 4866): UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 16:39:15.662 I/System.out( 4866): UX-SPIKE: enter connecting (gen 1)
+10-17 16:39:15.663 I/System.out( 4866): UX-SPIKE: fetchRequest#1 (script slow)
+10-17 16:39:15.663 I/System.out( 4866): UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 16:39:15.685 I/System.out( 4866): UX-SPIKE: screen SCR-pres-connecting: interpreted from the bundle (TPL-progress, 2 nodes), state connecting, ui_state default
+10-17 16:39:15.688 I/System.out( 4866): UX-SPIKE: a11y: SCR-pres-connecting announce-live hero ('Overuje sa totožnosť overovateľa a dostupnosť vašich eDokladov.. Načítava sa žiadosť overovateľa')
+10-17 16:39:18.667 I/System.out( 4866): UX-SPIKE: enter request (gen 2)
+10-17 16:39:18.751 I/System.out( 4866): UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+10-17 16:39:19.092 I/System.out( 4866): UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)

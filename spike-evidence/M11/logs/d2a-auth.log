@@ -1,0 +1,21 @@
+## D2a auth 2026-10-17T16:48:31+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+at request
+pid before kill: 9789
+pid after am kill: ''
+-- relaunch (recents)
+shot d2a-auth-after
+pid: 10120 gate=0 state=resource-id="ux-state-request"
+head: illegal line count -- 0
+10-17 16:48:49.777 UX-SPIKE: enter connecting (gen 1)
+10-17 16:48:49.778 UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 16:48:52.783 UX-SPIKE: enter request (gen 2)
+10-17 16:48:57.978 UX-SPIKE: enter auth (gen 3)
+10-17 16:48:57.978 UX-SPIKE: authenticate#1 (script slow)
+10-17 16:48:59.480 UX-SPIKE: enter verification-code (gen 4)
+10-17 16:49:04.631 UX-SPIKE: hook module loaded
+10-17 16:49:05.688 UX-SPIKE: restore auth -> request
+10-17 16:49:05.688 UX-SPIKE: enter request (gen 4)
+10-17 16:49:05.688 UX-SPIKE: restore: Restored(state=request, reinvoked=false)
+/sdcard/d2a-auth.mp4: 1 file pulled, 0 skipped. 138.0 MB/s (2046979 bytes in 0.014s)
+video d2a-auth

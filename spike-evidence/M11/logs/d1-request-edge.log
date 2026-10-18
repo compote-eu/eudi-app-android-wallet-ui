@@ -1,0 +1,12 @@
+## D1 request / predictive back (edge swipe, enable_back_animation=1) 2026-10-17T16:41:32+02:00
+at request
+shot d1-request-edge-midswipe
+shot d1-request-edge-after
+resource-id="ux-state-cancelled"
+10-17 16:41:57.178 UX-SPIKE: service cancel failed (IllegalStateException: script 'slow' has no step for cancel); mapped to Error
+10-17 16:41:57.178 UX-SPIKE: detached cancel finished (Error); result ignored
+10-17 16:41:57.179 UX-SPIKE: back: Fired(event=REJECT, outcome=Transitioned(target=cancelled))
+10-17 16:41:57.234 UX-SPIKE: screen SCR-pres-outcome-cancelled: interpreted from the bundle (TPL-outcome, 2 nodes), state cancelled, ui_state default
+10-17 16:41:57.608 UX-SPIKE: a11y: SCR-pres-outcome-cancelled focus-heading hero (focused)
+/sdcard/d1-request-edge.mp4: 1 file pulled, 0 skipped. 196.7 MB/s (1144971 bytes in 0.006s)
+video d1-request-edge

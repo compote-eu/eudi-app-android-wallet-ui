@@ -1,0 +1,53 @@
+diff --git a/ux/experience/flows/FLW-pres-cross-device.yaml b/ux/experience/flows/FLW-pres-cross-device.yaml
+index 6611f6b..44e72c4 100644
+--- a/ux/experience/flows/FLW-pres-cross-device.yaml
++++ b/ux/experience/flows/FLW-pres-cross-device.yaml
+@@ -12,6 +12,7 @@ context:
+   /verifier/reason: {type: string, nullable: true, default: null}
+   /verifier/trust: {type: enum, values: [trusted, untrusted], nullable: true, default: null, description: Relying-party authentication result}
+   /verifier/privacy_url: {type: url, nullable: true, default: null}
++  /verifier/logo_url: {type: url, nullable: true, default: null, description: Verifier logo image URL (D8-logo); null draws the generic organisation icon}
+   /verifier/portal_url: {type: url, nullable: true, default: null, description: Verifier portal URL for the verification-code check; null hides the URL check (ui_state no-url)}
+   /request/document_name: {type: string, nullable: true, default: null}
+   /request/attributes:
+diff --git a/ux/experience/screens/SCR-pres-request.yaml b/ux/experience/screens/SCR-pres-request.yaml
+index 0c0379a..d0a708f 100644
+--- a/ux/experience/screens/SCR-pres-request.yaml
++++ b/ux/experience/screens/SCR-pres-request.yaml
+@@ -11,6 +11,7 @@ data_model:
+   /verifier/reason: {type: string, example: "Overenie totožnosti pri otvorení účtu", description: Intended use as stated by the verifier}
+   /verifier/trust: {type: string, example: trusted, description: "Relying-party authentication result: trusted | untrusted (untrusted = authentication failed for any reason, incl. access certificate not chaining to a LoTE trust anchor — RPA_04/RPA_05)"}
+   /verifier/privacy_url: {type: url, example: "https://www.example.sk/ochrana-udajov", nullable: true, description: Verifier privacy-policy URL (RPA_10); optional in the request}
++  /verifier/logo_url: {type: url, example: "https://www.example.sk/rp/logo", nullable: true, description: Verifier logo image URL; optional in the request (D8-logo)}
+   /request/document_name: {type: string, example: "Občiansky preukaz", description: Name of the eDoklad (attestation) the requested data come from (REV-001 F-24)}
+   /request/attributes:
+     type: list
+@@ -37,6 +38,7 @@ nodes:
+     props:
+       caption: {copy: CPY-pres-request-verifier-label}
+       name: {bind: /verifier/name}
++      logo: {bind: /verifier/logo_url}
+       service_label: {copy: CPY-pres-request-portal-label}
+       service: {bind: /verifier/service_name}
+       reason_label: {copy: CPY-pres-request-reason-label}
+diff --git a/ux/product/services/SVC-pres-fetch-request.yaml b/ux/product/services/SVC-pres-fetch-request.yaml
+index a654784..2d75524 100644
+--- a/ux/product/services/SVC-pres-fetch-request.yaml
++++ b/ux/product/services/SVC-pres-fetch-request.yaml
+@@ -19,6 +19,7 @@ results:
+           reason: string?
+           trust: {type: enum, values: [trusted, untrusted], nullable: true}
+           privacy_url: url?
++          logo_url: url?
+       request:
+         type: object
+         fields:
+@@ -61,7 +62,7 @@ fixtures:
+   happy: &ready
+     - result: RequestReady
+       payload: &ready_payload
+-        verifier: {name: "Príkladová banka, a.s.", service_name: "Internetové bankovníctvo", reason: "Overenie totožnosti pri otvorení účtu", trust: trusted, privacy_url: "https://www.example.sk/ochrana-udajov"}
++        verifier: {name: "Príkladová banka, a.s.", service_name: "Internetové bankovníctvo", reason: "Overenie totožnosti pri otvorení účtu", trust: trusted, privacy_url: "https://www.example.sk/ochrana-udajov", logo_url: "https://www.example.sk/rp/logo"}
+         request:
+           document_name: "Občiansky preukaz"
+           attributes:

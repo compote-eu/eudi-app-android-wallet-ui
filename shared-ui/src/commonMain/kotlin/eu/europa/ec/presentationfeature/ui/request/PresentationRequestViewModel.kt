@@ -1,0 +1,231 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+package eu.europa.ec.presentationfeature.ui.request
+
+import androidx.lifecycle.viewModelScope
+import eu.europa.ec.commonfeature.config.BiometricMode
+import eu.europa.ec.commonfeature.config.BiometricUiConfig
+import eu.europa.ec.commonfeature.config.OnBackNavigationConfig
+import eu.europa.ec.commonfeature.config.PresentationMode
+import eu.europa.ec.commonfeature.config.RequestUriConfig
+import eu.europa.ec.commonfeature.ui.request.model.toRegistrationWarningUi
+import eu.europa.ec.commonfeature.ui.request.model.toRelyingPartyHeaderUi
+import eu.europa.ec.commonfeature.ui.request.Event
+import eu.europa.ec.commonfeature.ui.request.RequestBottomSheetContent
+import eu.europa.ec.commonfeature.ui.request.RequestViewModel
+import eu.europa.ec.commonfeature.ui.request.model.RequestDataUi
+import eu.europa.ec.commonfeature.ui.request.model.RequestDocumentItemUi
+import eu.europa.ec.corelogic.di.getOrNullKoinScope
+import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractorPartialState
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.BiometricRoute
+import eu.europa.ec.shared.navigation.PresentationLoadingRoute
+import eu.europa.ec.shared.navigation.PresentationRequestRoute
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.UiText
+import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.biometric_default_mode_text_above_pin_field
+import eu.europa.ec.shared.resources.generic_error_message
+import eu.europa.ec.shared.resources.loading_biometry_biometrics_enabled_description
+import eu.europa.ec.shared.resources.loading_biometry_biometrics_not_enabled_description
+import eu.europa.ec.shared.resources.request_relying_party_default_name
+import eu.europa.ec.uilogic.component.content.ContentErrorConfig
+import eu.europa.ec.uilogic.config.ConfigNavigation
+import eu.europa.ec.uilogic.config.NavigationType
+import eu.europa.ec.uilogic.navigation.helper.IntentAction
+import eu.europa.ec.uilogic.navigation.helper.IntentType
+import kotlinx.coroutines.launch
+import org.koin.core.annotation.InjectedParam
+import org.koin.core.annotation.KoinViewModel
+
+@KoinViewModel
+class PresentationRequestViewModel(
+    private val interactor: PresentationRequestInteractor,
+    @InjectedParam private val requestUriConfig: RequestUriConfig
+) : RequestViewModel() {
+
+    override fun getNextRoute(): AppRoute {
+        return BiometricRoute(
+            BiometricUiConfig(
+                mode = BiometricMode.Default(
+                    descriptionWhenBiometricsEnabled = UiText.Resource(Res.string.loading_biometry_biometrics_enabled_description),
+                    descriptionWhenBiometricsNotEnabled = UiText.Resource(Res.string.loading_biometry_biometrics_not_enabled_description),
+                    textAbovePin = UiText.Resource(Res.string.biometric_default_mode_text_above_pin_field),
+                ),
+                isPreAuthorization = false,
+                shouldInitializeBiometricAuthOnCreate = true,
+                onSuccessNavigation = ConfigNavigation(
+                    navigationType = NavigationType.PushRoute(
+                        PresentationLoadingRoute(viewState.value.presentationScopeId)
+                    ),
+                ),
+                onBackNavigationConfig = OnBackNavigationConfig(
+                    onBackNavigation = ConfigNavigation(
+                        navigationType = NavigationType.PopTo(
+                            PresentationRequestRoute(requestUriConfig)
+                        ),
+                    ),
+                    hasToolbarBackIcon = true
+                )
+            )
+        )
+    }
+
+    override fun init(intentAction: IntentAction?): Boolean {
+        // A DC API request IS the caller's intent: unlike OpenID4VP the config carries no URI, so
+        // without the intent there is nothing to present against. It goes missing on the restore
+        // path — the pending action is held in an activity-scoped ViewModel and read exactly once,
+        // so after process death the back stack still restores a `DcApi` route while the action
+        // itself is gone. `toDomainConfig` throws on that pair, from inside the event collector,
+        // which took the process down. Show the error instead; there is nothing to retry.
+        if (requestUriConfig.mode is PresentationMode.DcApi && intentAction == null) {
+            setState {
+                copy(
+                    isLoading = false,
+                    error = ContentErrorConfig(
+                        errorSubTitle = UiText.Resource(Res.string.generic_error_message),
+                        onCancel = { setEvent(Event.OnBack) },
+                    )
+                )
+            }
+            return false
+        }
+
+        setState {
+            copy(
+                presentationScopeId = requestUriConfig.presentationScopeId,
+                intentAction = intentAction,
+            )
+        }
+
+        interactor.setConfig(requestUriConfig, intentAction)
+        return true
+    }
+
+    override fun doWork() {
+
+        setState {
+            copy(
+                isLoading = true,
+                error = null
+            )
+        }
+
+        viewModelJob?.cancel()
+        viewModelJob = viewModelScope.launch {
+
+            interactor.getRequestDocuments().collect { response ->
+                when (response) {
+                    is PresentationRequestInteractorPartialState.Failure -> {
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = ContentErrorConfig(
+                                    onRetry = { setEvent(Event.DoWork) },
+                                    errorSubTitle = response.error.asUiText(),
+                                    onCancel = { setEvent(Event.OnBack) }
+                                )
+                            )
+                        }
+                    }
+
+                    is PresentationRequestInteractorPartialState.Success -> {
+                        val requestData = RequestDataUi.of(combinations = response.combinationsUi)
+
+                        val relyingPartyHeader = response.relyingParty.toRelyingPartyHeaderUi(
+                            fallbackName = UiText.Resource(Res.string.request_relying_party_default_name),
+                        )
+                        val registrationWarning = response.relyingParty.toRegistrationWarningUi()
+
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null,
+                                relyingPartyHeader = relyingPartyHeader,
+                                registrationWarning = registrationWarning,
+                                requestDataUi = requestData,
+                                claimsAreSelectable = response.claimsAreSelectable,
+                            )
+                        }
+
+                        updateData(updatedItems = requestData.selectedDocuments)
+                    }
+
+                    is PresentationRequestInteractorPartialState.VerifierNotTrusted -> {
+                        interactor.stopPresentation()
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                        showBottomSheet(sheetContent = RequestBottomSheetContent.VerifierNotTrusted)
+                    }
+
+                    is PresentationRequestInteractorPartialState.Disconnect -> {
+                        setEvent(Event.OnBack)
+                    }
+
+                    is PresentationRequestInteractorPartialState.NoData -> {
+                        val relyingPartyHeader = response.relyingParty.toRelyingPartyHeaderUi(
+                            fallbackName = UiText.Resource(Res.string.request_relying_party_default_name),
+                        )
+                        val registrationWarning = response.relyingParty.toRegistrationWarningUi()
+
+                        setState {
+                            copy(
+                                isLoading = false,
+                                error = null,
+                                relyingPartyHeader = relyingPartyHeader,
+                                registrationWarning = registrationWarning,
+                                requestDataUi = RequestDataUi.NoData,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun updateData(updatedItems: List<RequestDocumentItemUi>) {
+        super.updateData(updatedItems)
+        interactor.updateRequestedDocuments(
+            selectedCombination = viewState.value.requestDataUi.selectedCombination,
+        )
+    }
+
+    /**
+     * Tells the verifier the user said no.
+     *
+     * Gated on the request NOT having arrived through the DC API: that flow answers the calling app
+     * directly and has no verifier waiting on an HTTP request, so a rejection there would be sent into
+     * a session that does not exist.
+     *
+     * [cleanUp] cannot carry this — it also runs after a successful share.
+     */
+    override fun onUserDeclined() {
+        if (viewState.value.intentAction?.type == IntentType.DC_API) return
+        interactor.rejectPresentation()
+    }
+
+    override fun cleanUp() {
+        super.cleanUp()
+        interactor.stopPresentation()
+        getOrNullKoinScope(viewState.value.presentationScopeId)?.close()
+    }
+}

@@ -1,0 +1,3 @@
+/Users/roman/code/eudi-kmp-spike/spike-evidence/D8-attempt2/baseline/shots/baseline-request.png: (200,2214) #0B4199
+/Users/roman/code/eudi-kmp-spike/spike-evidence/D8-attempt2/3/shots/d8b-3-request.png: (200,2214) #126DFF
+ASSERT primary action bg: eudiw_v1 #0B4199 -> idsk #126DFF: True

@@ -1,0 +1,99 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# Shared sub-flow — the ASWebAuthenticationSession identity-proofing
+# session against the FormEU test issuer (ec.dev.issuer.eudiw.dev),
+# from the system consent dialog through the native issuance success
+# screen's "Done" button.
+#
+# Extracted from tc-01-pid-issuance.yaml (which originally inlined this
+# section) so tc-57-credential-offer-qr.yaml can reuse it via `runFlow`
+# instead of duplicating it: this same ASWebAuthenticationSession
+# consent -> country selection -> FormEU form -> Review & Send ->
+# Authorize -> success screen sequence is byte-for-byte identical
+# whether it's reached via TC-01's "Choose from list -> PID Combined"
+# path or TC-57's "credential-offer QR/deep link -> Issue" path — both
+# converge on the exact same issuer web session once the system
+# consent dialog appears (confirmed live during TC-57's own
+# investigation). Any future entry point that reaches this same
+# ASWebAuthenticationSession consent point (e.g. a different document
+# type through the same FormEU issuer) should reuse this file too,
+# rather than re-copying it a third time.
+#
+# Deliberately does NOT include a final "assert issued documents are
+# visible" step - callers request different credential
+# configurations (TC-01: PID Combined = both MSO Mdoc + SD-JWT VC;
+# TC-57: a single caller-chosen format via its credential-offer), so
+# each caller's own file asserts its own expected result immediately
+# after this runFlow returns.
+#
+# See tc-01-pid-issuance.yaml's own header comments for the full
+# rationale behind each individual step below (FormEU vs. a real
+# country, the Birth Date picker's default-today behavior, the
+# Allow-dialog's optional/generous timeout, etc.) - none of that
+# reasoning is repeated here to avoid the two files drifting out of
+# sync with each other.
+
+# --- ASWebAuthenticationSession system consent ---
+- tapOn: "Continue"
+
+# --- Mock identity-proofing form (ec.dev.issuer.eudiw.dev, FormEU test issuer) ---
+- tapOn: "FormEU"
+- scroll
+- tapOn: "Submit"
+
+# Birth Date: open the native date picker and accept the default (today).
+- tapOn:
+    point: "50%, 63%"
+- tapOn:
+    point: "85%, 55%"
+- assertVisible: "Family Name"
+
+# Family Name / Given Name
+- tapOn:
+    below: "Family Name"
+- inputText: "Testerova"
+- tapOn:
+    point: "50%, 44%"
+- inputText: "Maestro"
+
+# Nationality > Country Code
+- tapOn:
+    point: "50%, 52%"
+- inputText: "CZ"
+
+# Place Of Birth > Country
+- tapOn:
+    point: "24%, 58%"
+- inputText: "Czechia"
+
+# Dismiss keyboard via the accessory bar's checkmark, then submit.
+- tapOn:
+    point: "90%, 58%"
+- scroll
+- scroll
+- tapOn: "Confirm"
+
+# --- Review & Send ---
+- assertVisible: "Review & Send"
+- scroll
+- scroll
+- tapOn: "Authorize"
+
+# --- System identity-verification permission (first grant only; optional) ---
+- extendedWaitUntil:
+    visible:
+      text: "Allow"
+    timeout: 20000
+    optional: true
+- tapOn:
+    text: "Allow"
+    optional: true
+
+# --- Native "Add Document" success screen -> Done ---
+- assertVisible: "You have successfully added the following to your wallet"
+- tapOn: "Done"

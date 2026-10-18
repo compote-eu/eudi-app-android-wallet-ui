@@ -1,0 +1,156 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+package eu.europa.ec.shared.ui.di
+
+import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
+import eu.europa.ec.authenticationlogic.model.BiometricCrypto
+import eu.europa.ec.corelogic.controller.FetchScopedDocumentsPartialState
+import eu.europa.ec.corelogic.controller.IssuanceMethod
+import eu.europa.ec.corelogic.controller.IssueDocumentsPartialState
+import eu.europa.ec.corelogic.model.isPid
+import eu.europa.ec.corelogic.model.ScopedDocumentDomain
+import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
+import eu.europa.ec.corelogic.model.toDocumentIdentifier
+import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
+import eu.europa.ec.shared.platform.PlatformContext
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
+import eu.europa.ec.shared.wallet.multipaz.IosIssuanceProgress
+import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
+import eu.europa.ec.shared.wallet.multipaz.OfferableCredentialsResult
+import eu.europa.ec.shared.wallet.platform.iosUserLanguage
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+/**
+ * iOS's [AddDocumentPlatformBridge]: a real catalogue, and an issuance step that is still missing.
+ *
+ * [getScopedDocuments] now answers for real — [IosOfferableCredentialsReader] asks each configured issuer
+ * what it can issue, the same `.well-known` metadata Android reads through wallet-core. Only the *decision*
+ * layer above it is shared, so an issuer's configurations are grouped, PID-folded and sorted by exactly
+ * the code Android runs.
+ *
+ * [issueDocuments] runs for real too, through [IosCredentialIssuer]: OpenID4VCI over multipaz, Safari for
+ * the authorization step, and the credentials land in the same store the Documents list reads. The
+ * mapping below is where its outcome becomes the three answers the shared interactor understands — and
+ * "some issued, some not" is a real answer, since iOS issues one configuration per flow.
+ */
+internal class IosAddDocumentPlatformBridge(
+    private val offerableCredentials: IosOfferableCredentialsReader,
+    private val credentialIssuer: IosCredentialIssuer,
+) : AddDocumentPlatformBridge {
+
+    override fun localeTag(): String = iosUserLanguage()
+
+    override suspend fun getScopedDocuments(locale: String): FetchScopedDocumentsPartialState =
+        when (val result = offerableCredentials.read(locale)) {
+            is OfferableCredentialsResult.Failure ->
+                FetchScopedDocumentsPartialState.Failure(errorMessage = result.message)
+
+            is OfferableCredentialsResult.Success -> FetchScopedDocumentsPartialState.Success(
+                documents = result.credentials.map { credential ->
+                    ScopedDocumentDomain(
+                        name = credential.name,
+                        configurationId = credential.configurationId,
+                        credentialIssuerId = credential.issuerUrl,
+                        credentialIssuerOrder = credential.issuerOrder,
+                        formatType = credential.formatType,
+                        // Which format types are PIDs is app knowledge, not the issuer's: the reader
+                        // reports the type, and this decides — as Android's controller does.
+                        isPid = credential.formatType?.toDocumentIdentifier()
+                            .isPid,
+                    )
+                }
+            )
+        }
+
+    override fun issueDocuments(
+        issuanceMethod: IssuanceMethod,
+        configIds: List<String>,
+        issuerId: String,
+    ): Flow<IssueDocumentsPartialState> =
+        credentialIssuer.issue(issuerId = issuerId, configurationIds = configIds).map { progress ->
+            when (progress) {
+                is IosIssuanceProgress.Failure ->
+                    IssueDocumentsPartialState.Failure(errorMessage = progress.message)
+
+                is IosIssuanceProgress.IssuerNotTrusted -> IssueDocumentsPartialState.IssuerNotTrusted(
+                    reason = progress.certificate.toUntrustedIssuerReason(),
+                )
+
+                is IosIssuanceProgress.Issued -> progress.toAddDocumentState()
+            }
+        }
+
+    /**
+     * Nothing to raise: multipaz's `SecureEnclaveSecureArea` presents the LocalAuthentication dialog
+     * itself when a key is used, so there is no separate prompt — and no issuance here asks for one yet.
+     */
+    override fun handleUserAuth(
+        context: PlatformContext,
+        crypto: BiometricCrypto,
+        notifyOnAuthenticationFailure: Boolean,
+        resultHandler: DeviceAuthenticationResult,
+    ) = resultHandler.onAuthenticationFailure()
+
+    /**
+     * Deliberately inert. iOS's redirects do arrive — `IosAuthorizationRedirects` receives them from the
+     * app delegate — but they are consumed by the provisioning flow that asked for them, not pushed into
+     * a wallet-core-style resume.
+     *
+     * True all the same: the only resume this screen hears is `IosAuthorizationRedirects` announcing
+     * `VCI_RESUME_ACTION`, which it does only when a flow was waiting for the redirect it queued.
+     */
+    override fun resumeOpenId4VciWithAuthorization(uri: String) = true
+
+}
+
+/**
+ * What a wallet-initiated issuance tells the add-document screen, by Android's rules
+ * (`WalletCoreDocumentsController`, `issueDocuments` with `prioritizeDeferred = false`): an untrusted
+ * refusal first, then "it will come later" when every document the issuer answered with was deferred,
+ * and the success screen as soon as one was issued — deferred ones are collected in the background
+ * either way.
+ */
+internal fun IosIssuanceProgress.Issued.toAddDocumentState(): IssueDocumentsPartialState = when {
+    untrusted.isNotEmpty() -> IssueDocumentsPartialState.PartialSuccessWithUntrustedIssuer(
+        issuedDocumentIds = documentIds,
+        untrustedDocuments = failures.filterKeys { it in untrusted },
+    )
+
+    isDeferredOnly -> IssueDocumentsPartialState.DeferredSuccess(deferredDocuments = deferred)
+
+    failures.isEmpty() -> IssueDocumentsPartialState.Success(documentIds = documentIds)
+
+    // Android reaches this state when an issuer refuses some of a batch; here it is reached when the
+    // second of two configurations fails, which is the same thing from the screen's point of view:
+    // these were added, those were not.
+    else -> IssueDocumentsPartialState.PartialSuccess(
+        documentIds = documentIds,
+        nonIssuedDocuments = failures,
+    )
+}
+
+/**
+ * Which sheet a refusal shows, as Android's `UntrustedIssuerReasonDomain` picks it: ACCESS_CERTIFICATE for
+ * an untrusted credential signer and untrusted signed metadata alike (`toUntrustedIssuerReasonOrNull`
+ * reads both so), REGISTRATION_CERTIFICATE for the registration pre-flight's refusal.
+ */
+internal fun IosIssuanceProgress.UntrustedCertificate.toUntrustedIssuerReason(): UntrustedIssuerReasonDomain =
+    when (this) {
+        IosIssuanceProgress.UntrustedCertificate.Access -> UntrustedIssuerReasonDomain.ACCESS_CERTIFICATE
+        IosIssuanceProgress.UntrustedCertificate.Registration -> UntrustedIssuerReasonDomain.REGISTRATION_CERTIFICATE
+    }

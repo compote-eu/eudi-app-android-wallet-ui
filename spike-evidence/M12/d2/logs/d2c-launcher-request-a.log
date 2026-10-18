@@ -1,0 +1,17 @@
+## D2c root=launcher state=request kill=a 2026-10-17T19:56:14+02:00
+pin done (try 1)
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+at request
+pid before kill: 23878
+pid after am kill: ''
+-- relaunch (recents)
+shot d2c-launcher-request-a
+pid: 24172 gate=0 state=resource-id="ux-state-request"
+10-17 19:56:43.041 UX-SPIKE: hook module loaded
+10-17 19:56:43.290 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+10-17 19:56:43.332 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 19:56:43.522 UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 19:56:43.523 UX-SPIKE: restore request -> snapshot
+10-17 19:56:43.523 UX-SPIKE: restore: Restored(state=request, reinvoked=false)
+10-17 19:56:43.761 UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+10-17 19:56:43.931 UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)

@@ -1,0 +1,15 @@
+{
+  "calls": {
+    "fetchRequest": [
+      {
+        "result": {
+          "document_name": "Občiansky preukaz",
+          "type": "DocMissing"
+        }
+      }
+    ]
+  },
+  "flow_id": "FLW-pres-cross-device",
+  "script": "doc-missing",
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2"
+}

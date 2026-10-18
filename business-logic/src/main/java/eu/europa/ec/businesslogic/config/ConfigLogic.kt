@@ -16,20 +16,17 @@
 
 package eu.europa.ec.businesslogic.config
 
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
+
 import eu.europa.ec.businesslogic.BuildConfig
 import eu.europa.ec.eudi.rqesui.infrastructure.config.EudiRQESUiConfig
 
-interface ConfigLogic {
+interface ConfigLogic : SharedAppConfig {
 
     /**
      * Build Type.
      */
     val appBuildType: AppBuildType get() = AppBuildType.getType()
-
-    /**
-     * Application Flavor.
-     */
-    val appFlavor: AppFlavor
 
     /**
      * Application version.
@@ -41,27 +38,6 @@ interface ConfigLogic {
      */
     val rqesConfig: EudiRQESUiConfig
 
-    /**
-     * The URL to the changelog for this specific version of the application.
-     *
-     * This property provides a link where users can find detailed information about
-     * the changes, new features, bug fixes, and other updates included in this release.
-     *
-     * **Availability:**
-     * - This URL is only provided for the **DEMO** app flavor [AppFlavor.DEMO].
-     * - For the **DEV** app flavor [AppFlavor.DEV], this property will always be `null`, as no public
-     *   changelog is maintained for development builds.
-     */
-    val changelogUrl: String?
-
-    /**
-     * Set if the wallet requires PID Activation.
-     */
-    val forcePidActivation: Boolean get() = false
-}
-
-enum class AppFlavor {
-    DEV, DEMO
 }
 
 enum class AppBuildType {

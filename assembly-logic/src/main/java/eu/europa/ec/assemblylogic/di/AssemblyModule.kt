@@ -28,6 +28,7 @@ import eu.europa.ec.networklogic.di.LogicNetworkModule
 import eu.europa.ec.presentationfeature.di.FeaturePresentationModule
 import eu.europa.ec.proximityfeature.di.FeatureProximityModule
 import eu.europa.ec.resourceslogic.di.LogicResourceModule
+import eu.europa.ec.shared.ui.di.SharedUiModule
 import eu.europa.ec.startupfeature.di.FeatureStartupModule
 import eu.europa.ec.storagelogic.di.LogicStorageModule
 import eu.europa.ec.uilogic.di.LogicUiModule
@@ -39,6 +40,9 @@ import org.koin.plugin.module.dsl.startKoin
 
 @KoinApplication(
     modules = [
+        // The shared KMP module's definitions (Phase 3b: view-models living in commonMain). Declared
+        // in :shared-ui/commonMain so the same graph can be started from iOS.
+        SharedUiModule::class,
         LogicNetworkModule::class,
         LogicUiModule::class,
         LogicResourceModule::class,

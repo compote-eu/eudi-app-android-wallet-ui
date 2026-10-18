@@ -1,0 +1,19 @@
+$ git grep -n -P 'backHandler\(' -- ux-runtime
+ux-runtime/src/commonMain/kotlin/eu/europa/ec/ux/runtime/host/FlowHost.kt:87:    backHandler(active?.backEnabled == true) { flow.back() }
+
+$ git grep -n -P "BackHandler\(|NavigationEventHandler|NavigationBackHandler|onBack *=" -- "ux-*" shared-ui/src/iosUxSpikeMain
+shared-ui/src/iosUxSpikeMain/kotlin/eu/europa/ec/uxspike/ios/IosUxSpikeHook.kt:67:                backHandler = { enabled, onBack -> PlatformBackHandler(enabled, onBack) },
+ux-spike-android/src/main/kotlin/eu/europa/ec/uxspike/android/AndroidUxSpikeHook.kt:58:                backHandler = { enabled, onBack -> PlatformBackHandler(enabled, onBack) },
+
+$ android-specific: androidMain / ux-spike-android back handling
+ux-runtime/src/androidHostTest/kotlin/eu/europa/ec/ux/runtime/D1BackHandlerGrepTest.kt:29:class D1BackHandlerGrepTest {
+ux-runtime/src/androidHostTest/kotlin/eu/europa/ec/ux/runtime/D1BackHandlerGrepTest.kt:45:    fun theRuntimeCallsItsBackHandlerOnceInFlowHost() {
+ux-spike-android/src/main/kotlin/eu/europa/ec/uxspike/android/AndroidUxSpikeHook.kt:32:import eu.europa.ec.uilogic.component.PlatformBackHandler
+ux-spike-android/src/main/kotlin/eu/europa/ec/uxspike/android/AndroidUxSpikeHook.kt:58:                backHandler = { enabled, onBack -> PlatformBackHandler(enabled, onBack) },
+
+$ manifest predictive back
+
+$ redirect site
+shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/SharedEntries.kt:71: * declines, so the fallback runs and iOS behaves exactly as it did when it passed no lambda at all.
+shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/SharedEntries.kt:78:    debugFlowHookOrNull()?.run { entries(navigator) }
+shared-ui/src/commonMain/kotlin/eu/europa/ec/shared/navigation/SharedEntries.kt:293:    val target = remember(route) { debugFlowHookOrNull()?.redirect(route) }

@@ -1,0 +1,53 @@
+# audit: verification-code
+## issues
+ISSUE type=8 Label not human-readable | The accessibilityLabel of this AccessibilityElement is not human-readable. | element: 48 id='url' label='https://verifier.example/portal'
+## issue count: 1
+## element tree
+Attributes: Application, 0x10781aa80, pid: 81425, label: 'EUDI Wallet'
+Element subtree:
+ →Application, 0x10781aa80, pid: 81425, label: 'EUDI Wallet'
+    Window (Main), 0x1078197c0, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x107819900, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x107819b80, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x107819cc0, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x107819f40, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x107819e00, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x10781a080, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x10781a300, {{0.0, 0.0}, {402.0, 874.0}}
+                ScrollView, 0x10781a1c0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x10781a440, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x10781a6c0, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x10781a800, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x10781b0c0, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x1078192c0, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'ux-state-verification-code'
+                      Other, 0x107818b40, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'SCR-pres-verification-code'
+                      Other, 0x107819a40, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x107818dc0, {{0.0, 0.0}, {402.0, 388.7}}, identifier: 'SCR-pres-verification-code.scrim'
+                      Other, 0x107819040, {{0.0, 62.0}, {402.0, 58.0}}, identifier: 'SCR-pres-verification-code.appbar'
+                      Other, 0x107818f00, {{0.0, 388.7}, {402.0, 485.3}}, identifier: 'SCR-pres-verification-code.dialog'
+                        Other, 0x107819180, {{0.0, 388.7}, {402.0, 103.7}}, identifier: 'SCR-pres-verification-code.header'
+                        Other, 0x10781a940, {{20.0, 408.7}, {362.0, 63.7}}, identifier: 'title', label: 'Skontrolujte stránku a prepíšte overovací kód'
+                        Other, 0x10781abc0, {{0.0, 492.3}, {402.0, 201.7}}, identifier: 'SCR-pres-verification-code.body'
+                          Other, 0x10781ad00, {{20.0, 492.3}, {362.0, 109.7}}, identifier: 'url-check'
+                          Other, 0x10781af80, {{35.0, 507.3}, {6.3, 21.3}}
+                          Other, 0x10781ae40, {{51.3, 507.3}, {315.7, 55.7}}, label: 'Upozornenie, Pred prepísaním kódu sa uistite, že vo vašom webovom prehliadači sa nachádzate na stránke'
+                            StaticText, 0x10781b340, {{51.3, 507.3}, {100.0, 19.0}}, identifier: 'url-check.title', label: 'Upozornenie'
+                            StaticText, 0x10781b480, {{51.3, 526.3}, {315.7, 36.7}}, identifier: 'url-check.text', label: 'Pred prepísaním kódu sa uistite, že vo vašom webovom prehliadači sa nachádzate na stránke'
+                          StaticText, 0x10781b200, {{51.3, 568.0}, {221.7, 19.0}}, identifier: 'url', label: 'https://verifier.example/portal'
+                          StaticText, 0x10781b5c0, {{20.0, 617.0}, {345.7, 19.0}}, identifier: 'instruction', label: 'Prepíšte overovací kód do stránky overovateľa'
+                          StaticText, 0x10781b840, {{20.0, 651.0}, {81.3, 43.0}}, identifier: 'code', label: '4711'
+                        Other, 0x10781b980, {{0.0, 694.0}, {402.0, 146.0}}, identifier: 'SCR-pres-verification-code.actions'
+                        Button, 0x10781b700, {{20.0, 714.0}, {362.0, 48.0}}, identifier: 'confirm', label: 'Predložiť eDoklady'
+                          StaticText, 0x10781bac0, {{127.0, 728.7}, {148.0, 19.0}}, label: 'Predložiť eDoklady'
+                        Button, 0x10781bc00, {{20.0, 772.0}, {362.0, 48.0}}, identifier: 'cancel', label: 'Zrušiť'
+                          StaticText, 0x10781be80, {{177.7, 786.7}, {46.7, 19.0}}, label: 'Zrušiť'
+    Window, 0x10781bd40, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x107818640, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x107818780, {{0.0, 0.0}, {402.0, 874.0}}
+Path to element:
+ →Application, 0x10781aa80, pid: 81425, label: 'EUDI Wallet'
+Query chain:
+ →Find: Application 'eu.compote.euidi.dev'
+  Output: {
+    Application, 0x104a775c0, pid: 81425, label: 'EUDI Wallet'
+  }

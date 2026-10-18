@@ -1,0 +1,115 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+package eu.europa.ec.presentationfeature.interactor
+
+import android.content.Context
+import eu.europa.ec.authenticationlogic.controller.authentication.BiometricsAvailability
+import eu.europa.ec.authenticationlogic.controller.authentication.DeviceAuthenticationResult
+import eu.europa.ec.authenticationlogic.model.BiometricCrypto
+import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
+import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractorDelegate
+import eu.europa.ec.corelogic.controller.SendRequestedDocumentsPartialState
+import eu.europa.ec.corelogic.controller.WalletCorePartialState
+import eu.europa.ec.corelogic.controller.WalletCorePresentationController
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+// Phase 3b: the contract and both partial states moved to :shared-ui/commonMain (same package).
+class PresentationLoadingInteractorImpl(
+    private val deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
+    walletCorePresentationController: WalletCorePresentationController? = null
+) : PresentationLoadingInteractor,
+    ScopedPresentationInteractorDelegate(walletCorePresentationController) {
+
+    override val initiatorRoute: String
+        get() = walletCorePresentationController.initiatorRoute
+
+    override fun observeResponse(): Flow<PresentationLoadingObserveResponsePartialState> =
+        walletCorePresentationController.observeSentDocumentsRequest().map { response ->
+            when (response) {
+                is WalletCorePartialState.Failure -> PresentationLoadingObserveResponsePartialState.Failure(
+                    error = response.error
+                )
+
+                // The shared partial state carries the redirect as a String; a URI is representable
+                // as neutral data, unlike the intent below.
+                is WalletCorePartialState.Redirect -> PresentationLoadingObserveResponsePartialState.Redirect(
+                    uri = response.uri.toString()
+                )
+
+                is WalletCorePartialState.Rejected -> {
+                    PresentationLoadingObserveResponsePartialState.Rejected(
+                        redirectUri = response.redirectUri?.toString()
+                    )
+                }
+
+                is WalletCorePartialState.Success -> {
+                    PresentationLoadingObserveResponsePartialState.Success
+                }
+
+                is WalletCorePartialState.UserAuthenticationRequired -> {
+                    PresentationLoadingObserveResponsePartialState.UserAuthenticationRequired(
+                        response.authenticationData
+                    )
+                }
+
+                is WalletCorePartialState.RequestIsReadyToBeSent -> PresentationLoadingObserveResponsePartialState.RequestReadyToBeSent
+
+                is WalletCorePartialState.IntentToSend -> {
+                    PresentationLoadingObserveResponsePartialState.IntentToSend(
+                        intent = response.intent
+                    )
+                }
+            }
+        }
+
+    override suspend fun sendRequestedDocuments(): PresentationLoadingSendRequestedDocumentPartialState {
+        return when (val result = walletCorePresentationController.sendRequestedDocuments()) {
+            is SendRequestedDocumentsPartialState.RequestSent -> PresentationLoadingSendRequestedDocumentPartialState.Success
+            is SendRequestedDocumentsPartialState.Failure -> PresentationLoadingSendRequestedDocumentPartialState.Failure(
+                result.error
+            )
+        }
+    }
+
+    override fun handleUserAuthentication(
+        context: Context,
+        crypto: BiometricCrypto,
+        notifyOnAuthenticationFailure: Boolean,
+        resultHandler: DeviceAuthenticationResult,
+    ) {
+        when (deviceAuthenticationInteractor.getBiometricsAvailability(crypto)) {
+            is BiometricsAvailability.CanAuthenticate -> {
+                deviceAuthenticationInteractor.authenticateWithBiometrics(
+                    context = context,
+                    crypto = crypto,
+                    notifyOnAuthenticationFailure = notifyOnAuthenticationFailure,
+                    resultHandler = resultHandler
+                )
+            }
+
+            is BiometricsAvailability.NonEnrolled -> {
+                resultHandler.onAuthenticationError()
+                deviceAuthenticationInteractor.launchBiometricSystemScreen(crypto)
+            }
+
+            is BiometricsAvailability.Failure -> {
+                resultHandler.onAuthenticationError()
+            }
+        }
+    }
+}

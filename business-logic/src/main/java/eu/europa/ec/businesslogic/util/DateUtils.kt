@@ -22,9 +22,7 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.LocalTime
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
@@ -39,11 +37,6 @@ private val dtoDateFormatters = listOf(
 )
 
 private const val DAY_MONTH_YEAR_SHORT_PATTERN = "dd MMM yyyy"
-const val DAY_MONTH_YEAR_FULL_PATTERN = "dd MMMM yyyy"
-const val FULL_DATETIME_PATTERN = "dd MMM yyyy hh:mm a"
-const val FULL_DATETIME_PATTERN_24H_SEPARATED_BY_DASH = "dd MMMM yyyy - HH:mm"
-private const val HOURS_MINUTES_DATETIME_PATTERN = "hh:mm a"
-private const val MONTH_YEAR_DATETIME_PATTERN = "MMMM yyyy"
 private const val DAY_MONTH_YEAR_TEXT_FIELD_PATTERN = "dd/MM/yyyy"
 
 val fullDateTimeFormatter: DateTimeFormatter = DateTimeFormatter
@@ -52,10 +45,6 @@ val fullDateTimeFormatter: DateTimeFormatter = DateTimeFormatter
 
 val hoursMinutesFormatter: DateTimeFormatter = DateTimeFormatter
     .ofPattern(HOURS_MINUTES_DATETIME_PATTERN)
-    .withLocale(LocaleUtils.getLocaleFromSelectedLanguage(LocaleUtils.PROJECT_DEFAULT_LOCALE))
-
-val monthYearFormatter: DateTimeFormatter = DateTimeFormatter
-    .ofPattern(MONTH_YEAR_DATETIME_PATTERN)
     .withLocale(LocaleUtils.getLocaleFromSelectedLanguage(LocaleUtils.PROJECT_DEFAULT_LOCALE))
 
 fun String.toDateFormatted(
@@ -126,18 +115,6 @@ fun String.toLocalDate(
     return result
 }
 
-fun Instant.formatInstant(
-    pattern: String = DAY_MONTH_YEAR_SHORT_PATTERN,
-    zoneId: ZoneId = ZoneId.systemDefault(),
-    selectedLanguage: String = LocaleUtils.PROJECT_DEFAULT_LOCALE,
-): String {
-    val formatter = DateTimeFormatter.ofPattern(
-        pattern,
-        LocaleUtils.getLocaleFromSelectedLanguage(selectedLanguage)
-    ).withZone(zoneId)
-    return formatter.format(this)
-}
-
 fun LocalDateTime.isJustNow(): Boolean {
     return ChronoUnit.MINUTES.between(this, LocalDateTime.now()) == 0L
 }
@@ -162,24 +139,6 @@ fun LocalDateTime.isWithinThisWeek(): Boolean {
     return this.toLocalDate().isAfter(startOfWeek.minusDays(1)) &&
             this.toLocalDate().isBefore(endOfWeek.plusDays(1))
 }
-
-fun LocalDateTime.startOfDay(): LocalDateTime =
-    this.withHour(0).withMinute(0).withSecond(0)
-
-fun LocalDateTime.endOfDay(): LocalDateTime =
-    this.withHour(23).withMinute(59).withSecond(59)
-
-fun LocalDateTime.startOfWeek(): LocalDateTime =
-    this.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).startOfDay()
-
-fun LocalDateTime.endOfWeek(): LocalDateTime =
-    this.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY)).endOfDay()
-
-fun LocalDateTime.startOfMonth(): LocalDateTime =
-    this.with(TemporalAdjusters.firstDayOfMonth()).startOfDay()
-
-fun LocalDateTime.endOfMonth(): LocalDateTime =
-    this.with(TemporalAdjusters.lastDayOfMonth()).endOfDay()
 
 fun String.toInstantOrNull(
     pattern: String = FULL_DATETIME_PATTERN,
@@ -225,21 +184,6 @@ fun Long?.toDisplayedDate(): String {
     }.orEmpty()
 }
 
-fun convertLocalDateToFormattedString(
-    localDate: LocalDate,
-    selectedLanguage: String = LocaleUtils.PROJECT_DEFAULT_LOCALE
-): String {
-    val formatter = DateTimeFormatter.ofPattern(
-        DAY_MONTH_YEAR_TEXT_FIELD_PATTERN,
-        LocaleUtils.getLocaleFromSelectedLanguage(selectedLanguage)
-    )
-    return localDate.format(formatter)
-}
-
-fun LocalDate?.toDisplayedDate(): String {
-    return this?.let { convertLocalDateToFormattedString(it) }.orEmpty()
-}
-
 fun Instant.toLocalDateTime(zoneId: ZoneId = ZoneId.systemDefault()): LocalDateTime {
     return LocalDateTime.ofInstant(this, zoneId)
 }
@@ -248,18 +192,3 @@ fun Instant.toLocalDate(zoneId: ZoneId = ZoneId.systemDefault()): LocalDate {
     return this.atZone(zoneId).toLocalDate()
 }
 
-fun utcMillisToLocalDate(utcMillis: Long, zoneId: ZoneId = ZoneId.systemDefault()): LocalDate {
-    return Instant.ofEpochMilli(utcMillis).atZone(zoneId).toLocalDate()
-}
-
-fun localDateToUtcMillis(localDate: LocalDate): Long {
-    return localDateToMillis(localDate = localDate, zoneId = ZoneOffset.UTC)
-}
-
-fun localDateToMillis(localDate: LocalDate, zoneId: ZoneId = ZoneId.systemDefault()): Long {
-    return localDate.atStartOfDay(zoneId).toInstant().toEpochMilli()
-}
-
-fun LocalDate.toLocalDateTime(time: LocalTime = LocalTime.MIDNIGHT): LocalDateTime {
-    return this.atTime(time)
-}

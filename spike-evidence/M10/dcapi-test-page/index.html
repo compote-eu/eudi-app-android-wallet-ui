@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DC API org-iso-mdoc PID test</title>
+<style>
+  body { font: 16px/1.4 -apple-system, system-ui, sans-serif; margin: 0; padding: 16px; }
+  button { font-size: 18px; padding: 14px 20px; width: 100%; }
+  pre { white-space: pre-wrap; word-break: break-all; background: #f2f2f7; padding: 12px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<h1>DC API test (M10, D10)</h1>
+<p>Asks for <code>family_name</code> and <code>given_name</code> of a PID (<code>eu.europa.ec.eudi.pid.1</code>) over
+<code>org-iso-mdoc</code>, the shape iOS hands a document-provider extension (ISO 18013-7 Annex C).</p>
+<button id="go">Request PID</button>
+<p id="count"></p>
+<pre id="out">Not run yet.</pre>
+<script>
+// Minimal CBOR encoder: unsigned/negative ints, byte strings, text strings, arrays, maps (insertion order), tag 24, bool.
+const enc = new TextEncoder();
+function head(major, n) {
+  if (n < 24) return [major << 5 | n];
+  if (n < 256) return [major << 5 | 24, n];
+  if (n < 65536) return [major << 5 | 25, n >> 8, n & 255];
+  throw new Error('too long');
+}
+function cbor(v) {
+  if (v instanceof Uint8Array) return [...head(2, v.length), ...v];
+  if (typeof v === 'string') { const b = enc.encode(v); return [...head(3, b.length), ...b]; }
+  if (typeof v === 'boolean') return [v ? 0xf5 : 0xf4];
+  if (typeof v === 'number') return v >= 0 ? head(0, v) : head(1, -1 - v);
+  if (Array.isArray(v)) return [...head(4, v.length), ...v.flatMap(cbor)];
+  if (v && v.tag24) return [0xd8, 24, ...cbor(new Uint8Array(cbor(v.tag24)))];
+  if (v instanceof Map) return [...head(5, v.size), ...[...v].flatMap(([k, x]) => [...cbor(k), ...cbor(x)])];
+  throw new Error('unsupported ' + v);
+}
+const b64u = (u8) => btoa(String.fromCharCode(...u8)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+const DOC_TYPE = 'eu.europa.ec.eudi.pid.1';
+const ELEMENTS = ['family_name', 'given_name'];
+
+async function buildRequest() {
+  // DeviceRequest: version, docRequests[ { itemsRequest: #6.24(bstr .cbor ItemsRequest) } ]. No readerAuth.
+  const itemsRequest = new Map([
+    ['docType', DOC_TYPE],
+    ['nameSpaces', new Map([[DOC_TYPE, new Map(ELEMENTS.map((e) => [e, false]))]])],
+  ]);
+  const deviceRequest = new Uint8Array(cbor(new Map([
+    ['version', '1.0'],
+    ['docRequests', [new Map([['itemsRequest', { tag24: itemsRequest }]])]],
+  ])));
+  // EncryptionInfo: ["dcapi", { nonce, recipientPublicKey: COSE_Key (EC2, P-256) }]. The key is generated here;
+  // the private half is dropped, so the response cannot be decrypted by this page (the wallet-side logs show success).
+  const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+  const jwk = await crypto.subtle.exportKey('jwk', kp.publicKey);
+  const unb64u = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+  const coseKey = new Map([[1, 2], [-1, 1], [-2, unb64u(jwk.x)], [-3, unb64u(jwk.y)]]);
+  const nonce = crypto.getRandomValues(new Uint8Array(16));
+  const encryptionInfo = new Uint8Array(cbor(['dcapi', new Map([['nonce', nonce], ['recipientPublicKey', coseKey]])]));
+  return { deviceRequest: b64u(deviceRequest), encryptionInfo: b64u(encryptionInfo) };
+}
+
+const out = document.getElementById('out');
+const count = document.getElementById('count');
+let runs = Number(sessionStorage.getItem('runs') || 0);
+count.textContent = 'Runs in this tab: ' + runs;
+
+document.getElementById('go').addEventListener('click', async () => {
+  runs += 1; sessionStorage.setItem('runs', runs); count.textContent = 'Runs in this tab: ' + runs;
+  const t0 = performance.now();
+  out.textContent = 'Requesting...';
+  try {
+    if (!navigator.credentials || !window.DigitalCredential) throw new Error('Digital Credentials API not available (needs iOS 26+ Safari over HTTPS)');
+    const data = await buildRequest();
+    const cred = await navigator.credentials.get({ digital: { requests: [{ protocol: 'org-iso-mdoc', data }] } });
+    out.textContent = 'OK after ' + Math.round(performance.now() - t0) + ' ms\nprotocol: ' + cred.protocol +
+      '\nresponse (first 120 chars): ' + JSON.stringify(cred.data).slice(0, 120);
+  } catch (e) {
+    out.textContent = 'ERROR after ' + Math.round(performance.now() - t0) + ' ms\n' + e.name + ': ' + e.message;
+  }
+});
+</script>
+</body>
+</html>

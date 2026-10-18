@@ -14,49 +14,30 @@
  * governing permissions and limitations under the Licence.
  */
 
+// Implementation only. `ProximityRequestInteractor` and its partial state moved to :shared-ui's
+// commonMain with ProximityRequestViewModel — same package, so nothing here needs an import for them.
+// This half stays because it drives WalletCorePresentationController and RequestTransformer.
 package eu.europa.ec.proximityfeature.interactor
 
 import eu.europa.ec.businesslogic.extension.safeAsync
 import eu.europa.ec.businesslogic.provider.UuidProvider
-import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractor
 import eu.europa.ec.commonfeature.interactor.ScopedPresentationInteractorDelegate
 import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.transformer.RequestTransformer
 import eu.europa.ec.corelogic.controller.TransferEventPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.corelogic.model.overaskedClaimsOrEmpty
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.mapNotNull
 
-sealed class ProximityRequestInteractorPartialState {
-    data class Success(
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
-        val combinationsUi: List<RequestCombinationUi>,
-        val claimsAreSelectable: Boolean,
-    ) : ProximityRequestInteractorPartialState()
-
-    data class NoData(
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
-    ) : ProximityRequestInteractorPartialState()
-
-    data class Failure(val error: String) : ProximityRequestInteractorPartialState()
-    data object VerifierNotTrusted : ProximityRequestInteractorPartialState()
-    data object Disconnect : ProximityRequestInteractorPartialState()
-}
-
-interface ProximityRequestInteractor : ScopedPresentationInteractor {
-    fun getRequestDocuments(): Flow<ProximityRequestInteractorPartialState>
-    fun stopPresentation()
-    fun updateRequestedDocuments(selectedCombination: RequestCombinationUi?)
-}
-
 class ProximityRequestInteractorImpl(
     private val resourceProvider: ResourceProvider,
     private val uuidProvider: UuidProvider,
     private val walletCoreDocumentsController: WalletCoreDocumentsController,
+    private val walletEngine: WalletEngine,
     walletCorePresentationController: WalletCorePresentationController? = null
 ) : ProximityRequestInteractor,
     ScopedPresentationInteractorDelegate(walletCorePresentationController) {
@@ -76,15 +57,14 @@ class ProximityRequestInteractorImpl(
                         .all { it.requestedClaims.isEmpty() }
                     if (requestedClaimsAreEmpty) {
                         ProximityRequestInteractorPartialState.NoData(
-                            verifierName = response.verifierName,
-                            verifierIsTrusted = response.verifierIsTrusted,
+                            relyingParty = response.relyingParty,
                         )
                     } else {
                         val storageDocuments = walletCoreDocumentsController.getAllIssuedDocuments()
 
                         val revokedDocumentIds = storageDocuments
                             .map { it.id }
-                            .filter { walletCoreDocumentsController.isDocumentRevoked(it) }
+                            .filter { walletEngine.isDocumentRevoked(it) }
                             .toSet()
 
                         val combinationsDomain =
@@ -101,20 +81,20 @@ class ProximityRequestInteractorImpl(
                             uuidProvider = uuidProvider,
                             combinationsDomain = combinationsDomain,
                             claimsAreSelectable = claimsAreSelectable,
+                            overaskedClaims = response.relyingParty.registration
+                                .overaskedClaimsOrEmpty(),
                         ).getOrThrow()
                             .filter { it.documents.isNotEmpty() }
 
                         if (combinationsUi.isNotEmpty()) {
                             ProximityRequestInteractorPartialState.Success(
-                                verifierName = response.verifierName,
-                                verifierIsTrusted = response.verifierIsTrusted,
+                                relyingParty = response.relyingParty,
                                 combinationsUi = combinationsUi,
                                 claimsAreSelectable = claimsAreSelectable,
                             )
                         } else {
                             ProximityRequestInteractorPartialState.NoData(
-                                verifierName = response.verifierName,
-                                verifierIsTrusted = response.verifierIsTrusted,
+                                relyingParty = response.relyingParty,
                             )
                         }
                     }

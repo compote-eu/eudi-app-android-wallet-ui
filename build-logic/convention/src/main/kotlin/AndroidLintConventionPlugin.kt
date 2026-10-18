@@ -41,6 +41,7 @@ class AndroidLintConventionPlugin : Plugin<Project> {
 }
 
 private fun Lint.configure() {
-    xmlReport = true
+    // xmlReport was removed here: AGP now always generates the lint XML report, and the
+    // `xmlReport` property is deprecated (consume via SingleArtifact.LINT_XML_REPORT if needed).
     checkDependencies = true
 }

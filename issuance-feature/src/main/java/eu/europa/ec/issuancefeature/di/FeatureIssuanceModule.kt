@@ -16,27 +16,30 @@
 
 package eu.europa.ec.issuancefeature.di
 
-import eu.europa.ec.businesslogic.config.ConfigLogic
-import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.commonfeature.interactor.DeviceAuthenticationInteractor
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
 import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
+import eu.europa.ec.issuancefeature.interactor.AndroidAddDocumentPlatformBridge
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
 import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorImpl
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
+import eu.europa.ec.issuancefeature.interactor.AndroidDocumentOfferPlatformBridge
 import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferPlatformBridge
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.uilogic.serializer.UiSerializer
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
 import org.koin.core.annotation.ComponentScan
 import org.koin.core.annotation.Configuration
 import org.koin.core.annotation.Factory
 import org.koin.core.annotation.Module
 import org.koin.core.annotation.Scope
 import org.koin.core.annotation.Scoped
-import org.koin.mp.KoinPlatform
 
-private const val CREDENTIAL_OFFER_ISSUANCE_SCOPE_ID = "credential_offer_scope_id"
 
 @Module
 @Configuration
@@ -44,53 +47,60 @@ private const val CREDENTIAL_OFFER_ISSUANCE_SCOPE_ID = "credential_offer_scope_i
 class FeatureIssuanceModule
 
 @Factory
-fun provideAddDocumentInteractor(
+fun provideAddDocumentPlatformBridge(
     walletCoreDocumentsController: WalletCoreDocumentsController,
-    resourceProvider: ResourceProvider,
     deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
-    uiSerializer: UiSerializer
-): AddDocumentInteractor =
-    AddDocumentInteractorImpl(
-        walletCoreDocumentsController,
-        deviceAuthenticationInteractor,
-        resourceProvider,
-        uiSerializer
-    )
+    resourceProvider: ResourceProvider,
+): AddDocumentPlatformBridge = AndroidAddDocumentPlatformBridge(
+    walletCoreDocumentsController,
+    deviceAuthenticationInteractor,
+    resourceProvider,
+)
 
+// Shared implementation; only the wallet-core call surface above is Android's.
+@Factory
+fun provideAddDocumentInteractor(
+    strings: StringCatalog,
+    platformBridge: AddDocumentPlatformBridge,
+): AddDocumentInteractor = AddDocumentInteractorImpl(
+    strings,
+    platformBridge,
+)
+
+// Shared implementation: the platform half is `DocumentDetailsPlatformBridge`, which the dashboard
+// feature already provides.
 @Factory
 fun provideDocumentIssuanceSuccessInteractor(
-    walletCoreDocumentsController: WalletCoreDocumentsController,
-    resourceProvider: ResourceProvider,
-    uuIdProvider: UuidProvider
+    strings: StringCatalog,
+    platformBridge: DocumentDetailsPlatformBridge,
 ): DocumentIssuanceSuccessInteractor = DocumentIssuanceSuccessInteractorImpl(
+    strings,
+    platformBridge,
+)
+
+// Scoped, not a factory: this holds the resolved offer that issuance then needs.
+@Scope(CredentialOfferIssuanceScope::class)
+@Scoped
+fun provideDocumentOfferPlatformBridge(
+    walletCoreDocumentsController: WalletCoreDocumentsController,
+    deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
+    resourceProvider: ResourceProvider,
+): DocumentOfferPlatformBridge = AndroidDocumentOfferPlatformBridge(
     walletCoreDocumentsController,
+    deviceAuthenticationInteractor,
     resourceProvider,
-    uuIdProvider,
 )
 
 @Scope(CredentialOfferIssuanceScope::class)
 @Scoped
 fun provideDocumentOfferInteractor(
-    walletCoreDocumentsController: WalletCoreDocumentsController,
-    resourceProvider: ResourceProvider,
-    deviceAuthenticationInteractor: DeviceAuthenticationInteractor,
-    uiSerializer: UiSerializer,
-    configLogic: ConfigLogic
-): DocumentOfferInteractor =
-    DocumentOfferInteractorImpl(
-        walletCoreDocumentsController,
-        deviceAuthenticationInteractor,
-        resourceProvider,
-        uiSerializer,
-        configLogic
-    )
-
-@Scope
-class CredentialOfferIssuanceScope
-
-fun getOrCreateCredentialOfferScope(scopeId: String = CREDENTIAL_OFFER_ISSUANCE_SCOPE_ID): org.koin.core.scope.Scope =
-    KoinPlatform.getKoin()
-        .getOrCreateScope<CredentialOfferIssuanceScope>(scopeId)
-
-fun getOrNullCredentialOfferScope(scopeId: String = CREDENTIAL_OFFER_ISSUANCE_SCOPE_ID): org.koin.core.scope.Scope? =
-    KoinPlatform.getKoin().getScopeOrNull(scopeId)
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
+    platformBridge: DocumentOfferPlatformBridge,
+    appConfig: SharedAppConfig,
+): DocumentOfferInteractor = DocumentOfferInteractorImpl(
+    strings,
+    walletEngine,
+    platformBridge,
+    appConfig,
+)

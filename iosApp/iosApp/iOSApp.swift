@@ -1,0 +1,395 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+import SwiftUI
+#if DEBUG
+// Probe entry points exist only in non-Release framework builds — see the `iosProbeMain` source sets.
+import class SharedKit.DeferredDPoPProbeKt
+import class SharedKit.IssuerRegistrationProbeKt
+import class SharedKit.X5ChainProbeKt
+import class SharedKit.DeferredIssuanceProbeKt
+import class SharedKit.WalletEngineProbeKt
+import class SharedKit.KeychainStorageProbeKt
+#endif
+import class SharedKit.IosFirstRunWipeKt
+import class SharedKit.IosDevicePasscodeKt
+import class SharedKit.IosForegroundChecks
+import class SharedKit.IosAuthorizationRedirects
+import class SharedKit.IosDeepLinks
+import class SharedKit.IosDocumentSigning
+import class SharedKit.IosDocumentRegistration
+
+/// Launch argument that turns the wallet probe on.
+///
+/// The probe is how iOS behaviour is verified — `simctl` cannot tap, so a console run is the only way
+/// to see a screen's interactor work — but it is emphatically not something a launch should do by
+/// itself: it seeds fixture documents, sets a PIN, issues, presents and re-issues, all against the
+/// real store. Off unless asked for:
+///
+///     xcrun simctl launch --console-pty <device> <bundle-id> --wallet-probe
+private let walletProbeArgument = "--wallet-probe"
+
+/// Launch argument that runs the deferred-issuance DPoP probe, and nothing else.
+///
+/// Separate from `--wallet-probe` because it answers one narrow question — does a live EU issuer
+/// accept a DPoP proof signed by a key in the **Secure Enclave**? — and needs no fixtures, no PIN and
+/// no interactive authorization. It takes the dev realm's test account as the next two arguments, so
+/// no credentials are written into the binary:
+///
+///     xcrun simctl launch --console-pty <device> <bundle-id> --dpop-probe <username> <password>
+///
+/// The question can only be asked here: a bare Kotlin/Native test binary is unsigned, so the Secure
+/// Enclave refuses to create a key at all.
+private let dpopProbeArgument = "--dpop-probe"
+
+/// Launch argument that runs the deferred-issuance journey end to end against the live dev issuer.
+///
+/// Issues a real document with a `*_deferred` configuration, checks it parks, then collects it. Needs
+/// `keycloak-login-script.py` running alongside to answer the `AUTHORIZE-HERE` line, exactly as
+/// `--wallet-probe` does.
+///
+///     xcrun simctl launch --console-pty <device> <bundle-id> --deferred-probe
+private let deferredProbeArgument = "--deferred-probe"
+
+/// Launch argument that checks an issuer's ETSI registration certificate, and nothing else.
+///
+/// Answers the two questions a unit test structurally cannot: whether the live certificate's signer is
+/// trusted by the EU WRPRC list, and whether its status list — on a *different host* from the issuer —
+/// can be read at all. Both failures are closed ones, so an unreadable status list refuses a
+/// correctly-registered issuer.
+///
+///     xcrun simctl launch --console-pty <device> <bundle-id> --registration-probe [issuer-url]
+private let registrationProbeArgument = "--registration-probe"
+
+/// Sweeps parked deferred documents through the app's own Koin graph, bridge and interactor.
+private let deferredSweepArgument = "--deferred-sweep"
+
+/// Receives URLs opened on the app: the OpenID4VCI authorization redirect, credential offers, and a
+/// verifier's OpenID4VP presentation request.
+///
+/// A `UIApplicationDelegate` rather than SwiftUI's `.onOpenURL`: the latter did not fire for a custom
+/// scheme delivered to an already-running app on the simulator, and `application(_:open:options:)` is
+/// the path deep links have always arrived on. Both are wired, so whichever the system chooses works.
+final class AppDelegate: NSObject, UIApplicationDelegate {
+
+    /// Launch wiring: the foreground re-checks, the document-registration seam, and the RQES signer.
+    ///
+    /// 📌 A `BGProcessingTask` used to be registered here, because iOS requires every task identifier
+    /// to be registered before this method returns. It was **removed 2026-09-04** so the wallet
+    /// database can carry `NSFileProtectionComplete` — see [observeForegroundChecks].
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // FIRST, and synchronously: deleting the app does not delete what it put in the Keychain, so a
+        // reinstall would otherwise find the previous owner's PIN guarding a wallet whose documents
+        // went with the container. Measured 2026-09-05 — the app-group container *is* removed, the
+        // Keychain items are not. Must run before anything reads the PIN, which is why it is here and
+        // not in a Task. The official iOS wallet does the same thing in its startup interactor.
+        if IosFirstRunWipeKt.clearSecretsLeftByAPreviousInstall() {
+            print("FIRST-RUN-WIPE: cleared secrets left by a previous install")
+        }
+
+        // ⭐ NOTHING BELOW MAY RUN WITHOUT A DEVICE PASSCODE, and it took a device without one to
+        // find that out. The wallet's documents live in the Keychain at
+        // `WhenPasscodeSetThisDeviceOnly`, so on a passcode-free device *every* path that opens the
+        // store fails at `SecureEnclaveSecureArea.create`, and the three launch tasks below all open
+        // it. `IosAppRoot` already refuses to show the wallet in this state and explains why — but it
+        // is UI, and it cannot stop work that a launch has already started.
+        //
+        // 🪤 **The crash was not catchable in Swift.** `registrableDocuments()` carries no `@Throws`,
+        // so `KeychainWriteRefused` did not arrive as an NSError at all: Kotlin/Native reported
+        // "doesn't match @Throws-specified class list … Program will be terminated" and killed the
+        // process, straight through a `do/catch` that looked like it handled it. So the fix is to not
+        // make the call, rather than to catch it better.
+        //
+        // 📌 Measured 2026-09-07 on an iPhone SE with its passcode removed — the state the notes had
+        // recorded as unreachable. Before this, the app terminated on launch with signal 6 and the
+        // explanation went only to the crash log.
+        // Registered BEFORE the guard below, because it is also how a blocked launch recovers: it
+        // re-checks the gate itself and stays inert until the block clears.
+        observeActivation()
+        observeForegroundChecks()
+
+        guard !IosDevicePasscodeKt.iosWalletBlockedByMissingPasscode() else {
+            print("NO-PASSCODE: the Keychain will not hold documents and no passcode is set — "
+                  + "skipping launch work; the wallet root explains it, and returning to the app "
+                  + "after setting one recovers without a relaunch")
+            return true
+        }
+
+        // Lets Kotlin tell us when the document set changes, so a deleted document leaves the system
+        // credential picker instead of lingering in it. Registered before the first reconciliation
+        // below, though nothing depends on the order: the seam is only read on a later delete.
+        IosDocumentRegistration.shared.registry = WalletDocumentRegistry.shared
+
+        // Brings the OS registry in line with the wallet: adds what is missing, removes what is gone.
+        // The first of the two halves of being a Digital Credentials API provider; the second — an
+        // ExtensionKit extension that answers a request — does not exist yet, and this is useful and
+        // observable without it. See `DocumentRegistration.swift`.
+        reconcileDocumentRegistrations()
+        launchDidReconcile = true
+
+        // The Swift half of document signing. Kotlin cannot call `EudiRQESUi` itself — it is a Swift
+        // package, so none of its API crosses the Kotlin/Native bridge — so the shared screen calls
+        // this instead. Without this line signing reports itself unavailable rather than crashing;
+        // `HomeInteractor.canSignDocuments` is what decides the card is offered at all.
+        IosDocumentSigning.shared.signer = WalletDocumentSigner.shared
+        print("DOCUMENT-SIGN: registered the RQES signer")
+        return true
+    }
+
+    /// Set when the *launch* path reconciled, so the activation that immediately follows it does
+    /// not repeat the work. ⚠️ It is deliberately NOT "have we been activated before": on a
+    /// passcode-blocked launch nothing was reconciled, and that first activation is exactly the one
+    /// that has to be allowed through once the block clears. See [observeActivation].
+    private var launchDidReconcile = false
+
+    /// Brings the OS registry back in line every time the app returns to the front.
+    ///
+    /// ## Why this exists — measured on a device 2026-09-07, not reasoned
+    ///
+    /// **Revoking the wallet as an identity document provider empties the registration store, and
+    /// re-authorizing it does not put anything back.** Watched on an iPhone SE (iOS 26.6.1) through
+    /// Settings ▸ Apps ▸ EUDI Wallet ▸ Identity check ▸ Allow on websites, reading the store either side:
+    ///
+    ///     status=authorized     registrations=ok(5)
+    ///     status=notAuthorized  registrations=THREW notAuthorized
+    ///     status=authorized     registrations=ok(0)     <- empty, after re-authorizing
+    ///
+    /// Without this, the only triggers were launch and a document change, so a wallet that was
+    /// re-authorized while already running stayed **absent from the system credential picker while
+    /// holding perfectly good documents** — until the next launch. That is the mirror image of the bug
+    /// `reconcileDocumentRegistrations()` was written for: a document with no registration, rather than
+    /// a registration with no document.
+    ///
+    /// ## Why foregrounding is the right trigger
+    ///
+    /// There is no API that reports an authorization change — `status` can be read but not observed. The
+    /// user has to leave the app to reach Settings and come back to use the wallet, so activation is
+    /// exactly the edge that follows the change. If they never come back, the app is eventually killed
+    /// and the launch path covers it. Nothing is lost either way.
+    ///
+    /// The first activation is skipped because it fires immediately after
+    /// `didFinishLaunchingWithOptions`, which has already reconciled; without the guard every launch
+    /// would do the work twice. Reconciliation is idempotent, so the guard is about noise and wasted
+    /// calls, not correctness.
+    ///
+    /// 📌 **Not unit-tested, and it cannot be here**: the registration store is an OS service with no
+    /// substitute in a test binary, and this target has no test harness at all. Verified the way the
+    /// measurement above was — by revoking, restoring and watching the registrations come back.
+    /// 🪤 **`applicationDidBecomeActive(_:)` is NOT called in this app, and it looks like it should be.**
+    /// Measured 2026-09-07: written as a delegate method it never ran, while
+    /// `didFinishLaunchingWithOptions` in the same class did. This is a SwiftUI **scene** app
+    /// (`struct iOSApp: App` with `@UIApplicationDelegateAdaptor`), so activation is delivered to the
+    /// scene, not to `UIApplicationDelegate`. This is the **mirror** of the trap recorded on
+    /// `application(_:open:options:)` below, where the SwiftUI hook was the one that did not fire — so
+    /// in this file neither layer can be assumed. Watch the callback run before believing it.
+    ///
+    /// `UIApplication.didBecomeActiveNotification` is posted either way, which is why an observer is
+    /// used in preference to both the delegate method and SwiftUI's `scenePhase`.
+    private func observeActivation() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            if self.launchDidReconcile {
+                self.launchDidReconcile = false
+                return
+            }
+            // Still no passcode: every path that opens the store would terminate the process, so do
+            // nothing. `IosAppRoot` re-reads the same gate on this notification and unblocks the UI
+            // by itself, and the next activation after that lands here with the block gone — which is
+            // how a wallet that launched blocked ever gets its registrations.
+            guard !IosDevicePasscodeKt.iosWalletBlockedByMissingPasscode() else { return }
+            reconcileDocumentRegistrations()
+        }
+    }
+
+    /// Re-issuance and revocation, re-checked while the wallet is in front — see `IosForegroundChecks`.
+    ///
+    /// **Only while active, by decision (2026-09-04).** A `BGProcessingTask` used to run both with the app
+    /// closed. It was removed so the wallet database can carry `NSFileProtectionComplete`: a file
+    /// unreadable while the device is locked is incompatible with any background work. The cost was
+    /// measured before it was accepted: iOS was never observed scheduling that task on its own (61
+    /// minutes, locked, on power), and every refresh driven by hand failed on an expired refresh token.
+    /// ⛔ **Do not add a background task back**; it would silently undo the protection class. The
+    /// official iOS wallet runs these two checks in the foreground too, and no background tasks.
+    ///
+    /// Until 2026-10-02 they ran once per launch, finishing half a second in, before the PIN screen
+    /// was passed, so the dashboard never heard about a revocation. Now the first run is 30 s after the
+    /// app becomes active, then every 15 minutes, as Android's workers repeat; resigning active stops
+    /// them. The same passcode gate as [observeActivation]: every path that opens the store would
+    /// terminate the process without one.
+    ///
+    /// 📌 `runBackgroundReIssuance` and `runBackgroundRevocation` keep "background" in their names
+    /// though nothing background is left; renaming both would churn two files, a summary type, nine
+    /// tests and the probe for no behavioural gain.
+    private func observeForegroundChecks() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            guard !IosDevicePasscodeKt.iosWalletBlockedByMissingPasscode() else { return }
+            IosForegroundChecks.shared.onActive()
+        }
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            IosForegroundChecks.shared.onInactive()
+        }
+    }
+
+    func application(
+        _ app: UIApplication,
+        open url: URL,
+        options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        // Two kinds of URL reach the wallet, and each has its own destination in Kotlin: an
+        // authorization redirect belongs to a flow already waiting for it, while a credential offer or
+        // a presentation request starts one. Authorization is tried first because it is the narrower
+        // match — `IosDeepLinks` decides between the other two by scheme.
+        // The RQES authorization result belongs to a signing flow the SDK is already running, and it
+        // is the narrowest match of the three, so it is offered first.
+        if WalletDocumentSigner.shared.resume(url: url) {
+            print("RQES-CALLBACK: delivered \(url.absoluteString.prefix(60))")
+            return true
+        }
+        if IosAuthorizationRedirects.shared.deliver(url: url.absoluteString) {
+            print("AUTHORIZATION-REDIRECT: delivered \(url.absoluteString.prefix(60))")
+            return true
+        }
+        if IosDeepLinks.shared.deliver(url: url.absoluteString) {
+            print("DEEP-LINK: delivered \(url.absoluteString.prefix(60))")
+            return true
+        }
+        print("OPEN-URL: ignored \(url.absoluteString.prefix(60))")
+        return false
+    }
+}
+
+@main
+struct iOSApp: App {
+
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
+    init() {
+        // Probes are developer tooling and are compiled out of Release builds entirely, along with the
+        // Kotlin that backs them. A shipped wallet therefore cannot be asked to run one, whatever
+        // arguments it is launched with.
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains(deferredSweepArgument) {
+            DeferredIssuanceProbeKt.probeDeferredSweep { line in
+                print("DEFERRED-SWEEP: \(line)")
+            }
+            return
+        }
+
+        if arguments.contains(deferredProbeArgument) {
+            // `--deferred-probe sdjwt` exercises the SD-JWT encoding branch instead of the mdoc one.
+            DeferredIssuanceProbeKt.probeDeferredIssuance(
+                sdJwt: arguments.contains("sdjwt")
+            ) { line in
+                print("DEFERRED-PROBE: \(line)")
+            }
+            return
+        }
+
+        // multipaz's storage contract against the real Keychain, which a test binary cannot reach.
+        if arguments.contains("--keychain-storage-probe") {
+            KeychainStorageProbeKt.probeKeychainStorage { line in
+                print("KEYCHAIN-STORAGE: \(line)")
+            }
+            return
+        }
+
+        if arguments.contains("--x5chain-probe") {
+            X5ChainProbeKt.probeIssuerChains { line in
+                print("X5CHAIN-PROBE: \(line)")
+            }
+            return
+        }
+
+        if let flag = arguments.firstIndex(of: registrationProbeArgument) {
+            let issuer = arguments.count > flag + 1 && !arguments[flag + 1].hasPrefix("-")
+                && arguments[flag + 1] != "verifier"
+                ? arguments[flag + 1]
+                : "https://dev.issuer-backend.eudiw.dev"
+            // `--registration-probe verifier` asks the relying-party half instead: it creates a real
+            // transaction against the dev verifier, because `verifier_info` lives only in a request
+            // object and never in any metadata document.
+            if arguments.contains("verifier") {
+                IssuerRegistrationProbeKt.probeRelyingPartyRegistration { line in
+                    print("REGISTRATION-PROBE: \(line)")
+                }
+            } else {
+                IssuerRegistrationProbeKt.probeIssuerRegistration(issuerUrl: issuer) { line in
+                    print("REGISTRATION-PROBE: \(line)")
+                }
+            }
+            return
+        }
+
+        if let flag = arguments.firstIndex(of: dpopProbeArgument), arguments.count > flag + 2 {
+            DeferredDPoPProbeKt.probeDeferredDPoP(
+                username: arguments[flag + 1],
+                password: arguments[flag + 2]
+            ) { line in
+                print("DPOP-PROBE: \(line)")
+            }
+            return
+        }
+
+        guard arguments.contains(walletProbeArgument) else { return }
+
+        WalletEngineProbeKt.probeMultipazWalletEngine { line in
+            print("MULTIPAZ-ENGINE: \(line)")
+        }
+        #endif
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            // The shared Compose UI *is* the app. It used to be one tab of two, beside a SwiftUI
+            // screen that proved Swift could call Kotlin; that question was answered a long time ago
+            // and the tab bar outlived it.
+            WalletView()
+                .ignoresSafeArea()
+            // The whole of the app shell's part in OpenID4VCI authorization: hand the redirect to
+            // Kotlin, which has a coroutine waiting for it. Deciding whether it is *valid* belongs to
+            // multipaz's provisioning client, which minted the `state` it carries.
+            .onOpenURL { url in
+                // Same destinations as the app delegate above; whichever path the system picks, the
+                // URL ends up in the same place.
+                if WalletDocumentSigner.shared.resume(url: url) {
+                    print("RQES-CALLBACK: delivered \(url.scheme ?? "?")")
+                } else if IosAuthorizationRedirects.shared.deliver(url: url.absoluteString) {
+                    print("AUTHORIZATION-REDIRECT: delivered \(url.scheme ?? "?")")
+                } else if IosDeepLinks.shared.deliver(url: url.absoluteString) {
+                    print("DEEP-LINK: delivered \(url.scheme ?? "?")")
+                } else {
+                    print("OPEN-URL: ignored \(url.scheme ?? "?")")
+                }
+            }
+        }
+    }
+}

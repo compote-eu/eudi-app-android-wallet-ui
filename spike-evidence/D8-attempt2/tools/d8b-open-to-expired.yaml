@@ -1,0 +1,39 @@
+# D8 attempt 2, drill 5 (unseen): open the link and drive the flow to error-expired.
+# Script expired-at-sending: request -> continue -> verification-code -> confirm -> sending -> Expired -> error-expired.
+# Script expired-at-request: connecting -> error-expired directly (the request steps are skipped as optional).
+appId: eu.compote.euidi.dev
+---
+- openLink: ${LINK}
+- tapOn:
+    text: "Open"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "pin_text_field_0"
+    commands:
+      - tapOn:
+          id: "pin_text_field_0"
+      - inputText: "123456"
+- runFlow:
+    when:
+      true: ${SENDING == "1"}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "ux-state-request"
+          timeout: 30000
+      - tapOn:
+          id: "continue"
+      - extendedWaitUntil:
+          visible:
+            id: "ux-state-verification-code"
+          timeout: 30000
+      - tapOn:
+          id: "confirm"
+- extendedWaitUntil:
+    visible:
+      id: "ux-state-error-expired"
+    timeout: 30000
+- assertVisible:
+    id: "hero"

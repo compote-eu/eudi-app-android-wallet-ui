@@ -43,8 +43,6 @@ internal fun Project.configureAndroidCompose(
             add("implementation", libs.findLibrary("coil.kt.svg").get())
             add("implementation", libs.findLibrary("coil-kt-network-okhttp").get())
 
-            add("implementation", libs.findLibrary("androidx-navigation-compose").get())
-
             add("implementation", libs.findLibrary("androidx.lifecycle.runtimeCompose").get())
             add("implementation", libs.findLibrary("androidx.lifecycle.viewModelCompose").get())
 
@@ -60,14 +58,6 @@ internal fun Project.configureAndroidCompose(
             add("debugImplementation", libs.findLibrary("androidx.compose.ui.testManifest").get())
             add("debugImplementation", libs.findLibrary("androidx.compose.ui.tooling").get())
             add("testImplementation", libs.findLibrary("robolectric").get())
-        }
-
-        testOptions.unitTests.apply {
-            isIncludeAndroidResources = true
-            isReturnDefaultValues = true
-            all { test ->
-                test.systemProperty("user.timezone", "UTC")
-            }
         }
     }
 

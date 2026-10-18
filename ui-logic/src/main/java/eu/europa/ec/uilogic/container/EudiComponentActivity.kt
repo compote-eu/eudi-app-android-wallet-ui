@@ -22,23 +22,31 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.NavController
-import androidx.navigation.NavGraphBuilder
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
 import eu.europa.ec.businesslogic.controller.storage.PrefKeys
 import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.corelogic.di.getOrNullKoinScope
 import eu.europa.ec.resourceslogic.theme.ThemeManager
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.AppNavigator
+import eu.europa.ec.shared.navigation.DebugFlowHook
+import eu.europa.ec.shared.navigation.DocumentDetailsRoute
+import eu.europa.ec.shared.navigation.DocumentOfferRoute
 import eu.europa.ec.uilogic.extension.exposeTestTagsAsResourceId
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
+import eu.europa.ec.shared.navigation.LocalNavPlatformActions
+import eu.europa.ec.uilogic.navigation.AndroidNavPlatformActions
 import eu.europa.ec.uilogic.navigation.RouterHost
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.DeepLinkType
+import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.IntentType
 import eu.europa.ec.uilogic.navigation.helper.handleDeepLinkAction
 import eu.europa.ec.uilogic.navigation.helper.hasDeepLink
@@ -50,15 +58,31 @@ import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import org.koin.core.annotation.KoinViewModel
+import org.koin.mp.KoinPlatform
 
 open class EudiComponentActivity : FragmentActivity() {
 
     private val routerHost: RouterHost by inject()
     private val viewModel: EudiComponentActivityViewModel by viewModel()
 
+    // UX spike (T9): after process death the system re-creates the activity with the ORIGINAL launch
+    // intent, because `setIntent(Intent())` below does not survive the kill. Remember across the kill
+    // that the cold-boot link was already handled. Active only when a DebugFlowHook is bound (debug) AND
+    // its switch is on (M11b step 0: a debug build with the switch off behaves as upstream, brief §6.3).
+    private var launchIntentConsumed = false
+
+    private fun launchGuardActive(): Boolean =
+        launchGuardActive(KoinPlatform.getKoinOrNull()?.getOrNull<DebugFlowHook>())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        launchIntentConsumed = savedInstanceState?.getBoolean(KEY_LAUNCH_INTENT_CONSUMED) == true
         viewModel.onCreate()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEY_LAUNCH_INTENT_CONSUMED, launchIntentConsumed)
     }
 
     internal fun cacheIntent(intent: Intent?) {
@@ -67,10 +91,16 @@ open class EudiComponentActivity : FragmentActivity() {
 
     internal fun getCachedIntent(): Intent? = viewModel.getCachedIntent()
 
+    internal fun cacheIntentAction(intentAction: IntentAction) {
+        viewModel.cacheIntentAction(intentAction)
+    }
+
+    internal fun consumePendingIntentAction(): IntentAction? = viewModel.consumePendingIntentAction()
+
     @Composable
     protected fun Content(
         intent: Intent?,
-        builder: NavGraphBuilder.(NavController) -> Unit,
+        entries: EntryProviderScope<NavKey>.(AppNavigator) -> Unit,
     ) {
         ThemeManager.instance.Theme {
             Surface(
@@ -79,12 +109,24 @@ open class EudiComponentActivity : FragmentActivity() {
                     .fillMaxSize(),
                 color = MaterialTheme.colorScheme.surface
             ) {
-                routerHost.StartFlow {
-                    builder(it)
+                // Android's answers for the shared entries. Provided here because this is the
+                // activity whose one-shot intent slots they read, and everything the host composes
+                // sits underneath. `LocalContext` is that activity, which `findActivity()` and the
+                // slot extensions both rely on.
+                val platformActions = remember(this) { AndroidNavPlatformActions(this) }
+                CompositionLocalProvider(LocalNavPlatformActions provides platformActions) {
+                    routerHost.StartFlow { navigator ->
+                        entries(navigator)
+                    }
                 }
                 LaunchedEffect(Unit) {
                     viewModel.onFlowStart()
-                    handleDeepLink(intent, coldBoot = true)
+                    if (shouldHandleLaunchIntent(launchGuardActive(), launchIntentConsumed)) {
+                        handleDeepLink(intent, coldBoot = true)
+                    } else {
+                        println("UX-SPIKE: launch intent already consumed, cold-boot link skipped")
+                    }
+                    if (launchGuardActive()) launchIntentConsumed = true
                 }
             }
         }
@@ -121,8 +163,9 @@ open class EudiComponentActivity : FragmentActivity() {
         hasDeepLink(intent?.data)?.let {
             if (it.type == DeepLinkType.ISSUANCE && !coldBoot) {
                 handleDeepLinkAction(
-                    routerHost.getNavController(),
-                    it.link
+                    navigator = routerHost.getNavigator(),
+                    context = this,
+                    uri = it.link
                 )
             } else if (
                 it.type == DeepLinkType.CREDENTIAL_OFFER
@@ -133,13 +176,14 @@ open class EudiComponentActivity : FragmentActivity() {
                 routerHost.popToIssuanceOnboardingScreen()
             } else if (it.type == DeepLinkType.OPENID4VP
                 && routerHost.userIsLoggedInWithDocuments()
-                && (routerHost.isScreenOnBackStackOrForeground(IssuanceScreens.AddDocument)
-                        || routerHost.isScreenOnBackStackOrForeground(IssuanceScreens.DocumentOffer)
-                        || routerHost.isScreenOnBackStackOrForeground(DashboardScreens.DocumentDetails))
+                && (routerHost.isRouteOnBackStackOrForeground(AddDocumentRoute::class)
+                        || routerHost.isRouteOnBackStackOrForeground(DocumentOfferRoute::class)
+                        || routerHost.isRouteOnBackStackOrForeground(DocumentDetailsRoute::class))
             ) {
                 handleDeepLinkAction(
-                    routerHost.getNavController(),
-                    DeepLinkAction(it.link, DeepLinkType.DYNAMIC_PRESENTATION)
+                    navigator = routerHost.getNavigator(),
+                    context = this,
+                    action = DeepLinkAction(it.link, DeepLinkType.DYNAMIC_PRESENTATION)
                 )
             } else if (it.type != DeepLinkType.ISSUANCE) {
                 cacheIntent(intent)
@@ -162,6 +206,15 @@ open class EudiComponentActivity : FragmentActivity() {
     }
 }
 
+private const val KEY_LAUNCH_INTENT_CONSUMED = "launchIntentConsumed"
+
+/** The guard is active only when a debug hook is bound and its switch is on; null (release) or off: inactive. */
+internal fun launchGuardActive(hook: DebugFlowHook?): Boolean = hook?.isEnabled() == true
+
+/** The cold-boot link is skipped only when the guard is active and a restore says it was consumed. */
+internal fun shouldHandleLaunchIntent(guardActive: Boolean, consumed: Boolean): Boolean =
+    !(guardActive && consumed)
+
 @KoinViewModel
 internal class EudiComponentActivityViewModel(
     private val prefKeys: PrefKeys,
@@ -172,6 +225,7 @@ internal class EudiComponentActivityViewModel(
 
     private var flowStarted: Boolean = false
     private var pendingIntent: Intent? = null
+    private var pendingIntentAction: IntentAction? = null
 
     override fun onCleared() {
         getOrNullKoinScope(sessionId)?.close()
@@ -195,6 +249,14 @@ internal class EudiComponentActivityViewModel(
     }
 
     fun getCachedIntent(): Intent? = pendingIntent
+
+    fun cacheIntentAction(intentAction: IntentAction) {
+        pendingIntentAction = intentAction
+    }
+
+    /** One-shot: the destination that was pushed alongside the action reads it exactly once. */
+    fun consumePendingIntentAction(): IntentAction? =
+        pendingIntentAction.also { pendingIntentAction = null }
 
     fun hasFlowStarted(): Boolean = flowStarted
 

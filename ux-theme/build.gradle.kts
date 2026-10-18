@@ -1,0 +1,64 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+// Spike module (SPIKE-PLAN.md §1.1). Same plugin block and android { } block as :shared-ui; no Koin.
+plugins {
+    id("org.jetbrains.kotlin.multiplatform")
+    id("com.android.kotlin.multiplatform.library")
+    alias(libs.plugins.jetbrains.compose)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.serialization)
+}
+
+// M9r regen-smoke: -PuxSpecDir=<dir> points this build at a scratch copy of an export (default: the tracked ux-spec/).
+val uxSpec: Directory = rootProject.layout.projectDirectory.dir(providers.gradleProperty("uxSpecDir").getOrElse("ux-spec"))
+// ...and keeps that build apart from the tracked one (its own build directory), so the two never clobber each other.
+if (providers.gradleProperty("uxSpecDir").isPresent) layout.buildDirectory.set(layout.projectDirectory.dir("build/regen-smoke"))
+
+kotlin {
+    android {
+        namespace = "eu.europa.ec.ux.theme"
+        compileSdk = 37
+        minSdk = 29
+        withHostTest {}
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
+
+    iosArm64()
+    iosSimulatorArm64()
+
+    sourceSets {
+        commonMain {
+            // boundary §3: the generated theme objects (ux-spec/theme/kotlin) fill this module's hand-written shell
+            kotlin.srcDir(uxSpec.dir("theme/kotlin"))
+        }
+        commonMain.dependencies {
+            api(libs.jetbrains.compose.runtime)
+            api(libs.jetbrains.compose.foundation)
+            implementation(libs.jetbrains.compose.ui)
+            // M6c: ux-assets.json, ux-library.json and ux-tokens.json (UxSpecResources).
+            implementation(libs.kotlinx.serialization.json)
+        }
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
+    }
+}
+

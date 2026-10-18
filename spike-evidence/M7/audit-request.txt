@@ -1,0 +1,84 @@
+# audit: request
+## issues
+ISSUE type=4 Hit area is too small | The size of this AccessibilityElement is too small for user to interact. | element: 1 id='rp-trusted.trust' label='Overený overovateľ'
+## issue count: 1
+## element tree
+Attributes: Application, 0x109cc2800, pid: 81425, label: 'EUDI Wallet'
+Element subtree:
+ →Application, 0x109cc2800, pid: 81425, label: 'EUDI Wallet'
+    Window (Main), 0x109cc1040, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x109cc1900, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x109cc1400, {{0.0, 0.0}, {402.0, 874.0}}
+          Other, 0x109cc1a40, {{0.0, 0.0}, {402.0, 874.0}}
+            Other, 0x109cc1cc0, {{0.0, 0.0}, {402.0, 874.0}}
+              Other, 0x109cc1f40, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x109cc2080, {{0.0, 0.0}, {402.0, 874.0}}
+                Other, 0x109cc1e00, {{0.0, 0.0}, {402.0, 874.0}}
+                ScrollView, 0x109cc21c0, {{0.0, 0.0}, {402.0, 874.0}}
+                  Other, 0x109cc2440, {{0.0, 0.0}, {402.0, 874.0}}
+                    Other, 0x109cc2300, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x109cc2580, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x109cc3200, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x109cc12c0, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'ux-state-request'
+                      Other, 0x109cc0c80, {{0.0, 0.0}, {402.0, 874.0}}, identifier: 'SCR-pres-request'
+                      Other, 0x109cc1b80, {{0.0, 0.0}, {402.0, 874.0}}
+                      Other, 0x109cc0f00, {{0.0, 0.0}, {402.0, 53.7}}, identifier: 'SCR-pres-request.scrim'
+                      Other, 0x109cc1180, {{0.0, 53.7}, {402.0, 820.3}}, identifier: 'SCR-pres-request.dialog'
+                        Other, 0x109cc2a80, {{0.0, 53.7}, {402.0, 68.7}}, identifier: 'SCR-pres-request.header'
+                        Other, 0x109cc2bc0, {{20.0, 73.7}, {227.7, 28.7}}, identifier: 'title', label: 'Overenie eDokladu'
+                        Other, 0x109cc2940, {{0.0, 122.3}, {402.0, 571.7}}, identifier: 'SCR-pres-request.body'
+                          Other, 0x109cc2d00, {{20.0, 122.3}, {362.0, 173.3}}, identifier: 'rp-trusted'
+                          StaticText, 0x109cc2f80, {{35.0, 137.3}, {62.0, 14.3}}, label: 'Overovateľ'
+                          StaticText, 0x109cc30c0, {{35.0, 156.7}, {121.7, 21.3}}, identifier: 'rp-trusted.name', label: 'Spike Verifier'
+                          Other, 0x109cc2e40, {{45.0, 188.0}, {141.0, 15.7}}, identifier: 'rp-trusted.trust', label: 'Overený overovateľ'
+                            Other, 0x109cc3480, {{45.0, 188.0}, {11.7, 15.7}}
+                            StaticText, 0x109cc35c0, {{61.7, 188.0}, {124.3, 15.7}}, label: 'Overený overovateľ'
+                          Other, 0x109cc3340, {{35.0, 213.7}, {157.0, 31.0}}, identifier: 'rp-trusted.service', label: 'Overenie cez webový portál, Spike demo service'
+                            StaticText, 0x109cc3700, {{35.0, 213.7}, {157.0, 14.3}}, label: 'Overenie cez webový portál'
+                            StaticText, 0x109cc3980, {{35.0, 228.0}, {129.0, 16.7}}, label: 'Spike demo service'
+                          Other, 0x109cc3ac0, {{35.0, 249.7}, {179.3, 31.0}}, identifier: 'rp-trusted.reason', label: 'Dôvod kontroly, Identity check for the spike'
+                            StaticText, 0x109cc3840, {{35.0, 249.7}, {85.7, 14.3}}, label: 'Dôvod kontroly'
+                            StaticText, 0x109cc3c00, {{35.0, 264.0}, {179.3, 16.7}}, label: 'Identity check for the spike'
+                          Button, 0x109cc3d40, {{20.0, 310.7}, {359.3, 48.0}}, identifier: 'privacy', label: 'Zásady ochrany osobných údajov overovateľa, otvorí sa v prehliadači, Zásady ochrany osobných údajov overovateľa'
+                            StaticText, 0x109cc3e80, {{20.0, 325.3}, {343.0, 19.0}}, label: 'Zásady ochrany osobných údajov overovateľa'
+                            Other, 0x109cc0500, {{367.0, 325.3}, {12.3, 19.0}}
+                          StaticText, 0x109cc0a00, {{20.0, 373.7}, {335.0, 19.0}}, identifier: 'data-intro', label: 'Overovateľ žiada tieto údaje z eDokladu PID:'
+                          StaticText, 0x106e775c0, {{20.0, 407.7}, {321.0, 16.7}}, identifier: 'instructions', label: 'Vyberte, ktoré nepovinné údaje chcete predložiť.'
+                          Other, 0x106e77700, {{20.0, 439.3}, {362.0, 254.7}}, identifier: 'attributes'
+                          Other, 0x106e77840, {{20.0, 439.3}, {362.0, 112.3}}, identifier: 'attributes.mandatory'
+                            Other, 0x106e77980, {{20.0, 439.3}, {362.0, 53.7}}, identifier: 'attributes.item.given_name', label: 'Meno, Ján, Povinné', Selected
+                              Other, 0x106e77c00, {{8.0, 442.3}, {46.0, 48.0}}
+                                Other, 0x106e77ac0, {{26.0, 458.0}, {12.3, 16.7}}
+                              StaticText, 0x106e752c0, {{54.0, 439.3}, {42.0, 19.0}}, label: 'Meno'
+                              StaticText, 0x106e75400, {{54.0, 458.3}, {28.3, 19.0}}, label: 'Ján'
+                              StaticText, 0x10a6b4000, {{54.0, 477.3}, {50.7, 15.7}}, label: 'Povinné'
+                            Other, 0x10a6b4140, {{20.0, 498.0}, {362.0, 53.7}}, identifier: 'attributes.item.family_name', label: 'Priezvisko, Novák, Povinné', Selected
+                              Other, 0x10a6b4280, {{8.0, 501.0}, {46.0, 48.0}}
+                                Other, 0x10a6b43c0, {{26.0, 516.7}, {12.3, 16.7}}
+                              StaticText, 0x10a6b4500, {{54.0, 498.0}, {77.0, 19.0}}, label: 'Priezvisko'
+                              StaticText, 0x10a6b4640, {{54.0, 517.0}, {49.0, 19.0}}, label: 'Novák'
+                              StaticText, 0x10a6b4780, {{54.0, 536.0}, {50.7, 15.7}}, label: 'Povinné'
+                          Other, 0x10a6b48c0, {{20.0, 566.7}, {362.0, 127.3}}, identifier: 'attributes.optional'
+                            Other, 0x10a6b4a00, {{20.0, 566.7}, {147.3, 21.3}}, label: 'Nepovinné údaje'
+                            Button, 0x10a6b4b40, {{20.0, 593.0}, {362.0, 48.0}}, identifier: 'attributes.item.birth_date', label: 'Dátum narodenia, 12. 4. 1985'
+                              Other, 0x10a6b4c80, {{8.0, 593.0}, {48.0, 48.0}}
+                              StaticText, 0x10a6b4dc0, {{54.0, 598.0}, {128.7, 19.0}}, label: 'Dátum narodenia'
+                              StaticText, 0x10a6b4f00, {{54.0, 617.0}, {87.0, 19.0}}, label: '12. 4. 1985'
+                            Button, 0x10a6b5040, {{20.0, 646.0}, {362.0, 48.0}}, identifier: 'attributes.item.age_over_18', label: 'Vek 18 a viac'
+                              Other, 0x10a6b5180, {{8.0, 646.0}, {48.0, 48.0}}
+                              StaticText, 0x10a6b52c0, {{54.0, 660.7}, {98.3, 19.0}}, label: 'Vek 18 a viac'
+                        Other, 0x10a6b5400, {{0.0, 694.0}, {402.0, 146.0}}, identifier: 'SCR-pres-request.actions'
+                        Button, 0x10a6b5540, {{20.0, 714.0}, {362.0, 48.0}}, identifier: 'continue', label: 'Pokračovať'
+                          StaticText, 0x10a6b5680, {{157.0, 728.7}, {88.3, 19.0}}, label: 'Pokračovať'
+                        Button, 0x10a6b57c0, {{20.0, 772.0}, {362.0, 48.0}}, identifier: 'reject', label: 'Odmietnuť'
+                          StaticText, 0x10a6b5900, {{159.3, 786.7}, {83.3, 19.0}}, label: 'Odmietnuť'
+    Window, 0x10a6b5a40, {{0.0, 0.0}, {402.0, 874.0}}
+      Other, 0x10a6b5b80, {{0.0, 0.0}, {402.0, 874.0}}
+        Other, 0x10a6b5cc0, {{0.0, 0.0}, {402.0, 874.0}}
+Path to element:
+ →Application, 0x109cc2800, pid: 81425, label: 'EUDI Wallet'
+Query chain:
+ →Find: Application 'eu.compote.euidi.dev'
+  Output: {
+    Application, 0x10a6b5e00, pid: 81425, label: 'EUDI Wallet'
+  }

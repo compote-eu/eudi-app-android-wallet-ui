@@ -1,0 +1,145 @@
+# ⚠️ PORTED FROM eudi-app-ios-wallet-ui, UNVERIFIED against this KMP app -- accessibility IDs,
+# navigation, and screen structure likely differ (confirmed divergent in TC-01's initial port
+# attempt: 2026-09-09). Treat as a reference/starting point, not a working flow.
+#
+
+appId: eu.europa.ec.euidi.dev
+---
+# TC-40 — repeated incorrect PIN (throttling).
+#
+# Verifies the app locks out unlock attempts after 3 consecutive wrong
+# PIN entries, and correctly recovers once the lockout window elapses.
+#
+# Ground truth already established (TC-43/TC-32 investigation - not
+# rediscovered here): KeychainPinThrottleProvider (Modules/logic-
+# authentication/Sources/Storage/KeychainPinThrottleProvider.swift)
+# triggers an escalating timed lockout (30s/90s/300s,
+# AuthenticationConfig.pinLockoutDurations) after
+# maxFailedPinAttempts = 3 consecutive wrong entries. recordFailure()
+# runs per wrong attempt; recordSuccess() resets all four throttle keys
+# on a correct entry. TC-32's Keychain-row assertion already tolerates
+# up to 2 known-benign IdentityDocumentServices rows, confirmed
+# unrelated to and unaffected by any PIN activity (isolated TC-01-only
+# and TC-01+TC-47 runs both showed the identical 2-row result with zero
+# PIN-throttle activity in either) - this test's own throttle writes are
+# just more app-owned Keychain data for TC-32's wipe to correctly clear,
+# not a new risk.
+#
+# Precondition: app already unlocked with the ORIGINAL PIN (123456) -
+# this test MUST run before TC-43 (which changes the PIN to 654321).
+#
+# Chain position: after TC-30, before TC-32. Investigated whether this
+# needs a more specific slot: nothing between TC-01 and TC-43 in the
+# current chain (TC-01 -> TC-47 -> TC-22 -> TC-24 -> TC-25 -> TC-50 ->
+# TC-26 -> TC-20 -> TC-30 -> TC-32 -> TC-43) re-enters a PIN at all
+# except TC-47 (which unlocks once, successfully, with 123456 - no
+# throttle interaction) and TC-43 itself (excluded by definition, since
+# this must run before it). No lockout state persists oddly across app
+# restarts within a session: this flow's own last action is a
+# successful correct-PIN entry, which calls recordSuccess() and resets
+# the throttle counters to zero, so nothing is left over for whatever
+# runs next. Given that, TC-40 is safe anywhere before TC-43; it's
+# placed right before TC-32 specifically so TC-32's wipe gets exercised
+# against genuine throttle-key Keychain data too, not just document
+# data - continued regression coverage for the entitlement-removal fix,
+# without needing its own dedicated slot.
+#
+# Accessibility gotcha (confirmed via a live hierarchy dump, not
+# assumed): the lockout message itself ("You have entered the wrong PIN
+# 3 times in a row. Please wait 00:28 before trying again.") is NOT
+# exposed anywhere in the accessibility tree - nothing between the PIN
+# fields and the keyboard has any non-empty accessibilityText matching
+# it. This flow therefore does NOT attempt to assert on that text (it
+# structurally cannot).
+#
+# IMPORTANT finding that shaped this design (confirmed by reading
+# BiometryViewModel.swift/PinTextFieldView.swift, not guessed): a REAL
+# user cannot submit anything during an active lockout - the PIN field
+# is genuinely `.disabled()` and unfocused whenever
+# `viewState.isLockedOut` is true (BiometryViewModel.swift,
+# PinTextFieldView.swift), and `processPin` itself re-checks
+# `!viewState.isLockedOut` before evaluating anything
+# (BiometryViewModel.swift). BUT `isLockedOut` is a cached Bool
+# refreshed only once per second by a polling loop
+# (startLockoutTick), not recomputed live on every keystroke - and
+# Maestro's `inputText` sets the field's value directly, bypassing
+# `.disabled()`'s normal hit-testing entirely. Landing an `inputText`
+# call inside that up-to-1-second staleness window (e.g. immediately
+# after the 3rd wrong attempt) can slip through and call
+# `recordPinFailure()` again, escalating the lockout to the next tier
+# (30s -> 90s -> 300s) - something a real user physically cannot
+# trigger, but that live testing during this flow's own development
+# accidentally did more than once, ballooning a test lockout to the
+# capped 300s tier. This flow avoids the whole class of problem by
+# never attempting ANY interaction between the 3rd wrong attempt and
+# the wait below completing - not even a "prove it rejects the correct
+# PIN too" check, since that would itself be exactly this kind of
+# risky, timing-sensitive interaction. It waits out the full duration
+# once, untouched, then submits the correct PIN exactly once.
+#
+# Wait-and-recover vs. assert-only: chose to wait out the lockout and
+# confirm recovery, not just assert the lockout triggered. The extra
+# cost is ~30-40s in a CI chain that already runs many minutes across 10
+# other flows - negligible - and recovery is exactly the other half of
+# what this mechanism needs to do correctly (block during the window,
+# release after it) to actually be a working throttle rather than a
+# permanent lockout. Maestro has no native fixed-duration wait command
+# in this version (confirmed via `maestro check-syntax` rejecting a bare
+# `wait:` step) - `extendedWaitUntil` on a condition guaranteed never to
+# occur, marked optional, is the portable way to get an unconditional
+# delay: it polls harmlessly until its own timeout elapses, then
+# continues. 40000ms - 30000ms configured first-tier duration + 10s
+# margin. This margin assumes a clean session where this is the ONLY
+# lockout-triggering sequence (true for this flow's own chain position -
+# nothing before it in the chain triggers PIN failures) - do not add
+# any other wrong-PIN interaction anywhere before this flow without
+# re-checking the throttle level is still 0 first.
+#
+# End state: unlocked on Home (id: home_tab_screen_username_text, same
+# stable selector TC-43 uses), PIN still 123456, throttle counters reset
+# by the final successful entry - ready for whatever runs next in the
+# chain.
+
+- stopApp
+- launchApp
+- assertVisible: "Welcome back!"
+
+# Attempt 1 of 3 - wrong PIN, no lockout yet (1 < maxFailedPinAttempts)
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "999999"
+- assertVisible: "Invalid pin"
+
+# Attempt 2 of 3 - still just an inline error, not locked out yet
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "999999"
+- assertVisible: "Invalid pin"
+
+# Attempt 3 of 3 - this is the one that crosses maxFailedPinAttempts and
+# starts the lockout timer (confirmed live: the screen shows "You have
+# entered the wrong PIN 3 times in a row. Please wait 00:2x before
+# trying again." right after this - see the accessibility gotcha note
+# above for why that text itself isn't asserted here).
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "999999"
+
+# No mid-lockout submission here - see header comment's "IMPORTANT
+# finding": doing so was confirmed live to reset the lockout timer back
+# to a fresh full duration, making a deliberate "prove it blocks the
+# correct PIN too" check counterproductive for an automated, single-shot
+# timed test. The countdown is left completely untouched from here until
+# the wait below elapses.
+#
+# Wait out the lockout window (see header comment for why this specific
+# technique/duration), then confirm the correct PIN now works again.
+- extendedWaitUntil:
+    visible: "this text deliberately never appears - used as a fixed-duration wait, see header comment"
+    timeout: 40000
+    optional: true
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- assertVisible:
+    id: "home_tab_screen_username_text"

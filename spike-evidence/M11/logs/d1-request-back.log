@@ -1,0 +1,14 @@
+## D1 request / system Back 2026-10-17T16:40:59+02:00
+at request
+shot d1-request-back-after
+resource-id="ux-state-cancelled"
+10-17 16:41:15.961 UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)
+10-17 16:41:20.702 UX-SPIKE: enter cancelled (gen 3)
+10-17 16:41:20.702 UX-SPIKE: cancel#1 (script slow)
+10-17 16:41:20.702 UX-SPIKE: service cancel failed (IllegalStateException: script 'slow' has no step for cancel); mapped to Error
+10-17 16:41:20.702 UX-SPIKE: detached cancel finished (Error); result ignored
+10-17 16:41:20.704 UX-SPIKE: back: Fired(event=REJECT, outcome=Transitioned(target=cancelled))
+10-17 16:41:20.739 UX-SPIKE: screen SCR-pres-outcome-cancelled: interpreted from the bundle (TPL-outcome, 2 nodes), state cancelled, ui_state default
+10-17 16:41:21.118 UX-SPIKE: a11y: SCR-pres-outcome-cancelled focus-heading hero (focused)
+/sdcard/d1-request-back.mp4: 1 file pulled, 0 skipped. 92.9 MB/s (808158 bytes in 0.008s)
+video d1-request-back

@@ -1,0 +1,11 @@
+# D7 2026-10-17T17:09:32+02:00 TalkBack enabled: com.google.android.marvin.talkback/com.google.android.marvin.talkback.TalkBackService
+     Bound services:{Service[label=TalkBack, feedbackType[FEEDBACK_SPOKEN, FEEDBACK_HAPTIC, FEEDBACK_AUDIBLE], capabilities=251, eventTypes=
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+shot d7-1-connecting
+shot d7-2-request
+[t=17:09:40] double-tap Continue
+shot d7-3-auth
+shot d7-4-verification-code
+[t=17:09:44] double-tap Confirm
+shot d7-5-sending
+shot d7-6-success

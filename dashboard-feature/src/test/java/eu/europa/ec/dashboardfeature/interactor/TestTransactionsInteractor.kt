@@ -16,6 +16,7 @@
 
 package eu.europa.ec.dashboardfeature.interactor
 
+import eu.europa.ec.businesslogic.extension.filterByQuery
 import eu.europa.ec.businesslogic.validator.FilterValidator
 import eu.europa.ec.businesslogic.validator.FilterValidatorPartialState
 import eu.europa.ec.businesslogic.validator.model.FilterAction
@@ -29,24 +30,64 @@ import eu.europa.ec.businesslogic.validator.model.FilterableItemPayload
 import eu.europa.ec.businesslogic.validator.model.FilterableList
 import eu.europa.ec.businesslogic.validator.model.Filters
 import eu.europa.ec.businesslogic.validator.model.SortOrder
-import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
-import eu.europa.ec.corelogic.model.TransactionLogDataDomain
+import eu.europa.ec.corelogic.model.LocalizedTextDomain
+import eu.europa.ec.corelogic.model.TransactionLogDomain
+import eu.europa.ec.corelogic.model.TransactionResultDomain
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionCategoryUi
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionFilterIds
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionUi
 import eu.europa.ec.dashboardfeature.ui.transactions.list.model.TransactionsFilterableAttributes
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionStatusUi
 import eu.europa.ec.dashboardfeature.ui.transactions.model.TransactionTypeUi
-import eu.europa.ec.eudi.wallet.document.metadata.IssuerMetadata
-import eu.europa.ec.eudi.wallet.transactionLogging.TransactionLog
-import eu.europa.ec.eudi.wallet.transactionLogging.presentation.PresentedDocument
-import eu.europa.ec.resourceslogic.R
-import eu.europa.ec.resourceslogic.provider.ResourceProvider
-import eu.europa.ec.testfeature.util.mockedDefaultLocale
+import eu.europa.ec.dashboardfeature.util.mockedCredentialDeletionTypeLabel
+import eu.europa.ec.dashboardfeature.util.mockedDataDeletionLogDomain
+import eu.europa.ec.dashboardfeature.util.mockedDataDeletionTypeLabel
+import eu.europa.ec.dashboardfeature.util.mockedDeletionLogDomain
+import eu.europa.ec.dashboardfeature.util.mockedDpaReportLogDomain
+import eu.europa.ec.dashboardfeature.util.mockedDpaReportTypeLabel
+import eu.europa.ec.dashboardfeature.util.mockedIssuanceLogDomain
+import eu.europa.ec.dashboardfeature.util.mockedNotCompletedTransactionLogDomains
+import eu.europa.ec.dashboardfeature.util.mockedOtherTransactionCredential
+import eu.europa.ec.dashboardfeature.util.mockedPresentationLogDomain
+import eu.europa.ec.dashboardfeature.util.mockedPresentedTransactionCredential
+import eu.europa.ec.dashboardfeature.util.mockedReissuanceLogDomain
+import eu.europa.ec.dashboardfeature.util.mockedRequestedTransactionCredential
+import eu.europa.ec.dashboardfeature.util.mockedSearchableTransactionLogDomains
+import eu.europa.ec.dashboardfeature.util.mockedSigningLogDomain
+import eu.europa.ec.dashboardfeature.util.mockedTransactionCredential
+import eu.europa.ec.dashboardfeature.util.mockedTransactionDpaName
+import eu.europa.ec.dashboardfeature.util.mockedTransactionIntermediary
+import eu.europa.ec.dashboardfeature.util.mockedTransactionIntermediaryName
+import eu.europa.ec.dashboardfeature.util.mockedTransactionIssuerName
+import eu.europa.ec.dashboardfeature.util.mockedTransactionLanguageTag
+import eu.europa.ec.dashboardfeature.util.mockedTransactionLogDomains
+import eu.europa.ec.dashboardfeature.util.mockedTransactionPartyName
+import eu.europa.ec.dashboardfeature.util.mockedTransactionServiceName
+import eu.europa.ec.dashboardfeature.util.mockedUnnamedTransactionLogDomains
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.StringResolver
+import eu.europa.ec.shared.resources.generic_error_message
+import eu.europa.ec.shared.resources.transactions_filter_item_no_relying_party_transactions
+import eu.europa.ec.shared.resources.transactions_filter_item_status_completed
+import eu.europa.ec.shared.resources.transactions_filter_item_status_not_completed
+import eu.europa.ec.shared.resources.transactions_screen_0_minutes_ago_message
+import eu.europa.ec.shared.resources.transactions_screen_filter_by_date_period
+import eu.europa.ec.shared.resources.transactions_screen_filter_by_status
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_relying_party
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_deletion
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_issuance
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_presentation
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_reissuance
+import eu.europa.ec.shared.resources.transactions_screen_filters_filter_by_transaction_type_signing
+import eu.europa.ec.shared.resources.transactions_screen_filters_sort_by
+import eu.europa.ec.shared.resources.transactions_screen_filters_sort_transaction_date
+import eu.europa.ec.shared.resources.transactions_screen_some_minutes_ago_message
 import eu.europa.ec.testfeature.util.mockedExceptionWithMessage
 import eu.europa.ec.testfeature.util.mockedExceptionWithNoMessage
 import eu.europa.ec.testfeature.util.mockedGenericErrorMessage
-import eu.europa.ec.testfeature.util.mockedMdocPidFormat
+import eu.europa.ec.testfeature.util.mockedPidDocName
 import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest
 import eu.europa.ec.testlogic.extension.toFlow
@@ -58,7 +99,6 @@ import eu.europa.ec.uilogic.component.ListItemTrailingContentDataUi
 import eu.europa.ec.uilogic.component.wrap.ExpandableListItemUi
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertNotNull
-import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
 import org.junit.After
 import org.junit.Before
@@ -66,13 +106,21 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
+import kotlinx.coroutines.flow.first
+import kotlinx.datetime.LocalDate as KotlinLocalDate
+import kotlinx.datetime.LocalDateTime as KotlinLocalDateTime
+import kotlinx.datetime.toJavaLocalDateTime
+import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.toKotlinLocalDateTime
 
 class TestTransactionsInteractor {
 
@@ -80,13 +128,16 @@ class TestTransactionsInteractor {
     val coroutineRule = CoroutineTestRule()
 
     @Mock
-    private lateinit var resourceProvider: ResourceProvider
+    private lateinit var strings: StringCatalog
+
+    @Mock
+    private lateinit var stringResolver: StringResolver
 
     @Mock
     private lateinit var filterValidator: FilterValidator
 
     @Mock
-    private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
+    private lateinit var platform: TransactionsPlatformBridge
 
     private lateinit var interactor: TransactionsInteractor
 
@@ -96,13 +147,18 @@ class TestTransactionsInteractor {
     fun before() {
         closeable = MockitoAnnotations.openMocks(this)
 
+        // The shared interactor over a mocked platform bridge, which hands over the same
+        // TransactionLogDomain that upstream's WalletCoreTransactionLogController does.
         interactor = TransactionsInteractorImpl(
-            resourceProvider = resourceProvider,
+            strings = strings,
+            stringResolver = stringResolver,
             filterValidator = filterValidator,
-            walletCoreDocumentsController = walletCoreDocumentsController,
+            platform = platform,
         )
 
-        whenever(resourceProvider.genericErrorMessage()).thenReturn(mockedGenericErrorMessage)
+        whenever(strings[Res.string.generic_error_message]).thenReturn(mockedGenericErrorMessage)
+        mockGetFiltersStrings()
+        mockPartyFilterNameCall()
     }
 
     @After
@@ -136,16 +192,223 @@ class TestTransactionsInteractor {
     //endregion
 
     //region applySearch
+
+    // Case 1:
+    // 1. The query contains outer whitespace and two spaces between words.
+    //
+    // Case 1 Expected Result:
+    // The query is forwarded unchanged; the shared validator handles normalization.
     @Test
-    fun `When applySearch is called, Then filterValidator#applySearch is invoked with the same query`() {
+    fun `Given Case 1, When applySearch is called, Then Case 1 Expected Result is returned`() {
         // Given
-        val query = "search"
+        val query = "  Example  issuer \t"
 
         // When
         interactor.applySearch(query = query)
 
         // Then
         verify(filterValidator, times(1)).applySearch(query)
+    }
+
+    // Case 2:
+    // 1. The query is empty or contains only whitespace.
+    //
+    // Case 2 Expected Result:
+    // Every query is forwarded unchanged to the shared validator.
+    @Test
+    fun `Given Case 2, When applySearch is called, Then Case 2 Expected Result is returned`() {
+        // Given
+        val queries = listOf("", "   ", "\t\n ")
+
+        // When
+        queries.forEach { query -> interactor.applySearch(query = query) }
+
+        // Then
+        queries.forEach { query -> verify(filterValidator, times(1)).applySearch(query) }
+    }
+
+    // Case 3:
+    // 1. Named, unnamed and incomplete transactions have different dates.
+    // 2. Status selection and padded or blank search queries are sent to the interactor.
+    //
+    // Case 3 Expected Result:
+    // Prepared rows retain their dates, statuses and search tags; filter actions reach the validator unchanged.
+    @Test
+    fun `Given Case 3, When applySearch is called, Then Case 3 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val named = mockedIssuanceLogDomain.copy(
+                time = mockedIssuanceLogDomain.time.plusHours(2)
+            )
+            val unnamed = mockedIssuanceLogDomain.copy(
+                id = "unnamed-issuance",
+                time = mockedIssuanceLogDomain.time.plusHours(1),
+                details = mockedIssuanceLogDomain.details.copy(
+                    issuer = mockedIssuanceLogDomain.details.issuer.copy(name = null)
+                ),
+            )
+            val incomplete = mockedPresentationLogDomain.copy(
+                time = mockedIssuanceLogDomain.time.plusHours(3),
+                result = TransactionResultDomain.NotCompleted(" "),
+            )
+            val transactions = listOf(unnamed, incomplete, named)
+            val queries = listOf("  ${mockedTransactionIssuerName.uppercase()}  ", " \t\n", "")
+            mockGetTransactionLogsCall(response = transactions)
+            mockTransactionRowStrings()
+
+            // When
+            val loaded = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            val source = loaded.allTransactions
+            interactor.initializeFilters(source)
+            interactor.updateFilter(
+                filterGroupId = TransactionFilterIds.FILTER_BY_STATUS_GROUP_ID,
+                filterId = TransactionFilterIds.FILTER_BY_STATUS_NOT_COMPLETED,
+            )
+            queries.forEach { query -> interactor.applySearch(query) }
+
+            // Then
+            val filters = argumentCaptor<Filters>()
+            verify(filterValidator, times(1)).initializeValidator(filters.capture(), eq(source))
+            val attributes = source.items.map { item ->
+                item.attributes as TransactionsFilterableAttributes
+            }
+            assertEquals(
+                transactions.map { transaction -> transaction.id },
+                source.transactionIds()
+            )
+            assertEquals(
+                transactions.map { transaction -> transaction.time },
+                attributes.map { item -> item.creationLocalDateTime },
+            )
+            assertEquals(
+                listOf(
+                    TransactionStatusUi.Completed,
+                    TransactionStatusUi.NotCompleted,
+                    TransactionStatusUi.Completed,
+                ),
+                attributes.map { item -> item.transactionStatus },
+            )
+            assertEquals(
+                listOf(
+                    emptyList(),
+                    listOf(mockedTransactionPartyName),
+                    listOf(mockedTransactionIssuerName),
+                ),
+                attributes.map { item -> item.searchTags },
+            )
+            assertEquals(SortOrder.Descending(isDefault = true), filters.firstValue.sortOrder)
+            verify(filterValidator, times(1)).updateFilter(
+                TransactionFilterIds.FILTER_BY_STATUS_GROUP_ID,
+                TransactionFilterIds.FILTER_BY_STATUS_NOT_COMPLETED,
+            )
+            queries.forEach { query -> verify(filterValidator, times(1)).applySearch(query) }
+        }
+    }
+
+    // Case 4:
+    // 1. Presentations have both names or only an intermediary name, with mixed outcomes.
+    // 2. A signing has a provider name but no filename; deletions share a provider and credential type.
+    //
+    // Case 4 Expected Result:
+    // Each row exposes its allowed search tags and status, and queries reach the mocked validator unchanged.
+    @Test
+    fun `Given recorded party names and mixed outcomes, When search is prepared, Then tags and actions retain their values`() {
+        coroutineRule.runTest {
+            // Given
+            val presentation = mockedPresentationLogDomain.copy(
+                intermediary = mockedTransactionIntermediary,
+            )
+            val intermediaryOnly = presentation.copy(
+                id = "intermediary-only",
+                time = presentation.time.plusHours(1),
+                party = presentation.party.copy(name = null),
+            )
+            val incomplete = intermediaryOnly.copy(
+                id = "incomplete-intermediary",
+                time = presentation.time.plusHours(2),
+                result = TransactionResultDomain.NotCompleted(reason = null),
+            )
+            val signing = mockedSigningLogDomain.copy(
+                time = presentation.time.plusHours(3),
+                fileName = null,
+            )
+            val deletion = mockedDeletionLogDomain.copy(time = presentation.time.plusHours(4))
+            val incompleteDeletion = deletion.copy(
+                id = "incomplete-deletion",
+                time = presentation.time.plusHours(5),
+                result = TransactionResultDomain.NotCompleted(reason = null),
+            )
+            val transactions = listOf(
+                presentation,
+                intermediaryOnly,
+                incomplete,
+                signing,
+                deletion,
+                incompleteDeletion,
+            )
+            val queries = listOf(
+                "  ${mockedTransactionIntermediaryName.substringAfter(' ').uppercase()}  ",
+                mockedTransactionPartyName.uppercase(),
+                mockedTransactionServiceName.substringAfter(' ').uppercase(),
+                "  ${deletion.credential.identifier.uppercase()}  ",
+                mockedTransactionIssuerName.uppercase(),
+                "",
+            )
+            mockGetTransactionLogsCall(response = transactions)
+            mockTransactionRowStrings()
+
+            // When
+            val loaded = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            val source = loaded.allTransactions
+            interactor.initializeFilters(source)
+            interactor.updateFilter(
+                filterGroupId = TransactionFilterIds.FILTER_BY_STATUS_GROUP_ID,
+                filterId = TransactionFilterIds.FILTER_BY_STATUS_NOT_COMPLETED,
+            )
+            queries.forEach { query -> interactor.applySearch(query) }
+
+            // Then
+            verify(filterValidator, times(1)).initializeValidator(
+                org.mockito.kotlin.any<Filters>(),
+                eq(source),
+            )
+            val attributes = source.items.map { item ->
+                item.attributes as TransactionsFilterableAttributes
+            }
+            assertEquals(
+                transactions.map { transaction -> transaction.id },
+                source.transactionIds()
+            )
+            assertEquals(
+                listOf(
+                    listOf(mockedTransactionPartyName, mockedTransactionIntermediaryName),
+                    listOf(mockedTransactionIntermediaryName),
+                    listOf(mockedTransactionIntermediaryName),
+                    listOf(mockedTransactionServiceName),
+                    listOf(mockedTransactionIssuerName, deletion.credential.identifier),
+                    listOf(mockedTransactionIssuerName, deletion.credential.identifier),
+                ),
+                attributes.map { item -> item.searchTags },
+            )
+            assertEquals(
+                listOf(
+                    TransactionStatusUi.Completed,
+                    TransactionStatusUi.Completed,
+                    TransactionStatusUi.NotCompleted,
+                    TransactionStatusUi.Completed,
+                    TransactionStatusUi.Completed,
+                    TransactionStatusUi.NotCompleted,
+                ),
+                attributes.map { item -> item.transactionStatus },
+            )
+            verify(filterValidator, times(1)).updateFilter(
+                TransactionFilterIds.FILTER_BY_STATUS_GROUP_ID,
+                TransactionFilterIds.FILTER_BY_STATUS_NOT_COMPLETED,
+            )
+            queries.forEach { query -> verify(filterValidator, times(1)).applySearch(query) }
+        }
     }
     //endregion
 
@@ -181,8 +444,8 @@ class TestTransactionsInteractor {
         // Given
         val groupId = "groupId"
         val filterId = "filterId"
-        val lower = LocalDateTime.of(2026, 1, 1, 0, 0)
-        val upper = LocalDateTime.of(2026, 12, 31, 23, 59)
+        val lower = KotlinLocalDateTime(2026, 1, 1, 0, 0)
+        val upper = KotlinLocalDateTime(2026, 12, 31, 23, 59)
 
         // When
         interactor.updateDateFilterById(
@@ -224,8 +487,8 @@ class TestTransactionsInteractor {
     @Test
     fun `When initializeFilters is called, Then filterValidator#initializeValidator is invoked with some Filters and the source list`() {
         // Given
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_no_relying_party_transactions))
-            .thenReturn(mockedNoRelyingPartyFilterName)
+        whenever(strings.get(Res.string.transactions_filter_item_no_relying_party_transactions))
+            .thenReturn(mockedNoPartyFilterName)
         mockGetFiltersStrings()
         val list = FilterableList(items = emptyList())
 
@@ -243,6 +506,239 @@ class TestTransactionsInteractor {
     }
     //endregion
 
+    //region refresh after deletion
+
+    // Case 1:
+    // 1. Reload removes the older of two issuance rows while another party remains in storage.
+    //
+    // Case 1 Expected Result:
+    // The validator receives the refreshed rows and party options, with date bounds from the remaining rows.
+    @Test
+    fun `Given Case 1, When transactions are refreshed, Then Case 1 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val deleted =
+                mockedIssuanceLogDomain.copy(time = mockedIssuanceLogDomain.time.minusMonths(2))
+            val retained = mockedIssuanceLogDomain.copy(
+                id = "retained-issuance",
+                time = deleted.time.plusMonths(1),
+            )
+            val otherParty = mockedSigningLogDomain.copy(time = retained.time.plusMonths(1))
+            mockGetTransactionLogsCall(response = listOf(deleted, retained, otherParty))
+            mockTransactionRowStrings()
+            val initial = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            interactor.initializeFilters(initial.allTransactions)
+            interactor.applyFilters()
+            mockGetTransactionLogsCall(response = listOf(retained, otherParty))
+
+            // When
+            val refreshed = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            interactor.initializeFilters(refreshed.allTransactions)
+            interactor.applyFilters()
+
+            // Then
+            val filters = argumentCaptor<Filters>()
+            val sources = argumentCaptor<FilterableList>()
+            verify(filterValidator, times(2)).initializeValidator(
+                filters.capture(),
+                sources.capture()
+            )
+            assertEquals(
+                listOf(initial.allTransactions, refreshed.allTransactions),
+                sources.allValues
+            )
+            assertEquals(
+                listOf(deleted.id, retained.id, otherParty.id),
+                sources.firstValue.transactionIds()
+            )
+            assertEquals(listOf(retained.id, otherParty.id), sources.lastValue.transactionIds())
+            assertEquals(
+                deleted.time.toLocalDate() to otherParty.time.toLocalDate(), initial.availableDates
+            )
+            assertEquals(
+                retained.time.toLocalDate() to otherParty.time.toLocalDate(),
+                refreshed.availableDates
+            )
+            val expectedParties = listOf(
+                TransactionFilterIds.FILTER_BY_PARTY_WITHOUT_NAME,
+                "party:$mockedTransactionIssuerName",
+                "party:$mockedTransactionServiceName",
+            )
+            filters.allValues.forEach { initializedFilters ->
+                assertEquals(expectedParties, initializedFilters.partyFilterIds())
+            }
+            verify(filterValidator, times(2)).applyFilters()
+            verify(filterValidator, never()).resetFilters()
+            verify(filterValidator, never()).applySearch(org.mockito.kotlin.any())
+        }
+    }
+
+    // Case 2:
+    // 1. Reload removes the only row for one party, leaving a different party.
+    //
+    // Case 2 Expected Result:
+    // Refreshed validator input removes the deleted row and its party option and updates the date bounds.
+    @Test
+    fun `Given Case 2, When transactions are refreshed, Then Case 2 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val deleted = mockedPresentationLogDomain
+            val retained = mockedIssuanceLogDomain.copy(time = deleted.time.plusMonths(1))
+            mockGetTransactionLogsCall(response = listOf(deleted, retained))
+            mockTransactionRowStrings()
+            val initial = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            interactor.initializeFilters(initial.allTransactions)
+            mockGetTransactionLogsCall(response = listOf(retained))
+
+            // When
+            val refreshed = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            interactor.initializeFilters(refreshed.allTransactions)
+
+            // Then
+            val filters = argumentCaptor<Filters>()
+            val sources = argumentCaptor<FilterableList>()
+            verify(filterValidator, times(2)).initializeValidator(
+                filters.capture(),
+                sources.capture()
+            )
+            assertEquals(
+                listOf(initial.allTransactions, refreshed.allTransactions),
+                sources.allValues
+            )
+            assertEquals(listOf(deleted.id, retained.id), sources.firstValue.transactionIds())
+            assertEquals(listOf(retained.id), sources.lastValue.transactionIds())
+            assertEquals(
+                listOf(
+                    TransactionFilterIds.FILTER_BY_PARTY_WITHOUT_NAME,
+                    "party:$mockedTransactionIssuerName",
+                    "party:$mockedTransactionPartyName",
+                ),
+                filters.firstValue.partyFilterIds(),
+            )
+            assertEquals(
+                listOf(
+                    TransactionFilterIds.FILTER_BY_PARTY_WITHOUT_NAME,
+                    "party:$mockedTransactionIssuerName"
+                ),
+                filters.lastValue.partyFilterIds(),
+            )
+            assertEquals(
+                retained.time.toLocalDate() to retained.time.toLocalDate(), refreshed.availableDates
+            )
+        }
+    }
+
+    // Case 3:
+    // 1. Reload removes the final visible row while DDR and DPA report rows remain in storage.
+    //
+    // Case 3 Expected Result:
+    // Refreshed validator input has no rows, dates or named party options.
+    @Test
+    fun `Given Case 3, When transactions are refreshed, Then Case 3 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val deleted = mockedPresentationLogDomain
+            mockGetTransactionLogsCall(response = listOf(deleted))
+            mockTransactionRowStrings()
+            val initial = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            interactor.initializeFilters(initial.allTransactions)
+            mockGetTransactionLogsCall(
+                response = listOf(mockedDataDeletionLogDomain, mockedDpaReportLogDomain)
+            )
+
+            // When
+            val refreshed = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            interactor.initializeFilters(refreshed.allTransactions)
+
+            // Then
+            val filters = argumentCaptor<Filters>()
+            val sources = argumentCaptor<FilterableList>()
+            verify(filterValidator, times(2)).initializeValidator(
+                filters.capture(),
+                sources.capture()
+            )
+            assertEquals(
+                listOf(initial.allTransactions, refreshed.allTransactions),
+                sources.allValues
+            )
+            assertEquals(listOf(deleted.id), sources.firstValue.transactionIds())
+            assertTrue(sources.lastValue.items.isEmpty())
+            assertEquals(null, refreshed.availableDates)
+            assertEquals(
+                listOf(TransactionFilterIds.FILTER_BY_PARTY_WITHOUT_NAME),
+                filters.lastValue.partyFilterIds(),
+            )
+        }
+    }
+
+    // Case 4:
+    // 1. An active date range covers the deleted row but excludes a surviving row from the same party.
+    //
+    // Case 4 Expected Result:
+    // Reload supplies the surviving row and its available date to the validator without clearing active criteria.
+    @Test
+    fun `Given Case 4, When transactions are refreshed, Then Case 4 Expected Result is returned`() {
+        coroutineRule.runTest {
+            // Given
+            val deleted = mockedIssuanceLogDomain
+            val retained =
+                deleted.copy(id = "outside-date-range", time = deleted.time.plusMonths(1))
+            mockGetTransactionLogsCall(response = listOf(deleted, retained))
+            mockTransactionRowStrings()
+            val initial = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            interactor.initializeFilters(initial.allTransactions)
+            interactor.updateDateFilterById(
+                filterGroupId = TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_GROUP_ID,
+                filterId = TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_RANGE,
+                lowerLimitDate = deleted.time,
+                upperLimitDate = deleted.time,
+            )
+            interactor.applySearch(mockedTransactionIssuerName)
+            mockGetTransactionLogsCall(response = listOf(retained))
+
+            // When
+            val refreshed = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            interactor.initializeFilters(refreshed.allTransactions)
+            interactor.applyFilters()
+
+            // Then
+            val filters = argumentCaptor<Filters>()
+            val sources = argumentCaptor<FilterableList>()
+            verify(filterValidator, times(2)).initializeValidator(
+                filters.capture(),
+                sources.capture()
+            )
+            assertEquals(
+                listOf(initial.allTransactions, refreshed.allTransactions),
+                sources.allValues
+            )
+            assertEquals(listOf(retained.id), sources.lastValue.transactionIds())
+            assertEquals(
+                retained.time.toLocalDate() to retained.time.toLocalDate(), refreshed.availableDates
+            )
+            assertEquals(filters.firstValue.partyFilterIds(), filters.lastValue.partyFilterIds())
+            verify(filterValidator, times(1)).updateDateFilter(
+                TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_GROUP_ID,
+                TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_RANGE,
+                deleted.time,
+                deleted.time,
+            )
+            verify(filterValidator, times(1)).applySearch(mockedTransactionIssuerName)
+            verify(filterValidator, never()).applySearch("")
+            verify(filterValidator, never()).resetFilters()
+            verify(filterValidator, times(1)).applyFilters()
+        }
+    }
+    //endregion
+
     //region getTransactionCategory
 
     // Case 1:
@@ -253,7 +749,7 @@ class TestTransactionsInteractor {
         val today = LocalDateTime.now()
 
         // When
-        val result = interactor.getTransactionCategory(dateTime = today)
+        val result = interactor.getTransactionCategory(dateTime = today.toKotlinLocalDateTime())
 
         // Then
         assertEquals(TransactionCategoryUi.Today, result)
@@ -273,7 +769,7 @@ class TestTransactionsInteractor {
         }
 
         // When
-        val result = interactor.getTransactionCategory(dateTime = thisWeekNotToday)
+        val result = interactor.getTransactionCategory(dateTime = thisWeekNotToday.toKotlinLocalDateTime())
 
         // Then
         assertEquals(TransactionCategoryUi.ThisWeek, result)
@@ -287,19 +783,18 @@ class TestTransactionsInteractor {
         val twoMonthsAgo = LocalDateTime.now().minusMonths(2)
 
         // When
-        val result = interactor.getTransactionCategory(dateTime = twoMonthsAgo)
+        val result = interactor.getTransactionCategory(dateTime = twoMonthsAgo.toKotlinLocalDateTime())
 
         // Then
         assertTrue(result is TransactionCategoryUi.Month)
-        assertEquals(TransactionCategoryUi.Month(twoMonthsAgo), result)
+        assertEquals(TransactionCategoryUi.Month(twoMonthsAgo.toKotlinLocalDateTime()), result)
     }
     //endregion
 
     //region getTransactions
 
     // Case 1:
-    // 1. walletCoreDocumentsController.getTransactionLogs returns a list with one of each
-    //    TransactionLogDataDomain subtype (IssuanceLog, PresentationLog, SigningLog) and
+    // 1. The controller returns issuance, presentation and signing entries with
     //    creation dates that exercise the JustNow / WithinLastHour / Today / WithinMonth
     //    branches of toFormattedDisplayableDate.
 
@@ -328,66 +823,30 @@ class TestTransactionsInteractor {
             val twoMonthsAgo = LocalDateTime.now().minusMonths(2)
 
             val transactions = listOf(
-                TransactionLogDataDomain.IssuanceLog(
+                mockedIssuanceLogDomain.copy(
                     id = "tx1",
-                    name = "Issuance tx",
-                    status = TransactionLog.Status.Completed,
-                    creationLocalDateTime = justNow,
-                    creationLocalDate = justNow.toLocalDate(),
+                    result = TransactionResultDomain.Completed,
+                    time = justNow.toKotlinLocalDateTime(),
                 ),
-                TransactionLogDataDomain.PresentationLog(
+                mockedPresentationLogDomain.copy(
                     id = "tx2",
-                    name = "Presentation tx",
-                    status = TransactionLog.Status.Incomplete,
-                    creationLocalDateTime = withinLastHour,
-                    creationLocalDate = withinLastHour.toLocalDate(),
-                    relyingParty = TransactionLog.RelyingParty(
-                        name = mockedRelyingPartyName,
-                        isVerified = true,
-                        certificateChain = emptyList(),
-                        readerAuth = null,
-                    ),
-                    documents = listOf(
-                        PresentedDocument(
-                            format = mockedMdocPidFormat,
-                            metadata = IssuerMetadata(
-                                documentConfigurationIdentifier = "config",
-                                display = listOf(
-                                    IssuerMetadata.Display(
-                                        name = mockedDocumentDisplayName,
-                                        locale = mockedDefaultLocale,
-                                        logo = null,
-                                        description = null,
-                                        backgroundColor = null,
-                                        textColor = null,
-                                        backgroundImageUri = null,
-                                    )
-                                ),
-                                claims = emptyList(),
-                                credentialIssuerIdentifier = "issuer",
-                                issuerDisplay = emptyList(),
-                            ),
-                            claims = emptyList(),
-                        ),
-                    ),
+                    result = TransactionResultDomain.NotCompleted(reason = null),
+                    time = withinLastHour.toKotlinLocalDateTime(),
                 ),
-                TransactionLogDataDomain.SigningLog(
+                mockedSigningLogDomain.copy(
                     id = "tx3",
-                    name = "Signing tx",
-                    status = TransactionLog.Status.Completed,
-                    creationLocalDateTime = today,
-                    creationLocalDate = today.toLocalDate(),
+                    result = TransactionResultDomain.Completed,
+                    time = today.toKotlinLocalDateTime(),
                 ),
-                TransactionLogDataDomain.IssuanceLog(
+                mockedIssuanceLogDomain.copy(
                     id = "tx4",
-                    name = "Issuance old",
-                    status = TransactionLog.Status.Error,
-                    creationLocalDateTime = twoMonthsAgo,
-                    creationLocalDate = twoMonthsAgo.toLocalDate(),
+                    result = TransactionResultDomain.NotCompleted(reason = null),
+                    time = twoMonthsAgo.toKotlinLocalDateTime(),
                 ),
             )
-            whenever(walletCoreDocumentsController.getTransactionLogs()).thenReturn(transactions)
-            whenever(resourceProvider.getLocale()).thenReturn(mockedDefaultLocale)
+            whenever(platform.getTransactionLogs()).thenReturn(
+                transactions
+            )
             mockTransactionRowStrings()
 
             // When
@@ -400,29 +859,32 @@ class TestTransactionsInteractor {
                 assertEquals(4, result.allTransactions.items.size)
                 val availableDates = result.availableDates
                 assertNotNull(availableDates)
-                assertEquals(twoMonthsAgo.toLocalDate(), availableDates!!.first)
-                assertEquals(justNow.toLocalDate(), availableDates.second)
+                assertEquals(twoMonthsAgo.toLocalDate().toKotlinLocalDate(), availableDates!!.first)
+                assertEquals(justNow.toLocalDate().toKotlinLocalDate(), availableDates.second)
 
                 val presentationItem = result.allTransactions.items[1]
                 val presentationAttrs =
                     presentationItem.attributes as TransactionsFilterableAttributes
-                assertEquals(mockedRelyingPartyName, presentationAttrs.relyingPartyName)
+                assertEquals(mockedTransactionPartyName, presentationAttrs.partyName)
                 assertEquals(TransactionTypeUi.PRESENTATION, presentationAttrs.transactionType)
-                assertEquals(TransactionStatusUi.Failed, presentationAttrs.transactionStatus)
+                assertEquals(TransactionStatusUi.NotCompleted, presentationAttrs.transactionStatus)
 
                 val issuanceAttrs =
                     result.allTransactions.items[0].attributes as TransactionsFilterableAttributes
-                assertNull(issuanceAttrs.relyingPartyName)
+                assertEquals(
+                    mockedIssuanceLogDomain.details.issuer.name?.text,
+                    issuanceAttrs.partyName
+                )
 
                 val signingAttrs =
                     result.allTransactions.items[2].attributes as TransactionsFilterableAttributes
-                assertNull(signingAttrs.relyingPartyName)
+                assertEquals(mockedSigningLogDomain.service.name?.text, signingAttrs.partyName)
             }
         }
     }
 
     // Case 2:
-    // 1. walletCoreDocumentsController.getTransactionLogs throws an exception with a message.
+    // 1. platform.getTransactionLogs throws an exception with a message.
 
     // Case 2 Expected Result:
     // Failure with the thrown exception's localized message.
@@ -430,7 +892,7 @@ class TestTransactionsInteractor {
     fun `Given Case 2, When getTransactions is called, Then Case 2 Expected Result is returned`() {
         coroutineRule.runTest {
             // Given
-            whenever(walletCoreDocumentsController.getTransactionLogs())
+            whenever(platform.getTransactionLogs())
                 .thenThrow(mockedExceptionWithMessage)
 
             // When
@@ -447,7 +909,7 @@ class TestTransactionsInteractor {
     }
 
     // Case 3:
-    // 1. walletCoreDocumentsController.getTransactionLogs throws an exception with no message.
+    // 1. platform.getTransactionLogs throws an exception with no message.
 
     // Case 3 Expected Result:
     // Failure with the generic error message.
@@ -455,7 +917,7 @@ class TestTransactionsInteractor {
     fun `Given Case 3, When getTransactions is called, Then Case 3 Expected Result is returned`() {
         coroutineRule.runTest {
             // Given
-            whenever(walletCoreDocumentsController.getTransactionLogs())
+            whenever(platform.getTransactionLogs())
                 .thenThrow(mockedExceptionWithNoMessage)
 
             // When
@@ -468,6 +930,484 @@ class TestTransactionsInteractor {
                     awaitItem()
                 )
             }
+        }
+    }
+
+    // Case 4:
+    // 1. The controller returns all seven supported transaction types.
+    //
+    // Case 4 Expected Result:
+    // Only the five list-visible types produce rows with their id, title, type, date and status.
+    @Test
+    fun `Given every stored transaction type, When getTransactions is called, Then only visible types have rows`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogsCall(response = mockedTransactionLogDomains)
+            mockTransactionRowStrings()
+
+            // When
+            interactor.getTransactions().runFlowTest {
+                // Then
+                val result = awaitItem() as TransactionInteractorGetTransactionsPartialState.Success
+                val rows = result.allTransactions.items.map { item -> item.payload as TransactionUi }
+                assertEquals(
+                    mockedListTransactionLogDomains.map { transaction -> transaction.id },
+                    rows.map { row -> row.uiData.header.itemId })
+                assertEquals(
+                    mockedListTransactionTitles,
+                    rows.map { row -> (row.uiData.header.mainContentData as ListItemMainContentDataUi.Text).text },
+                )
+                assertEquals(
+                    mockedListTransactionTypeLabels,
+                    rows.map { row -> (row.uiData.header.trailingContentData as ListItemTrailingContentDataUi.TextWithIcon).text },
+                )
+                rows.forEach { row ->
+                    assertEquals(TransactionStatusUi.Completed, row.uiStatus)
+                    assertEquals("Completed", row.uiData.header.overlineText)
+                    assertNotNull(row.uiData.header.supportingContentData)
+                }
+                assertEquals(
+                    mockedListTransactionLogDomains.map { transaction -> transaction.time },
+                    result.allTransactions.items.map { item -> (item.attributes as TransactionsFilterableAttributes).creationLocalDateTime },
+                )
+            }
+        }
+    }
+
+    // Case 5:
+    // 1. The log contains completed and incomplete entries of every type, and every type filter is selected.
+    //
+    // Case 5 Expected Result:
+    // Only the five visible types have filters, and each selects its completed and incomplete rows.
+    @Test
+    fun `Given all stored transaction types, When the type filters are applied, Then only visible types are reachable`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogsCall(response = mockedTransactionLogDomains + mockedNotCompletedTransactionLogDomains)
+            mockTransactionRowStrings()
+            mockGetFiltersStrings()
+            @Suppress("UNCHECKED_CAST")
+            val group = interactor.getFilters().filterGroups.first { filterGroup ->
+                filterGroup.id == TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_GROUP_ID
+            } as FilterGroup.MultipleSelectionFilterGroup<TransactionsFilterableAttributes>
+
+            // When
+            interactor.getTransactions().runFlowTest {
+                val source =
+                    (awaitItem() as TransactionInteractorGetTransactionsPartialState.Success).allTransactions
+                val allSelected = group.filterableAction.applyFilter(source, group)
+
+                // Then
+                assertEquals(source.items.toSet(), allSelected.items.toSet())
+                assertEquals(
+                    mockedListTransactionTypeLabels.toSet(),
+                    group.filters.map { filter -> filter.name }.toSet()
+                )
+                group.filters.forEach { filter ->
+                    val selection = group.copy(filters = listOf(filter))
+                    val selected = group.filterableAction.applyFilter(source, selection)
+                    assertEquals(2, selected.items.size)
+                    selected.items.forEach { item ->
+                        val row = item.payload as TransactionUi
+                        assertEquals(
+                            filter.name,
+                            (row.uiData.header.trailingContentData as ListItemTrailingContentDataUi.TextWithIcon).text,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Case 6:
+    // 1. Party and display metadata are missing from otherwise valid entries.
+    //
+    // Case 6 Expected Result:
+    // Rows use a raw credential identifier, file name or localized transaction type as appropriate.
+    @Test
+    fun `Given transactions with missing names, When getTransactions is called, Then every title has a fallback`() {
+        coroutineRule.runTest {
+            // Given
+            val unknownIssuer = mockedIssuanceLogDomain.details.issuer.copy(name = null)
+            val transactions = listOf(
+                mockedPresentationLogDomain.copy(party = mockedPresentationLogDomain.party.copy(name = null)),
+                mockedIssuanceLogDomain.copy(details = mockedIssuanceLogDomain.details.copy(issuer = unknownIssuer)),
+                mockedIssuanceLogDomain.copy(
+                    id = "unknown-issuance",
+                    details = mockedIssuanceLogDomain.details.copy(
+                        issuer = unknownIssuer,
+                        credentials = emptyList()
+                    ),
+                ),
+                mockedDeletionLogDomain.copy(issuer = unknownIssuer),
+                mockedDeletionLogDomain.copy(
+                    id = "unknown-deletion",
+                    issuer = unknownIssuer,
+                    credential = mockedTransactionCredential.copy(identifier = " "),
+                ),
+                mockedSigningLogDomain.copy(service = mockedSigningLogDomain.service.copy(name = null)),
+                mockedSigningLogDomain.copy(
+                    id = "unknown-signing",
+                    service = mockedSigningLogDomain.service.copy(name = null),
+                    fileName = null,
+                ),
+                mockedDataDeletionLogDomain.copy(party = mockedDataDeletionLogDomain.party.copy(name = null)),
+                mockedDpaReportLogDomain.copy(dpaName = null),
+            )
+            mockGetTransactionLogsCall(response = transactions)
+            mockTransactionRowStrings()
+
+            // When
+            interactor.getTransactions().runFlowTest {
+                // Then
+                val result = awaitItem() as TransactionInteractorGetTransactionsPartialState.Success
+                val titles = result.allTransactions.items.map { item ->
+                    val row = item.payload as TransactionUi
+                    (row.uiData.header.mainContentData as ListItemMainContentDataUi.Text).text
+                }
+                assertEquals(
+                    listOf(
+                        "Presentation",
+                        mockedTransactionCredential.identifier,
+                        "Issuance",
+                        mockedTransactionCredential.identifier,
+                        mockedCredentialDeletionTypeLabel,
+                        mockedSigningLogDomain.fileName,
+                        "Signing",
+                    ),
+                    titles,
+                )
+            }
+        }
+    }
+
+
+    // Case 7:
+    // 1. Every transaction type carries party and credential or file metadata.
+    //
+    // Case 7 Expected Result:
+    // Only visible rows supply party and searchable names, without duplicate tags.
+    @Test
+    fun `Given every transaction type with metadata, When getTransactions is called, Then party and search attributes cover only visible types`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogsCall(response = mockedSearchableTransactionLogDomains)
+            mockTransactionRowStrings()
+
+            // When
+            interactor.getTransactions().runFlowTest {
+                // Then
+                val source =
+                    (awaitItem() as TransactionInteractorGetTransactionsPartialState.Success).allTransactions
+                val attributes =
+                    source.items.map { item -> item.attributes as TransactionsFilterableAttributes }
+                assertEquals(mockedListTransactionPartyNames, attributes.map { item -> item.partyName })
+                assertEquals(
+                    listOf(
+                        listOf(mockedTransactionPartyName, mockedTransactionIntermediaryName),
+                        listOf(mockedTransactionIssuerName),
+                        listOf(mockedTransactionIssuerName),
+                        listOf(
+                            mockedTransactionIssuerName,
+                            mockedOtherTransactionCredential.identifier
+                        ),
+                        listOf(mockedTransactionServiceName, mockedSigningLogDomain.fileName),
+                    ),
+                    attributes.map { item -> item.searchTags },
+                )
+            }
+        }
+    }
+
+    // Case 8:
+    // 1. Stored transactions contain party/file fields, deletion credential types and hidden action names.
+    //
+    // Case 8 Expected Result:
+    // Allowed fields match without case sensitivity; other credential fields and friendly names do not.
+    @Test
+    fun `Given searchable transaction rows, When a query is applied, Then only allowed fields are matched`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogsCall(response = mockedSearchableTransactionLogDomains)
+            mockTransactionRowStrings()
+            val queries = listOf(
+                mockedTransactionPartyName to setOf("presentation"),
+                mockedTransactionIntermediaryName.uppercase() to setOf("presentation"),
+                mockedTransactionIssuerName to setOf("issuance", "reissuance", "deletion"),
+                mockedTransactionServiceName to setOf("signing"),
+                mockedTransactionDpaName to emptySet(),
+                mockedRequestedTransactionCredential.identifier.uppercase() to emptySet(),
+                mockedPresentedTransactionCredential.identifier to emptySet(),
+                mockedOtherTransactionCredential.identifier.uppercase() to setOf("deletion"),
+                mockedOtherTransactionCredential.identifier.substringAfterLast(':') to setOf("deletion"),
+                mockedTransactionCredential.identifier to emptySet(),
+                mockedPidDocName to emptySet(),
+                mockedDataDeletionTypeLabel to emptySet(),
+                mockedDpaReportTypeLabel to emptySet(),
+                "Presentation" to emptySet(),
+                "SIGNED.PDF" to setOf("signing"),
+                "no matching transaction" to emptySet(),
+                "" to mockedListTransactionLogDomains.map { transaction -> transaction.id }.toSet(),
+            )
+
+            // When
+            interactor.getTransactions().runFlowTest {
+                val source =
+                    (awaitItem() as TransactionInteractorGetTransactionsPartialState.Success).allTransactions
+
+                // Then
+                queries.forEach { (query, expectedIds) ->
+                    val actualIds = source.filterByQuery(query).items.map { item ->
+                        (item.payload as TransactionUi).uiData.header.itemId
+                    }.toSet()
+                    assertEquals("Query: $query", expectedIds, actualIds)
+                }
+            }
+        }
+    }
+
+    // Case 9:
+    // 1. Each type has completed and not-completed rows, including declined and deferred outcomes.
+    //
+    // Case 9 Expected Result:
+    // Status filters retain all non-completed outcomes under the Not completed label.
+    @Test
+    fun `Given completed and incomplete transactions, When status filters are applied, Then every non-completed outcome uses one consistent status`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogsCall(response = mockedTransactionLogDomains + mockedNotCompletedTransactionLogDomains)
+            mockTransactionRowStrings()
+            mockGetFiltersStrings()
+            @Suppress("UNCHECKED_CAST")
+            val group = interactor.getFilters().filterGroups.first { filterGroup ->
+                filterGroup.id == TransactionFilterIds.FILTER_BY_STATUS_GROUP_ID
+            } as FilterGroup.MultipleSelectionFilterGroup<TransactionsFilterableAttributes>
+
+            // When
+            interactor.getTransactions().runFlowTest {
+                val source =
+                    (awaitItem() as TransactionInteractorGetTransactionsPartialState.Success).allTransactions
+                val selected =
+                    group.filters.single { filter -> filter.id == TransactionFilterIds.FILTER_BY_STATUS_NOT_COMPLETED }
+                val incomplete = group.filterableAction.applyFilter(
+                    source,
+                    group.copy(filters = listOf(selected))
+                )
+                val rows = incomplete.items.map { item -> item.payload as TransactionUi }
+
+                // Then
+                assertEquals("Not completed", selected.name)
+                assertEquals(source.items, group.filterableAction.applyFilter(source, group).items)
+                assertEquals(
+                    mockedListNotCompletedTransactionIds,
+                    rows.map { row -> row.uiData.header.itemId })
+                rows.forEach { row ->
+                    assertEquals(TransactionStatusUi.NotCompleted, row.uiStatus)
+                    assertEquals("Not completed", row.uiData.header.overlineText)
+                }
+            }
+        }
+    }
+
+    // Case 10:
+    // 1. All types have missing or blank party names and some display or file names are blank.
+    //
+    // Case 10 Expected Result:
+    // Titles retain display fallbacks while search tags contain only available allowed fields.
+    @Test
+    fun `Given missing or blank transaction names, When getTransactions is called, Then rows retain usable fallbacks without blank parties`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogsCall(response = mockedUnnamedTransactionLogDomains)
+            mockTransactionRowStrings()
+
+            // When
+            interactor.getTransactions().runFlowTest {
+                // Then
+                val source =
+                    (awaitItem() as TransactionInteractorGetTransactionsPartialState.Success).allTransactions
+                val attributes =
+                    source.items.map { item -> item.attributes as TransactionsFilterableAttributes }
+                assertTrue(attributes.all { item -> item.partyName == null })
+                assertEquals(
+                    listOf(
+                        emptyList(),
+                        emptyList(),
+                        emptyList(),
+                        listOf(mockedTransactionCredential.identifier),
+                        emptyList()
+                    ),
+                    attributes.map { item -> item.searchTags },
+                )
+                assertEquals(source, source.filterByQuery(""))
+                assertTrue(source.filterByQuery(mockedPidDocName).items.isEmpty())
+                assertEquals(
+                    listOf(mockedDeletionLogDomain.id),
+                    source.filterByQuery(mockedTransactionCredential.identifier).items.map { row ->
+                        (row.payload as TransactionUi).uiData.header.itemId
+                    },
+                )
+                val titles = source.items.map { item ->
+                    ((item.payload as TransactionUi).uiData.header.mainContentData as ListItemMainContentDataUi.Text).text
+                }
+                assertEquals(
+                    listOf(
+                        "Presentation",
+                        mockedTransactionCredential.identifier,
+                        mockedTransactionCredential.identifier,
+                        mockedTransactionCredential.identifier,
+                        "Signing"
+                    ),
+                    titles,
+                )
+            }
+        }
+    }
+
+    // Case 11:
+    // 1. Some intermediary names are blank or equal the relying-party name.
+    // 2. A signing's provider name equals its filename, or the provider name is blank.
+    // 3. A deletion's credential type is blank or equals its provider name.
+    //
+    // Case 11 Expected Result:
+    // Blank tags are omitted, equal tags occur once and the remaining fields stay searchable.
+    @Test
+    fun `Given blank and duplicate party names, When getTransactions is called, Then search tags contain only distinct usable names`() {
+        coroutineRule.runTest {
+            // Given
+            val rows = listOf(
+                mockedPresentationLogDomain.copy(
+                    intermediary = mockedTransactionIntermediary.copy(
+                        name = LocalizedTextDomain(
+                            mockedTransactionLanguageTag,
+                            mockedTransactionPartyName
+                        )
+                    )
+                ),
+                mockedPresentationLogDomain.copy(
+                    id = "blank-intermediary",
+                    intermediary = mockedTransactionIntermediary.copy(
+                        name = LocalizedTextDomain(
+                            mockedTransactionLanguageTag,
+                            " \t"
+                        )
+                    ),
+                ),
+                mockedPresentationLogDomain.copy(
+                    id = "blank-names",
+                    party = mockedPresentationLogDomain.party.copy(name = null),
+                    intermediary = mockedTransactionIntermediary.copy(
+                        name = LocalizedTextDomain(
+                            mockedTransactionLanguageTag,
+                            " \t"
+                        )
+                    ),
+                ),
+                mockedSigningLogDomain.copy(fileName = mockedTransactionServiceName),
+                mockedSigningLogDomain.copy(
+                    id = "unnamed-provider",
+                    service = mockedSigningLogDomain.service.copy(
+                        name = LocalizedTextDomain(
+                            mockedTransactionLanguageTag,
+                            " \t"
+                        )
+                    ),
+                ),
+                mockedDeletionLogDomain.copy(
+                    credential = mockedTransactionCredential.copy(identifier = mockedTransactionIssuerName),
+                ),
+                mockedDeletionLogDomain.copy(
+                    id = "blank-credential-type",
+                    credential = mockedTransactionCredential.copy(identifier = " \t"),
+                ),
+            )
+            mockGetTransactionLogsCall(response = rows)
+            mockTransactionRowStrings()
+
+            // When
+            interactor.getTransactions().runFlowTest {
+                val source =
+                    (awaitItem() as TransactionInteractorGetTransactionsPartialState.Success).allTransactions
+
+                // Then
+                assertEquals(
+                    listOf(
+                        listOf(mockedTransactionPartyName),
+                        listOf(mockedTransactionPartyName),
+                        emptyList(),
+                        listOf(mockedTransactionServiceName),
+                        listOf(mockedSigningLogDomain.fileName),
+                        listOf(mockedTransactionIssuerName),
+                        listOf(mockedTransactionIssuerName),
+                    ),
+                    source.items.map { item -> item.attributes.searchTags },
+                )
+            }
+        }
+    }
+
+    // Case 12:
+    // 1. An issuance is stored with DDR and DPA report rows outside its date range.
+    // 2. Only the hidden actions carry the relying-party and authority names.
+    //
+    // Case 12 Expected Result:
+    // Only the visible row reaches the validator; hidden actions contribute no dates, parties, search tags or types.
+    @Test
+    fun `Given hidden actions, When transactions initialize filters, Then only visible data reaches the validator`() {
+        coroutineRule.runTest {
+            // Given
+            val visible = mockedIssuanceLogDomain
+            val request = mockedDataDeletionLogDomain.copy(time = visible.time.minusYears(1))
+            val report = mockedDpaReportLogDomain.copy(time = visible.time.plusYears(1))
+            val queries = listOf(
+                mockedTransactionPartyName,
+                mockedTransactionDpaName,
+                request.id,
+                report.id,
+                mockedDataDeletionTypeLabel,
+                mockedDpaReportTypeLabel,
+                " \t",
+                "",
+            )
+            mockGetTransactionLogsCall(response = listOf(request, visible, report))
+            mockTransactionRowStrings()
+
+            // When
+            val loaded = interactor.getTransactions().first()
+                    as TransactionInteractorGetTransactionsPartialState.Success
+            interactor.initializeFilters(loaded.allTransactions)
+            queries.forEach { query -> interactor.applySearch(query) }
+
+            // Then
+            val filters = argumentCaptor<Filters>()
+            val source = argumentCaptor<FilterableList>()
+            verify(filterValidator, times(1)).initializeValidator(
+                filters.capture(),
+                source.capture()
+            )
+            assertEquals(loaded.allTransactions, source.firstValue)
+            assertEquals(listOf(visible.id), source.firstValue.transactionIds())
+            assertEquals(
+                visible.time.toLocalDate() to visible.time.toLocalDate(), loaded.availableDates
+            )
+            assertEquals(
+                listOf(listOf(mockedTransactionIssuerName)),
+                source.firstValue.items.map { item -> item.attributes.searchTags },
+            )
+            assertEquals(
+                listOf(
+                    TransactionFilterIds.FILTER_BY_PARTY_WITHOUT_NAME,
+                    "party:$mockedTransactionIssuerName"
+                ),
+                filters.firstValue.partyFilterIds(),
+            )
+            val types = filters.firstValue.filterGroups.single { group ->
+                group.id == TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_GROUP_ID
+            }
+            assertEquals(
+                mockedListTransactionTypeFilterIds,
+                types.filters.map { filter -> filter.id })
+            queries.forEach { query -> verify(filterValidator, times(1)).applySearch(query) }
         }
     }
     //endregion
@@ -487,32 +1427,37 @@ class TestTransactionsInteractor {
             listOf(
                 TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_GROUP_ID,
                 TransactionFilterIds.FILTER_BY_STATUS_GROUP_ID,
-                TransactionFilterIds.FILTER_BY_RELYING_PARTY_GROUP_ID,
+                TransactionFilterIds.FILTER_BY_PARTY_GROUP_ID,
                 TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_GROUP_ID,
             ),
             groupIds
         )
         assertEquals(SortOrder.Descending(isDefault = true), result.sortOrder)
         assertEquals(TransactionFilterIds.FILTER_SORT_GROUP_ID, result.sort?.id)
+        val typeFilters = result.filterGroups.single { filterGroup ->
+            filterGroup.id == TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_GROUP_ID
+        }.filters
+        assertEquals(mockedListTransactionTypeFilterIds, typeFilters.map { filter -> filter.id })
+        assertTrue(typeFilters.all { filter -> filter.selected && filter.isDefault })
     }
     //endregion
 
     //region addDynamicFilters
 
     // Case 1:
-    // 1. The relying-party filter group is present and the transactions list contains items
-    //    with relying party names; the dynamic relying-party filters are populated, prefixed
-    //    by the "no relying party" filter.
+    // 1. The party filter group is present and the transactions list contains items
+    //    with party names; the dynamic party filters are populated, prefixed
+    //    by the "no party" filter.
     @Test
-    fun `Given Case 1, When addDynamicFilters is called, Then the relying-party group is populated with both the no-relying-party filter and one filter per distinct relying party`() {
+    fun `Given Case 1, When addDynamicFilters is called, Then the party group is populated with both the no-party filter and one filter per distinct party`() {
         // Given
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_no_relying_party_transactions))
-            .thenReturn(mockedNoRelyingPartyFilterName)
+        whenever(strings.get(Res.string.transactions_filter_item_no_relying_party_transactions))
+            .thenReturn(mockedNoPartyFilterName)
         val initialFilters = Filters(
             filterGroups = listOf(
                 FilterGroup.MultipleSelectionFilterGroup<TransactionsFilterableAttributes>(
-                    id = TransactionFilterIds.FILTER_BY_RELYING_PARTY_GROUP_ID,
-                    name = "Relying party",
+                    id = TransactionFilterIds.FILTER_BY_PARTY_GROUP_ID,
+                    name = "Relying Party",
                     filters = emptyList(),
                     filterableAction = FilterMultipleAction { _, _ -> true },
                 )
@@ -521,9 +1466,9 @@ class TestTransactionsInteractor {
         )
         val transactions = FilterableList(
             items = listOf(
-                filterableItemWithRelyingParty(name = "Acme"),
-                filterableItemWithRelyingParty(name = null),
-                filterableItemWithRelyingParty(name = "Acme"), // duplicate to verify distinctBy
+                filterableItemWithParty(name = "Acme"),
+                filterableItemWithParty(name = null),
+                filterableItemWithParty(name = "Acme"), // duplicate to verify distinctBy
             )
         )
 
@@ -532,18 +1477,18 @@ class TestTransactionsInteractor {
 
         // Then
         val updatedGroup =
-            result.filterGroups.first { it.id == TransactionFilterIds.FILTER_BY_RELYING_PARTY_GROUP_ID }
+            result.filterGroups.first { group -> group.id == TransactionFilterIds.FILTER_BY_PARTY_GROUP_ID }
         val ids = updatedGroup.filters.map { it.id }
         assertEquals(
-            listOf(TransactionFilterIds.FILTER_BY_RELYING_PARTY_WITHOUT_NAME, "Acme"),
+            listOf(TransactionFilterIds.FILTER_BY_PARTY_WITHOUT_NAME, "party:Acme"),
             ids
         )
     }
 
     // Case 2:
-    // 1. A filter group whose id is not the relying-party group => left unchanged.
+    // 1. A filter group whose id is not the party group => left unchanged.
     @Test
-    fun `Given Case 2, When addDynamicFilters is called with a non-relying-party group, Then the group is left unchanged`() {
+    fun `Given Case 2, When addDynamicFilters is called with a non-party group, Then the group is left unchanged`() {
         // Given
         val unrelatedGroup = FilterGroup.SingleSelectionFilterGroup(
             id = "unrelated_group",
@@ -569,6 +1514,144 @@ class TestTransactionsInteractor {
         // Then
         assertEquals(unrelatedGroup, result.filterGroups.first())
     }
+
+    // Case 3:
+    // 1. Storage contains all seven transaction types and an unnamed presentation.
+    //
+    // Case 3 Expected Result:
+    // Only visible rows supply distinct sorted parties, and each party selects its rows.
+    @Test
+    fun `Given parties across transaction types, When addDynamicFilters is called, Then every party and the no-party option select the right rows`() {
+        coroutineRule.runTest {
+            // Given
+            val unnamed = mockedPresentationLogDomain.copy(
+                id = "unnamed",
+                party = mockedPresentationLogDomain.party.copy(name = null)
+            )
+            mockGetTransactionLogsCall(response = mockedTransactionLogDomains + unnamed)
+            mockTransactionRowStrings()
+            mockGetFiltersStrings()
+            mockPartyFilterNameCall()
+            val expectedIds = mapOf(
+                mockedNoPartyFilterName to setOf(unnamed.id),
+                mockedTransactionPartyName to setOf("presentation"),
+                mockedTransactionIssuerName to setOf("issuance", "reissuance", "deletion"),
+                mockedTransactionServiceName to setOf("signing"),
+            )
+
+            // When
+            interactor.getTransactions().runFlowTest {
+                val source =
+                    (awaitItem() as TransactionInteractorGetTransactionsPartialState.Success).allTransactions
+
+                @Suppress("UNCHECKED_CAST")
+                val group = interactor.addDynamicFilters(
+                    source,
+                    interactor.getFilters()
+                ).filterGroups.first { filterGroup ->
+                    filterGroup.id == TransactionFilterIds.FILTER_BY_PARTY_GROUP_ID
+                } as FilterGroup.MultipleSelectionFilterGroup<TransactionsFilterableAttributes>
+
+                // Then
+                assertEquals("Relying Party", group.name)
+                assertEquals(mockedNoPartyFilterName, group.filters.first().name)
+                assertEquals(
+                    mockedListTransactionPartyNames.distinct().sortedBy { partyName -> partyName.lowercase() },
+                    group.filters.drop(1).map { filter -> filter.name },
+                )
+                val allSelected = group.filterableAction.applyFilter(source, group)
+                assertEquals(source.items.size, allSelected.items.size)
+                assertEquals(source.items.toSet(), allSelected.items.toSet())
+                group.filters.forEach { filter ->
+                    val result = group.filterableAction.applyFilter(
+                        source,
+                        group.copy(filters = listOf(filter))
+                    )
+                    assertEquals(
+                        expectedIds.getValue(filter.name),
+                        result.items.map { item -> (item.payload as TransactionUi).uiData.header.itemId }
+                            .toSet(),
+                    )
+                }
+            }
+        }
+    }
+
+    // Case 4:
+    // 1. A real party's name equals the reserved no-party filter identifier.
+    //
+    // Case 4 Expected Result:
+    // Its named filter remains distinct and selects only the named row.
+    @Test
+    fun `Given a party name equal to the no-party filter id, When addDynamicFilters is called, Then the named party has a distinct working filter`() {
+        // Given
+        mockGetFiltersStrings()
+        mockPartyFilterNameCall()
+        val name = TransactionFilterIds.FILTER_BY_PARTY_WITHOUT_NAME
+        val named = filterableItemWithParty(name = name)
+        val unnamed = filterableItemWithParty(name = null)
+        val source = FilterableList(listOf(named, unnamed))
+
+        // When
+        @Suppress("UNCHECKED_CAST")
+        val group =
+            interactor.addDynamicFilters(source, interactor.getFilters()).filterGroups.first { filterGroup ->
+                filterGroup.id == TransactionFilterIds.FILTER_BY_PARTY_GROUP_ID
+            } as FilterGroup.MultipleSelectionFilterGroup<TransactionsFilterableAttributes>
+        val namedFilter = group.filters.single { filter -> filter.name == name }
+        val selected =
+            group.filterableAction.applyFilter(source, group.copy(filters = listOf(namedFilter)))
+
+        // Then
+        assertEquals(2, group.filters.map { filter -> filter.id }.distinct().size)
+        assertEquals(listOf(named), selected.items)
+    }
+
+    // Case 5:
+    // 1. An issuer filter selects issuance, re-issuance and deletion rows.
+    // 2. The query names either the provider or an excluded credential.
+    //
+    // Case 5 Expected Result:
+    // Provider search retains the selected party's rows; credential search remains excluded.
+    @Test
+    fun `Given an issuer filter and search, When both are applied, Then only allowed provider matches remain`() {
+        coroutineRule.runTest {
+            // Given
+            mockGetTransactionLogsCall(response = mockedSearchableTransactionLogDomains)
+            mockTransactionRowStrings()
+            mockGetFiltersStrings()
+            mockPartyFilterNameCall()
+
+            // When
+            interactor.getTransactions().runFlowTest {
+                val source =
+                    (awaitItem() as TransactionInteractorGetTransactionsPartialState.Success).allTransactions
+
+                @Suppress("UNCHECKED_CAST")
+                val group = interactor.addDynamicFilters(
+                    source,
+                    interactor.getFilters()
+                ).filterGroups.first { filterGroup ->
+                    filterGroup.id == TransactionFilterIds.FILTER_BY_PARTY_GROUP_ID
+                } as FilterGroup.MultipleSelectionFilterGroup<TransactionsFilterableAttributes>
+                val issuer = group.filters.single { filter -> filter.name == mockedTransactionIssuerName }
+                val filtered =
+                    group.filterableAction.applyFilter(source, group.copy(filters = listOf(issuer)))
+                val providerMatches =
+                    filtered.filterByQuery(mockedTransactionIssuerName.uppercase())
+                val credentialMatches =
+                    filtered.filterByQuery(mockedRequestedTransactionCredential.identifier)
+
+                // Then
+                assertEquals(
+                    listOf("issuance", "reissuance", "deletion"),
+                    providerMatches.items.map { item -> (item.payload as TransactionUi).uiData.header.itemId },
+                )
+                assertTrue(credentialMatches.items.isEmpty())
+            }
+        }
+    }
+
     //endregion
 
     //region onFilterStateChange
@@ -580,7 +1663,7 @@ class TestTransactionsInteractor {
 
     // Case 1 Expected Result:
     // TransactionInteractorFilterPartialState.FilterApplyResult with grouped transactions and
-    // ExpandableListItemUi.NestedListItem filters containing the expected trailing types.
+    // ExpandableListItemUi.NestedListItem filters retain trailing types and checkbox selections.
     @Test
     fun `Given Case 1, When onFilterStateChange emits FilterApplyResult, Then FilterApplyResult is mapped`() {
         coroutineRule.runTest {
@@ -623,6 +1706,11 @@ class TestTransactionsInteractor {
                 }
                 assertTrue(trailingTypes.any { it is ListItemTrailingContentDataUi.Checkbox })
                 assertTrue(trailingTypes.any { it is ListItemTrailingContentDataUi.RadioButton })
+                assertEquals(
+                    listOf(false, true),
+                    trailingTypes.filterIsInstance<ListItemTrailingContentDataUi.Checkbox>()
+                        .map { trailing -> trailing.checkboxData.isChecked },
+                )
             }
         }
     }
@@ -701,8 +1789,8 @@ class TestTransactionsInteractor {
 
         @Suppress("UNCHECKED_CAST")
         val sortAction = sort.filters.first().filterableAction
-                as FilterAction.Sort<TransactionsFilterableAttributes, LocalDateTime>
-        val attrs = attributes(creationLocalDateTime = LocalDateTime.of(2026, 5, 1, 12, 0))
+                as FilterAction.Sort<TransactionsFilterableAttributes, KotlinLocalDateTime>
+        val attrs = attributes(creationLocalDateTime = KotlinLocalDateTime(2026, 5, 1, 12, 0))
 
         // When
         val key = sortAction.selector(attrs)
@@ -716,8 +1804,8 @@ class TestTransactionsInteractor {
         // Given
         mockGetFiltersStrings()
         val filters = interactor.getFilters()
-        val dateGroup = filters.filterGroups.first {
-            it.id == TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_GROUP_ID
+        val dateGroup = filters.filterGroups.first { filterGroup ->
+            filterGroup.id == TransactionFilterIds.FILTER_BY_TRANSACTION_DATE_GROUP_ID
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -728,12 +1816,12 @@ class TestTransactionsInteractor {
             name = "Range",
             selected = true,
             isDefault = true,
-            startDateTime = LocalDateTime.of(2026, 1, 1, 0, 0),
-            endDateTime = LocalDateTime.of(2026, 12, 31, 23, 59),
+            startDateTime = KotlinLocalDateTime(2026, 1, 1, 0, 0),
+            endDateTime = KotlinLocalDateTime(2026, 12, 31, 23, 59),
         )
-        val inRange = attributes(creationLocalDateTime = LocalDateTime.of(2026, 5, 1, 12, 0))
-        val outOfRange = attributes(creationLocalDateTime = LocalDateTime.of(2027, 5, 1, 12, 0))
-        val beforeStart = attributes(creationLocalDateTime = LocalDateTime.of(2025, 5, 1, 12, 0))
+        val inRange = attributes(creationLocalDateTime = KotlinLocalDateTime(2026, 5, 1, 12, 0))
+        val outOfRange = attributes(creationLocalDateTime = KotlinLocalDateTime(2027, 5, 1, 12, 0))
+        val beforeStart = attributes(creationLocalDateTime = KotlinLocalDateTime(2025, 5, 1, 12, 0))
         val nullDate = attributes(creationLocalDateTime = null)
         val nonDateFilter = FilterItem(
             id = "non_date",
@@ -757,8 +1845,8 @@ class TestTransactionsInteractor {
         // Given
         mockGetFiltersStrings()
         val filters = interactor.getFilters()
-        val statusGroup = filters.filterGroups.first {
-            it.id == TransactionFilterIds.FILTER_BY_STATUS_GROUP_ID
+        val statusGroup = filters.filterGroups.first { filterGroup ->
+            filterGroup.id == TransactionFilterIds.FILTER_BY_STATUS_GROUP_ID
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -771,9 +1859,9 @@ class TestTransactionsInteractor {
             selected = true,
             isDefault = true,
         )
-        val failedFilter = FilterItem(
-            id = TransactionFilterIds.FILTER_BY_STATUS_FAILED,
-            name = "Failed",
+        val notCompletedFilter = FilterItem(
+            id = TransactionFilterIds.FILTER_BY_STATUS_NOT_COMPLETED,
+            name = "Not completed",
             selected = true,
             isDefault = true,
         )
@@ -793,20 +1881,20 @@ class TestTransactionsInteractor {
         )
         assertTrue(
             !statusAction.predicate(
-                attributes(status = TransactionStatusUi.Failed),
+                attributes(status = TransactionStatusUi.NotCompleted),
                 completedFilter
             )
         )
         assertTrue(
             statusAction.predicate(
-                attributes(status = TransactionStatusUi.Failed),
-                failedFilter
+                attributes(status = TransactionStatusUi.NotCompleted),
+                notCompletedFilter
             )
         )
         assertTrue(
             !statusAction.predicate(
                 attributes(status = TransactionStatusUi.Completed),
-                failedFilter
+                notCompletedFilter
             )
         )
         assertTrue(
@@ -818,12 +1906,12 @@ class TestTransactionsInteractor {
     }
 
     @Test
-    fun `When the relying-party filter predicate is applied, Then no-name-with-name-and-mismatch arms are all evaluated`() {
+    fun `When the party filter predicate is applied, Then no-name-with-name-and-mismatch arms are all evaluated`() {
         // Given
         mockGetFiltersStrings()
         val filters = interactor.getFilters()
-        val rpGroup = filters.filterGroups.first {
-            it.id == TransactionFilterIds.FILTER_BY_RELYING_PARTY_GROUP_ID
+        val rpGroup = filters.filterGroups.first { filterGroup ->
+            filterGroup.id == TransactionFilterIds.FILTER_BY_PARTY_GROUP_ID
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -831,7 +1919,7 @@ class TestTransactionsInteractor {
             (rpGroup as FilterGroup.MultipleSelectionFilterGroup<TransactionsFilterableAttributes>)
                 .filterableAction
         val withoutNameFilter = FilterItem(
-            id = TransactionFilterIds.FILTER_BY_RELYING_PARTY_WITHOUT_NAME,
+            id = TransactionFilterIds.FILTER_BY_PARTY_WITHOUT_NAME,
             name = "Without name",
             selected = true,
             isDefault = true,
@@ -844,16 +1932,16 @@ class TestTransactionsInteractor {
         )
 
         // When + Then
-        // Branch: filter is FILTER_BY_RELYING_PARTY_WITHOUT_NAME and attrs.name is null → true
-        assertTrue(rpAction.predicate(attributes(relyingPartyName = null), withoutNameFilter))
-        // Branch: filter is FILTER_BY_RELYING_PARTY_WITHOUT_NAME and attrs.name is non-null → false
-        assertTrue(!rpAction.predicate(attributes(relyingPartyName = "Acme"), withoutNameFilter))
+        // Branch: filter is FILTER_BY_PARTY_WITHOUT_NAME and attrs.name is null → true
+        assertTrue(rpAction.predicate(attributes(partyName = null), withoutNameFilter))
+        // Branch: filter is FILTER_BY_PARTY_WITHOUT_NAME and attrs.name is non-null → false
+        assertTrue(!rpAction.predicate(attributes(partyName = "Acme"), withoutNameFilter))
         // Branch: filter is a name and attrs.name matches → true
-        assertTrue(rpAction.predicate(attributes(relyingPartyName = "Acme"), acmeFilter))
+        assertTrue(rpAction.predicate(attributes(partyName = "Acme"), acmeFilter))
         // Branch: filter is a name and attrs.name does not match → false
-        assertTrue(!rpAction.predicate(attributes(relyingPartyName = "Other"), acmeFilter))
+        assertTrue(!rpAction.predicate(attributes(partyName = "Other"), acmeFilter))
         // Branch: filter is a name and attrs.name is null → default false
-        assertTrue(!rpAction.predicate(attributes(relyingPartyName = null), acmeFilter))
+        assertTrue(!rpAction.predicate(attributes(partyName = null), acmeFilter))
     }
 
     @Test
@@ -861,8 +1949,8 @@ class TestTransactionsInteractor {
         // Given
         mockGetFiltersStrings()
         val filters = interactor.getFilters()
-        val typeGroup = filters.filterGroups.first {
-            it.id == TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_GROUP_ID
+        val typeGroup = filters.filterGroups.first { filterGroup ->
+            filterGroup.id == TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_GROUP_ID
         }
 
         @Suppress("UNCHECKED_CAST")
@@ -973,60 +2061,87 @@ class TestTransactionsInteractor {
     //endregion
 
     //region helper functions
+    private fun FilterableList.transactionIds(): List<String> =
+        items.map { item -> (item.payload as TransactionUi).uiData.header.itemId }
+
+    private fun Filters.partyFilterIds(): List<String> =
+        filterGroups.single { group ->
+            group.id == TransactionFilterIds.FILTER_BY_PARTY_GROUP_ID
+        }.filters.map { filter -> filter.id }
+
+    private suspend fun mockGetTransactionLogsCall(response: List<TransactionLogDomain>) {
+        whenever(platform.getTransactionLogs()).thenReturn(response)
+    }
+
+    private fun mockPartyFilterNameCall() {
+        whenever(strings.get(Res.string.transactions_filter_item_no_relying_party_transactions))
+            .thenReturn(mockedNoPartyFilterName)
+    }
+
     private fun mockGetFiltersStrings() {
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_sort_by))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_reissuance))
+            .thenReturn("Re-issuance")
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_deletion))
+            .thenReturn(mockedCredentialDeletionTypeLabel)
+
+        whenever(strings.get(Res.string.transactions_screen_filters_sort_by))
             .thenReturn("Sort by")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_sort_transaction_date))
+        whenever(strings.get(Res.string.transactions_screen_filters_sort_transaction_date))
             .thenReturn("Transaction date")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filter_by_date_period))
+        whenever(strings.get(Res.string.transactions_screen_filter_by_date_period))
             .thenReturn("Date period")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filter_by_status))
+        whenever(strings.get(Res.string.transactions_screen_filter_by_status))
             .thenReturn("Status")
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_status_completed))
+        whenever(strings.get(Res.string.transactions_filter_item_status_completed))
             .thenReturn("Completed")
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_status_failed))
-            .thenReturn("Failed")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_relying_party))
-            .thenReturn("Relying party")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type))
+        whenever(strings.get(Res.string.transactions_filter_item_status_not_completed))
+            .thenReturn("Not completed")
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_relying_party))
+            .thenReturn("Relying Party")
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type))
             .thenReturn("Transaction type")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_presentation))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation))
             .thenReturn("Presentation")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_issuance))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance))
             .thenReturn("Issuance")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_signing))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_signing))
             .thenReturn("Signing")
     }
 
     private fun mockTransactionRowStrings() {
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_presentation))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_reissuance))
+            .thenReturn("Re-issuance")
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_deletion))
+            .thenReturn(mockedCredentialDeletionTypeLabel)
+
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_presentation))
             .thenReturn("Presentation")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_issuance))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_issuance))
             .thenReturn("Issuance")
-        whenever(resourceProvider.getString(R.string.transactions_screen_filters_filter_by_transaction_type_signing))
+        whenever(strings.get(Res.string.transactions_screen_filters_filter_by_transaction_type_signing))
             .thenReturn("Signing")
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_status_completed))
+        whenever(strings.get(Res.string.transactions_filter_item_status_completed))
             .thenReturn("Completed")
-        whenever(resourceProvider.getString(R.string.transactions_filter_item_status_failed))
-            .thenReturn("Failed")
-        whenever(resourceProvider.getString(R.string.transactions_screen_0_minutes_ago_message))
+        whenever(strings.get(Res.string.transactions_filter_item_status_not_completed))
+            .thenReturn("Not completed")
+        whenever(strings.get(Res.string.transactions_screen_0_minutes_ago_message))
             .thenReturn("Just now")
-        whenever(
-            resourceProvider.getQuantityString(
-                eq(R.plurals.transactions_screen_some_minutes_ago_message),
+        whenever {
+            stringResolver.resolvePlural(
+                eq(Res.plurals.transactions_screen_some_minutes_ago_message),
                 org.mockito.kotlin.any(),
                 org.mockito.kotlin.any()
             )
-        ).thenReturn("30 min ago")
+        }.thenReturn("30 min ago")
     }
 
-    private fun filterableItemWithRelyingParty(name: String?): FilterableItem {
+    private fun filterableItemWithParty(name: String?): FilterableItem {
         val attributes = TransactionsFilterableAttributes(
             searchTags = emptyList(),
             transactionStatus = TransactionStatusUi.Completed,
             transactionType = TransactionTypeUi.PRESENTATION,
-            creationLocalDateTime = LocalDateTime.now(),
-            relyingPartyName = name,
+            creationLocalDateTime = LocalDateTime.now().toKotlinLocalDateTime(),
+            partyName = name,
         )
         return FilterableItem(
             payload = stubTransactionUi(),
@@ -1054,8 +2169,8 @@ class TestTransactionsInteractor {
                 searchTags = emptyList(),
                 transactionStatus = TransactionStatusUi.Completed,
                 transactionType = TransactionTypeUi.PRESENTATION,
-                creationLocalDateTime = LocalDateTime.now(),
-                relyingPartyName = mockedRelyingPartyName,
+                creationLocalDateTime = LocalDateTime.now().toKotlinLocalDateTime(),
+                partyName = mockedPartyName,
             ),
         )
     }
@@ -1066,23 +2181,23 @@ class TestTransactionsInteractor {
                 FilterGroup.SingleSelectionFilterGroup(
                     id = "single",
                     name = "Single",
-                    filters = listOf(filterItem("s1")),
+                    filters = listOf(filterItem(id = "s1", selected = true)),
                 ),
                 FilterGroup.ReversibleSingleSelectionFilterGroup(
                     id = "single_rev",
                     name = "Single Rev",
-                    filters = listOf(filterItem("sr1")),
+                    filters = listOf(filterItem(id = "sr1", selected = true)),
                 ),
                 FilterGroup.MultipleSelectionFilterGroup<TransactionsFilterableAttributes>(
                     id = "multi",
                     name = "Multi",
-                    filters = listOf(filterItem("m1")),
+                    filters = listOf(filterItem(id = "m1", selected = false)),
                     filterableAction = FilterMultipleAction { _, _ -> true },
                 ),
                 FilterGroup.ReversibleMultipleSelectionFilterGroup<TransactionsFilterableAttributes>(
                     id = "multi_rev",
                     name = "Multi Rev",
-                    filters = listOf(filterItem("mr1")),
+                    filters = listOf(filterItem(id = "mr1", selected = true)),
                     filterableAction = FilterMultipleAction { _, _ -> true },
                 ),
             ),
@@ -1090,11 +2205,11 @@ class TestTransactionsInteractor {
         )
     }
 
-    private fun filterItem(id: String): FilterElement = FilterItem(
+    private fun filterItem(id: String, selected: Boolean): FilterElement = FilterItem(
         id = id,
         name = id,
-        selected = true,
-        isDefault = true,
+        selected = selected,
+        isDefault = selected,
     )
     //endregion
 
@@ -1114,23 +2229,76 @@ class TestTransactionsInteractor {
     //endregion
 
     //region mocked objects
-    private val mockedRelyingPartyName = "Mocked Relying Party"
-    private val mockedNoRelyingPartyFilterName = "No relying party"
-    private val mockedDocumentDisplayName = "Mocked Document Display"
+    private val mockedPartyName = "Mocked Party"
+    private val mockedNoPartyFilterName = "No Relying Party"
+    private val mockedListTransactionLogDomains = listOf(
+        mockedPresentationLogDomain,
+        mockedIssuanceLogDomain,
+        mockedReissuanceLogDomain,
+        mockedDeletionLogDomain,
+        mockedSigningLogDomain,
+    )
+    private val mockedListTransactionTypeLabels = listOf(
+        "Presentation", "Issuance", "Re-issuance", mockedCredentialDeletionTypeLabel, "Signing",
+    )
+    private val mockedListTransactionTypeFilterIds = listOf(
+        TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_PRESENTATION,
+        TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_ISSUANCE,
+        TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_REISSUANCE,
+        TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_DELETION,
+        TransactionFilterIds.FILTER_BY_TRANSACTION_TYPE_SIGNING,
+    )
+    private val mockedListTransactionTitles = listOf(
+        mockedTransactionPartyName,
+        mockedTransactionIssuerName,
+        mockedTransactionIssuerName,
+        mockedTransactionIssuerName,
+        mockedTransactionServiceName,
+    )
+    private val mockedListTransactionPartyNames = listOf(
+        mockedTransactionPartyName,
+        mockedTransactionIssuerName,
+        mockedTransactionIssuerName,
+        mockedTransactionIssuerName,
+        mockedTransactionServiceName,
+    )
+    private val mockedListNotCompletedTransactionIds = listOf(
+        "incomplete-presentation", "incomplete-issuance", "incomplete-reissuance",
+        "incomplete-deletion", "incomplete-signing",
+    )
 
     private fun attributes(
         status: TransactionStatusUi = TransactionStatusUi.Completed,
         type: TransactionTypeUi = TransactionTypeUi.PRESENTATION,
-        creationLocalDateTime: LocalDateTime? = LocalDateTime.now(),
-        relyingPartyName: String? = null,
+        creationLocalDateTime: KotlinLocalDateTime? = LocalDateTime.now().toKotlinLocalDateTime(),
+        partyName: String? = null,
     ): TransactionsFilterableAttributes = TransactionsFilterableAttributes(
         searchTags = emptyList(),
         transactionStatus = status,
         transactionType = type,
         creationLocalDateTime = creationLocalDateTime,
-        relyingPartyName = relyingPartyName,
+        partyName = partyName,
     )
 
     private object ForeignPayload : FilterableItemPayload
     //endregion
 }
+
+// java.time-style arithmetic on the kotlinx times the shared domain records, so upstream's case bodies
+// read as upstream wrote them.
+private fun KotlinLocalDateTime.plusHours(hours: Long): KotlinLocalDateTime =
+    toJavaLocalDateTime().plusHours(hours).toKotlinLocalDateTime()
+
+private fun KotlinLocalDateTime.plusMonths(months: Long): KotlinLocalDateTime =
+    toJavaLocalDateTime().plusMonths(months).toKotlinLocalDateTime()
+
+private fun KotlinLocalDateTime.minusMonths(months: Long): KotlinLocalDateTime =
+    toJavaLocalDateTime().minusMonths(months).toKotlinLocalDateTime()
+
+private fun KotlinLocalDateTime.plusYears(years: Long): KotlinLocalDateTime =
+    toJavaLocalDateTime().plusYears(years).toKotlinLocalDateTime()
+
+private fun KotlinLocalDateTime.minusYears(years: Long): KotlinLocalDateTime =
+    toJavaLocalDateTime().minusYears(years).toKotlinLocalDateTime()
+
+private fun KotlinLocalDateTime.toLocalDate(): KotlinLocalDate = date

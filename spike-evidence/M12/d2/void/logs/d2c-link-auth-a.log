@@ -1,0 +1,9 @@
+## D2c root=link state=auth kill=a 2026-10-17T19:19:31+02:00
+TIMEOUT waiting request (got )
+pid before kill: 9437
+pid after: ''
+-- relaunch (recents)
+shot d2c-link-auth-a
+pid: 10587 gate=1 state=
+10-17 19:22:19.224 UX-SPIKE: hook module loaded
+10-17 19:22:19.576 UX-SPIKE: launch intent already consumed, cold-boot link skipped

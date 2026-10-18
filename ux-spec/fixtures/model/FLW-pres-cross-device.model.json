@@ -1,0 +1,4947 @@
+{
+  "engine": {
+    "depth": 8,
+    "explored": {
+      "edges": 23865,
+      "nodes": 4517
+    },
+    "max_items": 3,
+    "order": "assign-then-guard"
+  },
+  "fixture_version": 1,
+  "flow_id": "FLW-pres-cross-device",
+  "invariants": [
+    {
+      "id": "request-nonempty-at-auth",
+      "in": [
+        "auth",
+        "verification-code",
+        "sending"
+      ],
+      "rule": "RUL-pres-request-has-selection",
+      "when": {
+        "not": {
+          "op": "eq",
+          "path": "/request/selected_count",
+          "value": 0
+        }
+      }
+    },
+    {
+      "accepts": "CONTINUE",
+      "id": "continue-accepted-with-selection",
+      "in": [
+        "request",
+        "request-optional-only",
+        "request-no-selection",
+        "request-optional-selected",
+        "request-untrusted"
+      ],
+      "rule": "RUL-pres-request-has-selection",
+      "when": {
+        "not": {
+          "op": "eq",
+          "path": "/request/selected_count",
+          "value": 0
+        }
+      }
+    },
+    {
+      "id": "optional-only-arrives-unticked",
+      "in": [
+        "request-optional-only"
+      ],
+      "rule": "RUL-pres-request-optional-unticked",
+      "when": {
+        "op": "eq",
+        "path": "/request/optional_selected_count",
+        "value": 0
+      }
+    }
+  ],
+  "sequences": [
+    {
+      "covers": "auth -CANCEL-> cancelled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "CANCEL",
+          "from": "auth",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "auth -SYS_AUTH_FAILED-> auth-failed",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_FAILED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Failed",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-failed"
+        }
+      ]
+    },
+    {
+      "covers": "auth -SYS_AUTH_NOT_ENROLLED-> auth-not-enrolled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_NOT_ENROLLED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "NotEnrolled",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-not-enrolled"
+        }
+      ]
+    },
+    {
+      "covers": "auth -SYS_AUTH_OK-> verification-code",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_OK",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Authenticated",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "verification-code"
+        }
+      ]
+    },
+    {
+      "covers": "auth -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "auth",
+          "payload": {
+            "reason": "rep"
+          },
+          "result": {
+            "name": "Error",
+            "payload": {
+              "reason": "rep"
+            },
+            "service": "authenticate"
+          },
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "auth -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Expired",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "auth-failed -CANCEL-> cancelled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_FAILED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Failed",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-failed"
+        },
+        {
+          "event": "CANCEL",
+          "from": "auth-failed",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "auth-failed -HELP-> to-help",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_FAILED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Failed",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-failed"
+        },
+        {
+          "event": "HELP",
+          "from": "auth-failed",
+          "payload": {},
+          "to": "to-help"
+        }
+      ]
+    },
+    {
+      "covers": "auth-failed -RETRY-> auth",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_FAILED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Failed",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-failed"
+        },
+        {
+          "event": "RETRY",
+          "from": "auth-failed",
+          "payload": {},
+          "to": "auth"
+        }
+      ]
+    },
+    {
+      "covers": "auth-failed -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_FAILED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Failed",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-failed"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "auth-failed",
+          "payload": {},
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "auth-failed -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_FAILED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Failed",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-failed"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "auth-failed",
+          "payload": {},
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "auth-not-enrolled -CLOSE-> closed",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_NOT_ENROLLED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "NotEnrolled",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-not-enrolled"
+        },
+        {
+          "event": "CLOSE",
+          "from": "auth-not-enrolled",
+          "payload": {},
+          "to": "closed"
+        }
+      ]
+    },
+    {
+      "covers": "auth-not-enrolled -HELP-> to-help",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_NOT_ENROLLED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "NotEnrolled",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-not-enrolled"
+        },
+        {
+          "event": "HELP",
+          "from": "auth-not-enrolled",
+          "payload": {},
+          "to": "to-help"
+        }
+      ]
+    },
+    {
+      "covers": "auth-not-enrolled -OPEN_SETTINGS-> device-settings",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_NOT_ENROLLED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "NotEnrolled",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-not-enrolled"
+        },
+        {
+          "event": "OPEN_SETTINGS",
+          "from": "auth-not-enrolled",
+          "payload": {},
+          "to": "device-settings"
+        }
+      ]
+    },
+    {
+      "covers": "auth-not-enrolled -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_NOT_ENROLLED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "NotEnrolled",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-not-enrolled"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "auth-not-enrolled",
+          "payload": {},
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "auth-not-enrolled -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_NOT_ENROLLED",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "NotEnrolled",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "auth-not-enrolled"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "auth-not-enrolled",
+          "payload": {},
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "cancelled -CLOSE-> closed",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "CANCEL",
+          "from": "scan",
+          "payload": {},
+          "to": "cancelled"
+        },
+        {
+          "event": "CLOSE",
+          "from": "cancelled",
+          "payload": {},
+          "to": "closed"
+        }
+      ]
+    },
+    {
+      "covers": "connecting -CANCEL-> cancelled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "CANCEL",
+          "from": "connecting",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "connecting -SYS_DOC_INVALID-> document-invalid",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_DOC_INVALID",
+          "from": "connecting",
+          "payload": {
+            "document_name": "rep"
+          },
+          "result": {
+            "name": "DocInvalid",
+            "payload": {
+              "document_name": "rep"
+            },
+            "service": "fetchRequest"
+          },
+          "to": "document-invalid"
+        }
+      ]
+    },
+    {
+      "covers": "connecting -SYS_DOC_MISSING-> document-missing",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_DOC_MISSING",
+          "from": "connecting",
+          "payload": {
+            "document_name": "rep"
+          },
+          "result": {
+            "name": "DocMissing",
+            "payload": {
+              "document_name": "rep"
+            },
+            "service": "fetchRequest"
+          },
+          "to": "document-missing"
+        }
+      ]
+    },
+    {
+      "covers": "connecting -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_ERROR",
+          "from": "connecting",
+          "payload": {
+            "reason": "rep"
+          },
+          "result": {
+            "name": "Error",
+            "payload": {
+              "reason": "rep"
+            },
+            "service": "fetchRequest"
+          },
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "connecting -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_EXPIRED",
+          "from": "connecting",
+          "payload": {},
+          "result": {
+            "name": "Expired",
+            "payload": {},
+            "service": "fetchRequest"
+          },
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "connecting -SYS_REQUEST_OPTIONAL_ONLY-> request-optional-only",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        }
+      ]
+    },
+    {
+      "covers": "connecting -SYS_REQUEST_READY-> request",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        }
+      ]
+    },
+    {
+      "covers": "connecting -SYS_RP_UNTRUSTED-> request-untrusted",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_RP_UNTRUSTED",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RpUntrusted",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-untrusted"
+        }
+      ]
+    },
+    {
+      "covers": "document-invalid -CLOSE-> closed",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_DOC_INVALID",
+          "from": "connecting",
+          "payload": {
+            "document_name": "rep"
+          },
+          "result": {
+            "name": "DocInvalid",
+            "payload": {
+              "document_name": "rep"
+            },
+            "service": "fetchRequest"
+          },
+          "to": "document-invalid"
+        },
+        {
+          "event": "CLOSE",
+          "from": "document-invalid",
+          "payload": {},
+          "to": "closed"
+        }
+      ]
+    },
+    {
+      "covers": "document-invalid -HELP-> to-help",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_DOC_INVALID",
+          "from": "connecting",
+          "payload": {
+            "document_name": "rep"
+          },
+          "result": {
+            "name": "DocInvalid",
+            "payload": {
+              "document_name": "rep"
+            },
+            "service": "fetchRequest"
+          },
+          "to": "document-invalid"
+        },
+        {
+          "event": "HELP",
+          "from": "document-invalid",
+          "payload": {},
+          "to": "to-help"
+        }
+      ]
+    },
+    {
+      "covers": "document-missing -ADD_DOCUMENT-> add-document",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_DOC_MISSING",
+          "from": "connecting",
+          "payload": {
+            "document_name": "rep"
+          },
+          "result": {
+            "name": "DocMissing",
+            "payload": {
+              "document_name": "rep"
+            },
+            "service": "fetchRequest"
+          },
+          "to": "document-missing"
+        },
+        {
+          "event": "ADD_DOCUMENT",
+          "from": "document-missing",
+          "payload": {},
+          "to": "add-document"
+        }
+      ]
+    },
+    {
+      "covers": "document-missing -CLOSE-> closed",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_DOC_MISSING",
+          "from": "connecting",
+          "payload": {
+            "document_name": "rep"
+          },
+          "result": {
+            "name": "DocMissing",
+            "payload": {
+              "document_name": "rep"
+            },
+            "service": "fetchRequest"
+          },
+          "to": "document-missing"
+        },
+        {
+          "event": "CLOSE",
+          "from": "document-missing",
+          "payload": {},
+          "to": "closed"
+        }
+      ]
+    },
+    {
+      "covers": "document-missing -HELP-> to-help",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_DOC_MISSING",
+          "from": "connecting",
+          "payload": {
+            "document_name": "rep"
+          },
+          "result": {
+            "name": "DocMissing",
+            "payload": {
+              "document_name": "rep"
+            },
+            "service": "fetchRequest"
+          },
+          "to": "document-missing"
+        },
+        {
+          "event": "HELP",
+          "from": "document-missing",
+          "payload": {},
+          "to": "to-help"
+        }
+      ]
+    },
+    {
+      "covers": "error -CLOSE-> closed",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "SYS_ERROR",
+          "from": "scan",
+          "payload": {},
+          "to": "error"
+        },
+        {
+          "event": "CLOSE",
+          "from": "error",
+          "payload": {},
+          "to": "closed"
+        }
+      ]
+    },
+    {
+      "covers": "error -HELP-> to-help",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "SYS_ERROR",
+          "from": "scan",
+          "payload": {},
+          "to": "error"
+        },
+        {
+          "event": "HELP",
+          "from": "error",
+          "payload": {},
+          "to": "to-help"
+        }
+      ]
+    },
+    {
+      "covers": "error -RETRY-> scan",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "SYS_ERROR",
+          "from": "scan",
+          "payload": {},
+          "to": "error"
+        },
+        {
+          "event": "RETRY",
+          "from": "error",
+          "payload": {},
+          "to": "scan"
+        }
+      ]
+    },
+    {
+      "covers": "error-expired -CLOSE-> closed",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_EXPIRED",
+          "from": "connecting",
+          "payload": {},
+          "result": {
+            "name": "Expired",
+            "payload": {},
+            "service": "fetchRequest"
+          },
+          "to": "error-expired"
+        },
+        {
+          "event": "CLOSE",
+          "from": "error-expired",
+          "payload": {},
+          "to": "closed"
+        }
+      ]
+    },
+    {
+      "covers": "error-expired -HELP-> to-help",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_EXPIRED",
+          "from": "connecting",
+          "payload": {},
+          "result": {
+            "name": "Expired",
+            "payload": {},
+            "service": "fetchRequest"
+          },
+          "to": "error-expired"
+        },
+        {
+          "event": "HELP",
+          "from": "error-expired",
+          "payload": {},
+          "to": "to-help"
+        }
+      ]
+    },
+    {
+      "covers": "error-expired -RETRY-> scan",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_EXPIRED",
+          "from": "connecting",
+          "payload": {},
+          "result": {
+            "name": "Expired",
+            "payload": {},
+            "service": "fetchRequest"
+          },
+          "to": "error-expired"
+        },
+        {
+          "event": "RETRY",
+          "from": "error-expired",
+          "payload": {},
+          "to": "scan"
+        }
+      ]
+    },
+    {
+      "covers": "error-invalid-qr -CLOSE-> closed",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "SYS_QR_INVALID",
+          "from": "scan",
+          "payload": {},
+          "to": "error-invalid-qr"
+        },
+        {
+          "event": "CLOSE",
+          "from": "error-invalid-qr",
+          "payload": {},
+          "to": "closed"
+        }
+      ]
+    },
+    {
+      "covers": "error-invalid-qr -HELP-> to-help",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "SYS_QR_INVALID",
+          "from": "scan",
+          "payload": {},
+          "to": "error-invalid-qr"
+        },
+        {
+          "event": "HELP",
+          "from": "error-invalid-qr",
+          "payload": {},
+          "to": "to-help"
+        }
+      ]
+    },
+    {
+      "covers": "error-invalid-qr -RETRY-> scan",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "SYS_QR_INVALID",
+          "from": "scan",
+          "payload": {},
+          "to": "error-invalid-qr"
+        },
+        {
+          "event": "RETRY",
+          "from": "error-invalid-qr",
+          "payload": {},
+          "to": "scan"
+        }
+      ]
+    },
+    {
+      "covers": "request -CONTINUE-> auth",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        }
+      ]
+    },
+    {
+      "covers": "request -REJECT-> cancelled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "REJECT",
+          "from": "request",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "request -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "request",
+          "payload": {},
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "request -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "request",
+          "payload": {},
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "request -TOGGLE_ITEM-> request",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request"
+        }
+      ]
+    },
+    {
+      "covers": "request-no-selection -CONTINUE-> request-no-selection",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "request-no-selection"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-no-selection",
+          "payload": {},
+          "to": "request-no-selection"
+        }
+      ]
+    },
+    {
+      "covers": "request-no-selection -REJECT-> cancelled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "request-no-selection"
+        },
+        {
+          "event": "REJECT",
+          "from": "request-no-selection",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "request-no-selection -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "request-no-selection"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "request-no-selection",
+          "payload": {},
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "request-no-selection -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "request-no-selection"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "request-no-selection",
+          "payload": {},
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "request-no-selection -TOGGLE_ITEM-> request-optional-selected",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "optional",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "optional",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "request-no-selection"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-no-selection",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-selected"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-only -CONTINUE-> auth",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "auth"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-only -CONTINUE-> request-no-selection",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "request-no-selection"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-only -REJECT-> cancelled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "REJECT",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-only -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-only -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-only -TOGGLE_ITEM-> request-optional-selected",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-optional-only",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-selected"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-selected -CONTINUE-> auth",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-optional-only",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-selected"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-optional-selected",
+          "payload": {},
+          "to": "auth"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-selected -REJECT-> cancelled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-optional-only",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-selected"
+        },
+        {
+          "event": "REJECT",
+          "from": "request-optional-selected",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-selected -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-optional-only",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-selected"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "request-optional-selected",
+          "payload": {},
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-selected -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-optional-only",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-selected"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "request-optional-selected",
+          "payload": {},
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-selected -TOGGLE_ITEM-> request-no-selection",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "optional",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "optional",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-optional-only",
+          "payload": {},
+          "to": "request-no-selection"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-no-selection",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-selected"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-optional-selected",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-no-selection"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-selected -TOGGLE_ITEM-> request-optional-only",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "optional",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "optional",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-optional-only",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-selected"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-optional-selected",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-only"
+        }
+      ]
+    },
+    {
+      "covers": "request-optional-selected -TOGGLE_ITEM-> request-optional-selected",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_OPTIONAL_ONLY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "OptionalOnly",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-optional-only"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-optional-only",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-selected"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-optional-selected",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-optional-selected"
+        }
+      ]
+    },
+    {
+      "covers": "request-untrusted -CONTINUE-> untrusted-confirm",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_RP_UNTRUSTED",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RpUntrusted",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-untrusted"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-untrusted",
+          "payload": {},
+          "to": "untrusted-confirm"
+        }
+      ]
+    },
+    {
+      "covers": "request-untrusted -REJECT-> cancelled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_RP_UNTRUSTED",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RpUntrusted",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-untrusted"
+        },
+        {
+          "event": "REJECT",
+          "from": "request-untrusted",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "request-untrusted -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_RP_UNTRUSTED",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RpUntrusted",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-untrusted"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "request-untrusted",
+          "payload": {},
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "request-untrusted -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_RP_UNTRUSTED",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RpUntrusted",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-untrusted"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "request-untrusted",
+          "payload": {},
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "request-untrusted -TOGGLE_ITEM-> request-untrusted",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_RP_UNTRUSTED",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RpUntrusted",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-untrusted"
+        },
+        {
+          "event": "TOGGLE_ITEM",
+          "from": "request-untrusted",
+          "payload": {
+            "item_id": "i1"
+          },
+          "to": "request-untrusted"
+        }
+      ]
+    },
+    {
+      "covers": "scan -CANCEL-> cancelled",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "CANCEL",
+          "from": "scan",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "scan -SYS_ERROR-> error",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "SYS_ERROR",
+          "from": "scan",
+          "payload": {},
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "scan -SYS_QR_INVALID-> error-invalid-qr",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "SYS_QR_INVALID",
+          "from": "scan",
+          "payload": {},
+          "to": "error-invalid-qr"
+        }
+      ]
+    },
+    {
+      "covers": "scan -SYS_QR_SCANNED-> connecting",
+      "entry": "default",
+      "launch": {},
+      "steps": [
+        {
+          "event": "SYS_QR_SCANNED",
+          "from": "scan",
+          "payload": {
+            "uri": "https://rep.example/"
+          },
+          "to": "connecting"
+        }
+      ]
+    },
+    {
+      "covers": "sending -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_OK",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Authenticated",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": null,
+          "from": "verification-code",
+          "payload": {},
+          "result": {
+            "name": "Ready",
+            "payload": {
+              "code": "rep",
+              "portal_url": null
+            },
+            "service": "verificationCode"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": "CONFIRM",
+          "from": "verification-code",
+          "payload": {},
+          "to": "sending"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "sending",
+          "payload": {
+            "reason": "rep"
+          },
+          "result": {
+            "name": "Error",
+            "payload": {
+              "reason": "rep"
+            },
+            "service": "send"
+          },
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "sending -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_OK",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Authenticated",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": null,
+          "from": "verification-code",
+          "payload": {},
+          "result": {
+            "name": "Ready",
+            "payload": {
+              "code": "rep",
+              "portal_url": null
+            },
+            "service": "verificationCode"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": "CONFIRM",
+          "from": "verification-code",
+          "payload": {},
+          "to": "sending"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "sending",
+          "payload": {},
+          "result": {
+            "name": "Expired",
+            "payload": {},
+            "service": "send"
+          },
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "sending -SYS_SENT-> success",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_OK",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Authenticated",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": null,
+          "from": "verification-code",
+          "payload": {},
+          "result": {
+            "name": "Ready",
+            "payload": {
+              "code": "rep",
+              "portal_url": null
+            },
+            "service": "verificationCode"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": "CONFIRM",
+          "from": "verification-code",
+          "payload": {},
+          "to": "sending"
+        },
+        {
+          "event": "SYS_SENT",
+          "from": "sending",
+          "payload": {},
+          "result": {
+            "name": "Sent",
+            "payload": {},
+            "service": "send"
+          },
+          "to": "success"
+        }
+      ]
+    },
+    {
+      "covers": "success -CLOSE-> done",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_OK",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Authenticated",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": null,
+          "from": "verification-code",
+          "payload": {},
+          "result": {
+            "name": "Ready",
+            "payload": {
+              "code": "rep",
+              "portal_url": null
+            },
+            "service": "verificationCode"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": "CONFIRM",
+          "from": "verification-code",
+          "payload": {},
+          "to": "sending"
+        },
+        {
+          "event": "SYS_SENT",
+          "from": "sending",
+          "payload": {},
+          "result": {
+            "name": "Sent",
+            "payload": {},
+            "service": "send"
+          },
+          "to": "success"
+        },
+        {
+          "event": "CLOSE",
+          "from": "success",
+          "payload": {},
+          "to": "done"
+        }
+      ]
+    },
+    {
+      "covers": "untrusted-confirm -APPROVE-> auth",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_RP_UNTRUSTED",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RpUntrusted",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-untrusted"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-untrusted",
+          "payload": {},
+          "to": "untrusted-confirm"
+        },
+        {
+          "event": "APPROVE",
+          "from": "untrusted-confirm",
+          "payload": {},
+          "to": "auth"
+        }
+      ]
+    },
+    {
+      "covers": "untrusted-confirm -REJECT-> cancelled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_RP_UNTRUSTED",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RpUntrusted",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-untrusted"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-untrusted",
+          "payload": {},
+          "to": "untrusted-confirm"
+        },
+        {
+          "event": "REJECT",
+          "from": "untrusted-confirm",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "untrusted-confirm -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_RP_UNTRUSTED",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RpUntrusted",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-untrusted"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-untrusted",
+          "payload": {},
+          "to": "untrusted-confirm"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "untrusted-confirm",
+          "payload": {},
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "untrusted-confirm -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_RP_UNTRUSTED",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RpUntrusted",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request-untrusted"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request-untrusted",
+          "payload": {},
+          "to": "untrusted-confirm"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "untrusted-confirm",
+          "payload": {},
+          "to": "error-expired"
+        }
+      ]
+    },
+    {
+      "covers": "verification-code -CANCEL-> cancelled",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_OK",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Authenticated",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": "CANCEL",
+          "from": "verification-code",
+          "payload": {},
+          "to": "cancelled"
+        }
+      ]
+    },
+    {
+      "covers": "verification-code -CONFIRM-> sending",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_OK",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Authenticated",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": null,
+          "from": "verification-code",
+          "payload": {},
+          "result": {
+            "name": "Ready",
+            "payload": {
+              "code": "rep",
+              "portal_url": null
+            },
+            "service": "verificationCode"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": "CONFIRM",
+          "from": "verification-code",
+          "payload": {},
+          "to": "sending"
+        }
+      ]
+    },
+    {
+      "covers": "verification-code -Ready-> verification-code",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_OK",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Authenticated",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": null,
+          "from": "verification-code",
+          "payload": {},
+          "result": {
+            "name": "Ready",
+            "payload": {
+              "code": "rep",
+              "portal_url": null
+            },
+            "service": "verificationCode"
+          },
+          "to": "verification-code"
+        }
+      ]
+    },
+    {
+      "covers": "verification-code -SYS_ERROR-> error",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_OK",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Authenticated",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": "SYS_ERROR",
+          "from": "verification-code",
+          "payload": {
+            "reason": "rep"
+          },
+          "result": {
+            "name": "Error",
+            "payload": {
+              "reason": "rep"
+            },
+            "service": "verificationCode"
+          },
+          "to": "error"
+        }
+      ]
+    },
+    {
+      "covers": "verification-code -SYS_EXPIRED-> error-expired",
+      "entry": "deeplink",
+      "launch": {
+        "uri": "https://rep.example/"
+      },
+      "steps": [
+        {
+          "event": "SYS_REQUEST_READY",
+          "from": "connecting",
+          "payload": {
+            "request": {
+              "attributes": [
+                {
+                  "id": "i1",
+                  "label_copy": "CPY-rep",
+                  "requirement": "mandatory",
+                  "value": "rep"
+                }
+              ],
+              "document_name": "rep"
+            },
+            "verifier": {
+              "name": "rep",
+              "privacy_url": "https://rep.example/",
+              "reason": "rep",
+              "service_name": "rep",
+              "trust": null
+            }
+          },
+          "result": {
+            "name": "RequestReady",
+            "payload": {
+              "request": {
+                "attributes": [
+                  {
+                    "id": "i1",
+                    "label_copy": "CPY-rep",
+                    "requirement": "mandatory",
+                    "value": "rep"
+                  }
+                ],
+                "document_name": "rep"
+              },
+              "verifier": {
+                "name": "rep",
+                "privacy_url": "https://rep.example/",
+                "reason": "rep",
+                "service_name": "rep",
+                "trust": null
+              }
+            },
+            "service": "fetchRequest"
+          },
+          "to": "request"
+        },
+        {
+          "event": "CONTINUE",
+          "from": "request",
+          "payload": {},
+          "to": "auth"
+        },
+        {
+          "event": "SYS_AUTH_OK",
+          "from": "auth",
+          "payload": {},
+          "result": {
+            "name": "Authenticated",
+            "payload": {},
+            "service": "authenticate"
+          },
+          "to": "verification-code"
+        },
+        {
+          "event": "SYS_EXPIRED",
+          "from": "verification-code",
+          "payload": {},
+          "result": {
+            "name": "Expired",
+            "payload": {},
+            "service": "verificationCode"
+          },
+          "to": "error-expired"
+        }
+      ]
+    }
+  ],
+  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2"
+}

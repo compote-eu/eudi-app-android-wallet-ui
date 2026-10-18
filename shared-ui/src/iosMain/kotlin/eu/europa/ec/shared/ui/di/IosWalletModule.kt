@@ -1,0 +1,553 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+package eu.europa.ec.shared.ui.di
+
+import eu.europa.ec.businesslogic.provider.UuidProviderImpl
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOffer
+import eu.europa.ec.shared.wallet.multipaz.IosIssuerRegistrationChecker
+import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationOutcome
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.darwin.Darwin
+import eu.europa.ec.businesslogic.validator.FilterValidator
+import eu.europa.ec.businesslogic.validator.FilterValidatorImpl
+import eu.europa.ec.dashboardfeature.interactor.DashboardInteractor
+import eu.europa.ec.dashboardfeature.interactor.DashboardInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractor
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.DocumentDetailsPlatformBridge
+import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractor
+import eu.europa.ec.dashboardfeature.interactor.DocumentsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionDetailsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractor
+import eu.europa.ec.dashboardfeature.interactor.TransactionHistoryInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.TransactionsPlatformBridge
+import eu.europa.ec.dashboardfeature.interactor.DocumentsPlatformBridge
+import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractor
+import eu.europa.ec.dashboardfeature.interactor.DocumentSignInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.HomeInteractor
+import eu.europa.ec.analyticslogic.controller.AnalyticsLogger
+import eu.europa.ec.analyticslogic.controller.IosAnalytics
+import eu.europa.ec.authenticationlogic.config.AuthenticationConfig
+import eu.europa.ec.authenticationlogic.config.WalletAuthenticationConfig
+import eu.europa.ec.authenticationlogic.controller.storage.PinStorageController
+import eu.europa.ec.authenticationlogic.controller.throttle.PinThrottleController
+import eu.europa.ec.authenticationlogic.storage.IosBiometricGate
+import eu.europa.ec.authenticationlogic.storage.IosPinStorage
+import eu.europa.ec.authenticationlogic.storage.IosPinThrottle
+import eu.europa.ec.commonfeature.interactor.BiometricInteractor
+import eu.europa.ec.commonfeature.interactor.QrScanInteractor
+import eu.europa.ec.commonfeature.interactor.QuickPinInteractor
+import eu.europa.ec.commonfeature.interactor.QuickPinInteractorImpl
+import eu.europa.ec.startupfeature.interactor.SplashInteractor
+import eu.europa.ec.startupfeature.interactor.SplashInteractorImpl
+import eu.europa.ec.shared.wallet.multipaz.collectDeferredDocument
+import eu.europa.ec.shared.wallet.multipaz.documentsAwaitingDeferredIssuance
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
+import eu.europa.ec.shared.wallet.multipaz.IosOfferableCredentialsReader
+import eu.europa.ec.presentationfeature.interactor.PresentationLoadingInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationRequestInteractor
+import eu.europa.ec.presentationfeature.interactor.PresentationSuccessInteractor
+import eu.europa.ec.shared.wallet.multipaz.IosProximityPresenter
+import eu.europa.ec.shared.wallet.multipaz.IosRemotePresenter
+import eu.europa.ec.proximityfeature.interactor.ProximityLoadingInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximityQRInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximityRequestInteractor
+import eu.europa.ec.proximityfeature.interactor.ProximitySuccessInteractor
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractor
+import eu.europa.ec.issuancefeature.interactor.AddDocumentInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.AddDocumentPlatformBridge
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractor
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractor
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferInteractorImpl
+import eu.europa.ec.issuancefeature.interactor.DocumentOfferPlatformBridge
+import eu.europa.ec.issuancefeature.interactor.DocumentIssuanceSuccessInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.SettingsInteractor
+import eu.europa.ec.dashboardfeature.interactor.SettingsInteractorImpl
+import eu.europa.ec.dashboardfeature.interactor.SettingsPlatformBridge
+import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.uilogic.navigation.helper.DeepLinkClassifier
+import eu.europa.ec.shared.resources.StringResolver
+import eu.europa.ec.shared.wallet.WalletEngine
+import eu.europa.ec.shared.wallet.config.SharedAppConfig
+import eu.europa.ec.shared.wallet.config.iosWalletConfig
+import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
+import org.koin.core.annotation.Factory
+import org.koin.core.annotation.Single
+import eu.europa.ec.corelogic.controller.WalletCoreTrustMarkController
+import eu.europa.ec.businesslogic.controller.storage.TrustMarkIntroductionStore
+import eu.europa.ec.shared.wallet.trustmark.IosTrustMarkController
+import eu.europa.ec.shared.wallet.trustmark.IosTrustMarkIntroductionStore
+import eu.europa.ec.commonfeature.interactor.TrustMarkInteractor
+import eu.europa.ec.commonfeature.interactor.TrustMarkInteractorImpl
+
+/**
+ * The iOS half of the DI graph, alongside the shared definitions in `SharedUiModule`.
+ *
+ * These live in **iosMain** and are picked up automatically: Koin's compiler plugin runs per
+ * *compilation*, and `SharedUiModule`'s `@ComponentScan("eu.europa.ec")` therefore sees commonMain +
+ * iosMain when compiling for iOS and commonMain + androidMain when compiling for Android. So Android
+ * keeps its own `WalletEngine` (core-logic's wallet-core-backed one) and never sees these, without any
+ * conditional wiring.
+ *
+ * `@Single` rather than `@Factory` for the engine: it lazily opens the multipaz document store, and one
+ * store per process is the point.
+ *
+ * The engine is bound under **both** types from one instance — the concrete class for what is not on the
+ * `WalletEngine` contract (deletion), the interface for everything else.
+ */
+@Single
+fun provideIosWalletEngineImpl(): IosWalletEngine = IosWalletEngine()
+
+@Single
+fun provideIosWalletEngine(engine: IosWalletEngine): WalletEngine = engine
+
+/**
+ * One per list, as Android's `@Factory`: a validator holds one list, one set of filter groups and one
+ * result stream. As a single instance it served the Documents and History tabs at once, so each tab's
+ * reload reached the other — History turned the documents into an empty list and said "No transactions
+ * found" until its own next load.
+ */
+@Factory
+fun provideIosFilterValidator(): FilterValidator = FilterValidatorImpl()
+
+@Single
+fun provideIosDocumentsPlatformBridge(engine: IosWalletEngine): DocumentsPlatformBridge =
+    IosDocumentsPlatformBridge(
+        deleteDocument = { documentId -> engine.deleteDocument(documentId) },
+        hasAnyDocument = { engine.hasAnyDocument() },
+        collectDeferred = { documentId -> engine.collectDeferredDocument(documentId) },
+        documentNames = { locale -> engine.getAllDocumentsWithDetails(locale).associate { it.id to it.name } },
+        awaitingDeferred = { engine.documentsAwaitingDeferredIssuance() },
+    )
+
+@Single
+fun provideIosDocumentsInteractor(
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
+    filterValidator: FilterValidator,
+    platform: DocumentsPlatformBridge,
+): DocumentsInteractor = DocumentsInteractorImpl(
+    strings = strings,
+    walletEngine = walletEngine,
+    filterValidator = filterValidator,
+    platform = platform,
+)
+
+@Single
+fun provideIosDeepLinkClassifier(): DeepLinkClassifier = IosDeepLinkClassifier()
+
+@Single
+fun provideIosDocumentDetailsPlatformBridge(engine: IosWalletEngine): DocumentDetailsPlatformBridge =
+    IosDocumentDetailsPlatformBridge(engine = engine)
+
+/**
+ * `@Factory`, not `@Single`, mirroring Android: the details interactor is scoped to one document's
+ * screen, so a new one per view-model is correct.
+ */
+@Factory
+fun provideIosDocumentDetailsInteractor(
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
+    platform: DocumentDetailsPlatformBridge,
+): DocumentDetailsInteractor = DocumentDetailsInteractorImpl(
+    strings = strings,
+    walletEngine = walletEngine,
+    platform = platform,
+)
+
+@Factory
+internal fun provideIosTransactionDetailsInteractor(
+    platform: TransactionsPlatformBridge,
+    strings: StringCatalog,
+): TransactionDetailsInteractor = TransactionDetailsInteractorImpl(
+    platform = platform,
+    strings = strings,
+    // Not a Koin binding on iOS: nothing else there needs one, and this has no state to share.
+    uuidProvider = UuidProviderImpl(),
+)
+
+@Factory
+internal fun provideIosTransactionHistoryInteractor(
+    platform: TransactionsPlatformBridge,
+    strings: StringCatalog,
+): TransactionHistoryInteractor = TransactionHistoryInteractorImpl(platform = platform, strings = strings)
+
+@Single
+internal fun provideIosTransactionsPlatformBridge(
+    engine: IosWalletEngine,
+    strings: StringCatalog,
+): TransactionsPlatformBridge = IosTransactionsPlatformBridge(engine = engine, strings = strings)
+
+@Factory
+fun provideIosTransactionsInteractor(
+    strings: StringCatalog,
+    stringResolver: StringResolver,
+    filterValidator: FilterValidator,
+    platform: TransactionsPlatformBridge,
+): TransactionsInteractor = TransactionsInteractorImpl(
+    strings = strings,
+    stringResolver = stringResolver,
+    filterValidator = filterValidator,
+    platform = platform,
+)
+
+/**
+ * No bridge and no iOS-specific implementation: the dashboard interactor only builds the side menu's
+ * list items out of strings and icons, so `DashboardInteractorImpl` in commonMain serves both platforms
+ * unchanged. This definition exists purely because the Android graph declares its own in
+ * `FeatureDashboardModule`, which iOS does not load.
+ */
+@Factory
+fun provideIosDashboardInteractor(strings: StringCatalog): DashboardInteractor =
+    DashboardInteractorImpl(strings = strings)
+
+/**
+ * iOS's settings screen. The bridge is where the platform's honest answers live — no biometrics, no
+ * logs, no changelog, but a real app version and a real batch-counter preference.
+ */
+@Single
+internal fun provideIosSettingsPlatformBridge(
+    gate: IosBiometricGate,
+    strings: StringCatalog,
+): SettingsPlatformBridge = IosSettingsPlatformBridge(gate = gate, strings = strings)
+
+@Factory
+fun provideIosSettingsInteractor(
+    strings: StringCatalog,
+    platform: SettingsPlatformBridge,
+): SettingsInteractor = SettingsInteractorImpl(
+    strings = strings,
+    platform = platform,
+)
+
+/**
+ * The sign screen's shared half. Nothing iOS-specific in it — the platform work is
+ * `rememberDocumentSignTrigger`, which reaches the Swift signer rather than a Koin dependency.
+ */
+@Single
+fun provideIosDocumentSignInteractor(
+    stringCatalog: StringCatalog,
+): DocumentSignInteractor = DocumentSignInteractorImpl(
+    strings = stringCatalog,
+)
+
+@Single
+fun provideIosHomeInteractor(
+    walletEngine: WalletEngine,
+    stringResolver: StringResolver,
+): HomeInteractor = IosHomeInteractor(
+    walletEngine = walletEngine,
+    stringResolver = stringResolver,
+)
+
+/**
+ * The screen the issuance flow ends on. Its implementation is shared, and the platform half it needs —
+ * reading a document's claims and issuer display — is the document-details bridge, which iOS answers
+ * from multipaz. So this needs nothing iOS-specific beyond being declared.
+ */
+@Factory
+fun provideIosDocumentIssuanceSuccessInteractor(
+    strings: StringCatalog,
+    platform: DocumentDetailsPlatformBridge,
+): DocumentIssuanceSuccessInteractor = DocumentIssuanceSuccessInteractorImpl(
+    strings = strings,
+    platform = platform,
+)
+
+/**
+ * Which issuers iOS offers documents from, and what each one can issue. A `@Single` because the read is a
+ * network round trip per issuer and multipaz caches the parsed metadata per client-preferences instance.
+ */
+@Single
+fun provideIosOfferableCredentialsReader(): IosOfferableCredentialsReader =
+    IosOfferableCredentialsReader()
+
+/**
+ * iOS issuance. Takes the engine rather than a store so credentials land in the same `DocumentStore` the
+ * Documents list reads from.
+ */
+@Single
+fun provideIosCredentialIssuer(engine: IosWalletEngine): IosCredentialIssuer =
+    IosCredentialIssuer(walletEngine = engine)
+
+/**
+ * The add-document screen. Its list-building and routing are shared; the bridge reads the real catalogue
+ * and issues for real — see [IosAddDocumentPlatformBridge].
+ */
+@Single
+fun provideIosAddDocumentPlatformBridge(
+    offerableCredentials: IosOfferableCredentialsReader,
+    credentialIssuer: IosCredentialIssuer,
+): AddDocumentPlatformBridge = IosAddDocumentPlatformBridge(
+    offerableCredentials = offerableCredentials,
+    credentialIssuer = credentialIssuer,
+)
+
+@Factory
+fun provideIosAddDocumentInteractor(
+    strings: StringCatalog,
+    platform: AddDocumentPlatformBridge,
+): AddDocumentInteractor = AddDocumentInteractorImpl(
+    strings = strings,
+    platform = platform,
+)
+
+/**
+ * The credential-offer screens. As with add-document, the rules are shared and the bridge is the iOS
+ * half — resolving an offer and issuing from it, both real; see [IosDocumentOfferPlatformBridge].
+ */
+@Single
+fun provideIosCredentialOfferReader(): IosCredentialOfferReader = IosCredentialOfferReader()
+
+// `@Single`, not a factory: it remembers the offers it resolved, which issuance then requires.
+@Single
+fun provideIosDocumentOfferPlatformBridge(
+    offers: IosCredentialOfferReader,
+    credentialIssuer: IosCredentialIssuer,
+): DocumentOfferPlatformBridge = IosDocumentOfferPlatformBridge(
+    offers = offers,
+    credentialIssuer = credentialIssuer,
+    checkRegistration = ::checkIssuerRegistration,
+)
+
+/**
+ * Checks an issuer's registration certificate: fetch its metadata, verify the certificate against the
+ * EU lists, and say whether it covers what this offer contains.
+ *
+ * 🚨 **This lives in the DI module on purpose, not as a default on the bridge.** It reaches
+ * `IosEtsiTrust`, and the trust stack reaches the `PKIXBridge` cinterop whose Swift half only an Xcode
+ * target supplies. A reference from the bridge would make that reachable from every test binary in this
+ * module and none of them would link. Here, nothing a test constructs pulls it in.
+ */
+internal suspend fun checkIssuerRegistration(
+    offer: IosCredentialOffer,
+): IssuerRegistrationOutcome = HttpClient(Darwin).use { client ->
+    IosIssuerRegistrationChecker(client)
+        // Only what this offer contains: an issuer may publish more than it is offering, and judging
+        // it on the rest would refuse it for something the user was never shown.
+        .check(issuerUrl = offer.issuerUrl, configurationIds = offer.configurationIds.toSet())
+}
+
+@Factory
+fun provideIosDocumentOfferInteractor(
+    strings: StringCatalog,
+    walletEngine: WalletEngine,
+    platform: DocumentOfferPlatformBridge,
+    appConfig: SharedAppConfig,
+): DocumentOfferInteractor = DocumentOfferInteractorImpl(
+    strings = strings,
+    walletEngine = walletEngine,
+    platform = platform,
+    appConfig = appConfig,
+)
+
+/**
+ * iOS's analytics, under the platform-neutral supertype the navigation host asks for.
+ *
+ * The object rather than a new instance: registration happens once at startup and the providers are
+ * process-wide, exactly as Android's `@Single` controller is.
+ */
+@Single
+fun provideIosAnalyticsLogger(): AnalyticsLogger = IosAnalytics
+
+/**
+ * The app configuration commonMain reads, answered by this build's flavour file.
+ *
+ * `IosWalletConfig` extends [SharedAppConfig]; Koin resolves by the declared type, so shared consumers
+ * asking for the supertype need this binding. Android binds its `ConfigLogic` the same way.
+ */
+@Single
+fun provideIosSharedAppConfig(): SharedAppConfig = iosWalletConfig
+
+@Single
+fun provideIosAuthenticationConfig(): AuthenticationConfig = WalletAuthenticationConfig
+
+/** The Trust Mark, fetched from the URLs every build shares — see `SharedWalletConfig.trustMarkInformation`. */
+@Factory
+fun provideIosTrustMarkController(): WalletCoreTrustMarkController =
+    IosTrustMarkController(information = iosWalletConfig.trustMarkInformation)
+
+@Single
+fun provideIosTrustMarkIntroductionStore(): TrustMarkIntroductionStore = IosTrustMarkIntroductionStore()
+
+@Factory
+fun provideIosTrustMarkInteractor(
+    controller: WalletCoreTrustMarkController,
+    introductionStore: TrustMarkIntroductionStore,
+    strings: StringCatalog,
+): TrustMarkInteractor = TrustMarkInteractorImpl(
+    walletCoreTrustMarkController = controller,
+    introductionStore = introductionStore,
+    strings = strings,
+)
+
+/**
+ * The login gate. The PIN policy is shared; what iOS brings is where the verifier lives (the Keychain) and
+ * how long a wrong PIN costs (`NSUserDefaults`, since a lockout is not a secret).
+ */
+@Single
+fun provideIosPinStorage(): PinStorageController = IosPinStorage()
+
+/** Shared with the document-provider extension, which asks for the same PIN: see [IosPinThrottle.shared]. */
+@Single
+fun provideIosPinThrottle(config: AuthenticationConfig): PinThrottleController =
+    IosPinThrottle.shared(authenticationConfig = config)
+
+@Factory
+fun provideIosQuickPinInteractor(
+    strings: StringCatalog,
+    pinStorage: PinStorageController,
+    pinThrottle: PinThrottleController,
+    config: AuthenticationConfig,
+): QuickPinInteractor = QuickPinInteractorImpl(
+    pinStorageController = pinStorage,
+    strings = strings,
+    pinThrottleController = pinThrottle,
+    authenticationConfig = config,
+)
+
+@Factory
+internal fun provideIosBiometricInteractor(
+    quickPinInteractor: QuickPinInteractor,
+    gate: IosBiometricGate,
+    strings: StringCatalog,
+): BiometricInteractor = IosBiometricInteractor(
+    quickPinInteractor = quickPinInteractor,
+    gate = gate,
+    strings = strings,
+)
+
+/**
+ * `@Single` because the gate is a name for one Keychain item; two instances would be two names for it.
+ * Its own service, separate from the PIN's: the two items have different access policies, and keeping
+ * them apart means deleting one can never take the other with it.
+ */
+@Factory
+internal fun provideIosQrScanInteractor(): QrScanInteractor = IosQrScanInteractor()
+
+@Single
+fun provideIosBiometricGate(): IosBiometricGate =
+    IosBiometricGate(service = IosBiometricGate.DEFAULT_SERVICE)
+
+/**
+ * The real splash routing, replacing the stand-in that always went to the dashboard: no PIN yet sends the
+ * user to create one, an existing PIN sends them to unlock.
+ *
+ * `forcePidActivation` used to be passed in as a `{ false }` lambda. It now comes from [SharedAppConfig],
+ * the one place either platform declares it, so this provider no longer restates the value — it is false
+ * because neither `IosWalletConfig` nor Android's `ConfigLogic` overrides the interface default.
+ */
+@Factory
+fun provideIosSplashInteractor(
+    quickPinInteractor: QuickPinInteractor,
+    walletEngine: WalletEngine,
+    appConfig: SharedAppConfig,
+    introductionStore: TrustMarkIntroductionStore,
+    strings: StringCatalog,
+): SplashInteractor = SplashInteractorImpl(
+    quickPinInteractor = quickPinInteractor,
+    walletEngine = walletEngine,
+    appConfig = appConfig,
+    introductionStore = introductionStore,
+    strings = strings,
+)
+
+/**
+ * ISO 18013-5 proximity sharing.
+ *
+ * `@Single` for both the presenter and the coordinator: one Bluetooth radio means one exchange, and the
+ * four screens have to be looking at the same one. The interactors are `@Factory` like Android's, since
+ * each is a per-view-model view onto that shared state and holds nothing but its scope id.
+ */
+@Single
+fun provideIosProximityPresenter(engine: IosWalletEngine): IosProximityPresenter =
+    IosProximityPresenter(
+        walletEngine = engine,
+        isRegistrationCheckEnabled = { IosPreferences.isRegistrationCheckEnabled() },
+    )
+
+@Single
+internal fun provideIosProximityCoordinator(
+    presenter: IosProximityPresenter,
+    strings: StringCatalog,
+): IosProximityCoordinator = IosProximityCoordinator(
+    presenter = presenter,
+    strings = strings,
+)
+
+@Factory
+internal fun provideIosProximityQRInteractor(
+    coordinator: IosProximityCoordinator,
+): ProximityQRInteractor = IosProximityQRInteractor(coordinator = coordinator)
+
+@Factory
+internal fun provideIosProximityRequestInteractor(
+    coordinator: IosProximityCoordinator,
+): ProximityRequestInteractor = IosProximityRequestInteractor(coordinator = coordinator)
+
+@Factory
+internal fun provideIosProximityLoadingInteractor(
+    coordinator: IosProximityCoordinator,
+): ProximityLoadingInteractor = IosProximityLoadingInteractor(coordinator = coordinator)
+
+@Factory
+internal fun provideIosProximitySuccessInteractor(
+    coordinator: IosProximityCoordinator,
+): ProximitySuccessInteractor = IosProximitySuccessInteractor(coordinator = coordinator)
+
+/**
+ * Remote presentation over OpenID4VP.
+ *
+ * Scoped exactly as proximity is, and for the same reason rather than by analogy: the three screens are
+ * three views onto one exchange, so the presenter and coordinator are `@Single` and the interactors are
+ * `@Factory`. What bounds the exchange here is not a radio but the link that started it — a second link
+ * arriving mid-flow is a new exchange, which [IosRemotePresenter.start] handles by cancelling the first.
+ */
+@Single
+fun provideIosRemotePresenter(engine: IosWalletEngine): IosRemotePresenter =
+    IosRemotePresenter(
+        walletEngine = engine,
+        isRegistrationCheckEnabled = { IosPreferences.isRegistrationCheckEnabled() },
+    )
+
+@Single
+internal fun provideIosRemotePresentationCoordinator(
+    presenter: IosRemotePresenter,
+    strings: StringCatalog,
+): IosRemotePresentationCoordinator = IosRemotePresentationCoordinator(
+    presenter = presenter,
+    strings = strings,
+)
+
+@Factory
+internal fun provideIosPresentationRequestInteractor(
+    coordinator: IosRemotePresentationCoordinator,
+): PresentationRequestInteractor = IosPresentationRequestInteractor(coordinator = coordinator)
+
+@Factory
+internal fun provideIosPresentationLoadingInteractor(
+    coordinator: IosRemotePresentationCoordinator,
+): PresentationLoadingInteractor = IosPresentationLoadingInteractor(coordinator = coordinator)
+
+@Factory
+internal fun provideIosPresentationSuccessInteractor(
+    coordinator: IosRemotePresentationCoordinator,
+): PresentationSuccessInteractor = IosPresentationSuccessInteractor(coordinator = coordinator)

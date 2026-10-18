@@ -77,6 +77,7 @@ Use this checklist before the first production release.
 | Issuers                 | All OpenID4VCI issuer URLs point to production issuer services controlled or approved by the implementer.                                                                                                                                                                     |
 | Wallet provider         | `walletProviderHost` points to the production Wallet Provider service and supports the expected attestation endpoints.                                                                                                                                                        |
 | Trust anchors           | Demo and development certificates are replaced by production IACA/reader/verifier trust anchors, or by a production ETSI trusted-list (LoTE) source with the dev relaxations removed.                                                                                         |
+| Registration            | Every production issuer and verifier presents a registration certificate that validates against the configured registration trusted list, every issuer is entitled for the provider role of what it offers, and every issuer's registered scope covers the documents it offers. Issuance is refused otherwise.                                  |
 | RQES                    | QTSP, TSA, client ID, redirect URI, and certificate retrieval settings are production values.                                                                                                                                                                                 |
 | Secrets                 | No production secret is hardcoded in Kotlin, Gradle, resources, or `BuildConfig`.                                                                                                                                                                                             |
 | Network                 | Cleartext traffic is disabled; trust-all certificate logic is absent; TLS policy and certificate pinning strategy are agreed.                                                                                                                                                 |
@@ -96,7 +97,7 @@ The application is a modular Android project. Important modules for production a
 
 | Module                       | Production relevance                                                                                                                   |
 |------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
-| `app`                        | Application ID, signing, release build type, baseline profile packaging.                                                               |
+| `androidApp`                        | Application ID, signing, release build type, baseline profile packaging.                                                               |
 | `assembly-logic`             | Android application class, manifest, permissions, activities, deep links, NFC service, app name.                                       |
 | `core-logic`                 | Wallet Core integration, issuer configuration, wallet provider, trust stores, document issuance, presentation, revocation, reissuance. |
 | `business-logic`             | Global app config, RQES config, logging, encrypted preference storage, crypto helpers.                                                 |
@@ -135,7 +136,7 @@ Keep these files under strict review:
 | File                                                                                                      | Why it matters                                                                                       |
 |-----------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|
 | `build-logic/convention/src/main/kotlin/project/convention/logic/AppFlavor.kt`                            | Defines product flavors and application ID suffixes.                                                 |
-| `app/build.gradle.kts`                                                                                    | Defines app ID, signing config, release minification, version code.                                  |
+| `androidApp/build.gradle.kts`                                                                                    | Defines app ID, signing config, release minification, version code.                                  |
 | `assembly-logic/build.gradle.kts`                                                                         | Defines app display name placeholder.                                                                |
 | `assembly-logic/src/main/AndroidManifest.xml`                                                             | Defines exported components, permissions, backups, deep links, NFC service, network security config. |
 | `core-logic/src/<flavor>/java/eu/europa/ec/corelogic/config/WalletCoreConfigImpl.kt`                      | Main wallet network, trust, issuer, document, and presentation configuration.                        |
@@ -151,7 +152,7 @@ Keep these files under strict review:
 | `business-logic/src/main/java/eu/europa/ec/businesslogic/controller/storage/PrefsController.kt`           | Encrypted DataStore and database key storage.                                                        |
 | `storage-logic/src/main/java/eu/europa/ec/storagelogic/di/LogicStorageModule.kt`                          | SQLCipher database setup and migration behavior.                                                     |
 | `resources-logic/src/main/java/eu/europa/ec/resourceslogic/theme/values/ThemeColors.kt`                   | Brand color palette (light and dark) plus extra semantic colors. See [THEMING.md](THEMING.md).       |
-| `resources-logic/src/main/res/drawable/ic_logo_icon.xml`, `ic_logo_icon_and_text.xml`                     | In-app brand logos used on the splash and content headers.                                           |
+| `shared-ui/src/commonMain/composeResources/drawable/ic_logo_icon.xml`, `ic_logo_lockup_mark.xml`, `ic_logo_lockup_wordmark.xml` | In-app brand logos used on the splash and content headers. Compose-resources, so one copy serves Android and iOS. The wordmark is a separate, theme-tinted layer. |
 | `resources-logic/src/<flavor>/res/mipmap-*`                                                               | Per-flavor launcher icons.                                                                           |
 
 ## Create A Production Flavor
@@ -260,8 +261,8 @@ Build commands:
 
 ```powershell
 .\gradlew.bat clean
-.\gradlew.bat :app:assembleProdRelease
-.\gradlew.bat :app:bundleProdRelease
+.\gradlew.bat :androidApp:assembleProdRelease
+.\gradlew.bat :androidApp:bundleProdRelease
 ```
 
 Use Android App Bundle (`.aab`) for Google Play distribution unless your distribution channel
@@ -273,12 +274,12 @@ Production identity values must be final before external testing.
 
 | Setting         | Current location                                                  | Production guidance                                                                                                                      |
 |-----------------|-------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
-| `applicationId` | `app/build.gradle.kts`                                            | Use a final reverse-DNS ID owned by the implementer, for example `eu.example.wallet`. Changing it after release creates a different app. |
-| `namespace`     | `app/build.gradle.kts` and modules                                | Can remain internal package names, but align with your code ownership and policy.                                                        |
+| `applicationId` | `androidApp/build.gradle.kts`                                            | Use a final reverse-DNS ID owned by the implementer, for example `eu.example.wallet`. Changing it after release creates a different app. |
+| `namespace`     | `androidApp/build.gradle.kts` and modules                                | Can remain internal package names, but align with your code ownership and policy.                                                        |
 | App name        | `assembly-logic/build.gradle.kts`, manifest placeholder `appName` | Use the official wallet name approved for the Member State or wallet provider.                                                           |
 | App icon        | `assembly-logic/src/main/AndroidManifest.xml`, mipmap resources   | Replace reference icons with production brand assets.                                                                                    |
 | Version name    | `version.properties`                                              | Replace `yyyy.mm.v` with your release versioning scheme.                                                                                 |
-| Version code    | `app/build.gradle.kts` or CI mutation                             | Must monotonically increase for app stores.                                                                                              |
+| Version code    | `androidApp/build.gradle.kts` or CI mutation                             | Must monotonically increase for app stores.                                                                                              |
 | Min SDK         | `build-logic/.../KotlinAndroid.kt`                                | Current `minSdk` is 29. Confirm with your device support policy.                                                                         |
 | Target SDK      | `build-logic/.../AndroidApplicationConventionPlugin.kt`           | Current `targetSdk` is 37. Keep current with Android policy.                                                                             |
 
@@ -303,7 +304,7 @@ Surfaces to review before release:
 | Color palette (light and dark) | `resources-logic/.../theme/values/ThemeColors.kt`                                     | Both palettes plus the extra `success`/`warning`/`pending`/`divider` roles. Verify contrast in both modes.   |
 | Typography and fonts           | `resources-logic/src/main/res/font/` and `.../theme/values/ThemeTypography.kt`        | Replace the bundled Roboto fonts and the type scale if your brand requires it.                               |
 | Shapes                         | `resources-logic/.../theme/values/ThemeShapes.kt`                                     | Corner radii.                                                                                                |
-| In-app logos                   | `resources-logic/src/main/res/drawable/ic_logo_icon.xml`, `ic_logo_icon_and_text.xml` | Used on the splash and content headers; brand colors are baked into the vectors.                             |
+| In-app logos                   | `shared-ui/src/commonMain/composeResources/drawable/ic_logo_icon.xml`, `ic_logo_lockup_mark.xml`, `ic_logo_lockup_wordmark.xml` | Splash and content headers. Mark colours are baked in; the wordmark layer is tinted from the theme. |
 | Splash screen                  | `resources-logic/src/main/res/values-v31/themes.xml` and the in-app `SplashScreen`    | System window splash plus the Compose splash logo.                                                           |
 | System bars                    | `assembly-logic/.../ui/MainActivity.kt` (`enableEdgeToEdge`)                          | Edge-to-edge; controlled here, not by the XML theme.                                                         |
 | RQES signing UI                | `business-logic/src/<flavor>/.../RQESConfigImpl.kt`                                   | The RQES SDK carries its own theme; a wallet rebrand does not restyle it unless you override `themeManager`. |
@@ -320,7 +321,7 @@ Requirements:
 
 Current release signing is configured in:
 
-`app/build.gradle.kts`
+`androidApp/build.gradle.kts`
 
 The reference configuration expects:
 
@@ -337,7 +338,7 @@ Production requirements:
 * Do not store production signing material in a developer workstation as the only source.
 * Prefer CI secret storage backed by HSM/KMS, Google Play App Signing, or an equivalent controlled process.
 * Use separate passwords for keystore and key if your policy requires it.
-* If using separate store and key passwords, change `app/build.gradle.kts` to read a distinct
+* If using separate store and key passwords, change `androidApp/build.gradle.kts` to read a distinct
   `ANDROID_KEYSTORE_PASSWORD` or equivalent CI secret for `storePassword`.
 * Record the SHA-256 fingerprint of the app signing certificate.
 * Restrict who can produce signed production artifacts.
@@ -383,7 +384,7 @@ For production, the minimum release pipeline should run:
 .\gradlew.bat testProdReleaseUnitTest
 .\gradlew.bat koverHtmlReportProdDebug
 .\gradlew.bat dependencyCheckAnalyze
-.\gradlew.bat :app:bundleProdRelease
+.\gradlew.bat :androidApp:bundleProdRelease
 ```
 
 Also add:
@@ -400,8 +401,8 @@ Also add:
 Example final-artifact checks:
 
 ```powershell
-.\gradlew.bat :app:processProdReleaseMainManifest
-.\gradlew.bat :app:dependencies --configuration prodReleaseRuntimeClasspath
+.\gradlew.bat :androidApp:processProdReleaseMainManifest
+.\gradlew.bat :androidApp:dependencies --configuration prodReleaseRuntimeClasspath
 ```
 
 Inspect the merged manifest and dependency output as release evidence.
@@ -440,10 +441,13 @@ interface WalletCoreConfig {
     val revocationInterval: Duration
     val documentIssuanceConfig: DocumentIssuanceConfig
     val walletProviderHost: String
+    val trustMarkSource: TrustMarkSource
 }
 ```
 
-Each property must be reviewed.
+Each property must be reviewed, including inherited defaults on `WalletCoreConfig`.
+For Trust Mark settings, see
+[Trust Mark configuration](CONFIGURATION.md#trust-mark-configuration).
 
 ## `EudiWalletConfig`
 
@@ -548,7 +552,8 @@ inside `provideEudiWallet(...)`:
 EudiWallet(
     context = context,
     config = walletCoreConfig.config,
-    walletProvider = walletCoreAttestationProvider
+    walletProvider = walletCoreAttestationProvider,
+    trustMarkSource = walletCoreConfig.trustMarkSource,
 ) {
     withLogger(walletCoreLogController)
     withTransactionLogger(walletCoreTransactionLogController)
@@ -611,6 +616,10 @@ configureOpenId4Vp {
     withFormats(
         Format.MsoMdoc.ES256, Format.SdJwtVc.ES256
     )
+    withTransactionDataTypes(
+        TransactionDataType.QES_APPROVAL,
+        TransactionDataType.QES
+    )
 }
 ```
 
@@ -623,6 +632,7 @@ Production meaning:
 | `ClientIdScheme.Preregistered` | Verifiers are explicitly configured in the wallet. | Use for closed pilots or controlled ecosystems. Add production verifier API URL, legal name, and client ID. |
 | `withSchemes` | URI schemes the app accepts for OpenID4VP. | Keep only schemes required by your supported protocols and profiles. |
 | `withFormats` | Credential formats and algorithms supported in presentation. | Keep only formats and algorithms your issuers and verifiers support and that are approved by your security profile. |
+| `withTransactionDataTypes` | Signing transaction-data types accepted with a presentation request. | Keep QES approval and QES request enabled when supporting these flows; see [Transaction data configuration](CONFIGURATION.md#transaction-data-configuration). |
 
 If using preregistered verifiers, add:
 
@@ -770,8 +780,9 @@ static trust store built from PEM files under:
 resources-logic/src/main/res/raw
 ```
 
-The two models are either/or: a custom store wins over the ETSI store, which wins over static
-certificates.
+Use the configured ETSI trusted lists or supply explicit trust anchors for reader authentication.
+Explicit `trustedCertificates(...)` take precedence over the shared trusted-list configuration for
+reader authentication.
 
 The repository still ships development/demo trust-anchor resources, although the reference
 flavors no longer load them for reader trust. If your deployment uses the static model, in
@@ -786,11 +797,14 @@ production:
 Example:
 
 ```kotlin
-configureReaderTrustStore(
-    context,
-    R.raw.ms_iaca_2026,
-    R.raw.ms_reader_root_2026
-)
+configureReaderAuthentication {
+    trustedCertificates(
+        context,
+        R.raw.ms_iaca_2026,
+        R.raw.ms_reader_root_2026
+    )
+    enforceIfPresent()
+}
 ```
 
 Certificate governance:
@@ -802,9 +816,14 @@ Certificate governance:
 
 ### ETSI Trusted Lists (LoTE)
 
-Both reference flavors (`dev` and `demo`) configure trust from ETSI TS 119 602 Lists of Trusted
-Entities instead of static certificates. One trust source is built from the configured list URLs
-and shared by issuer trust, status-list signer trust, and reader/verifier authentication:
+Both reference flavors (`dev` and `demo`) configure ETSI TS 119 602 trusted lists in
+`WalletCoreConfigImpl.kt`. Their credential issuer-trust policy uses `ENFORCE` for the configured
+mdoc and SD-JWT PID types and defaults to `INFORM` for other attestations. The Wallet classifies
+only those PID types. See [CONFIGURATION.md](CONFIGURATION.md) for the reference configuration
+and its expected behavior.
+
+For a production deployment that requires `ENFORCE` for every issued credential type, the example
+below uses global enforcement and requires corresponding approved trust classifications:
 
 ```kotlin
 configureEtsiTrust {
@@ -823,6 +842,10 @@ configureIssuerTrust {
   policy {
     default(TrustPolicy.Action.ENFORCE)
   }
+  requireSignedMetadata()
+  // the production target: registration checking on. The reference build instead drives both
+  // policies from the Settings switch, which ships off — see the next section
+  configureIssuerRegistrationPolicy(IssuerRegistrationPolicy.Enabled)
 }
 configureDocumentStatusResolver {
   configureTrust {
@@ -831,37 +854,100 @@ configureDocumentStatusResolver {
     }
   }
 }
-configureReaderTrustStore {
-  readerAuthPolicy(ReaderAuthPolicy.EnforceIfPresent)
+configureReaderAuthentication {
+  enforceIfPresent()
 }
+configureWrpRegistrationPolicy(WrpRegistrationPolicy.Enabled)
 ```
 
-The behavior differs per area and protocol. For example, untrusted verifiers are handled
-differently by OpenID4VP (request rejected at resolution) and by the ISO 18013 paths (consent
-shown; disclosure then gated at send by `ReaderAuthPolicy`). Change this configuration carefully.
+Validate the chosen configuration with the issuance and presentation services supported by your
+deployment.
 
 Production requirements for a trusted-list deployment:
 
 * Use production LoTE URLs from the approved trust framework, over HTTPS.
-* Remove the dev relaxations. `relaxCertificateProfiles()` disables the ETSI TS 119 412-6 /
-  TS 119 411-8 end-entity certificate profile checks and `relaxPkixRevocation()` disables CRL/OCSP
-  revocation checking — both are dev-PKI workarounds and must not ship.
-* Classify every credential type you issue (`classifications`) so issuer and status-list trust
-  actually evaluate it; unclassified types are silently skipped.
-* Decide the trust policies deliberately: `INFORM` records the verdict without blocking,
-  `ENFORCE` rejects (issuance: document deleted; status: resolution fails). If the app must show
-  or act on `INFORM` verdicts, consume `IssueEvent.DocumentIssued.issuerTrustResult`.
-* Decide the `ReaderAuthPolicy`. `AlwaysRequire` refuses any reader without verified reader
-  authentication (empty status-10 response); `EnforceIfPresent` admits readers that send no
-  reader authentication.
-* Verify how the trusted-list JWTs themselves are authenticated. The SDK's default verifier
-  checks each list's signature against the certificate embedded in the list itself; if your trust
-  framework requires pinning or full chain validation of the list signer, provide a custom
-  `jwtSignatureVerifier`.
-* Review the cache windows (defaults: 24-hour on-disk list cache, 20-minute in-memory anchor
-  cache) against how quickly distrust must propagate.
-* Test both directions: a verifier/issuer on the list succeeds; one not on the list is refused in
-  every protocol.
+* Remove the development-only trust relaxations (`relaxCertificateProfiles()` and
+  `relaxPkixRevocation()`) from production configuration.
+* Review which credential types require trust enforcement and configure their classifications
+  and trusted lists accordingly. Decide how those classifications will be maintained.
+* Configure the registration-certificate list (`wrprcProviders`) and enable registration checking
+  as described in the next section.
+* Review the issuer-trust and status-list-trust policies against the deployment's requirements.
+  For credential issuer trust, `ENFORCE` requires verified trust for issuance; `INFORM` makes this
+  check nonblocking, including when issuer trust is unverified or untrusted.
+* Choose the reader-authentication policy required by the deployment.
+* Review trusted-list verification and cache settings against the deployment's trust requirements.
+* Test credential issuer trust for both PID and non-PID issuance, covering trusted, untrusted and
+  unverifiable credentials. Confirm the configured policy and remaining issuance checks behave as expected.
+  Test status checks and reader/verifier authentication for each supported protocol.
+
+### Registration Certificates: The Second Trust Layer
+
+Trust is evaluated on two independent layers, and passing one says nothing about the other:
+
+| | Access certificate | Registration certificate |
+|---|---|---|
+| Answers | *who is this party* | *what is it registered to do* |
+| Establishes | authentication of the issuer or verifier | the registered identity, declared purpose, privacy policy, the provider role the party is entitled to, and the attestation types and claims it may issue or request |
+| Trust source | its own trusted list | the registration-certificate trusted list, from the same LoTE configuration |
+
+The two layers are not interchangeable: an authenticated issuer that is not registered for what it
+offers is refused, and a registered issuer that fails authentication is refused too.
+
+**This layer is off by default and must be switched on.** Access-certificate trust is always
+enforced, but registration-certificate checking is governed by the *Check Registration Certificates*
+setting, which the reference build ships **off**. One setting drives both the issuer policy
+(`configureIssuerRegistrationPolicy`) and the verifier policy (`configureWrpRegistrationPolicy`).
+While it is off, none of the behavior described below happens: nothing is evaluated, nothing is
+refused or warned about, and the verified indicator falls back to the access certificate alone.
+**A production deployment must turn it on** — and should decide whether to keep the switch
+reachable by users at all, since it turns a trust check off.
+
+Everything below describes behavior with the setting on. The app treats the two directions
+differently, and the asymmetry is intentional:
+
+* **Issuance is strict.** A document is stored only when the issuer's registration is verified and
+  covers the credential being issued. Anything short of that — no registration, one that does not
+  pass validation, one not entitled to the provider role the offer requires, or one that does not
+  cover the offer — stops the flow and reports it on the same
+  "Issuance blocked" sheet an authentication failure uses, because the distinction does not change
+  what the user can do about it. The refusal lands before anything is stored, and a refused
+  re-issuance leaves the document the user already holds in place.
+* **Presentation warns rather than blocks.** A request whose registration is not verified still
+  reaches the consent screen, shown without the verified indicator and behind a warning the user
+  must acknowledge before sharing. A request whose registration *is* verified but that reaches
+  beyond the registered scope keeps the indicator, marks each requested item outside that scope,
+  and gates sharing behind the same acknowledgement. Access-certificate failures continue to block
+  outright where the protocol allows it.
+
+The verified indicator needs both layers: a trusted access certificate and a registration that did
+not fail validation.
+
+Production requirements:
+
+* **Turn the registration check on**, and decide whether the switch stays user-visible. Shipping it
+  on but toggleable leaves users able to disable a trust check; shipping it on and hidden — or
+  fixing both policies to `Enabled` in your production flavor — is the stricter choice.
+* Configure the registration-certificate trusted list (`wrprcProviders`) alongside the others.
+  Without it, registration certificates have no trust source, and issuance is refused rather than
+  waved through.
+* Confirm with every issuer that it presents a registration certificate the configured trusted list
+  accepts, that it carries the entitlement for the provider role its offers require — `PID_Provider`
+  for PIDs, and one of the QEAA, PuB-EAA or EAA provider entitlements for anything else — and that
+  its registered scope covers everything it offers. This is a hard dependency: an issuer that fails
+  any of these conditions cannot deliver documents at all.
+* Confirm with every verifier that its requests carry a registration certificate and stay within
+  the registered scope, so users are not asked to acknowledge a warning on every routine
+  transaction.
+* Confirm that each party's registration and access certificates are issued to the same registered
+  organization, and that the registration certificate's revocation status can be checked. A
+  registration whose status cannot be established does not pass.
+* Test the refusals, not just the happy path: an unregistered issuer, an issuer whose registration
+  lacks the entitlement for a type it offers, an issuer offering a type outside its registered
+  scope, and a verifier over-asking. Confirm a refused re-issuance leaves the existing document in
+  place and usable.
+* Test both states of the setting if you keep it toggleable, including applying changes after an
+  app restart.
 
 ## Issuer Configuration: `issuersConfig`
 
@@ -995,6 +1081,37 @@ The production Wallet Provider must:
 * Have availability targets aligned with issuance and reissuance flows.
 
 Do not point production builds to EUDI demo wallet-provider services.
+
+## Trust Mark Deployment
+
+Set `WalletCoreConfig.trustMarkSource` to the Trust Mark configuration for your wallet solution.
+The default uses a sample Gist resource and a certification-page URL containing
+`WALLET_SOLUTION_ID`. Replace the sample values in your production flavor with the correct
+resource and certification URLs. See
+[Trust Mark configuration](CONFIGURATION.md#trust-mark-configuration) for instructions.
+
+The app does not check certification, recognition, expiry, revocation or wallet instance
+attestation, or automatically remove the mark when certification changes. Check that the
+displayed image, text and links match your wallet's actual certification status before release.
+
+Test the following:
+
+* On a clean install, the introduction appears after splash, Continue proceeds to PIN setup,
+  and later launches skip the completed introduction.
+* "About EUDI Wallet" opens from the side menu.
+* In both the introduction and About views, "EUDI Wallet Provider Trusted List" opens the
+  list of certified wallets and "Certification information page" opens your wallet's
+  certification page in the browser. Both links display an external-link icon.
+* The Trust Mark image is centered above its localized text and keeps its original proportions.
+  Check long text and larger fonts: the text should use the available width, wrap fully and
+  scroll with the screen while Welcome's Continue remains available. Resource and image
+  loading errors offer Retry.
+
+For an upgrade release, confirm whether existing users should see the introduction and test
+that flow.
+
+The app can report when it cannot open a link. Once the browser opens, page-loading and network
+errors are handled by the browser.
 
 ## Document Issuance Rules
 
@@ -1133,16 +1250,22 @@ QtspData(
 
 Do not use demo RQES values in production.
 
-| Field | Meaning | Production value |
-| --- | --- | --- |
-| `name` | QTSP display name. | Official QTSP/service name shown to users. |
-| `endpoint` | CSC or QTSP signing endpoint. | Production HTTPS endpoint from the QTSP. |
-| `tsaUrl` | Timestamp authority URL. | Approved TSA endpoint, if required by the signing profile. |
-| `clientId` | OAuth/client identifier for the wallet or broker. | Production client ID issued by QTSP or authorization server. |
-| `clientSecret` | OAuth client secret in current SDK config. | Avoid embedding real confidential secrets in the app. Use a backend broker or public-client profile where possible. |
-| `authFlowRedirectionURI` | Redirect URI for RQES authorization. | Must match manifest placeholders and QTSP registration. |
-| `hashAlgorithm` | Hash algorithm for signing. | Use approved algorithm, currently SHA-256 in the reference config. |
-| `documentRetrievalConfig` | Certificate/trust config for retrieving documents. | Replace demo certificates with production trusted certificates. |
+When creating the production flavor, keep the `signingLogger` supplied through `ConfigLogicImpl`
+to `RQESConfigImpl` so signing activity appears in transaction history. This remains active when
+`printLogs` is false. See the [RQES example](CONFIGURATION.md#general-configuration) and
+[transaction-history behavior](#transaction-history).
+
+| Field                     | Meaning                                            | Production value                                                                                                    |
+|---------------------------|----------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `name`                    | QTSP display name.                                 | Official QTSP/service name shown to users.                                                                          |
+| `endpoint`                | CSC or QTSP signing endpoint.                      | Production HTTPS endpoint from the QTSP.                                                                            |
+| `tsaUrl`                  | Timestamp authority URL.                           | Approved TSA endpoint, if required by the signing profile.                                                          |
+| `clientId`                | OAuth/client identifier for the wallet or broker.  | Production client ID issued by QTSP or authorization server.                                                        |
+| `clientSecret`            | OAuth client secret in current SDK config.         | Avoid embedding real confidential secrets in the app. Use a backend broker or public-client profile where possible. |
+| `authFlowRedirectionURI`  | Redirect URI for RQES authorization.               | Must match manifest placeholders and QTSP registration.                                                             |
+| `hashAlgorithm`           | Hash algorithm for signing.                        | Use approved algorithm, currently SHA-256 in the reference config.                                                  |
+| `documentRetrievalConfig` | Certificate/trust config for retrieving documents. | Replace demo certificates with production trusted certificates.                                                     |
+| `signingLogger`           | Records signing activity in transaction history.   | Keep the provided logger configured independently of diagnostic logging.                                            |
 
 Important:
 
@@ -1414,7 +1537,7 @@ Persisted state keys (encrypted DataStore):
 * `PinLockoutEndsAt` — wall-clock timestamp when the current lockout
   ends.
 
-Default policy (`AuthenticationConfigImpl`):
+Default policy (`WalletAuthenticationConfig`):
 
 | Event                                       | Behavior                                     |
 |---------------------------------------------|----------------------------------------------|
@@ -1502,6 +1625,29 @@ The app has:
 * File logging through `LogControllerImpl`.
 * Transaction logging through `WalletCoreTransactionLogControllerImpl`.
 
+### Transaction history
+
+Wallet operations and RQES signing activity appear in the app's locally stored transaction history.
+Keep transaction logging configured for every flavor, including release builds. Later updates to a
+transaction refresh its existing record.
+
+When a presentation includes recorded signing-request information, its details show one
+**SIGNING REQUEST / Signature details** section. It is read-only, including any document locations.
+Signing results appear in separate history entries.
+
+Available hashes and expected document checksums are displayed as supplied information. They do
+not represent a document-integrity verification result.
+
+Data-deletion request and DPA-report attempts are associated with their originating presentation
+and communication method. They appear in that presentation's history rather than the main
+transaction list. An attempt records that the external application opened; it does not confirm that
+a request was sent, received, or fulfilled. Deleting a presentation also deletes its linked attempts.
+
+Deleting a pending issuance log removes its current entry. When issuance later completes, a log
+can appear again. Log deletion does not cancel issuance.
+
+### Diagnostic logging
+
 Production logging rules:
 
 * Do not log PID attributes.
@@ -1526,7 +1672,7 @@ consider:
 Example production-safe pattern:
 
 ```kotlin
-if (configLogic.appBuildType == AppBuildType.DEBUG) {
+if (BuildConfig.DEBUG) {
     Timber.plant(Timber.DebugTree(), fileLoggerTree)
 } else {
     Timber.plant(ReleaseRedactingTree())
@@ -2038,6 +2184,8 @@ Controls to evidence:
 
 * Data minimization is applied.
 * User consent is clear before disclosure.
+* The purpose shown for a presentation request comes from the verifier's registration certificate
+  rather than being self-asserted, and a request beyond the registered scope is visible as such.
 * Analytics avoids personal data.
 * Retention is defined.
 * Logs and transaction history are privacy-reviewed.
@@ -2047,6 +2195,8 @@ Controls to evidence:
 Project-specific actions:
 
 * Review presentation request UI for clarity.
+* Review how the registered identity, purpose, and privacy policy are surfaced on the consent
+  screen, and how an unregistered or over-asking verifier is distinguished from a compliant one.
 * Review transaction log contents.
 * Review analytics providers.
 * Review support log export.
@@ -2070,6 +2220,14 @@ Must provide:
 * Rate limits and fraud controls.
 * Audit logs.
 * Incident and key rotation processes.
+* A registration certificate the wallet's configured registration trusted list accepts, issued to
+  the same registered organization as the issuer's access certificate. An issuer that does not
+  present one cannot issue.
+* Registered attestation types covering every credential configuration the issuer offers. Offering
+  a type outside the registered scope refuses the whole operation, and no app configuration
+  overrides that.
+* A checkable revocation status for the registration certificate. A status that cannot be
+  established counts as a failure, not as a pass.
 
 ### Verifier
 
@@ -2082,6 +2240,15 @@ Must provide:
 * Data minimization by request.
 * Trust framework integration.
 * User-facing legal name and purpose.
+* A registration certificate carried in the request, accepted by the wallet's configured
+  registration trusted list, issued to the same registered organization as the certificate that
+  signs the request, and with a checkable revocation status. Its contents are shown to the user
+  before they share anything: the registered name and identifier, the declared purpose, and the
+  privacy policy link. A verifier without one loses the verified indicator and is presented behind
+  a warning the user must acknowledge.
+* Requested claims kept within the registered scope. Claims beyond it are flagged to the user
+  individually and turn the consent screen into an explicit acknowledgement before sharing, which
+  depresses completion rates.
 
 ### Wallet Provider
 
@@ -2113,15 +2280,15 @@ For existing demo release:
 
 ```powershell
 .\gradlew.bat clean
-.\gradlew.bat :app:assembleDemoRelease
+.\gradlew.bat :androidApp:assembleDemoRelease
 ```
 
 For recommended production flavor:
 
 ```powershell
 .\gradlew.bat clean
-.\gradlew.bat :app:assembleProdRelease
-.\gradlew.bat :app:bundleProdRelease
+.\gradlew.bat :androidApp:assembleProdRelease
+.\gradlew.bat :androidApp:bundleProdRelease
 ```
 
 ### Install Local Release APK
@@ -2146,9 +2313,17 @@ Before release candidate approval, test:
 * Authorization-code issuance redirect.
 * Deferred issuance.
 * Reissuance.
+* Issuance refused because the provider's registration certificate is absent, invalid, or does not
+  cover the offered document.
+* Reissuance refused for the same reason, confirming the document already held survives it.
 * Revocation.
 * Same-device OpenID4VP presentation.
 * Cross-device presentation.
+* Remote presentation rejection with and without a redirect. Confirm that **Close** and Android Back
+  both exit to the initiating screen, including when the presentation starts during issuance. When a
+  redirect is supplied, confirm it opens and returning to the Wallet does not reopen the presentation.
+* Presentation from a verifier with no valid registration certificate, and from one asking beyond
+  its registered scope.
 * Relayed OpenID4VP request and response handling.
 * Proximity QR/BLE.
 * NFC engagement, if supported.
@@ -2162,6 +2337,24 @@ Before release candidate approval, test:
 * Malformed deep links.
 * Malicious credential offer.
 * App update from previous production version.
+
+### Verify transaction history in a minified release
+
+Exercise these cases in the release artifact that will be distributed, with R8 enabled:
+
+* Record issuance, reissuance, credential deletion, presentation, and signing activity; restart
+  the app and verify that the records remain available and display correctly.
+* Exercise QES approval and QES requests with transaction data. Check the details under each
+  applicable request option, document links where supplied, and the read-only recorded details
+  after restarting the app. Also check that requests without transaction data show no extra section.
+* Confirm that updates to the same transaction refresh its existing entry. Delete a pending
+  issuance log and verify that a later completion can create the log again, as intended.
+* Verify exact-presentation association and communication methods in deletion-request/report
+  histories. Confirm that deleting the presentation removes its linked attempts.
+* Check external-launch failures and persistence failures separately. Retrying a failed save must
+  retain the same attempt and must not reopen the external application.
+
+Verify these behaviors in the minified release; passing debug tests alone is insufficient.
 
 ## Production Test Matrix
 
@@ -2243,7 +2436,8 @@ Before going live, define:
 * QTSP SLA.
 * Incident response contacts.
 * Vulnerability disclosure process.
-* Certificate expiry monitoring.
+* Certificate expiry monitoring, registration certificates included — an expired or revoked one
+  stops every issuance from that provider.
 * Emergency app update process.
 * Forced minimum-version process.
 * Key compromise process.
@@ -2261,6 +2455,8 @@ Rehearse these before launch:
 * Wallet Provider outage.
 * QTSP outage.
 * Production certificate expiry.
+* An issuer or verifier removed from the registration trusted list, or its registration certificate
+  expired or revoked. For an issuer this stops issuance and re-issuance entirely.
 * Bad app release.
 * RASP false positive affecting real users.
 * Play Integrity verdict degradation.
@@ -2278,7 +2474,9 @@ Production UX must clearly explain:
 * Why camera permission is needed.
 * Why Bluetooth/location permissions are needed for proximity.
 * What data a verifier is requesting.
-* Whether the verifier is trusted.
+* Whether the verifier is trusted, and separately whether it is registered for what it is asking —
+  including which requested items fall outside its registration.
+* Why a document could not be added, when the provider is not registered for it.
 * What happens if a document is revoked or expired.
 * What happens if app/device integrity checks fail.
 * How users recover access.
@@ -2295,6 +2493,8 @@ Do not publish until all of these are true:
 * No demo URLs or demo secrets remain in production code/resources.
 * Production signing is controlled and documented.
 * Production trust anchors are installed and documented.
+* Issuer and verifier registration certificates validate end-to-end against the production trusted
+  lists, and every issuer's registered scope covers what it offers.
 * Issuer, verifier, wallet provider, and QTSP integrations pass end-to-end testing.
 * Presentation relay-risk controls and residual risks are documented for verifier scenarios.
 * MASVS assessment is complete with accepted residual risks.

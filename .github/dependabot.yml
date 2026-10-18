@@ -1,18 +1,17 @@
 version: 2
+# open-pull-requests-limit 0 turns version updates off: this fork takes dependency bumps from upstream's
+# syncs and by hand, and a private copy of it is not a fork, so Dependabot opened PRs there that would
+# have broken pins we hold on purpose (Kotlin, the ETSI library on Android). Security updates have their
+# own limit and are not affected.
 updates:
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
+    open-pull-requests-limit: 0
 
   - package-ecosystem: gradle
     directory: "/"
     schedule:
       interval: weekly
-
-  - package-ecosystem: bundler
-    directory: "/"
-    schedule:
-      interval: weekly
-    ignore:
-      - dependency-name: "*"
+    open-pull-requests-limit: 0

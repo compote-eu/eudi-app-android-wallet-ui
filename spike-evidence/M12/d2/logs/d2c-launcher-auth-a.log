@@ -1,0 +1,23 @@
+## D2c root=launcher state=auth kill=a 2026-10-17T19:56:52+02:00
+pin done (try 1)
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+at request
+pid before kill: 24265
+pid after: ''
+-- relaunch (recents)
+shot d2c-launcher-auth-a
+pid: 24568 gate=0 state=resource-id="ux-state-request"
+10-17 19:57:15.208 UX-SPIKE: screen SCR-pres-auth: interpreted from the bundle (TPL-sheet, 4 nodes), state auth, ui_state default
+10-17 19:57:15.686 UX-SPIKE: a11y: SCR-pres-auth focus-heading title (focused)
+10-17 19:57:16.668 UX-SPIKE: enter verification-code (gen 4)
+10-17 19:57:16.668 UX-SPIKE: verificationCode#1 (script slow)
+10-17 19:57:16.689 UX-SPIKE: screen SCR-pres-verification-code: interpreted from the bundle (TPL-sheet, 8 nodes), state verification-code, ui_state no-url
+10-17 19:57:21.562 UX-SPIKE: hook module loaded
+10-17 19:57:21.808 UX-SPIKE: launch intent already consumed, cold-boot link skipped
+10-17 19:57:21.864 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 19:57:22.052 UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 19:57:22.053 UX-SPIKE: restore auth -> request
+10-17 19:57:22.053 UX-SPIKE: enter request (gen 4)
+10-17 19:57:22.053 UX-SPIKE: restore: Restored(state=request, reinvoked=false)
+10-17 19:57:22.311 UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+10-17 19:57:22.458 UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)

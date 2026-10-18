@@ -16,16 +16,6 @@
 
 package eu.europa.ec.authenticationlogic.provider
 
-import kotlin.time.Duration
-
-sealed interface PinLockoutState {
-    data object Idle : PinLockoutState
-    data class Active(
-        val remaining: Duration,
-        val total: Duration
-    ) : PinLockoutState
-}
-
 interface PinThrottleProvider {
 
     /**

@@ -24,10 +24,13 @@ import eu.europa.ec.commonfeature.ui.request.model.RequestCombinationUi
 import eu.europa.ec.commonfeature.ui.request.transformer.RequestTransformer
 import eu.europa.ec.corelogic.controller.TransferEventPartialState
 import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
+import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.controller.WalletCorePresentationController
 import eu.europa.ec.corelogic.model.PresentationCombinationDomain
 import eu.europa.ec.eudi.wallet.document.IssuedDocument
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import eu.europa.ec.shared.navigation.DashboardRoute
+import eu.europa.ec.testfeature.util.mockedRelyingParty
 import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransformToUiItemsStrings
 import eu.europa.ec.testfeature.util.getMockedMdlWithBasicFields
 import eu.europa.ec.testfeature.util.getMockedPidWithBasicFields
@@ -39,8 +42,6 @@ import eu.europa.ec.testfeature.util.mockedPlainFailureMessage
 import eu.europa.ec.testfeature.util.mockedSelectableClaims
 import eu.europa.ec.testfeature.util.mockedValidMdlWithBasicFieldsRequestMatch
 import eu.europa.ec.testfeature.util.mockedValidPidWithBasicFieldsRequestMatch
-import eu.europa.ec.testfeature.util.mockedVerifierIsTrusted
-import eu.europa.ec.testfeature.util.mockedVerifierName
 import eu.europa.ec.testlogic.extension.expectNoEvents
 import eu.europa.ec.testlogic.extension.runFlowTest
 import eu.europa.ec.testlogic.extension.runTest
@@ -61,6 +62,13 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import java.net.URI
+import eu.europa.ec.shared.resources.Res
+import eu.europa.ec.shared.resources.request_transaction_trust_framework
+import eu.europa.ec.testfeature.util.StringResourceProviderMocker.mockTransactionDataStrings
+import eu.europa.ec.testfeature.util.mockedTransactionDataApproval
+import eu.europa.ec.testfeature.util.mockedTransactionQueryId
+import eu.europa.ec.testfeature.util.mockedUuid
+import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 
 class TestPresentationRequestInteractor {
 
@@ -77,6 +85,9 @@ class TestPresentationRequestInteractor {
     private lateinit var walletCoreDocumentsController: WalletCoreDocumentsController
 
     @Mock
+    private lateinit var walletEngine: WalletEngine
+
+    @Mock
     private lateinit var uuidProvider: UuidProvider
 
     private lateinit var interactor: PresentationRequestInteractor
@@ -91,6 +102,7 @@ class TestPresentationRequestInteractor {
             resourceProvider = resourceProvider,
             walletCorePresentationController = walletCorePresentationController,
             walletCoreDocumentsController = walletCoreDocumentsController,
+            walletEngine = walletEngine,
             uuidProvider = uuidProvider
         )
 
@@ -146,16 +158,14 @@ class TestPresentationRequestInteractor {
             mockWalletCorePresentationControllerEventEmission(
                 event = TransferEventPartialState.RequestReceived(
                     combinationsDomain = emptyList(),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
             // When
             interactor.getRequestDocuments().runFlowTest {
                 val expectedResult = PresentationRequestInteractorPartialState.NoData(
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
 
                 // Then
@@ -212,8 +222,7 @@ class TestPresentationRequestInteractor {
                             matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
             whenever(walletCoreDocumentsController.getAllIssuedDocuments())
@@ -268,8 +277,7 @@ class TestPresentationRequestInteractor {
                             )
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -290,8 +298,7 @@ class TestPresentationRequestInteractor {
                     )
 
                     val expectedResult = PresentationRequestInteractorPartialState.Success(
-                        verifierName = mockedVerifierName,
-                        verifierIsTrusted = mockedVerifierIsTrusted,
+                        relyingParty = mockedRelyingParty,
                         combinationsUi = listOf(
                             RequestCombinationUi(
                                 documents = RequestTransformer.transformToUiItems(
@@ -303,6 +310,7 @@ class TestPresentationRequestInteractor {
                                     mockedValidPidWithBasicFieldsRequestMatch,
                                     mockedValidMdlWithBasicFieldsRequestMatch,
                                 ),
+                                transactionData = null,
                             )
                         ),
                         claimsAreSelectable = mockedSelectableClaims,
@@ -336,8 +344,7 @@ class TestPresentationRequestInteractor {
                             matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
             whenever(walletCoreDocumentsController.getAllIssuedDocuments())
@@ -413,8 +420,7 @@ class TestPresentationRequestInteractor {
                             matches = listOf(mockedValidPidWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -423,8 +429,7 @@ class TestPresentationRequestInteractor {
                 // Then
                 assertEquals(
                     PresentationRequestInteractorPartialState.NoData(
-                        verifierName = mockedVerifierName,
-                        verifierIsTrusted = mockedVerifierIsTrusted,
+                        relyingParty = mockedRelyingParty,
                     ),
                     awaitItem()
                 )
@@ -505,8 +510,7 @@ class TestPresentationRequestInteractor {
                             )
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
 
@@ -524,8 +528,7 @@ class TestPresentationRequestInteractor {
                     )
 
                     val expectedResult = PresentationRequestInteractorPartialState.Success(
-                        verifierName = mockedVerifierName,
-                        verifierIsTrusted = mockedVerifierIsTrusted,
+                        relyingParty = mockedRelyingParty,
                         combinationsUi = listOf(
                             RequestCombinationUi(
                                 documents = RequestTransformer.transformToUiItems(
@@ -534,6 +537,7 @@ class TestPresentationRequestInteractor {
                                     claimsAreSelectable = mockedSelectableClaims,
                                 ),
                                 matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch),
+                                transactionData = null,
                             )
                         ),
                         claimsAreSelectable = mockedSelectableClaims,
@@ -568,8 +572,7 @@ class TestPresentationRequestInteractor {
                             matches = listOf(mockedValidPidWithBasicFieldsRequestMatch)
                         )
                     ),
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted
+                    relyingParty = mockedRelyingParty,
                 )
             )
             mockRequestAllowsClaimSelection(response = mockedNonSelectableClaims)
@@ -584,8 +587,7 @@ class TestPresentationRequestInteractor {
                 )
 
                 val expectedResult = PresentationRequestInteractorPartialState.Success(
-                    verifierName = mockedVerifierName,
-                    verifierIsTrusted = mockedVerifierIsTrusted,
+                    relyingParty = mockedRelyingParty,
                     combinationsUi = listOf(
                         RequestCombinationUi(
                             documents = RequestTransformer.transformToUiItems(
@@ -594,6 +596,7 @@ class TestPresentationRequestInteractor {
                                 claimsAreSelectable = mockedNonSelectableClaims,
                             ),
                             matches = listOf(mockedValidPidWithBasicFieldsRequestMatch),
+                            transactionData = null,
                         )
                     ),
                     claimsAreSelectable = mockedNonSelectableClaims,
@@ -635,10 +638,141 @@ class TestPresentationRequestInteractor {
             resourceProvider = resourceProvider,
             uuidProvider = uuidProvider,
             walletCoreDocumentsController = walletCoreDocumentsController,
+            walletEngine = walletEngine,
         )
 
         assertEquals("DefaultPresentationScopeId", newInteractor.presentationScopeId)
     }
+    // Case 15:
+    // 1. A revoked PID and a valid mDL each carry transaction data.
+    //
+    // Case 15 Expected Result:
+    // Only the mDL contributes transaction rows in a collapsed section, without RP origin or identifier.
+    @Test
+    fun `Given Case 15, When getRequestDocuments is called, Then Case 15 Expected Result is returned`() =
+        coroutineRule.runTest {
+            // Given
+            val pid = getMockedPidWithBasicFields()
+            val mdl = getMockedMdlWithBasicFields()
+            mockTransformToUiItemsStrings(resourceProvider = resourceProvider)
+            mockTransactionDataStrings(resourceProvider = resourceProvider)
+            whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
+            mockGetAllIssuedDocumentsCall(response = listOf(pid, mdl))
+            mockIsDocumentRevoked(revokedIds = setOf(pid.id))
+            val matches = listOf(
+                mockedValidPidWithBasicFieldsRequestMatch.copy(transactionData = listOf(mockedTransactionDataApproval)),
+                mockedValidMdlWithBasicFieldsRequestMatch.copy(
+                    queryId = mockedTransactionQueryId,
+                    transactionData = listOf(mockedTransactionDataApproval),
+                ),
+            )
+            mockWalletCorePresentationControllerEventEmission(
+                event = TransferEventPartialState.RequestReceived(
+                    combinationsDomain = listOf(PresentationCombinationDomain(matches = matches)),
+                    relyingParty = mockedRelyingParty,
+                ),
+            )
+
+            // When
+            interactor.getRequestDocuments().runFlowTest {
+                // Then
+                val result = awaitItem() as PresentationRequestInteractorPartialState.Success
+                val combination = result.combinationsUi.single()
+                assertEquals(listOf(mdl.id), combination.documents.map { document -> document.domainPayload.docId })
+                val section = combination.transactionData!!
+                val rows = section.details.nestedItems.map { item -> item.header }
+                assertEquals(false, section.details.isExpanded)
+                assertEquals(
+                    listOf("1"),
+                    rows.filter { row -> row.overlineText == "Number of signatures" }
+                        .map { row -> (row.mainContentData as ListItemMainContentDataUi.Text).text },
+                )
+                assertEquals(
+                    emptyList<String>(),
+                    rows.filter { row -> row.overlineText == "RP origin" }
+                        .map { row -> (row.mainContentData as ListItemMainContentDataUi.Text).text },
+                )
+                assertEquals(
+                    emptyList<String>(),
+                    rows.filter { row -> row.overlineText == "RP identifier" }
+                        .map { row -> (row.mainContentData as ListItemMainContentDataUi.Text).text },
+                )
+                assertEquals(
+                    listOf(mockedTransactionQueryId),
+                    rows.filter { row -> row.overlineText == "Requested credentials" }
+                        .map { row -> (row.mainContentData as ListItemMainContentDataUi.Text).text },
+                )
+            }
+        }
+
+    // Case 16:
+    // 1. A match has transaction data but no requested claims.
+    //
+    // Case 16 Expected Result:
+    // The existing NoData result is preserved.
+    @Test
+    fun `Given Case 16, When getRequestDocuments is called, Then Case 16 Expected Result is returned`() =
+        coroutineRule.runTest {
+            // Given
+            val match = mockedValidPidWithBasicFieldsRequestMatch.copy(
+                requestedClaims = emptyList(),
+                transactionData = listOf(mockedTransactionDataApproval),
+            )
+            mockWalletCorePresentationControllerEventEmission(
+                event = TransferEventPartialState.RequestReceived(
+                    combinationsDomain = listOf(PresentationCombinationDomain(matches = listOf(match))),
+                    relyingParty = mockedRelyingParty,
+                ),
+            )
+
+            // When
+            interactor.getRequestDocuments().runFlowTest {
+                // Then
+                assertEquals(
+                    PresentationRequestInteractorPartialState.NoData(relyingParty = mockedRelyingParty),
+                    awaitItem(),
+                )
+            }
+        }
+
+    // Case 17:
+    // 1. Resolving a transaction field label throws.
+    //
+    // Case 17 Expected Result:
+    // The interactor's existing safeAsync boundary returns Failure with the exception's message.
+    @Test
+    fun `Given Case 17, When getRequestDocuments is called, Then Case 17 Expected Result is returned`() =
+        coroutineRule.runTest {
+            // Given
+            mockTransformToUiItemsStrings(resourceProvider = resourceProvider)
+            mockTransactionDataStrings(resourceProvider = resourceProvider)
+            whenever(uuidProvider.provideUuid()).thenReturn(mockedUuid)
+            whenever(resourceProvider.getString(Res.string.request_transaction_trust_framework))
+                .thenThrow(mockedExceptionWithMessage)
+            mockGetAllIssuedDocumentsCall(response = listOf(getMockedPidWithBasicFields()))
+            mockIsDocumentRevoked(isRevoked = false)
+            val match = mockedValidPidWithBasicFieldsRequestMatch.copy(
+                transactionData = listOf(mockedTransactionDataApproval),
+            )
+            mockWalletCorePresentationControllerEventEmission(
+                event = TransferEventPartialState.RequestReceived(
+                    combinationsDomain = listOf(PresentationCombinationDomain(matches = listOf(match))),
+                    relyingParty = mockedRelyingParty,
+                ),
+            )
+
+            // When
+            interactor.getRequestDocuments().runFlowTest {
+                // Then
+                assertEquals(
+                    PresentationRequestInteractorPartialState.Failure(
+                        error = mockedExceptionWithMessage.localizedMessage!!,
+                    ),
+                    awaitItem(),
+                )
+            }
+        }
+
     //endregion
 
     //region updateRequestedDocuments
@@ -687,6 +821,7 @@ class TestPresentationRequestInteractor {
                     claimsAreSelectable = mockedNonSelectableClaims,
                 ),
                 matches = listOf(mockedValidMdlWithBasicFieldsRequestMatch),
+                transactionData = null,
             )
 
             // When
@@ -764,11 +899,11 @@ class TestPresentationRequestInteractor {
     }
 
     private suspend fun mockIsDocumentRevoked(isRevoked: Boolean) {
-        whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenReturn(isRevoked)
+        whenever(walletEngine.isDocumentRevoked(any())).thenReturn(isRevoked)
     }
 
     private suspend fun mockIsDocumentRevoked(revokedIds: Set<String>) {
-        whenever(walletCoreDocumentsController.isDocumentRevoked(any())).thenAnswer {
+        whenever(walletEngine.isDocumentRevoked(any())).thenAnswer {
             (it.arguments.first() as String) in revokedIds
         }
     }
@@ -780,6 +915,6 @@ class TestPresentationRequestInteractor {
     //endregion
 
     //region mocked objects
-    private val mockedInitiatorRoute = "mockedInitiatorRoute"
+    private val mockedInitiatorRoute = DashboardRoute
     //endregion
 }

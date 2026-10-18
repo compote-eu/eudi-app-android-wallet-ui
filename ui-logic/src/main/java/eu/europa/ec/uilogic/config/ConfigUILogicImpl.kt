@@ -16,14 +16,15 @@
 
 package eu.europa.ec.uilogic.config
 
-import eu.europa.ec.uilogic.navigation.DashboardScreens
-import eu.europa.ec.uilogic.navigation.IssuanceScreens
-import eu.europa.ec.uilogic.navigation.Screen
+import eu.europa.ec.shared.navigation.AddDocumentRoute
+import eu.europa.ec.shared.navigation.AppRoute
+import eu.europa.ec.shared.navigation.DashboardRoute
+import kotlin.reflect.KClass
 
 class ConfigUILogicImpl : ConfigUILogic {
-    override val dashboardScreenIdentifier: Screen
-        get() = DashboardScreens.Dashboard
+    override val dashboardRoute: KClass<out AppRoute>
+        get() = DashboardRoute::class
 
-    override val issuanceScreenIdentifier: Screen
-        get() = IssuanceScreens.AddDocument
+    override val issuanceRoute: KClass<out AppRoute>
+        get() = AddDocumentRoute::class
 }

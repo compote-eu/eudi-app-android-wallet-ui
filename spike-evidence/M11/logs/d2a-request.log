@@ -1,0 +1,27 @@
+## D2a request (task root = MAIN launch, link via onNewIntent) 2026-10-17T16:47:37+02:00
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+at request
+pid before kill: 9349
+pid after am kill: ''
+-- relaunch (recents)
+shot d2a-request-after
+pid: 9672 gate=0 state=resource-id="ux-state-request"
+10-17 16:47:55.960 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 16:47:56.066 UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 16:47:56.067 UX-SPIKE: enter connecting (gen 1)
+10-17 16:47:56.068 UX-SPIKE: fetchRequest#1 (script slow)
+10-17 16:47:56.068 UX-SPIKE: start deeplink: Started(state=connecting)
+10-17 16:47:56.084 UX-SPIKE: screen SCR-pres-connecting: interpreted from the bundle (TPL-progress, 2 nodes), state connecting, ui_state default
+10-17 16:47:56.087 UX-SPIKE: a11y: SCR-pres-connecting announce-live hero ('Overuje sa totožnosť overovateľa a dostupnosť vašich eDokladov.. Načítava sa žiadosť overovateľa')
+10-17 16:47:59.078 UX-SPIKE: enter request (gen 2)
+10-17 16:47:59.147 UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+10-17 16:47:59.502 UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)
+10-17 16:48:10.686 UX-SPIKE: hook module loaded
+10-17 16:48:11.033 UX-SPIKE: flow FLW-pres-cross-device loaded (provisional=false), script slow
+10-17 16:48:11.267 UX-SPIKE: P4 SavedStateHandle supplied by the entry owner (ANDROID)
+10-17 16:48:11.268 UX-SPIKE: restore request -> snapshot
+10-17 16:48:11.268 UX-SPIKE: restore: Restored(state=request, reinvoked=false)
+10-17 16:48:11.509 UX-SPIKE: screen SCR-pres-request: hand-written (hook), state request, ui_state default
+10-17 16:48:11.721 UX-SPIKE: a11y: SCR-pres-request focus-heading title (focused)
+/sdcard/d2a-request.mp4: 1 file pulled, 0 skipped. 182.6 MB/s (2107386 bytes in 0.011s)
+video d2a-request

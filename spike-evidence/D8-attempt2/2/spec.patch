@@ -1,0 +1,150 @@
+diff --git a/ux/experience/flows/FLW-pres-cross-device.yaml b/ux/experience/flows/FLW-pres-cross-device.yaml
+index 6611f6b..9319eee 100644
+--- a/ux/experience/flows/FLW-pres-cross-device.yaml
++++ b/ux/experience/flows/FLW-pres-cross-device.yaml
+@@ -98,6 +98,7 @@ states:
+         DocMissing: {event: SYS_DOC_MISSING, assign: [{op: set, path: /request/document_name, from: {result: document_name}}]}
+         DocInvalid: {event: SYS_DOC_INVALID, assign: [{op: set, path: /request/document_name, from: {result: document_name}}]}
+         Expired: {event: SYS_EXPIRED}
++        Offline: {event: SYS_NETWORK_LOST}
+         Error: {event: SYS_ERROR}
+     on:
+       SYS_REQUEST_READY: {target: request, kind: main, satisfies: ["UXR:REQ-PRES-001"]}
+@@ -105,9 +106,22 @@ states:
+       SYS_RP_UNTRUSTED: {target: request-untrusted, kind: error, error_class: rp-untrusted, satisfies: ["ARF-HLR:RPA_05", "UXR:REQ-PRES-003"]}
+       SYS_DOC_MISSING: {target: document-missing, kind: error, error_class: document-missing, satisfies: ["UXR:REQ-PRES-011"]}
+       SYS_DOC_INVALID: {target: document-invalid, kind: error, error_class: document-invalid, satisfies: ["UXR:REQ-PRES-012"]}
++      SYS_NETWORK_LOST: {target: offline-loading, kind: alt}
+       SYS_EXPIRED: {target: error-expired, kind: error, error_class: request-expired, satisfies: ["UXR:REQ-PRES-014"]}
+       SYS_ERROR: {target: error, kind: error, error_class: technical-error}
+       CANCEL: {target: cancelled, kind: alt, error_class: user-refusal}
++  offline-loading:
++    type: recovery
++    description: The device went offline while the request loaded (D8-offline) — nothing has been shared; the user retries once the network is back (the request is fetched again) or cancels.
++    screen: SCR-pres-offline-loading
++    ui_state: default
++    back: {policy: event, event: CANCEL}
++    restore: {policy: snapshot}
++    on:
++      RETRY: {target: connecting, kind: alt, satisfies: ["UXR:REQ-PRES-014"]}
++      CANCEL: {target: cancelled, kind: alt, error_class: user-refusal}
++      SYS_EXPIRED: {target: error-expired, kind: error, error_class: request-expired}
++      SYS_ERROR: {target: error, kind: error, error_class: technical-error}
+   request:
+     description: Authenticated verifier, request with mandatory items — who asks, why, which data of which eDoklad; continue or refuse. Ticking an optional item changes the selection and stays here (internal TOGGLE_ITEM; the mandatory items keep the selection non-empty).
+     screen: SCR-pres-request
+diff --git a/ux/product/copy/sk/BRF-001.yaml b/ux/product/copy/sk/BRF-001.yaml
+index d3c9cda..2185721 100644
+--- a/ux/product/copy/sk/BRF-001.yaml
++++ b/ux/product/copy/sk/BRF-001.yaml
+@@ -51,6 +51,21 @@ entries:
+     text: "Overuje sa totožnosť overovateľa a dostupnosť vašich eDokladov."
+     note: Says what the wallet checks while the request loads (relying-party authentication RPA_04, requested eDoklady present and valid).
+     provenance: {authored: "UX writer (integrator, REV-001 F-12); ARF 5.01 §2.1 visibility of system status, no app string", decision: DEC-005}
++  CPY-pres-offline-title:
++    text: "Ste offline"
++    note: Recovery title when the request cannot load without a network connection (D8-offline).
++    provenance: {authored: "UX writer (D8-offline drill); ARF 5.01 §2.9 plain-language error", decision: DEC-005}
++  CPY-pres-offline-text:
++    text: "Žiadosť overovateľa sa nedá načítať bez internetu. Nič ste nezdieľali. Pripojte sa a skúste to znova."
++    note: Says what failed, that nothing was shared, and how to recover (D8-offline).
++    provenance: {authored: "UX writer (D8-offline drill); ARF 5.01 §2.9 plain-language error", decision: DEC-005}
++  CPY-pres-offline-retry:
++    text: "Skúsiť znova"
++    provenance: {source: SRC-APP-STRINGS, ref: L256, quote: "Skúsiť znova"}
++  CPY-pres-offline-cancel:
++    text: "Zrušiť"
++    note: Leaves the offline step; nothing has been shared yet.
++    provenance: {source: SRC-APP-STRINGS, ref: L436, quote: "Zrušiť"}
+   CPY-pres-connecting-cancel:
+     text: "Zrušiť"
+     note: Leaves the loading step; nothing has been shared yet.
+diff --git a/ux/product/services/SVC-pres-authenticate.yaml b/ux/product/services/SVC-pres-authenticate.yaml
+index 5595c96..5c3e0ec 100644
+--- a/ux/product/services/SVC-pres-authenticate.yaml
++++ b/ux/product/services/SVC-pres-authenticate.yaml
+@@ -15,6 +15,7 @@ fixtures:
+   expired-at-sending: [{result: Authenticated}]
+   slow: [{result: Authenticated, delay_ms: 1500}]
+   untrusted: [{result: Authenticated}]
++  offline: [{result: Authenticated}]
+ maturity: candidate
+ sources:
+   - {source: SRC-APP-HOME-UISTATE, ref: L123-139, note: "RemoteDocumentPresentationPage states — authentication after consent (DEC-001)"}
+diff --git a/ux/product/services/SVC-pres-fetch-request.yaml b/ux/product/services/SVC-pres-fetch-request.yaml
+index a654784..770aac3 100644
+--- a/ux/product/services/SVC-pres-fetch-request.yaml
++++ b/ux/product/services/SVC-pres-fetch-request.yaml
+@@ -48,6 +48,8 @@ results:
+     payload: {document_name: string?}
+   Expired:
+     description: The request expired before it could be shown.
++  Offline:
++    description: The device has no network connection while the request loads (D8-offline); the request may be fetched again.
+   Error:
+     description: Any other failure (network, malformed request, unknown); Q-004 RULING-2.
+     payload: {reason: string?}
+@@ -86,6 +88,9 @@ fixtures:
+             - {id: family_name, label_copy: CPY-pres-attr-family-name, value: "Novák", requirement: mandatory}
+   doc-missing:
+     - {result: DocMissing, payload: {document_name: "Občiansky preukaz"}}
++  offline:
++    - {result: Offline, delay_ms: 1500}
++    - {result: RequestReady, payload: *ready_payload, delay_ms: 1500}
+ maturity: candidate
+ sources:
+   - {source: SRC-ARF-5.02, ref: "L393 §4.1.2 Cross Device"}
+diff --git a/ux/product/services/SVC-pres-send.yaml b/ux/product/services/SVC-pres-send.yaml
+index 56901a9..89a1e95 100644
+--- a/ux/product/services/SVC-pres-send.yaml
++++ b/ux/product/services/SVC-pres-send.yaml
+@@ -15,6 +15,7 @@ fixtures:
+   expired-at-sending: [{result: Expired}]
+   slow: [{result: Sent, delay_ms: 3000}]
+   untrusted: [{result: Sent}]
++  offline: [{result: Sent}]
+ maturity: candidate
+ sources:
+   - {source: SRC-ARF-5.02, ref: "L393 §4.1.2 Cross Device"}
+diff --git a/ux/product/services/SVC-pres-verification-code.yaml b/ux/product/services/SVC-pres-verification-code.yaml
+index 8dc766f..ed24418 100644
+--- a/ux/product/services/SVC-pres-verification-code.yaml
++++ b/ux/product/services/SVC-pres-verification-code.yaml
+@@ -15,6 +15,7 @@ fixtures:
+   expired-at-sending: *code
+   slow: [{result: Ready, payload: {code: "482 913", portal_url: "https://www.example.sk/overenie"}, delay_ms: 1500}]
+   untrusted: [{result: Ready, payload: {code: "482 913", portal_url: null}}]
++  offline: *code
+ maturity: candidate
+ sources:
+   - {source: SRC-ARF-5.02, ref: "L393 §4.1.2 Cross Device", note: "the cross-device check that the response goes to the page the user sees"}
+diff --git a/ux/experience/screens/SCR-pres-offline-loading.yaml b/ux/experience/screens/SCR-pres-offline-loading.yaml
+new file mode 100644
+index 0000000..27d4097
+--- /dev/null
++++ b/ux/experience/screens/SCR-pres-offline-loading.yaml
+@@ -0,0 +1,24 @@
++id: SCR-pres-offline-loading
++name: Offline while loading the request
++purpose: Recovery step when the device has no network connection while the verifier's request loads (D8-offline) — says that nothing has been shared and that the request loads again once the phone is online; the user retries or cancels.
++template: TPL-outcome
++maturity: candidate
++brief: BRF-001
++data_model: {}
++nodes:
++  - id: hero
++    element: EL-status-hero
++    region: hero
++    props: {tone: warning, title: {copy: CPY-pres-offline-title}, text: {copy: CPY-pres-offline-text}}
++    satisfies: ["UXR:REQ-PRES-014"]
++  - {id: retry, element: EL-button, region: actions, props: {variant: primary, label: {copy: CPY-pres-offline-retry}}}
++  - {id: cancel, element: EL-button, region: actions, props: {variant: secondary, label: {copy: CPY-pres-offline-cancel}}}
++events:
++  - {node: retry, on: press, emits: RETRY}
++  - {node: cancel, on: press, emits: CANCEL}
++ui_states:
++  - {id: default, description: "No network while the request loads; Skúsiť znova fetches the request again (RETRY -> connecting), Zrušiť ends the presentation before anything is shared"}
++satisfies:
++  - "UXR:REQ-PRES-014"
++sources:
++  - {source: SRC-ARF-5.01, ref: "L509 §2.9", note: plain-language error with a way to recover}

@@ -36,9 +36,6 @@ dependencyResolutionManagement {
             url = uri("https://central.sonatype.com/repository/maven-snapshots/")
             mavenContent { snapshotsOnly() }
         }
-        maven {
-            url = uri("https://jitpack.io")
-        }
         mavenLocal()
     }
 }
@@ -48,7 +45,7 @@ plugins {
 }
 
 rootProject.name = "EUDI Wallet"
-include(":app")
+include(":androidApp")
 include(":business-logic")
 include(":ui-logic")
 include(":network-logic")
@@ -67,3 +64,11 @@ include(":baseline-profile")
 include(":authentication-logic")
 include(":core-logic")
 include(":storage-logic")
+include(":shared-logic")
+include(":shared-ui")
+include(":ux-theme")
+include(":ux-contract")
+include(":ux-elements")
+include(":ux-runtime")
+include(":ux-spike")
+include(":ux-spike-android")

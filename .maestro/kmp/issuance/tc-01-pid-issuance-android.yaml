@@ -1,0 +1,121 @@
+# TC-01-equivalent (PID-equivalent issuance) — the in-app portion, common to both platforms.
+#
+# Status as of 2026-09-15: PORTED AND VERIFIED WORKING, unmodified, on both a fresh iOS
+# Simulator and a fresh Android emulator, from a clean install through to the document-type
+# catalog list. This is genuinely built and run against THIS app's real live screens — not
+# copied from `eudi-app-ios-wallet-ui`'s tc-01-pid-issuance.yaml (that file lives under
+# `.maestro/issuance/` as unverified reference material; this one replaces it for the steps
+# it actually covers).
+#
+# Does NOT complete TC-01 end to end: continuing past this point (tapping a document type)
+# leads into a live client-attestation bug that currently blocks issuance on both platforms —
+# see `.maestro/PORTING_STATUS.md` and `tc-01-pid-issuance-android-continuation.yaml`'s own
+# header for the two platforms' different failure symptoms of that same root cause.
+#
+# Real divergences found from the native app's reference flow (verified via live
+# `maestro hierarchy` dumps, not assumed):
+# - No `success_screen_title` tag exists on the PIN-success screen; only plain text
+#   "Wallet secured" — asserted by text below instead.
+# - The Documents bottom-nav tab's real id is `dashboard_screen_bottom_navigation_item_documents`
+#   (an enum-driven tag with three tabs: Home/Documents/History), not `documents_tab`.
+# - There is no dedicated "choose from list" screen/button. Tapping "+" opens a bottom sheet
+#   with two generic, position-indexed buttons (`documents_tab_bottom_sheet_button_0`/`_1`);
+#   index 0 is "Choose from list".
+#
+# Bundle id / applicationId is the same string on both platforms for the dev flavor
+# (confirmed in `app.properties` — no Android debug-suffix applied): eu.compote.euidi.dev
+
+appId: eu.compote.euidi.dev
+---
+# --- First run: PIN setup ---
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- tapOn:
+    id: "pin_text_field_0"
+- inputText: "123456"
+- assertVisible: "Wallet secured"
+- tapOn:
+    id: "success_screen_primary_button"
+
+# --- Dashboard -> Documents tab -> Add -> Choose from list ---
+- tapOn:
+    id: "dashboard_screen_bottom_navigation_item_documents"
+- tapOn:
+    id: "documents_screen_plus_button"
+- tapOn:
+    id: "documents_tab_bottom_sheet_button_0"
+# A long explicit wait, not assertVisible: while the catalog loads, the
+# screen's content is missing from the accessibility tree (2026-10-01 failure
+# dump: only "Go Back" and "QR Scanner", with the subtitle drawn on screen
+# under a spinner), so this can only pass once the dev issuer's metadata has
+# arrived - which took longer than assertVisible's ~17s implicit wait that
+# day. Same 60s budget as the issuer hand-off waits.
+- extendedWaitUntil:
+    visible:
+      id: "add_document_screen_subtitle"
+    timeout: 60000
+
+
+# --- Select PID Combined (matched by stable text, not the volatile id) ---
+# scrollUntilVisible, not a fixed number of scrolls: how far each plain
+# `scroll` moves this list varies run to run, and two of them have been
+# seen (2026-09-29, saved hierarchy dumps) stopping one row short with the
+# real, fully loaded catalog on screen - PID Combined just below the fold.
+- scrollUntilVisible:
+    element:
+      text: "PID Combined"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "PID Combined"
+# Wait for the hand-off to Chrome before looking for anything in it. After
+# the tap the app shows a spinner over this list while it fetches issuer
+# metadata and sends the pushed authorization request to the dev issuer;
+# measured on 2026-09-29 from logcat at 8s and 35s (one metadata GET alone
+# took 11.7s). The list only disappears once Chrome is in front.
+- extendedWaitUntil:
+    notVisible: "PID Combined"
+    timeout: 60000
+# Chrome first-run dialogs on a fresh device. A bare optional tapOn gives up
+# almost at once, and Chrome takes a while to draw its FRE after the
+# hand-off (6.4s-9.0s on 2026-09-29, and past a 10s optional wait once), so
+# each dismiss waits first for whichever comes up: the dialog, or the
+# FormEU page itself when Chrome has already been through its first run.
+# Text selectors are full-string regexes, hence the `|`.
+- extendedWaitUntil:
+    visible: "Stay signed out|FormEU"
+    timeout: 30000
+- tapOn:
+    id: "com.android.chrome:id/signin_fre_dismiss_button"
+    optional: true
+- extendedWaitUntil:
+    visible: "No thanks|FormEU"
+    timeout: 30000
+- tapOn:
+    text: "No thanks"
+    optional: true
+
+# --- FormEU identity-proofing form in Chrome -> Review & Send -> Authorize ->
+#     success screen -> Close ---
+# The Android sub-flow, not the iOS one (formeu-identity-proofing-flow.yaml):
+# the form's coordinates differ per platform - see
+# formeu-identity-proofing-flow-android.yaml's header.
+- runFlow: formeu-identity-proofing-flow-android.yaml
+
+# --- Verify: PID appears in Documents list with a validity date ---
+# extendedWaitUntil (not a plain assertVisible) because the Documents list
+# takes a moment to refresh right after "Done" — an immediate assertion here
+# is a real observed flake, not a real failure (confirmed by re-checking the
+# screen a couple seconds later during investigation).
+- extendedWaitUntil:
+    visible: "PID (MSO Mdoc)"
+    timeout: 10000
+- assertVisible: "PID (SD-JWT VC)"
+# Maestro's text selectors are a FULL-STRING regex match (Pattern.matches),
+# not a substring search — "Valid until" alone only matches a node whose
+# entire accessible text equals exactly that, so the pattern needs an
+# explicit date-shaped suffix. On this app on Android the real node text is
+# "Valid until: 28 Dec 2026" - with a colon, unlike the iOS reference
+# app's "Valid until 08 Nov 2026" this pattern was first written against
+# (saved screen-hierarchy dump, 2026-09-29).
+- assertVisible: "Valid until: \\d{2} \\w{3} \\d{4}"

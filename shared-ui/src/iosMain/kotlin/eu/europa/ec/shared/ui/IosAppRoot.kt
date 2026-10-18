@@ -1,0 +1,147 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+// The iOS app: its `UIViewController`, its Koin start, and its route table.
+//
+// The Android counterpart of this file is not one file — it is the `router/Entries.kt` in each feature
+// module, assembled by the host. iOS has no feature modules, so the whole table lives here, and each
+// entry does the same two things Android's does: resolve the view-model and hand it to the shared
+// screen. Every screen below comes from commonMain; nothing here stands in for one.
+//
+// This started life as `SplashSpike.kt`, proving that Compose Multiplatform renders on iOS at all. It
+// stopped being a spike some twenty screens ago and was renamed to match.
+package eu.europa.ec.shared.ui
+
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.ComposeUIViewController
+import eu.europa.ec.shared.navigation.SplashRoute
+import eu.europa.ec.resourceslogic.theme.ThemeManager
+import eu.europa.ec.shared.ui.di.SharedUiModule
+import eu.europa.ec.shared.ui.di.module as sharedUiDefinitions
+import eu.europa.ec.shared.resources.StringCatalog
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import eu.europa.ec.shared.navigation.LocalNavPlatformActions
+import eu.europa.ec.shared.navigation.sharedAppEntries
+import eu.europa.ec.shared.ui.navigation.IosNavHost
+import eu.europa.ec.shared.ui.navigation.IosNavPlatformActions
+import kotlinx.coroutines.runBlocking
+import eu.europa.ec.shared.wallet.platform.IosRegistrationCheckSetting
+import org.koin.core.context.startKoin
+import org.koin.mp.KoinPlatform
+import eu.europa.ec.analyticslogic.controller.IosAnalytics
+import eu.europa.ec.shared.wallet.log.IosLogFile
+import eu.europa.ec.shared.wallet.platform.iosWalletBlockedByMissingPasscode
+import org.multipaz.util.Logger
+import platform.Foundation.NSNotificationCenter
+import platform.UIKit.UIApplicationDidBecomeActiveNotification
+import platform.UIKit.UIViewController
+
+/**
+ * Entry point for the Swift side.
+ *
+ * Note how small the surface is: one function returning a `UIViewController`. Swift never names a
+ * view-model, state, effect or route, which is what keeps the Obj-C flat-namespace export problem
+ * (`State`, `State_`, `State__`, …) harmless on this architecture.
+ */
+// PascalCase on purpose: Swift calls this as `WalletViewController()`, where it reads as the
+// UIViewController subclass it stands in for, not as a Kotlin function.
+@Suppress("FunctionNaming")
+fun WalletViewController(): UIViewController {
+    // Before Koin, so anything the graph logs while starting is captured. Android's equivalent is
+    // `LogController`'s Timber tree, installed in `Application.onCreate`.
+    IosLogFile.start()
+    // Read once at launch so a registration-check switch the user set before 2026-10-02 — in the app's own
+    // defaults — reaches the app group, where the Digital Credentials extension reads it.
+    IosRegistrationCheckSetting.isEnabled()
+    startKoinIfNeeded()
+    // After Koin, because a provider a deployment registered is registered from the graph; before
+    // anything renders, so the first screen is reported. Android's equivalent is
+    // `Application.onCreate` calling `analyticsController.initialize(this)`.
+    IosAnalytics.initialize()
+    // The string catalog resolves synchronously once warmed, which is what lets shared interactors read
+    // strings outside a coroutine — so it must be warmed before anything renders. Android does this in
+    // `Application.onCreate`; this is the iOS equivalent.
+    runBlocking { KoinPlatform.getKoin().get<StringCatalog>().warm() }
+    return ComposeUIViewController {
+        // The wallet's real theme, not bare Material — it lives in commonMain as of the theme port,
+        // so iOS finally renders the app's own colours, shapes and typography.
+        ThemeManager.instance.Theme {
+            Surface(modifier = Modifier.fillMaxSize()) {
+                // Every destination, from commonMain — the same `sharedAppEntries` the Android
+                // host composes. This used to be 21 `entry<Route> { }` blocks written out here; what
+                // is left of iOS's own navigation is `IosNavPlatformActions`, which answers the two
+                // platform hooks those entries need.
+                // 🚦 One gate before the wallet exists at all. The documents are Keychain items in a
+                // passcode-required class, so on a device with no passcode nothing can be stored —
+                // every write is refused deep inside a storage call, with an OSStatus that means
+                // nothing to the person holding the phone. Asked once, here, and answered with a
+                // screen that says what to do. See [IosDevicePasscode], which fails *open*.
+                // 🪤 The condition is "will the Keychain take a document", NOT "is a passcode set".
+                // The two disagree on the simulator — no passcode, and it stores the item anyway —
+                // so gating on the passcode would block the wallet exactly where it is developed.
+                // The passcode is only consulted to decide whether this is the *explainable* failure.
+                // 🚦 Re-read on activation, so the screen is not a dead end. Setting a passcode
+                // means leaving for Settings and coming back, and that return is the only signal
+                // available — there is no notification for "a passcode was set". Without this the
+                // user had to relaunch, which the copy had to ask them to do.
+                // 📌 Each re-read costs one Keychain canary write, the same probe the launch does.
+                var blocked by remember { mutableStateOf(iosWalletBlockedByMissingPasscode()) }
+                DisposableEffect(Unit) {
+                    val center = NSNotificationCenter.defaultCenter
+                    val observer = center.addObserverForName(
+                        name = UIApplicationDidBecomeActiveNotification,
+                        `object` = null,
+                        queue = null,
+                    ) { _ ->
+                        blocked = iosWalletBlockedByMissingPasscode()
+                    }
+                    onDispose { center.removeObserver(observer) }
+                }
+                if (blocked) {
+                    Logger.w(
+                        "IosAppRoot",
+                        "the Keychain refuses to store documents and this device has no passcode: " +
+                            "showing the passcode-required screen instead of the nav host",
+                    )
+                    PasscodeRequiredScreen()
+                } else {
+                    CompositionLocalProvider(
+                        LocalNavPlatformActions provides IosNavPlatformActions,
+                    ) {
+                        IosNavHost(startRoute = SplashRoute) { navigator ->
+                            sharedAppEntries(navigator)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun startKoinIfNeeded() {
+    if (KoinPlatform.getKoinOrNull() != null) return
+    // `SharedUiModule().module` is generated by the Koin compiler plugin from the module's
+    // @ComponentScan. Loading it is what brings in the iosMain-only definitions — the multipaz
+    // WalletEngine and the iOS interactors — because the scan runs per compilation.
+    startKoin { modules(SharedUiModule().sharedUiDefinitions()) }
+}

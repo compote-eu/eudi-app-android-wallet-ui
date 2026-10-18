@@ -1,0 +1,140 @@
+/*
+ * Copyright (c) 2026 European Commission
+ *
+ * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
+ * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
+ * except in compliance with the Licence.
+ *
+ * You may obtain a copy of the Licence at:
+ * https://joinup.ec.europa.eu/software/page/eupl
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
+ * ANY KIND, either express or implied. See the Licence for the specific language
+ * governing permissions and limitations under the Licence.
+ */
+
+package eu.europa.ec.uilogic.component.content
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.PreviewParameter
+import androidx.compose.ui.unit.dp
+import eu.europa.ec.shared.resources.asUiText
+import eu.europa.ec.shared.resources.resolve
+import eu.europa.ec.uilogic.component.AppIconAndText
+import eu.europa.ec.uilogic.component.AppIconAndTextDataUi
+import eu.europa.ec.uilogic.component.AppIcons
+import eu.europa.ec.uilogic.component.RelyingParty
+import eu.europa.ec.uilogic.component.RelyingPartyDataUi
+import eu.europa.ec.uilogic.component.preview.PreviewTheme
+import eu.europa.ec.uilogic.component.preview.TextLengthPreviewProvider
+import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
+import eu.europa.ec.uilogic.component.utils.SPACING_LARGE
+import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
+import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
+import eu.europa.ec.uilogic.component.wrap.TextAlignKey
+import eu.europa.ec.uilogic.component.wrap.TextConfig
+import eu.europa.ec.uilogic.component.wrap.TextStyleKey
+import eu.europa.ec.uilogic.component.wrap.WrapText
+import eu.europa.ec.uilogic.extension.optionalTestTag
+
+/**
+ * Composable function that displays the content header for the screen.
+ *
+ * This function displays the app icon and text, description, main text, and relying party information
+ * based on the provided [ContentHeaderConfig].
+ *
+ * @param modifier Modifier used to adjust the layout of the header.
+ * @param config Configuration object containing data for the header content.
+ */
+@Composable
+fun ContentHeader(
+    modifier: Modifier = Modifier,
+    config: ContentHeaderConfig,
+    descriptionTestTag: String? = null,
+) {
+    val commonTextAlign = TextAlignKey.Center
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        with(config) {
+            // App icon and text section.
+            AppIconAndText(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = SPACING_LARGE.dp),
+                appIconAndTextData = appIconAndTextData,
+            )
+
+            // Description section.
+            description?.let { safeDescription ->
+                WrapText(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .optionalTestTag(descriptionTestTag)
+                        .padding(vertical = SPACING_SMALL.dp),
+                    text = safeDescription.resolve(),
+                    textConfig = descriptionTextConfig ?: TextConfig(
+                        styleKey = TextStyleKey.BodyLarge,
+                        textAlignKey = commonTextAlign,
+                        maxLines = 3,
+                    )
+                )
+            }
+
+            // Main text section.
+            mainText?.let { safeMainText ->
+                WrapText(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = SPACING_MEDIUM.dp),
+                    text = safeMainText.resolve(),
+                    textConfig = mainTextConfig ?: TextConfig(
+                        styleKey = TextStyleKey.BodyLargeBold,
+                        textAlignKey = commonTextAlign,
+                    )
+                )
+            }
+
+            // Relying party section.
+            relyingPartyData?.let { safeRelyingPartyData ->
+                RelyingParty(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = SPACING_SMALL.dp),
+                    relyingPartyData = safeRelyingPartyData,
+                )
+            }
+        }
+    }
+}
+
+@ThemeModePreviews
+@Composable
+private fun ContentHeaderPreview(
+    @PreviewParameter(TextLengthPreviewProvider::class) text: String
+) {
+    PreviewTheme {
+        ContentHeader(
+            config = ContentHeaderConfig(
+                appIconAndTextData = AppIconAndTextDataUi(
+                    appIcon = AppIcons.LogoIconAndText,
+                ),
+                description = "Description: $text".asUiText(),
+                mainText = "Title: $text".asUiText(),
+                relyingPartyData = RelyingPartyDataUi(
+                    isVerified = true,
+                    name = "Relying Party Name: $text".asUiText(),
+                    description = "Relying Party Description: $text".asUiText(),
+                )
+            )
+        )
+    }
+}

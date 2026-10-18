@@ -1,0 +1,4 @@
+✓ FLW-pres-cross-device: 3 invariant(s) hold — 4517 nodes, 23865 edges, depth 8, lists ≤ 3 items, 0.51 s (budget 2 s)
+✓ D5 pre-fix fixture fails as it must: request-nonempty-at-auth (RUL-pres-request-has-selection) in auth — [start] scan -SYS_QR_SCANNED-> connecting -SYS_REQUEST_READY-> request -CONTINUE-> auth {'/request/selected_count': 0}
+
+model-check self-test: 2 check(s), 0 failure(s)

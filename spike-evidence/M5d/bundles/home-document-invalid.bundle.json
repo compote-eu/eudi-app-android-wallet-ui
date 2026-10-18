@@ -1,0 +1,1476 @@
+{
+ "bundle_schema_version": 1,
+ "flow_id": "FLW-home-probe",
+ "spec_hash": "provisional:sha256:9abc5ae0d194628e2917316dcd1f3f0b44519881f151e8912a9b936e7cfddb67",
+ "provisional": true,
+ "source": {
+  "ux_commit": "ec5e58e3def93cfbd3ba846005ccd3e2c13f53ba",
+  "exporter": "m5d-home-probe (hand-derived)",
+  "screen": "SCR-home",
+  "variant": "document-invalid",
+  "profile": "PRF-eudiw-v1 applied",
+  "locale": "sk"
+ },
+ "initial": "home",
+ "entries": {
+  "default": {
+   "state": "home"
+  }
+ },
+ "process_death": {
+  "android": "restore-per-state",
+  "ios": "abandon"
+ },
+ "context": {
+  "/storage/selected": {
+   "type": "string",
+   "nullable": false,
+   "default": "phone",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/storage/options": {
+   "type": "list",
+   "nullable": false,
+   "default": [
+    {
+     "id": "phone",
+     "label_copy": "CPY-home-switch-phone",
+     "selected": true
+    },
+    {
+     "id": "cloud",
+     "label_copy": "CPY-home-switch-cloud"
+    }
+   ],
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/network/online": {
+   "type": "boolean",
+   "nullable": false,
+   "default": true,
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/notifications/unread": {
+   "type": "boolean",
+   "nullable": false,
+   "default": false,
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/documents/empty": {
+   "type": "boolean",
+   "nullable": false,
+   "default": false,
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/documents/dl_status": {
+   "type": "string",
+   "nullable": false,
+   "default": "expired",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/documents/id_status": {
+   "type": "string",
+   "nullable": false,
+   "default": "valid",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/documents/id_present": {
+   "type": "boolean",
+   "nullable": false,
+   "default": true,
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/documents/dl_present": {
+   "type": "boolean",
+   "nullable": false,
+   "default": true,
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/holder/name": {
+   "type": "string",
+   "nullable": false,
+   "default": "Ján Vzorový",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/holder/initials": {
+   "type": "string",
+   "nullable": false,
+   "default": "JV",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/documents/pid_present": {
+   "type": "boolean",
+   "nullable": false,
+   "default": true,
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/id_card/number": {
+   "type": "string",
+   "nullable": false,
+   "default": "EA 000000",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/id_card/valid_until": {
+   "type": "string",
+   "nullable": false,
+   "default": "1. 3. 2034",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/driving_licence/valid_until": {
+   "type": "string",
+   "nullable": false,
+   "default": "15. 9. 2036",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/driving_licence/number": {
+   "type": "string",
+   "nullable": false,
+   "default": "SK 0000000",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/links/cert": {
+   "type": "url",
+   "nullable": false,
+   "default": "#cert",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/links/all_documents": {
+   "type": "url",
+   "nullable": false,
+   "default": "#all-documents",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/links/log": {
+   "type": "url",
+   "nullable": false,
+   "default": "#log",
+   "declared_by": [
+    "SCR-home"
+   ]
+  },
+  "/nav/tabs": {
+   "type": "list",
+   "nullable": false,
+   "default": [
+    {
+     "id": "documents",
+     "label_copy": "CPY-home-nav-documents",
+     "icon": "icon-id-card",
+     "selected": true
+    },
+    {
+     "id": "services",
+     "label_copy": "CPY-home-nav-services",
+     "icon": "icon-case"
+    }
+   ],
+   "declared_by": [
+    "SCR-home"
+   ]
+  }
+ },
+ "events": {
+  "ADD_DOCUMENT": {
+   "source": "ui"
+  },
+  "OPEN_ACTIONS": {
+   "source": "ui"
+  },
+  "OPEN_ALL_DOCUMENTS": {
+   "source": "ui"
+  },
+  "OPEN_DOCUMENT": {
+   "source": "ui"
+  },
+  "OPEN_DOCUMENT_DL": {
+   "source": "ui"
+  },
+  "OPEN_DOCUMENT_INVALID": {
+   "source": "ui"
+  },
+  "OPEN_DOCUMENT_PID": {
+   "source": "ui"
+  },
+  "OPEN_LOG": {
+   "source": "ui"
+  },
+  "OPEN_MENU": {
+   "source": "ui"
+  },
+  "OPEN_NOTIFICATIONS": {
+   "source": "ui"
+  }
+ },
+ "services": {},
+ "states": {
+  "home": {
+   "kind": "step",
+   "screen": "SCR-home",
+   "ui_state": "document-invalid",
+   "on": {
+    "ADD_DOCUMENT": [
+     {
+      "target": null,
+      "kind": "alt"
+     }
+    ],
+    "OPEN_ACTIONS": [
+     {
+      "target": null,
+      "kind": "alt"
+     }
+    ],
+    "OPEN_ALL_DOCUMENTS": [
+     {
+      "target": null,
+      "kind": "alt"
+     }
+    ],
+    "OPEN_DOCUMENT": [
+     {
+      "target": null,
+      "kind": "alt"
+     }
+    ],
+    "OPEN_DOCUMENT_DL": [
+     {
+      "target": null,
+      "kind": "alt"
+     }
+    ],
+    "OPEN_DOCUMENT_INVALID": [
+     {
+      "target": null,
+      "kind": "alt"
+     }
+    ],
+    "OPEN_DOCUMENT_PID": [
+     {
+      "target": null,
+      "kind": "alt"
+     }
+    ],
+    "OPEN_LOG": [
+     {
+      "target": null,
+      "kind": "alt"
+     }
+    ],
+    "OPEN_MENU": [
+     {
+      "target": null,
+      "kind": "alt"
+     }
+    ],
+    "OPEN_NOTIFICATIONS": [
+     {
+      "target": null,
+      "kind": "alt"
+     }
+    ]
+   },
+   "back": {
+    "policy": "pass"
+   },
+   "restore": {
+    "policy": "snapshot"
+   }
+  }
+ },
+ "screens": {
+  "SCR-home": {
+   "name": "My eDoklady (wallet home)",
+   "template": "TPL-home",
+   "regions": {
+    "appbar": [
+     {
+      "id": "appbar",
+      "element": "EL-app-bar",
+      "props": {
+       "leading": "menu",
+       "leading_label": {
+        "copy": "CPY-home-menu-label"
+       },
+       "trailing": "notifications",
+       "trailing_label": {
+        "copy": "CPY-home-notifications-label"
+       }
+      },
+      "events": [
+       {
+        "on": "leading",
+        "emits": "OPEN_MENU"
+       },
+       {
+        "on": "trailing",
+        "emits": "OPEN_NOTIFICATIONS"
+       }
+      ]
+     },
+     {
+      "id": "appbar-unread",
+      "element": "EL-app-bar",
+      "props": {
+       "leading": "menu",
+       "leading_label": {
+        "copy": "CPY-home-menu-label"
+       },
+       "trailing": "notifications",
+       "trailing_label": {
+        "copy": "CPY-home-notifications-unread-label"
+       },
+       "badge": true
+      },
+      "events": [
+       {
+        "on": "leading",
+        "emits": "OPEN_MENU"
+       },
+       {
+        "on": "trailing",
+        "emits": "OPEN_NOTIFICATIONS"
+       }
+      ]
+     }
+    ],
+    "header": [
+     {
+      "id": "title",
+      "element": "EL-text",
+      "props": {
+       "variant": "title",
+       "text": {
+        "copy": "CPY-home-title"
+       }
+      },
+      "a11y": {
+       "heading": 1
+      }
+     }
+    ],
+    "notice": [
+     {
+      "id": "notice-offline",
+      "element": "EL-notice",
+      "props": {
+       "tone": "warning",
+       "title": {
+        "copy": "CPY-home-offline-title"
+       },
+       "text": {
+        "copy": "CPY-home-offline-text"
+       }
+      }
+     },
+     {
+      "id": "notice-offline-phone",
+      "element": "EL-notice",
+      "props": {
+       "tone": "info",
+       "text": {
+        "copy": "CPY-home-offline-phone"
+       }
+      }
+     },
+     {
+      "id": "notice-invalid",
+      "element": "EL-notice",
+      "props": {
+       "tone": "warning",
+       "text": {
+        "copy": "CPY-home-invalid-notice"
+       }
+      }
+     }
+    ],
+    "identity": [
+     {
+      "id": "card-pid",
+      "element": "EL-document-card",
+      "props": {
+       "variant": "holder",
+       "doc_type": "pid",
+       "title": {
+        "copy": "CPY-doc-type-pid"
+       },
+       "holder": {
+        "bind": "/holder/name"
+       },
+       "initials": {
+        "bind": "/holder/initials"
+       },
+       "status": "valid",
+       "status_label": {
+        "copy": "CPY-home-identity-status-valid"
+       }
+      },
+      "events": [
+       {
+        "on": "open",
+        "emits": "OPEN_DOCUMENT_PID"
+       }
+      ]
+     }
+    ],
+    "documents-heading": [
+     {
+      "id": "documents-heading",
+      "element": "EL-text",
+      "props": {
+       "variant": "heading",
+       "text": {
+        "copy": "CPY-home-documents-heading"
+       }
+      },
+      "a11y": {
+       "heading": 2
+      }
+     },
+     {
+      "id": "all-documents",
+      "element": "EL-link",
+      "props": {
+       "label": {
+        "copy": "CPY-home-all-documents"
+       },
+       "href": {
+        "bind": "/links/all_documents"
+       }
+      },
+      "events": [
+       {
+        "on": "activate",
+        "emits": "OPEN_ALL_DOCUMENTS"
+       }
+      ]
+     }
+    ],
+    "cards": [
+     {
+      "id": "card-id",
+      "element": "EL-document-card",
+      "props": {
+       "variant": "full",
+       "doc_type": "id-card",
+       "title": {
+        "copy": "CPY-doc-type-id-card"
+       },
+       "title_en": {
+        "copy": "CPY-doc-name-en-id-card"
+       },
+       "holder": {
+        "bind": "/holder/name"
+       },
+       "number": {
+        "bind": "/id_card/number"
+       },
+       "status": "valid",
+       "status_label": {
+        "copy": "CPY-home-card-valid",
+        "args": {
+         "date": "/id_card/valid_until"
+        }
+       },
+       "storage": "phone",
+       "storage_label": {
+        "copy": "CPY-doc-storage-phone"
+       }
+      },
+      "events": [
+       {
+        "on": "open",
+        "emits": "OPEN_DOCUMENT"
+       }
+      ]
+     },
+     {
+      "id": "card-id-revoked",
+      "element": "EL-document-card",
+      "props": {
+       "variant": "full",
+       "doc_type": "id-card",
+       "title": {
+        "copy": "CPY-doc-type-id-card"
+       },
+       "title_en": {
+        "copy": "CPY-doc-name-en-id-card"
+       },
+       "holder": {
+        "bind": "/holder/name"
+       },
+       "number": {
+        "bind": "/id_card/number"
+       },
+       "status": "revoked",
+       "status_label": {
+        "copy": "CPY-doc-status-revoked"
+       },
+       "storage": "phone",
+       "storage_label": {
+        "copy": "CPY-doc-storage-phone"
+       }
+      },
+      "events": [
+       {
+        "on": "open",
+        "emits": "OPEN_DOCUMENT_INVALID"
+       }
+      ]
+     },
+     {
+      "id": "card-id-suspended",
+      "element": "EL-document-card",
+      "props": {
+       "variant": "full",
+       "doc_type": "id-card",
+       "title": {
+        "copy": "CPY-doc-type-id-card"
+       },
+       "title_en": {
+        "copy": "CPY-doc-name-en-id-card"
+       },
+       "holder": {
+        "bind": "/holder/name"
+       },
+       "number": {
+        "bind": "/id_card/number"
+       },
+       "status": "suspended",
+       "status_label": {
+        "copy": "CPY-doc-status-suspended"
+       },
+       "storage": "phone",
+       "storage_label": {
+        "copy": "CPY-doc-storage-phone"
+       }
+      },
+      "events": [
+       {
+        "on": "open",
+        "emits": "OPEN_DOCUMENT_INVALID"
+       }
+      ]
+     },
+     {
+      "id": "card-id-stale",
+      "element": "EL-document-card",
+      "props": {
+       "variant": "full",
+       "doc_type": "id-card",
+       "title": {
+        "copy": "CPY-doc-type-id-card"
+       },
+       "title_en": {
+        "copy": "CPY-doc-name-en-id-card"
+       },
+       "holder": {
+        "bind": "/holder/name"
+       },
+       "number": {
+        "bind": "/id_card/number"
+       },
+       "status": "stale",
+       "status_label": {
+        "copy": "CPY-doc-status-stale"
+       },
+       "storage": "phone",
+       "storage_label": {
+        "copy": "CPY-doc-storage-phone"
+       }
+      },
+      "events": [
+       {
+        "on": "open",
+        "emits": "OPEN_DOCUMENT_INVALID"
+       }
+      ]
+     },
+     {
+      "id": "card-dl",
+      "element": "EL-document-card",
+      "props": {
+       "variant": "full",
+       "doc_type": "driving-licence",
+       "title": {
+        "copy": "CPY-doc-type-driving-licence"
+       },
+       "title_en": {
+        "copy": "CPY-doc-name-en-driving-licence"
+       },
+       "holder": {
+        "bind": "/holder/name"
+       },
+       "number": {
+        "bind": "/driving_licence/number"
+       },
+       "status": "valid",
+       "status_label": {
+        "copy": "CPY-home-card-valid",
+        "args": {
+         "date": "/driving_licence/valid_until"
+        }
+       },
+       "storage": "phone",
+       "storage_label": {
+        "copy": "CPY-doc-storage-phone"
+       }
+      },
+      "events": [
+       {
+        "on": "open",
+        "emits": "OPEN_DOCUMENT_DL"
+       }
+      ]
+     },
+     {
+      "id": "card-dl-expired",
+      "element": "EL-document-card",
+      "props": {
+       "variant": "full",
+       "doc_type": "driving-licence",
+       "title": {
+        "copy": "CPY-doc-type-driving-licence"
+       },
+       "title_en": {
+        "copy": "CPY-doc-name-en-driving-licence"
+       },
+       "holder": {
+        "bind": "/holder/name"
+       },
+       "number": {
+        "bind": "/driving_licence/number"
+       },
+       "status": "expired",
+       "status_label": {
+        "copy": "CPY-doc-status-expired"
+       },
+       "storage": "phone",
+       "storage_label": {
+        "copy": "CPY-doc-storage-phone"
+       }
+      },
+      "events": [
+       {
+        "on": "open",
+        "emits": "OPEN_DOCUMENT_INVALID"
+       }
+      ]
+     },
+     {
+      "id": "card-pid-cloud",
+      "element": "EL-document-card",
+      "props": {
+       "variant": "full",
+       "doc_type": "pid",
+       "title": {
+        "copy": "CPY-doc-type-pid"
+       },
+       "holder": {
+        "bind": "/holder/name"
+       },
+       "status": "valid",
+       "status_label": {
+        "copy": "CPY-doc-status-valid"
+       },
+       "storage": "cloud",
+       "storage_label": {
+        "copy": "CPY-doc-storage-cloud"
+       }
+      },
+      "events": [
+       {
+        "on": "open",
+        "emits": "OPEN_DOCUMENT"
+       }
+      ]
+     },
+     {
+      "id": "card-dl-expiring",
+      "element": "EL-document-card",
+      "props": {
+       "variant": "full",
+       "doc_type": "driving-licence",
+       "title": {
+        "copy": "CPY-doc-type-driving-licence"
+       },
+       "title_en": {
+        "copy": "CPY-doc-name-en-driving-licence"
+       },
+       "holder": {
+        "bind": "/holder/name"
+       },
+       "number": {
+        "bind": "/driving_licence/number"
+       },
+       "status": "expiring",
+       "status_label": {
+        "copy": "CPY-doc-status-expiring",
+        "args": {
+         "date": "/driving_licence/valid_until"
+        }
+       },
+       "storage": "phone",
+       "storage_label": {
+        "copy": "CPY-doc-storage-phone"
+       }
+      },
+      "events": [
+       {
+        "on": "open",
+        "emits": "OPEN_DOCUMENT_DL"
+       }
+      ]
+     }
+    ],
+    "body": [
+     {
+      "id": "empty-title",
+      "element": "EL-text",
+      "props": {
+       "variant": "heading",
+       "text": {
+        "copy": "CPY-home-empty-title"
+       }
+      },
+      "a11y": {
+       "heading": 2
+      }
+     },
+     {
+      "id": "empty-text",
+      "element": "EL-text",
+      "props": {
+       "variant": "body",
+       "text": {
+        "copy": "CPY-home-empty-text"
+       }
+      }
+     },
+     {
+      "id": "add-document",
+      "element": "EL-button",
+      "props": {
+       "variant": "primary",
+       "label": {
+        "copy": "CPY-home-empty-primary"
+       }
+      },
+      "events": [
+       {
+        "on": "press",
+        "emits": "ADD_DOCUMENT"
+       }
+      ]
+     }
+    ],
+    "footer": [
+     {
+      "id": "history",
+      "element": "EL-link",
+      "props": {
+       "label": {
+        "copy": "CPY-log-title"
+       },
+       "href": {
+        "bind": "/links/log"
+       }
+      },
+      "events": [
+       {
+        "on": "activate",
+        "emits": "OPEN_LOG"
+       }
+      ]
+     }
+    ],
+    "actions": [
+     {
+      "id": "bottom-bar",
+      "element": "EL-bottom-bar",
+      "props": {
+       "label": {
+        "copy": "CPY-home-nav-label"
+       },
+       "tabs": {
+        "bind": "/nav/tabs"
+       },
+       "action": "menu",
+       "action_label": {
+        "copy": "CPY-home-actions-label"
+       }
+      },
+      "events": [
+       {
+        "on": "action",
+        "emits": "OPEN_ACTIONS"
+       }
+      ]
+     }
+    ]
+   },
+   "rules": [
+    {
+     "id": "RUL-home-notifications-read",
+     "when": {
+      "path": "/notifications/unread",
+      "op": "is_false"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "appbar-unread"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-notifications-unread",
+     "when": {
+      "path": "/notifications/unread",
+      "op": "is_true"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "appbar"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-online",
+     "when": {
+      "path": "/network/online",
+      "op": "is_true"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "notice-offline"
+      },
+      {
+       "effect": "hide",
+       "node": "notice-offline-phone"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-storage-phone",
+     "when": {
+      "path": "/storage/selected",
+      "op": "neq",
+      "value": "phone"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-id"
+      },
+      {
+       "effect": "hide",
+       "node": "card-id-revoked"
+      },
+      {
+       "effect": "hide",
+       "node": "card-id-suspended"
+      },
+      {
+       "effect": "hide",
+       "node": "card-id-stale"
+      },
+      {
+       "effect": "hide",
+       "node": "card-dl"
+      },
+      {
+       "effect": "hide",
+       "node": "card-dl-expired"
+      },
+      {
+       "effect": "hide",
+       "node": "card-dl-expiring"
+      },
+      {
+       "effect": "hide",
+       "node": "card-pid"
+      },
+      {
+       "effect": "hide",
+       "node": "documents-heading"
+      },
+      {
+       "effect": "hide",
+       "node": "all-documents"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-storage-cloud",
+     "when": {
+      "path": "/storage/selected",
+      "op": "neq",
+      "value": "cloud"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-pid-cloud"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-document-valid",
+     "when": {
+      "path": "/documents/dl_status",
+      "op": "neq",
+      "value": "expired"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-dl-expired"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-document-invalid",
+     "when": {
+      "path": "/documents/dl_status",
+      "op": "eq",
+      "value": "expired"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-dl"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-all-valid",
+     "when": {
+      "all": [
+       {
+        "path": "/documents/dl_status",
+        "op": "neq",
+        "value": "expired"
+       },
+       {
+        "path": "/documents/id_status",
+        "op": "eq",
+        "value": "valid"
+       }
+      ]
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "notice-invalid"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-id-valid",
+     "when": {
+      "path": "/documents/id_status",
+      "op": "neq",
+      "value": "valid"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-id"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-id-revoked",
+     "when": {
+      "path": "/documents/id_status",
+      "op": "neq",
+      "value": "revoked"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-id-revoked"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-id-suspended",
+     "when": {
+      "path": "/documents/id_status",
+      "op": "neq",
+      "value": "suspended"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-id-suspended"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-id-stale",
+     "when": {
+      "path": "/documents/id_status",
+      "op": "neq",
+      "value": "stale"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-id-stale"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-id-deleted",
+     "when": {
+      "path": "/documents/id_present",
+      "op": "is_false"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-id"
+      },
+      {
+       "effect": "hide",
+       "node": "card-id-revoked"
+      },
+      {
+       "effect": "hide",
+       "node": "card-id-suspended"
+      },
+      {
+       "effect": "hide",
+       "node": "card-id-stale"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-dl-deleted",
+     "when": {
+      "path": "/documents/dl_present",
+      "op": "is_false"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-dl"
+      },
+      {
+       "effect": "hide",
+       "node": "card-dl-expired"
+      },
+      {
+       "effect": "hide",
+       "node": "card-dl-expiring"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-pid-deleted",
+     "when": {
+      "path": "/documents/pid_present",
+      "op": "is_false"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-pid"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-not-empty",
+     "when": {
+      "path": "/documents/empty",
+      "op": "is_false"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "empty-title"
+      },
+      {
+       "effect": "hide",
+       "node": "empty-text"
+      },
+      {
+       "effect": "hide",
+       "node": "add-document"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-empty",
+     "when": {
+      "path": "/documents/empty",
+      "op": "is_true"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-id"
+      },
+      {
+       "effect": "hide",
+       "node": "card-id-revoked"
+      },
+      {
+       "effect": "hide",
+       "node": "card-id-suspended"
+      },
+      {
+       "effect": "hide",
+       "node": "card-id-stale"
+      },
+      {
+       "effect": "hide",
+       "node": "card-dl"
+      },
+      {
+       "effect": "hide",
+       "node": "card-dl-expired"
+      },
+      {
+       "effect": "hide",
+       "node": "card-pid"
+      },
+      {
+       "effect": "hide",
+       "node": "documents-heading"
+      },
+      {
+       "effect": "hide",
+       "node": "all-documents"
+      },
+      {
+       "effect": "hide",
+       "node": "card-pid-cloud"
+      },
+      {
+       "effect": "hide",
+       "node": "present"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-dl-expiring",
+     "when": {
+      "path": "/documents/dl_status",
+      "op": "neq",
+      "value": "expiring"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-dl-expiring"
+      }
+     ]
+    },
+    {
+     "id": "RUL-home-dl-not-expiring",
+     "when": {
+      "path": "/documents/dl_status",
+      "op": "eq",
+      "value": "expiring"
+     },
+     "then": [
+      {
+       "effect": "hide",
+       "node": "card-dl"
+      }
+     ]
+    }
+   ],
+   "ui_states": [
+    "default",
+    "cloud",
+    "offline",
+    "empty",
+    "cloud-empty",
+    "document-invalid",
+    "id-revoked",
+    "id-suspended",
+    "id-stale",
+    "without-id",
+    "without-pid",
+    "without-dl",
+    "notifications-unread",
+    "dl-expiring"
+   ],
+   "a11y": {
+    "heading": "title",
+    "on_enter": "focus-heading",
+    "focus_order": [
+     "appbar",
+     "appbar-unread",
+     "title",
+     "notice-offline",
+     "notice-offline-phone",
+     "notice-invalid",
+     "card-pid",
+     "documents-heading",
+     "all-documents",
+     "card-id",
+     "card-id-revoked",
+     "card-id-suspended",
+     "card-id-stale",
+     "card-dl",
+     "card-dl-expired",
+     "card-pid-cloud",
+     "card-dl-expiring",
+     "empty-title",
+     "empty-text",
+     "add-document",
+     "history",
+     "bottom-bar"
+    ]
+   }
+  }
+ },
+ "copy": {
+  "keys": {
+   "CPY-doc-name-en-driving-licence": {
+    "res": "cpy_doc_name_en_driving_licence",
+    "_sk": "DRIVING LICENSE"
+   },
+   "CPY-doc-name-en-id-card": {
+    "res": "cpy_doc_name_en_id_card",
+    "_sk": "ID CARD"
+   },
+   "CPY-doc-status-expired": {
+    "res": "cpy_doc_status_expired",
+    "_sk": "Platnosť skončila"
+   },
+   "CPY-doc-status-expiring": {
+    "res": "cpy_doc_status_expiring",
+    "placeholders": [
+     "date"
+    ],
+    "_sk": "Platnosť končí {date}"
+   },
+   "CPY-doc-status-revoked": {
+    "res": "cpy_doc_status_revoked",
+    "_sk": "Odvolaný"
+   },
+   "CPY-doc-status-stale": {
+    "res": "cpy_doc_status_stale",
+    "_sk": "Treba aktualizovať"
+   },
+   "CPY-doc-status-suspended": {
+    "res": "cpy_doc_status_suspended",
+    "_sk": "Pozastavený"
+   },
+   "CPY-doc-status-valid": {
+    "res": "cpy_doc_status_valid",
+    "_sk": "Platný"
+   },
+   "CPY-doc-storage-cloud": {
+    "res": "cpy_doc_storage_cloud",
+    "_sk": "Cloudové (v infraštruktúre MV SR)"
+   },
+   "CPY-doc-storage-phone": {
+    "res": "cpy_doc_storage_phone",
+    "_sk": "Lokálne (v tomto zariadení)"
+   },
+   "CPY-doc-type-driving-licence": {
+    "res": "cpy_doc_type_driving_licence",
+    "_sk": "Vodičský preukaz"
+   },
+   "CPY-doc-type-id-card": {
+    "res": "cpy_doc_type_id_card",
+    "_sk": "Občiansky preukaz"
+   },
+   "CPY-doc-type-pid": {
+    "res": "cpy_doc_type_pid",
+    "_sk": "PID"
+   },
+   "CPY-home-actions-label": {
+    "res": "cpy_home_actions_label",
+    "_sk": "Akcie"
+   },
+   "CPY-home-all-documents": {
+    "res": "cpy_home_all_documents",
+    "_sk": "Všetky doklady"
+   },
+   "CPY-home-card-valid": {
+    "res": "cpy_home_card_valid",
+    "_sk": "Platný"
+   },
+   "CPY-home-documents-heading": {
+    "res": "cpy_home_documents_heading",
+    "_sk": "Moje eDoklady"
+   },
+   "CPY-home-empty-primary": {
+    "res": "cpy_home_empty_primary",
+    "_sk": "Pridať doklad"
+   },
+   "CPY-home-empty-text": {
+    "res": "cpy_home_empty_text",
+    "_sk": "Aktuálne nemáte žiadny digitálny doklad. Pridajte si ho."
+   },
+   "CPY-home-empty-title": {
+    "res": "cpy_home_empty_title",
+    "_sk": "Prázdne osobné úložisko"
+   },
+   "CPY-home-identity-status-valid": {
+    "res": "cpy_home_identity_status_valid",
+    "_sk": "Identifikačné údaje · platné"
+   },
+   "CPY-home-invalid-notice": {
+    "res": "cpy_home_invalid_notice",
+    "_sk": "Niektorý eDoklad nie je platný. Otvorte ho a pozrite si dôvod."
+   },
+   "CPY-home-menu-label": {
+    "res": "cpy_home_menu_label",
+    "_sk": "Menu"
+   },
+   "CPY-home-nav-documents": {
+    "res": "cpy_home_nav_documents",
+    "_sk": "eDoklady"
+   },
+   "CPY-home-nav-label": {
+    "res": "cpy_home_nav_label",
+    "_sk": "Hlavná navigácia"
+   },
+   "CPY-home-nav-services": {
+    "res": "cpy_home_nav_services",
+    "_sk": "eSlužby"
+   },
+   "CPY-home-notifications-label": {
+    "res": "cpy_home_notifications_label",
+    "_sk": "Notifikácie"
+   },
+   "CPY-home-notifications-unread-label": {
+    "res": "cpy_home_notifications_unread_label",
+    "_sk": "Notifikácie, máte neprečítané správy"
+   },
+   "CPY-home-offline-phone": {
+    "res": "cpy_home_offline_phone",
+    "_sk": "eDoklady uložené v telefóne môžete používať aj bez pripojenia. Skontrolujte nastavenia telefónu."
+   },
+   "CPY-home-offline-text": {
+    "res": "cpy_home_offline_text",
+    "_sk": "Zobrazenie dokladov z cloudového úložiska je podporované iba s funkčným pripojením na internet."
+   },
+   "CPY-home-offline-title": {
+    "res": "cpy_home_offline_title",
+    "_sk": "Vaše zariadenie nie je pripojené k internetu"
+   },
+   "CPY-home-switch-cloud": {
+    "res": "cpy_home_switch_cloud",
+    "_sk": "Doklady v cloude"
+   },
+   "CPY-home-switch-phone": {
+    "res": "cpy_home_switch_phone",
+    "_sk": "Doklady v telefóne"
+   },
+   "CPY-home-title": {
+    "res": "cpy_home_title",
+    "_sk": "Moje eDoklady"
+   },
+   "CPY-log-title": {
+    "res": "cpy_log_title",
+    "_sk": "História"
+   }
+  },
+  "brand_overrides": {
+   "eudiw_v1": {
+    "CPY-home-card-valid": {
+     "res": "cpy_home_card_valid__eudiw_v1",
+     "_sk": "Platný do {date}"
+    },
+    "CPY-home-title": {
+     "res": "cpy_home_title__eudiw_v1",
+     "_sk": "eDoklady"
+    }
+   }
+  }
+ },
+ "theme": {
+  "default_brand": "eudiw_v1",
+  "brands": [
+   "eudiw_v1"
+  ],
+  "default_mode": "light"
+ },
+ "waived": [],
+ "_provisional": {
+  "rule": "PROVISIONAL M5d probe fragment, not exporter output; the runtime ignores '_' keys.",
+  "dropped_by_profile": [
+   "present",
+   "switch",
+   "trustmark"
+  ],
+  "source_files": [
+   "experience/screens/SCR-home.yaml",
+   "library/templates/TPL-home.yaml",
+   "product/copy/sk/BRF-001.yaml",
+   "product/copy/sk/BRF-002.yaml",
+   "product/copy/sk/BRF-004.yaml",
+   "product/copy/sk/BRF-006.yaml",
+   "product/copy/sk/BRF-017.yaml",
+   "product/copy/sk/brands/eudiw_v1.yaml",
+   "product/copy/sk/common.yaml",
+   "product/profiles/PRF-eudiw-v1.yaml",
+   "product/rules/RUL-home-all-valid.yaml",
+   "product/rules/RUL-home-dl-deleted.yaml",
+   "product/rules/RUL-home-dl-expiring.yaml",
+   "product/rules/RUL-home-dl-not-expiring.yaml",
+   "product/rules/RUL-home-document-invalid.yaml",
+   "product/rules/RUL-home-document-valid.yaml",
+   "product/rules/RUL-home-empty.yaml",
+   "product/rules/RUL-home-id-deleted.yaml",
+   "product/rules/RUL-home-id-revoked.yaml",
+   "product/rules/RUL-home-id-stale.yaml",
+   "product/rules/RUL-home-id-suspended.yaml",
+   "product/rules/RUL-home-id-valid.yaml",
+   "product/rules/RUL-home-not-empty.yaml",
+   "product/rules/RUL-home-notifications-read.yaml",
+   "product/rules/RUL-home-notifications-unread.yaml",
+   "product/rules/RUL-home-online.yaml",
+   "product/rules/RUL-home-pid-deleted.yaml",
+   "product/rules/RUL-home-storage-cloud.yaml",
+   "product/rules/RUL-home-storage-phone.yaml"
+  ]
+ }
+}

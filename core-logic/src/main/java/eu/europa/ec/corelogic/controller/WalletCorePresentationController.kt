@@ -25,11 +25,17 @@ import eu.europa.ec.businesslogic.extension.toUri
 import eu.europa.ec.corelogic.di.WalletCoreScope
 import eu.europa.ec.corelogic.di.getOrCreateKoinScope
 import eu.europa.ec.corelogic.extension.toClaimPath
+import eu.europa.ec.corelogic.extension.toRegistrationStatusDomain
 import eu.europa.ec.corelogic.model.AuthenticationData
 import eu.europa.ec.corelogic.model.PresentationCombinationDomain
 import eu.europa.ec.corelogic.model.PresentationMatchDomain
+import eu.europa.ec.corelogic.model.from
 import eu.europa.ec.corelogic.model.PresentationSelectionDomain
+import eu.europa.ec.corelogic.model.RegistrationStatusDomain
+import eu.europa.ec.corelogic.model.RelyingPartyDomain
 import eu.europa.ec.corelogic.model.identityKey
+import eu.europa.ec.corelogic.model.requesterUniqueIdOrNull
+import eu.europa.ec.corelogic.model.resolveRequesterName
 import eu.europa.ec.corelogic.util.EudiWalletListenerWrapper
 import eu.europa.ec.eudi.iso18013.transfer.TransferEvent
 import eu.europa.ec.eudi.iso18013.transfer.response.RequestProcessor
@@ -39,6 +45,7 @@ import eu.europa.ec.eudi.wallet.dcapi.process.openid4vp.ProcessedOpenId4VpDCAPIR
 import eu.europa.ec.eudi.wallet.document.DocumentExtensions.getDefaultKeyUnlockData
 import eu.europa.ec.eudi.wallet.transfer.openId4vp.dcql.ProcessedDcqlRequest
 import eu.europa.ec.resourceslogic.provider.ResourceProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,7 +64,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.multipaz.presentment.CredentialPresentmentSelection
+import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.CredentialPresentmentSetOptionMemberMatch
 import org.multipaz.securearea.KeyUnlockData
 import java.net.URI
@@ -80,14 +87,14 @@ sealed class TransferEventPartialState {
     data class QrEngagementReady(val qrCode: String) : TransferEventPartialState()
     data class RequestReceived(
         val combinationsDomain: List<PresentationCombinationDomain>,
-        val verifierName: String?,
-        val verifierIsTrusted: Boolean,
+        val relyingParty: RelyingPartyDomain,
     ) : TransferEventPartialState()
 
     data object VerifierNotTrusted : TransferEventPartialState()
 
     data object ResponseSent : TransferEventPartialState()
     data class Redirect(val uri: URI) : TransferEventPartialState()
+    data class Rejected(val redirectUri: URI?) : TransferEventPartialState()
     data class IntentToSend(val intent: Intent) : TransferEventPartialState()
 }
 
@@ -108,6 +115,7 @@ sealed class SendRequestedDocumentsPartialState {
 sealed class ResponseReceivedPartialState {
     data object Success : ResponseReceivedPartialState()
     data class Redirect(val uri: URI) : ResponseReceivedPartialState()
+    data class Rejected(val redirectUri: URI?) : ResponseReceivedPartialState()
     data class Failure(val error: String) : ResponseReceivedPartialState()
     data class IntentToSend(val intent: Intent) : ResponseReceivedPartialState()
 }
@@ -120,6 +128,7 @@ sealed class WalletCorePartialState {
     data class Failure(val error: String) : WalletCorePartialState()
     data object Success : WalletCorePartialState()
     data class Redirect(val uri: URI) : WalletCorePartialState()
+    data class Rejected(val redirectUri: URI?) : WalletCorePartialState()
     data object RequestIsReadyToBeSent : WalletCorePartialState()
     data class IntentToSend(val intent: Intent) : WalletCorePartialState()
 }
@@ -150,7 +159,7 @@ interface WalletCorePresentationController {
      * */
     val verifierName: String?
 
-    val verifierIsTrusted: Boolean?
+    val verifierIsFullyVerified: Boolean?
 
     /**
      * Indicates whether the received request permits per-claim disclosure.
@@ -183,6 +192,23 @@ interface WalletCorePresentationController {
     fun stopPresentation()
 
     /**
+     * Tells the verifier the user declined, then terminates the presentation.
+     *
+     * Distinct from [stopPresentation] on purpose: that one is teardown and runs on **every** exit,
+     * including straight after a successful share, so it must never send anything. This is the answer
+     * to an explicit "no" — the Cancel button or a back gesture on the request screen.
+     *
+     * Without it the verifier hears nothing at all and its transaction simply waits. Measured against
+     * the dev verifier on 2026-09-16: approving logs `Wallet response posted`, and a hand-sent
+     * `access_denied` is accepted and logged the same way, while cancelling in the wallet left the
+     * event log stopped at `Request object retrieved` for as long as it was watched.
+     *
+     * Remote (OpenID4VP) only. Proximity has its own teardown, and a DC API request is answered
+     * through the calling app rather than over HTTP, so neither routes here.
+     */
+    fun rejectPresentation()
+
+    /**
      * Starts QR engagement. This will trigger [events] emission.
      *
      * [TransferEventPartialState.QrEngagementReady] -> QR String to show QR
@@ -207,7 +233,7 @@ interface WalletCorePresentationController {
     fun checkForKeyUnlock(): Flow<CheckKeyUnlockPartialState>
 
     /**
-     * Build the Wallet Core [CredentialPresentmentSelection] from [disclosedDocuments] and
+     * Build the Wallet Core [CredentialSelection] from [disclosedDocuments] and
      * dispatch it to the Wallet Core SDK.
      */
     suspend fun sendRequestedDocuments(): SendRequestedDocumentsPartialState
@@ -270,7 +296,7 @@ class WalletCorePresentationControllerImpl(
 
     override var verifierName: String? = null
 
-    override var verifierIsTrusted: Boolean? = null
+    override var verifierIsFullyVerified: Boolean? = null
 
     override val requestAllowsClaimSelection: Boolean
         get() = processedRequest?.let {
@@ -337,6 +363,10 @@ class WalletCorePresentationControllerImpl(
                         uri = uri
                     )
                 )
+            },
+
+            onRejected = { uri ->
+                trySendBlocking(TransferEventPartialState.Rejected(redirectUri = uri))
             },
 
             intentToSend = { intent ->
@@ -455,7 +485,7 @@ class WalletCorePresentationControllerImpl(
                 )
             }
 
-            val walletCoreSelection = CredentialPresentmentSelection(matches = walletCoreMatches)
+            val walletCoreSelection = CredentialSelection(matches = walletCoreMatches)
 
             val keyUnlockData = selectionsDomain.mapNotNull { selectionDomain ->
                 keyUnlockDataByCredentialId[selectionDomain.credentialId]?.let { keyUnlockData ->
@@ -463,24 +493,17 @@ class WalletCorePresentationControllerImpl(
                 }
             }.toMap()
 
-            processed.generateResponse(
+            val generatedResponse = processed.generateResponse(
                 selection = walletCoreSelection,
                 keyUnlockData = keyUnlockData,
-            ).toKotlinResult()
-                .fold(
-                    onSuccess = {
-                        eudiWallet.sendResponse(it.response)
-                        SendRequestedDocumentsPartialState.RequestSent
-                    },
-                    onFailure = {
-                        SendRequestedDocumentsPartialState.Failure(
-                            error = it.localizedMessage ?: genericErrorMessage
-                        )
-                    }
-                )
-        }.getOrElse {
+            ).toKotlinResult().getOrThrow()
+            eudiWallet.sendResponse(generatedResponse.response)
+            SendRequestedDocumentsPartialState.RequestSent
+        }.getOrElse { exception ->
+            if (exception is CancellationException) throw exception
+
             SendRequestedDocumentsPartialState.Failure(
-                error = it.localizedMessage ?: genericErrorMessage
+                error = exception.localizedMessage ?: genericErrorMessage
             )
         }
     }
@@ -500,6 +523,10 @@ class WalletCorePresentationControllerImpl(
 
                 is TransferEventPartialState.Redirect -> {
                     ResponseReceivedPartialState.Redirect(uri = response.uri)
+                }
+
+                is TransferEventPartialState.Rejected -> {
+                    ResponseReceivedPartialState.Rejected(redirectUri = response.redirectUri)
                 }
 
                 is TransferEventPartialState.Disconnected -> {
@@ -545,6 +572,10 @@ class WalletCorePresentationControllerImpl(
                     )
                 }
 
+                is ResponseReceivedPartialState.Rejected -> {
+                    WalletCorePartialState.Rejected(redirectUri = it.redirectUri)
+                }
+
                 is CheckKeyUnlockPartialState.RequestIsReadyToBeSent -> {
                     WalletCorePartialState.RequestIsReadyToBeSent
                 }
@@ -574,6 +605,16 @@ class WalletCorePresentationControllerImpl(
         }
     }
 
+    override fun rejectPresentation() {
+        // On its own scope, and BEFORE the teardown: `stopPresentation()` cancels `coroutineScope`,
+        // and the SDK's rejection is asynchronous, so dispatching it there would race its own
+        // cancellation. The SDK holds the resolved request object itself, so nothing has to be
+        // passed back in.
+        CoroutineScope(dispatcher).launch {
+            eudiWallet.rejectRemotePresentation()
+        }
+    }
+
     /**
      * Projects a received Wallet Core request into one of three [TransferEventPartialState]s:
      * [TransferEventPartialState.RequestReceived], [TransferEventPartialState.VerifierNotTrusted], or
@@ -587,13 +628,14 @@ class WalletCorePresentationControllerImpl(
             val success = result.getOrThrow()
             processedRequest = success
 
-            // unverified mdoc readers (BLE, DC-API) arrive with null trustMetadata and still reach
-            // consent; disclosure is refused later by the reader-auth policy. untrusted OpenID4VP
-            // never reaches this success path (rejected at resolution; see getOrElse / onError)
-            val trustMetadata = success.trustMetadata
-            verifierName = trustMetadata?.displayName
-            val isTrusted = trustMetadata != null
-            verifierIsTrusted = isTrusted
+            // mdoc readers that fail or skip reader auth reach consent with no trusted access
+            // certificate; disclosure is refused later by the reader-auth policy. untrusted
+            // OpenID4VP never reaches this success path (rejected at resolution; see getOrElse /
+            // onError). both identity values are taken off the object built here — derived once,
+            // read by every later screen
+            val relyingParty = buildRelyingParty(request = success)
+            verifierName = relyingParty.name
+            verifierIsFullyVerified = relyingParty.isFullyVerified
 
             val combinationsDomain = success.buildCombinationsDomain()
 
@@ -601,15 +643,14 @@ class WalletCorePresentationControllerImpl(
 
             TransferEventPartialState.RequestReceived(
                 combinationsDomain = combinationsDomain,
-                verifierName = verifierName,
-                verifierIsTrusted = isTrusted
+                relyingParty = relyingParty,
             )
         }.getOrElse { throwable ->
             // OpenID4VP over the DC-API delivers the untrusted-verifier rejection as a
             // ProcessedRequest.Failure, which getOrThrow() surfaces here
             if (throwable.isUntrustedVerifierRejection()) {
                 verifierName = null
-                verifierIsTrusted = false
+                verifierIsFullyVerified = false
                 TransferEventPartialState.VerifierNotTrusted
             } else {
                 TransferEventPartialState.Error(
@@ -617,6 +658,34 @@ class WalletCorePresentationControllerImpl(
                 )
             }
         }
+    }
+
+    /**
+     * Both trust layers of the received request, projected into the domain — transport-blind:
+     *
+     * - the registration outcome comes straight from the Wallet Core evaluation attached to the
+     *   request; one that carried no evaluation lands on [RegistrationStatusDomain.NotEvaluated].
+     * - trust metadata is Wallet Core's uniform access-certificate verdict across every transport
+     *   (OpenID4VP, proximity, both DC-API protocols): non-null only when the chain validated
+     *   against the configured trust source. Its display name is the verifier's legal name on
+     *   OpenID4VP and the reader certificate's CN on the mdoc transports.
+     */
+    private fun buildRelyingParty(
+        request: RequestProcessor.ProcessedRequest.Success,
+    ): RelyingPartyDomain {
+        val trustMetadata = request.trustMetadata
+        val registration = request.wrpRegistration
+            .toRegistrationStatusDomain(locale = resourceProvider.getLocale())
+
+        return RelyingPartyDomain(
+            name = registration.resolveRequesterName(
+                accessCertificateName = trustMetadata?.displayName,
+            ),
+            uniqueId = registration.requesterUniqueIdOrNull(),
+            logoUri = null,
+            hasTrustedAccessCertificate = trustMetadata != null,
+            registration = registration,
+        )
     }
 
     private fun addListener(listener: TransferEvent.Listener) {
