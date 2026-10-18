@@ -1131,7 +1131,7 @@ Owner-run on the iPhone Air (iOS 27.0.1, team D2YJRYD9TA), Debug build from `/Us
   - **4 jetsam per-process-limit kills (220 MB)** on warm scene reuse in spike runs 1–4; the baseline's reuse was never
     killed. The runtime exceeds the extension memory limit on reuse.
   - Reading: **rendered and completed 5/5 cold, with a memory risk on reuse**. A declared-exception candidate (brief §8),
-    not a kill. The owner counted 5 completed runs; the log shows 4 extension starts before run 5 was confirmed.
+    not a kill. The owner counted 5 completed runs; the first archive showed 4 extension starts; the second archive (`d10b`, collected after run 5) shows the 5th start at 14:32:04 (pid 2770), so the log confirms 5 spike starts (14:23:34, 14:23:58, 14:27:40, 14:28:32, 14:32:04).
 - **Verdict.** Still **Incomplete: awaiting evidence**: the real low-memory kill on an Android phone (KC2), the TalkBack walk
   on an Android phone (D7-Android, precondition) and KC5 (Martin) are missing. Conditional outcome in `spike-report.md` §2.
 - **Queue.** Closed Q-D7-iOS, Q-003, Q-D10. Open: Q-D2-LMK, Q-D7-Android, Q-KC5, Q-TOUCH, Q-KC-CONFIRM, Q-DEC (and the
