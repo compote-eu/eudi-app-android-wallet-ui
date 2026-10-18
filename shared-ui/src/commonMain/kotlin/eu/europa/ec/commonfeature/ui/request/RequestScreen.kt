@@ -51,7 +51,6 @@ import eu.europa.ec.corelogic.model.ClaimType
 import eu.europa.ec.resourceslogic.theme.values.warning
 import eu.europa.ec.shared.navigation.AppNavigator
 import eu.europa.ec.uilogic.component.AppIcons
-import eu.europa.ec.uilogic.component.ErrorInfo
 import eu.europa.ec.uilogic.component.ListItemDataUi
 import eu.europa.ec.uilogic.component.ListItemMainContentDataUi
 import eu.europa.ec.uilogic.component.ListItemSupportingContentDataUi
@@ -80,6 +79,32 @@ import eu.europa.ec.uilogic.extension.applyTestTag
 import eu.europa.ec.uilogic.navigation.helper.IntentAction
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import eu.europa.ec.uilogic.navigation.helper.popBackStackTo
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import eu.europa.ec.commonfeature.ui.request.model.RegistrationWarningVariantUi
+import eu.europa.ec.uilogic.component.ux.UxAppTheme
+import eu.europa.ec.uilogic.component.ux.UxRequestedDocument
+import eu.europa.ec.uilogic.component.wrap.SwitchDataUi
+import eu.europa.ec.uilogic.component.wrap.WrapListItem
+import eu.europa.ec.uilogic.extension.paddingFrom
+import eu.europa.ec.ux.elements.UxAppBar
+import eu.europa.ec.ux.elements.UxBarLeading
+import eu.europa.ec.ux.elements.UxButton
+import eu.europa.ec.ux.elements.UxButtonVariant
+import eu.europa.ec.ux.elements.UxLink
+import eu.europa.ec.ux.elements.UxNotice
+import eu.europa.ec.ux.elements.UxNoticeTone
+import eu.europa.ec.ux.elements.UxRpIdentity
+import eu.europa.ec.ux.elements.UxText
+import eu.europa.ec.ux.elements.UxTextVariant
+import eu.europa.ec.ux.elements.UxTrust
+import eu.europa.ec.ux.theme.UxThemeAccess
+import eu.europa.ec.shared.resources.resolve
+import eu.europa.ec.shared.resources.content_description_arrow_back_icon
+import eu.europa.ec.shared.resources.content_description_arrow_up_icon
+import eu.europa.ec.shared.resources.content_description_verified_icon
+import eu.europa.ec.shared.resources.request_relying_party_not_verified_label
+import eu.europa.ec.shared.resources.request_relying_party_id_format
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -96,11 +121,6 @@ import eu.europa.ec.shared.resources.request_intended_use_section_title
 import eu.europa.ec.shared.resources.request_privacy_policy_section_title
 import eu.europa.ec.shared.resources.request_cancel_button_text
 import eu.europa.ec.shared.resources.request_screen_title
-import eu.europa.ec.uilogic.component.content.ContentTitle
-import eu.europa.ec.uilogic.component.RelyingPartyLayout
-import eu.europa.ec.uilogic.component.RelyingParty
-import eu.europa.ec.uilogic.component.InfoSection
-import eu.europa.ec.uilogic.component.InfoLinkSection
 import eu.europa.ec.commonfeature.ui.request.model.RelyingPartyHeaderUi
 import eu.europa.ec.shared.resources.request_blocked_bottom_sheet_message
 import eu.europa.ec.shared.resources.request_blocked_bottom_sheet_primary_button_text
@@ -162,93 +182,103 @@ fun RequestScreen(
         skipPartiallyExpanded = true
     )
 
-    ContentScreen(
-        navigatableAction = ScreenNavigateAction.BACKABLE,
-        isLoading = state.isLoading,
-        onBack = { viewModel.setEvent(Event.OnBack) },
-        stickyBottom = { paddingValues ->
-            ConsentStickyBottomSection(
-                modifier = Modifier.fillMaxWidth(),
+    // RESKIN PROBE (option B): the export's brand over the whole screen; Material parts it still draws are bridged.
+    UxAppTheme {
+        ContentScreen(
+            navigatableAction = ScreenNavigateAction.BACKABLE,
+            isLoading = state.isLoading,
+            onBack = { viewModel.setEvent(Event.OnBack) },
+            topBar = {
+                UxAppBar(
+                    id = "request_screen_app_bar",
+                    leading = UxBarLeading.Back,
+                    leadingLabel = stringResource(Res.string.content_description_arrow_back_icon),
+                    onLeading = { viewModel.setEvent(Event.OnBack) },
+                )
+            },
+            stickyBottom = { paddingValues ->
+                UxConsentStickyBottom(
+                    paddingValues = paddingValues,
+                    primaryButtonTestTag = TestTag.RequestScreen.PRIMARY_BUTTON,
+                    cancelButtonTestTag = TestTag.RequestScreen.SECONDARY_BUTTON,
+                    warningSection = ConsentWarningSection(
+                        registrationWarning = state.registrationWarning,
+                        notVerifiedWarningText = stringResource(Res.string.request_registration_not_verified_warning_text),
+                        overaskedWarningText = stringResource(Res.string.request_registration_overasked_warning_text),
+                        acknowledgeText = stringResource(Res.string.request_registration_acknowledge_text),
+                        onAcknowledgeChange = { isAccepted ->
+                            viewModel.setEvent(
+                                Event.RegistrationRiskToggled(isAccepted = isAccepted)
+                            )
+                        },
+                    ),
+                    primaryButtonText = stringResource(Res.string.request_sticky_button_text),
+                    cancelButtonText = stringResource(Res.string.request_cancel_button_text),
+                    primaryButtonEnabled = !state.isLoading && state.allowShare,
+                    onPrimaryButtonClick = { viewModel.setEvent(Event.StickyButtonPressed) },
+                    onCancelButtonClick = { viewModel.setEvent(Event.OnBack) },
+                )
+            },
+            contentErrorConfig = state.error
+        ) { paddingValues ->
+            Content(
+                state = state,
+                effectFlow = viewModel.effect,
+                onEventSend = { viewModel.setEvent(it) },
+                onNavigationRequested = { navigationEffect ->
+                    when (navigationEffect) {
+
+                        is Effect.Navigation.SwitchScreen -> {
+                            navigator.navigateToRoute(navigationEffect.route)
+                        }
+
+                        is Effect.Navigation.Pop -> {
+                            navigator.pop()
+                        }
+
+                        is Effect.Navigation.PopTo -> {
+                            navigator.popBackStackTo(
+                                route = navigationEffect.route,
+                                inclusive = false
+                            )
+                        }
+
+                        is Effect.Navigation.Finish -> {
+                            platformActions.finishApp()
+                        }
+
+                        is Effect.Navigation.OpenUrlExternally -> {
+                            platformActions.openUrlExternally(url = navigationEffect.url)
+                        }
+                    }
+                },
                 paddingValues = paddingValues,
-                primaryButtonTestTag = TestTag.RequestScreen.PRIMARY_BUTTON,
-                cancelButtonTestTag = TestTag.RequestScreen.SECONDARY_BUTTON,
-                warningSection = ConsentWarningSection(
-                    registrationWarning = state.registrationWarning,
-                    notVerifiedWarningText = stringResource(Res.string.request_registration_not_verified_warning_text),
-                    overaskedWarningText = stringResource(Res.string.request_registration_overasked_warning_text),
-                    acknowledgeText = stringResource(Res.string.request_registration_acknowledge_text),
-                    onAcknowledgeChange = { isAccepted ->
+                coroutineScope = scope,
+                modalBottomSheetState = bottomSheetState
+            )
+
+            if (isBottomSheetOpen) {
+                WrapModalBottomSheet(
+                    onDismissRequest = {
                         viewModel.setEvent(
-                            Event.RegistrationRiskToggled(isAccepted = isAccepted)
+                            when (state.sheetContent) {
+                                is RequestBottomSheetContent.Warning -> {
+                                    Event.BottomSheet.UpdateBottomSheetState(isOpen = false)
+                                }
+
+                                is RequestBottomSheetContent.VerifierNotTrusted -> {
+                                    Event.BottomSheet.VerifierNotTrusted.Close
+                                }
+                            }
                         )
                     },
-                ),
-                primaryButtonText = stringResource(Res.string.request_sticky_button_text),
-                cancelButtonText = stringResource(Res.string.request_cancel_button_text),
-                primaryButtonEnabled = !state.isLoading && state.allowShare,
-                onPrimaryButtonClick = { viewModel.setEvent(Event.StickyButtonPressed) },
-                onCancelButtonClick = { viewModel.setEvent(Event.OnBack) },
-            )
-        },
-        contentErrorConfig = state.error
-    ) { paddingValues ->
-        Content(
-            state = state,
-            effectFlow = viewModel.effect,
-            onEventSend = { viewModel.setEvent(it) },
-            onNavigationRequested = { navigationEffect ->
-                when (navigationEffect) {
-
-                    is Effect.Navigation.SwitchScreen -> {
-                        navigator.navigateToRoute(navigationEffect.route)
-                    }
-
-                    is Effect.Navigation.Pop -> {
-                        navigator.pop()
-                    }
-
-                    is Effect.Navigation.PopTo -> {
-                        navigator.popBackStackTo(
-                            route = navigationEffect.route,
-                            inclusive = false
-                        )
-                    }
-
-                    is Effect.Navigation.Finish -> {
-                        platformActions.finishApp()
-                    }
-
-                    is Effect.Navigation.OpenUrlExternally -> {
-                        platformActions.openUrlExternally(url = navigationEffect.url)
-                    }
-                }
-            },
-            paddingValues = paddingValues,
-            coroutineScope = scope,
-            modalBottomSheetState = bottomSheetState
-        )
-
-        if (isBottomSheetOpen) {
-            WrapModalBottomSheet(
-                onDismissRequest = {
-                    viewModel.setEvent(
-                        when (state.sheetContent) {
-                            is RequestBottomSheetContent.Warning -> {
-                                Event.BottomSheet.UpdateBottomSheetState(isOpen = false)
-                            }
-
-                            is RequestBottomSheetContent.VerifierNotTrusted -> {
-                                Event.BottomSheet.VerifierNotTrusted.Close
-                            }
-                        }
+                    sheetState = bottomSheetState
+                ) {
+                    SheetContent(
+                        sheetContent = state.sheetContent,
+                        onEventSent = { viewModel.setEvent(it) },
                     )
-                },
-                sheetState = bottomSheetState
-            ) {
-                SheetContent(
-                    sheetContent = state.sheetContent,
-                    onEventSent = { viewModel.setEvent(it) },
-                )
+                }
             }
         }
     }
@@ -286,9 +316,11 @@ private fun Content(
         verticalArrangement = Arrangement.Top
     ) {
         // Screen Header.
-        ContentTitle(
+        UxText(
+            id = "request_screen_title",
+            text = stringResource(Res.string.request_screen_title),
+            variant = UxTextVariant.Title,
             modifier = Modifier.fillMaxWidth(),
-            title = stringResource(Res.string.request_screen_title),
         )
 
         state.relyingPartyHeader?.let { safeRelyingPartyHeader ->
@@ -373,9 +405,11 @@ private fun DisplayRequestContent(
     when (requestDataUi) {
         is RequestDataUi.Initial -> Unit // Nothing to render until the request resolves.
 
-        is RequestDataUi.NoData -> ErrorInfo(
-            modifier = modifier.fillMaxSize(),
-            informativeText = stringResource(Res.string.request_no_data),
+        is RequestDataUi.NoData -> UxNotice(
+            id = "request_screen_no_data",
+            tone = UxNoticeTone.Info,
+            text = stringResource(Res.string.request_no_data),
+            modifier = modifier,
         )
 
         is RequestDataUi.Single -> Column(modifier = modifier) {
@@ -469,14 +503,11 @@ private fun DisplayCombinationCards(
 private fun RequestedDataSectionTitle(
     modifier: Modifier,
 ) {
-    SectionTitle(
-        modifier = modifier,
+    UxText(
+        id = "request_screen_requested_data_title",
         text = stringResource(Res.string.request_requested_data_section_title),
-        textConfig = TextConfig(
-            styleKey = TextStyleKey.LabelLarge,
-            colorKey = ColorKey.OnSurface,
-            maxLines = Int.MAX_VALUE,
-        )
+        variant = UxTextVariant.Heading,
+        modifier = modifier,
     )
 }
 
@@ -543,29 +574,17 @@ private fun DisplayRequestItems(
         verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
     ) {
         requestDocuments.forEachIndexed { index, requestDocument ->
-            WrapExpandableListItem(
+            UxRequestedDocument(
+                id = TestTag.RequestScreen.requestedDocument(index = index),
+                document = requestDocument.headerUi,
+                selectable = claimsAreSelectable,
+                expandedLabel = stringResource(Res.string.content_description_arrow_up_icon),
+                collapsedLabel = stringResource(Res.string.request_collapsed_supporting_text),
+                onToggleClaim = onClaimClick,
+                onExpandedChange = onExpansionChange,
                 modifier = Modifier
                     .applyTestTag(TestTag.RequestScreen.requestedDocument(index = index))
                     .fillMaxWidth(),
-                header = requestDocument.headerUi.header,
-                data = requestDocument.headerUi.nestedItems,
-                isItemClickable = { true },
-                onItemClick = if (claimsAreSelectable) {
-                    { item -> onClaimClick(item.itemId) }
-                } else {
-                    null
-                },
-                onExpandedChange = { expandedItem ->
-                    onExpansionChange(expandedItem.itemId)
-                },
-                isExpanded = requestDocument.headerUi.isExpanded,
-                throttleClicks = false,
-                hideSensitiveContent = false,
-                collapsedMainContentVerticalPadding = SPACING_MEDIUM.dp,
-                expandedMainContentVerticalPadding = SPACING_MEDIUM.dp,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceDim,
-                ),
             )
         }
     }
@@ -621,13 +640,11 @@ internal fun TransactionDataSection(
 private fun RequestWarningNote(
     modifier: Modifier,
 ) {
-    SectionTitle(
-        modifier = modifier,
+    UxText(
+        id = "request_screen_warning_note",
         text = stringResource(Res.string.request_warning_text),
-        textConfig = TextConfig(
-            styleKey = TextStyleKey.BodySmall,
-            colorKey = ColorKey.OnSurface,
-        )
+        variant = UxTextVariant.Small,
+        modifier = modifier,
     )
 }
 
@@ -641,33 +658,102 @@ private fun VerifierHeaderSection(
     header: RelyingPartyHeaderUi,
     onPrivacyPolicyClick: () -> Unit,
 ) {
-    Column(modifier = modifier) {
-        RelyingParty(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = SPACING_SMALL.dp),
-            relyingPartyData = header.relyingParty,
-            layout = RelyingPartyLayout.InlineStart,
+    // RESKIN PROBE: RelyingParty + InfoSection -> EL-rp-identity (name, trust badge, ID as the service line, intended
+    // use as the reason); InfoLinkSection -> EL-link (external).
+    val relyingParty = header.relyingParty
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(SPACING_SMALL.dp),
+    ) {
+        UxRpIdentity(
+            id = "request_screen_relying_party",
+            name = relyingParty.name.resolve(),
+            trust = if (relyingParty.isVerified) UxTrust.Trusted else UxTrust.Untrusted,
+            trustLabel = stringResource(
+                if (relyingParty.isVerified) Res.string.content_description_verified_icon else Res.string.request_relying_party_not_verified_label,
+            ),
+            service = relyingParty.uniqueId?.let { stringResource(Res.string.request_relying_party_id_format, it) },
+            reason = header.intendedUse,
+            reasonLabel = stringResource(Res.string.request_intended_use_section_title),
+            logo = relyingParty.logo,
         )
-
         header.privacyPolicyUrl?.let { safePrivacyPolicyUrl ->
-            InfoLinkSection(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = SPACING_SMALL.dp),
-                title = stringResource(Res.string.request_privacy_policy_section_title),
-                linkText = safePrivacyPolicyUrl,
-                onLinkClick = onPrivacyPolicyClick,
+            UxLink(
+                id = "request_screen_privacy_policy",
+                label = stringResource(Res.string.request_privacy_policy_section_title),
+                href = safePrivacyPolicyUrl,
+                onActivate = { onPrivacyPolicyClick() },
+                external = true,
             )
         }
+    }
+}
 
-        header.intendedUse?.let { safeIntendedUse ->
-            InfoSection(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = SPACING_SMALL.dp),
-                title = stringResource(Res.string.request_intended_use_section_title),
-                body = safeIntendedUse,
+/**
+ * RESKIN PROBE: the consent sticky bottom (ConsentStickyBottomSection, still used by the other consent screens) with
+ * generated parts: the registration warning as an EL-notice (warning) whose extra slot keeps the app's acknowledge
+ * switch row (the library has no switch or checkbox element), then the Cancel | Share pair as EL-button secondary and
+ * primary, in the app's order. The test tags stay the app's.
+ */
+@Composable
+private fun UxConsentStickyBottom(
+    paddingValues: PaddingValues,
+    primaryButtonTestTag: String,
+    cancelButtonTestTag: String,
+    warningSection: ConsentWarningSection?,
+    primaryButtonText: String,
+    cancelButtonText: String,
+    primaryButtonEnabled: Boolean,
+    onPrimaryButtonClick: () -> Unit,
+    onCancelButtonClick: () -> Unit,
+) {
+    val tokens = UxThemeAccess.tokens
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(tokens.colors.surfaceDefault)
+            .paddingFrom(pv = paddingValues, top = false, bottom = false)
+            .padding(vertical = tokens.space.m),
+        verticalArrangement = Arrangement.spacedBy(tokens.space.s),
+    ) {
+        warningSection?.registrationWarning?.let { warning ->
+            UxNotice(
+                id = "request_screen_registration_warning",
+                tone = UxNoticeTone.Warning,
+                text = when (warning.variant) {
+                    RegistrationWarningVariantUi.NOT_VERIFIED -> warningSection.notVerifiedWarningText
+                    RegistrationWarningVariantUi.OVERASKED -> warningSection.overaskedWarningText
+                },
+                extra = {
+                    WrapListItem(
+                        item = ListItemDataUi(
+                            itemId = "request_screen_registration_acknowledge",
+                            mainContentData = ListItemMainContentDataUi.Text(warningSection.acknowledgeText),
+                            trailingContentData = ListItemTrailingContentDataUi.Switch(
+                                SwitchDataUi(isChecked = warning.riskAccepted),
+                            ),
+                        ),
+                        onItemClick = { warningSection.onAcknowledgeChange(!warning.riskAccepted) },
+                    )
+                },
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(tokens.space.s)) {
+            UxButton(
+                id = cancelButtonTestTag,
+                label = cancelButtonText,
+                variant = UxButtonVariant.Secondary,
+                onPress = onCancelButtonClick,
+                modifier = Modifier.weight(1f),
+            )
+            UxButton(
+                id = primaryButtonTestTag,
+                label = primaryButtonText,
+                variant = UxButtonVariant.Primary,
+                onPress = onPrimaryButtonClick,
+                modifier = Modifier.weight(1f),
+                disabled = !primaryButtonEnabled,
+                icon = "check",
             )
         }
     }

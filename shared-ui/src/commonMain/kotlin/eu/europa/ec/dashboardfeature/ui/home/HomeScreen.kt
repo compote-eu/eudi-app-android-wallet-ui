@@ -17,15 +17,8 @@
 package eu.europa.ec.dashboardfeature.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
@@ -36,7 +29,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import eu.europa.ec.shared.resources.UiText
 import eu.europa.ec.shared.resources.asUiText
 import eu.europa.ec.shared.resources.resolve
@@ -61,18 +53,24 @@ import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
 import eu.europa.ec.uilogic.component.utils.HSpacer
 import eu.europa.ec.uilogic.component.utils.LifecycleEffect
 import eu.europa.ec.uilogic.component.utils.SPACING_MEDIUM
-import eu.europa.ec.uilogic.component.utils.SPACING_SMALL
 import eu.europa.ec.uilogic.component.wrap.ActionCardConfig
 import eu.europa.ec.uilogic.component.wrap.BottomSheetTextDataUi
 import eu.europa.ec.uilogic.component.wrap.BottomSheetWithTwoBigIcons
 import eu.europa.ec.uilogic.component.wrap.ColorKey
 import eu.europa.ec.uilogic.component.wrap.DialogBottomSheet
 import eu.europa.ec.uilogic.component.wrap.GenericBottomSheet
-import eu.europa.ec.uilogic.component.wrap.WrapActionCard
 import eu.europa.ec.uilogic.component.wrap.WrapIcon
-import eu.europa.ec.uilogic.component.wrap.WrapIconButton
 import eu.europa.ec.uilogic.component.wrap.WrapModalBottomSheet
-import eu.europa.ec.uilogic.extension.paddingFrom
+import eu.europa.ec.uilogic.component.ux.UxActionCard
+import eu.europa.ec.uilogic.component.ux.UxAppTheme
+import eu.europa.ec.uilogic.component.wrap.WrapImage
+import eu.europa.ec.ux.elements.UxAppBar
+import eu.europa.ec.ux.elements.UxBarLeading
+import eu.europa.ec.ux.elements.UxText
+import eu.europa.ec.ux.elements.UxTextVariant
+import eu.europa.ec.ux.elements.templates.TplHome
+import androidx.compose.ui.layout.ContentScale
+import eu.europa.ec.shared.resources.content_description_menu_icon
 import eu.europa.ec.uilogic.navigation.helper.navigateToRoute
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -121,46 +119,44 @@ fun HomeScreen(
         skipPartiallyExpanded = true
     )
 
-    ContentScreen(
-        isLoading = state.isLoading,
-        navigatableAction = ScreenNavigateAction.NONE,
-        onBack = { platformActions.finishApp() },
-        topBar = {
-            TopBar(
-                onEventSent = onDashboardEventSent
+    // RESKIN PROBE (option B): the export's brand over the whole screen; Material parts it still draws are bridged.
+    UxAppTheme {
+        ContentScreen(
+            isLoading = state.isLoading,
+            navigatableAction = ScreenNavigateAction.NONE,
+            onBack = { platformActions.finishApp() },
+        ) { _ ->
+            Content(
+                onDashboardEventSent = onDashboardEventSent,
+                state = state,
+                effectFlow = viewModel.effect,
+                onEventSent = { event ->
+                    viewModel.setEvent(event)
+                },
+                onNavigationRequested = {
+                    handleNavigationEffect(it, navigator, platformActions)
+                },
+                coroutineScope = scope,
+                modalBottomSheetState = bottomSheetState,
             )
         }
-    ) { paddingValues ->
-        Content(
-            state = state,
-            effectFlow = viewModel.effect,
-            onEventSent = { event ->
-                viewModel.setEvent(event)
-            },
-            onNavigationRequested = {
-                handleNavigationEffect(it, navigator, platformActions)
-            },
-            coroutineScope = scope,
-            modalBottomSheetState = bottomSheetState,
-            paddingValues = paddingValues
-        )
-    }
 
-    if (isBottomSheetOpen) {
-        WrapModalBottomSheet(
-            onDismissRequest = {
-                viewModel.setEvent(
-                    Event.BottomSheet.UpdateBottomSheetState(
-                        isOpen = false
+        if (isBottomSheetOpen) {
+            WrapModalBottomSheet(
+                onDismissRequest = {
+                    viewModel.setEvent(
+                        Event.BottomSheet.UpdateBottomSheetState(
+                            isOpen = false
+                        )
                     )
+                },
+                sheetState = bottomSheetState
+            ) {
+                HomeScreenSheetContent(
+                    sheetContent = state.sheetContent,
+                    onEventSent = { event -> viewModel.setEvent(event) },
                 )
-            },
-            sheetState = bottomSheetState
-        ) {
-            HomeScreenSheetContent(
-                sheetContent = state.sheetContent,
-                onEventSent = { event -> viewModel.setEvent(event) },
-            )
+            }
         }
     }
 
@@ -172,93 +168,52 @@ fun HomeScreen(
     }
 }
 
+/** RESKIN PROBE: EL-app-bar (menu) as TPL-home's band; the logo lockup stays the app's (the library has no logo element). */
 @Composable
 private fun TopBar(
     onEventSent: (DashboardEvent) -> Unit
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                all = SPACING_SMALL.dp
-            )
-    ) {
-        // home menu icon
-        WrapIconButton(
-            modifier = Modifier.align(Alignment.CenterStart),
-            iconData = AppIcons.Menu,
-            customTint = MaterialTheme.colorScheme.onSurface,
-        ) {
-            onEventSent(OpenSideMenuEvent)
-        }
-
-        // wallet logo
-        AppIconAndText(
-            modifier = Modifier.align(Alignment.Center),
-            appIconAndTextData = AppIconAndTextDataUi()
-        )
-    }
+    UxAppBar(
+        id = "home_screen_app_bar",
+        leading = UxBarLeading.Menu,
+        leadingLabel = stringResource(Res.string.content_description_menu_icon),
+        onLeading = { onEventSent(OpenSideMenuEvent) },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Content(
+    onDashboardEventSent: (DashboardEvent) -> Unit,
     state: State,
     effectFlow: Flow<Effect>,
     onEventSent: ((event: Event) -> Unit),
     onNavigationRequested: (navigationEffect: Effect.Navigation) -> Unit,
     coroutineScope: CoroutineScope,
     modalBottomSheetState: SheetState,
-    paddingValues: PaddingValues
 ) {
-    val scrollState = rememberScrollState()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .paddingFrom(paddingValues, bottom = false)
-            .verticalScroll(scrollState)
-            .padding(vertical = SPACING_MEDIUM.dp),
-        verticalArrangement = Arrangement.spacedBy(SPACING_MEDIUM.dp)
-    ) {
-        Text(
-            text = state.welcomeUserMessage.resolve(),
-            style = MaterialTheme.typography.headlineMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface
+    // RESKIN PROBE (option B): TPL-home with generated parts under the export's brand. ContentScreen stays the shell
+    // (back = finish, loading overlay); its paddings are not applied because the template owns the insets.
+    TplHome(
+        id = "home_screen",
+        appbar = { TopBar(onEventSent = onDashboardEventSent) },
+        header = { AppIconAndText(appIconAndTextData = AppIconAndTextDataUi()) },
+        body = {
+            UxText("home_screen_welcome", state.welcomeUserMessage.resolve(), UxTextVariant.Title)
+            HomeActionCard("home_screen_authenticate_card", state.authenticateCardConfig,
+                onAction = { onEventSent(Event.AuthenticateCard.AuthenticatePressed) },
+                onLearnMore = { onEventSent(Event.AuthenticateCard.LearnMorePressed) },
             )
-        )
-
-        WrapActionCard(
-            config = state.authenticateCardConfig,
-            onActionClick = {
-                onEventSent(
-                    Event.AuthenticateCard.AuthenticatePressed
-                )
-            },
-            onLearnMoreClick = {
-                onEventSent(
-                    Event.AuthenticateCard.LearnMorePressed
+            // Omitted rather than disabled where the platform cannot sign: `DocumentSignRoute` has no
+            // entry on iOS, so a visible card would navigate nowhere. See `HomeInteractor.canSignDocuments`.
+            state.signCardConfig?.let { signCardConfig ->
+                HomeActionCard("home_screen_sign_card", signCardConfig,
+                    onAction = { onEventSent(Event.SignDocumentCard.SignDocumentPressed) },
+                    onLearnMore = { onEventSent(Event.SignDocumentCard.LearnMorePressed) },
                 )
             }
-        )
-
-        // Omitted rather than disabled where the platform cannot sign: `DocumentSignRoute` has no
-        // entry on iOS, so a visible card would navigate nowhere. See `HomeInteractor.canSignDocuments`.
-        state.signCardConfig?.let { signCardConfig ->
-            WrapActionCard(
-                config = signCardConfig,
-                onActionClick = {
-                    onEventSent(
-                        Event.SignDocumentCard.SignDocumentPressed
-                    )
-                },
-                onLearnMoreClick = {
-                    onEventSent(
-                        Event.SignDocumentCard.LearnMorePressed
-                    )
-                }
-            )
-        }
-    }
+        },
+    )
 
     if (state.bleAvailability == BleAvailability.NO_PERMISSION) {
         RequiredPermissionsAsk(state, onEventSent)
@@ -292,6 +247,19 @@ private fun Content(
             }
         }.collect()
     }
+}
+
+@Composable
+private fun HomeActionCard(id: String, config: ActionCardConfig, onAction: () -> Unit, onLearnMore: () -> Unit) {
+    UxActionCard(
+        id = id,
+        title = config.title.resolve(),
+        primaryLabel = config.primaryButtonText.resolve(),
+        learnMoreLabel = config.secondaryButtonText.resolve(),
+        onAction = onAction,
+        onLearnMore = onLearnMore,
+        art = { WrapImage(iconData = config.icon, contentScale = ContentScale.Fit) },
+    )
 }
 
 private fun handleNavigationEffect(
@@ -498,13 +466,9 @@ private fun HomeScreenContentPreview() {
             isLoading = false,
             navigatableAction = ScreenNavigateAction.NONE,
             onBack = { },
-            topBar = {
-                TopBar(
-                    onEventSent = {}
-                )
-            }
-        ) { paddingValues ->
+        ) { _ ->
             Content(
+                onDashboardEventSent = {},
                 state = State(
                     isBottomSheetOpen = false,
                     welcomeUserMessage = "Welcome back, Alex".asUiText(),
@@ -527,7 +491,6 @@ private fun HomeScreenContentPreview() {
                 coroutineScope = rememberCoroutineScope(),
                 modalBottomSheetState = rememberModalBottomSheetState(),
                 onEventSent = {},
-                paddingValues = paddingValues,
             )
         }
     }

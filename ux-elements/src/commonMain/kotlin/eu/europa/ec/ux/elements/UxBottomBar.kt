@@ -75,6 +75,7 @@ fun UxBottomBar(
     enabled: Boolean = true,
     onSelect: (String) -> Unit = {},
     onAction: () -> Unit = {},
+    tabTag: (tabId: String) -> String = { "$id.tab.$it" },
 ) {
     val tokens = UxThemeAccess.tokens
     val c = UxComp(GROUP)
@@ -103,7 +104,7 @@ fun UxBottomBar(
                 },
             horizontalArrangement = Arrangement.spacedBy(c.dp("tab-gap", tokens.space.xs)),
         ) {
-            tabs.forEach { tab -> Tab(id, tab, radius, enabled, onSelect, Modifier.weight(1f)) }
+            tabs.forEach { tab -> Tab(id, tab, radius, enabled, onSelect, Modifier.weight(1f), tabTag(tab.id)) }
         }
         if (action == UxBarAction.Menu) {
             val size = c.dp("action-size", tokens.size.target)
@@ -135,6 +136,7 @@ private fun Tab(
     enabled: Boolean,
     onSelect: (String) -> Unit,
     modifier: Modifier,
+    tag: String,
 ) {
     val tokens = UxThemeAccess.tokens
     val c = UxComp(GROUP)
@@ -142,7 +144,7 @@ private fun Tab(
     val ground = if (tab.selected) Modifier.background(c.color("selected-bg", tokens.colors.surfaceSelected), shape) else Modifier
     Column(
         modifier = modifier
-            .testTag("$barId.tab.${tab.id}")
+            .testTag(tag)
             .uxFocusRing(shape)
             .then(ground)
             .heightIn(min = c.dp("tab-min-height", tokens.size.target))

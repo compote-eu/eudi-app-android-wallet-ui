@@ -16,11 +16,9 @@
 
 package eu.europa.ec.dashboardfeature.ui.component
 
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Modifier
@@ -33,8 +31,10 @@ import eu.europa.ec.uilogic.component.AppIcons
 import eu.europa.ec.uilogic.component.IconDataUi
 import eu.europa.ec.uilogic.component.preview.PreviewTheme
 import eu.europa.ec.uilogic.component.preview.ThemeModePreviews
-import eu.europa.ec.uilogic.component.wrap.WrapIcon
-import eu.europa.ec.uilogic.extension.applyTestTag
+import eu.europa.ec.uilogic.component.ux.UxAppTheme
+import eu.europa.ec.ux.elements.UxBarTab
+import eu.europa.ec.ux.elements.UxBottomBar
+import eu.europa.ec.ux.theme.UxThemeAccess
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -91,40 +91,32 @@ fun BottomNavigationBar(
     selectedItem: BottomNavigationItem,
     onItemSelected: (BottomNavigationItem) -> Unit,
 ) {
-    NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-    ) {
-        BottomNavigationItem.entries.forEach { item ->
-            val selected = item == selectedItem
-
-            NavigationBarItem(
-                modifier = Modifier.applyTestTag(
-                    TestTag.DashboardScreen.bottomNavigationItem(
-                        navItem = item.id
-                    )
-                ),
-                icon = {
-                    WrapIcon(
-                        iconData = item.icon,
-                    )
-                },
-                label = { Text(text = stringResource(item.titleRes)) },
-                colors = NavigationBarItemDefaults.colors()
-                    .copy(
-                        selectedIndicatorColor = MaterialTheme.colorScheme.primary,
-                        selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                selected = selected,
-                onClick = {
-                    if (!selected) {
-                        onItemSelected(item)
-                    }
-                }
-            )
-        }
+    // RESKIN PROBE (option B): EL-bottom-bar under the export's brand. The tab test tags stay the app's.
+    UxAppTheme {
+        val tokens = UxThemeAccess.tokens
+        UxBottomBar(
+            id = "dashboard_screen_bottom_navigation",
+            label = stringResource(Res.string.home_screen_title),
+            tabs = BottomNavigationItem.entries.map { item ->
+                UxBarTab(id = item.id, label = stringResource(item.titleRes), icon = item.uxIcon, selected = item == selectedItem)
+            },
+            modifier = Modifier
+                .background(tokens.colors.surfacePage)
+                .navigationBarsPadding()
+                .padding(horizontal = tokens.space.gutter, vertical = tokens.space.s),
+            onSelect = { id -> BottomNavigationItem.entries.firstOrNull { it.id == id }?.let(onItemSelected) },
+            tabTag = { id -> TestTag.DashboardScreen.bottomNavigationItem(navItem = id) },
+        )
     }
 }
+
+/** The library icon id of a tab (`icon.<id>`); `home` has no binding in either brand, so nothing is drawn for it. */
+private val BottomNavigationItem.uxIcon: String
+    get() = when (this) {
+        BottomNavigationItem.Home -> "home"
+        BottomNavigationItem.Documents -> "icon-id-card"
+        BottomNavigationItem.Transactions -> "update"
+    }
 
 @ThemeModePreviews
 @Composable

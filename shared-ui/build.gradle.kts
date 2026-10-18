@@ -125,6 +125,11 @@ kotlin {
             api(libs.jetbrains.compose.runtime)
             api(libs.jetbrains.compose.components.resources)
             implementation(libs.kotlinx.serialization.json)
+            // RESKIN PROBE (option B): the generated design system (elements, templates, UxTheme tokens) and the
+            // export's data files (ux-tokens.json, ux-library.json, ux-assets.json, drawables) for the app's own screens.
+            // Unlike the spike flow this ships in every build, release included: under option B the design system is product code.
+            implementation(project(":ux-elements"))
+            implementation(project(":ux-contract"))
             // Nav3 route model (AppRoute : NavKey, AppNavigator) lives here: config-carrying routes
             // reference the shared-ui UI-model, and AppRoute is sealed so its subtypes must co-locate.
             api(libs.androidx.navigation3.runtime)
