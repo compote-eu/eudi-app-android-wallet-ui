@@ -1218,10 +1218,10 @@
   },
   "library_dirty": false,
   "library_schema_version": 1,
-  "source_commit": "b55be659455f936456632cea230d6fc0ee58f9c5",
+  "source_commit": "95b03406374edc017cba088bdca6e5f5edff46aa",
   "source_dir": "ux/library",
   "source_repo": "dvm-edoklady-eudiw-analysis",
-  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
+  "spec_hash": "sha256:a68afddc4f10ff8e90325a04000e535012d1d1a3a658ac191fb9b9a634cfe708",
   "templates": {
     "TPL-home": {
       "maturity": "candidate",

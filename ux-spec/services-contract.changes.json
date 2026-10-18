@@ -8,15 +8,9 @@
     "needs-adapter": "a new service call or argument, a new sealed result, a new required payload field, a new enum value, an `ensures` added or changed, a call that becomes idempotent: MINOR",
     "none": "copy- or UI-only: the services surface is identical; the version is unchanged (SPEC_HASH still changes)"
   },
-  "contract_change": "none",
+  "contract_change": "initial",
   "flow": "FLW-pres-cross-device",
-  "previous": {
-    "exporter": "0.3.0",
-    "spec_hash": "sha256:88e2b61145bd0a2586831e88bab4c5ac0df93c2ac7b6fe85d9cec779f44702d0",
-    "surface_from": "bundle (lock before exporter 0.5.0)",
-    "ux_commit": "3d6ecb6e601bae931ce5f6f55be216cf841c0817",
-    "version": "1.0.0"
-  },
+  "previous": null,
   "services": {
     "authenticate": [
       "Authenticated",
@@ -50,6 +44,6 @@
       "Ready"
     ]
   },
-  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
+  "spec_hash": "sha256:a68afddc4f10ff8e90325a04000e535012d1d1a3a658ac191fb9b9a634cfe708",
   "version": "1.0.0"
 }

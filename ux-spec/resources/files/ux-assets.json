@@ -2,43 +2,6 @@
   "assets_schema_version": 1,
   "brands": {
     "eudiw_v1": {
-      "document-art.driving-licence": {
-        "file": "drawable/ux_eudiw_v1_document_art_driving_licence.png",
-        "format": "png",
-        "kind": "document-art",
-        "paint": "image",
-        "resource": "ux_eudiw_v1_document_art_driving_licence",
-        "source": "SRC-EDK-DOCART:02-dl-150dpi.png",
-        "source_sha256": "71454057223f6830b1bc4f00ed7f747e8f0f5310bf1a38c2eb6d087cbc81448e"
-      },
-      "document-art.id-card": {
-        "file": "drawable/ux_eudiw_v1_document_art_id_card.png",
-        "format": "png",
-        "kind": "document-art",
-        "paint": "image",
-        "resource": "ux_eudiw_v1_document_art_id_card",
-        "source": "SRC-EDK-DOCART:01-id-150dpi.png",
-        "source_sha256": "fac58e89f9e88aac1310628c74bc9c782c635ea8185a391fa35a23f46b2c6854"
-      },
-      "document-art.pid": {
-        "file": "drawable/ux_eudiw_v1_document_art_pid.svg",
-        "format": "svg",
-        "kind": "document-art",
-        "note": "shipped as SVG: not a plain path icon, so not converted to a vector drawable; Compose Multiplatform loads SVG on iOS, desktop and web, not on Android",
-        "paint": "image",
-        "resource": "ux_eudiw_v1_document_art_pid",
-        "source": "SRC-UX-SYNTH-ART:pid.svg",
-        "source_sha256": "5f9c82708a36687c941aa55b92b420a9bab331fbc11976bfd4f4a90d4a65db4c"
-      },
-      "icon.add": {
-        "file": "drawable/ux_eudiw_v1_icon_add.xml",
-        "format": "vector",
-        "kind": "icon",
-        "paint": "mask",
-        "resource": "ux_eudiw_v1_icon_add",
-        "source": "SRC-EDK-ICONS:add.svg",
-        "source_sha256": "e9532de2b9be01ce951e899e98ee673bb97acd574f0db118feb72fe074a1c376"
-      },
       "icon.apartment": {
         "file": "drawable/ux_eudiw_v1_icon_apartment.xml",
         "format": "vector",
@@ -48,15 +11,6 @@
         "source": "SRC-EDK-ICONS:apartment.svg",
         "source_sha256": "b13f84bafce194ad836ba6e3f5cc62723d35c6f07db597ff37a1368feeedb2d4"
       },
-      "icon.arrow-forward-ios": {
-        "file": "drawable/ux_eudiw_v1_icon_arrow_forward_ios.xml",
-        "format": "vector",
-        "kind": "icon",
-        "paint": "mask",
-        "resource": "ux_eudiw_v1_icon_arrow_forward_ios",
-        "source": "SRC-EDK-ICONS:arrow-forward-ios.svg",
-        "source_sha256": "0e95da0975951ea5cac1de73802c18c3330cb26aca83cbfae7182f1ce460c46b"
-      },
       "icon.check": {
         "file": "drawable/ux_eudiw_v1_icon_check.xml",
         "format": "vector",
@@ -65,15 +19,6 @@
         "resource": "ux_eudiw_v1_icon_check",
         "source": "SRC-MATERIAL-SYMBOLS:check.svg",
         "source_sha256": "01edd53418816632be08e9565b8ca40d9028c230a8a67baaf4b8a1de20db00e6"
-      },
-      "icon.check-circle": {
-        "file": "drawable/ux_eudiw_v1_icon_check_circle.xml",
-        "format": "vector",
-        "kind": "icon",
-        "paint": "mask",
-        "resource": "ux_eudiw_v1_icon_check_circle",
-        "source": "SRC-EDK-ICONS:check-circle.svg",
-        "source_sha256": "42bf0950bc12ecf7952a8c3be86e0131f225095a7dc6c824a659a13df442e373"
       },
       "icon.chevron-right": {
         "file": "drawable/ux_eudiw_v1_icon_chevron_right.xml",
@@ -93,15 +38,6 @@
         "source": "SRC-EDK-ICONS:close.svg",
         "source_sha256": "a82592b0faa0b104a4d4b0530bb05c6a4bfed5728f5aad03ae8e7a19f32b5511"
       },
-      "icon.cloud": {
-        "file": "drawable/ux_eudiw_v1_icon_cloud.xml",
-        "format": "vector",
-        "kind": "icon",
-        "paint": "mask",
-        "resource": "ux_eudiw_v1_icon_cloud",
-        "source": "SRC-MATERIAL-SYMBOLS:cloud.svg",
-        "source_sha256": "a432f176f21f1f8b66fb55ba64507d4280f3ea82c3e4df0e360ead8907f8c27c"
-      },
       "icon.content-content-copy": {
         "file": "drawable/ux_eudiw_v1_icon_content_content_copy.xml",
         "format": "vector",
@@ -119,33 +55,6 @@
         "resource": "ux_eudiw_v1_icon_error_outline",
         "source": "SRC-EDK-ICONS:error-outline.svg",
         "source_sha256": "f02b30c23e0c004e47a128526ab417832b2fd475c4cfbcdfff58e9df8f6c30ab"
-      },
-      "icon.highlight-off": {
-        "file": "drawable/ux_eudiw_v1_icon_highlight_off.xml",
-        "format": "vector",
-        "kind": "icon",
-        "paint": "mask",
-        "resource": "ux_eudiw_v1_icon_highlight_off",
-        "source": "SRC-EDK-ICONS:highlight-off.svg",
-        "source_sha256": "1f12eb865f787d805c0611ad9a4db706e2201cfc6d480a0d083bd2235425d07e"
-      },
-      "icon.icon-case": {
-        "file": "drawable/ux_eudiw_v1_icon_icon_case.xml",
-        "format": "vector",
-        "kind": "icon",
-        "paint": "mask",
-        "resource": "ux_eudiw_v1_icon_icon_case",
-        "source": "SRC-EDK-ICONS:icon-case.svg",
-        "source_sha256": "6ad26ac0e4b0111be140de7193d2c439cc5839438655429d50c2b574c84ac43c"
-      },
-      "icon.icon-id-card": {
-        "file": "drawable/ux_eudiw_v1_icon_icon_id_card.xml",
-        "format": "vector",
-        "kind": "icon",
-        "paint": "mask",
-        "resource": "ux_eudiw_v1_icon_icon_id_card",
-        "source": "SRC-EDK-ICONS:icon-id-card.svg",
-        "source_sha256": "15b484d7473628ed578e1c79d4e82e9071289fc89c477b9411ca0011b08969ad"
       },
       "icon.info": {
         "file": "drawable/ux_eudiw_v1_icon_info.xml",
@@ -200,15 +109,6 @@
         "resource": "ux_eudiw_v1_icon_priority_high",
         "source": "SRC-EDK-ICONS:priority-high.svg",
         "source_sha256": "3ff1e4546f4ec678ff6f63ec22a664e1702987394067052afc314b84b33a689b"
-      },
-      "icon.smartphone": {
-        "file": "drawable/ux_eudiw_v1_icon_smartphone.xml",
-        "format": "vector",
-        "kind": "icon",
-        "paint": "mask",
-        "resource": "ux_eudiw_v1_icon_smartphone",
-        "source": "SRC-MATERIAL-SYMBOLS:smartphone.svg",
-        "source_sha256": "c33c0f3ca46656e5b48f80a4ef84f8cf9f21e25f0ece62e52732cb1f54e503f5"
       },
       "icon.update": {
         "file": "drawable/ux_eudiw_v1_icon_update.xml",
@@ -297,6 +197,15 @@
         "source": "SRC-EDK-ICONS:apartment.svg",
         "source_sha256": "b13f84bafce194ad836ba6e3f5cc62723d35c6f07db597ff37a1368feeedb2d4"
       },
+      "icon.arrow-forward-ios": {
+        "file": "drawable/ux_idsk_icon_arrow_forward_ios.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_arrow_forward_ios",
+        "source": "SRC-EDK-ICONS:arrow-forward-ios.svg",
+        "source_sha256": "0e95da0975951ea5cac1de73802c18c3330cb26aca83cbfae7182f1ce460c46b"
+      },
       "icon.check": {
         "file": "drawable/ux_idsk_icon_check.xml",
         "format": "vector",
@@ -305,6 +214,15 @@
         "resource": "ux_idsk_icon_check",
         "source": "SRC-MATERIAL-SYMBOLS:check.svg",
         "source_sha256": "01edd53418816632be08e9565b8ca40d9028c230a8a67baaf4b8a1de20db00e6"
+      },
+      "icon.check-circle": {
+        "file": "drawable/ux_idsk_icon_check_circle.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_check_circle",
+        "source": "SRC-EDK-ICONS:check-circle.svg",
+        "source_sha256": "42bf0950bc12ecf7952a8c3be86e0131f225095a7dc6c824a659a13df442e373"
       },
       "icon.chevron-right": {
         "file": "drawable/ux_idsk_icon_chevron_right.xml",
@@ -324,6 +242,15 @@
         "source": "SRC-EDK-ICONS:close.svg",
         "source_sha256": "a82592b0faa0b104a4d4b0530bb05c6a4bfed5728f5aad03ae8e7a19f32b5511"
       },
+      "icon.cloud": {
+        "file": "drawable/ux_idsk_icon_cloud.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_cloud",
+        "source": "SRC-MATERIAL-SYMBOLS:cloud.svg",
+        "source_sha256": "a432f176f21f1f8b66fb55ba64507d4280f3ea82c3e4df0e360ead8907f8c27c"
+      },
       "icon.content-content-copy": {
         "file": "drawable/ux_idsk_icon_content_content_copy.xml",
         "format": "vector",
@@ -341,6 +268,15 @@
         "resource": "ux_idsk_icon_error_outline",
         "source": "SRC-EDK-ICONS:error-outline.svg",
         "source_sha256": "f02b30c23e0c004e47a128526ab417832b2fd475c4cfbcdfff58e9df8f6c30ab"
+      },
+      "icon.highlight-off": {
+        "file": "drawable/ux_idsk_icon_highlight_off.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_highlight_off",
+        "source": "SRC-EDK-ICONS:highlight-off.svg",
+        "source_sha256": "1f12eb865f787d805c0611ad9a4db706e2201cfc6d480a0d083bd2235425d07e"
       },
       "icon.info": {
         "file": "drawable/ux_idsk_icon_info.xml",
@@ -396,6 +332,24 @@
         "source": "SRC-EDK-ICONS:priority-high.svg",
         "source_sha256": "3ff1e4546f4ec678ff6f63ec22a664e1702987394067052afc314b84b33a689b"
       },
+      "icon.qr-code": {
+        "file": "drawable/ux_idsk_icon_qr_code.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_qr_code",
+        "source": "SRC-EDK-ICONS:qr-code.svg",
+        "source_sha256": "1befe595a6f699e1646e386a69e0df0d7c93ef791cbc914746e671a15285fb19"
+      },
+      "icon.smartphone": {
+        "file": "drawable/ux_idsk_icon_smartphone.xml",
+        "format": "vector",
+        "kind": "icon",
+        "paint": "mask",
+        "resource": "ux_idsk_icon_smartphone",
+        "source": "SRC-MATERIAL-SYMBOLS:smartphone.svg",
+        "source_sha256": "c33c0f3ca46656e5b48f80a4ef84f8cf9f21e25f0ece62e52732cb1f54e503f5"
+      },
       "icon.update": {
         "file": "drawable/ux_idsk_icon_update.xml",
         "format": "vector",
@@ -422,13 +376,35 @@
         "resource": "ux_idsk_icon_warning",
         "source": "SRC-EDK-ICONS:warning.svg",
         "source_sha256": "0212c59cfa1e2da887b0b36c7d89886de94b019feaaba5c063ec8dc7d32be436"
+      },
+      "trust-mark.colour": {
+        "file": "drawable/ux_idsk_trust_mark_colour.jpg",
+        "fixed": "legal artwork (CIR 2024/2979 Art. 14a): never recoloured, cropped or stretched — contain-fit, proportions kept",
+        "format": "jpg",
+        "kind": "trust-mark",
+        "paint": "image",
+        "resource": "ux_idsk_trust_mark_colour",
+        "source": "SRC-EU-TRUSTMARK:annex-vi-colour.jpg",
+        "source_sha256": "5e00983bca6e46dedc7a13a11bfc5c73d0001384a87267df6738e05e9cfb37ba"
       }
     }
   },
   "naming": "resources/drawable/ux_<brand>_<asset id with every non-alphanumeric as _>[__<mode>]; the app looks a resource up by `resource` (Res.allDrawableResources); paint mask = tint with the content colour, image = draw as is",
-  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
+  "spec_hash": "sha256:a68afddc4f10ff8e90325a04000e535012d1d1a3a658ac191fb9b9a634cfe708",
   "unbound": {
     "idsk": {
+      "document-art.driving-licence": {
+        "fallback": "the synthetic monochrome card drawing of EL-document-card",
+        "kind": "document-art"
+      },
+      "document-art.id-card": {
+        "fallback": "the synthetic monochrome card drawing of EL-document-card",
+        "kind": "document-art"
+      },
+      "document-art.pid": {
+        "fallback": "the synthetic monochrome card drawing of EL-document-card",
+        "kind": "document-art"
+      },
       "illustration.error": {
         "fallback": "the neutral status glyph in a tone-coloured circle",
         "kind": "illustration"
@@ -464,11 +440,7 @@
       "SCR-home/card-id-suspended"
     ],
     "document-art.pid": [
-      "SCR-home/card-pid",
       "SCR-home/card-pid-cloud"
-    ],
-    "icon.add": [
-      "SCR-home/bottom-bar"
     ],
     "icon.apartment": [
       "SCR-pres-request/rp-trusted",
@@ -483,22 +455,21 @@
       "SCR-home/card-id-revoked",
       "SCR-home/card-id-stale",
       "SCR-home/card-id-suspended",
-      "SCR-home/card-pid",
       "SCR-home/card-pid-cloud"
     ],
     "icon.check": [
+      "SCR-home/switch",
       "SCR-pres-outcome-success/hero",
       "SCR-pres-request/attributes"
     ],
     "icon.check-circle": [
       "SCR-home/card-dl",
       "SCR-home/card-id",
-      "SCR-home/card-pid",
       "SCR-home/card-pid-cloud"
     ],
     "icon.chevron-right": [
-      "SCR-home/all-documents",
       "SCR-home/history",
+      "SCR-home/trustmark",
       "SCR-pres-outcome-auth-failed/help",
       "SCR-pres-outcome-auth-unavailable/help",
       "SCR-pres-outcome-document-missing/help",
@@ -528,12 +499,6 @@
     ],
     "icon.highlight-off": [
       "SCR-home/card-id-revoked"
-    ],
-    "icon.icon-case": [
-      "SCR-home/bottom-bar"
-    ],
-    "icon.icon-id-card": [
-      "SCR-home/bottom-bar"
     ],
     "icon.info": [
       "SCR-home/notice-offline-phone",
@@ -572,6 +537,9 @@
       "SCR-pres-outcome-document-missing/hero",
       "SCR-pres-outcome-expired/hero",
       "SCR-pres-outcome-invalid-qr/hero"
+    ],
+    "icon.qr-code": [
+      "SCR-home/present"
     ],
     "icon.smartphone": [
       "SCR-home/card-dl",
@@ -618,6 +586,9 @@
       "SCR-pres-outcome-document-missing/hero",
       "SCR-pres-outcome-expired/hero",
       "SCR-pres-outcome-invalid-qr/hero"
+    ],
+    "trust-mark.colour": [
+      "SCR-home/trustmark"
     ]
   }
 }

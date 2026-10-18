@@ -1,14 +1,14 @@
 {
   "bundle_schema_version": 1,
   "flow_id": "FLW-pres-cross-device",
-  "spec_hash": "sha256:845b71214c30741ef6074a3cdaeae950da8bb86dc1582fdd7488169fe3aa29f2",
+  "spec_hash": "sha256:a68afddc4f10ff8e90325a04000e535012d1d1a3a658ac191fb9b9a634cfe708",
   "source": {
     "brief": "BRF-001",
     "exporter": "tools/export_kmp.py 0.5.0",
     "locale": "sk",
     "maturity": "candidate",
     "pattern": "PAT-arf.5.02-remote-cross-device",
-    "ux_commit": "b55be659455f936456632cea230d6fc0ee58f9c5"
+    "ux_commit": "95b03406374edc017cba088bdca6e5f5edff46aa"
   },
   "initial": "scan",
   "entries": {
@@ -2468,6 +2468,22 @@
             }
           },
           {
+            "id": "privacy",
+            "element": "EL-link",
+            "props": {
+              "external": true,
+              "external_label": {
+                "copy": "CPY-pres-link-external-hint"
+              },
+              "href": {
+                "bind": "/verifier/privacy_url"
+              },
+              "label": {
+                "copy": "CPY-pres-request-privacy-link"
+              }
+            }
+          },
+          {
             "id": "rp-trusted",
             "element": "EL-rp-identity",
             "props": {
@@ -2520,22 +2536,6 @@
               "trust": "untrusted",
               "trust_label": {
                 "copy": "CPY-pres-request-trust-untrusted"
-              }
-            }
-          },
-          {
-            "id": "privacy",
-            "element": "EL-link",
-            "props": {
-              "external": true,
-              "external_label": {
-                "copy": "CPY-pres-link-external-hint"
-              },
-              "href": {
-                "bind": "/verifier/privacy_url"
-              },
-              "label": {
-                "copy": "CPY-pres-request-privacy-link"
               }
             }
           },
@@ -2763,9 +2763,9 @@
         "focus_order": [
           "title",
           "untrusted-notice",
+          "privacy",
           "rp-trusted",
           "rp-untrusted",
-          "privacy",
           "data-intro",
           "instructions",
           "no-field-error",
@@ -5136,10 +5136,10 @@
   },
   "theme": {
     "brands": [
-      "eudiw_v1",
-      "idsk"
+      "idsk",
+      "eudiw_v1"
     ],
-    "default_brand": "eudiw_v1",
+    "default_brand": "idsk",
     "default_mode": "light",
     "kotlin": "eu.europa.ec.ux.theme.generated",
     "modes": [
