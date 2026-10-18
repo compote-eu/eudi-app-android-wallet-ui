@@ -37,7 +37,7 @@ adding the date and the result under it.
   3. Expected: unlock, then Home. No flow is restored.
   4. Repeat for `auth` and `sending`. For `sending`, launch with `--ux-spike slow`.
   5. Record a screen recording of each run.
-- **Status:** open
+- **Status:** **closed (done 2026-10-18), passed.** Owner on the iPhone Air, HEAD build (`f9c8bbc12`, code tree `04e4ba57c`): killed in `request` from the app switcher, relaunched from the icon → unlock, Home, nothing restored; a fresh cold deep link starts at `connecting`. Only `request` was killed on the device (steps 4–5 not done; `auth` and `sending` rest on D3-sim). Row `D3-device`.
 
 ## Q-004: Confirm RULING-2 (a service that throws) for the real export
 
@@ -87,7 +87,7 @@ adding the date and the result under it.
   `sending` is announced once, `success` is announced, and no focus remains on a node of the old state.
 - **If it fails:** KC3 is hit only if the runtime cannot make it right (a fix outside the runtime or the elements). A failure
   means Fall back (M12a conditional verdict).
-- **Status:** open
+- **Status:** **closed (done 2026-10-18), passed.** Scripts `slow` and `happy` on the HEAD build: focus on the new heading after request, auth, verification-code and success; `sending` announced once; `success` announced; no old-screen node reachable. KC3 not hit. Recording `spike-evidence/device/D7-iOS-voiceover-HEAD.mp4` (96 MB, untracked, not in git). Row `D7-iOS`.
 
 ## Q-D10: Request sub-flow inside the DC API extension, 5 runs on the iPhone (D10, track C)
 
@@ -118,14 +118,15 @@ adding the date and the result under it.
 
 | Run | Rendered | Completed | start_to_first_frame_ms | footprint at first frame (MB) | footprint at complete (MB) | Notes |
 |---|---|---|---|---|---|---|
-| 1 | | | | | | |
-| 2 | | | | | | |
-| 3 | | | | | | |
-| 4 | | | | | | |
-| 5 | | | | | | |
+| 1 | y | y | not logged (proxy: first Compose view 150–171 ms after extension launch, runs 1–5) | not logged | not logged | jetsam per-process-limit kill (220 MB) on warm scene reuse |
+| 2 | y | y | as run 1 | not logged | not logged | jetsam kill (220 MB) on warm reuse |
+| 3 | y | y | as run 1 | not logged | not logged | jetsam kill (220 MB) on warm reuse |
+| 4 | y | y | as run 1 | not logged | not logged | jetsam kill (220 MB) on warm reuse |
+| 5 | y | y | as run 1 | not logged | not logged | — |
+| baseline (switch off) | y | y | proxy: 636 ms cold | not logged | not logged | reuse never killed |
 
 - **Pass (brief D10):** renders and completes on the device; memory and start time recorded (5 runs).
-- **Status:** open
+- **Status:** **closed (done 2026-10-18).** 5 of 5 rendered and completed cold through the runtime in the extension (the verification-code step was seen); Safari via a temporary HTTPS tunnel page, PID issued in the wallet. Start time by system-log proxy only; **no footprint numbers** (the `UX-SPIKE-D10` lines did not reach the unified log). **4 jetsam per-process-limit kills (220 MB) on warm scene reuse in runs 1–4; the baseline's reuse was never killed.** Reading: rendered and completed 5/5 cold, with a memory risk on reuse: a declared-exception candidate, not a kill; the owner declares it or orders a fix (spike-report §12). Rows `D10-run1..5`, `D10-analysis`.
 
 ## Q-D2-LMK: real low-memory kill on an Android phone (D2, KC2)
 
@@ -189,4 +190,5 @@ adding the date and the result under it.
 
 ## Later
 
-- D10 runs 1–5: queued as Q-D10. M11: queued as Q-D2-LMK and Q-D7-Android. KC5: Q-KC5.
+- D10 runs 1–5: Q-D10, closed 2026-10-18. M11: queued as Q-D2-LMK and Q-D7-Android. KC5: Q-KC5.
+- Open on 2026-10-18 (M12c): Q-D2-LMK, Q-D7-Android, Q-KC5, Q-TOUCH, Q-KC-CONFIRM, Q-DEC (Q-004, Q-005 open with defaults applied).

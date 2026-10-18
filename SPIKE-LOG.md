@@ -32,6 +32,7 @@ rows: `spike-results.md`. Owner steps: `HUMAN-QUEUE.md`.
 | M11b | done (probe, OR-5; not counted toward the verdict) | 2026-10-17 | 2026-10-17 | Opus | see Commits | Step 0: the T9 guard asks `DebugFlowHook.isEnabled()` (RULING-M11b-0). `InteractorPresCrossDeviceServices` implements the generated services and declaration on the REAL interactors (no interactor changed): 21 results, 5 mapped, 10 lossy, 6 impossible (`undeclared` = authenticate Expired, fetchRequest DocInvalid/Expired, send Expired, verificationCode Ready/Expired, pinned). `--ux-spike real` wired on both hooks, not run against a verifier. Linked into the iOS Debug app and the Android debug APK; release isolation clean. Report: `spike-evidence/M11b/adapter-report.md`. Gate GREEN 4444. |
 | M12a | done (independent verification, read-only, Opus) | 2026-10-17 | 2026-10-17 | Opus | none (read-only; verdict file in the orchestrator's scratchpad) | Verdict **Incomplete: awaiting evidence** at `04e4ba57c`: KC1 passed (caveat), KC2 unresolved, KC3 unresolved, KC4 passed, KC5 missing; D10 not run; D7-Android weaker than the brief. Six integrity issues (agent KC rulings, overstated D7-Android/D2-LMK, broken D2 rows, check-weakening workarounds, provisional DECs, stale queue state). Summarised in `spike-report.md` §2, §10. |
 | M12b | done (close-out; device install pending) | 2026-10-17 | 2026-10-17 | Opus | see Commits | ⟲ `git ls-remote origin feature/kmp` = `b23f6a1f5`, unchanged, no rebase. Full gate at HEAD GREEN 4444/0 (regen-smoke 9/9). Release isolation at HEAD on both platforms clean (iOS graph/symbols/strings/resources; Android dev + demo classpaths and release APKs). D2-Android `am kill` re-run at HEAD for both task roots: 6/6 as §5. `spike-results.md` fixed (D2 column split, LMK-approximation labels, D7-Android unresolved, D8 attempt-2 caveats); HUMAN-QUEUE closed Q-002/Q-006, added Q-TOUCH, Q-KC-CONFIRM, Q-DEC, Q-KC5, Q-D7-Android REQUIRED. Deliverables: `spike-report.md`, `DEC-draft.md`, `spike-evidence/INDEX.md`, copied to the analysis repo (uncommitted). See "M12 notes". |
+| M12c | done (owner device session + handover; no code) | 2026-10-18 | 2026-10-18 | Opus (handover agent) | see Commits | Owner on the iPhone Air (iOS 27.0.1), HEAD device build (`f9c8bbc12`, code tree `04e4ba57c`): **D7-iOS passed** (VoiceOver, `slow` + `happy`), **D3-device passed** (kill in `request`; Home, nothing restored; fresh cold link at `connecting`), **D10 runs 1–5**: rendered and completed 5/5 cold, first Compose view 150–171 ms vs baseline 636 ms (proxy), no footprint numbers, 4 jetsam kills (220 MB) on warm scene reuse (runs 1–4; baseline never). KC3 now rests on D7-iOS passed. Verdict still Incomplete (real LMK, D7-Android phone, KC5). Decision brief (A/B/hybrid), handover index, DEC draft with the recommendation. See "M12c notes". |
 
 ## Rulings
 
@@ -358,6 +359,8 @@ Findings for week 0 / the owner (not decided here):
 | (this commit) | 2026-10-17 | M11b | `spike-evidence/M11b/` (report, gate and isolation logs), SPIKE-LOG M11b | Claude Opus 5.5 | docs only |
 | f9c8bbc12 | 2026-10-17 | M12b | M12 close-out: gate and isolation logs, D2 re-run, results/queue fixes, spike-report, DEC draft, evidence index | Claude Opus 5.5 | full gate GREEN 4444 at the code tree `04e4ba57c` |
 | (this commit) | 2026-10-17 | M12b | device build status (build ready, install pending), copy-back record | Claude Opus 5.5 | docs only |
+| (this commit) | 2026-10-18 | M12c | device rows D7-iOS, D3-device, D10 runs 1–5 + analysis; verdict paragraph; queue closes Q-D7-iOS, Q-003, Q-D10; DEC draft; evidence log | Claude Opus 5.5 | docs and evidence only |
+| (next commit) | 2026-10-18 | M12c | `DECISION-BRIEF.md` (A / B / hybrid), `HANDOVER.md` | Claude Opus 5.5 | docs only |
 
 ## M5e notes (Home parts, OR-8; a probe, not counted toward the verdict)
 
@@ -663,6 +666,7 @@ Debug build from the device worktree. Rows `D1-iOS-device`, `D4-iOS-device`, `D6
   were skipped on the device; the simulator covers them (M4). D3-device stays open (Q-003).
 - The first D3 report (swipe in `sending` "went back to the reference screens") was a misread; on retry `sending` stayed
   blocked and reached `success` on its own. No policy violation.
+- **2026-10-18, HEAD build** (`f9c8bbc12`, code tree `04e4ba57c`): D7-iOS, D3-device and D10 runs 1–5. See "M12c notes".
 
 **F-dev-1: the M4 placeholders were unreadable in system Dark Mode.** The owner switched the phone to Light mode and
 continued. Dark mode is out of brief scope. Check on the M5b theme: `UxTheme` does **not** follow the system mode.
@@ -1102,3 +1106,37 @@ case-insensitive, so `SPIKE-PLAN.md` would have overwritten it).
 
 **Device build.** **build ready, install pending.** `/Users/roman/code/eudi-kmp-device` detached at `f9c8bbc12` (code tree `04e4ba57c`), Debug, signed team D2YJRYD9TA, `DerivedData-device/Build/Products/Debug-iphoneos/EudiWallet.app` (contains the M11b adapter). The command with `-destination id=00008150-000C55591188401C -allowProvisioningUpdates -allowProvisioningDeviceRegistration` failed with exit 70 because the iPhone shows `unavailable` in `xcrun devicectl list devices`; the same command with `-destination generic/platform=iOS` built it (1 min 23 s). Install when the phone is connected: `xcrun devicectl device install app --device 00008150-000C55591188401C <that .app>`.
 
+## M12c notes (owner device session 2026-10-18, handover)
+
+Owner-run on the iPhone Air (iOS 27.0.1, team D2YJRYD9TA), Debug build from `/Users/roman/code/eudi-kmp-device` at
+`f9c8bbc12` (code tree `04e4ba57c`). Raw log: `spike-evidence/device/device-test-1-results.log` (entries from 14:09 to
+14:39). Rows in `spike-results.md`.
+
+- **D7-iOS (VoiceOver), passed.** Scripts `slow` (request → success) and `happy`. Focus on the new heading after
+  `request`, `auth`, `verification-code` and `success`; `sending` announced once; `success` announced; no node of the old
+  screen reachable. Recording `spike-evidence/device/D7-iOS-voiceover-HEAD.mp4` (96 MB): **kept untracked, not in git**.
+  KC3 now rests on this row: **not hit**.
+- **D3-device, passed.** Killed in `request` from the app switcher, relaunched from the icon: unlock, Home, nothing
+  restored. A fresh cold deep link starts at `connecting`. Only `request` was killed on the device; `auth` and `sending`
+  rest on D3-sim. KC2 on iOS: 0 of 3 hard states need a handler outside the policy.
+- **D10 (DC-API extension), runs 1–5.** Safari on the iPhone, the test page served through a temporary HTTPS tunnel (tunnel
+  and local server stopped afterwards); the PID was issued in the wallet. Baseline (switch off): the app's existing
+  extension consent showed fine.
+  - 5 of 5 rendered and completed through the runtime in the extension (the owner saw the verification-code step, which
+    only the spike flow has).
+  - First Compose view 150–171 ms after the extension launch, against 636 ms for the baseline cold start. Both are
+    system-log proxies, not the spike's own `first-frame` line.
+  - **No footprint numbers**: the `UX-SPIKE-D10` lines did not reach the unified log (likely `println`/`NSLog` routing in
+    the extension; not investigated).
+  - **4 jetsam per-process-limit kills (220 MB)** on warm scene reuse in spike runs 1–4; the baseline's reuse was never
+    killed. The runtime exceeds the extension memory limit on reuse.
+  - Reading: **rendered and completed 5/5 cold, with a memory risk on reuse**. A declared-exception candidate (brief §8),
+    not a kill. The owner counted 5 completed runs; the log shows 4 extension starts before run 5 was confirmed.
+- **Verdict.** Still **Incomplete: awaiting evidence**: the real low-memory kill on an Android phone (KC2), the TalkBack walk
+  on an Android phone (D7-Android, precondition) and KC5 (Martin) are missing. Conditional outcome in `spike-report.md` §2.
+- **Queue.** Closed Q-D7-iOS, Q-003, Q-D10. Open: Q-D2-LMK, Q-D7-Android, Q-KC5, Q-TOUCH, Q-KC-CONFIRM, Q-DEC (and the
+  default-applied Q-004, Q-005).
+- **Handover.** `DECISION-BRIEF.md` (A / B / hybrid, recommendation hybrid with B first), `HANDOVER.md` (index), DEC draft
+  updated. Option B is measured on `spike/reskin-probe` (`/Users/roman/code/eudi-kmp-reskin`, `RESKIN-PROBE.md`). Copied to
+  `dvm-edoklady-eudiw-analysis/ux/evaluation/kmp-ui-from-spec/` uncommitted: `DECISION-BRIEF.md`, `spike-report.md`,
+  `spike-results.md`, `DEC-draft.md`, `spike-evidence-index.md`, `RESKIN-PROBE.md`.

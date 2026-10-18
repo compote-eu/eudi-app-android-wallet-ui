@@ -1,6 +1,7 @@
 # Evidence index: `spike/ux-runtime`
 
-One line per path under `spike-evidence/` (branch `spike/ux-runtime`, code tree `04e4ba57c`). Rows in
+One line per path under `spike-evidence/` (branch `spike/ux-runtime`, code tree `04e4ba57c`; updated 2026-10-18). Option B's evidence is on `spike/reskin-probe`
+(`/Users/roman/code/eudi-kmp-reskin/spike-evidence/reskin/`: shots before and after, regen patch and export, logs). Rows in
 `spike-results.md` cite these paths; milestone notes are in `SPIKE-LOG.md`.
 
 | Path | What it holds |
@@ -27,5 +28,5 @@ One line per path under `spike-evidence/` (branch `spike/ux-runtime`, code tree 
 | `M12/` | M12: full gate at HEAD, release isolation on both platforms (script and log), D2-Android `am kill` re-run at HEAD for both task roots (`d2/`) |
 | `D8/` | M8: D8 attempt 1 (logo, offline, brand, copy): spec patches, exports, diffstats, red gate logs, shots, videos; README |
 | `D8-attempt2/` | M8b: D8 attempt 2 (four known drills, not blind) and D8-unseen (blind): patches, spec-gate logs, exports, numstat, gate logs, asserts, shots, videos; baseline runs of the old app |
-| `device/` | Owner device runs on the iPhone Air: DEVICE-TEST-1/2 checklists and results log; DEVICE-TEST-3-VOICEOVER checklist for Q-D7-iOS (HEAD build) |
+| `device/` | Owner device runs on the iPhone Air: DEVICE-TEST-1/2 checklists; DEVICE-TEST-3-VOICEOVER checklist; `device-test-1-results.log` (all owner sessions, incl. 2026-10-18: D7-iOS, D3-device, D10 runs 1–5 and analysis); `D7-iOS-voiceover-HEAD.mp4` (96 MB, **untracked, not in git**: on the owner's machine only) |
 | `tools/` | Reusable drill tools: iOS edge-swipe XCUITest runner, iOS accessibility audit, README |

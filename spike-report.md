@@ -7,7 +7,9 @@ Final report of the spike for the owner team (Roman Hauptvogel, Stanislav Cug) a
 Branch `spike/ux-runtime` in `compote-eu/eudi-app-android-wallet-ui`, based on `origin/feature/kmp` @ `b23f6a1f5`
 (unchanged at M12, ⟲ checked). Code tree at close: `04e4ba57c` (the M12 commits change documents and evidence only).
 Never pushed. Written by the M12b agent (Claude Opus 5.5) from the independent M12a verification (Opus, read-only, at
-`04e4ba57c`) and the operating-model evaluation; the numbers are re-derived where the report says so.
+`04e4ba57c`) and the operating-model evaluation; the numbers are re-derived where the report says so. **Updated
+2026-10-18 (M12c)** with the owner's device session (D7-iOS, D3-device, D10) and the A / B / hybrid comparison
+(`DECISION-BRIEF.md`; option B measured in `RESKIN-PROBE.md` on `spike/reskin-probe`).
 
 ## 1. Executive summary
 
@@ -28,12 +30,20 @@ What the spike shows:
 - **The typed seam is real but the app's interactors do not fit it yet.** A real `Services` adapter on the app's
   presentation interactors (M11b) maps 5 of 21 results cleanly, 10 lossily and 6 not at all. There is no typed
   `Expired`, no verification-code source (a real adapter cannot reach `sending`), and `transactionData` is dropped.
-- **The verdict is not given yet.** Device evidence the brief requires is missing (VoiceOver on an iPhone, TalkBack
-  and a real low-memory kill on an Android phone, iOS cold start on the phone, the DC-API extension runs) and the app
-  team's estimate (KC5) is missing. No kill criterion has been hit so far.
+- **The iPhone rows passed on 2026-10-18.** VoiceOver on a real iPhone Air (D7-iOS: focus on each new heading,
+  `sending` announced once, `success` announced, no old-screen node reachable), iOS cold start after a kill (D3-device),
+  and the DC-API extension: 5 of 5 runs rendered and completed cold, first Compose view 150–171 ms against 636 ms for
+  the baseline (a system-log proxy), **but 4 jetsam kills at the 220 MB extension limit on warm scene reuse** (the
+  baseline was never killed) and no footprint numbers. KC3 is not hit.
+- **The verdict is not given yet.** Still missing: a real low-memory kill on an Android phone (KC2), the TalkBack walk on
+  an Android phone (D7-Android, a verdict precondition) and the app team's estimate (KC5). No kill criterion has been
+  hit so far.
 
-**Verdict: Incomplete: awaiting evidence.** If the missing rows pass, the result is **Go with exceptions** until the
-app team's estimate arrives, and **Go** if that estimate is at most 2× the spike. Details in §2.
+**Verdict: Incomplete: awaiting evidence.** If the real LMK and the TalkBack walk pass, the result is **Go with
+exceptions** until the app team's estimate arrives (exceptions: KC5 missing; the DC-API extension's memory on reuse as a
+declared exception, if the owner declares it), and **Go** if that estimate is at most 2× the spike (still with the
+extension exception unless the memory risk is fixed). Details in §2. For the adoption decision (A full generation, B the
+generated design system in the app's own screens, or a hybrid) see `DECISION-BRIEF.md`: it recommends **hybrid, B first**.
 
 Cost in one line: the whole spike wrote about 11.0 k hand-written main lines and 7.5 k test lines (most of it the
 one-time runtime, elements, theme and harness); a flow's own app-side cost is a Services adapter (about
@@ -42,18 +52,25 @@ one-time runtime, elements, theme and harness); a flow's own app-side cost is a 
 
 ## 2. Verdict
 
-**Incomplete: awaiting evidence** (SPIKE-PLAN §0.5: KC2 and KC3 are unresolved, KC5 is missing, D10 is not run, and the
-D7-Android precondition rests on a check weaker than the brief).
+**Incomplete: awaiting evidence** (SPIKE-PLAN §0.5, status 2026-10-18: KC2 is unresolved because the real low-memory kill
+is missing; KC5 is missing; the D7-Android precondition rests on emulator events, weaker than the brief). Resolved on
+2026-10-18: KC3 (D7-iOS passed on the iPhone), the iOS half of KC2 (D3-device passed) and D10 (5/5 rendered and
+completed, with a memory risk on reuse).
+
+**Conditional outcome.** Real LMK and TalkBack phone walk pass, KC5 missing → **Go with exceptions**. Plus KC5 ≤ 2× the
+spike → **Go**, with the DC-API extension's memory on reuse as a declared exception unless it is fixed. Real LMK needs a
+handler outside the policy in more than 1 of 3 states, or KC5 > 2× → **Fall back**. TalkBack fails → **the owner
+decides** (no kill criterion names it).
 
 ### 2.1 Missing evidence and who supplies it
 
 | Missing row | Why it is needed | Who | Queue entry | Build |
 |---|---|---|---|---|
-| D7-iOS: VoiceOver walk `request` → `success` on the iPhone | KC3 (the only evidence row for KC3) | Owner team | Q-D7-iOS, checklist `spike-evidence/device/DEVICE-TEST-3-VOICEOVER.md` | device build at HEAD (§2.4) |
-| D3-device: iOS cold start after a kill on the iPhone | KC2 (both platforms) | Owner team | Q-003 | device build at HEAD |
+| ~~D7-iOS: VoiceOver walk `request` → `success` on the iPhone~~ **done 2026-10-18, passed** | KC3 (the only evidence row for KC3) | Owner team | Q-D7-iOS (closed) | device build at HEAD |
+| ~~D3-device: iOS cold start after a kill on the iPhone~~ **done 2026-10-18, passed** (kill in `request` only) | KC2 (both platforms) | Owner team | Q-003 (closed) | device build at HEAD |
 | D2 real low-memory kill on an Android phone (launcher root) | KC2; the emulator row is an approximation (root `kill -9` under memory-factor CRITICAL) | Owner team | Q-D2-LMK | `assembleDevDebug` at HEAD |
 | D7-Android: TalkBack walk on a real Android phone | verdict precondition (§0.5); the emulator row has events but no speech and no focused-node text, so it is unresolved | Owner team | Q-D7-Android (REQUIRED) | `assembleDevDebug` at HEAD |
-| D10 runs 1–5: the request sub-flow in the DC-API extension on the iPhone | track C; not run means Incomplete | Owner team | Q-D10 | device build at HEAD |
+| ~~D10 runs 1–5: the request sub-flow in the DC-API extension on the iPhone~~ **done 2026-10-18**: 5/5 rendered and completed cold; 4 jetsam kills (220 MB) on warm reuse; no footprint numbers | track C | Owner team | Q-D10 (closed) | device build at HEAD |
 | KC5: the app team's estimate | brief §8.5 | Martin (app team) | Q-KC5 | — |
 | Touch-list approval T1–T5, T9 | brief §6.4 | Owner team | Q-TOUCH | — |
 | Confirmation of the agent rulings on KC1, KC4, KC2 | SPIKE-PLAN §0.5 forbids agents to rule on kill criteria | Owner team | Q-KC-CONFIRM | — |
@@ -65,6 +82,7 @@ D7-Android precondition rests on a check weaker than the brief).
 | all device rows pass, KC5 still missing | **Go with exceptions** (brief §8: without KC5 at most "go with exceptions") |
 | all device rows pass, KC5 ≤ 2× the spike | **Go** |
 | D10 runs and fails, everything else passes | the extension becomes a **declared exception**; result as the two rows above (at most Go with exceptions) |
+| **2026-10-18:** D10 renders and completes 5/5 cold but is jetsam-killed on warm reuse (4 of 4 reuses in runs 1–4) | a **declared-exception candidate**, not a kill (brief §8); the owner declares it or orders a memory fix |
 | D7-iOS fails and the runtime cannot fix it (KC3 confirmed) | **Fall back** |
 | D3-device or the real LMK needs a handler outside the policy in more than 1 of 3 hard states (KC2 confirmed) | **Fall back** |
 | KC5 > 2× the spike | **Fall back** |
@@ -80,26 +98,27 @@ F = formal (counts), P = preliminary (does not count). Platform: sim = iPhone 17
 |---|---|---|---|
 | D1 Back | F passed (sim; swipe synthesised by XCUITest); device rows P (owner swipes) | F passed (emu; system Back and predictive Back) | passed |
 | D2 process death | n/a (iOS abandons by §5) | `am kill`, launcher root and link root: F passed at `8ff589aca` and **re-run at HEAD in M12** (6 of 6 runs at `04e4ba57c`: request → snapshot, auth → request, sending → error, no new send); link root failed before the T9 guard (F-D2-1). LMK: **approximation** passed (root `kill -9` / memory-factor), **real LMK not run** | unresolved (real LMK missing) |
-| D3 iOS cold start | F passed (sim, `simctl terminate` ×3 + `kill -9`); **device not run** | n/a | unresolved (device missing) |
+| D3 iOS cold start | F passed (sim, `simctl terminate` ×3 + `kill -9`); **device passed 2026-10-18** (kill in `request`; Home, nothing restored; fresh cold link at `connecting`) | n/a | passed |
 | D4 deep-link cold start | F passed (sim); device P | F passed (emu), again after T9 | passed |
 | D5 model check | F passed (fails on pre-fix L58, passes fixed; 84 sequences replay in the Kotlin engine) | same | passed |
 | D6 happy + expired | F passed (sim) | F passed (emu) | passed |
-| D7 screen reader | **VoiceOver on the iPhone not run**; P: M7 audit and bridge tests | emulator events only: **unresolved (weaker than brief)**; real phone not run | unresolved |
+| D7 screen reader | **VoiceOver on the iPhone passed 2026-10-18** (`slow` + `happy`; recording 96 MB, untracked); P: M7 audit and bridge tests | emulator events only: **unresolved (weaker than brief)**; real phone not run | iOS passed; Android unresolved |
 | D8 regeneration | attempt 1 ×4 **failed** (test pins, the logo element gap, consent screen); attempt 2 logo/offline/brand/copy **passed, not blind**; logo image not rendered (example URL serves HTML), a11y-hidden inferred; **D8-unseen (the only blind row) failed** on a test pin, behaviour correct, diff `ux-spec/**` only | (shared code; Android not run for D8) | see KC1 |
 | D9 track B | brand and sheet → page: passed, 0/0 hand-written lines; both option commits had red gates (test pins); Page layout written in M5 before the baseline, so its cost is not in the count; Android never rendered for D9 | — | see KC4 |
-| D10 track C | harness in the app P passed (79 ms to first frame, 69.9 MB); **device runs 1–5 not run** | n/a | not run → Incomplete |
+| D10 track C | harness in the app P passed (79 ms to first frame, 69.9 MB); **device runs 1–5 on 2026-10-18: 5/5 rendered and completed cold**, first Compose view 150–171 ms vs baseline 636 ms (proxy), footprint not recorded, **4 jetsam kills (220 MB) on warm reuse** (baseline 0) | n/a | passed (render + complete); memory risk on reuse → declared-exception candidate |
 
 ### 2.4 Kill criteria (from M12a)
 
 | KC | Status | Evidence and caveat |
 |---|---|---|
 | KC1 regeneration needs a hand edit in generated or interpreted screen code, or screen code in the runtime | **passed (with caveat)** | attempt-2 rows pass with 0 hand-written lines; the runtime grep and the KC1 gate guard are clean; the only blind row failed on a test file (not a KC1 trigger, but it fails the D8 drill's own criterion). Agent ruling M8r (B) awaits owner confirmation (Q-KC-CONFIRM) |
-| KC2 more than 1 of 3 hard states needs a handler outside the policy | **unresolved** | 0 of 3 so far on sim and emu; D3-device and the real LMK are missing; the T9 guard is state-agnostic intent handling (RULING-W6, agent ruling, owner to confirm) |
-| KC3 VoiceOver focus and announcements | **unresolved** | D7-iOS (device) missing; automated evidence (M7) shows one bridge call per settled state and no old-state node during the crossfade |
+| KC2 more than 1 of 3 hard states needs a handler outside the policy | **unresolved** | 0 of 3 on sim, emu and (2026-10-18) the iPhone (D3-device, `request` killed); the real LMK on an Android phone is missing; the T9 guard is state-agnostic intent handling (RULING-W6, agent ruling, owner to confirm) |
+| KC3 VoiceOver focus and announcements | **passed (2026-10-18)** | D7-iOS on the iPhone Air: focus on each new heading, `sending` once, `success` announced, no old-screen node; no fix needed. Automated evidence (M7) agrees |
 | KC4 track B outside TPL-sheet or > 150 lines | **passed** | 0/0 lines for both options; the red gates were test pins (RULING-M9r-1, agent ruling, owner to confirm) |
 | KC5 app-team estimate > 2× the spike | **missing** | Q-KC5 (Martin) |
 
-Device build for the owner's walks: **build ready, install pending.** `/Users/roman/code/eudi-kmp-device` detached at `f9c8bbc12` (code tree `04e4ba57c`), Debug, signed team D2YJRYD9TA, `DerivedData-device/Build/Products/Debug-iphoneos/EudiWallet.app` (contains the M11b adapter). The command with `-destination id=00008150-000C55591188401C -allowProvisioningUpdates -allowProvisioningDeviceRegistration` failed with exit 70 because the iPhone shows `unavailable` in `xcrun devicectl list devices`; the same command with `-destination generic/platform=iOS` built it (1 min 23 s). Install when the phone is connected: `xcrun devicectl device install app --device 00008150-000C55591188401C <that .app>`..
+Device build for the owner's walks: **installed and used on 2026-10-18** for D7-iOS, D3-device and D10 (record of the
+build:) `/Users/roman/code/eudi-kmp-device` detached at `f9c8bbc12` (code tree `04e4ba57c`), Debug, signed team D2YJRYD9TA, `DerivedData-device/Build/Products/Debug-iphoneos/EudiWallet.app` (contains the M11b adapter). The command with `-destination id=00008150-000C55591188401C -allowProvisioningUpdates -allowProvisioningDeviceRegistration` failed with exit 70 because the iPhone shows `unavailable` in `xcrun devicectl list devices`; the same command with `-destination generic/platform=iOS` built it (1 min 23 s). Install when the phone is connected: `xcrun devicectl device install app --device 00008150-000C55591188401C <that .app>`..
 
 ## 3. The central claim, stated honestly (M12a)
 
@@ -375,7 +394,8 @@ counts.
 | §6.4: touch list approved at the plan review | never approved; widened by one file (T9) | RULING-W6; Q-TOUCH |
 | §6.5: quality bar on every commit | breached (§6) | — |
 | §7 D2: a real low-memory kill | emulator approximation only | RULING-M11-3; Q-D2-LMK |
-| §7 D7: real devices | VoiceOver and TalkBack walks not done; emulator events only | Q-D7-iOS, Q-D7-Android |
+| §7 D7: real devices | VoiceOver walk done on the iPhone (2026-10-18, passed); TalkBack on a real phone not done (emulator events only) | Q-D7-Android |
+| §7 D10: memory and start time recorded | start time by system-log proxy only; footprint not recorded (instrumentation lines missing from the unified log) | M12c notes |
 | §7 D8: one run per mutation | run twice: attempt 1 failed on harness and an element gap; attempt 2 from a new baseline, not blind, plus one blind drill | M8r verdict B (agent), RULING-M8r-6 |
 | §7 D9: Android and iOS | iOS simulator only; numstat is platform-independent | — |
 | Order | Android moved to the end, after iOS | OR-4 |
@@ -402,5 +422,8 @@ agent rulings with effect on the verdict: RULING-W2 … W6, M8r (B), RULING-M9r-
 | Q-004 (a throwing service, RULING-2 default) and Q-005 (L58 guard) | owner team / week 0 | HUMAN-QUEUE |
 | Fix F-D2-1 upstream | app team | SPIKE-LOG M11c notes |
 | The go/no-go meeting once the rows exist | owner team + app team | brief §9 |
+| Declare the DC-API extension's memory on reuse an exception, or order a fix | owner team | D10-analysis |
+| Adopt A, B or the hybrid (recommended: hybrid, B first) | owner team + app team | `DECISION-BRIEF.md` |
 
-The DEC draft for the outcome is `DEC-draft.md` (outcome "Incomplete: awaiting evidence", with the conditional outcomes).
+The DEC draft for the outcome is `DEC-draft.md` (outcome "Incomplete: awaiting evidence", with the conditional outcomes and
+the A / B / hybrid recommendation). The decision brief is `DECISION-BRIEF.md`; the handover index is `HANDOVER.md`.
