@@ -85,9 +85,9 @@ import kotlin.time.Duration.Companion.hours
  * - **`DoNotLoadOtherPointers`**, so a list can only introduce the entities it names, never redirect
  *   the wallet to a further list of someone else's choosing.
  *
- * ⚠️ The list's own signature is checked by [LoteJwtVerifier], which — like Android's — verifies
- * against the certificate the list carries. That is integrity, not authenticity; see its
- * documentation, which is also why this class is not the last word on trust.
+ * A list is used only when [LoteJwtVerifier] finds it signed under one of [LoteSignerAnchors] — the check
+ * Android gains with wallet-core 0.32.0 (#441). Before that, both platforms accepted any list whose
+ * signature matched the certificate it carried, whoever had made that certificate.
  *
  * ## Why not the library's own `EudiwIosTrust` façade
  *

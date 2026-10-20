@@ -17,6 +17,14 @@
 package eu.europa.ec.shared.wallet.trust
 
 import eu.europa.ec.eudi.etsi119602.consultation.VerifyJwtSignature
+import eu.europa.ec.eudi.etsi1196x2.consultation.CertificationChainValidation
+import eu.europa.ec.eudi.etsi1196x2.consultation.NonEmptyList
+import eu.europa.ec.eudi.etsi1196x2.consultation.ValidateCertificateChain
+import eu.europa.ec.eudi.etsi1196x2.consultation.ValidateCertificateChainUsingDirectTrustIos
+import eu.europa.ec.eudi.etsi1196x2.consultation.ValidateCertificateChainUsingPKIXIos
+import eu.europa.ec.eudi.etsi1196x2.consultation.or
+import eu.europa.ec.eudi.etsi1196x2.consultation.pkix.PKIXConfiguration
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -26,26 +34,31 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcSignature
 import org.multipaz.crypto.X509Cert
+import platform.Foundation.NSData
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.time.Clock
 
 /**
- * Checks a list-of-trusted-entities JWS against the certificate carried in its own `x5c` header.
+ * Accepts a list of trusted entities only when it is signed by a signer the wallet already trusts.
  *
- * The iOS counterpart of wallet-core's `eu.europa.ec.eudi.wallet.trust.LoteJwtVerifier`, and
- * deliberately the *same* check rather than a better one, so the two platforms agree. Read from that
- * class's bytecode: parse the JWS, take `x5c[0]` from the header, build a verifier from that
- * certificate's public key, and verify. It references no `TrustAnchor`, `KeyStore`, `CertPathValidator`
- * or `PKIXParameters` — `CertificateFactory` is the only certificate machinery it touches, and only to
- * parse.
+ * The iOS counterpart of wallet-core's `LoteJwtVerifier` as rewritten in eudi-lib-android-wallet-core
+ * #441 (`release/0.32.0`), check for check. A list is verified when:
+ * - its `x5c` header carries the certificate chain of its signer;
+ * - the signing certificate, `x5c[0]`, is valid now;
+ * - [validateSigner] trusts that chain against [signerAnchors] — the signer is one of the anchors, or
+ *   chains to one (PKIX); and
+ * - the JWS signature verifies with the signing certificate's key.
  *
- * ⚠️ **So this establishes integrity, not authenticity, on both platforms.** A party able to serve a
- * substituted list can embed its own certificate and sign with it, and this check passes; what actually
- * ties the list to the EU is TLS to the trusted-list host. Bundling a scheme-operator anchor and
- * chaining to it would be stronger — and would be a deliberate *divergence* from Android, not parity,
- * so it is not done here. See the ledger.
+ * Until #441, wallet-core verified the signature against `x5c[0]` and nothing else, and this class did the
+ * same for parity. That proves the list was not changed after signing, not *who* signed it: anyone able to
+ * serve a list could sign one with a certificate of their own. The anchors are what close that.
  */
-class LoteJwtVerifier : VerifyJwtSignature {
+class LoteJwtVerifier(
+    /** See [LoteSignerAnchors]; never certificates read from a list. */
+    private val signerAnchors: NonEmptyList<NSData> = LoteSignerAnchors.EU,
+    private val validateSigner: ValidateCertificateChain<List<NSData>, NSData> = SIGNER_VALIDATION,
+) : VerifyJwtSignature {
 
     @OptIn(ExperimentalEncodingApi::class)
     override suspend fun invoke(jwt: String): VerifyJwtSignature.Outcome {
@@ -61,11 +74,25 @@ class LoteJwtVerifier : VerifyJwtSignature {
         // `x5c` entries are DER in *standard*-alphabet base64 (RFC 7515 §4.1.6), unlike the JWS segments
         // themselves, which are url-safe. Getting these two the wrong way round fails as a parse error
         // rather than a signature mismatch, which is worth knowing when this reports "unparseable".
-        val leaf = header["x5c"]?.jsonArray?.firstOrNull()?.jsonPrimitive?.content
-            ?: return notVerified("no x5c in the JWS header, so nothing to verify against")
-        val certificate = runCatching {
-            X509Cert(ByteString(Base64.Default.decode(leaf)))
-        }.getOrElse { return notVerified("x5c[0] is not a certificate: ${it.message}") }
+        val x5c = header["x5c"]?.jsonArray?.map { it.jsonPrimitive.content }.orEmpty()
+        if (x5c.isEmpty()) return notVerified("no x5c in the JWS header, so nothing to verify against")
+        val chain = runCatching {
+            x5c.map { X509Cert(ByteString(Base64.Default.decode(it))) }
+        }.getOrElse { return notVerified("x5c is not a certificate chain: ${it.message}") }
+        val certificate = chain.first()
+
+        val now = Clock.System.now()
+        if (now < certificate.validityNotBefore || now > certificate.validityNotAfter) {
+            return notVerified(
+                "the list's signer ${certificate.subject.name} is valid only from " +
+                    "${certificate.validityNotBefore} to ${certificate.validityNotAfter}",
+            )
+        }
+
+        val validation = validateSigner(chain.toTrustChain(), signerAnchors)
+        if (validation is CertificationChainValidation.NotTrusted) {
+            return VerifyJwtSignature.Outcome.NotVerified(validation.cause)
+        }
 
         val algorithm = runCatching {
             Algorithm.fromJoseAlgorithmIdentifier(
@@ -98,4 +125,15 @@ class LoteJwtVerifier : VerifyJwtSignature {
 
     private fun notVerified(reason: String) =
         VerifyJwtSignature.Outcome.NotVerified(IllegalArgumentException(reason))
+
+    internal companion object {
+        /**
+         * A pinned signer, or a chain to a pinned CA — wallet-core's `DirectTrust or pkix`. Revocation is
+         * off, as for every other chain this wallet validates (Android's `relaxPkixRevocation()`).
+         */
+        @OptIn(ExperimentalForeignApi::class)
+        val SIGNER_VALIDATION: ValidateCertificateChain<List<NSData>, NSData> =
+            ValidateCertificateChainUsingDirectTrustIos or
+                ValidateCertificateChainUsingPKIXIos(PKIXConfiguration(isRevocationEnabled = false))
+    }
 }
