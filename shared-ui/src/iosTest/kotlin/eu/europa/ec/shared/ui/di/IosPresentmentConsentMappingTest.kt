@@ -102,7 +102,7 @@ class IosPresentmentConsentMappingTest {
             requesterName = "Test Reader",
             requesterIsTrusted = false,
             combinations = listOf(IosPresentmentRequest.Combination(documents = documents.toList())),
-        ).toCombinationsUi(strings).single()
+        ).toCombinationsUi(strings, claimsAreSelectable = true).single()
 
     /**
      * What the screen does when a row is unticked: it addresses the row by the id the card carries, so
@@ -136,7 +136,7 @@ class IosPresentmentConsentMappingTest {
     )
 
     private fun RequestCombinationUi.keptPaths() =
-        keptDocuments().flatMap { it.payload.docClaimsDomain.map { claim -> claim.path } }.toSet()
+        keptDocuments(claimsAreSelectable = true).flatMap { it.payload.docClaimsDomain.map { claim -> claim.path } }.toSet()
 
     @Test
     fun every_requested_claim_becomes_a_row_the_user_can_untick() {
@@ -170,7 +170,7 @@ class IosPresentmentConsentMappingTest {
     fun a_row_left_ticked_comes_back_as_the_claim_it_was_built_from() {
         val combination = cardsFor(pid())
 
-        val kept = combination.keptDocuments().single()
+        val kept = combination.keptDocuments(claimsAreSelectable = true).single()
 
         assertEquals("doc-1", kept.match.documentId)
         assertEquals("cred-1", kept.match.credentialId)
@@ -188,7 +188,7 @@ class IosPresentmentConsentMappingTest {
         // The success screen lists what went out, so its copy is narrowed too — not the whole card.
         assertEquals(
             listOf("given_name"),
-            combination.keptDocuments().single().payload.docClaimsDomain.map { it.key },
+            combination.keptDocuments(claimsAreSelectable = true).single().payload.docClaimsDomain.map { it.key },
         )
     }
 
@@ -198,7 +198,7 @@ class IosPresentmentConsentMappingTest {
 
         // Not an empty document: the presenter is told nothing about this credential, and with no
         // documents left that is a refusal rather than an empty response.
-        assertTrue(combination.keptDocuments().isEmpty())
+        assertTrue(combination.keptDocuments(claimsAreSelectable = true).isEmpty())
     }
 
     @Test
@@ -215,7 +215,7 @@ class IosPresentmentConsentMappingTest {
             .map { (it as ExpandableListItemUi.SingleListItem).header.itemId }
         assertEquals(rowIds.size, rowIds.toSet().size, "row ids collided: $rowIds")
 
-        val kept = combination.keptDocuments()
+        val kept = combination.keptDocuments(claimsAreSelectable = true)
         assertEquals(listOf("cred-1", "cred-2"), kept.map { it.match.credentialId })
         assertEquals(listOf(2, 2), kept.map { it.payload.docClaimsDomain.size })
     }
@@ -279,7 +279,7 @@ class IosPresentmentConsentMappingTest {
         // Enabled, i.e. untickable: retention is what the reader intends to do with the data, not
         // consent the wallet has already given on the user's behalf.
         assertTrue(checkbox.checkboxData.enabled)
-        assertTrue(combination.untick("portrait").keptDocuments().isEmpty())
+        assertTrue(combination.untick("portrait").keptDocuments(claimsAreSelectable = true).isEmpty())
     }
 
     // Upstream 2428c55d's signature details: built from what the documents carry, by the shared transformer.
@@ -314,7 +314,7 @@ class IosPresentmentConsentMappingTest {
             ),
         )
 
-        val (signed, plain) = request.toCombinationsUi(strings, uuidProvider = FixedUuid)
+        val (signed, plain) = request.toCombinationsUi(strings, claimsAreSelectable = true, uuidProvider = FixedUuid)
 
         val section = signed.transactionData!!
         assertEquals("transaction-data:request-1:0", section.details.header.itemId)

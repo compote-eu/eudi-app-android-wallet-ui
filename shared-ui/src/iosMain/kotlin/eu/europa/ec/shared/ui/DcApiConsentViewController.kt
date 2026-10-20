@@ -208,8 +208,11 @@ private fun DcApiConsentScreen(
     // upstream's row construction (`RequestTransformer.kt:167` on `main`, mirrored by
     // `IosPresentmentConsentMapping`), shared by the app's own screens on both platforms, and it is
     // deliberately matched here rather than improved in one place only.
+    //
+    // Claims are selectable: iOS hands the extension ISO 18013-7 (`org-iso-mdoc`) requests only, whose
+    // response our `IosMdocPresentment` builds from the claims the user keeps.
     val combinations: List<RequestCombinationUi> = remember(request) {
-        request.toCombinationsUi(strings)
+        request.toCombinationsUi(strings, claimsAreSelectable = true)
     }
     var selected: Int by remember(combinations) { mutableStateOf(0) }
     // One editable document list per combination: claims are toggled per option, so switching options
@@ -454,7 +457,7 @@ private fun ShareAndCancel(
         onPrimaryButtonClick = {
             val kept = combination
                 ?.copy(documents = documents)
-                ?.keptDocuments()
+                ?.keptDocuments(claimsAreSelectable = true)
                 .orEmpty()
 
             onDecision(

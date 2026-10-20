@@ -25,6 +25,7 @@
 // user ticks and the wallet never sends.
 package eu.europa.ec.shared.ui.di
 
+import eu.europa.ec.commonfeature.extension.toExpandableListItems
 import eu.europa.ec.commonfeature.extension.toSelectiveExpandableListItems
 import eu.europa.ec.commonfeature.ui.request.model.DocumentFormatDomain
 import eu.europa.ec.commonfeature.ui.request.model.DocumentPayloadDomain
@@ -48,9 +49,16 @@ import eu.europa.ec.businesslogic.provider.UuidProvider
 import eu.europa.ec.businesslogic.provider.UuidProviderImpl
 import eu.europa.ec.commonfeature.ui.request.transformer.TransactionDataTransformer
 
-/** What the request screen renders: one card per document, in one card set per alternative. */
+/**
+ * What the request screen renders: one card per document, in one card set per alternative.
+ *
+ * @param claimsAreSelectable checkbox rows when true, read-only rows when false — the same switch as
+ *   Android's `RequestTransformer.transformToUiItems`. Pass true only where the response is built from
+ *   the claims the user keeps; see [keptDocuments].
+ */
 internal fun IosPresentmentRequest.toCombinationsUi(
     strings: StringCatalog,
+    claimsAreSelectable: Boolean,
     uuidProvider: UuidProvider = UuidProviderImpl(),
 ): List<RequestCombinationUi> {
     // One id per request, as Android's `RequestTransformer` takes one, so the sections of two requests
@@ -71,7 +79,7 @@ internal fun IosPresentmentRequest.toCombinationsUi(
                 )
             }
             RequestCombinationUi(
-                documents = combination.documents.map { it.toItemUi(strings) },
+                documents = combination.documents.map { it.toItemUi(strings, claimsAreSelectable) },
                 // Upstream 2428c55d's section, built by the same shared transformer as Android's.
                 transactionData = TransactionDataTransformer(strings = strings).transformToUi(
                     matches = matches,
@@ -90,13 +98,21 @@ internal fun IosPresentmentRequest.toCombinationsUi(
  * reads an empty answer. Ticked rows are matched to stored claims by re-encoding each claim's own path,
  * never by parsing the row id — the same rule `RequestTransformer` follows on Android, and for the same
  * reason: the id format is [ClaimItemId]'s business.
+ *
+ * @param claimsAreSelectable what the cards were built with. Read-only rows carry no ticks, so every
+ *   requested claim is kept — Android's `createSelectionsDomain` sends the full request in that case too.
+ *   Reading ticks there would keep nothing, and the presenter would decline a request the user agreed to.
  */
-internal fun RequestCombinationUi.keptDocuments(): List<KeptDocument> {
+internal fun RequestCombinationUi.keptDocuments(claimsAreSelectable: Boolean): List<KeptDocument> {
     val matchesByDocument = matches.associateBy { it.documentId }
 
     return documents.mapNotNull { document ->
         val match = matchesByDocument[document.domainPayload.docId] ?: return@mapNotNull null
-        val claims = document.keptClaims()
+        val claims = if (claimsAreSelectable) {
+            document.keptClaims()
+        } else {
+            document.domainPayload.docClaimsDomain.filterIsInstance<ClaimDomain.Primitive>()
+        }
         if (claims.isEmpty()) {
             null
         } else {
@@ -140,6 +156,7 @@ private fun ExpandableListItemUi.checkedItemIds(): List<String> = when (this) {
 
 private fun IosPresentmentRequest.RequestedDocument.toItemUi(
     strings: StringCatalog,
+    claimsAreSelectable: Boolean,
 ): RequestDocumentItemUi {
     val payload = DocumentPayloadDomain(
         docName = documentName,
@@ -165,7 +182,11 @@ private fun IosPresentmentRequest.RequestedDocument.toItemUi(
                     iconData = AppIcons.KeyboardArrowDown,
                 ),
             ),
-            nestedItems = payload.toSelectiveExpandableListItems(),
+            nestedItems = if (claimsAreSelectable) {
+                payload.toSelectiveExpandableListItems()
+            } else {
+                payload.toExpandableListItems()
+            },
             isExpanded = false,
         ),
     )

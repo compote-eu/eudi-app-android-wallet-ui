@@ -144,9 +144,12 @@ internal fun CredentialQueryResult.toPresentmentRequest(
 /**
  * The app's answer turned back into multipaz's matches, narrowed to the claims the user kept.
  *
- * The response is built from `match.claims.keys`, so dropping entries here is what makes selective
- * disclosure real rather than cosmetic. A credential nobody chose, or one whose every claim was
- * unchecked, is left out entirely.
+ * Where the response is built from `match.claims.keys` — multipaz's ISO 18013-5 path,
+ * `mdocPresentmentGenerateResponse`, used by proximity and the Digital Credentials extension — dropping
+ * entries here is what makes selective disclosure real rather than cosmetic. multipaz 0.101.0's
+ * `OpenID4VP.generateResponse` reads the DCQL query's claims instead, so remote requests offer no claim
+ * selection (`IosRemotePresentationCoordinator`). A credential nobody chose, or one whose every claim
+ * was unchecked, is left out entirely.
  */
 internal fun CredentialQueryResult.toSelection(
     disclosures: List<IosPresentmentDisclosure>,

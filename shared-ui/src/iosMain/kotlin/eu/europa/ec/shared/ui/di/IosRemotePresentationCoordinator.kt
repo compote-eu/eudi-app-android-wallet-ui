@@ -152,7 +152,8 @@ internal class IosRemotePresentationCoordinator(
             state !is IosRemotePresentationState.VerifierNotTrusted
         }
 
-    private fun requestEventFor(state: IosRemotePresentationState): PresentationRequestInteractorPartialState? =
+    /** One presenter state as the request screen sees it; `internal` so a test can map a state directly. */
+    internal fun requestEventFor(state: IosRemotePresentationState): PresentationRequestInteractorPartialState? =
             when (state) {
                 is IosRemotePresentationState.Requesting -> state.request.toPartialState()
 
@@ -199,7 +200,7 @@ internal class IosRemotePresentationCoordinator(
      * keeps the two from disagreeing.
      */
     fun updateSelection(selectedCombination: RequestCombinationUi?) {
-        val kept = selectedCombination?.keptDocuments().orEmpty()
+        val kept = selectedCombination?.keptDocuments(CLAIMS_ARE_SELECTABLE).orEmpty()
 
         disclosures = kept.map { document ->
             IosPresentmentDisclosure(
@@ -387,7 +388,7 @@ internal class IosRemotePresentationCoordinator(
         verifierName = relyingParty.name
         verifierIsFullyVerified = relyingParty.isFullyVerified
 
-        val combinationsUi = toCombinationsUi(strings)
+        val combinationsUi = toCombinationsUi(strings, CLAIMS_ARE_SELECTABLE)
 
         return if (combinationsUi.isEmpty()) {
             PresentationRequestInteractorPartialState.NoData(relyingParty = relyingParty)
@@ -395,9 +396,7 @@ internal class IosRemotePresentationCoordinator(
             PresentationRequestInteractorPartialState.Success(
                 relyingParty = relyingParty,
                 combinationsUi = combinationsUi,
-                // multipaz builds the response from the claims the selection carries, so unticking a
-                // row really does keep it out of the response — see `CredentialPresentmentData.toSelection`.
-                claimsAreSelectable = true,
+                claimsAreSelectable = CLAIMS_ARE_SELECTABLE,
             )
         }
     }
@@ -448,3 +447,14 @@ private fun IosRemotePresentationState.NothingToShare.relyingPartyDomain(locale:
     relyingPartyDomain(requesterName, requesterIsTrusted, relyingPartyRegistration, locale)
 
 private const val TAG = "IosRemotePresentationCoordinator"
+
+/**
+ * Whether a remote request lets the user untick claims: no, as on Android, where
+ * `WalletCorePresentationController.requestAllowsClaimSelection` is false for DCQL requests.
+ *
+ * multipaz's `OpenID4VP.generateResponse` builds the response from the DCQL query's claims, not from the
+ * selection this coordinator narrows. So while that holds, an untick would change the screen and not the
+ * response. Measured on an iPhone 2026-10-19 with multipaz 0.101.0: an unticked claim was still sent.
+ * Proximity differs: its ISO 18013-5 response is built from the selection, so it stays selectable there.
+ */
+private const val CLAIMS_ARE_SELECTABLE = false

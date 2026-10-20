@@ -180,7 +180,7 @@ internal class IosProximityCoordinator(
      * keeps the two from disagreeing.
      */
     fun updateSelection(selectedCombination: RequestCombinationUi?) {
-        val kept = selectedCombination?.keptDocuments().orEmpty()
+        val kept = selectedCombination?.keptDocuments(CLAIMS_ARE_SELECTABLE).orEmpty()
 
         disclosures = kept.map { document ->
             IosPresentmentDisclosure(
@@ -325,7 +325,7 @@ internal class IosProximityCoordinator(
         verifierName = relyingParty.name
         verifierIsFullyVerified = relyingParty.isFullyVerified
 
-        val combinationsUi = toCombinationsUi(strings)
+        val combinationsUi = toCombinationsUi(strings, CLAIMS_ARE_SELECTABLE)
 
         return if (combinationsUi.isEmpty()) {
             ProximityRequestInteractorPartialState.NoData(relyingParty = relyingParty)
@@ -333,13 +333,19 @@ internal class IosProximityCoordinator(
             ProximityRequestInteractorPartialState.Success(
                 relyingParty = relyingParty,
                 combinationsUi = combinationsUi,
-                // multipaz builds the response from the claims the selection carries, so unticking a
-                // row really does keep it out of the mdoc — see `CredentialPresentmentData.toSelection`.
-                claimsAreSelectable = true,
+                claimsAreSelectable = CLAIMS_ARE_SELECTABLE,
             )
         }
     }
 
     //endregion
 }
+
+/**
+ * Whether an in-person request lets the user untick claims: yes. multipaz's ISO 18013-5 response
+ * (`mdocPresentmentGenerateResponse`) is built from the claims the selection carries, so an untick really
+ * keeps a claim out of the mdoc — see `CredentialPresentmentData.toSelection`. The remote side differs;
+ * see `IosRemotePresentationCoordinator`.
+ */
+private const val CLAIMS_ARE_SELECTABLE = true
 
