@@ -22,6 +22,7 @@ import eu.europa.ec.corelogic.model.TransactionResultDomain
 import kotlinx.coroutines.test.runTest
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import kotlin.time.Duration.Companion.days
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -131,5 +132,14 @@ class IosSigningRecordsTest {
 
         assertFalse(store.recordSigning(record(id = " ")))
         assertTrue(store.transactionLogs().isEmpty())
+    }
+
+    @Test
+    fun a_signing_stays_in_the_log_however_old_it_is() = runTest {
+        // Only the user removes a transaction from the log (ARF DASH_02a, DASH_06b).
+        val store = store()
+        store.recordSigning(record(timeEpochMillis = (now - 61.days).toEpochMilliseconds()))
+
+        assertEquals(listOf("run-1:0"), store.transactionLogs().map { it.id })
     }
 }

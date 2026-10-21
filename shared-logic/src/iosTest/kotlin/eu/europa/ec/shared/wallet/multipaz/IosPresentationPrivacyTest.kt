@@ -236,4 +236,17 @@ class IosPresentationPrivacyTest {
 
         assertEquals(listOf(0, 1), seen.map { it.size })
     }
+
+    @Test
+    fun an_attempt_stays_with_its_presentation_however_old_they_are() = runTest {
+        // Only the user removes a transaction from the log (ARF DASH_02a, DASH_06b).
+        val (_, store) = storeOver()
+        val longAgo = Clock.System.now() - 61.days
+        store.recordTransaction(presentationRecord().copy(timeEpochMillis = longAgo.toEpochMilliseconds()))
+        val parent = assertIs<TransactionLogDomain.Presentation>(store.transactionLog("presentation-1"))
+
+        assertTrue(store.recordPresentationAction(parent.toDataDeletionRequestRecord("attempt", longAgo, CommunicationMethodDomain.Email)))
+
+        assertEquals(listOf("attempt"), store.presentationActions(parent.id).map { it.id })
+    }
 }

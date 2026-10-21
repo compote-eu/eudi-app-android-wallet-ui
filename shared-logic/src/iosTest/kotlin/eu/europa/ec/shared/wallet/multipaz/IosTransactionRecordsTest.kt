@@ -30,6 +30,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.io.bytestring.encodeToByteString
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import kotlin.time.Duration.Companion.days
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -249,4 +250,13 @@ class IosTransactionRecordsTest {
     }
 
     //endregion
+
+    @Test
+    fun a_transaction_stays_in_the_log_however_old_it_is() = runTest {
+        // Only the user removes a transaction from the log (ARF DASH_02a, DASH_06b).
+        val store = store()
+        store.recordTransaction(deletion().copy(timeEpochMillis = (now - 61.days).toEpochMilliseconds()))
+
+        assertEquals(listOf("deletion-1"), store.transactionLogs().map { it.id })
+    }
 }

@@ -167,15 +167,17 @@ internal fun IssuerRegistration?.toIssuerPartyRecord(
     )
 }
 
-/** Stores [record], replacing the row with the same id. Kept for [MultipazWalletStore.EVENT_RETENTION]. */
+/**
+ * Stores [record], replacing the row with the same id. Kept until the user deletes it: no one else may remove a
+ * transaction from the log (ARF DASH_02a, DASH_06b).
+ */
 internal suspend fun MultipazWalletStore.recordTransaction(record: IosTransactionRecord) {
     val table = transactionRecordsTable()
     val encoded = recordJson.encodeToString(IosTransactionRecord.serializer(), record).encodeToByteString()
-    val expiration = Instant.fromEpochMilliseconds(record.timeEpochMillis) + MultipazWalletStore.EVENT_RETENTION
     if (table.get(key = record.id) != null) {
-        table.update(key = record.id, data = encoded, expiration = expiration)
+        table.update(key = record.id, data = encoded)
     } else {
-        table.insert(key = record.id, data = encoded, expiration = expiration)
+        table.insert(key = record.id, data = encoded)
     }
     transactionRecordChanges.tryEmit(Unit)
 }

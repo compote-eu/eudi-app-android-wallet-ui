@@ -48,7 +48,6 @@ import platform.Foundation.NSFileProtectionKey
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.days
 
 /**
  * The iOS wallet's multipaz storage layer: the [DocumentStore] its documents live in, plus the small
@@ -306,9 +305,6 @@ internal class MultipazWalletStore(
 
         /** Only reached when the Info.plist key is missing, which means a mis-generated project. */
         private const val FALLBACK_KEYCHAIN_PREFIX = "eu.europa.ec.eudi.wallet"
-
-        /** How long a transaction stays in the log. */
-        val EVENT_RETENTION = 60.days
 
         private val PresentationActionsTableSpec = StorageTableSpec(
             name = "EudiPresentationActions",

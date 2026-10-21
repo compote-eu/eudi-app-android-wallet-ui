@@ -175,14 +175,8 @@ internal suspend fun MultipazWalletStore.recordPresentationAction(record: Presen
     table.get(key = record.id, partitionId = record.parentPresentationId)?.let { stored ->
         return stored == encoded
     }
-    val parentTime = presentationTime(record.parentPresentationId) ?: return false
-    table.insert(
-        key = record.id,
-        data = encoded,
-        partitionId = record.parentPresentationId,
-        // It goes with its presentation, as Android's rows go with theirs (a cascading foreign key).
-        expiration = parentTime + MultipazWalletStore.EVENT_RETENTION,
-    )
+    presentationTime(record.parentPresentationId) ?: return false
+    table.insert(key = record.id, data = encoded, partitionId = record.parentPresentationId)
     presentationActionChanges.tryEmit(Unit)
     return true
 }

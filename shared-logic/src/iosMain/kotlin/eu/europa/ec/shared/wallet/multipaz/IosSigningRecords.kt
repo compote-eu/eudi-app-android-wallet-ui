@@ -59,18 +59,17 @@ data class IosSigningRecord(
 
 /**
  * Stores [record], replacing an entry with the same id — the SDK's own rule: "repeated calls for the same
- * identifier replace the previous snapshot". Kept for [MultipazWalletStore.EVENT_RETENTION]. False for a record
- * with no id.
+ * identifier replace the previous snapshot". Kept until the user deletes it, as every transaction in the log
+ * is (ARF DASH_02a, DASH_06b). False for a record with no id.
  */
 internal suspend fun MultipazWalletStore.recordSigning(record: IosSigningRecord): Boolean {
     if (record.id.isBlank()) return false
     val table = signingRecordsTable()
     val encoded = signingJson.encodeToString(IosSigningRecord.serializer(), record).encodeToByteString()
-    val expiration = Instant.fromEpochMilliseconds(record.timeEpochMillis) + MultipazWalletStore.EVENT_RETENTION
     if (table.get(key = record.id) != null) {
-        table.update(key = record.id, data = encoded, expiration = expiration)
+        table.update(key = record.id, data = encoded)
     } else {
-        table.insert(key = record.id, data = encoded, expiration = expiration)
+        table.insert(key = record.id, data = encoded)
     }
     return true
 }
