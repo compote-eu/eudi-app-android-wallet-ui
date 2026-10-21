@@ -332,6 +332,7 @@ internal class OpenID4VciCompatibilityEngine(
         // Looked up per request, and before anything is sent: see [CredentialEncryptionRegistry].
         val exchange = credentialExchangeFor(data)
         val request = when {
+            requiresSignedMetadata(data) -> askingForSignedMetadata(data)
             isPushedAuthorizationRequest(data) -> withScopeInsteadOfAuthorizationDetails(data)
             exchange != null -> encryptedCredentialRequest(data, exchange)
             else -> data
@@ -577,6 +578,37 @@ internal class OpenID4VciCompatibilityEngine(
         response.statusCode == HttpStatusCode.OK &&
                 response.headers[CONTENT_TYPE]?.contains("jwt", ignoreCase = true) == true
 
+    /**
+     * Whether this is the credential issuer's own metadata, which has to come signed — Android's
+     * `requireSignedMetadata()`, an `IssuerMetadataPolicy.RequireSigned` in both flavours (ARF ISSU_23/24).
+     * Not the authorization server's: OAuth metadata has no signed form. Off with [issuerTrust], as the rest of
+     * the metadata check is, for the compatibility tests that serve plain metadata from a `MockEngine`.
+     */
+    private fun requiresSignedMetadata(data: HttpRequestData): Boolean =
+        issuerTrust != null && data.method == HttpMethod.Get &&
+                data.url.encodedPath.contains(CREDENTIAL_ISSUER_METADATA)
+
+    /**
+     * Asks for the signed form, as openid4vci does on Android (`Accept: application/jwt`).
+     *
+     * Not a formality: `issuer.eudiw.dev` and `ec.dev.issuer.eudiw.dev` answer plain JSON to a request that
+     * does not ask — measured 2026-10-21 — so until then iOS never saw, let alone checked, their signature.
+     */
+    private fun askingForSignedMetadata(data: HttpRequestData): HttpRequestData =
+        HttpRequestData(
+            url = data.url,
+            method = data.method,
+            headers = HeadersBuilder().apply {
+                data.headers.forEach { name, values ->
+                    if (!name.equals(ACCEPT, ignoreCase = true)) appendAll(name, values)
+                }
+                append(ACCEPT, SIGNED_METADATA_MEDIA_TYPE)
+            }.build(),
+            body = data.body,
+            executionContext = data.executionContext,
+            attributes = data.attributes,
+        )
+
     private fun isPushedAuthorizationRequest(data: HttpRequestData): Boolean =
         data.method == HttpMethod.Post &&
                 pushedAuthorizationRequestEndpoint?.let { data.url.toString() == it } == true
@@ -604,8 +636,13 @@ internal class OpenID4VciCompatibilityEngine(
         response: HttpResponseData,
     ): HttpResponseData {
         if (response.statusCode != HttpStatusCode.OK) return response
-        val unwrapped =
-            if (isSignedMetadata(response)) unwrapSignedMetadata(data, response) else response
+        val unwrapped = when {
+            isSignedMetadata(response) -> unwrapSignedMetadata(data, response)
+            // `MissingSignedMetadata` on Android, which shows its "issuer not trusted" sheet for it.
+            requiresSignedMetadata(data) ->
+                throw IssuerNotTrustedException("${data.url.host} served its issuer metadata unsigned")
+            else -> response
+        }
         val bytes = withPrimaryLanguageLocales((unwrapped.body as ByteReadChannel).readBuffer().readByteArray())
 
         runCatching {
@@ -1020,6 +1057,10 @@ internal class OpenID4VciCompatibilityEngine(
         val jwt = (response.body as ByteReadChannel).readBuffer().readByteArray().decodeToString()
         val parts = jwt.trim().split('.')
         if (parts.size != 3) {
+            // `InvalidSignedMetadata` on Android.
+            if (requiresSignedMetadata(data)) {
+                throw IssuerNotTrustedException("${data.url.host}'s signed issuer metadata is not a JWT")
+            }
             Logger.w(TAG, "signed metadata from ${data.url} is not a JWT; passing it through")
             return response.replacingBody(jwt.encodeToByteArray())
         }
@@ -1029,6 +1070,9 @@ internal class OpenID4VciCompatibilityEngine(
                 .decode(parts[1])
                 .decodeToString()
         } catch (t: Throwable) {
+            if (requiresSignedMetadata(data)) {
+                throw IssuerNotTrustedException("${data.url.host}'s signed issuer metadata would not decode")
+            }
             Logger.w(TAG, "signed metadata payload from ${data.url} would not decode: ${t.message}")
             return response.replacingBody(jwt.encodeToByteArray())
         }
@@ -1091,8 +1135,8 @@ internal class OpenID4VciCompatibilityEngine(
         val trust = issuerTrust ?: return
         val chain = certificateChainOf(jwt.substringBefore('.'))
         if (chain.isEmpty()) {
-            Logger.w(TAG, "signed metadata for $issuer carries no x5c; cannot check its signer")
-            return
+            // Android's key selector finds no key without one, and fails the metadata read.
+            throw IssuerNotTrustedException("$issuer's signed metadata carries no x5c, so nothing can vouch for its signer")
         }
         if (!isSignedBy(chain.first()) { key -> JsonWebSignature.verify(jwt, key) }) {
             throw IssuerNotTrustedException("$issuer's signed metadata is not signed by the certificate chain it carries")
@@ -1243,6 +1287,9 @@ internal class OpenID4VciCompatibilityEngine(
         /** The issuer publishes more per claim than this reads; ignoring the rest is deliberate. */
         val LenientJson = Json { ignoreUnknownKeys = true }
         const val WELL_KNOWN = ".well-known"
+        const val CREDENTIAL_ISSUER_METADATA = ".well-known/openid-credential-issuer"
+        const val ACCEPT = "Accept"
+        const val SIGNED_METADATA_MEDIA_TYPE = "application/jwt"
         const val CONTENT_TYPE = "Content-Type"
         const val CONTENT_LENGTH = "Content-Length"
         const val ATTESTATION_CHALLENGE_HEADER = "OAuth-Client-Attestation-Challenge"

@@ -17,6 +17,8 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import io.ktor.client.HttpClient
+import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
+import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
 import io.ktor.client.engine.HttpClientEngine
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.openid4vci.OpenID4VCI
@@ -63,10 +65,17 @@ sealed interface OfferableCredentialsResult {
  * @param engine the transport, injectable for the same reason. Defaults to Darwin via the compatibility
  *   engine.
  */
-class IosOfferableCredentialsReader(
-    private val issuers: List<IosVciIssuer> = IosIssuerCatalog.issuers,
-    private val engine: HttpClientEngine? = null,
+class IosOfferableCredentialsReader internal constructor(
+    private val issuers: List<IosVciIssuer>,
+    private val engine: HttpClientEngine?,
+    /** Who may sign issuer metadata; injectable so a test can pin the verdict without the network. */
+    private val issuerTrust: IssuerTrustSource?,
 ) {
+
+    constructor(
+        issuers: List<IosVciIssuer> = IosIssuerCatalog.issuers,
+        engine: HttpClientEngine? = null,
+    ) : this(issuers, engine, IosEtsiTrust())
 
     /**
      * @param locale a BCP-47 tag, ranked first when the issuer publishes several translations of a
@@ -77,7 +86,11 @@ class IosOfferableCredentialsReader(
             return OfferableCredentialsResult.Failure(message = "No issuers are configured.")
         }
 
-        val httpClient = if (engine != null) openID4VciHttpClient(engine) else openID4VciHttpClient()
+        val httpClient = if (engine != null) {
+            openID4VciHttpClient(engine, issuerTrust = issuerTrust)
+        } else {
+            openID4VciHttpClient(issuerTrust = issuerTrust)
+        }
         // multipaz's provisioning code reaches its collaborators through a `BackendEnvironment` in the
         // coroutine context rather than constructor arguments; for a metadata read the only interface it
         // asks for is the HTTP client.

@@ -61,11 +61,14 @@ class IosCredentialOfferReaderTest {
         return "openid-credential-offer://?credential_offer=" + offer.encodeUrlParameter()
     }
 
-    /** Serves the issuer metadata, and an offer document at `/offer` for the by-reference case. */
+    /**
+     * Serves the issuer metadata — signed, as the real issuers sign it and as the wallet requires — and an offer
+     * document at `/offer` for the by-reference case.
+     */
     private fun engine(offerDocument: String? = null, metadata: String = issuerMetadata) = MockEngine { request ->
         when {
             request.url.toString() == "$issuerUrl/.well-known/openid-credential-issuer" ->
-                respond(metadata, headers = headersOf("Content-Type", "application/json"))
+                respond(testSignedJwt(metadata, testSigner()), headers = headersOf("Content-Type", "application/jwt"))
 
             request.url.toString() == "$issuerUrl/offer" && offerDocument != null ->
                 respond(offerDocument, headers = headersOf("Content-Type", "application/json"))
@@ -83,7 +86,8 @@ class IosCredentialOfferReaderTest {
         )
     )
 
-    private fun reader(engine: MockEngine) = IosCredentialOfferReader(engine = engine, issuers = catalogue)
+    /** The reader with trust lists that vouch for the fixtures' metadata signer. */
+    private fun reader(engine: MockEngine) = reader(engine, TrustVerdict.TRUSTED)
 
     @Test
     fun an_offer_carrying_its_own_document_resolves_to_the_issuers_names() = runTest {
@@ -262,7 +266,7 @@ class IosCredentialOfferReaderTest {
         """.trimIndent()
         val engine = MockEngine { request ->
             if (request.url.toString() == "$issuerUrl/.well-known/openid-credential-issuer") {
-                respond(regional, headers = headersOf("Content-Type", "application/json"))
+                respond(testSignedJwt(regional, testSigner()), headers = headersOf("Content-Type", "application/jwt"))
             } else {
                 respondError(HttpStatusCode.NotFound)
             }

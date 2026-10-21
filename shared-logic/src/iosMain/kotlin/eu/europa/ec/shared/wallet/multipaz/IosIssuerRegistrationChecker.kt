@@ -22,7 +22,9 @@ import eu.europa.ec.shared.wallet.trust.IosEtsiTrust
 import eu.europa.ec.shared.wallet.trust.toTrustChain
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpHeaders
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -63,7 +65,12 @@ class IosIssuerRegistrationChecker internal constructor(
         isPid: (OfferedAttestation) -> Boolean = ::looksLikeThePid,
     ): IssuerRegistrationOutcome {
         val document = runCatching {
-            httpClient.get("${issuerUrl.trimEnd('/')}/$ISSUER_METADATA_PATH").bodyAsText().trim()
+            // Asked for the signed form, as the issuance itself asks: `issuer.eudiw.dev` and
+            // `ec.dev.issuer.eudiw.dev` answer plain JSON otherwise (measured 2026-10-21), which reads as "no
+            // certificate offered" below — and the pre-flight refuses that while the check is on.
+            httpClient.get("${issuerUrl.trimEnd('/')}/$ISSUER_METADATA_PATH") {
+                header(HttpHeaders.Accept, SIGNED_METADATA_MEDIA_TYPE)
+            }.bodyAsText().trim()
         }.getOrElse {
             Logger.w(TAG, "issuer metadata could not be read: ${it.message}")
             return IssuerRegistrationOutcome.Unavailable(detail = "issuer metadata could not be read")
@@ -100,6 +107,7 @@ class IosIssuerRegistrationChecker internal constructor(
     private companion object {
         const val TAG = "IssuerRegistrationChecker"
         const val ISSUER_METADATA_PATH = ".well-known/openid-credential-issuer"
+        const val SIGNED_METADATA_MEDIA_TYPE = "application/jwt"
         const val STATUS_VALID = 0
 
         /**

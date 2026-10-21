@@ -21,19 +21,14 @@ import eu.europa.ec.corelogic.model.IssuerRegistrationDomain
 import eu.europa.ec.corelogic.model.UntrustedIssuerReasonDomain
 import eu.europa.ec.issuancefeature.interactor.PlatformOfferResolution
 import eu.europa.ec.shared.wallet.multipaz.IosCredentialIssuer
-import eu.europa.ec.shared.wallet.multipaz.IosCredentialOfferReader
-import eu.europa.ec.shared.wallet.multipaz.IosVciIssuer
+import eu.europa.ec.shared.wallet.multipaz.IosCredentialOffer
+import eu.europa.ec.shared.wallet.multipaz.IosOfferResolution
 import eu.europa.ec.shared.wallet.multipaz.IosWalletEngine
 import eu.europa.ec.shared.wallet.multipaz.IssuerEntitlements
 import eu.europa.ec.shared.wallet.multipaz.IssuerRegistration
 import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationFailure
 import eu.europa.ec.shared.wallet.multipaz.IssuerRegistrationOutcome
 import eu.europa.ec.shared.wallet.multipaz.OfferedAttestation
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.engine.mock.respondError
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.headersOf
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -58,15 +53,6 @@ class IosIssuerRegistrationGateTest {
             """{"credential_issuer":"$issuerUrl","credential_configuration_ids":["pid_mdoc"]}"""
                 .encodeUrlParameterForTest()
 
-    private val issuerMetadata = """
-        {"credential_issuer":"$issuerUrl",
-         "credential_endpoint":"$issuerUrl/credential",
-         "batch_credential_issuance":{"batch_size":10},
-         "credential_configurations_supported":{
-           "pid_mdoc":{"format":"mso_mdoc","doctype":"eu.europa.ec.eudi.pid.1","scope":"pid",
-             "display":[{"name":"PID (MSO MDoc)","locale":"en"}]}}}
-    """.trimIndent()
-
     private val registration = IssuerRegistration(
         subject = "LEIXG-123456789",
         name = "Test PID Provider",
@@ -88,25 +74,24 @@ class IosIssuerRegistrationGateTest {
         outcome: IssuerRegistrationOutcome,
         onChecked: () -> Unit = {},
     ): IosDocumentOfferPlatformBridge {
-        val engine = MockEngine { request ->
-            if (request.url.toString() == "$issuerUrl/.well-known/openid-credential-issuer") {
-                respond(issuerMetadata, headers = headersOf("Content-Type", "application/json"))
-            } else {
-                respondError(HttpStatusCode.NotFound)
-            }
-        }
         return IosDocumentOfferPlatformBridge(
-            offers = IosCredentialOfferReader(
-                engine = engine,
-                issuers = listOf(
-                    IosVciIssuer(
+            // Resolved as the reader resolves this offer, without reading the issuer's metadata: what is
+            // decided here is the registration gate's, and the metadata's signature is the reader's to check.
+            readOffer = { uri, _ ->
+                IosOfferResolution.Resolved(
+                    offer = IosCredentialOffer(
+                        offerUri = uri,
                         issuerUrl = issuerUrl,
-                        clientId = "eudiw-abca",
-                        redirectUri = "eu.europa.ec.euidi://authorization",
-                        order = 0,
-                    )
-                ),
-            ),
+                        configurationIds = listOf("pid_mdoc"),
+                        txCodeLength = null,
+                        txCodeIsNumeric = true,
+                    ),
+                    documentNames = listOf("PID (MSO MDoc)"),
+                    issuerName = null,
+                    issuerLogoUri = null,
+                    containsPid = true,
+                )
+            },
             // Never reached in these tests: the gate returns before issuance is attempted, and the
             // proceed cases stop at the assertion rather than running a real flow.
             credentialIssuer = IosCredentialIssuer(walletEngine = IosWalletEngine()),

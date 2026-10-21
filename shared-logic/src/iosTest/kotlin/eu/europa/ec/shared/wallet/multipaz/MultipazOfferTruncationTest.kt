@@ -165,7 +165,9 @@ class MultipazOfferTruncationTest {
 
     @Test
     fun our_reader_names_every_configuration_the_offer_carries() = runTest {
-        val resolution = IosCredentialOfferReader(engine = engine())
+        // No trust lists: this is about what multipaz drops from an offer, and the fixture's metadata is the
+        // plain JSON multipaz itself is fed below.
+        val resolution = IosCredentialOfferReader(engine = engine(), issuers = IosIssuerCatalog.issuers, issuerTrust = null)
             .resolve(offerUri = twoConfigurationOffer, locale = "en")
 
         val resolved = assertIs<IosOfferResolution.Resolved>(resolution)

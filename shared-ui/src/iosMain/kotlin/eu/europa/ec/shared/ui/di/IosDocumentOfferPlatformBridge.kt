@@ -77,7 +77,12 @@ internal fun IosIssuanceProgress.Issued.toOfferState(): IssueDocumentsPartialSta
  * second time, which would risk issuing something other than what the user was shown.
  */
 internal class IosDocumentOfferPlatformBridge(
-    private val offers: IosCredentialOfferReader,
+    /**
+     * Reads an offer into what the screen shows — [IosCredentialOfferReader.resolve] in the app. A function so
+     * a test of what this bridge decides can hand it a resolved offer: reading one means reading the issuer's
+     * metadata, whose signature only the EU trust lists can vouch for.
+     */
+    private val readOffer: suspend (offerUri: String, locale: String) -> IosOfferResolution,
     private val credentialIssuer: IosCredentialIssuer,
     /**
      * Whether the user asked for issuer registration certificates to be checked. Off by default on
@@ -99,6 +104,18 @@ internal class IosDocumentOfferPlatformBridge(
     private val checkRegistration: suspend (IosCredentialOffer) -> IssuerRegistrationOutcome,
 ) : DocumentOfferPlatformBridge {
 
+    constructor(
+        offers: IosCredentialOfferReader,
+        credentialIssuer: IosCredentialIssuer,
+        isRegistrationCheckEnabled: suspend () -> Boolean = { IosPreferences.isRegistrationCheckEnabled() },
+        checkRegistration: suspend (IosCredentialOffer) -> IssuerRegistrationOutcome,
+    ) : this(
+        readOffer = { offerUri, locale -> offers.resolve(offerUri = offerUri, locale = locale) },
+        credentialIssuer = credentialIssuer,
+        isRegistrationCheckEnabled = isRegistrationCheckEnabled,
+        checkRegistration = checkRegistration,
+    )
+
     private val resolvedOffers: MutableMap<String, IosCredentialOffer> = mutableMapOf()
 
     /**
@@ -114,7 +131,7 @@ internal class IosDocumentOfferPlatformBridge(
     override fun localeTag(): String = iosUserLanguage()
 
     override suspend fun resolveOffer(offerUri: String, locale: String): PlatformOfferResolution =
-        when (val resolution = offers.resolve(offerUri = offerUri, locale = locale)) {
+        when (val resolution = readOffer(offerUri, locale)) {
             is IosOfferResolution.Failure ->
                 PlatformOfferResolution.Failure(errorMessage = resolution.message)
 

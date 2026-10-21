@@ -29,6 +29,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readRawBytes
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.ContentType
@@ -222,10 +223,13 @@ class OpenID4VciHttpClientTest {
         assertFalse(asked, "a chain the metadata was not signed with says nothing about who signed it")
     }
 
+    // ARF ISSU_23/24: the credential issuer's metadata comes signed, by a signer the lists can be asked about —
+    // Android's `requireSignedMetadata()` (openid4vci's `IssuerMetadataPolicy.RequireSigned`), in both flavours.
+
     @Test
-    fun signed_metadata_without_an_x5c_is_not_refused_for_having_no_signer_to_check() = runTest {
-        // Nothing to check is not the same as a failed check. multipaz would still have to parse the
-        // payload, and the issuer-identity check above still applies.
+    fun signed_metadata_without_an_x5c_is_refused() = runTest {
+        // Until 2026-10-21 it was let through, "nothing to check" read as "nothing wrong". Android's key
+        // selector finds no key without a chain and fails the read; so does this.
         var asked = false
         val metadata = """{"credential_issuer":"https://issuer.test","credential_endpoint":"x"}"""
         val client = openID4VciHttpClient(
@@ -235,15 +239,64 @@ class OpenID4VciHttpClientTest {
                     headers = headersOf("Content-Type", "application/jwt"),
                 )
             },
-            issuerTrust = { _, _ -> asked = true; TrustVerdict.NOT_TRUSTED },
+            issuerTrust = { _, _ -> asked = true; TrustVerdict.TRUSTED },
         )
 
-        assertEquals(metadata, client.get(metadataUrl).readRawBytes().decodeToString())
+        val failure = assertFailsWith<IssuerNotTrustedException> { client.get(metadataUrl) }
+        assertTrue("carries no x5c" in failure.message.orEmpty(), "unexpected: ${failure.message}")
         assertFalse(asked, "a JWT with no x5c has no signer to ask about")
     }
 
     @Test
-    fun plain_json_metadata_is_left_alone() = runTest {
+    fun unsigned_issuer_metadata_is_refused() = runTest {
+        // Android's `MissingSignedMetadata`, which it shows as "issuer not trusted"; typed for the same sheet.
+        var asked = false
+        val client = openID4VciHttpClient(
+            MockEngine {
+                respond(
+                    content = """{"credential_issuer":"https://issuer.test"}""",
+                    headers = headersOf("Content-Type", "application/json"),
+                )
+            },
+            issuerTrust = { _, _ -> asked = true; TrustVerdict.TRUSTED },
+        )
+
+        val failure = assertFailsWith<IssuerNotTrustedException> { client.get(metadataUrl) }
+        assertTrue("unsigned" in failure.message.orEmpty(), "unexpected: ${failure.message}")
+        assertFalse(asked)
+    }
+
+    @Test
+    fun the_issuer_metadata_is_asked_for_in_its_signed_form() = runTest {
+        // `issuer.eudiw.dev` and `ec.dev.issuer.eudiw.dev` send plain JSON unless asked (measured 2026-10-21).
+        val accepted = mutableMapOf<String, String?>()
+        val authorizationServerUrl = "https://issuer.test/.well-known/oauth-authorization-server"
+        val client = openID4VciHttpClient(
+            MockEngine { request ->
+                accepted[request.url.toString()] = request.headers[HttpHeaders.Accept]
+                if (request.url.toString() == metadataUrl) {
+                    respond(
+                        content = testSignedJwt("""{"credential_issuer":"https://issuer.test"}""", testSigner()),
+                        headers = headersOf("Content-Type", "application/jwt"),
+                    )
+                } else {
+                    respond(content = "{}", headers = headersOf("Content-Type", "application/json"))
+                }
+            },
+            issuerTrust = { _, _ -> TrustVerdict.TRUSTED },
+        )
+
+        client.get(metadataUrl)
+        client.get(authorizationServerUrl)
+
+        assertEquals("application/jwt", accepted[metadataUrl])
+        // OAuth metadata has no signed form; it is fetched as multipaz asks for it.
+        assertTrue(accepted[authorizationServerUrl]?.contains("jwt") != true, "${accepted[authorizationServerUrl]}")
+    }
+
+    @Test
+    fun plain_json_metadata_is_left_alone_while_the_check_is_off() = runTest {
+        // Only the compatibility tests switch it off; production always passes the EU trust lists.
         val metadata = """{"credential_issuer":"https://issuer.test"}"""
         val client = openID4VciHttpClient(
             MockEngine {
@@ -251,7 +304,8 @@ class OpenID4VciHttpClientTest {
                     content = metadata,
                     headers = headersOf("Content-Type", "application/json"),
                 )
-            }
+            },
+            issuerTrust = null,
         )
 
         assertEquals(metadata, client.get(metadataUrl).readRawBytes().decodeToString())
@@ -670,7 +724,8 @@ class OpenID4VciHttpClientTest {
     fun metadata_display_locales_are_reduced_to_their_language() = runTest {
         val metadata = """{"credential_issuer":"https://issuer.test","display":[{"name":"Issuer","locale":"en-US"},{"name":"Vydavateľ","locale":"sk-SK"}]}"""
         val client = openID4VciHttpClient(
-            MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) }
+            MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) },
+            issuerTrust = null,
         )
 
         val body = client.get(metadataUrl).readRawBytes().decodeToString()
@@ -683,7 +738,8 @@ class OpenID4VciHttpClientTest {
         // Spacing and all: nothing to reduce, so nothing is re-serialised.
         val metadata = """{ "credential_issuer": "https://issuer.test", "display": [ { "name": "Issuer", "locale": "en" } ] }"""
         val client = openID4VciHttpClient(
-            MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) }
+            MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) },
+            issuerTrust = null,
         )
 
         assertEquals(metadata, client.get(metadataUrl).readRawBytes().decodeToString())
@@ -709,6 +765,7 @@ class OpenID4VciHttpClientTest {
         val client = openID4VciHttpClient(
             engine = MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) },
             displayNotice = notice,
+            issuerTrust = null,
         )
 
         client.get(metadataUrl).readRawBytes()
@@ -735,6 +792,7 @@ class OpenID4VciHttpClientTest {
                 )
             },
             displayNotice = notice,
+            issuerTrust = null,
         )
 
         client.get(metadataUrl).readRawBytes()
@@ -758,6 +816,7 @@ class OpenID4VciHttpClientTest {
                 )
             },
             displayNotice = notice,
+            issuerTrust = null,
         )
 
         client.get(metadataUrl).readRawBytes()
@@ -772,6 +831,7 @@ class OpenID4VciHttpClientTest {
         val client = openID4VciHttpClient(
             engine = MockEngine { respond(metadata, headers = headersOf("Content-Type", "application/json")) },
             displayNotice = notice,
+            issuerTrust = null,
         )
         client.get(metadataUrl).readRawBytes()
         return notice
@@ -1020,15 +1080,20 @@ class OpenID4VciHttpClientTest {
         """.trimIndent()
         // Typed as a driving licence, though the configuration it answers is a PID.
         val credential = testMdocCredential("org.iso.18013.5.1.mDL", testSigner())
+        // Signed by a trusted access certificate, so the refusal below is the credential's signer's alone.
+        val signedMetadata = testSignedJwt(metadata, testSigner())
         val client = openID4VciHttpClient(
             engine = MockEngine { request ->
                 if (request.url.encodedPath.contains(".well-known")) {
-                    respond(metadata, HttpStatusCode.OK, jsonContent)
+                    respond(signedMetadata, HttpStatusCode.OK, headersOf("Content-Type", "application/jwt"))
                 } else {
                     respond("""{"credentials":[{"credential":"$credential"}]}""", HttpStatusCode.OK, jsonContent)
                 }
             },
-            issuerTrust = { _, _ -> TrustVerdict.NOT_TRUSTED },
+            issuerTrust = { _, context ->
+                if (context == VerificationContext.WalletRelyingPartyAccessCertificate) TrustVerdict.TRUSTED
+                else TrustVerdict.NOT_TRUSTED
+            },
         )
         client.get("https://pid-config.test/.well-known/openid-credential-issuer").readRawBytes()
 
@@ -1069,7 +1134,7 @@ class OpenID4VciHttpClientTest {
     @Test
     fun authorization_details_are_replaced_by_the_configurations_scope() = runTest {
         var parBody = ""
-        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it })
+        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it }, issuerTrust = null)
         client.get(issuerMetadataUrl).readRawBytes()
         client.get(asMetadataUrl).readRawBytes()
 
@@ -1094,7 +1159,7 @@ class OpenID4VciHttpClientTest {
     @Test
     fun configurations_that_share_a_scope_send_it_once() = runTest {
         var parBody = ""
-        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it })
+        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it }, issuerTrust = null)
         client.get(issuerMetadataUrl).readRawBytes()
         client.get(asMetadataUrl).readRawBytes()
 
@@ -1117,7 +1182,7 @@ class OpenID4VciHttpClientTest {
     @Test
     fun a_request_that_already_has_a_scope_is_not_rewritten() = runTest {
         var parBody = ""
-        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it })
+        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it }, issuerTrust = null)
         client.get(issuerMetadataUrl).readRawBytes()
         client.get(asMetadataUrl).readRawBytes()
 
@@ -1132,7 +1197,7 @@ class OpenID4VciHttpClientTest {
     @Test
     fun an_unknown_configuration_id_leaves_the_request_as_multipaz_built_it() = runTest {
         var parBody = ""
-        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it })
+        val client = openID4VciHttpClient(engineLearningBothMetadata { parBody = it }, issuerTrust = null)
         client.get(issuerMetadataUrl).readRawBytes()
         client.get(asMetadataUrl).readRawBytes()
 
@@ -1180,7 +1245,7 @@ class OpenID4VciHttpClientTest {
         // 🩹 multipaz's PAR loop breaks only on 201 and throws
         // "Error establishing authenticated channel with issuer" on anything else. A live EU
         // authorization server answers 200 with a valid `request_uri`, which is a success.
-        val client = openID4VciHttpClient(parAnswering("""{"expires_in":3600,"request_uri":"urn:req:1"}"""))
+        val client = openID4VciHttpClient(parAnswering("""{"expires_in":3600,"request_uri":"urn:req:1"}"""), issuerTrust = null)
         client.get(issuerMetadataUrl).readRawBytes()
         client.get(asMetadataUrl).readRawBytes()
 
@@ -1198,7 +1263,7 @@ class OpenID4VciHttpClientTest {
     fun a_200_without_a_request_uri_is_left_alone() = runTest {
         // ⛔ Not every 200 is a successful PAR. Rewriting one that carries no `request_uri` would turn a
         // real failure into a confusing one further along, which is the opposite of the point.
-        val client = openID4VciHttpClient(parAnswering("""{"error":"invalid_request"}"""))
+        val client = openID4VciHttpClient(parAnswering("""{"error":"invalid_request"}"""), issuerTrust = null)
         client.get(issuerMetadataUrl).readRawBytes()
         client.get(asMetadataUrl).readRawBytes()
 

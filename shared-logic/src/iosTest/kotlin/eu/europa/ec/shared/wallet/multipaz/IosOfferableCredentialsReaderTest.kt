@@ -17,6 +17,8 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.config.iosWalletConfig
+import eu.europa.ec.shared.wallet.trust.TrustVerdict
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
@@ -76,7 +78,10 @@ class IosOfferableCredentialsReaderTest {
           "display":[{"name":"PID (SD-JWT VC)","locale":"en"}]}
     """.trimIndent()
 
-    /** Serves each issuer's metadata; anything else (a logo, say) fails, as the real hosts do. */
+    /**
+     * Serves each issuer's metadata, signed as the real issuers sign it and as the wallet requires; anything else
+     * (a logo, say) fails, as the real hosts do.
+     */
     private fun engineServing(vararg metadata: Pair<String, String>) = MockEngine { request ->
         val body = metadata.firstOrNull { (issuerUrl, _) ->
             request.url.toString() == "$issuerUrl/.well-known/openid-credential-issuer"
@@ -85,13 +90,17 @@ class IosOfferableCredentialsReaderTest {
         if (body == null) {
             respondError(HttpStatusCode.NotFound)
         } else {
-            respond(body, headers = headersOf("Content-Type", "application/json"))
+            respond(testSignedJwt(body, testSigner()), headers = headersOf("Content-Type", "application/jwt"))
         }
     }
 
+    /** The reader as production builds it, with trust lists that vouch for the fixtures' metadata signer. */
+    private fun reader(issuers: List<IosVciIssuer>, engine: HttpClientEngine) =
+        IosOfferableCredentialsReader(issuers, engine, issuerTrust = { _, _ -> TrustVerdict.TRUSTED })
+
     @Test
     fun every_configuration_an_issuer_offers_becomes_an_entry() = runTest {
-        val reader = IosOfferableCredentialsReader(
+        val reader = reader(
             issuers = listOf(firstIssuer),
             engine = engineServing(
                 firstIssuer.issuerUrl to metadataFor(
@@ -119,7 +128,7 @@ class IosOfferableCredentialsReaderTest {
 
     @Test
     fun each_issuer_keeps_its_own_url_and_order() = runTest {
-        val reader = IosOfferableCredentialsReader(
+        val reader = reader(
             issuers = listOf(firstIssuer, secondIssuer),
             engine = engineServing(
                 firstIssuer.issuerUrl to metadataFor(firstIssuer.issuerUrl, pidMdoc),
@@ -138,7 +147,7 @@ class IosOfferableCredentialsReaderTest {
 
     @Test
     fun an_unreachable_issuer_does_not_hide_the_others() = runTest {
-        val reader = IosOfferableCredentialsReader(
+        val reader = reader(
             issuers = listOf(firstIssuer, secondIssuer),
             // Only the second answers.
             engine = engineServing(
@@ -154,7 +163,7 @@ class IosOfferableCredentialsReaderTest {
 
     @Test
     fun a_read_that_reaches_nobody_fails_with_what_went_wrong() = runTest {
-        val reader = IosOfferableCredentialsReader(
+        val reader = reader(
             issuers = listOf(firstIssuer),
             engine = engineServing(),
         )
@@ -171,7 +180,7 @@ class IosOfferableCredentialsReaderTest {
 
     @Test
     fun no_configured_issuers_is_a_failure_rather_than_an_empty_list() = runTest {
-        val reader = IosOfferableCredentialsReader(issuers = emptyList(), engine = engineServing())
+        val reader = reader(issuers = emptyList(), engine = engineServing())
 
         // An empty success would render as "no documents available", which reads as the issuers having
         // nothing to offer rather than the wallet having nobody to ask.
@@ -180,7 +189,7 @@ class IosOfferableCredentialsReaderTest {
 
     @Test
     fun the_users_locale_picks_which_display_name_is_used() = runTest {
-        val reader = IosOfferableCredentialsReader(
+        val reader = reader(
             issuers = listOf(firstIssuer),
             engine = engineServing(
                 firstIssuer.issuerUrl to metadataFor(firstIssuer.issuerUrl, pidMdoc),

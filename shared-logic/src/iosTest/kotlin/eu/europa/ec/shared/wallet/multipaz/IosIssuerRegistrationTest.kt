@@ -17,6 +17,11 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.revocation.StatusSignerTrustDomain
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpHeaders
+import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
@@ -313,5 +318,26 @@ class IosIssuerRegistrationTest {
         val failed = assertIs<IssuerRegistrationOutcome.Failed>(outcome)
         assertEquals(IssuerRegistrationFailure.MALFORMED, failed.reason)
         assertTrue(failed.detail!!.contains(REGISTRATION_CERT_TYPE))
+    }
+
+    @Test
+    fun the_pre_flight_asks_for_the_issuer_metadata_in_its_signed_form() = runTest {
+        // `issuer.eudiw.dev` and `ec.dev.issuer.eudiw.dev` send plain JSON unless asked (measured 2026-10-21),
+        // which reads as "no certificate offered" — and the pre-flight refuses that while the check is on.
+        var accepted: String? = null
+        val checker = IosIssuerRegistrationChecker(
+            HttpClient(
+                MockEngine { request ->
+                    accepted = request.headers[HttpHeaders.Accept]
+                    respond("""{"credential_issuer":"https://issuer.test"}""", headers = headersOf("Content-Type", "application/json"))
+                }
+            )
+        )
+
+        val outcome = checker.check(issuerUrl = "https://issuer.test")
+
+        assertEquals("application/jwt", accepted)
+        // An issuer that answers plain JSON all the same still has nothing bound to a signer.
+        assertIs<IssuerRegistrationOutcome.NotOffered>(outcome)
     }
 }
