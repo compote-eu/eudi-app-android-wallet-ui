@@ -30,22 +30,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
-import org.multipaz.asn1.ASN1Integer
-import org.multipaz.cbor.Tstr
-import org.multipaz.claim.MdocClaim
-import org.multipaz.crypto.AsymmetricKey
-import org.multipaz.crypto.Crypto
-import org.multipaz.crypto.EcCurve
-import org.multipaz.crypto.X500Name
-import org.multipaz.crypto.X509Cert
-import org.multipaz.crypto.X509CertChain
-import org.multipaz.eventlogger.EventPresentmentData
-import org.multipaz.eventlogger.EventPresentmentDataDocument
-import org.multipaz.eventlogger.EventPresentmentUriSchemeOpenID4VP
-import org.multipaz.eventlogger.EventProvisioning
-import org.multipaz.eventlogger.EventProvisioningIssuerDataOpenID4VCI
-import org.multipaz.provisioning.Display
-import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
@@ -81,74 +65,19 @@ class IosPresentationPrivacyTest {
     private suspend fun storeOver(storage: EphemeralStorage = EphemeralStorage()) =
         storage to MultipazWalletStore.build(storage = storage, secureAreas = listOf(SoftwareSecureArea.create(storage)))
 
-    private suspend fun signer(commonName: String): X509CertChain {
-        val key = Crypto.createEcPrivateKey(EcCurve.P256)
-        val name = X500Name.fromName("CN=$commonName,C=EU")
-        return X509CertChain(
-            listOf(
-                X509Cert.Builder(
-                    publicKey = key.publicKey,
-                    signingKey = AsymmetricKey.AnonymousExplicit(privateKey = key),
-                    serialNumber = ASN1Integer(1L),
-                    subject = name,
-                    issuer = name,
-                    validFrom = Clock.System.now() - 1.days,
-                    validUntil = Clock.System.now() + 30.days,
-                ).build()
-            )
-        )
-    }
-
-    private fun presentation(chain: X509CertChain?, identifier: String = "") = EventPresentmentUriSchemeOpenID4VP(
-        identifier = identifier,
-        timestamp = Clock.System.now(),
-        presentmentData = EventPresentmentData(
-            requesterName = null,
-            requesterCertChain = chain,
-            trustMetadata = null,
-            requestedDocuments = listOf(
-                EventPresentmentDataDocument(
-                    documentId = "doc-1",
-                    documentName = "PID",
-                    claims = mapOf(
-                        MdocRequestedClaim(
-                            docType = "eu.europa.ec.eudi.pid.1",
-                            namespaceName = "eu.europa.ec.eudi.pid.1",
-                            dataElementName = "family_name",
-                            intentToRetain = false,
-                        ) to MdocClaim(
-                            displayName = "Family name",
-                            attribute = null,
-                            docType = "eu.europa.ec.eudi.pid.1",
-                            namespaceName = "eu.europa.ec.eudi.pid.1",
-                            dataElementName = "family_name",
-                            value = Tstr("Doe"),
-                        )
-                    ),
-                )
+    /** A presentation as the presenters record it: the PID's family name shared with "Verifier". */
+    private fun presentationRecord(party: PresentationPartyRecord? = null) = IosTransactionRecord.Presentation(
+        id = "presentation-1",
+        timeEpochMillis = Clock.System.now().toEpochMilliseconds(),
+        completed = true,
+        requesterName = "Verifier",
+        party = party,
+        claimsPresented = listOf(
+            CredentialClaimsRecord(
+                credential = "eu.europa.ec.eudi.pid.1",
+                claims = listOf(listOf(ClaimSegmentRecord(key = "eu.europa.ec.eudi.pid.1"), ClaimSegmentRecord(key = "family_name"))),
             ),
         ),
-        uri = "openid4vp://?request_uri=https%3A%2F%2Fv.test%2Fr",
-        appId = null,
-        origin = null,
-        requestJwt = "",
-        vpToken = "",
-        redirectUri = null,
-        state = null,
-    )
-
-    private fun provisioning() = EventProvisioning(
-        identifier = "",
-        issuerData = EventProvisioningIssuerDataOpenID4VCI(
-            display = Display(text = "Issuer", logo = null),
-            url = "https://issuer.test",
-            credentialId = "cred-1",
-        ),
-        initialProvisioning = true,
-        documentId = "doc-2",
-        documentName = "PID",
-        display = null,
-        credentialsFetched = emptyMap(),
     )
 
     // --- What a presentation records about its relying party ---
@@ -200,53 +129,13 @@ class IosPresentationPrivacyTest {
     }
 
     @Test
-    fun the_consent_record_reaches_the_presentation_and_its_history() = runTest {
+    fun without_a_registration_a_presentation_has_no_registration_and_no_contacts() = runTest {
         val (_, store) = storeOver()
-        val chain = signer("Verifier Signer dev")
-        store.presentationPartyRecords.remember(
-            chain.certificates.first(),
-            issuerRegistrationFrom(euDevVerifierPayload).toPresentationPartyRecord(),
-        )
 
-        store.eventLogger().addEvent(presentation(chain))
+        store.recordTransaction(presentationRecord(party = null))
 
         val logged = assertIs<TransactionLogDomain.Presentation>(store.transactionLogs().single())
-        assertEquals("Niscy", logged.party.name?.text)
-        assertEquals("123456789", logged.party.identifier?.value)
-        assertEquals(3, logged.party.contacts.size)
-        val registration = logged.registration!!
-        assertEquals(listOf("geral@cnpd.pt", "+351213928400", "https://www.cnpd.pt/contactos"), registration.dpa?.contacts)
-        assertEquals("For testing purposes only", registration.purpose)
-        assertEquals("https://registry.example/wrp", registration.registrarUrl)
-    }
-
-    @Test
-    fun a_record_is_handed_over_once_and_only_to_the_verifier_that_signed() = runTest {
-        val (_, store) = storeOver()
-        val consented = signer("Consented")
-        val other = signer("Other")
-        store.presentationPartyRecords.remember(
-            consented.certificates.first(),
-            issuerRegistrationFrom(euDevVerifierPayload).toPresentationPartyRecord(),
-        )
-
-        val forOther = store.eventLogger().addEvent(presentation(other))!!
-        val forConsented = store.eventLogger().addEvent(presentation(consented))!!
-        val again = store.eventLogger().addEvent(presentation(consented))!!
-
-        assertNull(forOther.presentationPartyRecord())
-        assertEquals("Niscy", forConsented.presentationPartyRecord()?.name)
-        assertNull(again.presentationPartyRecord())
-    }
-
-    @Test
-    fun without_a_record_a_presentation_has_no_registration_and_no_contacts() = runTest {
-        val (_, store) = storeOver()
-
-        store.eventLogger().addEvent(presentation(signer("Plain")))
-
-        val logged = assertIs<TransactionLogDomain.Presentation>(store.transactionLogs().single())
-        assertEquals("Plain", logged.party.name?.text)
+        assertEquals("Verifier", logged.party.name?.text)
         assertTrue(logged.party.contacts.isEmpty())
         assertNull(logged.registration)
     }
@@ -254,7 +143,7 @@ class IosPresentationPrivacyTest {
     // --- The deletion requests and reports kept under a presentation ---
 
     private suspend fun MultipazWalletStore.loggedPresentation(): TransactionLogDomain.Presentation {
-        eventLogger().addEvent(presentation(signer("Verifier")))
+        recordTransaction(presentationRecord())
         return transactionLogs().filterIsInstance<TransactionLogDomain.Presentation>().single()
     }
 
@@ -303,11 +192,19 @@ class IosPresentationPrivacyTest {
     fun an_attempt_needs_a_presentation_that_exists_and_is_not_itself() = runTest {
         val (_, store) = storeOver()
         val parent = store.loggedPresentation()
-        val issuance = store.eventLogger().addEvent(provisioning())!!
+        store.recordTransaction(
+            IosTransactionRecord.Issuance(
+                id = "issuance-1",
+                timeEpochMillis = Clock.System.now().toEpochMilliseconds(),
+                completed = true,
+                requestedCount = 1,
+                issuedCount = 1,
+            )
+        )
         val record = parent.toDataDeletionRequestRecord("attempt", launchedAt, CommunicationMethodDomain.Email)
 
         assertFalse(store.recordPresentationAction(record.copy(parentPresentationId = "missing")))
-        assertFalse(store.recordPresentationAction(record.copy(parentPresentationId = issuance.identifier)))
+        assertFalse(store.recordPresentationAction(record.copy(parentPresentationId = "issuance-1")))
         assertFalse(store.recordPresentationAction(record.copy(id = parent.id)))
         assertTrue(store.presentationActions(parent.id).isEmpty())
     }

@@ -26,13 +26,10 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
 import org.multipaz.document.DocumentUtil
 import org.multipaz.document.buildDocumentStore
-import org.multipaz.eventlogger.SimpleEventLogger
 import org.multipaz.util.Logger
 import org.multipaz.securearea.SecureArea
 import org.multipaz.securearea.SecureAreaRepository
@@ -67,21 +64,13 @@ internal class MultipazWalletStore(
     /** The secure area new document keys are created in — the Secure Enclave on a real wallet. */
     val keySecureArea: SecureArea,
     /**
-     * Where the wallet's own tables live — bookmarks, revoked flags, and multipaz's transaction log.
+     * Where the wallet's own tables live — bookmarks, revoked flags, and the History's records.
      *
      * Deliberately **not** the store the documents are in. Under Option D the documents moved to the
-     * Keychain and this did not: app data gains nothing from the move, and the transaction log is the
-     * one caller in all of multipaz that paginates, which is the single thing a Keychain backend has
-     * to fake. Keeping it on SQLite keeps that caller on a backend with a real cursor.
+     * Keychain and this did not: app data gains nothing from the move.
      */
     private val appDataStorage: Storage,
 ) {
-
-    private val eventLoggerLock = Mutex()
-    private var cachedEventLogger: SimpleEventLogger? = null
-
-    /** The relying party each consent saw, handed to the event its presentation logs. */
-    val presentationPartyRecords = PresentationPartyRecords()
 
     /** Emits whenever one of the wallet's own transaction records is written or removed. */
     val transactionRecordChanges = MutableSharedFlow<Unit>(
@@ -103,31 +92,6 @@ internal class MultipazWalletStore(
 
     /** The transactions the wallet records itself, one row per transaction — see `IosTransactionRecords.kt`. */
     suspend fun transactionRecordsTable(): StorageTable = appDataStorage.getTable(TransactionRecordsTableSpec)
-
-    /**
-     * multipaz's transaction log, which this wallet now only reads and deletes from.
-     *
-     * Presentations and issuances were written here by multipaz itself — the presentment functions and
-     * `ProvisioningModel` log an event once a response has gone out or a document is issued — which is why
-     * only *successful* exchanges ever appeared. Both are now recorded the way wallet-core records them,
-     * in [transactionRecordsTable], and no logger is handed to multipaz any more; the events already here
-     * stay readable until they expire.
-     *
-     * One instance per store, since a second would keep its own initialization state over the same
-     * table for no benefit.
-     */
-    suspend fun eventLogger(): SimpleEventLogger = eventLoggerLock.withLock {
-        cachedEventLogger ?: SimpleEventLogger(
-            storage = appDataStorage,
-            partitionId = documentManagerId,
-            // multipaz's own default, made explicit because it is a data-retention decision rather
-            // than a tuning knob: entries older than this are dropped from the History tab.
-            expireAfter = EVENT_RETENTION,
-            // What wallet-core records about the relying party with a presentation on Android, which
-            // multipaz's event lacks — see `IosPresentationParty.kt`.
-            onAddEvent = { event -> presentationPartyRecords.appDataFor(event) },
-        ).also { cachedEventLogger = it }
-    }
 
     /** Bookmarks, keyed by document id, with an empty value — presence *is* the bookmark. */
     suspend fun bookmarksTable(): StorageTable = appDataStorage.getTable(BookmarksTableSpec)
@@ -343,7 +307,7 @@ internal class MultipazWalletStore(
         /** Only reached when the Info.plist key is missing, which means a mis-generated project. */
         private const val FALLBACK_KEYCHAIN_PREFIX = "eu.europa.ec.eudi.wallet"
 
-        /** How long a transaction stays in the log. multipaz's default, kept deliberately. */
+        /** How long a transaction stays in the log. */
         val EVENT_RETENTION = 60.days
 
         private val PresentationActionsTableSpec = StorageTableSpec(
@@ -404,7 +368,7 @@ internal class MultipazWalletStore(
          *
          * ⚠️ **The documents are no longer in this database.** They are Keychain items; see
          * [KeychainWalletStorage]. What the file below holds is the wallet's *app data* — bookmarks,
-         * revoked-document flags and multipaz's transaction log — which is why everything the rest of
+         * revoked-document flags and the History's records — which is why everything the rest of
          * this comment says about the file is still true and no longer says anything about where a
          * credential lives.
          *

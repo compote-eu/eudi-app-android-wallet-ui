@@ -14,10 +14,10 @@
  * governing permissions and limitations under the Licence.
  */
 
-// The transactions the wallet records itself, beside multipaz's event log — iOS's counterpart of the
-// entries Android's wallet-core writes through its own producers (`CredentialDeletionLogger` and the
-// rest). multipaz logs a presentation only once the verifier accepted it and a document only once it is
-// issued; what else the History tab shows on Android is written here and merged in by `transactionLogs()`.
+// The transactions the wallet records itself — iOS's counterpart of the entries Android's wallet-core
+// writes through its own producers (`PresentationLogListener`, `CredentialIssuanceLogger`,
+// `CredentialDeletionLogger`): presentations and issuances whether or not they completed, and deletions.
+// `transactionLogs()` reads them, with the signing records, as the History tab's list.
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.corelogic.model.CredentialRefDomain
@@ -167,7 +167,7 @@ internal fun IssuerRegistration?.toIssuerPartyRecord(
     )
 }
 
-/** Stores [record], replacing the row with the same id. Kept as long as the event log keeps its events. */
+/** Stores [record], replacing the row with the same id. Kept for [MultipazWalletStore.EVENT_RETENTION]. */
 internal suspend fun MultipazWalletStore.recordTransaction(record: IosTransactionRecord) {
     val table = transactionRecordsTable()
     val encoded = recordJson.encodeToString(IosTransactionRecord.serializer(), record).encodeToByteString()

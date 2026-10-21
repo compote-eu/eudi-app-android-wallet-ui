@@ -28,7 +28,7 @@ import kotlin.time.Instant
  * transaction log.
  *
  * Each platform hands over the shared [TransactionLogDomain] — Android from wallet-core's log, iOS from
- * multipaz's events — so the mapping, filtering and grouping above it are shared.
+ * the wallet's own transaction records — so the mapping, filtering and grouping above it are shared.
  */
 interface TransactionsPlatformBridge {
 

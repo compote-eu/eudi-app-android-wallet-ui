@@ -17,7 +17,7 @@
 // The documents signed through the RQES flow — iOS's counterpart of the signing entries Android's
 // wallet-core records through `RqesSigningLogger`. The signing SDK is Swift and reports each document to a
 // `TransactionLogger` there; Swift hands it on as an [IosSigningRecord], and it is kept here, beside the
-// event log, for the History tab to merge in.
+// wallet's transaction records, for the History tab to merge in.
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.corelogic.model.InteractingPartyDomain
@@ -59,8 +59,8 @@ data class IosSigningRecord(
 
 /**
  * Stores [record], replacing an entry with the same id — the SDK's own rule: "repeated calls for the same
- * identifier replace the previous snapshot". Kept as long as the event log keeps its events. False for a
- * record with no id.
+ * identifier replace the previous snapshot". Kept for [MultipazWalletStore.EVENT_RETENTION]. False for a record
+ * with no id.
  */
 internal suspend fun MultipazWalletStore.recordSigning(record: IosSigningRecord): Boolean {
     if (record.id.isBlank()) return false

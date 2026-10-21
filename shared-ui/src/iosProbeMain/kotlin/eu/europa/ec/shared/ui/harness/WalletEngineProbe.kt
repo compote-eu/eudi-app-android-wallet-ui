@@ -219,9 +219,9 @@ fun probeMultipazWalletEngine(onResult: (String) -> Unit) {
                         }
             )
 
-            // The History tab, now over multipaz's event log rather than an empty stub. What the
-            // list shows is written by presenting and issuing, so this run reports whatever earlier
-            // runs left behind — and the details path below is only reachable because of it.
+            // The History tab. What the list shows is written by presenting and issuing, so this run
+            // reports whatever earlier runs left behind — and the details path below is only reachable
+            // because of it.
             KoinPlatform.getKoin().get<TransactionsInteractor>().getTransactions().first()
                 .let { state ->
                     onResult(

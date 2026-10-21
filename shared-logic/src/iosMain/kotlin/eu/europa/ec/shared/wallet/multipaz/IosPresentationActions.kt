@@ -46,7 +46,6 @@ import kotlinx.io.bytestring.decodeToString
 import kotlinx.io.bytestring.encodeToByteString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.multipaz.eventlogger.EventPresentment
 import kotlin.time.Instant
 
 /** One attempt, as the actions table stores it. */
@@ -210,22 +209,17 @@ internal suspend fun MultipazWalletStore.presentationActions(
 internal fun MultipazWalletStore.observePresentationActions(
     presentationId: String,
 ): Flow<List<TransactionLogDomain.PresentationAction>> = flow {
-    val logger = eventLogger()
     emitAll(
-        merge(presentationActionChanges, logger.eventFlow, transactionRecordChanges)
+        merge(presentationActionChanges, transactionRecordChanges)
             .onStart { emit(Unit) }
             .map { presentationActions(presentationId) }
     )
 }
 
-/**
- * When the presentation [id] happened, or null when there is none: one of multipaz's events from before
- * presentations were recorded here, or one of the wallet's own records.
- */
+/** When the presentation [id] happened, or null when the wallet has recorded no such presentation. */
 private suspend fun MultipazWalletStore.presentationTime(id: String): Instant? =
-    (eventLogger().getEvents().firstOrNull { event -> event.identifier == id } as? EventPresentment)?.timestamp
-        ?: (transactionRecord(id) as? IosTransactionRecord.Presentation)
-            ?.let { record -> Instant.fromEpochMilliseconds(record.timeEpochMillis) }
+    (transactionRecord(id) as? IosTransactionRecord.Presentation)
+        ?.let { record -> Instant.fromEpochMilliseconds(record.timeEpochMillis) }
 
 /** Removes every attempt recorded under [presentationId]. */
 internal suspend fun MultipazWalletStore.deletePresentationActions(presentationId: String) {

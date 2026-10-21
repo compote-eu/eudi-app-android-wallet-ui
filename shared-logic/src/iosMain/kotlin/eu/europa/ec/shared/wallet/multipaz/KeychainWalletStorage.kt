@@ -99,7 +99,7 @@ import kotlin.time.Instant
  *    implement — eight methods, no batch, no savepoint. A document and its credentials are written by
  *    independent calls on *any* backend, SQLite included.
  *  - **No resumable iteration is required.** `afterKey`/`limit` have exactly one caller in all of
- *    multipaz — `SimpleEventLogger.getEvents()` — which stays on SQLite here. They are implemented
+ *    multipaz — `SimpleEventLogger.getEvents()`, which this wallet does not use. They are implemented
  *    anyway, because the contract declares them and a future caller would be entitled to use them.
  *
  * The whole contract was then exercised against a real Keychain in the app: 28 checks, 0 failures,

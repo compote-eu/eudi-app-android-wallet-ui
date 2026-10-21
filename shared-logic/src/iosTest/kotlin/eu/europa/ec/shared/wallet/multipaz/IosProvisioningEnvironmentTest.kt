@@ -37,7 +37,6 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.document.Document
 import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
-import org.multipaz.provisioning.CredentialCertification
 import org.multipaz.provisioning.CredentialFormat
 import org.multipaz.provisioning.Credentials
 import org.multipaz.provisioning.Display
@@ -96,17 +95,8 @@ class IosProvisioningEnvironmentTest {
 
         override suspend fun obtainCredentials(keyInfo: KeyBindingInfo): Credentials {
             sawKeyBinding = keyInfo
-            // 🪤 Not an empty list: multipaz's event logger does `credentialData.first()`
-            // unconditionally, so a round that certifies nothing dies with `NoSuchElementException`
-            // before the document is returned. One certification naming no real pending credential is
-            // enough — the certification loop logs "Credential '…' is not found" and moves on, which
-            // keeps this test about `launch` rather than about certifying mdoc bytes.
-            return Credentials(
-                certifications = listOf(
-                    CredentialCertification("not-a-pending-credential", ByteString(byteArrayOf(0))),
-                ),
-                display = null,
-            )
+            // Nothing certified: this test is about `launch` and its context, not about certifying mdoc bytes.
+            return Credentials(certifications = emptyList(), display = null)
         }
     }
 
@@ -148,7 +138,6 @@ class IosProvisioningEnvironmentTest {
         httpClient = HttpClient(),
         promptModel = org.multipaz.util.Platform.promptModel,
         authorizationSecureArea = walletStore.keySecureArea,
-        eventLogger = walletStore.eventLogger(),
     )
 
     @Test

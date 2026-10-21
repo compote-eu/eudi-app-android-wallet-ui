@@ -185,7 +185,7 @@ class IosPresentationLogTest {
 
     @Test
     fun a_deletion_request_can_be_filed_against_a_recorded_presentation() = runTest {
-        // Android's cascade, and the parent check, apply to the wallet's own rows as to multipaz's events.
+        // Android's cascade, and the parent check, apply to the wallet's own rows.
         val store = store()
         store.recordTransaction(
             IosTransactionRecord.Presentation(

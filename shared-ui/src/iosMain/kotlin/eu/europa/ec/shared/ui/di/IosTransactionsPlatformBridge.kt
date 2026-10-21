@@ -29,14 +29,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlin.time.Instant
 
 /**
- * iOS's [TransactionsPlatformBridge], reading multipaz's event log.
+ * iOS's [TransactionsPlatformBridge], reading the wallet's own transaction records.
  *
- * The counterpart of `AndroidTransactionsPlatformBridge`: wallet-core keeps its own log on Android,
- * while here multipaz writes one as a side effect of presenting and issuing, and
- * `IosTransactionLogDomain.kt` in :shared-logic maps those events into the shared domain.
+ * The counterpart of `AndroidTransactionsPlatformBridge`: wallet-core keeps the log on Android; here the
+ * presenters, the issuance and the deletion write records the way wallet-core writes its entries, and
+ * `IosTransactionLogDomain.kt` in :shared-logic reads them as the shared domain.
  *
  * The privacy actions' data is this wallet's own, as on Android, where it sits beside wallet-core's log:
- * the relying party's contacts and authority are kept with each presentation's event
+ * the relying party's contacts and authority are kept with each presentation's record
  * (`IosPresentationParty.kt`), and the deletion requests and reports in a table of their own
  * (`IosPresentationActions.kt`).
  */

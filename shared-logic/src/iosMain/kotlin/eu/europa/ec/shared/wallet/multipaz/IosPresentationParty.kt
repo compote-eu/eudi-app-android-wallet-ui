@@ -15,22 +15,11 @@
  */
 
 // What Android's wallet-core records about the relying party with each presentation — TS10 fields read
-// from its registration certificate — kept with multipaz's event on iOS. multipaz records the verifier's
-// certificate chain and trust metadata, but nothing of the registration certificate, and that is where a
-// data-deletion request's contacts and the data protection authority come from.
+// from its registration certificate — in the form iOS's transaction records keep it. The registration
+// certificate is where a data-deletion request's contacts and the data protection authority come from.
 package eu.europa.ec.shared.wallet.multipaz
 
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import org.multipaz.cbor.DataItem
-import org.multipaz.cbor.Tstr
-import org.multipaz.crypto.X509Cert
-import org.multipaz.crypto.X509CertChain
-import org.multipaz.eventlogger.Event
-import org.multipaz.eventlogger.EventPresentment
 
 /** The relying party as a presentation's transaction record keeps it. */
 @Serializable
@@ -86,42 +75,3 @@ internal fun String.toQualifiedIdentifierOrNull(): QualifiedIdentifierRecord? {
     val value = substringAfter('-', missingDelimiterValue = "").ifEmpty { return null }
     return QualifiedIdentifierRecord(schemeUri = scheme, value = value)
 }
-
-/**
- * Carries the consent step's view of a relying party to the event multipaz logs once the response is
- * accepted. The two meet only through the verifier's signing certificate: the presenter knows the
- * registration, the event knows the chain. Each record is handed over once.
- */
-internal class PresentationPartyRecords {
-    private val mutex = Mutex()
-    private val bySigner = mutableMapOf<ByteString, PresentationPartyRecord>()
-
-    suspend fun remember(signer: X509Cert, record: PresentationPartyRecord) = mutex.withLock {
-        bySigner[signer.encoded] = record
-    }
-
-    suspend fun take(chain: X509CertChain?): PresentationPartyRecord? {
-        val signer = chain?.certificates?.firstOrNull() ?: return null
-        return mutex.withLock { bySigner.remove(signer.encoded) }
-    }
-
-    /**
-     * The app data multipaz keeps with [event]: the relying party's record for a presentation whose
-     * consent left one, and nothing for anything else. Never null — null would drop the event.
-     */
-    suspend fun appDataFor(event: Event): Map<String, DataItem> {
-        val presentment = event as? EventPresentment ?: return emptyMap()
-        val record = take(presentment.presentmentData.requesterCertChain) ?: return emptyMap()
-        return mapOf(PRESENTATION_PARTY_KEY to Tstr(recordJson.encodeToString(PresentationPartyRecord.serializer(), record)))
-    }
-}
-
-/** The relying party recorded with this event, or null when none was (or it cannot be read). */
-internal fun Event.presentationPartyRecord(): PresentationPartyRecord? =
-    appData[PRESENTATION_PARTY_KEY]?.let { item ->
-        runCatching { recordJson.decodeFromString(PresentationPartyRecord.serializer(), item.asTstr) }.getOrNull()
-    }
-
-internal const val PRESENTATION_PARTY_KEY = "eu.europa.ec.eudi.presentationParty"
-
-private val recordJson = Json { ignoreUnknownKeys = true }

@@ -27,9 +27,9 @@
 // multipaz's public `mdocPresentmentGenerateResponse`, which takes the selection, so that part is not copied.
 //
 // Everything else is multipaz's code, trimmed of what this wallet never supplies: preselected documents,
-// the focus and waiting callbacks, and the loop's NFC paths — waiting for a re-tap, re-deriving the session
-// after one, and re-using the consent given before it. This wallet engages over a QR code and Bluetooth only,
-// so each request is asked about, as it was before 0.101.
+// an event logger, the focus and waiting callbacks, and the loop's NFC paths — waiting for a re-tap,
+// re-deriving the session after one, and re-using the consent given before it. This wallet engages over a
+// QR code and Bluetooth only, so each request is asked about, as it was before 0.101.
 //
 // ⛔ Delete this file once multipaz matches partially, or once a multipaz upgrade changes the functions it
 // copies — re-copy rather than patch, and keep the one change.
@@ -61,8 +61,6 @@ import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.Hpke
-import org.multipaz.eventlogger.EventPresentmentDigitalCredentialsMdocApi
-import org.multipaz.eventlogger.EventPresentmentIso18013Proximity
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.mdoc.request.DocRequest
@@ -360,15 +358,6 @@ internal suspend fun iosIso18013Presentment(
             )
             numRequestsServed += 1
 
-            source.eventLogger?.addEventAsync(
-                EventPresentmentIso18013Proximity(
-                    presentmentData = responseObject.eventData,
-                    request = deviceRequest.toDataItem(),
-                    response = responseObject.deviceResponse.toDataItem(),
-                    sessionTranscript = sessionTranscript,
-                )
-            )
-
             Logger.i(TAG, "Response sent, keeping connection open")
         }
     } finally {
@@ -522,18 +511,6 @@ private suspend fun mdocDcApiPresentment(
     val responseData = buildJsonObject {
         put("response", encryptedResponse.toBase64Url())
     }
-
-    source.eventLogger?.addEventAsync(
-        EventPresentmentDigitalCredentialsMdocApi(
-            presentmentData = responseObject.eventData,
-            appId = appId,
-            origin = origin,
-            protocol = protocol,
-            requestJson = Json.encodeToString(data),
-            responseJson = Json.encodeToString(responseData),
-            deviceResponse = responseObject.deviceResponse.toDataItem(),
-        )
-    )
 
     return buildJsonObject {
         put("protocol", protocol)
