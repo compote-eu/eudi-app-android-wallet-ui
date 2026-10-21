@@ -180,33 +180,43 @@ internal suspend fun signerOf(credential: String): CredentialSigner? = runCatchi
 }.getOrNull()
 
 /**
- * Which credential configurations each issuer publishes as a PID, keyed by its credential endpoint.
+ * What each issuer's credential configurations are — the `doctype` of an mdoc, the `vct` of an SD-JWT VC —
+ * keyed by its credential endpoint: whether one is a PID ([isPid]), and which `docType` an mdoc answering it
+ * must carry ([docTypeOf]).
  *
  * Process-wide for the reason [CredentialEncryptionRegistry] is: multipaz caches issuer metadata for the
  * whole process, and in [IosCredentialIssuer]'s batch path the session reads it while each document
  * posts through a client of its own, so the client that sees the credential response may never have
  * read the metadata. Whatever did read it went through [OpenID4VciCompatibilityEngine].
  */
-internal object PidConfigurationRegistry {
+internal object CredentialConfigurationRegistry {
     private val lock = Mutex()
-    private val byEndpoint = mutableMapOf<String, Set<String>>()
+    private val byEndpoint = mutableMapOf<String, Map<String, ConfigurationType>>()
 
-    /** Records the PID configurations [metadata] publishes; nothing, if it names no credential endpoint. */
+    /** What a configuration is: an mdoc's `doctype`, or an SD-JWT VC's `vct`. */
+    private class ConfigurationType(val docType: String?, val vct: String?) {
+        val formatType: String? get() = docType ?: vct
+    }
+
+    /** Records the configurations [metadata] publishes; nothing, if it names no credential endpoint. */
     suspend fun record(metadata: JsonObject) {
         val endpoint = (metadata["credential_endpoint"] as? JsonPrimitive)?.contentOrNull ?: return
         val configurations = metadata["credential_configurations_supported"] as? JsonObject ?: return
-        val pids = configurations.filterValues { configuration ->
+        val types = configurations.mapValues { (_, configuration) ->
             // `doctype` for an mdoc, `vct` for an SD-JWT VC, both at the top of the configuration.
-            listOf("doctype", "vct").any { member ->
-                ((configuration as? JsonObject)?.get(member) as? JsonPrimitive)?.contentOrNull in PidFormatTypes
-            }
-        }.keys
-        lock.withLock { byEndpoint[endpoint] = pids }
+            fun member(name: String) = ((configuration as? JsonObject)?.get(name) as? JsonPrimitive)?.contentOrNull
+            ConfigurationType(docType = member("doctype"), vct = member("vct"))
+        }
+        lock.withLock { byEndpoint[endpoint] = types }
     }
 
     /** Whether the issuer behind [endpoint] publishes [configurationId] as a PID. */
     suspend fun isPid(endpoint: String, configurationId: String): Boolean =
-        lock.withLock { byEndpoint[endpoint] }?.contains(configurationId) == true
+        lock.withLock { byEndpoint[endpoint]?.get(configurationId) }?.formatType in PidFormatTypes
+
+    /** The `docType` an mdoc answering [configurationId] must carry; null when it is not an mdoc's, or unknown. */
+    suspend fun docTypeOf(endpoint: String, configurationId: String): String? =
+        lock.withLock { byEndpoint[endpoint]?.get(configurationId) }?.docType
 }
 
 private const val TAG = "PidIssuerTrust"

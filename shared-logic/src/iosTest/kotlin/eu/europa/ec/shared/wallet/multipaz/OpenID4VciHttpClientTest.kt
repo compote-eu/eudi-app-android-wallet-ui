@@ -1097,7 +1097,60 @@ class OpenID4VciHttpClientTest {
         )
         client.get("https://pid-config.test/.well-known/openid-credential-issuer").readRawBytes()
 
-        assertFailsWith<IssuerNotTrustedException> { client.postCredentialRequest(endpoint, "pid_mdoc") }
+        // Refused before its signer is asked about: an mdoc answering a configuration of another docType is
+        // not what that configuration issues (wallet-core #446). `PidIssuerTrustTest` pins the PID rule that
+        // still catches such a credential where the configuration's docType is not known.
+        val refusal = assertFailsWith<CredentialIntegrityException> { client.postCredentialRequest(endpoint, "pid_mdoc") }
+        assertTrue("not the eu.europa.ec.eudi.pid.1 asked for" in refusal.message.orEmpty(), "unexpected: ${refusal.message}")
+    }
+
+    // Integrity is not trust: every credential is checked against what its issuer signed, PID or not, with the
+    // trust lists or without them — wallet-core's certifiers since #446.
+
+    private val mdlEndpoint = "https://mdl-config.test/credential"
+
+    private fun mdlIssuerAnswering(credential: String) = openID4VciHttpClient(
+        engine = MockEngine { request ->
+            if (request.url.encodedPath.contains(".well-known")) {
+                respond(
+                    """
+                    {"credential_issuer":"https://mdl-config.test","credential_endpoint":"$mdlEndpoint",
+                     "credential_configurations_supported":{
+                       "mdl":{"format":"mso_mdoc","doctype":"org.iso.18013.5.1.mDL","scope":"mdl"}}}
+                    """.trimIndent(),
+                    HttpStatusCode.OK,
+                    jsonContent,
+                )
+            } else {
+                respond("""{"credentials":[{"credential":"$credential"}]}""", HttpStatusCode.OK, jsonContent)
+            }
+        },
+        issuerTrust = null,
+    )
+
+    @Test
+    fun a_credential_its_chain_did_not_sign_is_refused_even_with_the_trust_lists_off() = runTest {
+        val credential = testMdocCredential(
+            "org.iso.18013.5.1.mDL",
+            testSigner().chain,
+            signingKey = Crypto.createEcPrivateKey(EcCurve.P256),
+        )
+        val client = mdlIssuerAnswering(credential)
+        client.get("https://mdl-config.test/.well-known/openid-credential-issuer").readRawBytes()
+
+        assertFailsWith<CredentialIntegrityException> { client.postCredentialRequest(mdlEndpoint, "mdl") }
+    }
+
+    @Test
+    fun a_credential_as_its_issuer_signed_it_reaches_multipaz_unchanged() = runTest {
+        val credential = testMdocCredential("org.iso.18013.5.1.mDL", testSigner())
+        val client = mdlIssuerAnswering(credential)
+        client.get("https://mdl-config.test/.well-known/openid-credential-issuer").readRawBytes()
+
+        val response = client.postCredentialRequest(mdlEndpoint, "mdl")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(credential in response.bodyAsText())
     }
 
     // ---- the scope-instead-of-authorization_details workaround ---------------------------------

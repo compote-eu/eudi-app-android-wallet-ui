@@ -134,6 +134,15 @@ class CredentialEncryptionTest {
         put("credentials", buildJsonArray { add(buildJsonObject { put("credential", "the-credential") }) })
     }
 
+    /**
+     * The same answer carrying a real, signed PID mdoc, for what passes through the engine: it refuses to
+     * hand multipaz a credential that is not what its issuer signed ([verifyCredentialIntegrity]).
+     */
+    private suspend fun signedCredentials() = buildJsonObject {
+        val credential = testMdocCredential("eu.europa.ec.eudi.pid.1", testSigner())
+        put("credentials", buildJsonArray { add(buildJsonObject { put("credential", credential) }) })
+    }
+
     // ── The offer ──────────────────────────────────────────────────────────────────────────────────
 
     @Test
@@ -280,11 +289,12 @@ class CredentialEncryptionTest {
     fun the_engine_encrypts_the_request_and_hands_multipaz_the_decrypted_answer() = runTest {
         val host = "engine-a.test"
         val issuer = standInIssuer(host)
+        val answered = signedCredentials()
         var received: JsonObject? = null
         var receivedContentType: String? = null
         val client = engineOver(host, issuer) { body, contentType ->
             receivedContentType = contentType
-            val (request, answer) = issuer.answer(body, credentials)
+            val (request, answer) = issuer.answer(body, answered)
             received = request
             HttpStatusCode.OK to (answer to true)
         }
@@ -295,7 +305,7 @@ class CredentialEncryptionTest {
         assertEquals("eu.europa.ec.eudi.pid_mso_mdoc", received!!["credential_configuration_id"]!!.jsonPrimitive.content)
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(response.headers["Content-Type"]!!.startsWith("application/json"))
-        assertEquals(credentials, json.parseToJsonElement(response.bodyAsText()).jsonObject)
+        assertEquals(answered, json.parseToJsonElement(response.bodyAsText()).jsonObject)
     }
 
     @Test
@@ -358,10 +368,11 @@ class CredentialEncryptionTest {
         }
         var sent: String? = null
         var sentContentType: String? = null
+        val answered = signedCredentials()
         val client = engineOver(host, issuer = null, metadata = metadata) { body, contentType ->
             sent = body
             sentContentType = contentType
-            HttpStatusCode.OK to (credentials.toString() to false)
+            HttpStatusCode.OK to (answered.toString() to false)
         }
 
         client.postCredentialRequest(host)

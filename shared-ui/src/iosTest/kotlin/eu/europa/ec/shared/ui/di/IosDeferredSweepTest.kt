@@ -108,6 +108,20 @@ class IosDeferredSweepTest {
     }
 
     @Test
+    fun a_credential_refused_as_not_what_its_issuer_signed_is_deleted_as_android_deletes_it() = runTest(dispatcher) {
+        // wallet-core deletes a deferred document its certifier refuses, then reports `DocumentFailed`.
+        val (bridge, deleted) = bridge(
+            outcomes = mapOf("altered" to DeferredCollection.NotIntact("does not match its digest")),
+        )
+
+        val result = bridge.tryIssuingDeferredDocuments(mapOf("altered" to "type"), dispatcher).first()
+
+        assertIs<DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result>(result)
+        assertEquals(listOf("altered"), result.failedIssuedDeferredDocuments)
+        assertEquals(listOf("altered"), deleted)
+    }
+
+    @Test
     fun a_document_the_issuer_is_still_working_on_is_left_alone_entirely() = runTest(dispatcher) {
         val (bridge, deleted) = bridge(
             outcomes = mapOf("pending" to DeferredCollection.StillPending(retryAfterSeconds = 48)),

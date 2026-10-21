@@ -162,6 +162,10 @@ private suspend fun runDeferredIssuanceProbe(onResult: (String) -> Unit, sdJwt: 
                 onResult("ISSUER NOT TRUSTED: the PID's signer is not a recognised PID provider"); break
             }
 
+            is DeferredCollection.NotIntact -> {
+                onResult("NOT INTACT: ${collected.reason}"); break
+            }
+
             is DeferredCollection.Unsupported -> {
                 onResult("UNSUPPORTED: ${collected.reason}"); break
             }

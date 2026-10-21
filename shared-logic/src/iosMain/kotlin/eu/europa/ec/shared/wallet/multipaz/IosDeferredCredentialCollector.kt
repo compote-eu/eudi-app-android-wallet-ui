@@ -401,6 +401,13 @@ sealed interface DeferredCollection {
      */
     data object IssuerNotTrusted : DeferredCollection
 
+    /**
+     * The issuer minted it, and it is not what the issuer signed ([verifyCredentialIntegrity]), so it was not
+     * stored. Android's `DocumentFailed` when its certifier refuses a deferred credential: the document
+     * removed. [reason] is the check that failed, for the log.
+     */
+    data class NotIntact(val reason: String) : DeferredCollection
+
     /** The issuer stopped advertising the endpoint; nothing to do but say so. */
     data class Unsupported(val reason: String) : DeferredCollection
 

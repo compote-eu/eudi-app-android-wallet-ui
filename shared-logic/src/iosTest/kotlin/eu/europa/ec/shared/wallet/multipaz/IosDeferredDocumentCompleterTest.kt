@@ -37,6 +37,9 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.Tstr
 import org.multipaz.cbor.buildCborMap
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.document.Document
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
@@ -142,11 +145,14 @@ class IosDeferredDocumentCompleterTest {
     }
 
     /** The bytes an issuer would return for [document]'s waiting credential, base64url as on the wire. */
-    private suspend fun issuedCredentialFor(document: Document): String =
-        issuedCredentialFor(document.getPendingCredentials().single() as MdocCredential)
+    private suspend fun issuedCredentialFor(document: Document, signingKey: EcPrivateKey? = null): String =
+        issuedCredentialFor(document.getPendingCredentials().single() as MdocCredential, signingKey)
 
-    /** The bytes an issuer would return for [pending], bound to its key. */
-    private suspend fun issuedCredentialFor(pending: MdocCredential): String {
+    /**
+     * The bytes an issuer would return for [pending], bound to its key — signed by the key of its own chain,
+     * unless [signingKey] says otherwise.
+     */
+    private suspend fun issuedCredentialFor(pending: MdocCredential, signingKey: EcPrivateKey? = null): String {
         val signer = testSigner()
         val data = issuerSignedDataFor(
             docType = docType,
@@ -157,7 +163,7 @@ class IosDeferredDocumentCompleterTest {
             // A PID is stored only with a signer chain to check, as an issuer's always carries, and a
             // signature that verifies against it.
             issuerCertChain = signer.chain,
-            issuerSigningKey = signer.key,
+            issuerSigningKey = signingKey ?: signer.key,
         )
         return data.toByteArray().toBase64Url()
     }
@@ -260,6 +266,25 @@ class IosDeferredDocumentCompleterTest {
         // Android's deferred `IssuerNotTrusted`: the sweep reports it failed and removes the document.
         assertEquals(DeferredCollection.IssuerNotTrusted, result)
         assertTrue(document.getCertifiedCredentials().isEmpty(), "nothing is certified with a refused PID")
+        assertNull(assertNotNull(document.eudiMetadata).issuedAt)
+    }
+
+    @Test
+    fun a_collected_credential_that_is_not_what_its_issuer_signed_is_not_stored() = runTest {
+        // Every signer trusted: the refusal is the credential's own, as wallet-core's certifier makes it.
+        val store = storeOver(EphemeralStorage())
+        val document = store.parkWithPendingCredential()
+        val credential = issuedCredentialFor(document, signingKey = Crypto.createEcPrivateKey(EcCurve.P256))
+
+        val result = completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.OK,
+            deferredBody = """{"credentials":[{"credential":"$credential"}]}""",
+        ).complete(document)
+
+        // Android deletes such a deferred document and reports it failed; the sweep does the same with this.
+        assertIs<DeferredCollection.NotIntact>(result)
+        assertTrue(document.getCertifiedCredentials().isEmpty(), "nothing is certified with a credential its chain did not sign")
         assertNull(assertNotNull(document.eudiMetadata).issuedAt)
     }
 

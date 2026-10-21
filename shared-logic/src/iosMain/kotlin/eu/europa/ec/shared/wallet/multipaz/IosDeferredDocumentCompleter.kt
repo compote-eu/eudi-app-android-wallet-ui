@@ -90,6 +90,8 @@ internal class IosDeferredDocumentCompleter(
             DeferredCollection.Abandoned -> "Deferred credential expired"
             DeferredCollection.AuthorizationExpired -> "$REASON_DEFERRED_COLLECTION_FAILED: the authorization has expired"
             DeferredCollection.IssuerNotTrusted -> "$REASON_DEFERRED_COLLECTION_FAILED: the issuer is not trusted"
+            is DeferredCollection.NotIntact ->
+                "$REASON_DEFERRED_COLLECTION_FAILED: the credential is not what its issuer signed"
             // Asked again later; the row stays awaiting.
             is DeferredCollection.StillPending,
             is DeferredCollection.Failed,
@@ -178,10 +180,11 @@ internal class IosDeferredDocumentCompleter(
         }
         if (collected == null) return DeferredCollection.AuthorizationExpired
 
-        // Checked before anything is certified, as the first issuance is: a PID from a signer the EU list
-        // does not name never reaches the store.
-        if (collected is DeferredCollection.Issued && !isTrustedIssuance(document, collected.credentials)) {
-            return DeferredCollection.IssuerNotTrusted
+        // Checked before anything is certified, as the first issuance is: a credential that is not what its
+        // issuer signed, or a PID from a signer the EU list does not name, never reaches the store.
+        if (collected is DeferredCollection.Issued) {
+            integrityRefusal(document, collected.credentials)?.let { return it }
+            if (!isTrustedIssuance(document, collected.credentials)) return DeferredCollection.IssuerNotTrusted
         }
         when (collected) {
             is DeferredCollection.Issued -> store(document, collected.credentials)
@@ -213,6 +216,20 @@ internal class IosDeferredDocumentCompleter(
         Logger.w(TAG, "the DPoP key $alias is no longer in the secure area")
         null
     }
+
+    /**
+     * The refusal, logged, when any of [credentials] is not what its issuer signed; null when all are. Every
+     * credential, whatever its kind and whatever the trust policy says, as Android's certifiers check them.
+     */
+    private suspend fun integrityRefusal(document: Document, credentials: List<String>): DeferredCollection.NotIntact? =
+        try {
+            val expectedDocType = (document.eudiMetadata?.format as? StoredDocumentFormat.MsoMdoc)?.docType
+            credentials.forEach { verifyCredentialIntegrity(it, expectedDocType) }
+            null
+        } catch (refused: CredentialIntegrityException) {
+            Logger.w(TAG, "not storing ${document.identifier}'s deferred credentials: ${refused.message}")
+            DeferredCollection.NotIntact(refused.message.orEmpty())
+        }
 
     /** False, logged, when [credentials] hold a PID whose signer is not a recognised PID provider. */
     private suspend fun isTrustedIssuance(document: Document, credentials: List<String>): Boolean = try {

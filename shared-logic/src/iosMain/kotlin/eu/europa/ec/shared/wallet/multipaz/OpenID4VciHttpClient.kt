@@ -378,7 +378,7 @@ internal class OpenID4VciCompatibilityEngine(
 
             isDeferredIssuance(readable) -> noteDeferredIssuance(readable)
             credentialRequest != null && readable.statusCode == HttpStatusCode.OK ->
-                checkedPidSigners(data, credentialRequest, readable)
+                checkedCredentials(data, credentialRequest, readable)
 
             else -> readable
         }
@@ -393,7 +393,8 @@ internal class OpenID4VciCompatibilityEngine(
     }
 
     /**
-     * Passes a credential response on only if every PID in it is signed by a recognised PID provider.
+     * Passes a credential response on only if every credential in it is what its issuer signed
+     * ([verifyCredentialIntegrity]) and every PID in it is signed by a recognised PID provider.
      *
      * Here, before multipaz certifies anything, because this is the one place every issuance path
      * meets: multipaz's own client for a single configuration, an offer and a refresh, and
@@ -401,24 +402,28 @@ internal class OpenID4VciCompatibilityEngine(
      * multipaz cleans up as for any failed request — a new document is deleted, and a refresh drops
      * only the credentials it was adding. Android checks at the same point, before `storeIssuedDocument`.
      *
-     * Null [issuerTrust] skips it, as it does the metadata check, for the tests that serve credentials
-     * from a `MockEngine`.
+     * The integrity check runs always, as Android's certifiers do with or without trust configured. Null
+     * [issuerTrust] skips only the PID signer check, as it does the metadata check, for the tests that serve
+     * credentials from a `MockEngine`.
      */
-    private suspend fun checkedPidSigners(
+    private suspend fun checkedCredentials(
         data: HttpRequestData,
         request: JsonObject,
         response: HttpResponseData,
     ): HttpResponseData {
-        val trust = issuerTrust ?: return response
         val (bytes, replayable) = replayableBody(response)
         val credentials = runCatching {
             Json.parseToJsonElement(bytes.decodeToString()).jsonObject["credentials"]?.jsonArray?.mapNotNull {
                 ((it as? JsonObject)?.get("credential") as? JsonPrimitive)?.contentOrNull
             }
         }.getOrNull().orEmpty()
+        val endpoint = data.url.toString()
         val configurationId = (request["credential_configuration_id"] as? JsonPrimitive)?.contentOrNull
-        val requestedPid = configurationId != null &&
-            PidConfigurationRegistry.isPid(data.url.toString(), configurationId)
+        val expectedDocType = configurationId?.let { CredentialConfigurationRegistry.docTypeOf(endpoint, it) }
+        credentials.forEach { verifyCredentialIntegrity(it, expectedDocType) }
+
+        val trust = issuerTrust ?: return replayable
+        val requestedPid = configurationId != null && CredentialConfigurationRegistry.isPid(endpoint, configurationId)
         trust.enforcePidSigners(credentials, requestedPid)
         return replayable
     }
@@ -655,7 +660,7 @@ internal class OpenID4VciCompatibilityEngine(
                 pushedAuthorizationRequestEndpoint = it
             }
             json["token_endpoint"]?.jsonPrimitive?.content?.let { tokenEndpoint = it }
-            PidConfigurationRegistry.record(json)
+            CredentialConfigurationRegistry.record(json)
             CredentialEncryptionRegistry.record(json)?.let { offer ->
                 offer.onSuccess { if (it.isActive) Logger.i(TAG, "the issuer takes encrypted credential exchanges: $it") }
                     .onFailure { Logger.w(TAG, "the issuer's credential encryption is unusable: ${it.message}") }

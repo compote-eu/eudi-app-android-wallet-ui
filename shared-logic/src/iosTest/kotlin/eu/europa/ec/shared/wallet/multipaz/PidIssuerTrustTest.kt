@@ -276,13 +276,13 @@ class PidIssuerTrustTest {
             """.trimIndent()
         ).jsonObject
 
-        PidConfigurationRegistry.record(metadata)
+        CredentialConfigurationRegistry.record(metadata)
 
-        assertTrue(PidConfigurationRegistry.isPid(endpoint, "pid_mdoc"))
-        assertTrue(PidConfigurationRegistry.isPid(endpoint, "pid_sd_jwt"))
-        assertFalse(PidConfigurationRegistry.isPid(endpoint, "mdl"))
+        assertTrue(CredentialConfigurationRegistry.isPid(endpoint, "pid_mdoc"))
+        assertTrue(CredentialConfigurationRegistry.isPid(endpoint, "pid_sd_jwt"))
+        assertFalse(CredentialConfigurationRegistry.isPid(endpoint, "mdl"))
         // Keyed by issuer: the same configuration id at another issuer says nothing.
-        assertFalse(PidConfigurationRegistry.isPid("https://registry-b.test/credential", "pid_mdoc"))
+        assertFalse(CredentialConfigurationRegistry.isPid("https://registry-b.test/credential", "pid_mdoc"))
     }
 
     @Test

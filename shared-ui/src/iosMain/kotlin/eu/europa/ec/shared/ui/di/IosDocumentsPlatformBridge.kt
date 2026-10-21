@@ -145,14 +145,16 @@ internal class IosDocumentsPlatformBridge(
             when (outcome) {
                 is DeferredCollection.Issued -> issuedIds += documentId
 
-                // Reported failed AND removed, which is what Android does with the same two outcomes
-                // (`Expired` and `IssuerNotTrusted` both call `deleteDocument`). Leaving it in the
+                // Reported failed AND removed, which is what Android does with the same outcomes
+                // (`Expired` and `IssuerNotTrusted` both call `deleteDocument`, and wallet-core deletes a
+                // deferred document its certifier refuses before reporting `DocumentFailed`). Leaving it in the
                 // wallet is not neutral: the failed marking is transient UI state, so on the next
                 // launch the document reappears as pending, fails again, and churns yellow→red for
                 // ever. Watched on the simulator 2026-09-17 before this was added.
                 is DeferredCollection.Abandoned,
                 is DeferredCollection.AuthorizationExpired,
                 is DeferredCollection.IssuerNotTrusted,
+                is DeferredCollection.NotIntact,
                     -> {
                     failed += documentId
                     Logger.w(TAG, "removing $documentId: it can never be collected ($outcome)")
