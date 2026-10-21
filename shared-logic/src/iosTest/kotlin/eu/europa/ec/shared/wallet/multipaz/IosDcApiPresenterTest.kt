@@ -27,6 +27,7 @@ import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
 import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.bytestring.ByteString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -411,6 +412,25 @@ class IosDcApiPresenterTest {
             data = mdocApiRequest(docType = "org.iso.18013.5.1.mDL"),
             origin = "https://verifier.example",
             onConsent = acceptEverything,
+        )
+
+        assertIs<IosDcApiOutcome.NothingToShare>(outcome)
+    }
+
+    /**
+     * A revoked document is not offered here either, even though the system picker may still list it in the
+     * moment before the registry is reconciled: the extension refuses it at consent, as the other paths do.
+     */
+    @Test
+    fun a_revoked_document_is_not_offered_to_an_app_or_website() = runTest {
+        val store = store()
+        store.revokedDocumentsTable().insert(key = store.seedPid(), data = ByteString())
+
+        val outcome = IosDcApiPresenter(store).present(
+            protocol = "org-iso-mdoc",
+            data = mdocApiRequest(),
+            origin = "https://verifier.example",
+            onConsent = refuseToBeAsked,
         )
 
         assertIs<IosDcApiOutcome.NothingToShare>(outcome)

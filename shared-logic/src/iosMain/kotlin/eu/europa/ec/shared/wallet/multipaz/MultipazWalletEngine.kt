@@ -276,6 +276,12 @@ internal class MultipazWalletEngine(
             }
         }
 
+        // The system picker offers only documents that are not revoked (`registrableDocuments`), so it must
+        // hear about a verdict that changed either way — not only at the next launch.
+        if (newlyRevoked.isNotEmpty() || cleared.isNotEmpty()) {
+            IosDocumentRegistration.registry?.documentsChanged()
+        }
+
         return RevocationRefresh(newlyRevoked = newlyRevoked, cleared = cleared)
     }
 

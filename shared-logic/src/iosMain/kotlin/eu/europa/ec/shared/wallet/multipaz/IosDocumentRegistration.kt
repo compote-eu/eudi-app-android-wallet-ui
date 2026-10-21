@@ -84,6 +84,11 @@ data class IosRegistrableDocument(
  *
  * Failure is swallowed per document rather than thrown: one unreadable document must not cost the
  * registration of every other. Cancellation is rethrown — that is the caller asking for its time back.
+ *
+ * **A revoked document is not registered**, as it is not offered to verifiers (see
+ * `withoutRevokedDocuments`): the system picker must not list a document the wallet will refuse to send.
+ * The revocation refresh reconciles whenever its verdicts change, so a document leaves the picker when it
+ * is flagged and returns when it is cleared. Upstream adds the same to Android in #729 (`03355aa7`).
  */
 suspend fun registrableDocuments(): List<IosRegistrableDocument> =
     IosWalletEngine().store().registrableDocuments()
@@ -97,7 +102,8 @@ suspend fun registrableDocuments(): List<IosRegistrableDocument> =
  * and one that is known to.
  */
 internal suspend fun MultipazWalletStore.registrableDocuments(): List<IosRegistrableDocument> {
-    return documentStore.listDocuments().mapNotNull { document ->
+    val revoked = revokedDocumentsTable().enumerate().toSet()
+    return documentStore.listDocuments().filterNot { it.identifier in revoked }.mapNotNull { document ->
         try {
             val mdocCredentials = document.getCertifiedCredentials()
                 .filterIsInstance<MdocCredential>()

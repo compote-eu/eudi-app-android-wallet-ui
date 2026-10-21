@@ -22,6 +22,7 @@ import eu.europa.ec.shared.wallet.multipaz.harness.sampleIssuerMetadata
 import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
 import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.bytestring.ByteString
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.Storage
 import org.multipaz.storage.ephemeral.EphemeralStorage
@@ -83,6 +84,17 @@ class IosDocumentRegistrationTest {
         assertEquals(1, registrable.size)
         assertEquals(documentId, registrable.single().documentIdentifier)
         assertEquals(MDOC_PID_DOC_TYPE, registrable.single().mobileDocumentType)
+    }
+
+    /** The picker must not list a document the wallet will refuse to send. */
+    @Test
+    fun a_revoked_document_is_not_registered() = runTest {
+        val store = store()
+        val valid = store.seedPid()
+        val revoked = store.seedPid()
+        store.revokedDocumentsTable().insert(key = revoked, data = ByteString())
+
+        assertEquals(listOf(valid), store.registrableDocuments().map { it.documentIdentifier })
     }
 
     /**

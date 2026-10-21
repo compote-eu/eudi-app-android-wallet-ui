@@ -20,10 +20,15 @@ import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import eu.europa.ec.shared.wallet.trust.certChain
 import org.multipaz.documenttype.DocumentTypeRepository
 import org.multipaz.presentment.ConsentData
+import org.multipaz.presentment.CredentialPresentmentSet
+import org.multipaz.presentment.CredentialPresentmentSetOption
+import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialSelection
+import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.presentment.SimplePresentmentSource
 import org.multipaz.request.Requester
 import org.multipaz.request.TrustedRequesterIdentity
+import org.multipaz.util.Logger
 
 /**
  * The wallet's answer to *"what may be presented, does the user agree, and who is asking"* — one
@@ -58,7 +63,7 @@ import org.multipaz.request.TrustedRequesterIdentity
  *   wallet.
  * @param showConsent publishes the request and suspends until a screen answers. The whole reason the
  *   app supplies a source at all: multipaz's default answers immediately, which would release
- *   documents without asking anyone.
+ *   documents without asking anyone. It never sees a revoked document — see [withoutRevokedDocuments].
  */
 internal suspend fun walletPresentmentSource(
     store: MultipazWalletStore,
@@ -70,6 +75,21 @@ internal suspend fun walletPresentmentSource(
         trustedRequesterIdentity: TrustedRequesterIdentity?,
         data: ConsentData,
     ) -> CredentialSelection?,
+): SimplePresentmentSource {
+    // Named before it exists because rebuilding the consent data needs the source it was made for.
+    lateinit var source: SimplePresentmentSource
+    source = presentmentSource(store, credentialDomain, readerTrust, offersSdJwt) { requester, trusted, data ->
+        showConsent(requester, trusted, data.withoutRevokedDocuments(store, source))
+    }
+    return source
+}
+
+private fun presentmentSource(
+    store: MultipazWalletStore,
+    credentialDomain: String,
+    readerTrust: ReaderTrustSource?,
+    offersSdJwt: Boolean,
+    showConsent: suspend (Requester, TrustedRequesterIdentity?, ConsentData) -> CredentialSelection?,
 ): SimplePresentmentSource = SimplePresentmentSource(
     documentStore = store.documentStore,
     documentTypeRepository = documentTypeRepository,
@@ -93,6 +113,65 @@ internal suspend fun walletPresentmentSource(
         showConsent(requester, trustedRequesterIdentity, data)
     },
 )
+
+/**
+ * The request as the user may answer it: every match from a document the last revocation check flagged
+ * taken out, read from that cache at the moment the request arrives.
+ *
+ * Android leaves revoked documents out of a request's options (`PresentationRequestInteractor`). iOS
+ * offered them, and released one when the user agreed — measured on the simulator 2026-10-21 with a
+ * revoked PID fixture and the EU dev verifier, which received it. Here, at consent, because it is the
+ * one step all three paths share, and because it is early enough: multipaz builds a DCQL query's
+ * candidates straight from the document store, so a credential filter in `selectCredential` would never
+ * reach a remote request.
+ *
+ * @throws PresentmentCannotSatisfyRequestException when what is left cannot answer the request — the
+ *   same "nothing to share" a request for a document the wallet never held ends in, on every path.
+ */
+private suspend fun ConsentData.withoutRevokedDocuments(
+    store: MultipazWalletStore,
+    source: SimplePresentmentSource,
+): ConsentData {
+    val revoked = store.revokedDocumentsTable().enumerate().toSet()
+    if (revoked.isEmpty()) return this
+    val kept = credentialQueryResult.withoutDocuments(revoked)
+        ?: throw PresentmentCannotSatisfyRequestException(
+            "Every document that could answer this request is revoked",
+            IllegalStateException("${revoked.size} revoked document(s) left out"),
+        )
+    if (kept == credentialQueryResult) return this
+    Logger.i(TAG, "left revoked documents out of the request")
+    return ConsentData.fromCredentialQueryResult(kept, source)
+}
+
+/**
+ * This result without the matches from the documents in [excluded], or null when what is left cannot
+ * answer the request.
+ *
+ * An option stands only while each of its members keeps a match: a member that lost all of them can no
+ * longer be answered, and neither can the option. A set left with no option is dropped when it was
+ * optional — not answering it is an answer — and makes the whole request unanswerable when it was not.
+ */
+internal fun CredentialQueryResult.withoutDocuments(excluded: Set<String>): CredentialQueryResult? {
+    val sets = mutableListOf<CredentialPresentmentSet>()
+    for (set in credentialSets) {
+        val options = set.options.mapNotNull { it.withoutDocuments(excluded) }
+        when {
+            options.isNotEmpty() || set.options.isEmpty() -> sets += set.copy(options = options)
+            !set.optional -> return null
+        }
+    }
+    return if (sets.isEmpty()) null else CredentialQueryResult(sets)
+}
+
+private fun CredentialPresentmentSetOption.withoutDocuments(excluded: Set<String>): CredentialPresentmentSetOption? {
+    val kept = members.map { member ->
+        val matches = member.matches.filterNot { it.credential.document.identifier in excluded }
+        if (matches.isEmpty() && member.matches.isNotEmpty()) return null
+        member.copy(matches = matches)
+    }
+    return copy(members = kept)
+}
 
 /**
  * Whether a request has to be refused before consent: the reader authenticated, and nothing this wallet
@@ -128,3 +207,5 @@ internal fun isUntrustedReader(requester: Requester, trusted: TrustedRequesterId
 private val documentTypeRepository = DocumentTypeRepository().apply {
     walletTransactionTypes.forEach(::addTransactionType)
 }
+
+private const val TAG = "WalletPresentmentSource"

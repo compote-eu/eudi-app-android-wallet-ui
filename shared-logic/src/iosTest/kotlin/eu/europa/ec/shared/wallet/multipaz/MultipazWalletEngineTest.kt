@@ -653,6 +653,35 @@ class MultipazWalletEngineTest {
         assertTrue(refresh.newlyRevoked.isEmpty())
     }
 
+    /**
+     * The system picker lists only documents that are not revoked, so it is reconciled whenever a verdict
+     * changes — when a document is flagged and when it is cleared — and not when a refresh changes nothing.
+     */
+    @Test
+    fun the_system_picker_is_reconciled_when_a_verdict_changes() = runTest {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256)
+        val store = store()
+        store.seedPid(revocationStatus = statusEntry(key, idx = 4))
+        val engine = MultipazWalletEngine(store)
+        var reconciliations = 0
+        IosDocumentRegistration.registry = object : IosDocumentRegistry {
+            override fun documentsChanged() {
+                reconciliations++
+            }
+        }
+
+        try {
+            engine.refreshRevocationStatuses(checker = checkerServing(tokenSaying(key, listOf(4))))
+            assertEquals(1, reconciliations, "flagged")
+            engine.refreshRevocationStatuses(checker = checkerServing(tokenSaying(key, listOf(4))))
+            assertEquals(1, reconciliations, "still revoked: nothing changed")
+            engine.refreshRevocationStatuses(checker = checkerServing(tokenSaying(key, emptyList())))
+            assertEquals(2, reconciliations, "cleared")
+        } finally {
+            IosDocumentRegistration.registry = null
+        }
+    }
+
     @Test
     fun an_unreachable_status_list_leaves_an_existing_flag_in_place() = runTest {
         val key = Crypto.createEcPrivateKey(EcCurve.P256)
