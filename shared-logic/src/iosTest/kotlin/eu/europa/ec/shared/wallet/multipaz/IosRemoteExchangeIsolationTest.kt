@@ -36,8 +36,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
@@ -71,21 +74,28 @@ class IosRemoteExchangeIsolationTest {
         val link = "openid4vp://?client_id=${clientId.encodeURLParameter()}" +
             "&request_uri=${"https://$host/request".encodeURLParameter()}"
 
-        suspend fun requestObject(): String = JsonWebSignature.sign(
-            key = key,
-            signatureAlgorithm = Algorithm.ESP256,
-            claimsSet = buildJsonObject {
-                put("client_id", clientId)
-                put("response_type", "vp_token")
-                put("response_mode", "direct_post")
-                put("response_uri", "https://$host/response")
-                put("nonce", "nonce-$host")
-                put("state", "state-$host")
-                put("dcql_query", Json.parseToJsonElement(NOTHING_ANYONE_HOLDS))
-            },
-            type = "oauth-authz-req+jwt",
-            x5c = X509CertChain(listOf(certificate)),
-        )
+        suspend fun requestObject(): String {
+            val responseEncryptionKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey.toJwk()
+            return JsonWebSignature.sign(
+                key = key,
+                signatureAlgorithm = Algorithm.ESP256,
+                claimsSet = buildJsonObject {
+                    put("client_id", clientId)
+                    put("response_type", "vp_token")
+                    // Encrypted or not at all, and multipaz reads the key before consent.
+                    put("response_mode", "direct_post.jwt")
+                    putJsonObject("client_metadata") {
+                        putJsonObject("jwks") { putJsonArray("keys") { add(responseEncryptionKey) } }
+                    }
+                    put("response_uri", "https://$host/response")
+                    put("nonce", "nonce-$host")
+                    put("state", "state-$host")
+                    put("dcql_query", Json.parseToJsonElement(NOTHING_ANYONE_HOLDS))
+                },
+                type = "oauth-authz-req+jwt",
+                x5c = X509CertChain(listOf(certificate)),
+            )
+        }
     }
 
     private suspend fun verifier(host: String, name: String): Verifier {

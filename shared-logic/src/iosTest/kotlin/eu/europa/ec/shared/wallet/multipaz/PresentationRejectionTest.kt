@@ -49,6 +49,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -75,7 +76,8 @@ class PresentationRejectionTest {
         state: String? = "the-state",
         clientId: String = this.clientId,
         signerDnsNames: List<String> = listOf("verifier.test"),
-        responseMode: String? = null,
+        /** The only mode a request may name and still be answered; see [UnencryptedResponseModeException]. */
+        responseMode: String? = "direct_post.jwt",
         /** The verifier's response encryption key, published in `client_metadata.jwks` as the request names it. */
         encryptionKey: EcPublicKey? = null,
         encValues: List<String>? = null,
@@ -368,7 +370,7 @@ class PresentationRejectionTest {
 
     @Test
     fun the_rejection_is_posted_as_access_denied_with_the_requests_state() = runTest {
-        val notice = noticeAfterFetching(requestObjectJwt())
+        val notice = plainRequestNotice()
         var posted: String? = null
         var postedTo: String? = null
         val client = HttpClient(
@@ -470,7 +472,7 @@ class PresentationRejectionTest {
 
     @Test
     fun a_verifier_that_refuses_the_rejection_is_reported_not_thrown() = runTest {
-        val notice = noticeAfterFetching(requestObjectJwt())
+        val notice = plainRequestNotice()
         val client = HttpClient(MockEngine { respondError(HttpStatusCode.BadRequest) })
 
         // A user who declined has finished either way: this must never become an error they cannot act
@@ -480,7 +482,7 @@ class PresentationRejectionTest {
 
     @Test
     fun a_transport_failure_is_swallowed_rather_than_thrown() = runTest {
-        val notice = noticeAfterFetching(requestObjectJwt())
+        val notice = plainRequestNotice()
         val client = HttpClient(MockEngine { throw IllegalStateException("the network blinked") })
 
         assertFalse(sendPresentationRejection(notice, client))
@@ -490,7 +492,7 @@ class PresentationRejectionTest {
     // openid4vp-kt 0.15.1 applies on Android whenever wallet-core has installed a registration policy.
 
     /** An `x509_hash` request object whose client_id is the hash of its own signer, as the binding requires. */
-    private suspend fun x509HashRequest(verifierInfo: JsonArray?): Pair<String, String> {
+    private suspend fun x509HashRequest(verifierInfo: JsonArray?, responseMode: String): Pair<String, String> {
         val signer = testVerifierCertificate(dnsNames = listOf("verifier.test"))
         val hashClientId = "x509_hash:" + Crypto.digest(Algorithm.SHA256, signer.encoded.toByteArray()).toBase64Url()
         val body = signedRequestObject(
@@ -499,6 +501,7 @@ class PresentationRejectionTest {
                 put("response_uri", responseUri)
                 put("state", "the-state")
                 put("nonce", "n-123")
+                put("response_mode", responseMode)
                 verifierInfo?.let { put("verifier_info", it) }
             },
             signer = signer,
@@ -510,8 +513,9 @@ class PresentationRejectionTest {
     private suspend fun fetchX509Hash(
         verifierInfo: JsonArray?,
         checkEnabled: Boolean = true,
+        responseMode: String = "direct_post.jwt",
     ): Pair<PresentationRequestNotice, Result<Unit>> {
-        val (hashClientId, body) = x509HashRequest(verifierInfo)
+        val (hashClientId, body) = x509HashRequest(verifierInfo, responseMode)
         val notice = PresentationRequestNotice(linkClientId = hashClientId)
         val engine = MockEngine {
             respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
@@ -590,7 +594,7 @@ class PresentationRejectionTest {
 
     @Test
     fun a_refused_request_is_answered_with_invalid_request_and_its_state() = runTest {
-        val (notice, _) = fetchX509Hash(verifierInfo = null)
+        val notice = plainRequestNotice()
         var posted: String? = null
         val client = HttpClient(
             MockEngine { request ->
@@ -604,5 +608,64 @@ class PresentationRejectionTest {
         val form = posted!!.parseUrlEncodedParameters()
         assertEquals("invalid_request", form["error"])
         assertEquals("the-state", form["state"])
+    }
+
+    /**
+     * A request that is still answered with an error in the plain form: an `x509_hash` verifier asking for
+     * plain `direct_post` and refused for its registration certificate — told why before its response mode is
+     * looked at, as openid4vp-kt tells it on Android.
+     */
+    private suspend fun plainRequestNotice(): PresentationRequestNotice {
+        val (notice, fetched) = fetchX509Hash(verifierInfo = null, responseMode = "direct_post")
+        assertTrue(fetched.exceptionOrNull()?.isRegistrationCertificateRefusal() == true, "$fetched")
+        return notice
+    }
+
+    // ARF OIA_09: the response travels encrypted or not at all — HAIP's rule, which wallet-core enforces on Android.
+
+    @Test
+    fun a_request_for_its_response_unencrypted_is_refused() = runTest {
+        for (responseMode in listOf("direct_post", "fragment", null)) {
+            val notice = PresentationRequestNotice(linkClientId = clientId)
+            val body = requestObjectJwt(responseMode = responseMode)
+            val engine = MockEngine {
+                respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
+            }
+            val client = HttpClient(
+                PresentationObservingEngineFactory(notice, isVerifierTrusted = { true }, isRegistrationCheckEnabled = { false }) { engine }.create {}
+            )
+
+            val fetched = runCatching { client.request("https://verifier.test/request.jwt") }
+
+            assertNotNull(fetched.exceptionOrNull()?.unencryptedResponseRefusal(), "response_mode $responseMode: $fetched")
+        }
+    }
+
+    @Test
+    fun an_untrusted_verifier_is_refused_as_such_whatever_response_it_asks_for() = runTest {
+        val notice = PresentationRequestNotice(linkClientId = clientId)
+        val body = requestObjectJwt(responseMode = "direct_post")
+        val engine = MockEngine {
+            respond(body, HttpStatusCode.OK, io.ktor.http.headersOf("Content-Type", "application/oauth-authz-req+jwt"))
+        }
+        val client = HttpClient(
+            PresentationObservingEngineFactory(notice, isVerifierTrusted = { false }, isRegistrationCheckEnabled = { false }) { engine }.create {}
+        )
+
+        val fetched = runCatching { client.request("https://verifier.test/request.jwt") }
+
+        // Trust first, as on Android, where an untrusted verifier never resolves at all.
+        assertTrue(fetched.exceptionOrNull()?.isUntrustedVerifierRefusal() == true, "$fetched")
+        assertNull(fetched.exceptionOrNull()?.unencryptedResponseRefusal())
+    }
+
+    @Test
+    fun a_withheld_error_response_is_never_sent() = runTest {
+        val notice = noticeAfterFetching(requestObjectJwt())
+
+        notice.withholdRejection()
+
+        assertFalse(notice.canReject)
+        assertFalse(notice.claimRejection())
     }
 }

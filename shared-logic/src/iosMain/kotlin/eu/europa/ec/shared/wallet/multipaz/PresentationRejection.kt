@@ -142,6 +142,14 @@ internal class PresentationRequestNotice(
         return true
     }
 
+    /**
+     * Takes the request's one error response without sending it, for a refusal Android does not report to
+     * the verifier either — see [UnencryptedResponseModeException].
+     */
+    fun withholdRejection() {
+        rejectionClaimed = true
+    }
+
     fun remember(responseUri: String?, state: String?) {
         if (responseUri.isNullOrBlank()) return
         this.responseUri = responseUri
@@ -221,6 +229,23 @@ internal class RegistrationCertificateRequiredException(reason: String) :
 /** That refusal, however the HTTP stack and multipaz have wrapped it on the way out. */
 internal fun Throwable.isRegistrationCertificateRefusal(): Boolean =
     generateSequence(this) { it.cause }.any { it is RegistrationCertificateRequiredException }
+
+/**
+ * A request object refused because it asks for the response in any form but `direct_post.jwt`.
+ *
+ * multipaz answers a plain `direct_post` request with the presentation in an unsigned, unencrypted JWT
+ * (`alg: none`), protected by nothing but TLS. Android's wallet-core applies HAIP's rule instead — only
+ * `direct_post.jwt` for OpenID4VP (`EncryptionPolicy.HAIP`) — after the request has resolved, refuses
+ * anything else with its generic error, and tells the verifier nothing (`OpenId4VpManager`). ARF OIA_09.
+ *
+ * The message is the one a person sees; the requested mode goes to the log.
+ */
+internal class UnencryptedResponseModeException :
+    IllegalStateException("This verifier asked for its response unencrypted, which this wallet does not send.")
+
+/** That refusal, however the HTTP stack and multipaz have wrapped it on the way out; null for any other. */
+internal fun Throwable.unencryptedResponseRefusal(): UnencryptedResponseModeException? =
+    generateSequence(this) { it.cause }.filterIsInstance<UnencryptedResponseModeException>().firstOrNull()
 
 /**
  * Wraps the transport multipaz uses for a presentation so the request object can be observed — and
@@ -318,6 +343,13 @@ private class PresentationObservingEngine(
                 Logger.w(TAG, "refusing the request object: an x509_hash verifier sent $reason")
                 throw RegistrationCertificateRequiredException(reason)
             }
+        }
+        // After that, as wallet-core enforces its encryption policy only on a request that resolved: a verifier
+        // refused above is still told why, in whatever form it asked for.
+        val responseMode = claims["response_mode"]?.jsonPrimitive?.contentOrNull
+        if (responseMode != DIRECT_POST_JWT) {
+            Logger.w(TAG, "refusing the request object: response_mode $responseMode, not $DIRECT_POST_JWT")
+            throw UnencryptedResponseModeException()
         }
         return replayable
     }

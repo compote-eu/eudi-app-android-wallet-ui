@@ -335,6 +335,11 @@ class IosRemotePresenter internal constructor(
                         // already holds the verified request's `response_uri` and `state`.
                         tellVerifier(INVALID_REQUEST, notice)
                         publish(notice, IosRemotePresentationState.RegistrationCertificateMissing)
+                    } else if (t.unencryptedResponseRefusal() != null) {
+                        // Not told, as wallet-core tells it nothing — and withheld, so closing the error
+                        // screen does not send `access_denied` in the very form the wallet refused to use.
+                        notice.withholdRejection()
+                        fail(notice, t.unencryptedResponseRefusal() ?: t)
                     } else {
                         // multipaz's bare `check(...)` on the answer's status is what threw; the engine
                         // read the body it discarded.
@@ -419,11 +424,15 @@ class IosRemotePresenter internal constructor(
         if (!notice.claimRejection()) return
         // Its own scope: `cancel()` kills `presentmentJob`, and the POST must outlive that.
         scope.launch {
-            val client = HttpClient(Darwin)
+            // The exchange's own engine, so a test's `MockEngine` verifier hears the error too. A client
+            // given an engine does not own it, hence the second close.
+            val engine = httpEngine {}
+            val client = HttpClient(engine)
             try {
                 sendPresentationRejection(notice, client, error)
             } finally {
                 client.close()
+                engine.close()
             }
         }
     }
