@@ -21,7 +21,9 @@ import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import eu.europa.ec.shared.wallet.trust.certChain
 import eu.europa.ec.shared.wallet.trust.requesterSignedBy
 import io.ktor.client.HttpClient
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.darwin.Darwin
+import io.ktor.client.engine.darwin.DarwinClientEngineConfig
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +45,7 @@ import org.multipaz.request.Requester
 import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.Logger
+import kotlin.concurrent.Volatile
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.minutes
 
@@ -154,6 +157,11 @@ class IosRemotePresenter internal constructor(
     private val readerTrust: ReaderTrustSource?,
     /** Whether the user asked for registration certificates to be checked; read on every request. */
     private val isRegistrationCheckEnabled: suspend () -> Boolean,
+    /**
+     * How to build the HTTP engine under the observing one: Darwin in the app, a `MockEngine` playing the
+     * verifier in a test — see [PresentationObservingEngineFactory]'s `delegate`.
+     */
+    private val httpEngine: (DarwinClientEngineConfig.() -> Unit) -> HttpClientEngine = { Darwin.create(it) },
 ) {
 
     /**
@@ -174,7 +182,12 @@ class IosRemotePresenter internal constructor(
         scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     ) : this(walletEngine, credentialDomain, scope, IosEtsiTrust(), isRegistrationCheckEnabled)
 
-    /** Filled in by the observing engine while multipaz fetches the request object. */
+    /**
+     * The current exchange's notice, filled in by the observing engine while multipaz fetches the request
+     * object. Also the exchange's identity: each exchange keeps its own notice from [start] on, and one whose
+     * notice is no longer this one has been superseded — see [publish].
+     */
+    @Volatile
     private var requestNotice = PresentationRequestNotice()
 
     /**
@@ -189,9 +202,11 @@ class IosRemotePresenter internal constructor(
      * Never throws and never blocks the consent screen: a verifier whose registration cannot be judged
      * is still one the user may want to answer, and Android refuses nothing on this either.
      */
-    private suspend fun evaluateRelyingPartyRegistration(): RelyingPartyRegistrationOutcome {
+    private suspend fun evaluateRelyingPartyRegistration(
+        notice: PresentationRequestNotice,
+    ): RelyingPartyRegistrationOutcome {
         if (!isRegistrationCheckEnabled()) return RelyingPartyRegistrationOutcome.NotChecked
-        val requestObject = requestNotice.requestObject
+        val requestObject = notice.requestObject
             ?: return RelyingPartyRegistrationOutcome.NotOffered
         // The concrete ETSI source, because the trust *lists* are what a registration certificate is
         // judged against and `ReaderTrustSource` deliberately exposes only the verifier-metadata
@@ -199,7 +214,7 @@ class IosRemotePresenter internal constructor(
         val etsi = readerTrust as? IosEtsiTrust ?: return RelyingPartyRegistrationOutcome.NotOffered
 
         return runCatching {
-            withEtsiRegistrationValidator(etsi) { evaluate(requestObject, requestNotice.requestSigner) }
+            withEtsiRegistrationValidator(etsi) { evaluate(requestObject, notice.requestSigner) }
         }.getOrElse {
             Logger.w(TAG, "relying party registration could not be evaluated: ${it.message}")
             RelyingPartyRegistrationOutcome.NotOffered
@@ -243,14 +258,18 @@ class IosRemotePresenter internal constructor(
         // A fresh one per exchange: answering with the previous verifier's `response_uri` would tell
         // the wrong party, and telling nobody is better than telling the wrong one. It carries the link's
         // `client_id`, which the signed request object must repeat.
-        requestNotice = PresentationRequestNotice(linkClientId = linkClientIdOf(uri))
+        //
+        // Kept in a local as well as the field, as `history` is: everything this exchange reads or tells
+        // goes through its own notice, never through whichever one the field holds by then.
+        val notice = PresentationRequestNotice(linkClientId = linkClientIdOf(uri))
+        requestNotice = notice
         val history = IosPresentationLog { walletEngine.store() }.also { this.history = it }
         mutableState.value = IosRemotePresentationState.Resolving
 
         presentmentJob = scope.launch {
             try {
                 val redirect = uriSchemePresentment(
-                    source = presentmentSource(),
+                    source = presentmentSource(notice, history),
                     uri = uri,
                     // Neither is known: the link arrives through the system, which tells an iOS app
                     // nothing trustworthy about who sent it. Saying so is what makes multipaz treat the
@@ -261,9 +280,10 @@ class IosRemotePresenter internal constructor(
                     // passing; they are what a rejection has to be addressed to, and multipaz keeps
                     // its parsed request to itself. It is also where an untrusted verifier is refused.
                     httpClientEngineFactory = PresentationObservingEngineFactory(
-                        notice = requestNotice,
+                        notice = notice,
                         isVerifierTrusted = ::isVerifierTrusted,
                         isRegistrationCheckEnabled = isRegistrationCheckEnabled,
+                        delegate = httpEngine,
                     ),
                 )
                 Logger.i(
@@ -272,9 +292,12 @@ class IosRemotePresenter internal constructor(
                             "shared=${sharedDocuments.joinToString()}, " +
                             "redirect=${redirect?.let { "yes" } ?: "none"}",
                 )
-                mutableState.value = IosRemotePresentationState.Sent(
-                    sharedDocuments = sharedDocuments,
-                    redirectUri = redirect,
+                publish(
+                    notice,
+                    IosRemotePresentationState.Sent(
+                        sharedDocuments = sharedDocuments,
+                        redirectUri = redirect,
+                    ),
                 )
                 history.completed()
             } catch (e: CancellationException) {
@@ -288,39 +311,39 @@ class IosRemotePresenter internal constructor(
                 when (t) {
                     is PresentmentCanceledException -> {
                         // The user declined. Nothing was shared and nothing went wrong.
-                        mutableState.value = IosRemotePresentationState.Idle
+                        publish(notice, IosRemotePresentationState.Idle)
                         history.stopped()
                     }
 
                     is PresentmentCannotSatisfyRequestException -> {
                         // An answer, not an error — see [IosRemotePresentationState.NothingToShare].
-                        val registration = evaluateRelyingPartyRegistration()
+                        val registration = evaluateRelyingPartyRegistration(notice)
                         val nothing = nothingToShare(
-                            notice = requestNotice,
+                            notice = notice,
                             readerTrust = readerTrust,
                             registration = registration,
                         )
-                        mutableState.value = nothing
+                        publish(notice, nothing)
                         history.nothingToShare(nothing.requesterName, registration.partyRecord())
                     }
 
                     else -> if (t.isUntrustedVerifierRefusal()) {
                         Logger.w(TAG, "blocked: the verifier's access certificate is not trusted")
-                        mutableState.value = IosRemotePresentationState.VerifierNotTrusted
+                        publish(notice, IosRemotePresentationState.VerifierNotTrusted)
                     } else if (t.isRegistrationCertificateRefusal()) {
                         // Told first, as wallet-core dispatches the error before reporting it; the notice
                         // already holds the verified request's `response_uri` and `state`.
-                        tellVerifier(INVALID_REQUEST)
-                        mutableState.value = IosRemotePresentationState.RegistrationCertificateMissing
+                        tellVerifier(INVALID_REQUEST, notice)
+                        publish(notice, IosRemotePresentationState.RegistrationCertificateMissing)
                     } else {
                         // multipaz's bare `check(...)` on the answer's status is what threw; the engine
                         // read the body it discarded.
-                        val rejection = requestNotice.verifierRejection
+                        val rejection = notice.verifierRejection
                         if (rejection != null) {
-                            rejected(rejection)
+                            rejected(notice, rejection)
                             history.rejected()
                         } else {
-                            fail(t)
+                            fail(notice, t)
                             history.failed(t)
                         }
                     }
@@ -388,11 +411,11 @@ class IosRemotePresenter internal constructor(
     }
 
     /**
-     * Sends an OpenID4VP error response to the current request's verifier, if it named where to and has
-     * not been sent one already — see [PresentationRequestNotice.claimRejection].
+     * Sends an OpenID4VP error response to [notice]'s verifier — the current request's unless an exchange
+     * names its own — if it named where to and has not been sent one already; see
+     * [PresentationRequestNotice.claimRejection].
      */
-    private fun tellVerifier(error: String) {
-        val notice = requestNotice
+    private fun tellVerifier(error: String, notice: PresentationRequestNotice = requestNotice) {
         if (!notice.claimRejection()) return
         // Its own scope: `cancel()` kills `presentmentJob`, and the POST must outlive that.
         scope.launch {
@@ -429,6 +452,26 @@ class IosRemotePresenter internal constructor(
         mutableState.value = IosRemotePresentationState.Idle
     }
 
+    /** Whether [notice]'s exchange is still the one on screen, rather than superseded by a newer [start]. */
+    private fun isCurrent(notice: PresentationRequestNotice) = notice === requestNotice
+
+    /**
+     * Shows [state] — if [notice]'s exchange is still the current one.
+     *
+     * A newer [start] cancels the running exchange, but an exchange that is not suspended at that moment runs
+     * on until it next suspends, on another thread: in one of the branches that end it, say. Without this it
+     * would overwrite the newcomer's state with its own outcome, and read the newcomer's notice while doing
+     * so. It stays silent instead. The check and the write are not atomic, so this narrows the window
+     * rather than closing it; closing it would mean confining the presenter to one thread.
+     */
+    private fun publish(notice: PresentationRequestNotice, state: IosRemotePresentationState) {
+        if (isCurrent(notice)) {
+            mutableState.value = state
+        } else {
+            Logger.i(TAG, "a superseded exchange ended (${state::class.simpleName}); not shown")
+        }
+    }
+
     /**
      * The wallet's answer to "what may be presented, and does the user agree".
      *
@@ -437,13 +480,18 @@ class IosRemotePresenter internal constructor(
      * proximity source does, correctly, since ISO 18013-5 has no SD-JWT — would make every SD-JWT request
      * report "you have nothing this verifier asked for" while the credential sat in the wallet.
      */
-    private suspend fun presentmentSource() = walletPresentmentSource(
+    private suspend fun presentmentSource(
+        notice: PresentationRequestNotice,
+        history: IosPresentationLog,
+    ) = walletPresentmentSource(
         store = walletEngine.store(),
         credentialDomain = credentialDomain,
         readerTrust = readerTrust,
         offersSdJwt = true,
         showConsent = { requester, trustedRequesterIdentity, data ->
             awaitConsent(
+                notice = notice,
+                history = history,
                 requester = requester,
                 trustedRequesterIdentity = trustedRequesterIdentity,
                 data = data,
@@ -458,10 +506,14 @@ class IosRemotePresenter internal constructor(
      * immediately, which would release documents without asking anyone.
      */
     private suspend fun awaitConsent(
+        notice: PresentationRequestNotice,
+        history: IosPresentationLog,
         requester: Requester,
         trustedRequesterIdentity: TrustedRequesterIdentity?,
         data: ConsentData,
     ): CredentialSelection? {
+        // The consent slot is shared; a superseded exchange must not take it from the current one.
+        if (!isCurrent(notice)) throw CancellationException("superseded by a newer exchange")
         val consent = CompletableDeferred<CredentialSelection?>()
         // Counted, because multipaz may ask more than once for one exchange and a repeat looks
         // identical to the user — it is the same screen a second time.
@@ -469,20 +521,23 @@ class IosRemotePresenter internal constructor(
         Logger.i(TAG, "asking for consent (request $consentRequests of this exchange)")
         pendingConsent = consent
         pendingData = data.credentialQueryResult
-        val registration = evaluateRelyingPartyRegistration()
+        val registration = evaluateRelyingPartyRegistration(notice)
         val name = requesterName(trustedRequesterIdentity?.trustMetadata, requester.certChain)
-        history?.requestReceived(name, registration.partyRecord(), data.credentialQueryResult)
-        mutableState.value = IosRemotePresentationState.Requesting(
-            request = data.credentialQueryResult.toPresentmentRequest(
-                // A name without trust behind it is still worth showing. Unlike proximity there is
-                // usually *something* here: an OpenID4VP request over a URI scheme must be signed, so
-                // the verifier's certificate is present even when nothing vouches for it.
-                requesterName = name,
-                requesterIsTrusted = trustedRequesterIdentity != null,
-                // Read from the request object the observing engine already kept — `verifier_info` is
-                // another claim multipaz does not parse, and re-fetching a single-use `request_uri`
-                // to get it would risk the exchange.
-                relyingPartyRegistration = registration,
+        history.requestReceived(name, registration.partyRecord(), data.credentialQueryResult)
+        publish(
+            notice,
+            IosRemotePresentationState.Requesting(
+                request = data.credentialQueryResult.toPresentmentRequest(
+                    // A name without trust behind it is still worth showing. Unlike proximity there is
+                    // usually *something* here: an OpenID4VP request over a URI scheme must be signed, so
+                    // the verifier's certificate is present even when nothing vouches for it.
+                    requesterName = name,
+                    requesterIsTrusted = trustedRequesterIdentity != null,
+                    // Read from the request object the observing engine already kept — `verifier_info` is
+                    // another claim multipaz does not parse, and re-fetching a single-use `request_uri`
+                    // to get it would risk the exchange.
+                    relyingPartyRegistration = registration,
+                ),
             ),
         )
 
@@ -490,8 +545,8 @@ class IosRemotePresenter internal constructor(
         // ever. The verifier's own transaction expires on a similar scale.
         val selection = withTimeoutOrNull(CONSENT_TIMEOUT) { consent.await() }
         if (selection != null) {
-            history?.presented(selection)
-            mutableState.value = IosRemotePresentationState.Sending
+            history.presented(selection)
+            publish(notice, IosRemotePresentationState.Sending)
         }
         return selection
     }
@@ -505,16 +560,19 @@ class IosRemotePresenter internal constructor(
      * Showing either that string or the exception's class name would be worse than a plain sentence.
      * The verifier's own explanation is logged instead — see [PresentationRequestNotice.verifierRefusal].
      */
-    private fun rejected(rejection: VerifierRejection) {
-        Logger.w(TAG, "the verifier rejected the response: ${requestNotice.verifierRefusal}")
-        mutableState.value = IosRemotePresentationState.Rejected(redirectUri = rejection.redirectUri)
+    private fun rejected(notice: PresentationRequestNotice, rejection: VerifierRejection) {
+        Logger.w(TAG, "the verifier rejected the response: ${notice.verifierRefusal}")
+        publish(notice, IosRemotePresentationState.Rejected(redirectUri = rejection.redirectUri))
     }
 
-    private fun fail(cause: Throwable) {
+    private fun fail(notice: PresentationRequestNotice, cause: Throwable) {
         Logger.w(TAG, "remote presentation failed: ${cause::class.simpleName}: ${cause.message}")
-        requestNotice.verifierRefusal?.let { Logger.w(TAG, "the verifier refused the response: $it") }
-        mutableState.value = IosRemotePresentationState.Failed(
-            message = cause.message?.takeIf { it.isNotBlank() && it != CHECK_FAILED } ?: SHARING_FAILED
+        notice.verifierRefusal?.let { Logger.w(TAG, "the verifier refused the response: $it") }
+        publish(
+            notice,
+            IosRemotePresentationState.Failed(
+                message = cause.message?.takeIf { it.isNotBlank() && it != CHECK_FAILED } ?: SHARING_FAILED
+            ),
         )
     }
 

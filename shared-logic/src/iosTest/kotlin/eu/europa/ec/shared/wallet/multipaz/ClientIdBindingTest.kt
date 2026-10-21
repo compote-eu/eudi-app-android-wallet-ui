@@ -29,6 +29,7 @@ import org.multipaz.asn1.ASN1TaggedObject
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import kotlin.io.encoding.Base64
@@ -239,10 +240,18 @@ private const val EU_DEV_VERIFIER_CLIENT_ID = "x509_hash:6_2l_DyVdJDT1a4OGqxSsgT
 
 private fun euDevVerifier(): X509Cert = X509Cert.fromPem(EU_DEV_VERIFIER_PEM)
 
-/** A self-signed verifier certificate naming [dnsNames] (and [uri], if given) as subject alternative names. */
-internal suspend fun testVerifierCertificate(dnsNames: List<String>, uri: String? = null): X509Cert {
-    val key = Crypto.createEcPrivateKey(EcCurve.P256)
-    val name = X500Name.fromName("CN=Test Verifier,C=EU")
+/**
+ * A self-signed verifier certificate naming [dnsNames] (and [uri], if given) as subject alternative names.
+ * Pass [key] to keep the private key, for a request object that has to be really signed.
+ */
+internal suspend fun testVerifierCertificate(
+    dnsNames: List<String>,
+    uri: String? = null,
+    commonName: String = "Test Verifier",
+    key: EcPrivateKey? = null,
+): X509Cert {
+    val key = key ?: Crypto.createEcPrivateKey(EcCurve.P256)
+    val name = X500Name.fromName("CN=$commonName,C=EU")
     fun generalName(tag: Int, value: String) =
         ASN1TaggedObject(ASN1TagClass.CONTEXT_SPECIFIC, ASN1Encoding.PRIMITIVE, tag, value.encodeToByteArray())
     val names = dnsNames.map { generalName(tag = 2, it) } + listOfNotNull(uri?.let { generalName(tag = 6, it) })

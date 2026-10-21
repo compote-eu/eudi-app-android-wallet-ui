@@ -41,7 +41,16 @@ import kotlin.time.Instant
  * A deliberate consequence: constructing this is free, so it costs nothing to register eagerly, and
  * the first document read is where any storage error surfaces.
  */
-class IosWalletEngine : WalletEngine {
+class IosWalletEngine internal constructor(
+    /**
+     * How the store is opened on first use. The process's own store in the app; a test hands in one on
+     * ephemeral storage, since a test binary has no Keychain to open the real one with.
+     */
+    private val openStore: suspend () -> MultipazWalletStore,
+) : WalletEngine {
+
+    /** The constructor DI and Swift use: the process's own store. */
+    constructor() : this({ MultipazWalletStore.open() })
 
     private val mutex = Mutex()
     private var delegate: WalletEngine? = null
@@ -119,7 +128,7 @@ class IosWalletEngine : WalletEngine {
     private suspend fun delegate(): WalletEngine =
         delegate ?: mutex.withLock {
             // Re-check inside the lock: another caller may have opened it while we waited.
-            delegate ?: MultipazWalletStore.open().let { opened ->
+            delegate ?: openStore().let { opened ->
                 store = opened
                 MultipazWalletEngine(opened).also { delegate = it }
             }
