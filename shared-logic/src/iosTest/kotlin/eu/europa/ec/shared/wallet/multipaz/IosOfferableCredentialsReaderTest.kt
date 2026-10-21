@@ -90,7 +90,7 @@ class IosOfferableCredentialsReaderTest {
         if (body == null) {
             respondError(HttpStatusCode.NotFound)
         } else {
-            respond(testSignedJwt(body, testSigner()), headers = headersOf("Content-Type", "application/jwt"))
+            respond(testSignedMetadata(body, testSigner()), headers = headersOf("Content-Type", "application/jwt"))
         }
     }
 

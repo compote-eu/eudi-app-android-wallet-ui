@@ -68,7 +68,7 @@ class IosCredentialOfferReaderTest {
     private fun engine(offerDocument: String? = null, metadata: String = issuerMetadata) = MockEngine { request ->
         when {
             request.url.toString() == "$issuerUrl/.well-known/openid-credential-issuer" ->
-                respond(testSignedJwt(metadata, testSigner()), headers = headersOf("Content-Type", "application/jwt"))
+                respond(testSignedMetadata(metadata, testSigner()), headers = headersOf("Content-Type", "application/jwt"))
 
             request.url.toString() == "$issuerUrl/offer" && offerDocument != null ->
                 respond(offerDocument, headers = headersOf("Content-Type", "application/json"))
@@ -266,7 +266,7 @@ class IosCredentialOfferReaderTest {
         """.trimIndent()
         val engine = MockEngine { request ->
             if (request.url.toString() == "$issuerUrl/.well-known/openid-credential-issuer") {
-                respond(testSignedJwt(regional, testSigner()), headers = headersOf("Content-Type", "application/jwt"))
+                respond(testSignedMetadata(regional, testSigner()), headers = headersOf("Content-Type", "application/jwt"))
             } else {
                 respondError(HttpStatusCode.NotFound)
             }
@@ -289,7 +289,7 @@ class IosCredentialOfferReaderTest {
 
     /** Serves the issuer metadata signed by [signer], as an issuer that signs it does. */
     private suspend fun signedMetadataEngine(signer: TestSigner): MockEngine {
-        val jwt = testSignedJwt(issuerMetadata, signer)
+        val jwt = testSignedMetadata(issuerMetadata, signer)
         return MockEngine { request ->
             if (request.url.toString() == "$issuerUrl/.well-known/openid-credential-issuer") {
                 respond(jwt, headers = headersOf("Content-Type", "application/jwt"))

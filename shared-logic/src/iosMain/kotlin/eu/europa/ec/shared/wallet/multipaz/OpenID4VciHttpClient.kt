@@ -37,6 +37,7 @@ import io.ktor.http.content.TextContent
 import io.ktor.http.formUrlEncode
 import io.ktor.http.parseUrlEncodedParameters
 import io.ktor.http.Url
+import io.ktor.http.protocolWithAuthority
 import io.ktor.client.utils.EmptyContent
 import io.ktor.util.Attributes
 import kotlinx.coroutines.Job
@@ -1083,6 +1084,20 @@ internal class OpenID4VciCompatibilityEngine(
         }
 
         val json = Json.parseToJsonElement(payload).jsonObject
+        if (requiresSignedMetadata(data)) {
+            val header = runCatching {
+                Json.parseToJsonElement(
+                    Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL).decode(parts[0]).decodeToString()
+                ).jsonObject
+            }.getOrNull()
+            val refusal = if (header == null) {
+                "has a header that will not decode"
+            } else {
+                signedMetadataRefusal(header, json, expectedIssuer = credentialIssuerOf(data.url), now = Clock.System.now())
+            }
+            // `InvalidSignedMetadata` on Android, which shows the "issuer not trusted" sheet for it.
+            refusal?.let { throw IssuerNotTrustedException("${data.url.host}'s signed issuer metadata $it") }
+        }
         val issuer = json["credential_issuer"]?.jsonPrimitive?.content
         val expected = "${data.url.protocol.name}://${data.url.host}"
         if (issuer != null && !issuer.startsWith(expected)) {
@@ -1350,3 +1365,66 @@ private fun JsonObject.text(key: String): String? =
 
 private fun JsonObject.logo(): IssuerMetadata.Logo? =
     (this["logo"] as? JsonObject)?.let { logo -> IssuerMetadata.Logo(uri = logo.text("uri"), alternativeText = logo.text("alt_text")) }
+
+/**
+ * Why signed credential issuer metadata cannot be taken as this issuer's, or null when it can — the checks
+ * openid4vci's `RequireSigned` makes on Android besides the signature and the signer's trust, which
+ * [OpenID4VciCompatibilityEngine] makes itself:
+ *
+ * - `typ` is `openidvci-issuer-metadata+jwt` (OpenID4VCI's signed metadata type), `alg` one of ES256, ES384 or ES512
+ *   (`TS3.ALLOWED_SIGNATURE_ALGORITHMS`);
+ * - `sub` is the issuer's identifier, and `iat` is present (Nimbus's `DefaultJWTClaimsVerifier` over both);
+ *   an `exp` that has passed or an `nbf` still to come refuses, within the same 60 seconds' skew;
+ * - `credential_issuer` is the issuer's identifier exactly (openid4vci's metadata parser).
+ *
+ * Every issuer the flavours use passes all of them (measured 2026-10-21: the four EU issuers, Plaut's two).
+ *
+ * @param expectedIssuer the identifier of the issuer whose metadata was fetched; see [credentialIssuerOf].
+ */
+internal fun signedMetadataRefusal(
+    header: JsonObject,
+    claims: JsonObject,
+    expectedIssuer: String,
+    now: Instant,
+): String? {
+    fun JsonObject.text(name: String) = (this[name] as? JsonPrimitive)?.contentOrNull
+    fun JsonObject.seconds(name: String) = (this[name] as? JsonPrimitive)?.contentOrNull?.toDoubleOrNull()
+    val skewed = SIGNED_METADATA_CLOCK_SKEW.inWholeSeconds
+
+    val typ = header.text("typ")
+    val alg = header.text("alg")
+    val subject = claims.text("sub")
+    val credentialIssuer = claims.text("credential_issuer")
+    val expiresAt = claims.seconds("exp")
+    val notBefore = claims.seconds("nbf")
+    return when {
+        typ != SIGNED_METADATA_TYPE -> "is typed $typ, not $SIGNED_METADATA_TYPE"
+        alg !in SIGNED_METADATA_ALGORITHMS -> "is signed with $alg, not one of $SIGNED_METADATA_ALGORITHMS"
+        subject != expectedIssuer -> "names $subject as its subject, not $expectedIssuer"
+        claims["iat"] == null -> "names no time it was issued at"
+        expiresAt != null && expiresAt < now.epochSeconds - skewed -> "expired at ${Instant.fromEpochSeconds(expiresAt.toLong())}"
+        notBefore != null && notBefore > now.epochSeconds + skewed -> "is not valid before ${Instant.fromEpochSeconds(notBefore.toLong())}"
+        credentialIssuer != expectedIssuer -> "describes $credentialIssuer, not $expectedIssuer"
+        else -> null
+    }
+}
+
+/**
+ * The credential issuer whose metadata [metadataUrl] fetches. Both forms reach this engine: multipaz inserts
+ * the well-known segment after the host (`https://host/.well-known/openid-credential-issuer/path`, RFC 8414's
+ * form), this app's own reads append it (`https://host/path/.well-known/openid-credential-issuer`).
+ */
+internal fun credentialIssuerOf(metadataUrl: Url): String {
+    val path = metadataUrl.encodedPath
+    val head = metadataUrl.protocolWithAuthority
+    return when {
+        path.startsWith("/$CREDENTIAL_ISSUER_WELL_KNOWN") -> head + path.removePrefix("/$CREDENTIAL_ISSUER_WELL_KNOWN")
+        path.endsWith("/$CREDENTIAL_ISSUER_WELL_KNOWN") -> head + path.removeSuffix("/$CREDENTIAL_ISSUER_WELL_KNOWN")
+        else -> head + path
+    }
+}
+
+private const val CREDENTIAL_ISSUER_WELL_KNOWN = ".well-known/openid-credential-issuer"
+private const val SIGNED_METADATA_TYPE = "openidvci-issuer-metadata+jwt"
+private val SIGNED_METADATA_ALGORITHMS = setOf("ES256", "ES384", "ES512")
+private val SIGNED_METADATA_CLOCK_SKEW = 60.seconds
