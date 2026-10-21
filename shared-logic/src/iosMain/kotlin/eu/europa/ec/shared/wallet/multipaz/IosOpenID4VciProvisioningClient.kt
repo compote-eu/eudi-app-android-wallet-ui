@@ -66,7 +66,6 @@ import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import org.multipaz.webtoken.buildJwt
-import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -151,8 +150,8 @@ internal class IosVciAuthorizationSession(
         if (accessToken != null) return null
 
         val endpoints = resolveEndpoints()
-        val verifier = Random.nextBytes(PKCE_BYTES).toBase64Url().also { pkceVerifier = it }
-        val state = Random.nextBytes(STATE_BYTES).toBase64Url().also { redirectState = it }
+        val verifier = SecureRandom.nextBytes(PKCE_BYTES).toBase64Url().also { pkceVerifier = it }
+        val state = SecureRandom.nextBytes(STATE_BYTES).toBase64Url().also { redirectState = it }
         val challengeValue = Crypto.digest(Algorithm.SHA256, verifier.encodeToByteArray()).toBase64Url()
 
         val requestUri = pushAuthorizationRequest(endpoints, challengeValue, state)
@@ -328,7 +327,7 @@ internal class IosVciAuthorizationSession(
         val refresh = refreshToken ?: return null
         val endpoints = lock.withLock { resolveEndpoints() }
 
-        val alias = "$DPOP_KEY_PREFIX${Random.nextBytes(ALIAS_BYTES).toBase64Url()}"
+        val alias = "$DPOP_KEY_PREFIX${SecureRandom.nextBytes(ALIAS_BYTES).toBase64Url()}"
         secureArea.createKey(alias, CreateKeySettings())
         val key = AsymmetricKey.anonymous(secureArea, alias)
 
@@ -524,7 +523,7 @@ internal class IosVciAuthorizationSession(
         ) {
             put("iss", clientId)
             put("aud", endpoints.authorizationServerId)
-            put("jti", Random.nextBytes(JTI_BYTES).toBase64Url())
+            put("jti", SecureRandom.nextBytes(JTI_BYTES).toBase64Url())
             // `challenge`, NOT `nonce` — multipaz's own spelling, and the one Keycloak accepts.
             challenge?.let { put("challenge", it) }
         }
@@ -536,13 +535,13 @@ internal class IosVciAuthorizationSession(
     }
 
     private suspend fun createKey(prefix: String): AsymmetricKey {
-        val alias = "$prefix${Random.nextBytes(ALIAS_BYTES).toBase64Url()}"
+        val alias = "$prefix${SecureRandom.nextBytes(ALIAS_BYTES).toBase64Url()}"
         secureArea.createKey(alias, CreateKeySettings())
         return AsymmetricKey.anonymous(secureArea, alias)
     }
 
     private suspend fun dpopKey(): AsymmetricKey = dpopKey ?: run {
-        val alias = "$DPOP_KEY_PREFIX${Random.nextBytes(ALIAS_BYTES).toBase64Url()}"
+        val alias = "$DPOP_KEY_PREFIX${SecureRandom.nextBytes(ALIAS_BYTES).toBase64Url()}"
         secureArea.createKey(alias, CreateKeySettings())
         AsymmetricKey.anonymous(secureArea, alias).also {
             dpopKey = it
@@ -561,7 +560,7 @@ internal class IosVciAuthorizationSession(
     ) {
         put("htm", "POST")
         put("htu", url)
-        put("jti", Random.nextBytes(JTI_BYTES).toBase64Url())
+        put("jti", SecureRandom.nextBytes(JTI_BYTES).toBase64Url())
         nonce?.let { put("nonce", it) }
         ath?.let { put("ath", it) }
     }

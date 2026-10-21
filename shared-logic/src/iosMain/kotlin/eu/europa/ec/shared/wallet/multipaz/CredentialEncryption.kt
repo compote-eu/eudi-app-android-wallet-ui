@@ -34,7 +34,6 @@ import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.JsonWebEncryption
 import org.multipaz.util.toBase64Url
-import kotlin.random.Random
 
 /**
  * OpenID4VCI 1.0 credential request and response encryption, as one issuer's metadata offers it
@@ -192,7 +191,7 @@ internal class CredentialExchange internal constructor(
                         "jwk",
                         key.publicKey.toJwk(
                             buildJsonObject {
-                                put("kid", Random.nextBytes(KID_BYTES).toBase64Url())
+                                put("kid", SecureRandom.nextBytes(KID_BYTES).toBase64Url())
                                 put("use", "enc")
                                 put("alg", "ECDH-ES")
                             }
@@ -215,6 +214,8 @@ internal class CredentialExchange internal constructor(
             // encoded the RFC's way on both sides.
             apu = ByteString(),
             apv = ByteString(),
+            // The GCM IV. multipaz 0.101.0 defaults it to `Random.Default`; see SecureRandom.
+            random = SecureRandom,
             kid = key.kid,
         )
         return Body(jwe, APPLICATION_JWT)

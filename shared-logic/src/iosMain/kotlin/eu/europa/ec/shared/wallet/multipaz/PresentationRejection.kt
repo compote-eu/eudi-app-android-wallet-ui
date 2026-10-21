@@ -58,7 +58,6 @@ import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
-import kotlin.random.Random
 
 /**
  * Where to tell a verifier that the user said no, learned while multipaz fetches the request object.
@@ -450,7 +449,9 @@ internal suspend fun encryptedErrorResponse(requestObject: JsonObject, error: St
         recipientPublicKey = EcPublicKey.fromJwk(key),
         encAlg = enc,
         apu = (requestObject["nonce"]?.jsonPrimitive?.contentOrNull ?: "").encodeToByteString(),
-        apv = Random.nextBytes(WALLET_NONCE_BYTES).toBase64Url().encodeToByteString(),
+        apv = SecureRandom.nextBytes(WALLET_NONCE_BYTES).toBase64Url().encodeToByteString(),
+        // The GCM IV. multipaz 0.101.0 defaults it to `Random.Default`; see SecureRandom.
+        random = SecureRandom,
         kid = key["kid"]?.jsonPrimitive?.contentOrNull,
     )
 }

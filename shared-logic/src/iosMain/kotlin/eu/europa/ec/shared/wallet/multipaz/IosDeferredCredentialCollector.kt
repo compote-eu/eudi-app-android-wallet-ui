@@ -45,7 +45,6 @@ import org.multipaz.util.toBase64Url
 import org.multipaz.webtoken.buildJwt
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
-import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -308,7 +307,7 @@ internal class IosDeferredCredentialCollector(
         ) {
             put("iss", clientId)
             put("aud", authorizationServer)
-            put("jti", Random.nextBytes(JTI_BYTES).toBase64Url())
+            put("jti", SecureRandom.nextBytes(JTI_BYTES).toBase64Url())
             // `challenge`, NOT `nonce`. multipaz's own spelling, and the one Keycloak accepts.
             challenge?.let { put("challenge", it) }
         }
@@ -333,7 +332,7 @@ internal class IosDeferredCredentialCollector(
     ) {
         put("htm", "POST")
         put("htu", url)
-        put("jti", Random.nextBytes(JTI_BYTES).toBase64Url())
+        put("jti", SecureRandom.nextBytes(JTI_BYTES).toBase64Url())
         nonce?.let { put("nonce", it) }
         ath?.let { put("ath", it) }
     }

@@ -71,7 +71,6 @@ import platform.Security.kSecReturnData
 import platform.Security.kSecUseAuthenticationUI
 import platform.Security.kSecUseAuthenticationUISkip
 import platform.Security.kSecValueData
-import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -327,7 +326,7 @@ internal class KeychainWalletStorageTable(
                 // (vanishingly unlikely) collision, rather than a counter that would have to be
                 // persisted somewhere of its own.
                 while (true) {
-                    val candidate = Random.Default.nextBytes(9).toBase64Url()
+                    val candidate = SecureRandom.nextBytes(9).toBase64Url()
                     if (addItem(account(partitionId, candidate), encoded)) {
                         return@withLock candidate
                     }

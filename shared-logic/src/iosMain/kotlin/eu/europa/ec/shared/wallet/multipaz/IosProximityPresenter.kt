@@ -51,7 +51,6 @@ import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.request.Requester
 import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.util.Logger
-import org.multipaz.util.UUID
 import org.multipaz.util.toBase64Url
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.minutes
@@ -229,7 +228,7 @@ class IosProximityPresenter internal constructor(
     internal fun bleConnectionMethod() = MdocConnectionMethodBle(
         supportsPeripheralServerMode = true,
         supportsCentralClientMode = false,
-        peripheralServerModeUuid = UUID.randomUUID(),
+        peripheralServerModeUuid = SecureRandom.nextUuid(),
         centralClientModeUuid = null,
     )
 

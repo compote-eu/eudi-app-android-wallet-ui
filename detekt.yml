@@ -32,7 +32,9 @@
 # back. They are all active and all at zero. So are the two import rules, `UnusedImports` and a
 # strict `WildcardImport` (style, below), which detekt has owned since 2026-10-16: ktlint 1.7.0
 # stopped running its `no-unused-imports` by default and 2.0 removes it, so `.editorconfig` now
-# switches ktlint's import rules off. No rule is enabled in both tools.
+# switches ktlint's import rules off. No rule is enabled in both tools. `ForbiddenImport` (style,
+# below) has been on since 2026-10-21 as a security guard: it keeps non-cryptographic randomness out
+# of production code.
 #
 # Seven more rules are active because they were brought to zero rather than switched off, which is
 # the cheap half of this ledger and the half to prefer: `FunctionNaming` and `TopLevelPropertyNaming`
@@ -139,6 +141,22 @@ performance:
 style:
   ForbiddenComment:
     active: false # 2 -- TODOs that track upstream gates, and are meant to stay until those open
+  ForbiddenImport:
+    active: true
+    # A security guard, not debt. On Kotlin/Native `Random.Default` is a 48-bit LCG seeded from the
+    # clock, and the iOS code drew PKCE verifiers, OAuth `state`, `jti`s and a BLE UUID from it until
+    # 2026-10-21 (the verifier could be computed from the `state`). Production code takes randomness
+    # from `SecureRandom` (iosMain) or `java.security.SecureRandom`; SecureRandom.kt is the one
+    # suppressed file. The UUID line can go at the first multipaz release after 0.101.0, whose default
+    # is secure (multipaz `main` since 2026-09-14).
+    # Not gated: the test source sets (restated -- `excludes` replaces the defaults), the iOS probes,
+    # and iosMain's `harness/`, which plays a verifier and a fixture issuer whose salts tests seed.
+    imports:
+      - value: 'kotlin.random.Random'
+        reason: 'not a cryptographic generator; use SecureRandom (iosMain) or java.security.SecureRandom'
+      - value: 'org.multipaz.util.UUID'
+        reason: 'multipaz 0.101.0 randomUUID() defaults to Random.Default; use SecureRandom.nextUuid()'
+    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/iosProbeMain/**', '**/iosMain/**/harness/**']
   LoopWithTooManyJumpStatements:
     active: false # 14 -- `maxJumpCount: 2` measures 6, not 0, so it is not a chip
   MagicNumber:
