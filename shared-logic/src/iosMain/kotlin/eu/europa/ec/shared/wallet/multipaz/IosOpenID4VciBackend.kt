@@ -88,6 +88,9 @@ internal class IosOpenID4VciBackend(
      * is on the main path rather than an edge case. [userAuthentication] and [keyStorage] are the
      * assurances the issuer asked for; the wallet provider's API takes neither today — Android does not
      * send them either — so they are ignored rather than silently promised.
+     *
+     * The attestation is handed on only if it attests exactly the keys sent, in the order sent
+     * ([verifyAttestedKeys]): that order is the one multipaz stores the issued credentials in.
      */
     override suspend fun createJwtKeyAttestation(
         credentialKeyAttestations: List<CredentialKeyAttestation>,
@@ -97,8 +100,9 @@ internal class IosOpenID4VciBackend(
     ): String {
         // Resolved before building the JSON: `toJwk` suspends, and the array builder is not a
         // coroutine body.
-        val jwks = credentialKeyAttestations.map { it.keyAttestation.publicKey.toJwk(null) }
-        return request(
+        val keys = credentialKeyAttestations.map { it.keyAttestation.publicKey }
+        val jwks = keys.map { it.toJwk(null) }
+        val attestation = request(
             path = KEY_ATTESTATION_PATH,
             body = buildJsonObject {
                 // Empty rather than absent when there is no challenge, matching the Android repository.
@@ -109,6 +113,8 @@ internal class IosOpenID4VciBackend(
             },
             responseField = "keyAttestation",
         )
+        verifyAttestedKeys(attestation, sent = keys)
+        return attestation
     }
 
     /**

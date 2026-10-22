@@ -25,13 +25,20 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.provisioning.CredentialKeyAttestation
 import org.multipaz.securearea.KeyAttestation
+import org.multipaz.util.fromBase64Url
+import org.multipaz.util.toBase64Url
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -51,6 +58,33 @@ class IosOpenID4VciBackendTest {
     private suspend fun keyAttestation() = KeyAttestation(
         publicKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
         certChain = null,
+    )
+
+    /** A key attestation as the wallet provider signs one, its payload's `attested_keys` being [keys]. */
+    private fun keyAttestationJwt(keys: List<JsonElement>): String {
+        val header = """{"alg":"ES256","typ":"key-attestation+jwt"}""".encodeToByteArray().toBase64Url()
+        val payload = buildJsonObject { putJsonArray("attested_keys") { keys.forEach { add(it) } } }
+            .toString().encodeToByteArray().toBase64Url()
+        return "$header.$payload.signature"
+    }
+
+    /** A wallet provider that attests the keys it is sent, after [change]; [seen] gets each request's path and body. */
+    private fun walletProvider(
+        seen: (path: String, body: String) -> Unit = { _, _ -> },
+        change: (List<JsonElement>) -> List<JsonElement> = { it },
+    ) = MockEngine { request ->
+        val body = request.body.toByteArray().decodeToString()
+        seen(request.url.encodedPath, body)
+        val sent = Json.parseToJsonElement(body).jsonObject["jwkSet"]!!.jsonObject["keys"]!!.jsonArray
+        respond(
+            content = buildJsonObject { put("keyAttestation", keyAttestationJwt(change(sent))) }.toString(),
+            headers = headersOf("Content-Type", "application/json"),
+        )
+    }
+
+    private suspend fun twoCredentialKeys() = listOf(
+        CredentialKeyAttestation("cred-1", keyAttestation()),
+        CredentialKeyAttestation("cred-2", keyAttestation()),
     )
 
     private fun backend(engine: MockEngine) = IosOpenID4VciBackend(
@@ -93,30 +127,62 @@ class IosOpenID4VciBackendTest {
     fun a_key_attestation_posts_every_credential_key_with_the_challenge() = runTest {
         var body: String? = null
         var path: String? = null
-        val engine = MockEngine { request ->
-            path = request.url.encodedPath
-            body = request.body.toByteArray().decodeToString()
-            respond(
-                content = """{"keyAttestation":"the.key.jwt"}""",
-                headers = headersOf("Content-Type", "application/json"),
-            )
-        }
-        val credentials = listOf(
-            CredentialKeyAttestation("cred-1", keyAttestation()),
-            CredentialKeyAttestation("cred-2", keyAttestation()),
-        )
+        val engine = walletProvider(seen = { sentTo, sent -> path = sentTo; body = sent })
 
         val attestation = backend(engine).createJwtKeyAttestation(
-            credentialKeyAttestations = credentials,
+            credentialKeyAttestations = twoCredentialKeys(),
             challenge = "the-c-nonce",
         )
 
-        assertEquals("the.key.jwt", attestation)
         assertEquals("/key-attestation/jwk-set", path)
         val json = Json.parseToJsonElement(body!!).jsonObject
         assertEquals("the-c-nonce", json["nonce"]?.jsonPrimitive?.content)
         // One entry per credential key, in the batch the issuer will certify.
-        assertEquals(2, json["jwkSet"]!!.jsonObject["keys"]!!.jsonArray.size)
+        val keys = json["jwkSet"]!!.jsonObject["keys"]!!.jsonArray
+        assertEquals(2, keys.size)
+        // Handed on as the wallet provider signed it, attesting the keys sent in the order sent.
+        val payload = Json.parseToJsonElement(attestation.split('.')[1].fromBase64Url().decodeToString()).jsonObject
+        assertEquals(keys, payload["attested_keys"])
+    }
+
+    @Test
+    fun an_attestation_of_the_keys_in_another_order_is_refused() = runTest {
+        val refusal = assertFailsWith<CredentialIntegrityException> {
+            backend(walletProvider(change = { it.reversed() })).createJwtKeyAttestation(twoCredentialKeys(), challenge = "n")
+        }
+
+        assertTrue("another order" in refusal.message.orEmpty(), "unexpected: ${refusal.message}")
+    }
+
+    @Test
+    fun an_attestation_leaving_out_a_key_or_adding_one_is_refused() = runTest {
+        val extra = Crypto.createEcPrivateKey(EcCurve.P256).publicKey.toJwk(null)
+
+        assertFailsWith<CredentialIntegrityException> {
+            backend(walletProvider(change = { it.take(1) })).createJwtKeyAttestation(twoCredentialKeys(), challenge = "n")
+        }
+        assertFailsWith<CredentialIntegrityException> {
+            backend(walletProvider(change = { it + extra })).createJwtKeyAttestation(twoCredentialKeys(), challenge = "n")
+        }
+        assertFailsWith<CredentialIntegrityException> {
+            backend(walletProvider(change = { listOf(it.first(), extra) })).createJwtKeyAttestation(twoCredentialKeys(), challenge = "n")
+        }
+    }
+
+    @Test
+    fun an_attestation_naming_no_attested_keys_is_refused() = runTest {
+        val header = """{"alg":"ES256"}""".encodeToByteArray().toBase64Url()
+        val payload = """{"iss":"wallet-provider.test"}""".encodeToByteArray().toBase64Url()
+        val engine = MockEngine {
+            respond(
+                content = buildJsonObject { put("keyAttestation", "$header.$payload.signature") }.toString(),
+                headers = headersOf("Content-Type", "application/json"),
+            )
+        }
+
+        assertFailsWith<CredentialIntegrityException> {
+            backend(engine).createJwtKeyAttestation(twoCredentialKeys(), challenge = "n")
+        }
     }
 
     @Test

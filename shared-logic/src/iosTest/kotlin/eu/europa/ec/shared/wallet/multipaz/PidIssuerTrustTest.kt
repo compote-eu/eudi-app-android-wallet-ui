@@ -33,6 +33,7 @@ import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X500Name
 import org.multipaz.crypto.X509Cert
 import org.multipaz.crypto.X509CertChain
@@ -73,16 +74,18 @@ internal suspend fun testSignerCertificate(name: String = "CN=Document Signer"):
 
 /**
  * An mdoc as an issuer sends it: base64url `IssuerSigned`, with [chain] in its `x5chain` header, signed
- * with [signingKey] — a throwaway key no chain vouches for, when null.
+ * with [signingKey] — a throwaway key no chain vouches for, when null — and bound to [deviceKey], a
+ * throwaway key when null.
  */
 internal suspend fun testMdocCredential(
     docType: String,
     chain: X509CertChain?,
     signingKey: EcPrivateKey? = null,
+    deviceKey: EcPublicKey? = null,
 ): String = issuerSignedDataFor(
     docType = docType,
     issuerNamespaces = issuerNamespacesOf(docType, samplePidElements(), Random.Default),
-    deviceKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
+    deviceKey = deviceKey ?: Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
     validFrom = Clock.System.now() - 1.days,
     validUntil = Clock.System.now() + 30.days,
     issuerCertChain = chain,

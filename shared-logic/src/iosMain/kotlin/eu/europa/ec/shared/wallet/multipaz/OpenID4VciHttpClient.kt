@@ -395,7 +395,8 @@ internal class OpenID4VciCompatibilityEngine(
 
     /**
      * Passes a credential response on only if every credential in it is what its issuer signed
-     * ([verifyCredentialIntegrity]) and every PID in it is signed by a recognised PID provider.
+     * ([verifyCredentialIntegrity]), bound to the key [request] asked for at its position ([verifyKeyBinding]),
+     * and every PID in it is signed by a recognised PID provider.
      *
      * Here, before multipaz certifies anything, because this is the one place every issuance path
      * meets: multipaz's own client for a single configuration, an offer and a refresh, and
@@ -403,9 +404,9 @@ internal class OpenID4VciCompatibilityEngine(
      * multipaz cleans up as for any failed request — a new document is deleted, and a refresh drops
      * only the credentials it was adding. Android checks at the same point, before `storeIssuedDocument`.
      *
-     * The integrity check runs always, as Android's certifiers do with or without trust configured. Null
-     * [issuerTrust] skips only the PID signer check, as it does the metadata check, for the tests that serve
-     * credentials from a `MockEngine`.
+     * The integrity and key-binding checks run always, as Android's certifiers do with or without trust
+     * configured. Null [issuerTrust] skips only the PID signer check, as it does the metadata check, for the
+     * tests that serve credentials from a `MockEngine`.
      */
     private suspend fun checkedCredentials(
         data: HttpRequestData,
@@ -422,6 +423,7 @@ internal class OpenID4VciCompatibilityEngine(
         val configurationId = (request["credential_configuration_id"] as? JsonPrimitive)?.contentOrNull
         val expectedDocType = configurationId?.let { CredentialConfigurationRegistry.docTypeOf(endpoint, it) }
         credentials.forEach { verifyCredentialIntegrity(it, expectedDocType) }
+        verifyKeyBinding(request, credentials)
 
         val trust = issuerTrust ?: return replayable
         val requestedPid = configurationId != null && CredentialConfigurationRegistry.isPid(endpoint, configurationId)

@@ -33,8 +33,6 @@ import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
 import org.multipaz.credential.SecureAreaBoundCredential
 import org.multipaz.crypto.EcPublicKey
-import org.multipaz.mdoc.mso.MobileSecurityObject
-import org.multipaz.sdjwt.SdJwt
 
 /**
  * Finishes a document the issuer promised to mint later.
@@ -337,14 +335,6 @@ internal fun <C, D> pairByBoundKey(
         val index = if (key == null) -1 else unclaimed.indexOfFirst { (_, waitingKey) -> waitingKey == key }
         if (index < 0) null else unclaimed.removeAt(index).first to data
     }
-}
-
-/** The public key [issuerData] is bound to: an mdoc's MSO `deviceKey`, an SD-JWT VC's `cnf` key. */
-internal suspend fun boundKeyOf(issuerData: ByteString, isMdoc: Boolean): EcPublicKey? = if (isMdoc) {
-    val issuerAuth = Cbor.decode(issuerData.toByteArray())["issuerAuth"].asCoseSign1
-    MobileSecurityObject.fromDataItem(Cbor.decode(Cbor.decode(issuerAuth.payload!!).asTagged.asBstr)).deviceKey
-} else {
-    SdJwt.fromCompactSerialization(issuerData.toByteArray().decodeToString()).kbKey
 }
 
 internal fun ByteString.openID4VciAuthorization(): StoredOpenID4VciAuthorization? {

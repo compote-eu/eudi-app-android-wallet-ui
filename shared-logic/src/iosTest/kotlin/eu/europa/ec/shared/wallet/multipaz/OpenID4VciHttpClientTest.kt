@@ -45,7 +45,9 @@ import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.X509Cert
+import org.multipaz.util.toBase64Url
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.test.Test
@@ -1200,6 +1202,51 @@ class OpenID4VciHttpClientTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(credential in response.bodyAsText())
+    }
+
+    /** A credential request with one `jwt` proof for [key], as multipaz writes it; only its header is read here. */
+    private suspend fun HttpClient.postCredentialRequestProving(url: String, configurationId: String, key: EcPublicKey) =
+        buildJsonObject {
+            put("alg", "ES256")
+            put("jwk", key.toJwk())
+        }.toString().encodeToByteArray().toBase64Url().let { header ->
+            post(url) {
+                contentType(ContentType.Application.Json)
+                setBody("""{"credential_configuration_id":"$configurationId","proofs":{"jwt":["$header.e30.c2ln"]}}""")
+            }
+        }
+
+    @Test
+    fun a_credential_bound_to_the_key_its_proof_carried_reaches_multipaz_unchanged() = runTest {
+        val key = Crypto.createEcPrivateKey(EcCurve.P256).publicKey
+        val signer = testSigner()
+        val credential = testMdocCredential("org.iso.18013.5.1.mDL", signer.chain, signer.key, deviceKey = key)
+        val client = mdlIssuerAnswering(credential)
+        client.get("https://mdl-config.test/.well-known/openid-credential-issuer").readRawBytes()
+
+        val response = client.postCredentialRequestProving(mdlEndpoint, "mdl", key)
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(credential in response.bodyAsText())
+    }
+
+    @Test
+    fun a_credential_bound_to_another_key_than_its_proofs_is_refused_even_with_the_trust_lists_off() = runTest {
+        // Signed correctly and of the type asked for: the key it is bound to is the only thing wrong.
+        val signer = testSigner()
+        val credential = testMdocCredential(
+            "org.iso.18013.5.1.mDL",
+            signer.chain,
+            signer.key,
+            deviceKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
+        )
+        val client = mdlIssuerAnswering(credential)
+        client.get("https://mdl-config.test/.well-known/openid-credential-issuer").readRawBytes()
+
+        val refusal = assertFailsWith<CredentialIntegrityException> {
+            client.postCredentialRequestProving(mdlEndpoint, "mdl", Crypto.createEcPrivateKey(EcCurve.P256).publicKey)
+        }
+        assertTrue("bound to another key" in refusal.message.orEmpty(), "unexpected: ${refusal.message}")
     }
 
     // ---- the scope-instead-of-authorization_details workaround ---------------------------------
