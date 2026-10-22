@@ -17,7 +17,9 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import kotlinx.io.bytestring.decodeToString
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -222,7 +224,7 @@ internal suspend fun Document.readJsonClaims(): List<StoredJsonClaim> {
         .firstOrNull()
         ?: return emptyList()
 
-    return sdJwt.jsonClaimsOrEmpty().map { StoredJsonClaim(name = it.claimName, value = it.value) }
+    return sdJwt.shownClaimsOrEmpty()
 }
 
 /**
@@ -244,40 +246,52 @@ private suspend fun readClaims(
             .associate { it.dataElementName to it.value.toClaimString() }
     }
     credentials.filterIsInstance<SdJwtVcCredential>().firstOrNull()?.let { sdJwt ->
-        return sdJwt.jsonClaimsOrEmpty().associate { it.claimName to it.value.toClaimString() }
+        return sdJwt.shownClaimsOrEmpty().associate { it.name to it.value.toClaimString() }
     }
     return emptyMap()
 }
 
 /**
- * This credential's claims, or none if it cannot be read.
+ * This credential's claims as a document shows them ([isHiddenSdJwtClaim]), or none if it cannot be read.
  *
  * **Guarded on purpose.** `getClaims` verifies the SD-JWT against the certificate chain in its own
  * header and *throws* when there is no `x5c` at all ("Only X509-certified keys are supported"). These
  * readers run while the **document list** is being built, so an unreadable credential must cost that
  * document its claims and nothing more — letting it throw would empty the whole list.
  */
-private suspend fun SdJwtVcCredential.jsonClaimsOrEmpty(): List<JsonClaim> =
-    jsonClaimsUnfiltered().filterNot { it.claimName.isEnvelopeClaim() }
+private suspend fun SdJwtVcCredential.shownClaimsOrEmpty(): List<StoredJsonClaim> =
+    jsonClaimsUnfiltered()
+        .filterNot { isHiddenSdJwtClaim(it.claimName, it.value) }
+        .map { StoredJsonClaim(name = it.claimName, value = it.value.withoutHiddenSdJwtClaims()) }
 
 /**
- * Whether this is JWT/SD-JWT VC *envelope* metadata rather than something the issuer attested about the
- * holder.
+ * Whether a document's claims leave out the SD-JWT claim [name] holding [value] — exactly the claims the
+ * official iOS wallet leaves out (Wallet Kit's `toDocClaim`), which are the ones Android's document
+ * manager leaves out too: the digests, the key binding, the status list reference, the issuer, audience,
+ * type and assurance level.
  *
- * multipaz walks the whole verified payload, so `vct`, `iss` and `cnf` arrive alongside `family_name` —
- * and a details screen listing "cnf" as an attribute is both noise and mildly leaky, since that is the
- * holder key confirmation. Checked against this issuer rather than assumed: its
- * `credential_metadata.claims` declares **31** claims for the SD-JWT PID and **none** of them is an
- * envelope field, so nothing below is a real attribute here.
+ * multipaz returns every top-level claim of the verified payload, by design: its request matching needs
+ * them (multipaz #1946). So a screen has to choose, and choosing as the reference wallets do keeps the
+ * three alike. Each rule applies only to the shape the claim has there — a `cnf` or `status` that is not
+ * an object, or an `iss` that is not a string, is something else and is shown.
  */
-private fun String.isEnvelopeClaim(): Boolean =
-    this in EnvelopeClaims || startsWith("_") || endsWith("#integrity")
+internal fun isHiddenSdJwtClaim(name: String, value: JsonElement): Boolean = when (name) {
+    "_sd", "_sd_alg", "..." -> true
+    "cnf" -> value is JsonObject
+    "status" -> value is JsonObject && value["status_list"] is JsonObject
+    "assurance_level", "iss", "aud", "vct" -> value is JsonPrimitive && value.isString
+    else -> false
+}
 
-/** RFC 7519 registered claims plus SD-JWT VC's own metadata. */
-private val EnvelopeClaims = setOf(
-    "iss", "sub", "aud", "exp", "nbf", "iat", "jti",
-    "vct", "cnf", "status",
-)
+/** [this] without the claims [isHiddenSdJwtClaim] leaves out, at every depth, as Wallet Kit applies it. */
+internal fun JsonElement.withoutHiddenSdJwtClaims(): JsonElement = when (this) {
+    is JsonObject -> JsonObject(
+        filterNot { (name, value) -> isHiddenSdJwtClaim(name, value) }
+            .mapValues { (_, value) -> value.withoutHiddenSdJwtClaims() }
+    )
+    is JsonArray -> JsonArray(map { it.withoutHiddenSdJwtClaims() })
+    else -> this
+}
 
 private suspend fun SdJwtVcCredential.jsonClaimsUnfiltered(): List<JsonClaim> =
     try {
