@@ -26,6 +26,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.bytestring.ByteString
@@ -53,7 +55,6 @@ import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /** Where a proximity presentation has got to, as the screens need to see it. */
@@ -303,7 +304,7 @@ class IosProximityPresenter internal constructor(
                 eDeviceKey = eDeviceKey,
                 deviceEngagement = ByteString(engagement).toDataItem(),
                 handover = Simple.NULL,
-                source = presentmentSource(walletEngine.store()),
+                source = presentmentSource(walletEngine.store(), readerConnection = connected.state),
                 keyAgreementPossible = listOf(EcCurve.P256),
                 timeout = PROXIMITY_REQUEST_TIMEOUT,
                 onSendingResponse = { mutableState.value = IosProximityState.Sending },
@@ -349,9 +350,13 @@ class IosProximityPresenter internal constructor(
     /**
      * See [walletPresentmentSource], which holds every decision this shares with the other paths.
      * `internal`, and given the store, so a test can run it through [iosMdocPresentment] over a seeded store —
-     * the half of the exchange that needs no transport.
+     * the half of the exchange that needs no transport. [readerConnection] is the connected reader's
+     * transport state, which ends a consent still waiting when the reader goes away; null watches nothing.
      */
-    internal suspend fun presentmentSource(store: MultipazWalletStore) = walletPresentmentSource(
+    internal suspend fun presentmentSource(
+        store: MultipazWalletStore,
+        readerConnection: StateFlow<MdocTransport.State>? = null,
+    ) = walletPresentmentSource(
         store = store,
         credentialDomain = credentialDomain,
         readerTrust = readerTrust,
@@ -362,6 +367,7 @@ class IosProximityPresenter internal constructor(
                 requester = requester,
                 trustedRequesterIdentity = trustedRequesterIdentity,
                 data = data,
+                readerConnection = readerConnection,
             )
         },
     )
@@ -376,6 +382,7 @@ class IosProximityPresenter internal constructor(
         requester: Requester,
         trustedRequesterIdentity: TrustedRequesterIdentity?,
         data: ConsentData,
+        readerConnection: StateFlow<MdocTransport.State>?,
     ): CredentialSelection? {
         // Before the request is published, so a screen never shows it. multipaz ends the session on the
         // way out and builds no response.
@@ -402,9 +409,19 @@ class IosProximityPresenter internal constructor(
             ),
         )
 
-        // Bounded: a reader that is handed nothing eventually times out anyway, and leaving the BLE
-        // connection open forever is worse than telling it no.
-        val selection = withTimeoutOrNull(CONSENT_TIMEOUT) { consent.await() }
+        // For as long as the user takes, as on Android — unless the reader goes away first. Android's request
+        // screen closes when the reader disconnects (wallet-core's `Disconnected`, logged as stopped), and so
+        // does this one: no answer is a decline, which ends the exchange as one the user stopped.
+        val selection = coroutineScope {
+            val readerGone = readerConnection?.let { connection ->
+                launch {
+                    connection.first { it == MdocTransport.State.CLOSED || it == MdocTransport.State.FAILED }
+                    Logger.i(TAG, "the reader disconnected before the user answered")
+                    consent.complete(null)
+                }
+            }
+            consent.await().also { readerGone?.cancel() }
+        }
         if (selection != null) {
             history?.presented(selection)
             mutableState.value = IosProximityState.Sending
@@ -428,8 +445,6 @@ class IosProximityPresenter internal constructor(
 
         /** ISO 18013-5 device engagement version, as multipaz's own samples use. */
         const val ENGAGEMENT_VERSION = "1.0"
-
-        val CONSENT_TIMEOUT = 2.minutes
 
         /** Long enough for the user to answer iOS's Bluetooth prompt, short enough not to read as a hang. */
         val ADVERTISE_TIMEOUT = 20.seconds

@@ -32,7 +32,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import org.multipaz.asn1.OID
 import org.multipaz.crypto.X509CertChain
 import org.multipaz.presentment.ConsentData
@@ -47,7 +46,6 @@ import org.multipaz.trustmanagement.TrustMetadata
 import org.multipaz.util.Logger
 import kotlin.concurrent.Volatile
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.time.Duration.Companion.minutes
 
 /** Where a remote presentation has got to, as the screens need to see it. */
 sealed interface IosRemotePresentationState {
@@ -550,9 +548,9 @@ class IosRemotePresenter internal constructor(
             ),
         )
 
-        // Bounded, so a request left unanswered ends in a message rather than a screen that waits for
-        // ever. The verifier's own transaction expires on a similar scale.
-        val selection = withTimeoutOrNull(CONSENT_TIMEOUT) { consent.await() }
+        // For as long as the user takes, as on Android. A verifier whose transaction has expired by then
+        // refuses the response, and its refusal is what the user is shown.
+        val selection = consent.await()
         if (selection != null) {
             history.presented(selection)
             publish(notice, IosRemotePresentationState.Sending)
@@ -587,8 +585,6 @@ class IosRemotePresenter internal constructor(
 
     private companion object {
         const val TAG = "IosRemotePresenter"
-
-        val CONSENT_TIMEOUT = 2.minutes
 
         const val SHARING_FAILED =
             "Sharing failed. The verifier did not accept the response from this wallet."

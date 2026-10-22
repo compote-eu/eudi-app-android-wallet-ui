@@ -32,8 +32,11 @@ import eu.europa.ec.shared.wallet.trust.ReaderTrustSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.multipaz.asn1.ASN1Integer
 import org.multipaz.cbor.Cbor
@@ -53,6 +56,7 @@ import org.multipaz.mdoc.connectionmethod.MdocConnectionMethodBle
 import org.multipaz.mdoc.engagement.EngagementParser
 import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.mdoc.request.DeviceRequestGenerator
+import org.multipaz.mdoc.transport.MdocTransport
 import org.multipaz.presentment.CredentialQueryResult
 import org.multipaz.presentment.CredentialSelection
 import org.multipaz.presentment.Iso18013Response
@@ -70,6 +74,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 
 private const val PID_DOC_TYPE = "eu.europa.ec.eudi.pid.1"
 private const val MDL_DOC_TYPE = "org.iso.18013.5.1.mDL"
@@ -512,12 +517,17 @@ class IosProximityPresentmentTest {
         )
 
     /** What the presenter's own source does with [request] — consent included, transport not. */
-    private suspend fun presentThrough(presenter: IosProximityPresenter, store: MultipazWalletStore, request: DeviceRequest) =
+    private suspend fun presentThrough(
+        presenter: IosProximityPresenter,
+        store: MultipazWalletStore,
+        request: DeviceRequest,
+        readerConnection: StateFlow<MdocTransport.State>? = null,
+    ) =
         iosMdocPresentment(
             deviceRequest = request,
             eReaderKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
             sessionTranscript = Simple.NULL,
-            source = presenter.presentmentSource(store),
+            source = presenter.presentmentSource(store, readerConnection),
             keyAgreementPossible = listOf(EcCurve.P256),
             requesterAppId = null,
             requesterOrigin = null,
@@ -587,6 +597,42 @@ class IosProximityPresentmentTest {
         presenter.decline()
 
         assertFalse(requesting.request.requesterIsTrusted)
+        assertIs<PresentmentCanceledException>(exchange.await().exceptionOrNull())
+    }
+
+    /** Android's request screen closes when the reader disconnects; this one ends the request as a decline. */
+    @Test
+    fun a_reader_that_disconnects_before_the_user_answers_ends_the_request_as_a_decline() = runTest {
+        val store = walletWithPid()
+        val presenter = presenter(store, ReaderTrustSource { null }, backgroundScope)
+        val connection = MutableStateFlow(MdocTransport.State.CONNECTED)
+
+        val exchange = async {
+            runCatching { presentThrough(presenter, store, readerRequest(mapOf("given_name" to false)), connection) }
+        }
+        presenter.state.filterIsInstance<IosProximityState.Requesting>().first()
+        connection.value = MdocTransport.State.CLOSED
+
+        val ended = assertIs<PresentmentCanceledException>(exchange.await().exceptionOrNull())
+        assertEquals(IosProximityState.Idle, presenter.endedBy(ended))
+    }
+
+    /** No time limit on the user's answer while the reader stays, as on Android and in the official iOS wallet. */
+    @Test
+    fun a_request_waits_for_the_user_as_long_as_the_reader_stays() = runTest {
+        val store = walletWithPid()
+        val presenter = presenter(store, ReaderTrustSource { null }, backgroundScope)
+        val connection = MutableStateFlow(MdocTransport.State.CONNECTED)
+
+        val exchange = async {
+            runCatching { presentThrough(presenter, store, readerRequest(mapOf("given_name" to false)), connection) }
+        }
+        presenter.state.filterIsInstance<IosProximityState.Requesting>().first()
+        advanceTimeBy(1.hours)
+
+        assertFalse(exchange.isCompleted)
+        assertIs<IosProximityState.Requesting>(presenter.state.value)
+        presenter.decline()
         assertIs<PresentmentCanceledException>(exchange.await().exceptionOrNull())
     }
 

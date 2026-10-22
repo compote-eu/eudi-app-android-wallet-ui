@@ -223,9 +223,9 @@ class IosBiometricGate(
      * > property", macos(10.10, 11.0), ios(8.0, 14.0))`
      *
      * The app runs twelve major versions past that, so the old key was handing the system a string it
-     * is under no obligation to render. Only the *subtitle* was ever ours in the first place: the
-     * title line is composed by iOS as "Touch ID for <`CFBundleDisplayName`>" and localized to the
-     * **device** language, so it shows up translated even where the app ships a single locale.
+     * is under no obligation to render. iOS 27 shows [reason] as the sheet's title, in the language the
+     * app supplied it in; the line beneath it and the Cancel button are iOS's own, in the **device**
+     * language, so the two can differ where the app ships fewer locales than the device runs.
      *
      * 🔒 `touchIDAuthenticationAllowableReuseDuration` is deliberately left at its default of 0. Any
      * larger value lets a *recent* unlock satisfy a later gate with no new match — convenient, and
