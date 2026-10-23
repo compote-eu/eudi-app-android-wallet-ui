@@ -39,8 +39,13 @@ data class BackgroundReIssuanceSummary(
     val refreshed: Int,
     val failed: Int,
     val unchanged: Int,
+    /**
+     * The documents a re-issuance replaced, at once or by one the issuer deferred: what Android's worker
+     * names in its details broadcast, so a details screen showing one of them closes.
+     */
+    val replaced: List<String> = emptyList(),
 ) {
-    val didWork: Boolean get() = refreshed > 0
+    val didWork: Boolean get() = refreshed > 0 || replaced.isNotEmpty()
 
     /**
      * Whether every due document was accounted for — the invariant that makes this summary readable.
@@ -52,7 +57,8 @@ data class BackgroundReIssuanceSummary(
     val accountedFor: Boolean get() = due == refreshed + failed + unchanged
 
     override fun toString(): String =
-        "considered=$considered due=$due refreshed=$refreshed failed=$failed unchanged=$unchanged"
+        "considered=$considered due=$due refreshed=$refreshed failed=$failed unchanged=$unchanged " +
+            "replaced=${replaced.size}"
 }
 
 /** What one due document's refresh attempt amounted to. */
@@ -86,20 +92,26 @@ internal fun refreshOutcomeOf(progress: IosIssuanceProgress): RefreshOutcome = w
 internal fun summarize(
     considered: Int,
     outcomes: List<RefreshOutcome>,
+    replaced: List<String> = emptyList(),
 ): BackgroundReIssuanceSummary = BackgroundReIssuanceSummary(
     considered = considered,
     due = outcomes.size,
     refreshed = outcomes.count { it == RefreshOutcome.Refreshed },
     failed = outcomes.count { it == RefreshOutcome.Failed },
     unchanged = outcomes.count { it == RefreshOutcome.NothingToFetch },
+    replaced = replaced,
 )
 
 /**
- * The documents a sweep refreshes: due by their own policy, and not revoked or suspended.
+ * The documents a sweep re-issues: due by their own policy, without a deferred re-issuance on the way to
+ * replace them, and not revoked or suspended.
  *
- * A blocked one is upstream's rule (#729, `b595f866`): on Android a re-issued copy carries no revocation
- * record; here the document stays, but its fresh credentials point at fresh status entries, and a status
- * check that reads one of them as valid clears the block.
+ * One with a replacement on the way stays due until that arrives, and re-issuing it again would only
+ * park another: wallet-core's worker has no such check, and would add a `Pending` document every interval
+ * until the first is collected (read from wallet-core 0.31 and the app's worker, not measured).
+ *
+ * A blocked one is upstream's rule (#729, `b595f866`): the re-issued document would carry no revocation
+ * record, so the block would be lost.
  */
 internal suspend fun dueForReIssuance(
     store: MultipazWalletStore,
@@ -107,8 +119,11 @@ internal suspend fun dueForReIssuance(
     now: Instant,
 ): List<Document> {
     val blocked = store.blockedDocumentIds()
+    val beingReplaced = store.documentsAwaitingReplacement()
     return documents.filter { document ->
-        document.identifier !in blocked && document.toStoredDocument()?.isDueForReIssuance(now) == true
+        document.identifier !in beingReplaced &&
+            document.identifier !in blocked &&
+            document.toStoredDocument()?.isDueForReIssuance(now) == true
     }
 }
 
@@ -116,7 +131,8 @@ internal suspend fun dueForReIssuance(
 private suspend fun MultipazWalletStore.blockedDocumentIds(): Set<String> = revokedDocumentsTable().enumerate().toSet()
 
 /**
- * Tops up the credentials of every document whose policy says it is running out.
+ * Re-issues every document whose policy says it is running out, as a new document that replaces it
+ * ([IosCredentialIssuer.reIssueDocument]).
  *
  * ⚠️ **"Background" is now a name, not a description.** This was iOS's counterpart of Android's
  * `ReIssuanceWorkManager` — a `BGProcessingTask` running with the app closed — until that task was
@@ -136,9 +152,9 @@ private suspend fun MultipazWalletStore.blockedDocumentIds(): Set<String> = revo
  * - *No browser fallback.* Android passes `allowAuthorizationFallback = false` for exactly this reason:
  *   a background sweep must never try to put a user in front of an authorization page. A document whose
  *   refresh token has expired is left for the user to fix in the foreground.
- * - *No deletion, and only the list refresh broadcast* ([reIssuanceBroadcasts] says why the details
- *   one is left out). Android's worker also prunes. A screen composed after the sweep still sees the
- *   top-up, because the Documents screen re-reads the store when it appears.
+ * - *No pruning of other documents.* A replaced one goes with its re-issuance, and the broadcasts are
+ *   Android's ([reIssuanceBroadcasts]). A screen composed after the sweep still sees the result, because
+ *   the Documents screen re-reads the store when it appears.
  *
  * Failures are per document: one issuer being unreachable must not stop the sweep, since the whole
  * point is to catch up on whatever it can in the few seconds iOS grants.
@@ -152,24 +168,29 @@ suspend fun runBackgroundReIssuance(): BackgroundReIssuanceSummary {
     val documents = store.documentStore.listDocuments()
         .filter { it.eudiMetadata?.documentManagerId == store.documentManagerId }
     val outcomes = mutableListOf<RefreshOutcome>()
+    val replaced = mutableListOf<String>()
 
     for (document in dueForReIssuance(store, documents, now)) {
         try {
-            val progress = engine.refreshCredentials(document.identifier)
+            val progress = engine.reIssueDocument(document.identifier)
             val outcome = refreshOutcomeOf(progress)
             outcomes += outcome
+            if (progress is IosIssuanceProgress.Issued && progress.documentIds.any { it != document.identifier }) {
+                replaced += document.identifier
+            }
             when (outcome) {
                 RefreshOutcome.Refreshed -> Logger.i(
                     TAG,
-                    "re-issued ${(progress as IosIssuanceProgress.Issued).credentialsFetched} " +
-                        "credential(s) for ${document.identifier}"
+                    "re-issued ${document.identifier} with ${(progress as IosIssuanceProgress.Issued).credentialsFetched} " +
+                        "credential(s)"
                 )
                 // Logged at warning level because this is the case that used to vanish: a document
                 // that was due, was attempted, and did not get credentials.
                 RefreshOutcome.Failed ->
                     Logger.w(TAG, "refresh failed for ${document.identifier}: $progress")
+                // Now the issuer deferring the new document: it replaces this one when it arrives.
                 RefreshOutcome.NothingToFetch ->
-                    Logger.i(TAG, "nothing to fetch for ${document.identifier}: $progress")
+                    Logger.i(TAG, "nothing fetched yet for ${document.identifier}: $progress")
             }
         } catch (cancelled: CancellationException) {
             // iOS asked for the time back. Stop where we are rather than burning the expiration
@@ -182,7 +203,11 @@ suspend fun runBackgroundReIssuance(): BackgroundReIssuanceSummary {
         }
     }
 
-    return summarize(considered = documents.size, outcomes = outcomes)
+    return summarize(
+        considered = documents.size,
+        outcomes = outcomes,
+        replaced = replaced,
+    )
         .also { Logger.i(TAG, "background re-issuance: $it") }
         .also { announce(reIssuanceBroadcasts(it), TAG) }
 }

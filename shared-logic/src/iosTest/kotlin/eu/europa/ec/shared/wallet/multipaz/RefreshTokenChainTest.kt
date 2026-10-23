@@ -151,6 +151,34 @@ class RefreshTokenChainTest {
         assertTrue(store.keyExists(loginKey))
     }
 
+    // multipaz deletes the document of a failed issuance itself, and with it every key the document names. A
+    // re-issuance's new document names its original's.
+
+    @Test
+    fun a_failed_re_issuance_cleaning_up_its_document_leaves_the_login_its_key() = runTest {
+        val store = store()
+        store.keySecureArea.createKey(loginKey, SoftwareCreateKeySettings.Builder().build())
+        val failed = store.documentOfLogin("rt-0")
+        val original = store.documentOfLogin("rt-0")
+
+        IosDocumentProvisioningHandler(store).cleanupDocumentOnError(failed, IllegalStateException("invalid_grant"))
+
+        assertNull(store.documentStore.lookupDocument(failed.identifier))
+        assertTrue(store.keyExists(loginKey), "the original still needs it to be re-issued")
+        assertEquals(loginKey, store.documentStore.lookupDocument(original.identifier)?.authorizationData?.openID4VciDpopKeyAlias())
+    }
+
+    @Test
+    fun a_failed_issuance_alone_on_its_key_takes_it_with_it() = runTest {
+        val store = store()
+        store.keySecureArea.createKey(loginKey, SoftwareCreateKeySettings.Builder().build())
+        val failed = store.documentOfLogin("rt-0")
+
+        IosDocumentProvisioningHandler(store).cleanupDocumentOnError(failed, IllegalStateException("refused"))
+
+        assertFailsWith<Throwable> { store.keySecureArea.getKeyInfo(loginKey) }
+    }
+
     @Test
     fun a_document_whose_key_nobody_else_names_keeps_its_claim() = runTest {
         val store = store()

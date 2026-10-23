@@ -52,16 +52,22 @@ internal fun revocationBroadcasts(refresh: RevocationRefresh): List<PlatformInte
 }
 
 /**
- * What Android's `ReIssuanceWorkManager` broadcasts after a sweep that re-issued something: the list
- * refresh, and **not** its details broadcast.
- *
- * Android re-issues by replacing the document, so that broadcast names ids that no longer exist, and a
- * details screen showing one of them closes (`DocumentDetailsViewModel.checkIfRemoved`). iOS tops the
- * credentials up in place and the id stays the same, so the screen is still showing a real document.
- * Sending the broadcast would close it for nothing.
+ * What Android's `ReIssuanceWorkManager` broadcasts after a sweep that re-issued something, in its order:
+ * the list refresh, then the details broadcast naming the replaced documents, so a details screen showing
+ * one of them closes (`DocumentDetailsViewModel.checkIfRemoved`). A re-issuance replaces the document on
+ * both platforms now; while iOS topped credentials up in place, the details broadcast was left out.
  */
-internal fun reIssuanceBroadcasts(summary: BackgroundReIssuanceSummary): List<PlatformIntent> =
-    if (summary.didWork) listOf(PlatformIntent(action = CoreActions.RE_ISSUANCE_WORK_REFRESH_ACTION)) else emptyList()
+internal fun reIssuanceBroadcasts(summary: BackgroundReIssuanceSummary): List<PlatformIntent> = buildList {
+    if (summary.didWork) add(PlatformIntent(action = CoreActions.RE_ISSUANCE_WORK_REFRESH_ACTION))
+    if (summary.replaced.isNotEmpty()) {
+        add(
+            PlatformIntent(
+                action = CoreActions.RE_ISSUANCE_WORK_REFRESH_DETAILS_ACTION,
+                stringListExtras = mapOf(CoreActions.RE_ISSUANCE_IDS_DETAILS_EXTRA to summary.replaced),
+            )
+        )
+    }
+}
 
 /**
  * The documents a revocation message names, or null when [intent] carries none. This is iOS's

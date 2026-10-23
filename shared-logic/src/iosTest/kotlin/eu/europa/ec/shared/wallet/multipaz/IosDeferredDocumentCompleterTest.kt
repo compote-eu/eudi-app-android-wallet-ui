@@ -107,6 +107,8 @@ class IosDeferredDocumentCompleterTest {
         pendingCredentials: Int = 1,
         issuerParty: IssuerPartyRecord? = null,
         userTriggered: Boolean? = null,
+        /** The document a deferred re-issuance parked this one to replace. */
+        replacesDocumentId: String? = null,
     ): Document {
         keySecureArea.createKey(dpopAlias, SoftwareCreateKeySettings.Builder().build())
         val document = documentStore.createDocument(
@@ -122,6 +124,7 @@ class IosDeferredDocumentCompleterTest {
                 ),
                 issuerParty = issuerParty,
                 userTriggered = userTriggered,
+                replacesDocumentId = replacesDocumentId,
             ).also { it.park(transactionId, resume) },
         )
         // The CBOR multipaz writes. Only the two members this flow reads are set; the rest is absent,
@@ -260,6 +263,53 @@ class IosDeferredDocumentCompleterTest {
         // And the handle is cleared, so nothing polls for it again.
         assertNull(assertNotNull(document.eudiMetadata).deferredTransactionId)
         assertTrue(document.getPendingCredentials().isEmpty())
+    }
+
+    /** A document a re-issuance set out to replace; whether it was issued does not matter here. */
+    private suspend fun MultipazWalletStore.original(): String = documentStore.createDocument(
+        displayName = "PID",
+        metadata = EudiDocumentMetadata.create(
+            documentManagerId = documentManagerId,
+            format = StoredDocumentFormat.MsoMdoc(docType),
+            credentialPolicy = policy,
+        ),
+    ).identifier
+
+    @Test
+    fun a_deferred_re_issuance_deletes_the_document_it_replaces_when_its_credential_arrives() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val original = store.original()
+        val document = store.parkWithPendingCredential(replacesDocumentId = original)
+        val credential = issuedCredentialFor(document)
+
+        val result = completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.OK,
+            deferredBody = """{"credentials":[{"credential":"$credential"}]}""",
+        ).complete(document)
+
+        // wallet-core's `replacesDocumentId`: the original was kept until now, so the user always had one.
+        assertIs<DeferredCollection.Issued>(result)
+        assertNull(store.documentStore.lookupDocument(original))
+        assertNull(assertNotNull(document.eudiMetadata).replacesDocumentId)
+    }
+
+    @Test
+    fun a_deferred_re_issuance_that_never_arrives_leaves_the_original_in_place() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val original = store.original()
+        val document = store.parkWithPendingCredential(replacesDocumentId = original)
+        val credential = issuedCredentialFor(document)
+        document.deleteCredential(document.getPendingCredentials().single().identifier)
+
+        val result = completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.OK,
+            deferredBody = """{"credentials":[{"credential":"$credential"}]}""",
+        ).complete(document)
+
+        assertEquals(DeferredCollection.Abandoned, result)
+        assertNotNull(store.documentStore.lookupDocument(original))
     }
 
     @Test

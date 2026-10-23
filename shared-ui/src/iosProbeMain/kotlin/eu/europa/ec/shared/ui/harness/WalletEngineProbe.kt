@@ -1108,12 +1108,12 @@ private suspend fun probeReIssuance(onResult: (String) -> Unit) {
     )
 
     when (val progress = withTimeoutOrNull(RE_ISSUANCE_PROBE_TIMEOUT) {
-        engine.refreshCredentials(target.id)
+        engine.reIssueDocument(target.id)
     }) {
         is IosIssuanceProgress.Issued -> {
             val after = engine.getAllDocumentsWithDetails(locale = "en").first { it.id == target.id }
             onResult(
-                "refreshCredentials -> Issued; fetched ${progress.credentialsFetched} credential(s), " +
+                "reIssueDocument -> Issued; fetched ${progress.credentialsFetched} credential(s), " +
                         "counter ${target.credentialsCount} -> ${after.credentialsCount} " +
                         "(no browser, no consent). Fetching zero is the right answer for a batch that " +
                         "is still fresh: multipaz replaces only credentials that are used up or near " +
@@ -1121,10 +1121,10 @@ private suspend fun probeReIssuance(onResult: (String) -> Unit) {
             )
         }
 
-        is IosIssuanceProgress.Failure -> onResult("refreshCredentials -> Failure(${progress.message})")
+        is IosIssuanceProgress.Failure -> onResult("reIssueDocument -> Failure(${progress.message})")
         is IosIssuanceProgress.IssuerNotTrusted ->
-            onResult("refreshCredentials -> IssuerNotTrusted(${progress.message})")
-        null -> onResult("refreshCredentials -> nothing within $RE_ISSUANCE_PROBE_TIMEOUT")
+            onResult("reIssueDocument -> IssuerNotTrusted(${progress.message})")
+        null -> onResult("reIssueDocument -> nothing within $RE_ISSUANCE_PROBE_TIMEOUT")
     }
 
     // And the other half: a document with nothing spent must not open a session at all. That guard is
@@ -1139,7 +1139,7 @@ private suspend fun probeReIssuance(onResult: (String) -> Unit) {
     onResult(
         "guard: ${untouched.name} (${untouched.id}) needs " +
                 "${engine.credentialsNeeded(untouched.id)} -> " +
-                "${engine.refreshCredentials(untouched.id)}"
+                "${engine.reIssueDocument(untouched.id)}"
     )
 }
 

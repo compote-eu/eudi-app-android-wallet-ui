@@ -87,6 +87,13 @@ internal class EudiDocumentMetadata private constructor(
     val userTriggered: Boolean? get() = data.userTriggered
 
     /**
+     * The document this one was issued to replace, while that one still exists: a re-issuance the issuer
+     * deferred keeps the original until this one's credential arrives, as wallet-core's
+     * `replacesDocumentId` does. Null on every other document; cleared by [forgetReplaced].
+     */
+    val replacesDocumentId: String? get() = data.replacesDocumentId
+
+    /**
      * Marks the document issued, stamping [issuedAt]. Mirrors `ApplicationMetadata.issue`, including
      * its contract: the caller is responsible for persisting the change via `Document.edit`.
      */
@@ -110,6 +117,11 @@ internal class EudiDocumentMetadata private constructor(
         data = data.copy(deferredTransactionId = null, deferredResume = null)
     }
 
+    /** Drops [replacesDocumentId] once the original is gone. Same contract as [issue]. */
+    fun forgetReplaced() {
+        data = data.copy(replacesDocumentId = null)
+    }
+
     internal data class Data(
         val documentManagerId: String,
         val format: StoredDocumentFormat,
@@ -120,6 +132,7 @@ internal class EudiDocumentMetadata private constructor(
         val deferredResume: DeferredResume? = null,
         val issuerParty: IssuerPartyRecord? = null,
         val userTriggered: Boolean? = null,
+        val replacesDocumentId: String? = null,
     ) {
 
         fun toCbor(): ByteString = ByteString(
@@ -141,6 +154,7 @@ internal class EudiDocumentMetadata private constructor(
                     }
                     issuerParty?.let { put("issuerParty", partyJson.encodeToString(IssuerPartyRecord.serializer(), it)) }
                     userTriggered?.let { put("userTriggered", it) }
+                    replacesDocumentId?.let { put("replacesDocumentId", it) }
                 },
             ),
         )
@@ -176,6 +190,7 @@ internal class EudiDocumentMetadata private constructor(
                         runCatching { partyJson.decodeFromString(IssuerPartyRecord.serializer(), it.asTstr) }.getOrNull()
                     },
                     userTriggered = item.optional("userTriggered") { it.asBoolean },
+                    replacesDocumentId = item.optional("replacesDocumentId") { it.asTstr },
                 )
             }
 
@@ -197,6 +212,7 @@ internal class EudiDocumentMetadata private constructor(
             deferredTransactionId: String? = null,
             issuerParty: IssuerPartyRecord? = null,
             userTriggered: Boolean? = null,
+            replacesDocumentId: String? = null,
         ): EudiDocumentMetadata = EudiDocumentMetadata(
             Data(
                 documentManagerId = documentManagerId,
@@ -206,6 +222,7 @@ internal class EudiDocumentMetadata private constructor(
                 deferredTransactionId = deferredTransactionId,
                 issuerParty = issuerParty,
                 userTriggered = userTriggered,
+                replacesDocumentId = replacesDocumentId,
             ),
         )
 

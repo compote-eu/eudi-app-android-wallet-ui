@@ -16,12 +16,11 @@
 
 // Re-issuance, up to the point where it would talk to an issuer.
 //
-// The refresh itself needs a live OpenID4VCI issuer and a document this wallet actually provisioned, so
-// the network half belongs to a probe run rather than here. What *is* here is the half that decides
-// whether a refresh happens at all, and it is the half a user meets: a document that has no stored
+// The re-issuance itself needs a live OpenID4VCI issuer and a document this wallet actually provisioned,
+// so the network half belongs to a live run rather than here. What *is* here is the half that decides
+// whether a re-issuance happens at all, and it is the half a user meets: a document that has no stored
 // authorization, or whose issuer this build no longer knows, must say so rather than opening a browser
-// or failing obscurely. All three refusals are decided from the store's contents, before anything is
-// sent.
+// or failing obscurely. The refusals are decided from the store's contents, before anything is sent.
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
@@ -29,6 +28,9 @@ import eu.europa.ec.shared.wallet.multipaz.harness.MDOC_PID_DOC_TYPE
 import eu.europa.ec.shared.wallet.multipaz.harness.samplePidElements
 import eu.europa.ec.shared.wallet.multipaz.harness.sampleIssuerMetadata
 import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
@@ -39,6 +41,8 @@ import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class IosCredentialRefreshTest {
 
@@ -70,6 +74,9 @@ class IosCredentialRefreshTest {
         return store to documentId
     }
 
+    /** Every request the re-issuance sent; the issuer answers each with a 404. */
+    private val sent = mutableListOf<String>()
+
     private fun refresherOver(
         store: MultipazWalletStore,
         registrationCheck: Boolean = false,
@@ -83,14 +90,20 @@ class IosCredentialRefreshTest {
             registrationChecks += issuerUrl to configurationIds
             registration
         },
+        httpEngine = MockEngine { request ->
+            sent += request.url.toString()
+            respond("", HttpStatusCode.NotFound)
+        },
     )
 
     /** The registration checks asked for, as issuer URL and configurations. */
     private val registrationChecks = mutableListOf<Pair<String, Set<String>>>()
 
-    /** A document that got as far as a refresh would: it holds the authorization from its issuance. */
-    private suspend fun MultipazWalletStore.authorize(documentId: String) {
-        documentStore.lookupDocument(documentId)!!.edit { authorizationData = storedAuthorization() }
+    /** A document that got as far as a re-issuance would: it holds the authorization from its issuance. */
+    private suspend fun MultipazWalletStore.authorize(documentId: String, refreshToken: String? = "a-refresh-token") {
+        documentStore.lookupDocument(documentId)!!.edit {
+            authorizationData = storedAuthorization(refreshToken = refreshToken)
+        }
     }
 
     // ---- the registration pre-flight ----------------------------------------------------------------
@@ -103,7 +116,7 @@ class IosCredentialRefreshTest {
         val (store, documentId) = walletWith()
         store.authorize(documentId)
 
-        val progress = refresherOver(store, registrationCheck = true).refreshCredentials(documentId)
+        val progress = refresherOver(store, registrationCheck = true).reIssueDocument(documentId)
 
         val refused = assertIs<IosIssuanceProgress.IssuerNotTrusted>(progress)
         assertEquals(IosIssuanceProgress.UntrustedCertificate.Registration, refused.certificate)
@@ -112,15 +125,30 @@ class IosCredentialRefreshTest {
     }
 
     @Test
-    fun with_the_registration_check_off_the_refresh_makes_no_check() = runTest {
+    fun with_the_registration_check_off_the_re_issuance_makes_no_check() = runTest {
         val (store, documentId) = walletWith()
         store.authorize(documentId)
 
-        val progress = refresherOver(store).refreshCredentials(documentId)
+        val progress = refresherOver(store).reIssueDocument(documentId)
 
-        // The fixture's one credential is fresh, so there is nothing to fetch — and nothing was checked.
-        assertEquals(0, assertIs<IosIssuanceProgress.Issued>(progress).credentialsFetched)
+        // It failed further on (this fixture's authorization is not one multipaz can resume), and checked no
+        // registration on the way.
+        assertIs<IosIssuanceProgress.Failure>(progress)
         assertEquals(emptyList(), registrationChecks)
+        // A failed re-issuance leaves the original where it was.
+        assertNotNull(store.documentStore.lookupDocument(documentId))
+    }
+
+    @Test
+    fun a_document_whose_authorization_holds_no_refresh_token_is_refused_before_any_request() = runTest {
+        // multipaz would start a browser login for it and wait for an answer nothing here can give.
+        val (store, documentId) = walletWith()
+        store.authorize(documentId, refreshToken = null)
+
+        val progress = refresherOver(store).reIssueDocument(documentId)
+
+        assertEquals(IosCredentialIssuer.NO_STORED_AUTHORIZATION, assertIs<IosIssuanceProgress.Failure>(progress).message)
+        assertTrue(sent.isEmpty())
     }
 
     @Test
@@ -128,7 +156,7 @@ class IosCredentialRefreshTest {
         // The local refusals need no network, so they come first.
         val (store, documentId) = walletWith()
 
-        val progress = refresherOver(store, registrationCheck = true).refreshCredentials(documentId)
+        val progress = refresherOver(store, registrationCheck = true).reIssueDocument(documentId)
 
         assertEquals(IosCredentialIssuer.NO_STORED_AUTHORIZATION, assertIs<IosIssuanceProgress.Failure>(progress).message)
         assertEquals(emptyList(), registrationChecks)
@@ -138,7 +166,7 @@ class IosCredentialRefreshTest {
     fun a_document_the_wallet_no_longer_holds_is_refused_by_name() = runTest {
         val (store, _) = walletWith()
 
-        val progress = refresherOver(store).refreshCredentials("no-such-document")
+        val progress = refresherOver(store).reIssueDocument("no-such-document")
 
         // Reachable in practice: the details screen keeps the id it was opened with, and the document
         // can be deleted from another tab in the meantime.
@@ -152,7 +180,7 @@ class IosCredentialRefreshTest {
         // multipaz kept authorization data on the document.
         val (store, documentId) = walletWith()
 
-        val progress = refresherOver(store).refreshCredentials(documentId)
+        val progress = refresherOver(store).reIssueDocument(documentId)
 
         val failure = assertIs<IosIssuanceProgress.Failure>(progress)
         assertEquals(IosCredentialIssuer.NO_STORED_AUTHORIZATION, failure.message)
@@ -164,7 +192,7 @@ class IosCredentialRefreshTest {
     fun a_document_from_an_issuer_this_build_does_not_know_is_refused() = runTest {
         val (store, documentId) = walletWith(issuerMetadataFor = "https://some-other.issuer.invalid")
 
-        val progress = refresherOver(store).refreshCredentials(documentId)
+        val progress = refresherOver(store).reIssueDocument(documentId)
 
         // Checked before the authorization data, even though a missing authorization is the commoner
         // absence: this message is a dead end, and the other one tells the user to add the document
@@ -177,7 +205,7 @@ class IosCredentialRefreshTest {
     fun a_document_with_no_issuer_metadata_at_all_is_refused_rather_than_assumed() = runTest {
         val (store, documentId) = walletWith(issuerMetadataFor = null)
 
-        val progress = refresherOver(store).refreshCredentials(documentId)
+        val progress = refresherOver(store).reIssueDocument(documentId)
 
         // Not "the only configured issuer": a document that never recorded where it came from is not
         // evidence that it came from here.

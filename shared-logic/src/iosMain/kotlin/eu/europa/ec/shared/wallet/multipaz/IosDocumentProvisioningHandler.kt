@@ -96,6 +96,11 @@ internal class IosDocumentProvisioningHandler(
     private val issuanceLog: IosIssuanceLog? = null,
     /** The user's language, which the History names the issuer in — at the time of the event, as its rows are. */
     private val userLanguage: () -> String = { iosUserLanguage() },
+    /**
+     * The document a re-issuance replaces, recorded on the one it creates so that a deferred one can retire
+     * the original when its credential arrives; see [EudiDocumentMetadata.replacesDocumentId].
+     */
+    private val replacesDocumentId: String? = null,
 ) : DocumentProvisioningHandler(
     secureArea = store.keySecureArea,
     documentStore = store.documentStore,
@@ -140,6 +145,7 @@ internal class IosDocumentProvisioningHandler(
                 issuerMetadata = issuerMetadataFrom(credentialMetadata, issuerMetadata),
                 issuerParty = issuanceLog?.issuerParty(),
                 userTriggered = issuanceLog?.userTriggered,
+                replacesDocumentId = replacesDocumentId,
             ),
         )
     }
@@ -159,13 +165,13 @@ internal class IosDocumentProvisioningHandler(
     override suspend fun cleanupDocumentOnError(document: Document, err: Throwable) {
         val transactionId = deferred?.transactionId
         if (transactionId == null) {
-            super.cleanupDocumentOnError(document, err)
+            deleteFailed(document, err)
             return
         }
         val metadata = document.eudiMetadata
         if (metadata == null) {
             // Nothing to park it with; deleting is still better than a document nothing can finish.
-            super.cleanupDocumentOnError(document, err)
+            deleteFailed(document, err)
             return
         }
         val resume = deferred.resumeFor(document)
@@ -210,6 +216,23 @@ internal class IosDocumentProvisioningHandler(
             "a refresh of ${document.identifier} was deferred; parked transaction $transactionId" +
                 if (resume != null) " (resumable with the session's access token)" else ""
         )
+    }
+
+    /**
+     * multipaz's own cleanup, once [document] has given up its claim on a DPoP key another document still
+     * names ([releaseSharedDpopKey], as every other deletion does).
+     *
+     * multipaz's delete takes every key the deleted document's authorization names, and a re-issuance's new
+     * document carries the original's: a refused refresh token would take the key from the original and
+     * from every other document of its login, and none of them could be re-issued again ("No key with
+     * given alias"). A first issuance's failed configuration shares its login's key with the ones already
+     * issued in the same way.
+     *
+     * Not under [RefreshTokenChain.withLock]: a re-issuance already holds it here.
+     */
+    private suspend fun deleteFailed(document: Document, err: Throwable) {
+        store.releaseSharedDpopKey(document.identifier)
+        super.cleanupDocumentOnError(document, err)
     }
 
     /**

@@ -50,6 +50,12 @@ internal class IosIssuanceLog(
     /** The issuer's verified registration, which names it; null when the check was off or found none. */
     private val registration: IssuerRegistration?,
     now: Instant = Clock.System.now(),
+    /**
+     * Whether [started] writes the row at once. A re-issuance passes false: multipaz creates its document,
+     * and so starts it, before the token exchange, and a refresh token the issuer refuses must leave no
+     * row, as on Android, where the re-issuance starts only after that exchange. [finish] writes it then.
+     */
+    private val writeAhead: Boolean = true,
 ) {
     @OptIn(ExperimentalUuidApi::class)
     private val id = Uuid.random().toString()
@@ -75,6 +81,7 @@ internal class IosIssuanceLog(
             }
             if (isStarted) return
             isStarted = true
+            if (!writeAhead) return
             entry(completed = false, reason = null)
         }
         write(listOf(row))

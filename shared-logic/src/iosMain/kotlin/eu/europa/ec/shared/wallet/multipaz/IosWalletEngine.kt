@@ -207,10 +207,10 @@ class IosWalletEngine internal constructor(
     }
 
     /**
-     * How many credentials a refresh would replace, without creating or fetching anything.
+     * How many credentials a refresh in place would replace, without creating or fetching anything.
      *
-     * Public so a probe can show the number [refreshCredentials] guards on; the guard exists because
-     * opening a provisioning session costs the document's rotating refresh token.
+     * Public so a probe can show it. A re-issuance no longer refreshes in place ([reIssueDocument]), so
+     * nothing guards on this number now.
      */
     suspend fun credentialsNeeded(documentId: String): Int {
         val store = store()
@@ -218,9 +218,9 @@ class IosWalletEngine internal constructor(
         return store.credentialsNeededFor(document)
     }
 
-    /** Refreshes a document's credentials in place; see [IosCredentialIssuer.refreshCredentials]. */
-    suspend fun refreshCredentials(documentId: String, userTriggered: Boolean = false): IosIssuanceProgress =
-        IosCredentialIssuer(walletEngine = this).refreshCredentials(documentId, userTriggered = userTriggered)
+    /** Re-issues a document as a new one, the original deleted after; see [IosCredentialIssuer.reIssueDocument]. */
+    suspend fun reIssueDocument(documentId: String, userTriggered: Boolean = false): IosIssuanceProgress =
+        IosCredentialIssuer(walletEngine = this).reIssueDocument(documentId, userTriggered = userTriggered)
 
     override suspend fun getAllDocuments(): List<WalletDocument> =
         delegate().getAllDocuments()

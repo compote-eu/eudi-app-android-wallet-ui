@@ -66,6 +66,8 @@ internal class IosDeferredDocumentCompleter(
     private val issuers: List<IosVciIssuer> = IosIssuerCatalog.issuers,
     /** Who may sign a PID, per the EU trust lists; see [enforcePidSigners]. */
     private val issuerTrust: IssuerTrustSource = IosEtsiTrust(),
+    /** Asks for a status check now; see [retireReplaced]. Injectable so a test can see that it was asked. */
+    private val requestRevocationCheck: () -> Unit = IosForegroundChecks::requestRevocationCheck,
 ) {
 
     /**
@@ -294,11 +296,15 @@ internal class IosDeferredDocumentCompleter(
         }
 
         val metadata = document.eudiMetadata ?: return true
+        val replaced = metadata.replacesDocumentId
         metadata.issue()
         metadata.completeDeferred()
+        metadata.forgetReplaced()
         // `edit` is what persists the mutated metadata, the same contract `issue()` has always had.
         document.edit { this.metadata = metadata }
         Logger.i(TAG, "deferred issuance completed for ${document.identifier}")
+        // A deferred re-issuance kept the document it replaces until now, as wallet-core keeps it.
+        replaced?.let { MultipazWalletEngine(store).retireReplaced(it, requestRevocationCheck) }
         return true
     }
 

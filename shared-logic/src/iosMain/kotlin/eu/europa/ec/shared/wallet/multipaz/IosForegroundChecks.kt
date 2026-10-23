@@ -71,6 +71,25 @@ object IosForegroundChecks {
     /** Called by the app shell when the app resigns active. */
     fun onInactive() = schedule.stop()
 
+    private val onDemand = CoroutineScope(Dispatchers.Main)
+
+    /**
+     * A status check now, outside the schedule. A re-issuance asks for one when its original was found
+     * revoked while it ran, so the new document is checked without waiting for the interval: Android's
+     * `scheduleRevocationCheck` in the same place (upstream #729, `20dca6db`).
+     */
+    fun requestRevocationCheck() {
+        onDemand.launch {
+            try {
+                Logger.i(TAG, "requested revocation: ${runBackgroundRevocation()}")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Throwable) {
+                Logger.w(TAG, "the requested revocation check failed", failure)
+            }
+        }
+    }
+
     private const val TAG = "IosForegroundChecks"
 }
 

@@ -118,9 +118,9 @@ internal class MultipazWalletEngine(
             ?.let { WalletDocument(id = it.id, claims = it.claims) }
 
     /**
-     * Deletes [documentId] and its credentials, and drops any bookmark it had — the bookmark table is
-     * keyed by document id, so leaving the row would silently re-apply to a future document that reused
-     * the id.
+     * Deletes [documentId] and its credentials, and drops any bookmark and revocation record it had — both
+     * tables are keyed by document id, so leaving a row would silently re-apply to a future document that
+     * reused the id. Android deletes the same two with the document.
      *
      * An issued document's deletion is recorded for the History tab, completed or not, as wallet-core's
      * `CredentialDeletionLogger` records it on Android. What the row says is read first, since it goes with
@@ -138,6 +138,7 @@ internal class MultipazWalletEngine(
                 store.releaseSharedDpopKey(documentId)
                 store.documentStore.deleteDocument(documentId)
             }
+            store.revokedDocumentsTable().delete(documentId)
             deleteBookmark(documentId)
         }.also { outcome ->
             deletion?.let { record ->

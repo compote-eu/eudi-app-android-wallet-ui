@@ -492,12 +492,13 @@ internal class MultipazWalletStore(
 }
 
 /**
- * How many credentials a refresh would replace for [document], without creating or fetching anything.
+ * How many credentials a refresh in place would replace for [document], without creating or fetching
+ * anything.
  *
  * multipaz's own count, from the same [org.multipaz.provisioning.DocumentProvisioningSettings] the
  * provisioning handler uses: a credential is replaced when it has been used up or is close to expiring.
- * Asking first is what keeps a pointless refresh from burning the document's rotating refresh token —
- * see the note at the call site in `IosCredentialIssuer.refreshCredentials`.
+ * A re-issuance asked this before it refreshed in place; it issues a new document now
+ * (`IosCredentialIssuer.reIssueDocument`), and only a probe reads the number.
  */
 internal suspend fun MultipazWalletStore.credentialsNeededFor(document: Document): Int {
     // The document's own policy, so this answers the question multipaz will ask when it actually

@@ -70,7 +70,7 @@ class DueForReIssuanceTest {
         // What the status check writes for a revoked or suspended document.
         store.revokedDocumentsTable().insert(key = pid.identifier, data = ByteString())
 
-        // Upstream #729: fresh credentials point at fresh status entries, and the next check could lift the block.
+        // Upstream #729: the re-issued document would carry no revocation record, so the block would be lost.
         assertTrue(dueForReIssuance(store, listOf(pid), now).isEmpty())
     }
 }

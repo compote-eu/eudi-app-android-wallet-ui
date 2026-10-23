@@ -57,12 +57,14 @@ class IosIssuanceLogTest {
         reissuance: Boolean = false,
         userTriggered: Boolean = true,
         registration: IssuerRegistration? = null,
+        writeAhead: Boolean = true,
     ) = IosIssuanceLog(
         store = { store },
         reissuance = reissuance,
         userTriggered = userTriggered,
         requested = requested,
         registration = registration,
+        writeAhead = writeAhead,
     )
 
     private val registration = IssuerRegistration(
@@ -96,6 +98,24 @@ class IosIssuanceLogTest {
         log.finish()
 
         assertTrue(store.transactionLogs().isEmpty())
+    }
+
+    @Test
+    fun a_re_issuance_writes_its_row_when_it_ends_and_none_when_it_never_does() = runTest {
+        // multipaz starts a re-issuance before the token exchange, and a refused refresh token must leave
+        // no row, as on Android, where the re-issuance starts after it.
+        val store = store()
+        val refused = log(store, reissuance = true, writeAhead = false)
+        refused.started(issuerName = "Plaut")
+        assertTrue(store.transactionLogs().isEmpty())
+
+        val issued = log(store, reissuance = true, writeAhead = false)
+        issued.started(issuerName = "Plaut")
+        issued.issued(credentialIdentifier = "eu.europa.ec.eudi.pid.1")
+        issued.finish()
+
+        val row = assertIs<TransactionLogDomain.CredentialReissuance>(store.transactionLogs().single())
+        assertEquals(TransactionResultDomain.Completed, row.result)
     }
 
     @Test

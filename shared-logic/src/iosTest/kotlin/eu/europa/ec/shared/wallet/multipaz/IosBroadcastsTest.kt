@@ -40,13 +40,15 @@ class IosBroadcastsTest {
         WalletDocument(id = "doc-2", name = "mDL"),
     )
 
-    private fun reIssuance(refreshed: Int, failed: Int = 0) = BackgroundReIssuanceSummary(
-        considered = 3,
-        due = refreshed + failed,
-        refreshed = refreshed,
-        failed = failed,
-        unchanged = 0,
-    )
+    private fun reIssuance(refreshed: Int, failed: Int = 0, replaced: List<String> = emptyList()) =
+        BackgroundReIssuanceSummary(
+            considered = 3,
+            due = refreshed + failed,
+            refreshed = refreshed,
+            failed = failed,
+            unchanged = 0,
+            replaced = replaced,
+        )
 
     //region revocation
 
@@ -135,11 +137,27 @@ class IosBroadcastsTest {
     //region re-issuance
 
     @Test
-    fun a_re_issuance_that_refreshed_something_sends_the_list_refresh_and_never_the_details_one() {
-        // The details broadcast would close a screen whose document iOS kept: a top-up is in place.
-        val sent = reIssuanceBroadcasts(reIssuance(refreshed = 1, failed = 1))
+    fun a_re_issuance_that_replaced_documents_sends_the_list_refresh_and_then_the_details_naming_them() {
+        // Android's order. A details screen showing one of them closes, as its document is gone.
+        val sent = reIssuanceBroadcasts(reIssuance(refreshed = 1, failed = 1, replaced = listOf("doc-1")))
 
-        assertEquals(listOf(CoreActions.RE_ISSUANCE_WORK_REFRESH_ACTION), sent.map { it.platformAction() })
+        assertEquals(
+            listOf(CoreActions.RE_ISSUANCE_WORK_REFRESH_ACTION, CoreActions.RE_ISSUANCE_WORK_REFRESH_DETAILS_ACTION),
+            sent.map { it.platformAction() },
+        )
+        assertEquals(listOf("doc-1"), sent[1].platformStringListExtra(CoreActions.RE_ISSUANCE_IDS_DETAILS_EXTRA))
+    }
+
+    @Test
+    fun a_deferred_re_issuance_is_announced_too() {
+        // Nothing fetched yet, but a new `Pending` document is in the list, and the original's screen closes,
+        // as Android's worker counts a deferred re-issuance among the replaced.
+        val sent = reIssuanceBroadcasts(reIssuance(refreshed = 0, replaced = listOf("doc-1")))
+
+        assertEquals(
+            listOf(CoreActions.RE_ISSUANCE_WORK_REFRESH_ACTION, CoreActions.RE_ISSUANCE_WORK_REFRESH_DETAILS_ACTION),
+            sent.map { it.platformAction() },
+        )
     }
 
     @Test

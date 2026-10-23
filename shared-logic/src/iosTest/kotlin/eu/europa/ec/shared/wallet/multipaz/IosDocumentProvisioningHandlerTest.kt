@@ -313,6 +313,26 @@ class IosDocumentProvisioningHandlerTest {
     }
 
     @Test
+    fun a_re_issued_document_names_the_one_it_replaces_and_a_first_issuance_none() = runTest {
+        val store = store()
+
+        val reIssued = IosDocumentProvisioningHandler(store, replacesDocumentId = "the-original").createDocument(
+            credentialMetadata = credentialMetadata(name = "re-issued"),
+            issuerMetadata = issuerMetadata(),
+            documentAuthorizationData = null,
+        )
+        val first = IosDocumentProvisioningHandler(store).createDocument(
+            credentialMetadata = credentialMetadata(name = "first"),
+            issuerMetadata = issuerMetadata(),
+            documentAuthorizationData = null,
+        )
+
+        // What lets a deferred re-issuance retire the original when its credential arrives.
+        assertEquals("the-original", reIssued.eudiMetadata?.replacesDocumentId)
+        assertNull(first.eudiMetadata?.replacesDocumentId)
+    }
+
+    @Test
     fun a_pid_is_once_only_however_large_the_batch() = runTest {
         val store = store()
 

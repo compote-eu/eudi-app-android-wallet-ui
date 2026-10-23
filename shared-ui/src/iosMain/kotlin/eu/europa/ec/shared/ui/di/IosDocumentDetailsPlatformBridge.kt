@@ -194,19 +194,16 @@ internal class IosDocumentDetailsPlatformBridge(
         this?.formatType?.toDocumentIdentifier().isPid
 
     /**
-     * Tops the document's credentials back up.
+     * Re-issues the document as a new one, the original deleted once it is issued.
      *
      * [issuerId] is accepted and not used: the document records who issued it, and
-     * [IosCredentialIssuer.refreshCredentials] reads that rather than trusting the caller — refreshing
+     * [IosCredentialIssuer.reIssueDocument] reads that rather than trusting the caller — re-issuing
      * against an issuer that never knew this document would fail in a more confusing way.
      *
-     * **No browser, and no fallback to one.** multipaz keeps the original authorization on the document
-     * and refreshes against it silently, which is the case this button exists for. When that is not
-     * possible — nothing stored, or the issuer refuses — it says so, because re-authorizing *into an
-     * existing document* is not reachable from outside multipaz: `ProvisioningModel.launch` takes the
-     * target document but its coroutine context can only be built by a private method whose
-     * `ProvisioningEnvironment` is `internal`. Android's `allowAuthorizationFallback = true` has no
-     * counterpart here until that changes; see the ledger's upstream list.
+     * **No browser, and no fallback to one yet.** The authorization kept from the original issuance is
+     * presented silently, which is the case this button exists for. When that is not possible — nothing
+     * stored, or the issuer refuses — it says so. Android's `allowAuthorizationFallback = true`, and the
+     * official iOS wallet's equivalent, sign the user in again instead; that is the next step here.
      */
     override fun reIssueDocument(
         documentId: String,
@@ -214,9 +211,9 @@ internal class IosDocumentDetailsPlatformBridge(
     ): Flow<DocumentDetailsInteractorIssuancePartialState> = flow {
         emit(
             // The user asked for it, unlike the background renewal: Android's allowAuthorizationFallback.
-            when (val progress = engine.refreshCredentials(documentId, userTriggered = true)) {
-                // `Success` carries nothing: the screen reloads the document, and the refresh wrote
-                // into the one it already has.
+            when (val progress = engine.reIssueDocument(documentId, userTriggered = true)) {
+                // `Success` carries nothing: the screen goes back to the list, as on Android, since the
+                // document it showed is gone (or, deferred, is replaced once its successor arrives).
                 is IosIssuanceProgress.Issued -> DocumentDetailsInteractorIssuancePartialState.Success
 
                 is IosIssuanceProgress.Failure -> DocumentDetailsInteractorIssuancePartialState.Failure(
