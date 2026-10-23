@@ -22,11 +22,14 @@ import eu.europa.ec.businesslogic.extension.ioDispatcher
 import eu.europa.ec.shared.platform.PlatformContext
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.document_details_reissue_blocked_text
 import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
@@ -136,11 +139,35 @@ class DocumentDetailsInteractorImpl(
     ): Flow<DocumentDetailsInteractorDeleteDocumentPartialState> =
         platform.deleteDocument(documentId)
 
+    /**
+     * Re-issues from the issuer, unless the document is revoked or suspended: the re-issued credentials
+     * would carry no revocation record (a new document on Android, fresh credentials whose status reads
+     * valid on iOS), and the block would be lost. Records that cannot be read refuse too, and nothing
+     * starts at the issuer. The details screen already disables Re-issue for a blocked document; this
+     * covers one blocked while the screen is open. Upstream's rule, both platforms (#729, `b595f866`).
+     */
     override fun reIssueDocument(
         documentId: String,
         issuerId: String,
-    ): Flow<DocumentDetailsInteractorIssuancePartialState> =
-        platform.reIssueDocument(documentId = documentId, issuerId = issuerId)
+    ): Flow<DocumentDetailsInteractorIssuancePartialState> = flow {
+        val blocked = try {
+            walletEngine.isDocumentRevoked(documentId)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (unreadable: Exception) {
+            emit(DocumentDetailsInteractorIssuancePartialState.Failure(errorMessage = unreadable.message ?: genericErrorMsg))
+            return@flow
+        }
+        if (blocked) {
+            emit(
+                DocumentDetailsInteractorIssuancePartialState.Failure(
+                    errorMessage = strings[Res.string.document_details_reissue_blocked_text],
+                )
+            )
+            return@flow
+        }
+        emitAll(platform.reIssueDocument(documentId = documentId, issuerId = issuerId))
+    }
 
     override fun handleUserAuth(
         context: PlatformContext,

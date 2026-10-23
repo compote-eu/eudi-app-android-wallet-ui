@@ -446,6 +446,7 @@
     <!--endregion-->
 
     <!-- region Document Details -->
+    <string name="document_details_reissue_blocked_text">The issuer has revoked or suspended this document, so it cannot be reissued.</string>
     <string name="document_details_boolean_item_true_readable_value">yes</string>
     <string name="document_details_boolean_item_false_readable_value">no</string>
     <string name="document_details_bottom_sheet_delete_title">Remove document?</string> <!-- upstream alias of generic_bottom_sheet_delete_title -->

@@ -58,6 +58,10 @@ class ReIssuanceWorkManager(
 
             walletCoreDocumentsController
                 .getAllIssuedDocuments()
+                // A revoked or suspended document is never re-issued: Wallet Core deletes the original
+                // after a successful re-issuance, and the new copy would carry no revocation record
+                // (upstream #729, `b595f866`).
+                .filterNot { document -> walletCoreDocumentsController.isDocumentRevoked(document.id) }
                 .filter { document ->
                     when (val policy = document.credentialPolicy) {
                         is CredentialPolicy.LimitedTime -> document.isDueForLifetimeReIssue(

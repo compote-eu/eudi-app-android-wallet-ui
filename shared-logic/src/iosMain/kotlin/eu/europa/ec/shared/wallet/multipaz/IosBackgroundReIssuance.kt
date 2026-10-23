@@ -18,8 +18,10 @@ package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.document.isDueForReIssuance
 import kotlinx.coroutines.CancellationException
+import org.multipaz.document.Document
 import org.multipaz.util.Logger
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 /**
  * What a sweep did, in a shape Swift can print.
@@ -93,6 +95,27 @@ internal fun summarize(
 )
 
 /**
+ * The documents a sweep refreshes: due by their own policy, and not revoked or suspended.
+ *
+ * A blocked one is upstream's rule (#729, `b595f866`): on Android a re-issued copy carries no revocation
+ * record; here the document stays, but its fresh credentials point at fresh status entries, and a status
+ * check that reads one of them as valid clears the block.
+ */
+internal suspend fun dueForReIssuance(
+    store: MultipazWalletStore,
+    documents: List<Document>,
+    now: Instant,
+): List<Document> {
+    val blocked = store.blockedDocumentIds()
+    return documents.filter { document ->
+        document.identifier !in blocked && document.toStoredDocument()?.isDueForReIssuance(now) == true
+    }
+}
+
+/** The documents the last status check found revoked or suspended; see `MultipazWalletEngine.refreshRevocationStatuses`. */
+private suspend fun MultipazWalletStore.blockedDocumentIds(): Set<String> = revokedDocumentsTable().enumerate().toSet()
+
+/**
  * Tops up the credentials of every document whose policy says it is running out.
  *
  * ⚠️ **"Background" is now a name, not a description.** This was iOS's counterpart of Android's
@@ -130,10 +153,7 @@ suspend fun runBackgroundReIssuance(): BackgroundReIssuanceSummary {
         .filter { it.eudiMetadata?.documentManagerId == store.documentManagerId }
     val outcomes = mutableListOf<RefreshOutcome>()
 
-    for (document in documents) {
-        val stored = document.toStoredDocument() ?: continue
-        if (!stored.isDueForReIssuance(now)) continue
-
+    for (document in dueForReIssuance(store, documents, now)) {
         try {
             val progress = engine.refreshCredentials(document.identifier)
             val outcome = refreshOutcomeOf(progress)

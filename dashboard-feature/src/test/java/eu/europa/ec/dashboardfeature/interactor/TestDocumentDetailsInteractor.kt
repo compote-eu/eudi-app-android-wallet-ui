@@ -32,6 +32,7 @@ import eu.europa.ec.corelogic.controller.WalletCoreDocumentsController
 import eu.europa.ec.shared.wallet.WalletDocument
 import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringCatalog
+import eu.europa.ec.shared.resources.document_details_reissue_blocked_text
 import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.wallet.WalletEngine
 import eu.europa.ec.corelogic.model.ClaimDomain
@@ -77,6 +78,7 @@ import eu.europa.ec.uilogic.component.IssuerDetailsCardDataUi
 import java.util.Locale
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -87,6 +89,7 @@ import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -127,6 +130,7 @@ class TestDocumentDetailsInteractor {
     private lateinit var interactor: DocumentDetailsInteractor
 
     private val mockedReIssueIssuerId = "mockedReIssueIssuerId"
+    private val mockedReIssueBlockedMessage = "mockedReIssueBlockedMessage"
     private val mockedReIssueUri = "mockedReIssueUri"
 
     private lateinit var closeable: AutoCloseable
@@ -158,6 +162,8 @@ class TestDocumentDetailsInteractor {
         whenever(strings[Res.string.generic_error_message]).thenReturn(mockedGenericErrorMessage)
         whenever(resourceProvider.getLocale()).thenReturn(mockedDefaultLocale)
         whenever(configLogic.forcePidActivation).thenReturn(true)
+        // Re-issuance reads the revocation record first; a case about anything else is not revoked.
+        runBlocking { mockIsDocumentRevoked(isRevoked = false) }
     }
 
     @After
@@ -1210,6 +1216,51 @@ class TestDocumentDetailsInteractor {
     //endregion
 
     //region reIssueDocument
+
+    @Test
+    fun `Given a revoked or suspended document, When reIssueDocument is called, Then it is refused and nothing is re-issued`() {
+        coroutineRule.runTest {
+            // Given
+            mockIsDocumentRevoked(isRevoked = true)
+            whenever(strings[Res.string.document_details_reissue_blocked_text])
+                .thenReturn(mockedReIssueBlockedMessage)
+
+            // When
+            interactor.reIssueDocument(documentId = mockedPidId, issuerId = mockedReIssueIssuerId)
+                .runFlowTest {
+                    // Then
+                    assertEquals(
+                        DocumentDetailsInteractorIssuancePartialState.Failure(
+                            errorMessage = mockedReIssueBlockedMessage
+                        ),
+                        awaitItem()
+                    )
+                }
+            verify(walletCoreDocumentsController, never()).reIssueDocument(any(), any(), any(), any())
+        }
+    }
+
+    @Test
+    fun `Given the revocation records cannot be read, When reIssueDocument is called, Then it is refused and nothing is re-issued`() {
+        coroutineRule.runTest {
+            // Given
+            whenever(walletEngine.isDocumentRevoked(mockedPidId))
+                .thenThrow(RuntimeException(mockedPlainFailureMessage))
+
+            // When
+            interactor.reIssueDocument(documentId = mockedPidId, issuerId = mockedReIssueIssuerId)
+                .runFlowTest {
+                    // Then
+                    assertEquals(
+                        DocumentDetailsInteractorIssuancePartialState.Failure(
+                            errorMessage = mockedPlainFailureMessage
+                        ),
+                        awaitItem()
+                    )
+                }
+            verify(walletCoreDocumentsController, never()).reIssueDocument(any(), any(), any(), any())
+        }
+    }
 
     @Test
     fun `Given controller emits DeferredSuccess, When reIssueDocument is called, Then Success is emitted`() {
