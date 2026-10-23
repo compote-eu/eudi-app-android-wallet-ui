@@ -17,20 +17,23 @@
 package eu.europa.ec.uilogic.component
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 
 /**
- * Reports [ProximityPermissionsOutcome.Granted] without asking anything.
+ * Asks for Bluetooth the way the official iOS wallet does, when the user picks "in person": the system
+ * prompt if it was never answered, then [ProximityPermissionsOutcome.NeedsRationale] when Bluetooth is
+ * refused, which shows Home's Bluetooth sheet and sends the user to this app's settings.
  *
- * There is nothing to ask. iOS has no runtime Bluetooth grant an app can request up front: the system
- * raises its own prompt the first time CoreBluetooth is used, needing only the
- * `NSBluetoothAlwaysUsageDescription` string in the Info.plist. So the honest answer here is "go ahead" —
- * and if the user then refuses at the system prompt, advertising fails and the QR screen says so, which
- * is the same place a refusal surfaces on Android.
+ * iOS has no request an app makes itself: the prompt comes with the first Bluetooth manager, and needs
+ * only `NSBluetoothAlwaysUsageDescription` in the Info.plist. No `Pending` while it is up: Home composes
+ * this only while it waits for an answer, and a `Pending` would take it out of composition before one came.
  */
 @Composable
 actual fun EnsureProximityPermissions(
     isBleCentralClientModeEnabled: Boolean,
     onOutcome: (ProximityPermissionsOutcome) -> Unit,
 ) {
-    onOutcome(ProximityPermissionsOutcome.Granted)
+    LaunchedEffect(Unit) {
+        onOutcome(proximityOutcomeFor(IosBluetooth.ask()))
+    }
 }

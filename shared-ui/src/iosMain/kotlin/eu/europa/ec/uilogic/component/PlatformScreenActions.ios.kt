@@ -28,17 +28,18 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 /**
- * Three of the actions are real on iOS — opening a URL, opening app settings, and sharing files — and
- * the inert ones are inert for their own reasons rather than because the work is outstanding:
+ * Four of the actions are real on iOS — opening a URL, opening app settings, offering to turn Bluetooth
+ * on, and sharing files — and the inert one is inert for its own reason rather than because the work is
+ * outstanding:
  *
  * - **finishApp** — an iOS app does not exit itself. Apple's HIG treats programmatic termination as a
  *   crash from the user's point of view, and `exit()` is grounds for App Store rejection. The user
  *   leaves via the home gesture.
- * - **openBluetoothSettings** — iOS has no public URL for the Bluetooth settings pane. The system
- *   offers to enable Bluetooth itself when CoreBluetooth is first used, which is the platform's answer
- *   to this.
  *
- * Each of those logs, so an unexpected call during development is visible rather than silent.
+ * It logs, so an unexpected call during development is visible rather than silent.
+ *
+ * **openBluetoothSettings** shows iOS's own "turn on Bluetooth" alert ([IosBluetooth.offerToTurnOn]): iOS has
+ * no public URL for the Bluetooth pane, and that alert's Settings button is the sanctioned way there.
  *
  * **openUrlExternally and openAppSettings are real.** Opening a link is something iOS supports through
  * `UIApplication.openURL`, so a shared screen's "open this in the browser" branch behaves the same on
@@ -54,7 +55,7 @@ actual fun rememberPlatformScreenActions(): PlatformScreenActions = remember {
         // holds the camera switch a denied scanner needs the user to flip. Shared with the biometric
         // callers, which want the same pane for a different reason — see [openIosAppSettings].
         override fun openAppSettings() = openIosAppSettings()
-        override fun openBluetoothSettings() = log("openBluetoothSettings")
+        override fun openBluetoothSettings() = IosBluetooth.offerToTurnOn()
 
         override fun openUrlExternally(url: String) = openIosUrlExternally(url)
 

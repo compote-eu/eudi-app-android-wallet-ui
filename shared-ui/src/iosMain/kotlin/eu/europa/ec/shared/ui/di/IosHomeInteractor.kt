@@ -23,6 +23,8 @@ import eu.europa.ec.shared.resources.Res
 import eu.europa.ec.shared.resources.StringResolver
 import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.wallet.WalletEngine
+import eu.europa.ec.uilogic.component.IosBluetooth
+import eu.europa.ec.uilogic.component.isBluetoothUsable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
@@ -35,24 +37,24 @@ import kotlinx.coroutines.flow.flowOn
  * `WalletEngine.getMainPidDocument()` seam, which on iOS is the Kotlin-over-multipaz engine, so the
  * name rendered on Home comes from a real stored mdoc credential.
  *
- * **The BLE answers are the ones iOS can honestly give, which is not the same shape as Android's.**
- * There, `isBleAvailable` reads the adapter's power state; iOS has no equivalent an app may read
- * without side effects — constructing a `CBCentralManager` is itself what raises the system prompt, so
- * a Home screen that "checked" would be prompting for Bluetooth just to render a card.
- *
- * So the answer is "nothing here should stop you trying", and the refusal surfaces where it can be
- * explained: the presenter bounds its advertise call and the QR screen says Bluetooth is unavailable.
- * That is the same argument `EnsureProximityPermissions` already makes on iOS, and it has to be the
- * same answer — Home gates the proximity journey on this method, so anything else makes the flow
- * unreachable.
+ * **Bluetooth is checked the way the official iOS wallet checks it** ([IosBluetooth]): off ⇒ Home's
+ * Bluetooth sheet before the QR, as on Android. iOS can say that only once the app may use Bluetooth, since
+ * watching the power state takes a manager and creating one earlier raises the system prompt; so the watch
+ * starts here only when Bluetooth is already allowed, and the prompt itself comes when the user picks "in
+ * person" (`EnsureProximityPermissions`). Anything not yet known goes on to the QR, which says so if
+ * advertising fails.
  */
 internal class IosHomeInteractor(
     private val walletEngine: WalletEngine,
     private val stringResolver: StringResolver,
 ) : HomeInteractor {
 
-    /** See the class KDoc: iOS cannot answer this without prompting, so it does not pretend to. */
-    override fun isBleAvailable(): Boolean = true
+    init {
+        IosBluetooth.watchIfAllowed()
+    }
+
+    /** False only when Bluetooth is allowed and known to be off; see the class KDoc. */
+    override fun isBleAvailable(): Boolean = isBluetoothUsable(IosBluetooth.authorization(), IosBluetooth.isOff())
 
     /**
      * True since the RQES bridge landed.
