@@ -35,6 +35,7 @@ import eu.europa.ec.shared.resources.document_success_header_description
 import eu.europa.ec.shared.resources.document_success_header_description_when_error
 import eu.europa.ec.shared.resources.document_success_relying_party_default_name
 import eu.europa.ec.shared.resources.generic_error_message
+import eu.europa.ec.shared.resources.proximity_qr_expired
 import eu.europa.ec.shared.wallet.multipaz.IosPresentmentDisclosure
 import eu.europa.ec.shared.wallet.multipaz.IosProximityPresenter
 import eu.europa.ec.shared.wallet.multipaz.IosPresentmentRequest
@@ -110,7 +111,7 @@ internal class IosProximityCoordinator(
                     -> emit(ProximityQRPartialState.Connected)
 
                 is IosProximityState.Failed ->
-                    emit(ProximityQRPartialState.Error(error = state.message))
+                    emit(ProximityQRPartialState.Error(error = state.text(strings)))
 
                 // Engagement has already been started, so this is the end of it: the reader went away,
                 // or something cancelled the exchange.
@@ -146,7 +147,7 @@ internal class IosProximityCoordinator(
             is IosProximityState.Requesting -> state.request.toPartialState()
 
             is IosProximityState.Failed ->
-                ProximityRequestInteractorPartialState.Failure(error = state.message)
+                ProximityRequestInteractorPartialState.Failure(error = state.text(strings))
 
             // ⚠️ `NoData`, not `Failure`, as on the remote side and on Android: the reader was answered, there
             // is simply nothing to show. Who it was is not known — the request was refused before consent —
@@ -217,7 +218,7 @@ internal class IosProximityCoordinator(
                     emit(ProximityLoadingObserveResponsePartialState.Success)
 
                 is IosProximityState.Failed ->
-                    emit(ProximityLoadingObserveResponsePartialState.Failure(error = state.message))
+                    emit(ProximityLoadingObserveResponsePartialState.Failure(error = state.text(strings)))
 
                 // Idle mid-send means the exchange ended without a response — a dropped connection, or
                 // a refusal the presenter turned into one. Before the send it is simply not our turn.
@@ -339,6 +340,15 @@ internal class IosProximityCoordinator(
     }
 
     //endregion
+}
+
+/**
+ * What the screens say about a failure: the catalogue's words when the presenter knows the reason, else its
+ * own message. No upstream app has a QR timeout, so that wording is the wallet's own.
+ */
+internal fun IosProximityState.Failed.text(strings: StringCatalog): String = when (reason) {
+    IosProximityState.Failed.Reason.QR_EXPIRED -> strings[Res.string.proximity_qr_expired]
+    null -> message
 }
 
 /**

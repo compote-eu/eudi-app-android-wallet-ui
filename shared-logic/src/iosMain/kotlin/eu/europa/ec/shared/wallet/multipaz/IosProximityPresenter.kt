@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -55,6 +56,7 @@ import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.util.Logger
 import org.multipaz.util.toBase64Url
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /** Where a proximity presentation has got to, as the screens need to see it. */
@@ -73,7 +75,16 @@ sealed interface IosProximityState {
     /** The response went out. [sharedDocuments] names what was actually released. */
     data class Sent(val sharedDocuments: List<String>) : IosProximityState
 
-    data class Failed(val message: String) : IosProximityState
+    /**
+     * [message] says what went wrong for the log. When there is a [reason], the screens say it to the user
+     * from the app's string catalogue instead, in the user's language; this module cannot reach it.
+     */
+    data class Failed(val message: String, val reason: Reason? = null) : IosProximityState {
+        enum class Reason {
+            /** No reader connected while the QR was shown ([QR_ENGAGEMENT_TIMEOUT]). */
+            QR_EXPIRED,
+        }
+    }
 
     /**
      * The reader asked for nothing this wallet holds; multipaz has already ended the session.
@@ -296,8 +307,25 @@ class IosProximityPresenter internal constructor(
         engagement: ByteArray,
     ) {
         val history = IosPresentationLog { walletEngine.store() }.also { this.history = it }
+        val exchange = currentCoroutineContext()[Job]
         try {
-            val connected = transports.waitForConnection(eSenderKey = eDeviceKey.publicKey)
+            // Bounded, because nothing else ends it: multipaz's wait for a reader has no limit, and a QR left on
+            // screen would keep advertising the same Bluetooth identifier, with the engagement key behind it
+            // in memory, for as long as the screen stays open. Upstream's audit of the official iOS library
+            // reads ISO/IEC 18013-5 as asking the wallet to end an inactive session (their #143).
+            val connected = withTimeoutOrNull(QR_ENGAGEMENT_TIMEOUT) {
+                transports.waitForConnection(eSenderKey = eDeviceKey.publicKey)
+            }
+            if (connected == null) {
+                Logger.i(TAG, "no reader connected within $QR_ENGAGEMENT_TIMEOUT; the QR expired")
+                // multipaz closes nothing when its wait for a reader ends early; see [cancel].
+                transports.forEach { runCatching { it.close() } }
+                mutableState.value = IosProximityState.Failed(
+                    message = QR_EXPIRED,
+                    reason = IosProximityState.Failed.Reason.QR_EXPIRED,
+                )
+                return
+            }
 
             iosIso18013Presentment(
                 transport = connected,
@@ -325,7 +353,22 @@ class IosProximityPresenter internal constructor(
             // An untrusted reader is refused before consent, so no request was shown and there is no row
             // for this to end.
             history.failed(t)
+        } finally {
+            // Unless [cancel] has already moved on to a newer exchange, which it clears itself.
+            if (presentmentJob === exchange) forgetExchange()
         }
+    }
+
+    /**
+     * Drops what the ended exchange left behind: the request as the reader sent it, the matches the user
+     * was asked about, and its History row, which every way out has already ended. This presenter is a
+     * single instance, so they would otherwise stay in memory until the next QR.
+     */
+    private fun forgetExchange() {
+        deviceRequest = null
+        pendingData = null
+        pendingConsent = null
+        history = null
     }
 
     /**
@@ -412,6 +455,9 @@ class IosProximityPresenter internal constructor(
         // For as long as the user takes, as on Android — unless the reader goes away first. Android's request
         // screen closes when the reader disconnects (wallet-core's `Disconnected`, logged as stopped), and so
         // does this one: no answer is a decline, which ends the exchange as one the user stopped.
+        // 🪤 Only once the transport notices. With multipaz 0.101 it does for an L2CAP reader, whose channel
+        // fails; a GATT reader that leaves is noticed only from 0.102.0 on (`didUnsubscribeFrom`, multipaz
+        // #2083), so until then the request stays open until the user answers.
         val selection = coroutineScope {
             val readerGone = readerConnection?.let { connection ->
                 launch {
@@ -453,8 +499,16 @@ class IosProximityPresenter internal constructor(
             "Could not start sharing over Bluetooth. Check that Bluetooth is on and that this app is " +
                     "allowed to use it."
 
+        // For the log: the screens word it from the string catalogue (see [IosProximityState.Failed.reason]).
+        const val QR_EXPIRED = "No reader connected while the QR was shown."
     }
 }
+
+/**
+ * How long a QR waits for a reader to connect: the order of inactivity after which ISO/IEC 18013-5 has the
+ * wallet end a session, as upstream's audit reads it. A new QR has a new key and a new identifier.
+ */
+internal val QR_ENGAGEMENT_TIMEOUT = 5.minutes
 
 /**
  * How long a reader that has connected gets to send its request: multipaz's own default for that wait.
