@@ -34,6 +34,7 @@ import eu.europa.ec.shared.resources.document_success_collapsed_supporting_text
 import eu.europa.ec.shared.resources.document_success_header_description
 import eu.europa.ec.shared.resources.document_success_header_description_when_error
 import eu.europa.ec.shared.resources.document_success_relying_party_default_name
+import eu.europa.ec.shared.resources.dashboard_bottom_sheet_bluetooth_subtitle
 import eu.europa.ec.shared.resources.generic_error_message
 import eu.europa.ec.shared.resources.proximity_qr_expired
 import eu.europa.ec.shared.wallet.multipaz.IosPresentmentDisclosure
@@ -344,9 +345,13 @@ internal class IosProximityCoordinator(
 
 /**
  * What the screens say about a failure: the catalogue's words when the presenter knows the reason, else its
- * own message. No upstream app has a QR timeout, so that wording is the wallet's own.
+ * own message. Bluetooth reuses the sheet upstream shows before the QR on both platforms; no upstream app has
+ * a QR timeout, so that wording is the wallet's own.
  */
 internal fun IosProximityState.Failed.text(strings: StringCatalog): String = when (reason) {
+    IosProximityState.Failed.Reason.BLUETOOTH_UNAVAILABLE ->
+        strings[Res.string.dashboard_bottom_sheet_bluetooth_subtitle]
+
     IosProximityState.Failed.Reason.QR_EXPIRED -> strings[Res.string.proximity_qr_expired]
     null -> message
 }

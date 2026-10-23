@@ -40,6 +40,17 @@ class IosProximityFailureTextTest {
         assertEquals("proximity_qr_expired", failed.text(strings))
     }
 
+    /** Upstream's own words for it, from the sheet both upstream apps show before the QR. */
+    @Test
+    fun bluetooth_being_unavailable_is_worded_as_upstreams_bluetooth_sheet() {
+        val failed = IosProximityState.Failed(
+            message = "for the log",
+            reason = IosProximityState.Failed.Reason.BLUETOOTH_UNAVAILABLE,
+        )
+
+        assertEquals("dashboard_bottom_sheet_bluetooth_subtitle", failed.text(strings))
+    }
+
     /** A failure the presenter cannot name keeps the message it came with, as before. */
     @Test
     fun a_failure_without_a_reason_keeps_its_message() {

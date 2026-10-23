@@ -81,6 +81,9 @@ sealed interface IosProximityState {
      */
     data class Failed(val message: String, val reason: Reason? = null) : IosProximityState {
         enum class Reason {
+            /** Advertising never started: Bluetooth is off, or the app may not use it. */
+            BLUETOOTH_UNAVAILABLE,
+
             /** No reader connected while the QR was shown ([QR_ENGAGEMENT_TIMEOUT]). */
             QR_EXPIRED,
         }
@@ -215,7 +218,10 @@ class IosProximityPresenter internal constructor(
                 )
             }
             if (transports == null) {
-                mutableState.value = IosProximityState.Failed(message = BLUETOOTH_UNAVAILABLE)
+                mutableState.value = IosProximityState.Failed(
+                    message = BLUETOOTH_UNAVAILABLE,
+                    reason = IosProximityState.Failed.Reason.BLUETOOTH_UNAVAILABLE,
+                )
                 return
             }
             advertised = transports
@@ -495,11 +501,8 @@ class IosProximityPresenter internal constructor(
         /** Long enough for the user to answer iOS's Bluetooth prompt, short enough not to read as a hang. */
         val ADVERTISE_TIMEOUT = 20.seconds
 
-        const val BLUETOOTH_UNAVAILABLE =
-            "Could not start sharing over Bluetooth. Check that Bluetooth is on and that this app is " +
-                    "allowed to use it."
-
-        // For the log: the screens word it from the string catalogue (see [IosProximityState.Failed.reason]).
+        // For the log: the screens word both from the string catalogue (see [IosProximityState.Failed.reason]).
+        const val BLUETOOTH_UNAVAILABLE = "Advertising did not start: Bluetooth is off, or the app may not use it."
         const val QR_EXPIRED = "No reader connected while the QR was shown."
     }
 }

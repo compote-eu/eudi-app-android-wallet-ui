@@ -66,6 +66,7 @@ class IosProximityExchangeTest {
     private class ScriptedReader(
         override val connectionMethod: MdocConnectionMethod,
         private val connects: Boolean,
+        private val advertises: Boolean,
     ) : MdocTransport() {
         private val mutableState = MutableStateFlow(State.ADVERTISING)
         override val state: StateFlow<State> = mutableState
@@ -77,7 +78,10 @@ class IosProximityExchangeTest {
         val heard = mutableListOf<ByteArray>()
         var closed = false
 
-        override suspend fun advertise() = Unit
+        override suspend fun advertise() {
+            if (!advertises) awaitCancellation()
+        }
+
         override suspend fun open(eSenderKey: EcPublicKey) {
             if (!connects) awaitCancellation()
             mutableState.value = State.CONNECTED
@@ -114,6 +118,7 @@ class IosProximityExchangeTest {
         store: MultipazWalletStore,
         readers: MutableList<ScriptedReader>,
         connects: Boolean,
+        advertises: Boolean = true,
     ) = IosProximityPresenter(
         walletEngine = IosWalletEngine { store },
         credentialDomain = store.documentManagerId,
@@ -125,7 +130,7 @@ class IosProximityExchangeTest {
                 connectionMethod: MdocConnectionMethod,
                 role: MdocRole,
                 options: MdocTransportOptions,
-            ): MdocTransport = ScriptedReader(connectionMethod, connects).also { readers += it }
+            ): MdocTransport = ScriptedReader(connectionMethod, connects, advertises).also { readers += it }
         },
     )
 
@@ -178,6 +183,17 @@ class IosProximityExchangeTest {
         assertEquals(IosProximityState.Failed.Reason.QR_EXPIRED, expired.reason)
         assertTrue(readers.isNotEmpty())
         assertTrue(readers.all { it.closed }, "a transport was left advertising")
+    }
+
+    /** What the QR screen words from the catalogue as "Bluetooth is off", not a sentence of the presenter's. */
+    @Test
+    fun a_qr_that_cannot_advertise_says_bluetooth_is_unavailable() = runTest {
+        val presenter = presenter(walletWithPid(), mutableListOf(), connects = false, advertises = false)
+
+        presenter.startQrEngagement()
+
+        val failed = assertIs<IosProximityState.Failed>(presenter.state.value)
+        assertEquals(IosProximityState.Failed.Reason.BLUETOOTH_UNAVAILABLE, failed.reason)
     }
 
     /**
