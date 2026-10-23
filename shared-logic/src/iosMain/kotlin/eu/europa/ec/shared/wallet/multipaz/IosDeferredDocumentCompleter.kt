@@ -192,7 +192,9 @@ internal class IosDeferredDocumentCompleter(
             if (!isTrustedIssuance(document, collected.credentials)) return DeferredCollection.IssuerNotTrusted
         }
         when (collected) {
-            is DeferredCollection.Issued -> store(document, collected.credentials)
+            // Nothing to certify them onto: the handle is spent, and these credentials can never be stored.
+            // Reporting them collected would leave the document as it was and say otherwise.
+            is DeferredCollection.Issued -> if (!store(document, collected.credentials)) return DeferredCollection.Abandoned
             // Defensive, not observed: the dev issuer echoes the SAME handle (measured 2026-09-16),
             // but the spec allows an issuer to hand back a different one, and a stale handle would fail
             // every later retry with `invalid_transaction_id`. Only writes when it actually changed.
@@ -252,12 +254,15 @@ internal class IosDeferredDocumentCompleter(
      * The encoding is multipaz's own, from `OpenID4VCIProvisioningClient`: an mdoc arrives base64url
      * encoded and is stored decoded, an SD-JWT is stored as its compact text. Getting this wrong would
      * store bytes that parse as nothing, and the document would look issued while showing no claims.
+     *
+     * Returns false when nothing could be certified: no credential waits, or none waits on a key the issuer
+     * bound one to.
      */
-    private suspend fun store(document: Document, credentials: List<String>) {
+    private suspend fun store(document: Document, credentials: List<String>): Boolean {
         val pending = document.getPendingCredentials()
         if (pending.isEmpty()) {
             Logger.w(TAG, "the issuer sent credentials but the document has none waiting for them")
-            return
+            return false
         }
         val isMdoc = document.eudiMetadata?.format is StoredDocumentFormat.MsoMdoc
         val issued = credentials.map { value ->
@@ -281,18 +286,20 @@ internal class IosDeferredDocumentCompleter(
         if (paired.size < issued.size) {
             Logger.w(TAG, "${issued.size - paired.size} of ${issued.size} collected credentials match no waiting key")
         }
+        if (paired.isEmpty()) return false
         paired.forEach { (credential, issuerData) ->
             runCatching { credential.certify(issuerData) }.onFailure {
                 Logger.w(TAG, "could not certify a credential: ${it::class.simpleName}: ${it.message}")
             }
         }
 
-        val metadata = document.eudiMetadata ?: return
+        val metadata = document.eudiMetadata ?: return true
         metadata.issue()
         metadata.completeDeferred()
         // `edit` is what persists the mutated metadata, the same contract `issue()` has always had.
         document.edit { this.metadata = metadata }
         Logger.i(TAG, "deferred issuance completed for ${document.identifier}")
+        return true
     }
 
     private companion object {

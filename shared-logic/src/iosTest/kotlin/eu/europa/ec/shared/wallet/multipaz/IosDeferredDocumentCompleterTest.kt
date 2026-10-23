@@ -263,6 +263,25 @@ class IosDeferredDocumentCompleterTest {
     }
 
     @Test
+    fun credentials_that_arrive_with_nothing_waiting_for_them_are_not_reported_collected() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val document = store.parkWithPendingCredential()
+        val credential = issuedCredentialFor(document)
+        // What multipaz 0.101.0's own cleanup left of a deferred refresh: the handle, and no waiting credential.
+        document.deleteCredential(document.getPendingCredentials().single().identifier)
+
+        val result = completerOver(
+            store = store,
+            deferredStatus = HttpStatusCode.OK,
+            deferredBody = """{"credentials":[{"credential":"$credential"}]}""",
+        ).complete(document)
+
+        // Seen on the iPhone 2026-10-23 as a collection that "succeeded" and left the document at 9/10.
+        assertEquals(DeferredCollection.Abandoned, result)
+        assertTrue(document.getCertifiedCredentials().isEmpty())
+    }
+
+    @Test
     fun a_collected_pid_whose_signer_is_not_a_recognised_pid_provider_is_not_stored() = runTest {
         val store = storeOver(EphemeralStorage())
         val document = store.parkWithPendingCredential()
