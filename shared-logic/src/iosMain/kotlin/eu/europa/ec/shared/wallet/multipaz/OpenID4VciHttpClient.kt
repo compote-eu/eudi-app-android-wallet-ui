@@ -206,6 +206,26 @@ class TokenRefusalNotice {
 }
 
 /**
+ * The refresh token a refresh spent and the one the server handed back, when it rotates them.
+ *
+ * Written by [OpenID4VciCompatibilityEngine] while multipaz refreshes during a re-issuance, and read after
+ * it: multipaz writes a rotated token back only onto the document it refreshed, and only when that fetched
+ * credentials, while the other documents of the same login still hold [spent] — see [RefreshTokenChain].
+ * Several refreshes in one session keep the first token spent and the last one handed back.
+ */
+internal class RefreshTokenRotationNotice {
+    var spent: String? = null
+        private set
+    var live: String? = null
+        private set
+
+    internal fun record(presented: String, returned: String) {
+        if (spent == null) spent = presented
+        live = returned
+    }
+}
+
+/**
  * The HTTP client multipaz's OpenID4VCI code should be given on iOS.
  *
  * Two things sit between it and the network, both because the EU dev issuers and multipaz disagree —
@@ -244,6 +264,8 @@ internal fun openID4VciHttpClient(
     deferredNotice: DeferredIssuanceNotice? = null,
     /** Filled in if the authorization server refuses a token exchange. */
     refusalNotice: TokenRefusalNotice? = null,
+    /** Filled in if a refresh rotates the refresh token. */
+    rotationNotice: RefreshTokenRotationNotice? = null,
     /** Filled in with the issuer's display data in every language, which multipaz discards. */
     displayNotice: IssuerDisplayNotice? = null,
     reusePolicyNotice: IssuerReusePolicyNotice? = null,
@@ -263,6 +285,7 @@ internal fun openID4VciHttpClient(
             displayNotice,
             reusePolicyNotice,
             issuerTrust,
+            rotationNotice,
         )
     ) {
         // multipaz's requirement, not ours: the OAuth redirect must come back to the caller so the
@@ -290,6 +313,7 @@ internal class OpenID4VciCompatibilityEngine(
     private val displayNotice: IssuerDisplayNotice? = null,
     private val reusePolicyNotice: IssuerReusePolicyNotice? = null,
     private val issuerTrust: IssuerTrustSource? = null,
+    private val rotationNotice: RefreshTokenRotationNotice? = null,
 ) : HttpClientEngineBase("openid4vci-compat") {
 
     override val config: HttpClientEngineConfig get() = delegate.config
@@ -376,6 +400,7 @@ internal class OpenID4VciCompatibilityEngine(
                 injectFreshAttestationChallenge(acceptCreatedOrOk(readable))
             isRefreshExchange && readable.statusCode != HttpStatusCode.OK ->
                 noteAndMaybeArm(readable)
+            isRefreshExchange && rotationNotice != null -> noteRotation(data, readable)
 
             isDeferredIssuance(readable) -> noteDeferredIssuance(readable)
             credentialRequest != null && readable.statusCode == HttpStatusCode.OK ->
@@ -895,6 +920,19 @@ internal class OpenID4VciCompatibilityEngine(
      * better client credentials would fail the same way — the honest thing is to let it through and let
      * the caller say so.
      */
+    private suspend fun noteRotation(data: HttpRequestData, response: HttpResponseData): HttpResponseData {
+        val presented = formParametersOf(data)?.get("refresh_token") ?: return response
+        val (bytes, replayable) = replayableBody(response)
+        val returned = runCatching {
+            Json.parseToJsonElement(bytes.decodeToString()).jsonObject["refresh_token"]?.jsonPrimitive?.contentOrNull
+        }.getOrNull()
+        if (returned != null && returned != presented) {
+            rotationNotice?.record(presented = presented, returned = returned)
+            Logger.i(TAG, "the authorization server rotated the refresh token")
+        }
+        return replayable
+    }
+
     private suspend fun noteAndMaybeArm(response: HttpResponseData): HttpResponseData {
         val (bytes, replayable) = replayableBody(response)
         refusalNotice?.error = runCatching {

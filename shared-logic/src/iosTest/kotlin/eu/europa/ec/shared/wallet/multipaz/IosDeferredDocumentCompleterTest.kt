@@ -29,7 +29,11 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.content.TextContent
+import io.ktor.http.parseUrlEncodedParameters
 import io.ktor.http.headersOf
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.test.runTest
 import eu.europa.ec.shared.wallet.trust.IssuerTrustSource
 import eu.europa.ec.shared.wallet.trust.TrustVerdict
@@ -180,6 +184,8 @@ class IosDeferredDocumentCompleterTest {
         tokenBody: String = """{"access_token":"the-token"}""",
         /** A token the deferred endpoint refuses with `invalid_token`, as an expired one would be. */
         refusedToken: String? = null,
+        /** Answers each refresh itself, given the refresh token it presented; [tokenBody] answers when null. */
+        tokenServer: ((presented: String?) -> Pair<HttpStatusCode, String>)? = null,
         /** Trusts every signer unless told otherwise: most cases here are about collecting, not trust. */
         issuerTrust: IssuerTrustSource = IssuerTrustSource { _, _ -> TrustVerdict.TRUSTED },
     ): IosDeferredDocumentCompleter {
@@ -201,6 +207,12 @@ class IosDeferredDocumentCompleterTest {
                 url.endsWith("/wallet-instance-attestation/jwk") -> respond(
                     """{"walletInstanceAttestation":"wia.jwt"}""", HttpStatusCode.OK, jsonHeaders
                 )
+
+                url == tokenEndpoint && tokenServer != null -> {
+                    val presented = (request.body as? TextContent)?.text?.parseUrlEncodedParameters()?.get("refresh_token")
+                    val (status, body) = tokenServer(presented)
+                    respond(body, status, jsonHeaders)
+                }
 
                 url == tokenEndpoint -> respond(tokenBody, HttpStatusCode.OK, jsonHeaders)
 
@@ -489,6 +501,79 @@ class IosDeferredDocumentCompleterTest {
             .openID4VciAuthorization()
         assertEquals("the-rotated-refresh-token", assertNotNull(stored).refreshToken)
         assertEquals(dpopAlias, stored.dpopKeyAlias, "only the refresh token changes")
+    }
+
+    // ── One login, several documents: they share its refresh token (RefreshTokenChain) ───────────────────
+
+    /**
+     * Plaut's Keycloak, as measured on 2026-10-22: every refresh rotates the token, and a spent token
+     * presented again is refused as "Stale token" and ends the whole session.
+     */
+    private class RotatingAuthorizationServer(first: String) {
+        private var live: String? = first
+        private var issued = 0
+        val presented = mutableListOf<String?>()
+
+        fun answer(token: String?): Pair<HttpStatusCode, String> {
+            presented += token
+            if (live == null) {
+                return HttpStatusCode.BadRequest to
+                    """{"error":"invalid_grant","error_description":"Session doesn't have required client"}"""
+            }
+            if (token != live) {
+                live = null
+                return HttpStatusCode.BadRequest to """{"error":"invalid_grant","error_description":"Stale token"}"""
+            }
+            val rotated = "rt-${++issued}"
+            live = rotated
+            return HttpStatusCode.OK to """{"access_token":"the-token","refresh_token":"$rotated"}"""
+        }
+    }
+
+    @Test
+    fun the_second_document_of_a_login_presents_the_token_the_first_one_rotated() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val first = store.parkWithPendingCredential(refreshToken = "rt-0")
+        val second = store.parkWithPendingCredential(refreshToken = "rt-0")
+        val server = RotatingAuthorizationServer(first = "rt-0")
+        val completer = completerOver(
+            store,
+            HttpStatusCode.BadRequest,
+            """{"error":"issuance_pending","interval":5}""",
+            tokenServer = server::answer,
+        )
+
+        val firstResult = completer.complete(first)
+        val secondResult = completer.complete(second)
+
+        // The second used to present rt-0 again: refused as stale, the session ended, the document deleted.
+        assertEquals(listOf<String?>("rt-0", "rt-1"), server.presented)
+        assertIs<DeferredCollection.StillPending>(firstResult)
+        assertIs<DeferredCollection.StillPending>(secondResult)
+        listOf(first, second).forEach { document ->
+            val stored = store.documentStore.lookupDocument(document.identifier)!!.authorizationData!!
+            assertEquals("rt-2", stored.openID4VciRefreshToken(), "both hold the one live token")
+        }
+    }
+
+    @Test
+    fun two_documents_of_a_login_collected_at_once_never_present_the_same_token() = runTest {
+        val store = storeOver(EphemeralStorage())
+        val first = store.parkWithPendingCredential(refreshToken = "rt-0")
+        val second = store.parkWithPendingCredential(refreshToken = "rt-0")
+        val server = RotatingAuthorizationServer(first = "rt-0")
+        val completer = completerOver(
+            store,
+            HttpStatusCode.BadRequest,
+            """{"error":"issuance_pending","interval":5}""",
+            tokenServer = server::answer,
+        )
+
+        val results = listOf(first, second).map { document -> async { completer.complete(document) } }.awaitAll()
+
+        // The sweep collects documents side by side; the second refresh waits for the first one's token.
+        assertEquals(listOf<String?>("rt-0", "rt-1"), server.presented)
+        results.forEach { assertIs<DeferredCollection.StillPending>(it) }
     }
 
     @Test

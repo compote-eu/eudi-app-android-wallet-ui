@@ -167,14 +167,21 @@ internal class IosDeferredDocumentCompleter(
                 Logger.i(TAG, "${document.identifier}: the access token was refused; refreshing instead")
             }
             val dpopKey = dpopKeyOrNull(stored.dpopKeyAlias) ?: return DeferredCollection.AuthorizationExpired
-            collected = collector.collect(
-                issuerUrl = issuerUrl,
-                transactionId = transactionId,
-                refreshToken = stored.refreshToken,
-                dpopKey = dpopKey,
-                attestationKey = attestationKey,
-                onRefreshTokenRotated = { rotated -> keepRotatedRefreshToken(document, rotated) },
-            )
+            collected = RefreshTokenChain.withLock {
+                // Read again now that nothing else is refreshing: a sibling from the same login may have
+                // rotated the token while this waited, and the one read above is then spent.
+                val current = store.documentStore.lookupDocument(document.identifier)?.authorizationData
+                    ?.openID4VciRefreshToken() ?: stored.refreshToken
+                collector.collect(
+                    issuerUrl = issuerUrl,
+                    transactionId = transactionId,
+                    refreshToken = current,
+                    dpopKey = dpopKey,
+                    attestationKey = attestationKey,
+                    // To every document of the login, this one included, before the lock is let go.
+                    onRefreshTokenRotated = { rotated -> store.handOnRefreshToken(spent = current, live = rotated) },
+                )
+            }
         }
         if (collected == null) return DeferredCollection.AuthorizationExpired
 
@@ -237,20 +244,6 @@ internal class IosDeferredDocumentCompleter(
     } catch (refused: IssuerNotTrustedException) {
         Logger.w(TAG, "not storing ${document.identifier}'s deferred credentials: ${refused.message}")
         false
-    }
-
-    /** Stores the refresh token a rotating server handed back; the one presented is spent. */
-    private suspend fun keepRotatedRefreshToken(document: Document, rotated: String) {
-        val updated = document.authorizationData?.withRefreshToken(rotated)
-        if (updated == null) {
-            Logger.w(TAG, "${document.identifier}: the rotated refresh token could not be stored")
-            return
-        }
-        document.edit { authorizationData = updated }
-        Logger.i(
-            TAG,
-            "${document.identifier}: the authorization server rotated the refresh token; kept the new one",
-        )
     }
 
     /**
@@ -402,8 +395,14 @@ suspend fun IosWalletEngine.documentsAwaitingDeferredIssuance(): Map<String, Str
     }.toMap()
 }
 
+/** The stored refresh token, whatever else the authorization holds; null when there is none. */
+internal fun ByteString.openID4VciRefreshToken(): String? {
+    val map = runCatching { Cbor.decode(toByteArray()) }.getOrNull() as? CborMap ?: return null
+    return (map.items[Tstr(REFRESH_TOKEN_KEY)] as? Tstr)?.value?.takeIf { it.isNotBlank() }
+}
+
 /**
- * The same authorization data with a different DPoP key and refresh token, and everything else kept.
+ * The same authorization data with a different refresh token — a rotated one — and everything else kept.
  *
  * ⛔ Rebuilt field by field rather than by re-encoding a parsed object: this is multipaz's own
  * `OpenID4VCIAuthorizationData`, which is `internal` to it and carries a schema hash, so a copy that
@@ -411,20 +410,22 @@ suspend fun IosWalletEngine.documentsAwaitingDeferredIssuance(): Map<String, Str
  * value is not the CBOR map this expects, which is the honest answer for data written by a version
  * that changed the schema.
  */
-internal fun ByteString.withDpopBinding(rebound: RebindResult): ByteString? =
-    rewritten(dpopKeyAlias = rebound.dpopKeyAlias, refreshToken = rebound.refreshToken)
-
-/** The same authorization data with a different refresh token — a rotated one — and everything else kept. */
 internal fun ByteString.withRefreshToken(refreshToken: String): ByteString? = rewritten(refreshToken = refreshToken)
 
-/** See [withDpopBinding]: field by field, replacing only what is given. */
-private fun ByteString.rewritten(dpopKeyAlias: String? = null, refreshToken: String? = null): ByteString? {
+/**
+ * The same authorization data without its DPoP key, so multipaz does not delete the key with the document;
+ * see [releaseSharedDpopKey]. multipaz reads the member as optional.
+ */
+internal fun ByteString.withoutDpopKey(): ByteString? = rewritten(dropDpopKey = true)
+
+/** See [withRefreshToken]: field by field, changing only what is asked. */
+private fun ByteString.rewritten(refreshToken: String? = null, dropDpopKey: Boolean = false): ByteString? {
     val map = runCatching { Cbor.decode(toByteArray()) }.getOrNull() as? CborMap ?: return null
     val builder = CborMap.builder()
     for ((key, value) in map.items) {
         val name = (key as? Tstr)?.value ?: return null
         when {
-            name == DPOP_KEY_ALIAS_KEY && dpopKeyAlias != null -> builder.put(name, dpopKeyAlias)
+            name == DPOP_KEY_ALIAS_KEY && dropDpopKey -> Unit
             name == REFRESH_TOKEN_KEY && refreshToken != null -> builder.put(name, refreshToken)
             else -> builder.put(key, value)
         }

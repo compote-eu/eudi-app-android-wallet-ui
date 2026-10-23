@@ -255,8 +255,7 @@ class IosCredentialIssuer(
         // Stored when the document was first issued. Absent for anything this wallet did not provision
         // — a seeded fixture, or a document from a build before authorization was kept — and there is
         // no silent path for those.
-        val authorization = document.authorizationData
-            ?: return IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION)
+        document.authorizationData ?: return IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION)
 
         // Android checks the registration before every re-issuance, user-asked or background, so a
         // refusal leaves the document as it is. After the local refusals above, which need no network.
@@ -283,80 +282,91 @@ class IosCredentialIssuer(
             return IosIssuanceProgress.Issued(documentIds = listOf(documentId), credentialsFetched = 0)
         }
 
-        val deferred = DeferredIssuanceNotice()
-        val refusal = TokenRefusalNotice()
-        val httpClient = openID4VciHttpClient(
-            engine = httpEngine ?: Darwin.create(),
-            deferredNotice = deferred,
-            refusalNotice = refusal,
-        )
-
-        val model = ProvisioningModel(
-            // With the notice, so a deferred refresh parks the handle instead of only failing.
-            documentProvisioningHandler = IosDocumentProvisioningHandler(store, deferred = deferred),
-            httpClient = httpClient,
-            promptModel = Platform.promptModel,
-            authorizationSecureArea = store.keySecureArea,
-            // No event logger: [log] writes the re-issuance row, by the rules above.
-        )
-        val log = IosIssuanceLog(
-            store = { store },
-            reissuance = true,
-            userTriggered = userTriggered,
-            requested = 1,
-            registration = preflight.registration,
-        )
-        val issuerDisplay = document.localizedIssuerDisplay(userLanguage())
-        val credentialIdentifier = document.eudiMetadata?.format?.identifier
-
-        return try {
-            // Synchronous on purpose: there is no authorization step to answer, so none of `issue`'s
-            // browser choreography applies. multipaz drives it to completion or throws.
-            val fetched = model.openID4VCIRefreshCredentials(
-                document = document,
-                authorizationData = withoutStoredWalletAttestation(authorization),
-                clientPreferences = clientPreferencesFor(issuer),
-                backend = IosOpenID4VciBackend(
-                    walletProviderBaseUrl = walletProviderBaseUrl,
-                    clientId = issuer.clientId,
-                    httpClient = httpClient,
-                ),
+        // Under the lock every use of a stored refresh token takes, and read again once it is held: another
+        // document of the same login may have rotated the token while this waited. See [RefreshTokenChain].
+        return RefreshTokenChain.withLock {
+            val current = store.documentStore.lookupDocument(documentId)?.authorizationData
+                ?: return@withLock IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION)
+            val deferred = DeferredIssuanceNotice()
+            val refusal = TokenRefusalNotice()
+            val rotation = RefreshTokenRotationNotice()
+            val httpClient = openID4VciHttpClient(
+                engine = httpEngine ?: Darwin.create(),
+                deferredNotice = deferred,
+                refusalNotice = refusal,
+                rotationNotice = rotation,
             )
-            // Zero is a success, and the common one. multipaz replaces only the credentials that are
-            // used up or close to expiring, so a document whose batch is still fresh needs none — and
-            // reporting that as a failure would put an error on the screen for a wallet that is
-            // already in exactly the state the user asked for.
-            Logger.i(TAG, "refreshed $documentId with $fetched new credential(s)")
-            if (fetched > 0) {
-                log.started(issuerDisplay?.name, issuerDisplay?.locale)
-                credentialIdentifier?.let { log.issued(it) }
-                log.finish()
-            }
-            IosIssuanceProgress.Issued(
-                documentIds = listOf(documentId),
-                credentialsFetched = fetched,
+
+            val model = ProvisioningModel(
+                // With the notice, so a deferred refresh parks the handle instead of only failing.
+                documentProvisioningHandler = IosDocumentProvisioningHandler(store, deferred = deferred),
+                httpClient = httpClient,
+                promptModel = Platform.promptModel,
+                authorizationSecureArea = store.keySecureArea,
+                // No event logger: [log] writes the re-issuance row, by the rules above.
             )
-        } catch (e: CancellationException) {
-            throw e
-        } catch (t: Throwable) {
-            if (refusal.error == null) {
-                log.started(issuerDisplay?.name, issuerDisplay?.locale)
-                if (deferred.parkedDocumentId != null) log.deferred(documentId) else log.failed(t)
-                log.finish()
+            val log = IosIssuanceLog(
+                store = { store },
+                reissuance = true,
+                userTriggered = userTriggered,
+                requested = 1,
+                registration = preflight.registration,
+            )
+            val issuerDisplay = document.localizedIssuerDisplay(userLanguage())
+            val credentialIdentifier = document.eudiMetadata?.format?.identifier
+
+            try {
+                // Synchronous on purpose: there is no authorization step to answer, so none of `issue`'s
+                // browser choreography applies. multipaz drives it to completion or throws.
+                val fetched = model.openID4VCIRefreshCredentials(
+                    document = document,
+                    authorizationData = withoutStoredWalletAttestation(current),
+                    clientPreferences = clientPreferencesFor(issuer),
+                    backend = IosOpenID4VciBackend(
+                        walletProviderBaseUrl = walletProviderBaseUrl,
+                        clientId = issuer.clientId,
+                        httpClient = httpClient,
+                    ),
+                )
+                // Zero is a success, and the common one. multipaz replaces only the credentials that are
+                // used up or close to expiring, so a document whose batch is still fresh needs none — and
+                // reporting that as a failure would put an error on the screen for a wallet that is
+                // already in exactly the state the user asked for.
+                Logger.i(TAG, "refreshed $documentId with $fetched new credential(s)")
+                if (fetched > 0) {
+                    log.started(issuerDisplay?.name, issuerDisplay?.locale)
+                    credentialIdentifier?.let { log.issued(it) }
+                    log.finish()
+                }
+                IosIssuanceProgress.Issued(
+                    documentIds = listOf(documentId),
+                    credentialsFetched = fetched,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                if (refusal.error == null) {
+                    log.started(issuerDisplay?.name, issuerDisplay?.locale)
+                    if (deferred.parkedDocumentId != null) log.deferred(documentId) else log.failed(t)
+                    log.finish()
+                }
+                // A deferred refresh is not a failure either: the document keeps the credentials it
+                // already had, and the handle now on it lets the sweep claim the new ones later.
+                if (deferred.parkedDocumentId != null) {
+                    Logger.i(TAG, "the issuer deferred the refresh of $documentId; it will be collected later")
+                    IosIssuanceProgress.Issued(documentIds = listOf(documentId), credentialsFetched = 0)
+                } else if (t.isIssuerNotTrusted()) {
+                    IosIssuanceProgress.IssuerNotTrusted(message = t.message ?: ISSUER_NOT_TRUSTED)
+                } else {
+                    IosIssuanceProgress.Failure(message = refreshFailureMessage(refusal, deferred, t))
+                }
+            } finally {
+                model.cancel()
+                httpClient.close()
+                // multipaz writes a rotated token back only onto this document, and only when it fetched
+                // something; every document of the login gets it here, whatever happened after the refresh.
+                rotation.spent?.let { spent -> rotation.live?.let { live -> store.handOnRefreshToken(spent, live) } }
             }
-            // A deferred refresh is not a failure either: the document keeps the credentials it
-            // already had, and the handle now on it lets the sweep claim the new ones later.
-            if (deferred.parkedDocumentId != null) {
-                Logger.i(TAG, "the issuer deferred the refresh of $documentId; it will be collected later")
-                IosIssuanceProgress.Issued(documentIds = listOf(documentId), credentialsFetched = 0)
-            } else if (t.isIssuerNotTrusted()) {
-                IosIssuanceProgress.IssuerNotTrusted(message = t.message ?: ISSUER_NOT_TRUSTED)
-            } else {
-                IosIssuanceProgress.Failure(message = refreshFailureMessage(refusal, deferred, t))
-            }
-        } finally {
-            model.cancel()
-            httpClient.close()
         }
     }
 
@@ -749,15 +759,9 @@ class IosCredentialIssuer(
 
                 if (failures.isNotEmpty()) break
             }
-            // ⛔ Every document after the first is moved onto a DPoP key of its own. They were all
-            // issued from ONE authorization, so without this they name the same key — and
-            // `DocumentStore.deleteDocument` deletes the key its authorization data names, which would
-            // take it from the siblings that still need it to refresh or to collect a deferred
-            // credential. Giving each its own restores multipaz's one-key-per-document assumption, and
-            // deletion becomes correct again.
-            //
-            // The first document keeps the session's key, so nothing is orphaned.
-            giveTheRestTheirOwnDpopKeys(session, walletStore, documentIds.drop(1))
+            // Every document keeps this login's DPoP key and refresh token, as one token chain: see
+            // [RefreshTokenChain]. ⛔ No refresh here to move them onto keys of their own — on a rotating
+            // server that spent the token the rest still held.
         } finally {
             authorizationHttpClient.close()
         }
@@ -771,46 +775,6 @@ class IosCredentialIssuer(
         val failed: Map<String, String>,
         val untrusted: Set<String>,
     )
-
-    /**
-     * Moves each document onto its own DPoP key, leaving it alone if the server will not re-bind.
-     *
-     * ⚠️ Best-effort by design. A server that refuses re-binding (RFC 9449 §5 requires a public client's
-     * refresh token to stay bound to its original key) leaves the document on the shared key, which is
-     * exactly where it is today — so a refusal costs nothing that was not already the case. Failing the
-     * issuance over it would be far worse: the documents are already issued and usable.
-     */
-    private suspend fun giveTheRestTheirOwnDpopKeys(
-        session: IosVciAuthorizationSession,
-        walletStore: MultipazWalletStore,
-        documentIds: List<String>,
-    ) {
-        for (documentId in documentIds) {
-            val document = walletStore.documentStore.lookupDocument(documentId) ?: continue
-            val existing = document.authorizationData ?: continue
-
-            val rebound = runCatching { session.rebindToFreshDpopKey() }.getOrNull()
-            if (rebound == null) {
-                Logger.w(TAG, "$documentId keeps the shared DPoP key; the server would not re-bind")
-                continue
-            }
-
-            val updated = existing.withDpopBinding(rebound)
-            if (updated == null) {
-                Logger.w(TAG, "$documentId has authorization data this build cannot rewrite")
-                continue
-            }
-            document.edit { authorizationData = updated }
-            Logger.i(TAG, "$documentId now has its own DPoP key ${rebound.dpopKeyAlias}")
-            if (rebound.rotated) {
-                // One live refresh token per authorization on a rotating server: the session's own is spent
-                // now, so the rest stay on the shared key rather than present it again. They collect a
-                // deferred credential with the session's access token instead.
-                Logger.i(TAG, "the authorization server rotates refresh tokens; the rest keep the shared key")
-                break
-            }
-        }
-    }
 
     /** Drives one OpenID4VCI flow to a document, or throws with what went wrong. */
     private suspend fun provision(

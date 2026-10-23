@@ -44,7 +44,6 @@ import org.multipaz.storage.ephemeral.EphemeralStorage
 import org.multipaz.util.toBase64Url
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -368,30 +367,6 @@ class IosOpenID4VciProvisioningClientTest {
 
         assertEquals("at-1", assertNotNull(session.deferredResume()).accessToken)
         assertNotNull(session.authorizationData("pid_mdoc"), "and the refresh token is stored as before")
-    }
-
-    @Test
-    fun a_rebind_answered_with_a_new_refresh_token_is_reported_as_a_rotation() = runTest {
-        val session = session(listOf("pid_mdoc"))
-        session.authorize(redirectResponse(session.challenge() as AuthorizationChallenge.OAuth))
-        tokenResponse = """{"access_token":"at-2","refresh_token":"rt-2"}"""
-
-        val rebound = assertNotNull(session.rebindToFreshDpopKey())
-
-        assertTrue(tokenBody.parseUrlEncodedParameters()["refresh_token"] == "rt-1", tokenBody)
-        assertEquals("rt-2", rebound.refreshToken)
-        assertTrue(rebound.rotated, "rt-1 is spent; the next document must not present it")
-    }
-
-    @Test
-    fun a_rebind_answered_with_the_same_refresh_token_is_not_a_rotation() = runTest {
-        val session = session(listOf("pid_mdoc"))
-        session.authorize(redirectResponse(session.challenge() as AuthorizationChallenge.OAuth))
-
-        val rebound = assertNotNull(session.rebindToFreshDpopKey())
-
-        assertEquals("rt-1", rebound.refreshToken)
-        assertFalse(rebound.rotated)
     }
 
     @Test

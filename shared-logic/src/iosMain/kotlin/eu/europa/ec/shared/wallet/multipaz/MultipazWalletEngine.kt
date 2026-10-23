@@ -133,7 +133,11 @@ internal class MultipazWalletEngine(
                 ?.deletionRecord(at = Clock.System.now(), language = userLanguage())
         }.onFailure { Logger.w(TAG, "could not read the document to record its deletion", it) }.getOrNull()
         return runCatching {
-            store.documentStore.deleteDocument(documentId)
+            // Under the refresh-token lock, so a rotation handed on meanwhile cannot write the key back.
+            RefreshTokenChain.withLock {
+                store.releaseSharedDpopKey(documentId)
+                store.documentStore.deleteDocument(documentId)
+            }
             deleteBookmark(documentId)
         }.also { outcome ->
             deletion?.let { record ->

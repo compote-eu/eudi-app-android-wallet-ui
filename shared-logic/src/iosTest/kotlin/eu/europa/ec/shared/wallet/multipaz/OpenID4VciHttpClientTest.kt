@@ -34,6 +34,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.ContentType
 import io.ktor.http.headersOf
+import io.ktor.http.Parameters
 import io.ktor.http.parametersOf
 import io.ktor.http.parseUrlEncodedParameters
 import kotlinx.coroutines.test.runTest
@@ -666,6 +667,60 @@ class OpenID4VciHttpClientTest {
         assertEquals("invalid_grant", refusal.error)
         // And the body still reaches multipaz, which logs it.
         assertEquals(true, refused.bodyAsText().contains("Token is not active"))
+    }
+
+    // ---- a refresh that rotates the refresh token -------------------------------------------------
+
+    /** Answers every refresh with the next of [returned], as a rotating authorization server does. */
+    private fun engineRefreshingTo(vararg returned: String): MockEngine {
+        val answers = returned.toMutableList()
+        return MockEngine { request ->
+            when (request.url.toString()) {
+                asMetadataUrl -> respond(asMetadata, headers = headersOf("Content-Type", "application/json"))
+                else -> respond(
+                    """{"access_token":"at","refresh_token":"${answers.removeFirst()}"}""",
+                    HttpStatusCode.OK,
+                    headersOf("Content-Type", "application/json"),
+                )
+            }
+        }
+    }
+
+    private suspend fun HttpClient.refreshWith(refreshToken: String) = submitForm(
+        url = tokenEndpoint,
+        formParameters = Parameters.build {
+            append("grant_type", "refresh_token")
+            append("refresh_token", refreshToken)
+        },
+    )
+
+    /** What lets a re-issuance hand the new token on to the other documents of the login. */
+    @Test
+    fun a_refresh_that_rotates_the_token_is_recorded_with_the_one_it_spent() = runTest {
+        val rotation = RefreshTokenRotationNotice()
+        val client = openID4VciHttpClient(engineRefreshingTo("rt-1", "rt-2"), rotationNotice = rotation)
+        client.get(asMetadataUrl).readRawBytes()
+
+        val first = client.refreshWith("rt-0")
+        client.refreshWith("rt-1")
+
+        // multipaz refreshes again when its access token runs low: the login's other documents still hold
+        // the first token spent, and the last one handed back is the live one.
+        assertEquals("rt-0", rotation.spent)
+        assertEquals("rt-2", rotation.live)
+        assertTrue(first.bodyAsText().contains("rt-1"), "and multipaz still reads the token response")
+    }
+
+    @Test
+    fun a_refresh_that_keeps_the_token_records_no_rotation() = runTest {
+        val rotation = RefreshTokenRotationNotice()
+        val client = openID4VciHttpClient(engineRefreshingTo("rt-0"), rotationNotice = rotation)
+        client.get(asMetadataUrl).readRawBytes()
+
+        client.refreshWith("rt-0")
+
+        assertNull(rotation.spent)
+        assertNull(rotation.live)
     }
 
     @Test
