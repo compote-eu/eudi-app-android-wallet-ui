@@ -21,6 +21,7 @@ import eu.europa.ec.shared.wallet.multipaz.harness.MDOC_PID_DOC_TYPE
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.time.Duration.Companion.hours
 
 /**
  * The credential policy is decided by document *format*, not by batch size.
@@ -39,7 +40,7 @@ class CredentialPoliciesTest {
     fun both_pid_formats_are_once_only() {
         for (formatType in listOf(MDOC_PID_DOC_TYPE, sdJwtPidVct)) {
             val policy = assertIs<WalletCredentialPolicy.OnceOnly>(
-                credentialPolicyFor(formatType, numberOfCredentials = 20),
+                credentialPolicyFor(formatType, pidBatchSize = 20),
                 message = formatType,
             )
             assertEquals(20, policy.numberOfCredentials)
@@ -48,10 +49,13 @@ class CredentialPoliciesTest {
     }
 
     @Test
-    fun anything_else_is_a_rotating_batch() {
+    fun anything_else_is_androids_default_one_credential_renewed_a_day_before_it_expires() {
+        // Android's `defaultPolicy`. The PID's batch used to apply here too, with no lifetime threshold:
+        // 10 or 60 Secure Enclave keys for an mDL, and no renewal until it had expired.
         val policy = assertIs<WalletCredentialPolicy.RotatingBatch>(
-            credentialPolicyFor(mdlDocType, numberOfCredentials = 20)
+            credentialPolicyFor(mdlDocType, pidBatchSize = 20)
         )
-        assertEquals(20, policy.numberOfCredentials)
+        assertEquals(1, policy.numberOfCredentials)
+        assertEquals(24.hours, policy.reissueTriggerLifetimeLeft)
     }
 }

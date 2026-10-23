@@ -43,7 +43,7 @@ suspend fun seedIosWalletFixture(): String? {
         // Three credentials, so the counters have something to count and the "3/3" shape of the
         // Documents screen's counter is exercised. The *kind* comes from the same rule real issuance
         // uses, so a fixture document is a shape the app can actually produce.
-        policy = credentialPolicyFor(docType, numberOfCredentials = 3),
+        policy = credentialPolicyFor(docType, pidBatchSize = 3),
         issuerMetadata = sampleIssuerMetadata(docType),
     )
 }

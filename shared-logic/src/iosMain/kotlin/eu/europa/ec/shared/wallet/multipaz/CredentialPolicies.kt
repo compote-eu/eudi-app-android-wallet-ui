@@ -17,6 +17,7 @@
 package eu.europa.ec.shared.wallet.multipaz
 
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
+import kotlin.time.Duration.Companion.hours
 
 /**
  * The PID format identifiers, duplicated from `DocumentIdentifier.MdocPid` / `SdJwtPid` in
@@ -29,11 +30,17 @@ import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 internal val PidFormatTypes = setOf("eu.europa.ec.eudi.pid.1", "urn:eudi:pid:1")
 
 /**
- * How many unused credentials Android's configuration considers "running low"; recorded so the stored
- * policy matches Android's, though nothing reads it yet on either platform — both ask
- * `isLowOnCredentials`, which hard-codes `<= 1`.
+ * How many unused credentials Android's configuration considers "running low": a PID with this many or
+ * fewer is re-issued, by `isDueForReIssuance` here and by `ReIssuanceWorkManager` on Android.
  */
 private const val PID_REISSUE_TRIGGER_UNUSED = 2
+
+/**
+ * Android's `defaultPolicy` for everything that is not a PID, in both flavours: a single credential,
+ * re-issued 24 hours before it expires (`WalletCoreConfigImpl.documentIssuanceConfig`).
+ */
+private const val DEFAULT_NUMBER_OF_CREDENTIALS = 1
+private val DEFAULT_REISSUE_TRIGGER_LIFETIME_LEFT = 24.hours
 
 /**
  * The credential policy for a newly created document, keyed by its format.
@@ -50,18 +57,23 @@ private const val PID_REISSUE_TRIGGER_UNUSED = 2
  * `OnceOnly`, and `isLowOnCredentials` is *only ever true* for `OnceOnly` — so a PID on iOS counted
  * credentials it had already spent, and could never tell the user it was running out.
  *
- * The count still comes from what was actually requested: that part *is* a fact about the issuance,
- * and the issuer's `maxBatchSize` can clamp it.
+ * A PID asks for [pidBatchSize] credentials, the flavour's batch already clamped to the issuer's
+ * `maxBatchSize`. Anything else is Android's `defaultPolicy`: one credential, re-issued 24 hours before
+ * it expires. iOS used to give those the PID's batch and no lifetime threshold, so a non-PID document
+ * took 10 or 60 Secure Enclave keys and was re-issued only once it had already expired.
  */
 internal fun credentialPolicyFor(
     formatType: String,
-    numberOfCredentials: Int,
+    pidBatchSize: Int,
 ): WalletCredentialPolicy =
     if (formatType in PidFormatTypes) {
         WalletCredentialPolicy.OnceOnly(
-            numberOfCredentials = numberOfCredentials,
+            numberOfCredentials = pidBatchSize,
             reissueTriggerUnused = PID_REISSUE_TRIGGER_UNUSED,
         )
     } else {
-        WalletCredentialPolicy.RotatingBatch(numberOfCredentials = numberOfCredentials)
+        WalletCredentialPolicy.RotatingBatch(
+            numberOfCredentials = DEFAULT_NUMBER_OF_CREDENTIALS,
+            reissueTriggerLifetimeLeft = DEFAULT_REISSUE_TRIGGER_LIFETIME_LEFT,
+        )
     }

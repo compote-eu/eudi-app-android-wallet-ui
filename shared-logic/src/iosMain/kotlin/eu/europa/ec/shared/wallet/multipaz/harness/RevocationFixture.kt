@@ -112,7 +112,7 @@ suspend fun seedIosRevocableFixture(): String? {
         displayName = REVOCATION_FIXTURE_NAME,
         namespace = MDOC_PID_DOC_TYPE,
         elements = samplePidElements(givenName = "Revocable"),
-        policy = credentialPolicyFor(MDOC_PID_DOC_TYPE, numberOfCredentials = 1),
+        policy = credentialPolicyFor(MDOC_PID_DOC_TYPE, pidBatchSize = 1),
         issuerMetadata = sampleIssuerMetadata(MDOC_PID_DOC_TYPE),
         revocationStatus = RevocationStatus.StatusList(
             idx = REVOCATION_FIXTURE_INDEX,

@@ -44,8 +44,8 @@ import eu.europa.ec.shared.wallet.revocation.StatusTrustPolicyDomain
 interface IosWalletConfig : SharedAppConfig, SharedWalletConfig {
 
     /**
-     * How many credentials to ask for per document, from Android's `RotatingBatch`/`OnceOnly`
-     * `numberOfCredentials`.
+     * How many credentials to ask for a PID, from Android's `documentSpecificPolicies`
+     * `numberOfCredentials`. Every other document asks for one, as Android's `defaultPolicy` does.
      *
      * ⚠️ **Every credential is a Secure Enclave key on iOS**, which Android's numbers were not chosen
      * for. Android's values are mirrored here on purpose, but this is the one field in this interface

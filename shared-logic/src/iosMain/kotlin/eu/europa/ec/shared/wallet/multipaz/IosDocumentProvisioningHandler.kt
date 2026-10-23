@@ -66,8 +66,9 @@ import kotlin.math.min
 internal class IosDocumentProvisioningHandler(
     private val store: MultipazWalletStore,
     /**
-     * How many credentials to ask for per domain. The issuer's own `maxBatchSize` caps it — both EU dev
-     * issuers advertise far more (20 and 100) than a wallet needs per document.
+     * How many credentials to ask for a PID, when the issuer published no policy; anything else asks for
+     * one ([credentialPolicyFor]). The issuer's own `maxBatchSize` caps it — both EU dev issuers
+     * advertise far more (20 and 100) than a wallet needs per document.
      */
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
     /**
@@ -111,11 +112,15 @@ internal class IosDocumentProvisioningHandler(
         appData: ByteString?,
     ): Document {
         val format = credentialMetadata.format.toStoredFormat()
-        // The issuer's advertised batch size wins over the wallet's preference: asking for 20 when the
-        // issuer's policy says 7 is what produced a "7/20" counter — 20 requested, 7 ever certified.
-        val credentialCount = issuerPolicyFor(format.identifier, credentialMetadata.maxBatchSize)
-            ?.numberOfCredentials
-            ?: min(credentialMetadata.maxBatchSize, batchSize)
+        // The issuer's own policy when it published one: batch size, kind and threshold all come from
+        // `credential_reuse_policy`, as they do on Android, and its batch wins over the wallet's — asking
+        // for 20 when the issuer's policy says 7 is what produced a "7/20" counter. Only an issuer that
+        // publishes nothing falls back to deciding by format.
+        val credentialPolicy = issuerPolicyFor(format.identifier, credentialMetadata.maxBatchSize)
+            ?: credentialPolicyFor(
+                formatType = format.identifier,
+                pidBatchSize = min(credentialMetadata.maxBatchSize, batchSize),
+            )
 
         val issuerName = issuerNameAtIssuance(issuerMetadata)
         issuanceLog?.started(issuerName = issuerName?.name, issuerNameLanguage = issuerName?.locale)
@@ -131,14 +136,7 @@ internal class IosDocumentProvisioningHandler(
             metadata = EudiDocumentMetadata.create(
                 documentManagerId = store.documentManagerId,
                 format = format,
-                // The issuer's own policy when it published one — batch size, kind and threshold all
-                // come from `credential_reuse_policy`, as they do on Android. Only an issuer that
-                // publishes nothing falls back to deciding by format.
-                credentialPolicy = issuerPolicyFor(format.identifier, credentialMetadata.maxBatchSize)
-                    ?: credentialPolicyFor(
-                        formatType = format.identifier,
-                        numberOfCredentials = credentialCount,
-                    ),
+                credentialPolicy = credentialPolicy,
                 issuerMetadata = issuerMetadataFrom(credentialMetadata, issuerMetadata),
                 issuerParty = issuanceLog?.issuerParty(),
                 userTriggered = issuanceLog?.userTriggered,
@@ -341,7 +339,8 @@ internal class IosDocumentProvisioningHandler(
 
         private const val TAG = "IosProvisioningHandler"
         /**
-         * Per build flavour, mirroring Android's `numberOfCredentials` — 60 for `dev`, 10 for `demo`.
+         * A PID's batch per build flavour, mirroring Android's `documentSpecificPolicies` — 60 for `dev`,
+         * 10 for `demo`. Everything else asks for one credential; see [credentialPolicyFor].
          *
          * ⚠️ Still capped by the issuer's own `maxBatchSize` (see [provisioningSettings]), and **each
          * credential is a Secure Enclave key**, which Android's numbers were not chosen for. This was

@@ -21,6 +21,7 @@ import eu.europa.ec.corelogic.model.TransactionLogDomain
 import eu.europa.ec.shared.wallet.WalletDocumentIssuanceState
 import eu.europa.ec.shared.wallet.document.IssuerMetadata
 import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
+import eu.europa.ec.shared.wallet.document.isDueForReIssuance
 import eu.europa.ec.shared.wallet.multipaz.harness.certifyWithFixtureIssuer
 import kotlinx.coroutines.test.runTest
 import org.multipaz.credential.SecureAreaBoundCredential
@@ -41,6 +42,10 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Instant
 
 /**
  * What a provisioned document must look like for the rest of this wallet to see it.
@@ -372,8 +377,10 @@ class IosDocumentProvisioningHandlerTest {
         val metadata = store.documentStore.listDocuments()
             .single { it.displayName == "mDL" }
             .eudiMetadata!!
+        // Android's `defaultPolicy`, whatever the PID batch: one credential, renewed a day before it expires.
         val policy = assertIs<WalletCredentialPolicy.RotatingBatch>(metadata.credentialPolicy)
-        assertEquals(3, policy.numberOfCredentials)
+        assertEquals(1, policy.numberOfCredentials)
+        assertEquals(24.hours, policy.reissueTriggerLifetimeLeft)
     }
 
     @Test
@@ -403,6 +410,8 @@ class IosDocumentProvisioningHandlerTest {
         document: Document,
         credentialMetadata: CredentialMetadata,
         issuerMetadata: ProvisioningMetadata,
+        docType: String = "eu.europa.ec.eudi.pid.1",
+        validUntil: Instant = Clock.System.now() + 30.days,
     ): List<SecureAreaBoundCredential> {
         val pending = getPendingKeyBoundCredentials(
             document = document,
@@ -411,7 +420,7 @@ class IosDocumentProvisioningHandlerTest {
             createKeySettings = SoftwareCreateKeySettings.Builder().build(),
         )
         pending.forEach {
-            it.certifyWithFixtureIssuer(docType = "eu.europa.ec.eudi.pid.1")
+            it.certifyWithFixtureIssuer(docType = docType, validUntil = validUntil)
         }
         updateDocument(document, display = null, documentAuthorizationData = null)
         return pending
@@ -476,5 +485,43 @@ class IosDocumentProvisioningHandlerTest {
             read.issuanceState != WalletDocumentIssuanceState.Issued,
             "a document with no certified credentials must not read as Issued",
         )
+    }
+
+    @Test
+    fun a_non_pid_document_asks_for_one_credential() = runTest {
+        val store = store()
+        val handler = IosDocumentProvisioningHandler(store, batchSize = 3)
+        val docType = "org.iso.18013.5.1.mDL"
+        val credentialMetadata = credentialMetadata(format = CredentialFormat.Mdoc(docType), name = "mDL")
+        val document = handler.createDocument(
+            credentialMetadata = credentialMetadata,
+            issuerMetadata = issuerMetadata(),
+            documentAuthorizationData = null,
+        )
+
+        val pending = handler.provisionCredentials(document, credentialMetadata, issuerMetadata(), docType)
+
+        // One Secure Enclave key, as Android asks for one credential; it was the PID's batch.
+        assertEquals(1, pending.size)
+    }
+
+    @Test
+    fun a_non_pid_document_is_due_a_day_before_it_expires() = runTest {
+        val store = store()
+        val handler = IosDocumentProvisioningHandler(store, batchSize = 3)
+        val docType = "org.iso.18013.5.1.mDL"
+        val credentialMetadata = credentialMetadata(format = CredentialFormat.Mdoc(docType), name = "mDL")
+        val document = handler.createDocument(
+            credentialMetadata = credentialMetadata,
+            issuerMetadata = issuerMetadata(),
+            documentAuthorizationData = null,
+        )
+        val now = Clock.System.now()
+        handler.provisionCredentials(document, credentialMetadata, issuerMetadata(), docType, validUntil = now + 12.hours)
+
+        // Both checks agree: the app's, which starts a re-issue, and multipaz's, which decides it has work.
+        // Without a threshold neither saw it until it had expired.
+        assertTrue(assertNotNull(document.toStoredDocument()).isDueForReIssuance(now))
+        assertTrue(handler.haveCredentialsToRefresh(document))
     }
 }
