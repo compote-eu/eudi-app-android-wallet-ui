@@ -15,8 +15,8 @@
  */
 
 // multipaz 0.101's ISO mdoc presentment — the consent step `mdocPresentmentObtainConsent`, the `Iso18013Presentment`
-// loop and the `org-iso-mdoc` branch of `digitalCredentialsPresentment` — copied with ONE change: how a reader's
-// request is matched.
+// loop and the `org-iso-mdoc` branch of `digitalCredentialsPresentment` — copied with two changes: how a reader's
+// request is matched, and who the reader is taken to be ([requesterForConsent]).
 //
 // multipaz drops a credential that lacks any one requested element (`DeviceRequest.findBestMatchingClaims`),
 // so a reader asking for 29 PID elements of which the PID holds 26 got "nothing to share". Android matches
@@ -31,8 +31,8 @@
 // re-deriving the session after one, and re-using the consent given before it. This wallet engages over a
 // QR code and Bluetooth only, so each request is asked about, as it was before 0.101.
 //
-// ⛔ Delete this file once multipaz matches partially, or once a multipaz upgrade changes the functions it
-// copies — re-copy rather than patch, and keep the one change.
+// ⛔ Delete this file once multipaz matches partially and binds the reader to every document request, or once a
+// multipaz upgrade changes the functions it copies — re-copy rather than patch, and keep both changes.
 package eu.europa.ec.shared.wallet.multipaz
 
 import kotlinx.coroutines.TimeoutCancellationException
@@ -55,12 +55,16 @@ import org.multipaz.cbor.addCborMap
 import org.multipaz.cbor.buildCborArray
 import org.multipaz.claim.Claim
 import org.multipaz.claim.findMatchingClaim
+import org.multipaz.cose.Cose
+import org.multipaz.cose.CoseSign1
+import org.multipaz.cose.toCoseLabel
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
 import org.multipaz.crypto.EcPublicKey
 import org.multipaz.crypto.Hpke
+import org.multipaz.crypto.X509CertChain
 import org.multipaz.mdoc.credential.MdocCredential
 import org.multipaz.mdoc.request.DeviceRequest
 import org.multipaz.mdoc.request.DocRequest
@@ -84,9 +88,12 @@ import org.multipaz.presentment.PresentmentCannotSatisfyRequestException
 import org.multipaz.presentment.PresentmentSource
 import org.multipaz.presentment.digitalCredentialsPresentment
 import org.multipaz.presentment.mdocPresentmentGenerateResponse
+import org.multipaz.request.Iso18013RequesterIdentity
 import org.multipaz.request.MdocRequestedClaim
 import org.multipaz.request.RequestedClaim
 import org.multipaz.request.Requester
+import org.multipaz.request.RequesterIdentity
+import org.multipaz.request.TrustedRequesterIdentity
 import org.multipaz.util.Constants
 import org.multipaz.util.Logger
 import org.multipaz.util.fromBase64Url
@@ -227,14 +234,14 @@ private suspend fun iosMdocPresentmentObtainConsent(
     requesterOrigin: String?,
 ): CredentialSelection {
     val credentialQueryResult = deviceRequest.matchHeldElements(source, keyAgreementPossible)
-    val requester = Requester(
-        requesterIdentities = deviceRequest.getRequesterIdentities(),
+    val (requester, trustedRequesterIdentity) = deviceRequest.requesterForConsent(
+        source = source,
         appId = requesterAppId,
         origin = requesterOrigin,
     )
     return source.showConsentPrompt(
         requester = requester,
-        trustedRequesterIdentity = source.resolveTrust(requester),
+        trustedRequesterIdentity = trustedRequesterIdentity,
         consentData = ConsentData.fromCredentialQueryResult(
             credentialQueryResult = credentialQueryResult,
             source = source,
@@ -243,6 +250,63 @@ private suspend fun iosMdocPresentmentObtainConsent(
         onDocumentsInFocus = {},
     ) ?: throw PresentmentCanceledException("User canceled consent prompt")
 }
+
+/**
+ * Who asks, for the request as a whole, and whether anything this wallet trusts vouches for all of it.
+ *
+ * multipaz's `DeviceRequest.getRequesterIdentities` names the signer of the first document request that
+ * carries a reader signature, and its trust then stood for every document request, signed or not. A reader
+ * holding one trusted key could sign a small request, put an unsigned and greedier one beside it, and have
+ * both shown under the trusted name — upstream's eudi-lib-ios-iso18013-data-transfer #137, unchanged in
+ * multipaz 0.102.0. So, unless a `readerAuthAll` signature covers every document request at once:
+ * - nothing signed: a reader that does not authenticate, as before;
+ * - a signer nothing here trusts, or two different signers: refused ([isUntrustedReader]), which is
+ *   Android's `EnforceIfPresent` applied to each document request rather than to the first;
+ * - one trusted signer that left a document request unsigned: a reader that does not authenticate, with no
+ *   name and no badge, since nobody vouches for the unsigned part;
+ * - one trusted signer on every document request: that reader.
+ *
+ * Android's wallet-core takes the first signer too, so Android still shows such a request as trusted.
+ */
+internal suspend fun DeviceRequest.requesterForConsent(
+    source: PresentmentSource,
+    appId: String?,
+    origin: String?,
+): Pair<Requester, TrustedRequesterIdentity?> {
+    fun requester(identities: List<RequesterIdentity>) =
+        Requester(requesterIdentities = identities, appId = appId, origin = origin)
+
+    if (readerAuthAll.isNotEmpty()) {
+        val all = requester(getRequesterIdentities())
+        return all to source.resolveTrust(all)
+    }
+    val chains = docRequests.map { it.readerAuth?.certChain }
+    val signers = chains.filterNotNull().distinct()
+    if (signers.isEmpty()) return requester(emptyList()) to null
+
+    val verdicts = signers.map { signer ->
+        val signedBy = requester(listOf(Iso18013RequesterIdentity(certChain = signer)))
+        signedBy to source.resolveTrust(signedBy)
+    }
+    verdicts.firstOrNull { (_, trusted) -> trusted == null }?.let { untrusted ->
+        Logger.w(TAG, "a document request is signed by a reader nothing here trusts")
+        return untrusted
+    }
+    if (verdicts.size > 1) {
+        Logger.w(TAG, "the document requests are signed by ${verdicts.size} different readers")
+        return verdicts.first().first to null
+    }
+    if (null in chains) {
+        Logger.w(TAG, "a trusted reader left a document request unsigned; shown as unauthenticated")
+        return requester(emptyList()) to null
+    }
+    return verdicts.single()
+}
+
+/** The chain a reader signature names, or null when it names none. */
+private val CoseSign1.certChain: X509CertChain?
+    get() = (protectedHeaders[Cose.COSE_LABEL_X5CHAIN.toCoseLabel]
+        ?: unprotectedHeaders[Cose.COSE_LABEL_X5CHAIN.toCoseLabel])?.asX509CertChain
 
 /**
  * multipaz's `Iso18013Presentment`, answering each request with [iosMdocPresentment]. It serves requests
