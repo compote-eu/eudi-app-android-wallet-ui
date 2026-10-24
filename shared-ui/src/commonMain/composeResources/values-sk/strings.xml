@@ -445,6 +445,7 @@
     <string name="qr_scan_informative_text_presentation_flow">Máte problémy s naskenovaním QR kódu?\nSkúste prosím alternatívny spôsob</string>
     <string name="qr_scan_informative_text_issuance_flow">Máte problémy s naskenovaním QR kódu?\nSkúste prosím alternatívny spôsob</string>
     <string name="qr_scan_informative_text_signature_flow">Máte problémy s naskenovaním QR kódu?\nSkúste prosím alternatívny spôsob</string>
+    <string name="document_details_reissue_blocked_text">Vydavateľ tento dokument zrušil alebo pozastavil, preto ho nemožno vydať znova.</string>
     <!--endregion-->
 
     <!-- region Document Details -->
@@ -536,6 +537,7 @@
     <string name="proximity_qr_subtitle">Zobrazte tento QR kód interagujúcej strane v bezprostrednej blízkosti na overenie svojej totožnosti.</string>
     <string name="proximity_qr_use_nfc">Pripojiť cez NFC</string>
     <string name="proximity_qr_hold_near_reader">Priložte telefón k čítačke na naskenovanie.</string>
+    <string name="proximity_qr_expired">Platnosť tohto QR kódu vypršala. Skúste to znova a zobrazí sa nový.</string>
     <!--endregion-->
 
     <!-- region Presentation Qr Scan -->
