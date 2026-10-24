@@ -128,7 +128,10 @@ internal class IosVciAuthorizationSession(
     private var accessToken: String? = null
     private var refreshToken: String? = null
     private var accessTokenExpiresAt: Instant? = null
-    private var keyChallenge: String? = null
+
+    /** The token response's `c_nonce`, which pre-1.0 issuers send; see [keyBindingChallenge] for its reuse. */
+    private var tokenKeyChallenge: String? = null
+    private var tokenKeyChallengeUsed = false
 
     /** True once the token is in hand, which is what makes later configurations free. */
     val isAuthorized: Boolean get() = accessToken != null
@@ -192,7 +195,7 @@ internal class IosVciAuthorizationSession(
         accessToken = body["access_token"]?.jsonPrimitive?.content
             ?: throw IllegalStateException("The issuer returned no access token.")
         refreshToken = body["refresh_token"]?.jsonPrimitive?.content
-        keyChallenge = body["c_nonce"]?.jsonPrimitive?.content
+        tokenKeyChallenge = body["c_nonce"]?.jsonPrimitive?.content
         val expiresIn = body["expires_in"]?.jsonPrimitive?.longOrNull
         accessTokenExpiresAt = expiresIn?.let { Clock.System.now() + it.seconds }
 
@@ -223,17 +226,35 @@ internal class IosVciAuthorizationSession(
         return DeferredResume(accessToken = token, dpopKeyAlias = alias, expiresAt = accessTokenExpiresAt)
     }
 
-    /** The `c_nonce` the credential proofs must carry, from the token response or the nonce endpoint. */
+    /**
+     * A `c_nonce` for **one** credential request's proofs.
+     *
+     * ⛔ Not one per session. A sign-in for several documents makes one credential request per document, and
+     * an issuer may accept each nonce once: measured at `ec.dev.issuer.eudiw.dev` 2026-10-24, three documents
+     * in one sign-in issued the first and refused the second with `400 invalid_nonce "c_nonce has already
+     * been used"`, because this used to fetch one nonce and hand it to every request. So every call asks the
+     * nonce endpoint afresh. The token response's `c_nonce` serves the first call only — unless the issuer
+     * has no nonce endpoint, when it is all there is and every request reuses it, as before.
+     *
+     * multipaz asks once per request and makes the proofs with the answer; whatever else that request needs
+     * the nonce for must use that same answer, which [IosOpenID4VciProvisioningClient] keeps for it.
+     */
     suspend fun keyBindingChallenge(): String = lock.withLock {
-        keyChallenge?.let { return it }
         val endpoint = resolveEndpoints().nonceEndpoint
-            ?: throw IllegalStateException("The issuer published no nonce endpoint and sent no c_nonce.")
+        tokenKeyChallenge?.let { fromToken ->
+            if (endpoint == null || !tokenKeyChallengeUsed) {
+                tokenKeyChallengeUsed = true
+                return@withLock fromToken
+            }
+        }
+        if (endpoint == null) {
+            throw IllegalStateException("The issuer published no nonce endpoint and sent no c_nonce.")
+        }
         val response = httpClient.post(endpoint) { contentType(ContentType.Application.Json) }
         if (response.status != HttpStatusCode.OK) {
             throw IllegalStateException("Nonce request failed: ${response.status}")
         }
         response.bodyAsText().asJsonObject()["c_nonce"]?.jsonPrimitive?.content
-            ?.also { keyChallenge = it }
             ?: throw IllegalStateException("The issuer's nonce endpoint returned no c_nonce.")
     }
 
@@ -250,6 +271,8 @@ internal class IosVciAuthorizationSession(
          * document's deferral be read as another's.
          */
         credentialHttpClient: HttpClient,
+        /** The [keyBindingChallenge] this request's proofs were made with, if it asked for one. */
+        keyChallenge: String? = null,
     ): Credentials {
         val metadata = metadata()
         val credentialMetadata = metadata.credentials[configurationId]
@@ -257,7 +280,7 @@ internal class IosVciAuthorizationSession(
         val endpoints = lock.withLock { resolveEndpoints() }
         val token = accessToken ?: throw IllegalStateException("Not authorized.")
 
-        val proofs = keyProofs(keyInfo)
+        val proofs = keyProofs(keyInfo, keyChallenge)
         // OpenID4VCI 1.0 §8.2 defines exactly four Credential Request parameters:
         // `credential_identifier`, `credential_configuration_id`, `proofs` and
         // `credential_response_encryption`.
@@ -498,7 +521,7 @@ internal class IosVciAuthorizationSession(
         ath?.let { put("ath", it) }
     }
 
-    private suspend fun keyProofs(keyInfo: KeyBindingInfo): JsonElement? = when (keyInfo) {
+    private suspend fun keyProofs(keyInfo: KeyBindingInfo, keyChallenge: String?): JsonElement? = when (keyInfo) {
         KeyBindingInfo.Keyless -> null
 
         is KeyBindingInfo.OpenidProofOfPossession -> buildJsonObject {
@@ -507,9 +530,10 @@ internal class IosVciAuthorizationSession(
 
         is KeyBindingInfo.Attestation -> {
             // Minted before the builder: the JSON builder is not a coroutine body.
+            // ⛔ The nonce the keys were made with, not a new one: [keyBindingChallenge] no longer repeats itself.
             val attestation = backend.createJwtKeyAttestation(
                 credentialKeyAttestations = keyInfo.attestations,
-                challenge = keyBindingChallenge(),
+                challenge = keyChallenge ?: keyBindingChallenge(),
             )
             buildJsonObject { putJsonArray("attestation") { add(attestation) } }
         }
@@ -627,14 +651,18 @@ internal class IosOpenID4VciProvisioningClient(
 
     override suspend fun getAuthorizationData(): ByteString? = session.authorizationData(configurationId)
 
-    override suspend fun getKeyBindingChallenge(): String = session.keyBindingChallenge()
+    /** What [getKeyBindingChallenge] last answered: this credential request's nonce, and no other's. */
+    private var keyChallenge: String? = null
+
+    override suspend fun getKeyBindingChallenge(): String =
+        session.keyBindingChallenge().also { keyChallenge = it }
 
     override suspend fun obtainCredentials(keyInfo: KeyBindingInfo): Credentials {
         // Before the request, because the issuer's answer is what decides it: if it defers, the handler
         // parks the document with this, and without it a refresh-token-less issuer's document would be
         // uncollectable.
         deferredNotice?.resume = session.deferredResume()
-        return session.obtainCredentials(configurationId, keyInfo, credentialHttpClient)
+        return session.obtainCredentials(configurationId, keyInfo, credentialHttpClient, keyChallenge)
     }
 }
 

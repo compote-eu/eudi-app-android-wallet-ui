@@ -29,18 +29,24 @@ import io.ktor.http.headersOf
 import io.ktor.http.parseUrlEncodedParameters
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Tstr
 import org.multipaz.crypto.Algorithm
+import org.multipaz.crypto.Crypto
+import org.multipaz.crypto.EcCurve
 import org.multipaz.provisioning.AuthorizationChallenge
 import org.multipaz.provisioning.AuthorizationResponse
+import org.multipaz.provisioning.CredentialKeyAttestation
 import org.multipaz.provisioning.KeyBindingInfo
 import org.multipaz.provisioning.openid4vci.OpenID4VCIClientPreferences
+import org.multipaz.securearea.KeyAttestation
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.util.fromBase64Url
 import org.multipaz.util.toBase64Url
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -59,10 +65,13 @@ class IosOpenID4VciProvisioningClientTest {
     private val tokenEndpoint = "$issuerUrl/token"
     private val credentialEndpoint = "$issuerUrl/credential"
 
-    private val issuerMetadata = """
+    private val nonceEndpoint = "$issuerUrl/nonce"
+    private var publishesNonceEndpoint = true
+
+    private val issuerMetadata get() = """
         {"credential_issuer":"$issuerUrl",
          "credential_endpoint":"$credentialEndpoint",
-         "nonce_endpoint":"$issuerUrl/nonce",
+         ${if (publishesNonceEndpoint) "\"nonce_endpoint\":\"$nonceEndpoint\"," else ""}
          "credential_configurations_supported":{
            "pid_mdoc":{"format":"mso_mdoc","doctype":"eu.europa.ec.eudi.pid.1","scope":"pid_scope",
              "display":[{"name":"PID","locale":"en"}]},
@@ -92,6 +101,11 @@ class IosOpenID4VciProvisioningClientTest {
     private var credentialBodies = mutableListOf<String>()
     private var tokenResponse = """{"access_token":"at-1","refresh_token":"rt-1","c_nonce":"nonce-1"}"""
 
+    /** Off by default; on, the credential endpoint takes each nonce once, as `ec.dev.issuer.eudiw.dev` does. */
+    private var refusesReusedNonces = false
+    private var noncesIssued = 0
+    private val noncesSpent = mutableListOf<String>()
+
     private fun engine() = MockEngine { request ->
         val json = headersOf("Content-Type", "application/json")
         when (request.url.toString().substringBefore('?')) {
@@ -109,9 +123,22 @@ class IosOpenID4VciProvisioningClientTest {
                 respond(tokenResponse, HttpStatusCode.OK, json)
             }
 
+            nonceEndpoint -> respond("""{"c_nonce":"fresh-${++noncesIssued}"}""", HttpStatusCode.OK, json)
+
             credentialEndpoint -> {
-                credentialBodies += request.body.toByteArray().decodeToString()
-                respond("""{"credentials":[{"credential":"${"cred".encodeToByteArray().toBase64Url()}"}]}""", HttpStatusCode.OK, json)
+                val body = request.body.toByteArray().decodeToString()
+                credentialBodies += body
+                val nonces = body.proofNonces()
+                if (refusesReusedNonces && nonces.any { it in noncesSpent }) {
+                    respond(
+                        """{"error":"invalid_nonce","error_description":"c_nonce has already been used"}""",
+                        HttpStatusCode.BadRequest,
+                        json,
+                    )
+                } else {
+                    noncesSpent += nonces.distinct()
+                    respond("""{"credentials":[{"credential":"${"cred".encodeToByteArray().toBase64Url()}"}]}""", HttpStatusCode.OK, json)
+                }
             }
 
             "$walletProviderUrl/wallet-instance-attestation/jwk" ->
@@ -129,6 +156,7 @@ class IosOpenID4VciProvisioningClientTest {
     )
 
     private val httpClient by lazy { HttpClient(engine()) }
+    private val backend = StubOpenID4VciBackend(clientPreferences.clientId)
 
     private suspend fun session(
         configurationIds: List<String>,
@@ -138,7 +166,7 @@ class IosOpenID4VciProvisioningClientTest {
         clientPreferences = clientPreferences,
         httpClient = httpClient,
         secureArea = SoftwareSecureArea.create(EphemeralStorage()),
-        backend = StubOpenID4VciBackend(clientPreferences.clientId),
+        backend = backend,
         walletProviderBaseUrl = walletProviderUrl,
         clientId = clientPreferences.clientId,
     )
@@ -150,10 +178,23 @@ class IosOpenID4VciProvisioningClientTest {
     )
 
     /** A proof JWT is only read for its `kid` here, which is what names the credential to certify. */
-    private fun proofJwt(kid: String): String {
+    private fun proofJwt(kid: String, nonce: String = "nonce-1"): String {
         val header = """{"typ":"openid4vci-proof+jwt","kid":"$kid"}""".encodeToByteArray().toBase64Url()
-        val payload = """{"nonce":"nonce-1"}""".encodeToByteArray().toBase64Url()
+        val payload = """{"nonce":"$nonce"}""".encodeToByteArray().toBase64Url()
         return "$header.$payload.signature"
+    }
+
+    /**
+     * One credential the way `ProvisioningModel.requestCredentials` asks for it: the nonce first, proofs
+     * made with it, then the request.
+     */
+    private suspend fun IosOpenID4VciProvisioningClient.requestWithProof(kid: String) {
+        val nonce = getKeyBindingChallenge()
+        obtainCredentials(KeyBindingInfo.OpenidProofOfPossession(listOf(proofJwt(kid, nonce))))
+    }
+
+    private suspend fun signedIn(configurationIds: List<String>) = session(configurationIds).also {
+        it.authorize(redirectResponse(it.challenge() as AuthorizationChallenge.OAuth))
     }
 
     @Test
@@ -373,6 +414,73 @@ class IosOpenID4VciProvisioningClientTest {
     fun there_is_no_authorization_data_before_a_token_exists() = runTest {
         assertNull(session(listOf("pid_mdoc")).authorizationData("pid_mdoc"))
     }
+
+    @Test
+    fun every_document_of_one_sign_in_is_requested_with_a_nonce_of_its_own() = runTest {
+        // Measured at ec.dev.issuer.eudiw.dev 2026-10-24: three documents in one sign-in, the first issued
+        // and the second refused with `400 invalid_nonce "c_nonce has already been used"` — one nonce had
+        // been fetched for the whole sign-in. A 1.0 token response carries no c_nonce, as here.
+        refusesReusedNonces = true
+        tokenResponse = """{"access_token":"at-1","refresh_token":"rt-1"}"""
+        val session = signedIn(listOf("pid_mdoc", "loyalty_mdoc"))
+
+        IosOpenID4VciProvisioningClient(session, "pid_mdoc", httpClient).requestWithProof("cred-a")
+        IosOpenID4VciProvisioningClient(session, "loyalty_mdoc", httpClient).requestWithProof("cred-b")
+
+        assertEquals(listOf("fresh-1", "fresh-2"), noncesSpent)
+    }
+
+    @Test
+    fun the_token_responses_nonce_serves_only_the_first_request_when_the_issuer_can_give_more() = runTest {
+        refusesReusedNonces = true
+        val session = signedIn(listOf("pid_mdoc", "loyalty_mdoc"))
+
+        IosOpenID4VciProvisioningClient(session, "pid_mdoc", httpClient).requestWithProof("cred-a")
+        IosOpenID4VciProvisioningClient(session, "loyalty_mdoc", httpClient).requestWithProof("cred-b")
+
+        assertEquals(listOf("nonce-1", "fresh-1"), noncesSpent)
+    }
+
+    @Test
+    fun without_a_nonce_endpoint_every_request_reuses_the_token_responses_nonce() = runTest {
+        // Nothing else to ask for. Such an issuer either takes its nonce again or cannot issue a second
+        // document in one sign-in at all — and then refusing it here would gain nothing.
+        publishesNonceEndpoint = false
+        val session = signedIn(listOf("pid_mdoc", "loyalty_mdoc"))
+
+        assertEquals("nonce-1", IosOpenID4VciProvisioningClient(session, "pid_mdoc", httpClient).getKeyBindingChallenge())
+        assertEquals("nonce-1", IosOpenID4VciProvisioningClient(session, "loyalty_mdoc", httpClient).getKeyBindingChallenge())
+        assertEquals(0, noncesIssued)
+    }
+
+    @Test
+    fun a_key_attestation_names_the_nonce_its_keys_were_made_with() = runTest {
+        // multipaz asks for the nonce once per request and makes the keys with it. The attestation minted
+        // for that request must name the same nonce — and asking the session again now gets a new one.
+        refusesReusedNonces = true
+        tokenResponse = """{"access_token":"at-1","refresh_token":"rt-1"}"""
+        val client = IosOpenID4VciProvisioningClient(signedIn(listOf("pid_mdoc")), "pid_mdoc", httpClient)
+
+        val nonce = client.getKeyBindingChallenge()
+        client.obtainCredentials(KeyBindingInfo.Attestation(listOf(keyAttestation("cred-a"))))
+
+        assertEquals(listOf(nonce), backend.challenges)
+        assertEquals(listOf(nonce), noncesSpent)
+    }
+
+    private suspend fun keyAttestation(credentialId: String) = CredentialKeyAttestation(
+        credentialId = credentialId,
+        keyAttestation = KeyAttestation(Crypto.createEcPrivateKey(EcCurve.P256).publicKey, certChain = null),
+    )
+}
+
+/** The nonce each proof of a credential request names, read from the proof's own payload. */
+private fun String.proofNonces(): List<String> {
+    val proofs = Json.parseToJsonElement(this).jsonObject["proofs"]?.jsonObject ?: return emptyList()
+    return proofs.values.flatMap { it.jsonArray }.mapNotNull { proof ->
+        val payload = proof.jsonPrimitive.content.split('.')[1].fromBase64Url().decodeToString()
+        Json.parseToJsonElement(payload).jsonObject["nonce"]?.jsonPrimitive?.content
+    }
 }
 
 private fun kotlinx.serialization.json.JsonElement.jsonArrayOfConfigurationIds(): List<String> =
@@ -383,10 +491,13 @@ private fun kotlinx.serialization.json.JsonElement.jsonArrayOfConfigurationIds()
             }
         }
 
-/** The wallet back-end is not what these cases are about; only the key attestation path would use it. */
+/** The wallet back-end is not what these cases are about; only the key attestation path uses it. */
 private class StubOpenID4VciBackend(
     private val clientId: String,
 ) : org.multipaz.provisioning.openid4vci.OpenID4VCIBackend {
+    /** Every nonce a key attestation was asked to name, in order. */
+    val challenges = mutableListOf<String>()
+
     override suspend fun getClientId(): String = clientId
 
     override suspend fun createJwtClientAssertion(authorizationServerIdentifier: String): String =
@@ -401,5 +512,10 @@ private class StubOpenID4VciBackend(
         challenge: String,
         userAuthentication: List<String>?,
         keyStorage: List<String>?,
-    ): String = "key-attestation-jwt"
+    ): String {
+        challenges += challenge
+        // Shaped like a JWT so the fake issuer can read the nonce the way it reads a proof's.
+        val payload = """{"nonce":"$challenge"}""".encodeToByteArray().toBase64Url()
+        return "key-attestation-header.$payload.signature"
+    }
 }
