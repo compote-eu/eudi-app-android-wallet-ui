@@ -392,23 +392,6 @@ suspend fun IosWalletEngine.collectDeferredDocument(documentId: String): Deferre
 suspend fun IosWalletEngine.deferredHandleOf(documentId: String): String? =
     store().documentStore.lookupDocument(documentId)?.eudiMetadata?.deferredTransactionId
 
-/**
- * Every document waiting on a deferred issuance, as `documentId -> formatType`.
- *
- * The documents screen selects what to sweep by issuance state, and that rule cannot see a **refresh**
- * that was deferred: such a document keeps its existing credentials and stays `Issued`, so it is never
- * offered for sweeping even though the issuer is minting for it. This is the authoritative answer, and
- * it is why `IosDocumentsPlatformBridge` unions it with whatever the screen passed in.
- */
-suspend fun IosWalletEngine.documentsAwaitingDeferredIssuance(): Map<String, String> {
-    val store = store()
-    return store.documentStore.listDocuments().mapNotNull { document ->
-        val metadata = document.eudiMetadata ?: return@mapNotNull null
-        if (metadata.deferredTransactionId == null) return@mapNotNull null
-        document.identifier to metadata.format.identifier
-    }.toMap()
-}
-
 /** The stored refresh token, whatever else the authorization holds; null when there is none. */
 internal fun ByteString.openID4VciRefreshToken(): String? {
     val map = runCatching { Cbor.decode(toByteArray()) }.getOrNull() as? CborMap ?: return null

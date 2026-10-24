@@ -46,15 +46,6 @@ internal class IosDocumentsPlatformBridge(
     /** Asks the issuer for one parked document's credential. See `collectDeferredDocument`. */
     private val collectDeferred: suspend (documentId: String) -> DeferredCollection,
     /**
-     * Every document actually waiting on the issuer, which is not the same set the screen offers.
-     *
-     * The screen selects by issuance state, and a **refresh** that was deferred keeps its existing
-     * credentials and stays `Issued` — correctly, since the document is still usable. It would
-     * therefore never be swept, and the credentials the issuer is minting for it would never be
-     * claimed. This is the authoritative set.
-     */
-    private val awaitingDeferred: suspend () -> Map<String, FormatType>,
-    /**
      * Names for the "ready" sheet, looked up **with details**: the cheap document list carries ids and
      * nothing else, so a name taken from it is always blank. Measured 2026-09-17 — the sheet would have
      * listed the collected documents with no names at all.
@@ -135,9 +126,7 @@ internal class IosDocumentsPlatformBridge(
         val issuedIds = mutableListOf<String>()
         val failed = mutableListOf<String>()
         val intervals = mutableListOf<Int>()
-        // The screen's set first, so its ordering and its format types win where they overlap.
-        val toSweep = deferredDocuments + awaitingDeferred().filterKeys { it !in deferredDocuments }
-        toSweep.forEach { (documentId, _) ->
+        deferredDocuments.forEach { (documentId, _) ->
             val outcome = collectDeferred(documentId)
             // Every outcome is named, because the one that deletes a document used to leave no trace at
             // all: a parked document simply vanished from the list (Plaut's issuer, 2026-09-28).
@@ -182,7 +171,7 @@ internal class IosDocumentsPlatformBridge(
                 successfullyIssuedDeferredDocuments = issuedIds.map { documentId ->
                     DeferredDocumentDataDomain(
                         documentId = documentId,
-                        formatType = toSweep.getValue(documentId),
+                        formatType = deferredDocuments.getValue(documentId),
                         docName = names[documentId].orEmpty(),
                     )
                 },

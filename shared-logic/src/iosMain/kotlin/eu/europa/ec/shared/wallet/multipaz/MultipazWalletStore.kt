@@ -26,9 +26,7 @@ import kotlinx.cinterop.ptr
 import kotlinx.cinterop.value
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import org.multipaz.document.Document
 import org.multipaz.document.DocumentStore
-import org.multipaz.document.DocumentUtil
 import org.multipaz.document.buildDocumentStore
 import org.multipaz.util.Logger
 import org.multipaz.securearea.SecureArea
@@ -47,7 +45,6 @@ import platform.Foundation.NSURLIsExcludedFromBackupKey
 import platform.Foundation.NSFileProtectionKey
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
-import kotlin.time.Clock
 
 /**
  * The iOS wallet's multipaz storage layer: the [DocumentStore] its documents live in, plus the small
@@ -491,34 +488,3 @@ internal class MultipazWalletStore(
     }
 }
 
-/**
- * How many credentials a refresh in place would replace for [document], without creating or fetching
- * anything.
- *
- * multipaz's own count, from the same [org.multipaz.provisioning.DocumentProvisioningSettings] the
- * provisioning handler uses: a credential is replaced when it has been used up or is close to expiring.
- * A re-issuance asked this before it refreshed in place; it issues a new document now
- * (`IosCredentialIssuer.reIssueDocument`), and only a probe reads the number.
- */
-internal suspend fun MultipazWalletStore.credentialsNeededFor(document: Document): Int {
-    // The document's own policy, so this answers the question multipaz will ask when it actually
-    // provisions — the issuer's batch size and threshold, not the wallet's defaults. Two copies that
-    // drifted would answer for a wallet that does not exist.
-    val settings = document.eudiMetadata?.credentialPolicy
-        ?.let { IosDocumentProvisioningHandler.settingsForPolicy(store = this, policy = it) }
-        ?: IosDocumentProvisioningHandler.settingsFor(store = this)
-    val domain = when (document.eudiMetadata?.format) {
-        is StoredDocumentFormat.SdJwtVc -> settings.sdJwtNoUserAuthDomain
-        else -> settings.mdocNoUserAuthDomain
-    }
-    return DocumentUtil.managedCredentialHelper(
-        document = document,
-        domain = domain,
-        createCredential = null,
-        now = Clock.System.now(),
-        numCredentials = settings.keyBoundCredentialNumPerDomain,
-        maxUsesPerCredential = settings.keyBoundCredentialMaxUses,
-        minValidTime = settings.minValidTime,
-        dryRun = true,
-    )
-}

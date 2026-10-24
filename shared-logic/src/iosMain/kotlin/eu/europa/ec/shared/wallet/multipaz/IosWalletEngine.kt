@@ -206,18 +206,6 @@ class IosWalletEngine internal constructor(
         )
     }
 
-    /**
-     * How many credentials a refresh in place would replace, without creating or fetching anything.
-     *
-     * Public so a probe can show it. A re-issuance no longer refreshes in place ([reIssueDocument]), so
-     * nothing guards on this number now.
-     */
-    suspend fun credentialsNeeded(documentId: String): Int {
-        val store = store()
-        val document = store.documentStore.lookupDocument(documentId) ?: return 0
-        return store.credentialsNeededFor(document)
-    }
-
     /** Re-issues a document as a new one, the original deleted after; see [IosCredentialIssuer.reIssueDocument]. */
     suspend fun reIssueDocument(documentId: String, userTriggered: Boolean = false): IosIssuanceProgress =
         IosCredentialIssuer(walletEngine = this).reIssueDocument(documentId, userTriggered = userTriggered)

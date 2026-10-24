@@ -23,7 +23,6 @@ import eu.europa.ec.shared.wallet.document.WalletCredentialPolicy
 import eu.europa.ec.shared.wallet.document.localizedOrFirst
 import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import kotlinx.io.bytestring.ByteString
-import org.multipaz.credential.Credential
 import org.multipaz.document.Document
 import org.multipaz.util.Logger
 import org.multipaz.provisioning.CredentialFormat
@@ -181,39 +180,6 @@ internal class IosDocumentProvisioningHandler(
         Logger.i(
             TAG,
             "the issuer deferred ${document.identifier}; parked it with transaction $transactionId" +
-                if (resume != null) " (resumable with the session's access token)" else ""
-        )
-    }
-
-    /**
-     * Parks a deferred **refresh**, which reaches a different hook from a deferred first issuance.
-     *
-     * multipaz calls this instead of [cleanupDocumentOnError] when the document already existed, and
-     * its own implementation is a deliberate no-op — the pending credentials are kept to be reused. So
-     * nothing needs rescuing here; what is missing is the issuer's handle, without which the credentials
-     * it is minting could never be claimed.
-     *
-     * ⚠️ The document stays `Issued`, deliberately: a refresh tops up an already-usable document, and
-     * showing it as pending because *more* credentials are coming would be a lie. That is exactly why
-     * the sweep cannot find it by issuance state, and why `IosDocumentsPlatformBridge` asks the engine
-     * which documents carry a handle instead.
-     */
-    override suspend fun cleanupCredentialsOnError(
-        pendingCredentials: List<Credential>,
-        err: Throwable,
-    ) {
-        super.cleanupCredentialsOnError(pendingCredentials, err)
-        val transactionId = deferred?.transactionId ?: return
-        val document = pendingCredentials.firstOrNull()?.document ?: return
-        val metadata = document.eudiMetadata ?: return
-        // A resume already stored with the document is kept when this session offers none, as before.
-        val resume = deferred.resumeFor(document) ?: metadata.deferredResume
-        metadata.park(transactionId, resume = resume)
-        document.edit { this.metadata = metadata }
-        deferred.parkedDocumentId = document.identifier
-        Logger.i(
-            TAG,
-            "a refresh of ${document.identifier} was deferred; parked transaction $transactionId" +
                 if (resume != null) " (resumable with the session's access token)" else ""
         )
     }

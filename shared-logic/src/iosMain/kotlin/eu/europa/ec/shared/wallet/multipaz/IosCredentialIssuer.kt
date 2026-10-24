@@ -22,7 +22,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.io.bytestring.ByteString
@@ -1114,8 +1113,7 @@ class IosCredentialIssuer(
      * ⚠️ **This is now the fallback, not the main path.** A deferred issuance normally parks a document:
      * `IosDocumentProvisioningHandler.cleanupDocumentOnError` keeps it and stamps the issuer's handle,
      * and the caller returns that document's id as the result. This message is what remains for the
-     * cases where parking could not happen — a document with no wallet metadata, or a **refresh** that
-     * was deferred, where multipaz keeps the document but nothing has yet stamped a handle on it.
+     * cases where parking could not happen, such as a document with no wallet metadata.
      *
      * 📌 The old claim here — that iOS "has nothing that can collect it" — was true until
      * [IosDeferredCredentialCollector] existed. multipaz still never parses

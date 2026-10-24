@@ -41,7 +41,6 @@ class IosDeferredSweepTest {
     private fun bridge(
         outcomes: Map<String, DeferredCollection>,
         names: Map<String, String> = emptyMap(),
-        awaiting: Map<String, String> = emptyMap(),
         deleted: MutableList<String> = mutableListOf(),
     ): Pair<IosDocumentsPlatformBridge, MutableList<String>> =
         IosDocumentsPlatformBridge(
@@ -51,7 +50,6 @@ class IosDeferredSweepTest {
                 outcomes[documentId] ?: DeferredCollection.Failed("not configured")
             },
             documentNames = { names },
-            awaitingDeferred = { awaiting },
         ) to deleted
 
     @Test
@@ -153,42 +151,5 @@ class IosDeferredSweepTest {
         // Deleting someone's document because a request failed would be far worse than waiting.
         assertTrue(result.failedIssuedDeferredDocuments.isEmpty())
         assertTrue(deleted.isEmpty())
-    }
-
-    @Test
-    fun a_deferred_refresh_is_swept_even_though_the_screen_never_offers_it() = runTest(dispatcher) {
-        val (bridge, _) = bridge(
-            outcomes = mapOf("topped-up" to DeferredCollection.Issued(listOf("credential"))),
-            names = mapOf("topped-up" to "PID (MSO MDoc)"),
-            // The document is still `Issued` — its existing credentials work — so the screen's
-            // "Pending" rule cannot see it. Only the store knows it carries a handle.
-            awaiting = mapOf("topped-up" to "eu.europa.ec.eudi.pid.1"),
-        )
-
-        val result = bridge
-            .tryIssuingDeferredDocuments(deferredDocuments = emptyMap(), dispatcher)
-            .first()
-
-        assertIs<DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result>(result)
-        val announced = result.successfullyIssuedDeferredDocuments.single()
-        assertEquals("topped-up", announced.documentId)
-        assertEquals("eu.europa.ec.eudi.pid.1", announced.formatType)
-    }
-
-    @Test
-    fun the_screens_own_format_type_wins_where_both_sets_name_the_same_document() = runTest(dispatcher) {
-        val (bridge, _) = bridge(
-            outcomes = mapOf("doc-1" to DeferredCollection.Issued(listOf("credential"))),
-            awaiting = mapOf("doc-1" to "from-the-store"),
-        )
-
-        val result = bridge
-            .tryIssuingDeferredDocuments(mapOf("doc-1" to "from-the-screen"), dispatcher)
-            .first()
-
-        assertIs<DocumentInteractorRetryIssuingDeferredDocumentsPartialState.Result>(result)
-        // Swept once, not twice, and described the way the caller described it.
-        assertEquals(1, result.successfullyIssuedDeferredDocuments.size)
-        assertEquals("from-the-screen", result.successfullyIssuedDeferredDocuments.single().formatType)
     }
 }

@@ -539,9 +539,7 @@ class IosDocumentProvisioningHandlerTest {
         val now = Clock.System.now()
         handler.provisionCredentials(document, credentialMetadata, issuerMetadata(), docType, validUntil = now + 12.hours)
 
-        // Both checks agree: the app's, which starts a re-issue, and multipaz's, which decides it has work.
-        // Without a threshold neither saw it until it had expired.
+        // Without a threshold it was due only once it had expired.
         assertTrue(assertNotNull(document.toStoredDocument()).isDueForReIssuance(now))
-        assertTrue(handler.haveCredentialsToRefresh(document))
     }
 }

@@ -1083,27 +1083,22 @@ private suspend fun probeReIssuance(onResult: (String) -> Unit) {
     onResult("--- re-issuance ---")
     val engine = KoinPlatform.getKoin().get<IosWalletEngine>()
 
-    // The document the presentation just shared, which is the case this feature exists for: every
-    // presentation permanently spends one credential (multipaz's `keyBoundCredentialMaxUses` is 1), so
-    // a refresh should have exactly one replacement to fetch.
-    //
-    // The visible counter will not move, and that is not a bug: it counts *certified* credentials, and
-    // a spent one stays until a replacement certifies. What proves the refresh did work is the number
-    // multipaz reports fetching, which the log line below carries.
+    // The document the presentation just shared, which is the case this feature exists for. A re-issue
+    // issues a new document through the stored refresh token and deletes this one, as Android and the
+    // official iOS wallet do, so what proves it worked is the new id and the original's absence.
     val refreshable = engine.getAllDocumentsWithDetails(locale = "en")
         .filter { engine.getIssuerReference(it.id)?.issuerId?.startsWith("https://dev.") == true }
     val target = refreshable.firstOrNull { it.id == lastPresentedDocumentId }
         ?: refreshable.firstOrNull()
     if (target == null) {
-        onResult("no issuer-provisioned document to refresh (only fixtures?)")
+        onResult("no issuer-provisioned document to re-issue (only fixtures?)")
         return
     }
 
     val issuer = engine.getIssuerReference(target.id)
     onResult(
-        "refreshing ${target.name} (${target.id}, presented=${target.id == lastPresentedDocumentId}): " +
+        "re-issuing ${target.name} (${target.id}, presented=${target.id == lastPresentedDocumentId}): " +
                 "${target.credentialsCount}/${target.initialCredentialsCount} credentials, " +
-                "${engine.credentialsNeeded(target.id)} needing replacement, " +
                 "issuer=${issuer?.issuerId} config=${issuer?.documentConfigId}"
     )
 
@@ -1111,13 +1106,11 @@ private suspend fun probeReIssuance(onResult: (String) -> Unit) {
         engine.reIssueDocument(target.id)
     }) {
         is IosIssuanceProgress.Issued -> {
-            val after = engine.getAllDocumentsWithDetails(locale = "en").first { it.id == target.id }
+            val originalLeft = engine.getAllDocuments().any { it.id == target.id }
             onResult(
-                "reIssueDocument -> Issued; fetched ${progress.credentialsFetched} credential(s), " +
-                        "counter ${target.credentialsCount} -> ${after.credentialsCount} " +
-                        "(no browser, no consent). Fetching zero is the right answer for a batch that " +
-                        "is still fresh: multipaz replaces only credentials that are used up or near " +
-                        "expiry."
+                "reIssueDocument -> Issued as ${progress.documentIds}, fetched ${progress.credentialsFetched} " +
+                        "credential(s), deferred=${progress.deferred.keys}; the original is " +
+                        if (originalLeft) "still there (deferred: it goes when the new one arrives)" else "gone"
             )
         }
 
@@ -1126,21 +1119,6 @@ private suspend fun probeReIssuance(onResult: (String) -> Unit) {
             onResult("reIssueDocument -> IssuerNotTrusted(${progress.message})")
         null -> onResult("reIssueDocument -> nothing within $RE_ISSUANCE_PROBE_TIMEOUT")
     }
-
-    // And the other half: a document with nothing spent must not open a session at all. That guard is
-    // the whole reason a refresh can be offered more than once — opening one costs the document's
-    // rotating refresh token, and multipaz only writes the rotated token back when it fetched
-    // something.
-    val untouched = refreshable.firstOrNull { engine.credentialsNeeded(it.id) == 0 }
-    if (untouched == null) {
-        onResult("no fresh-batch document to check the no-op guard against")
-        return
-    }
-    onResult(
-        "guard: ${untouched.name} (${untouched.id}) needs " +
-                "${engine.credentialsNeeded(untouched.id)} -> " +
-                "${engine.reIssueDocument(untouched.id)}"
-    )
 }
 
 /** A token request and a batch of credentials, over the network; no user step to wait for. */
