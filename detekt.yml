@@ -149,14 +149,14 @@ style:
     # from `SecureRandom` (iosMain) or `java.security.SecureRandom`; SecureRandom.kt is the one
     # suppressed file. The UUID line can go at the first multipaz release after 0.101.0, whose default
     # is secure (multipaz `main` since 2026-09-14).
-    # Not gated: the test source sets (restated -- `excludes` replaces the defaults), the iOS probes,
-    # and iosMain's `harness/`, which plays a verifier and a fixture issuer whose salts tests seed.
+    # Not gated: the test source sets (restated -- `excludes` replaces the defaults) and the iOS probes,
+    # their `harness/` included, which plays a verifier and a fixture issuer whose salts tests seed.
     imports:
       - value: 'kotlin.random.Random'
         reason: 'not a cryptographic generator; use SecureRandom (iosMain) or java.security.SecureRandom'
       - value: 'org.multipaz.util.UUID'
         reason: 'multipaz 0.101.0 randomUUID() defaults to Random.Default; use SecureRandom.nextUuid()'
-    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/iosProbeMain/**', '**/iosMain/**/harness/**']
+    excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**', '**/iosProbeMain/**']
   LoopWithTooManyJumpStatements:
     active: false # 14 -- `maxJumpCount: 2` measures 6, not 0, so it is not a chip
   MagicNumber:

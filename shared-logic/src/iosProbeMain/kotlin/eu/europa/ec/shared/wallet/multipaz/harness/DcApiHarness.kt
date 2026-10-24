@@ -43,9 +43,10 @@ import kotlinx.serialization.json.jsonPrimitive
  * verifier — real or simulated — that can drive our extension's branch. Standing in for one is the
  * only way to exercise it against the live store before hardware exists.
  *
- * Deliberately in `iosMain` rather than test sources: the wallet probe is a launched app, not a test
- * binary, so it cannot reach `iosTest`. The identical construction in `IosDcApiPresenterTest` stays
- * where it is — a test that quietly depended on shipped harness code would be weaker for it.
+ * Deliberately with the probes rather than in test sources: the wallet probe is a launched app, not a
+ * test binary, so it cannot reach `iosTest`; and not in `iosMain`, so a Release build leaves it out. The
+ * identical construction in `IosDcApiPresenterTest` stays where it is — a test that quietly depended on
+ * probe code would be weaker for it.
  *
  * ⚠️ Multipaz's own types are `implementation`-scoped here, so everything crossing back out is a plain
  * Kotlin type. That is what lets `:shared-ui`'s probe use this at all.
