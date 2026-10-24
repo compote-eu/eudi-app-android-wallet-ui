@@ -93,6 +93,7 @@ internal class IosDocumentDetailsPlatformBridge(
         // Resolved for the locale the screen asked for, not the one at issuance: the stored metadata
         // keeps every language the issuer published.
         val claimNames = engine.getClaimDisplayNames(documentId, locale)
+        val claimNamesByPath = engine.getClaimDisplayNamesByPath(documentId, locale)
 
         return PlatformDocumentDetails(
             documentDetailsDomain = DocumentDetailsDomain(
@@ -102,7 +103,7 @@ internal class IosDocumentDetailsPlatformBridge(
                 documentConfigId = issuer?.documentConfigId.orEmpty(),
                 documentIdentifier = document.formatType.toDocumentIdentifier(),
                 documentClaims = if (claims.isNotEmpty()) {
-                    claims.toClaimDomains(document.formatType, claimNames)
+                    claims.toMdocClaimDomains(document.formatType, claimNamesByPath, claimNames)
                 } else {
                     jsonClaims.toSdJwtClaimDomains(claimNames)
                 },
@@ -272,30 +273,35 @@ internal class IosDocumentDetailsPlatformBridge(
             null
         }
 
-    /**
-     * One [ClaimDomain.Primitive] per mdoc data element, keyed and pathed by its identifier.
-     *
-     * `nameSpace` is carried in the path's [ClaimType.MsoMdoc], which is where `ClaimDomain.nameSpace`
-     * reads it from — so the model stays exactly as the shared UI expects.
-     */
-    private fun Map<String, StoredMdocClaim>.toClaimDomains(
-        formatType: String,
-        displayNames: Map<String, String>,
-    ): List<ClaimDomain> = map { (identifier, claim) ->
-        ClaimDomain.Primitive(
-            key = identifier,
-            // The issuer's own name for this claim, falling back to the identifier when the issuer
-            // published none.
-            displayTitle = displayNames[identifier] ?: identifier,
-            path = ClaimPathDomain(
-                segments = listOf(ClaimPathSegment.Key(identifier)),
-                type = ClaimType.MsoMdoc(namespace = claim.nameSpace ?: formatType),
-            ),
-            value = claim.value,
-            isRequired = false,
-        )
-    }
+}
 
+/**
+ * One [ClaimDomain.Primitive] per mdoc data element, keyed and pathed by its identifier.
+ *
+ * `nameSpace` is carried in the path's [ClaimType.MsoMdoc], which is where `ClaimDomain.nameSpace`
+ * reads it from — so the model stays exactly as the shared UI expects. A data element of the same name
+ * in two namespaces is two rows, each with its own value and its own name, as on Android.
+ */
+internal fun List<StoredMdocClaim>.toMdocClaimDomains(
+    formatType: String,
+    displayNamesByPath: Map<List<String>, String>,
+    displayNames: Map<String, String>,
+): List<ClaimDomain> = map { claim ->
+    val nameSpace = claim.nameSpace ?: formatType
+    ClaimDomain.Primitive(
+        key = claim.identifier,
+        // The issuer's own name for this claim: by its whole path, as Android looks it up, then by the
+        // identifier alone, then the identifier itself when the issuer published none.
+        displayTitle = displayNamesByPath[listOf(nameSpace, claim.identifier)]
+            ?: displayNames[claim.identifier]
+            ?: claim.identifier,
+        path = ClaimPathDomain(
+            segments = listOf(ClaimPathSegment.Key(claim.identifier)),
+            type = ClaimType.MsoMdoc(namespace = nameSpace),
+        ),
+        value = claim.value,
+        isRequired = false,
+    )
 }
 
 /**

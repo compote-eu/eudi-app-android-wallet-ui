@@ -75,7 +75,18 @@ internal class MultipazWalletEngine(
      * The cost is that the *set* of locales is fixed at issuance: if the issuer adds one later, existing
      * documents will not have it.
      */
-    suspend fun getClaimDisplayNames(documentId: String, locale: String): Map<String, String> {
+    suspend fun getClaimDisplayNames(documentId: String, locale: String): Map<String, String> =
+        // The last path segment is the claim's own name; for an mdoc, the earlier one is the namespace.
+        getClaimDisplayNamesByPath(documentId, locale)
+            .mapNotNull { (path, name) -> path.lastOrNull()?.let { it to name } }
+            .toMap()
+
+    /**
+     * [getClaimDisplayNames] keyed by each claim's whole path, as the issuer published it: for an mdoc,
+     * `[namespace, data element]`. What Android looks a claim's name up by, so a data element of the same
+     * name in two namespaces keeps each its own.
+     */
+    suspend fun getClaimDisplayNamesByPath(documentId: String, locale: String): Map<List<String>, String> {
         val document = store.documentStore.lookupDocument(documentId) ?: return emptyMap()
         val metadata = document.eudiMetadata ?: return emptyMap()
         // Null and empty mean the same thing now: the issuer published no names for this type. Both
@@ -83,10 +94,8 @@ internal class MultipazWalletEngine(
         val claims = metadata.issuerMetadata?.claims ?: return emptyMap()
 
         return claims.mapNotNull { claim ->
-            // The last path segment is the data-element identifier the claim map is keyed by; the
-            // earlier segments are the namespace, which the caller already knows.
-            val identifier = claim.path.lastOrNull() ?: return@mapNotNull null
-            claim.displayNameFor(locale)?.let { identifier to it }
+            if (claim.path.isEmpty()) return@mapNotNull null
+            claim.displayNameFor(locale)?.let { claim.path to it }
         }.toMap()
     }
 
@@ -163,10 +172,10 @@ internal class MultipazWalletEngine(
     }
 
     /** The document's mdoc claims with their namespaces, for the details screen. */
-    suspend fun getNamespacedClaims(documentId: String): Map<String, StoredMdocClaim> =
+    suspend fun getNamespacedClaims(documentId: String): List<StoredMdocClaim> =
         ownDocuments().firstOrNull { it.identifier == documentId }
             ?.readNamespacedClaims()
-            ?: emptyMap()
+            ?: emptyList()
 
     /** The document's SD-JWT VC claims, values still as JSON; see [readJsonClaims]. */
     suspend fun getJsonClaims(documentId: String): List<StoredJsonClaim> =

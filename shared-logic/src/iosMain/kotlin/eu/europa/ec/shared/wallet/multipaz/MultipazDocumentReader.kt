@@ -170,12 +170,13 @@ private suspend fun SdJwtVcCredential.sdJwtRevocationStatus(): RevocationStatus?
     }
 
 /**
- * One stored mdoc data element: its namespace and its rendered value. Richer than the flat
- * `WalletDocument.claims` map, which drops the namespace — the details screen needs it, because
+ * One stored mdoc data element: its namespace, its identifier and its rendered value. Richer than the
+ * flat `WalletDocument.claims` map, which drops the namespace — the details screen needs it, because
  * `ClaimDomain` carries the namespace in its path.
  */
 data class StoredMdocClaim(
     val nameSpace: String?,
+    val identifier: String,
     val value: String,
 )
 
@@ -192,21 +193,23 @@ data class StoredJsonClaim(
 )
 
 /**
- * The document's mdoc claims keyed by data-element identifier, each with its namespace.
+ * The document's mdoc claims, one per namespace and data element, as Android's `MsoMdocData.claims` keeps
+ * them: a data element of the same name in two namespaces is two claims, each with its own value.
  *
  * mdoc only — SD-JWT VC documents are read by [readJsonClaims] instead, because the two formats have
  * genuinely different shapes: mdoc data elements are flat within a namespace, SD-JWT claims nest.
  */
-internal suspend fun Document.readNamespacedClaims(): Map<String, StoredMdocClaim> {
+internal suspend fun Document.readNamespacedClaims(): List<StoredMdocClaim> {
     val mdoc = getCertifiedCredentials()
         .filterIsInstance<SecureAreaBoundCredential>()
         .filterIsInstance<MdocCredential>()
         .firstOrNull()
-        ?: return emptyMap()
+        ?: return emptyList()
 
-    return mdoc.getClaims(documentTypeRepository = null).associate { claim ->
-        claim.dataElementName to StoredMdocClaim(
+    return mdoc.getClaims(documentTypeRepository = null).map { claim ->
+        StoredMdocClaim(
             nameSpace = claim.namespaceName,
+            identifier = claim.dataElementName,
             value = claim.value.toClaimString(),
         )
     }
