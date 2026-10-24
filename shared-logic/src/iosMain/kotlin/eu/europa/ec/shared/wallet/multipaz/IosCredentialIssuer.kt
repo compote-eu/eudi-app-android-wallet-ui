@@ -258,10 +258,20 @@ class IosCredentialIssuer(
      * @return [IosIssuanceProgress.Issued] naming the new document, parked and listed in `deferred` when
      *   the issuer deferred it, or a failure that says which thing went wrong.
      */
-    suspend fun reIssueDocument(documentId: String, userTriggered: Boolean = false): IosIssuanceProgress {
+    suspend fun reIssueDocument(documentId: String, userTriggered: Boolean = false): IosIssuanceProgress =
+        try {
+            reIssue(documentId, userTriggered)
+        } catch (cancelled: CancellationException) {
+            // The screen that asked went away, or a newer sign-in took over: nothing else in the log says which
+            // re-issuance ended.
+            Logger.i(TAG, "the re-issuance of $documentId was cancelled: ${cancelled.message}")
+            throw cancelled
+        }
+
+    private suspend fun reIssue(documentId: String, userTriggered: Boolean): IosIssuanceProgress {
         val store = walletStore()
         val document = store.documentStore.lookupDocument(documentId)
-            ?: return IosIssuanceProgress.Failure(message = NO_SUCH_DOCUMENT)
+            ?: return refused(documentId, NO_SUCH_DOCUMENT)
 
         // The document remembers who issued it, so the issuer is looked up rather than passed in: a
         // caller that supplied the wrong one would re-issue against an issuer that never knew this
@@ -274,12 +284,12 @@ class IosCredentialIssuer(
         // issuer. When neither holds, the dead end is the honest thing to say.
         val issuerUrl = document.eudiMetadata?.issuerMetadata?.credentialIssuerIdentifier
         val issuer = issuers.firstOrNull { it.issuerUrl == issuerUrl }
-            ?: return IosIssuanceProgress.Failure(message = UNKNOWN_ISSUER)
+            ?: return refused(documentId, UNKNOWN_ISSUER)
 
         // Stored when the document was first issued. Absent for anything this wallet did not provision
         // — a seeded fixture, or a document from a build before authorization was kept — and there is
         // no silent path for those.
-        document.authorizationData ?: return IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION)
+        document.authorizationData ?: return refused(documentId, NO_STORED_AUTHORIZATION)
 
         // Android checks the registration before every re-issuance, user-asked or background, so a
         // refusal leaves the document as it is. After the local refusals above, which need no network.
@@ -308,6 +318,12 @@ class IosCredentialIssuer(
         return progress
     }
 
+    /** A re-issuance refused before anything is sent: the user is told why, and so is the log. */
+    private fun refused(documentId: String, message: String): IosIssuanceProgress.Failure {
+        Logger.w(TAG, "the re-issuance of $documentId was refused: $message")
+        return IosIssuanceProgress.Failure(message = message)
+    }
+
     /** How a re-issuance through the stored refresh token ended, and whether only signing in again can help. */
     internal data class ReIssuanceAttempt(
         val progress: IosIssuanceProgress,
@@ -330,12 +346,12 @@ class IosCredentialIssuer(
         userTriggered: Boolean,
     ): ReIssuanceAttempt = RefreshTokenChain.withLock {
         val current = store.documentStore.lookupDocument(documentId)?.authorizationData
-            ?: return@withLock ReIssuanceAttempt(IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION))
+            ?: return@withLock ReIssuanceAttempt(refused(documentId, NO_STORED_AUTHORIZATION))
         // A client built from authorization data with a refresh token never asks the user to authorize
         // (multipaz 0.101.0, `OpenID4VCIProvisioningClient.getAuthorizationChallenges`); without one it
         // would start a browser login, and nothing here could answer it.
         if (current.openID4VciRefreshToken() == null) {
-            return@withLock ReIssuanceAttempt(IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION))
+            return@withLock ReIssuanceAttempt(refused(documentId, NO_STORED_AUTHORIZATION))
         }
         // The DPoP key the refresh token is bound to (RFC 9449): without it the token cannot be presented.
         current.openID4VciDpopKeyAlias()?.let { alias ->

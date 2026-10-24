@@ -31,6 +31,10 @@ import eu.europa.ec.shared.wallet.multipaz.harness.seedMdocDocument
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
@@ -39,6 +43,7 @@ import org.multipaz.cbor.Tstr
 import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
+import org.multipaz.util.Logger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -371,6 +376,60 @@ class IosCredentialRefreshTest {
         }.reIssueDocument(documentId, userTriggered = true)
 
         assertTrue(assertIs<IosIssuanceProgress.Issued>(progress).deferred.isNotEmpty())
+        assertNotNull(store.documentStore.lookupDocument(documentId))
+    }
+
+    // ---- what the log says when a re-issuance ends early -------------------------------------------------
+    //
+    // A cancelled one, and one refused before anything is sent, logged nothing that named the document.
+
+    /** Every line logged while [block] runs, as `tag: message`. */
+    private suspend fun logged(block: suspend () -> Unit): List<String> {
+        val lines = mutableListOf<String>()
+        val previous = Logger.logPrinter
+        Logger.logPrinter = object : Logger.LogPrinter {
+            override fun print(level: Logger.LogPrinter.Level, tag: String, msg: String, throwable: Throwable?) {
+                lines += "$tag: $msg"
+            }
+        }
+        try {
+            block()
+        } finally {
+            Logger.logPrinter = previous
+        }
+        return lines
+    }
+
+    @Test
+    fun a_re_issuance_refused_before_any_request_says_so_in_the_log() = runTest {
+        val (store, _) = walletWith()
+
+        val lines = logged { refresherOver(store).reIssueDocument("no-such-document") }
+
+        val expected = "the re-issuance of no-such-document was refused: ${IosCredentialIssuer.NO_SUCH_DOCUMENT}"
+        assertTrue(lines.any { it.endsWith(expected) }, "$lines")
+    }
+
+    @Test
+    fun a_re_issuance_cancelled_while_signing_in_says_so_in_the_log_and_stays_cancelled() = runTest {
+        val (store, documentId) = walletWith()
+        store.authorize(documentId)
+        val signingIn = CompletableDeferred<Unit>()
+        var progress: IosIssuanceProgress? = null
+
+        val lines = logged {
+            val reIssue = launch {
+                progress = signingInOver(store, tokenRefused) {
+                    signingIn.complete(Unit)
+                    awaitCancellation()
+                }.reIssueDocument(documentId, userTriggered = true)
+            }
+            signingIn.await()
+            reIssue.cancelAndJoin()
+        }
+
+        assertTrue(lines.any { it.contains("the re-issuance of $documentId was cancelled") }, "$lines")
+        assertNull(progress, "a cancelled re-issuance is not turned into a result")
         assertNotNull(store.documentStore.lookupDocument(documentId))
     }
 
