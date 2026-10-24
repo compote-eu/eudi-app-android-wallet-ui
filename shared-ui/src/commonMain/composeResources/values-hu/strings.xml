@@ -443,6 +443,7 @@
     <string name="qr_scan_informative_text_presentation_flow">Nehézségei vannak a QR-kód beolvasásával?\nKérjük, próbálja meg más módon</string>
     <string name="qr_scan_informative_text_issuance_flow">Nehézségei vannak a QR-kód beolvasásával?\nKérjük, próbálja meg más módon</string>
     <string name="qr_scan_informative_text_signature_flow">Nehézségei vannak a QR-kód beolvasásával?\nKérjük, próbálja meg más módon</string>
+    <string name="document_details_reissue_blocked_text">A kibocsátó visszavonta vagy felfüggesztette ezt a dokumentumot, ezért nem bocsátható ki újra.</string>
     <!--endregion-->
 
     <!-- region Document Details -->
@@ -534,6 +535,7 @@
     <string name="proximity_qr_subtitle">Mutassa meg ezt a QR-kódot egy közvetlen közelben lévő, kölcsönhatásba lépő félnek a személyazonossága igazolásához.</string>
     <string name="proximity_qr_use_nfc">Csatlakozás NFC-n keresztül</string>
     <string name="proximity_qr_hold_near_reader">Tartsa telefonját az olvasóhoz a beolvasáshoz.</string>
+    <string name="proximity_qr_expired">Ez a QR-kód lejárt. Próbálja újra, és megjelenik egy új.</string>
     <!--endregion-->
 
     <!-- region Presentation Qr Scan -->
