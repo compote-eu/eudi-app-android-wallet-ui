@@ -72,7 +72,10 @@ internal suspend fun verifyCredentialIntegrity(credential: String, expectedDocTy
 }
 
 private suspend fun verifyMdoc(credential: String, expectedDocType: String?) {
-    val issuerSigned = readOrRefuse("an mdoc that will not parse") { Cbor.decode(credential.fromBase64Url()) }
+    // Bounded before anything decodes it, multipaz's provisioning after this included.
+    val issuerSigned = readOrRefuse("an mdoc that will not parse") {
+        Cbor.decode(credential.fromBase64Url().requireCborWithinDepth())
+    }
     val issuerAuth = readOrRefuse("an mdoc without a readable issuerAuth") { issuerSigned["issuerAuth"].asCoseSign1 }
     verifyIssuerAuth(issuerAuth)
 

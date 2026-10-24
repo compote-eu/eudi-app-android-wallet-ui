@@ -143,6 +143,14 @@ class CredentialIntegrityTest {
     }
 
     @Test
+    fun an_mdoc_nested_past_the_bound_is_refused_before_it_is_decoded() = runTest {
+        // Decoded, it would overflow the stack, which Kotlin/Native cannot catch.
+        val nested = ByteArray(10_001) { if (it < 10_000) 0x81.toByte() else 0 }
+
+        assertRefused(nested.toBase64Url(), mdlDocType, because = "nested deeper than $CBOR_MAXIMUM_DEPTH levels")
+    }
+
+    @Test
     fun an_sd_jwt_vc_as_its_issuer_signed_it_is_accepted() = runTest {
         verifyCredentialIntegrity(sdJwtVc(testSigner()), expectedDocType = null)
     }

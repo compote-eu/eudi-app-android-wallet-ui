@@ -372,6 +372,8 @@ internal suspend fun iosIso18013Presentment(
                 sendSessionTermination = false
                 break
             }
+            // From any reader in range, before it has authenticated: bounded before multipaz decodes it.
+            sessionData.requireCborWithinDepth()
 
             if (sessionEncryption == null) {
                 eReaderKey = SessionEncryption.getEReaderKey(sessionData)
@@ -399,7 +401,7 @@ internal suspend fun iosIso18013Presentment(
                 throw IllegalStateException("No data in message from reader")
             }
 
-            val deviceRequest = DeviceRequest.fromDataItem(Cbor.decode(encodedDeviceRequest))
+            val deviceRequest = DeviceRequest.fromDataItem(Cbor.decode(encodedDeviceRequest.requireCborWithinDepth()))
             deviceRequest.verifyReaderAuthentication(sessionTranscript)
             onDeviceRequest(deviceRequest)
             val responseObject = iosMdocPresentment(
@@ -521,7 +523,8 @@ private suspend fun mdocDcApiPresentment(
     val deviceRequestBase64 = data["deviceRequest"]!!.jsonPrimitive.content
     val encryptionInfoBase64 = data["encryptionInfo"]!!.jsonPrimitive.content
 
-    val encryptionInfo = Cbor.decode(encryptionInfoBase64.fromBase64Url())
+    // From any web page: bounded before multipaz decodes it, as the reader's messages are.
+    val encryptionInfo = Cbor.decode(encryptionInfoBase64.fromBase64Url().requireCborWithinDepth())
     require(encryptionInfo.asArray[0].asTstr == "dcapi") { "Malformed EncryptionInfo" }
     val recipientPublicKey = encryptionInfo.asArray[1].asMap[Tstr("recipientPublicKey")]!!
         .asCoseKey.ecPublicKey
@@ -540,7 +543,9 @@ private suspend fun mdocDcApiPresentment(
         }
     }
 
-    val deviceRequest = DeviceRequest.fromDataItem(Cbor.decode(deviceRequestBase64.fromBase64Url()))
+    val deviceRequest = DeviceRequest.fromDataItem(
+        Cbor.decode(deviceRequestBase64.fromBase64Url().requireCborWithinDepth())
+    )
     deviceRequest.verifyReaderAuthentication(sessionTranscript)
     onDeviceRequest(deviceRequest)
     val responseObject = iosMdocPresentment(

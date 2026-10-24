@@ -231,4 +231,23 @@ class IosProximityExchangeTest {
         assertEquals(sent, presenter.state.value)
         assertEquals(1, reader.heard.size)
     }
+
+    /**
+     * Any reader in range can send a first message before it has authenticated. Nested 10,000 deep, multipaz's
+     * decoder overflowed the stack on it and the app died, since Kotlin/Native cannot catch that; now the
+     * exchange fails and the app goes on.
+     */
+    @Test
+    fun a_first_message_nested_past_the_bound_fails_the_exchange() = runTest {
+        val readers = mutableListOf<ScriptedReader>()
+        val presenter = presenter(walletWithPid(), readers, connects = true)
+
+        presenter.startQrEngagement()
+        runCurrent()
+        val reader = readers.single()
+        reader.says.send(ByteArray(10_001) { if (it < 10_000) 0x81.toByte() else 0 })
+
+        presenter.state.filterIsInstance<IosProximityState.Failed>().first()
+        assertTrue(reader.closed)
+    }
 }
