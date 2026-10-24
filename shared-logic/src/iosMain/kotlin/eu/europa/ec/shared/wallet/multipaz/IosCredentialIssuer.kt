@@ -34,6 +34,7 @@ import eu.europa.ec.shared.wallet.config.iosWalletConfig
 import eu.europa.ec.shared.wallet.platform.IosRegistrationCheckSetting
 import eu.europa.ec.shared.wallet.platform.iosUserLanguage
 import org.multipaz.provisioning.AuthorizationChallenge
+import org.multipaz.document.Document
 import org.multipaz.provisioning.AuthorizationResponse
 import org.multipaz.provisioning.Provisioning
 import org.multipaz.provisioning.ProvisioningModel
@@ -200,6 +201,13 @@ class IosCredentialIssuer(
      */
     private var walletStore: suspend () -> MultipazWalletStore = { walletEngine.store() }
 
+    /**
+     * The re-issuance through the stored refresh token. Null means the real thing — drive multipaz; a test
+     * scripts its outcome to reach what follows it, as [issueConfiguration] does for a sign-in. Set by the
+     * internal constructor, as [walletStore] is, since its type is internal.
+     */
+    private var reIssueWithRefreshToken: (suspend (documentId: String) -> ReIssuanceAttempt)? = null
+
     internal constructor(
         walletEngine: IosWalletEngine,
         walletStore: suspend () -> MultipazWalletStore,
@@ -209,14 +217,18 @@ class IosCredentialIssuer(
             error("no registration check expected")
         },
         httpEngine: HttpClientEngine? = null,
+        issueConfiguration: (suspend (IosVciIssuer, String) -> Result<String>)? = null,
+        reIssueWithRefreshToken: (suspend (documentId: String) -> ReIssuanceAttempt)? = null,
     ) : this(
         walletEngine = walletEngine,
         issuers = issuers,
         httpEngine = httpEngine,
+        issueConfiguration = issueConfiguration,
         isRegistrationCheckEnabled = isRegistrationCheckEnabled,
         checkRegistration = checkRegistration,
     ) {
         this.walletStore = walletStore
+        this.reIssueWithRefreshToken = reIssueWithRefreshToken
     }
 
     /**
@@ -224,7 +236,11 @@ class IosCredentialIssuer(
      * and the original deleted once the new one is issued, as wallet-core and the official iOS wallet do.
      *
      * No browser and no consent: the user gave both at issuance, and the refresh token they produced is
-     * what this presents. The new document gets a full batch and the policy that applies now, and takes
+     * what this presents. When the issuer no longer accepts it (`invalid_grant`), or the key it is bound to
+     * is gone, and the user asked for the re-issue, they sign in again instead ([reIssueWithSignIn]), as
+     * Android's `allowAuthorizationFallback` and the official iOS wallet do; the background re-issue never
+     * opens a browser.
+     * The new document gets a full batch and the policy that applies now, and takes
      * the original's bookmark; the original goes the way any document goes ([retireReplaced]). When the
      * issuer defers, the new document is parked `Pending` and the original stays until its credential
      * arrives, wallet-core's `replacesDocumentId`, so the user is never left without one. That is
@@ -272,114 +288,16 @@ class IosCredentialIssuer(
         val preflight = preflight(issuer.issuerUrl, setOfNotNull(configurationId))
         preflight.refusal()?.let { return it }
 
-        // Under the lock every use of a stored refresh token takes, and read again once it is held: another
-        // document of the same login may have rotated the token while this waited. See [RefreshTokenChain].
-        val progress = RefreshTokenChain.withLock {
-            val current = store.documentStore.lookupDocument(documentId)?.authorizationData
-                ?: return@withLock IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION)
-            // A client built from authorization data with a refresh token never asks the user to authorize
-            // (multipaz 0.101.0, `OpenID4VCIProvisioningClient.getAuthorizationChallenges`); without one it
-            // would start a browser login, and nothing here could answer it.
-            if (current.openID4VciRefreshToken() == null) {
-                return@withLock IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION)
-            }
-            val deferred = DeferredIssuanceNotice()
-            val refusal = TokenRefusalNotice()
-            val rotation = RefreshTokenRotationNotice()
-            val displayNotice = IssuerDisplayNotice()
-            val reusePolicy = IssuerReusePolicyNotice()
-            val httpClient = openID4VciHttpClient(
-                engine = httpEngine ?: Darwin.create(),
-                deferredNotice = deferred,
-                refusalNotice = refusal,
-                rotationNotice = rotation,
-                displayNotice = displayNotice,
-                reusePolicyNotice = reusePolicy,
-            )
-            val log = IosIssuanceLog(
-                store = { store },
-                reissuance = true,
-                userTriggered = userTriggered,
-                requested = 1,
-                registration = preflight.registration,
-                writeAhead = false,
-            )
-            val model = ProvisioningModel(
-                documentProvisioningHandler = IosDocumentProvisioningHandler(
-                    store,
-                    displayNotice = displayNotice,
-                    reusePolicy = reusePolicy,
-                    // So a `202 Accepted` parks the new document instead of deleting it.
-                    deferred = deferred,
-                    issuanceLog = log,
-                    replacesDocumentId = documentId,
-                ),
-                httpClient = httpClient,
-                promptModel = Platform.promptModel,
-                authorizationSecureArea = store.keySecureArea,
-                // No event logger: [log] writes the re-issuance row, by the rules above.
-            )
-            val environment = IosProvisioningEnvironment(
-                httpClient = httpClient,
-                secureArea = store.keySecureArea,
-                clientPreferences = clientPreferencesFor(issuer),
-                backend = IosOpenID4VciBackend(
-                    walletProviderBaseUrl = walletProviderBaseUrl,
-                    clientId = issuer.clientId,
-                    httpClient = httpClient,
-                ),
-            )
-
-            try {
-                val issued = model.launch(
-                    coroutineContext = Dispatchers.Default + Platform.promptModel + RpcAuthClientSession() + environment,
-                    document = null,
-                ) {
-                    Provisioning.createClientFromAuthorizationData(withoutStoredWalletAttestation(current))
-                }.await()
-                log.documentFinished(issued.identifier)
-                log.finish()
-                Logger.i(TAG, "re-issued $documentId as ${issued.identifier}")
-                IosIssuanceProgress.Issued(
-                    documentIds = listOf(issued.identifier),
-                    credentialsFetched = issued.getCertifiedCredentials().size,
-                )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (t: Throwable) {
-                val parked = deferred.parkedDocumentId
-                when {
-                    // Not a failure: the handler kept the new document and stamped the issuer's handle on it.
-                    parked != null -> {
-                        log.documentFinished(parked)
-                        log.finish()
-                        Logger.i(TAG, "the issuer deferred the re-issuance of $documentId; $parked will replace it")
-                        IosIssuanceProgress.Issued(
-                            documentIds = listOf(parked),
-                            deferred = mapOf(parked to (document.eudiMetadata?.format?.identifier ?: "")),
-                        )
-                    }
-
-                    else -> {
-                        if (refusal.error == null) {
-                            log.failed(t)
-                            log.finish()
-                        }
-                        Logger.w(TAG, "the re-issuance of $documentId failed: ${t.message}")
-                        if (t.isIssuerNotTrusted()) {
-                            IosIssuanceProgress.IssuerNotTrusted(message = t.message ?: ISSUER_NOT_TRUSTED)
-                        } else {
-                            IosIssuanceProgress.Failure(message = refreshFailureMessage(refusal, deferred, t))
-                        }
-                    }
-                }
-            } finally {
-                model.cancel()
-                httpClient.close()
-                // multipaz writes a rotated token only onto the document it provisioned; every document of
-                // the login gets it here, whatever happened after the exchange.
-                rotation.spent?.let { spent -> rotation.live?.let { live -> store.handOnRefreshToken(spent, live) } }
-            }
+        val attempt = reIssueWithRefreshToken?.invoke(documentId)
+            ?: reIssueWithStoredAuthorization(store, document, documentId, issuer, preflight, userTriggered)
+        // Android's `allowAuthorizationFallback`, true for a re-issue the user asked for: when the issuer no
+        // longer accepts the refresh token (`invalid_grant`, RFC 6749 §5.2), the user signs in again, as for
+        // a first issuance. The background re-issue never opens a browser.
+        val progress = if (attempt.signInNeeded && userTriggered) {
+            Logger.i(TAG, "the stored authorization of $documentId can no longer be used; signing in again")
+            reIssueWithSignIn(store, documentId, issuer, preflight) ?: attempt.progress
+        } else {
+            attempt.progress
         }
 
         // Outside the lock: deleting a document takes it.
@@ -389,6 +307,202 @@ class IosCredentialIssuer(
             if (progress.deferred.isEmpty()) engine.retireReplaced(documentId, requestRevocationCheck)
         }
         return progress
+    }
+
+    /** How a re-issuance through the stored refresh token ended, and whether only signing in again can help. */
+    internal data class ReIssuanceAttempt(
+        val progress: IosIssuanceProgress,
+        /** The issuer refused the token (`invalid_grant`: expired or revoked), or the key it is bound to is gone. */
+        val signInNeeded: Boolean = false,
+    )
+
+    /**
+     * The re-issuance with no browser: a new document through the refresh token kept from the original's
+     * issuance. Under the lock every use of a stored refresh token takes, and read again once it is held:
+     * another document of the same login may have rotated the token while this waited. See
+     * [RefreshTokenChain].
+     */
+    private suspend fun reIssueWithStoredAuthorization(
+        store: MultipazWalletStore,
+        document: Document,
+        documentId: String,
+        issuer: IosVciIssuer,
+        preflight: RegistrationPreflight,
+        userTriggered: Boolean,
+    ): ReIssuanceAttempt = RefreshTokenChain.withLock {
+        val current = store.documentStore.lookupDocument(documentId)?.authorizationData
+            ?: return@withLock ReIssuanceAttempt(IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION))
+        // A client built from authorization data with a refresh token never asks the user to authorize
+        // (multipaz 0.101.0, `OpenID4VCIProvisioningClient.getAuthorizationChallenges`); without one it
+        // would start a browser login, and nothing here could answer it.
+        if (current.openID4VciRefreshToken() == null) {
+            return@withLock ReIssuanceAttempt(IosIssuanceProgress.Failure(message = NO_STORED_AUTHORIZATION))
+        }
+        // The DPoP key the refresh token is bound to (RFC 9449): without it the token cannot be presented.
+        current.openID4VciDpopKeyAlias()?.let { alias ->
+            if (runCatching { store.keySecureArea.getKeyInfo(alias) }.isFailure) {
+                Logger.w(TAG, "the DPoP key the stored authorization of $documentId names is gone")
+                return@withLock ReIssuanceAttempt(
+                    IosIssuanceProgress.Failure(message = AUTHORIZATION_EXPIRED),
+                    signInNeeded = true,
+                )
+            }
+        }
+        val deferred = DeferredIssuanceNotice()
+        val refusal = TokenRefusalNotice()
+        val rotation = RefreshTokenRotationNotice()
+        val displayNotice = IssuerDisplayNotice()
+        val reusePolicy = IssuerReusePolicyNotice()
+        val httpClient = openID4VciHttpClient(
+            engine = httpEngine ?: Darwin.create(),
+            deferredNotice = deferred,
+            refusalNotice = refusal,
+            rotationNotice = rotation,
+            displayNotice = displayNotice,
+            reusePolicyNotice = reusePolicy,
+        )
+        val log = IosIssuanceLog(
+            store = { store },
+            reissuance = true,
+            userTriggered = userTriggered,
+            requested = 1,
+            registration = preflight.registration,
+            writeAhead = false,
+        )
+        val model = ProvisioningModel(
+            documentProvisioningHandler = IosDocumentProvisioningHandler(
+                store,
+                displayNotice = displayNotice,
+                reusePolicy = reusePolicy,
+                // So a `202 Accepted` parks the new document instead of deleting it.
+                deferred = deferred,
+                issuanceLog = log,
+                replacesDocumentId = documentId,
+            ),
+            httpClient = httpClient,
+            promptModel = Platform.promptModel,
+            authorizationSecureArea = store.keySecureArea,
+            // No event logger: [log] writes the re-issuance row, by the rules above.
+        )
+        val environment = IosProvisioningEnvironment(
+            httpClient = httpClient,
+            secureArea = store.keySecureArea,
+            clientPreferences = clientPreferencesFor(issuer),
+            backend = IosOpenID4VciBackend(
+                walletProviderBaseUrl = walletProviderBaseUrl,
+                clientId = issuer.clientId,
+                httpClient = httpClient,
+            ),
+        )
+
+        try {
+            val issued = model.launch(
+                coroutineContext = Dispatchers.Default + Platform.promptModel + RpcAuthClientSession() + environment,
+                document = null,
+            ) {
+                Provisioning.createClientFromAuthorizationData(withoutStoredWalletAttestation(current))
+            }.await()
+            log.documentFinished(issued.identifier)
+            log.finish()
+            Logger.i(TAG, "re-issued $documentId as ${issued.identifier}")
+            ReIssuanceAttempt(
+                IosIssuanceProgress.Issued(
+                    documentIds = listOf(issued.identifier),
+                    credentialsFetched = issued.getCertifiedCredentials().size,
+                )
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            val parked = deferred.parkedDocumentId
+            when {
+                // Not a failure: the handler kept the new document and stamped the issuer's handle on it.
+                parked != null -> {
+                    log.documentFinished(parked)
+                    log.finish()
+                    Logger.i(TAG, "the issuer deferred the re-issuance of $documentId; $parked will replace it")
+                    ReIssuanceAttempt(
+                        IosIssuanceProgress.Issued(
+                            documentIds = listOf(parked),
+                            deferred = mapOf(parked to (document.eudiMetadata?.format?.identifier ?: "")),
+                        )
+                    )
+                }
+
+                else -> {
+                    if (refusal.error == null) {
+                        log.failed(t)
+                        log.finish()
+                    }
+                    Logger.w(TAG, "the re-issuance of $documentId failed: ${t.message}")
+                    ReIssuanceAttempt(
+                        progress = if (t.isIssuerNotTrusted()) {
+                            IosIssuanceProgress.IssuerNotTrusted(message = t.message ?: ISSUER_NOT_TRUSTED)
+                        } else {
+                            IosIssuanceProgress.Failure(message = refreshFailureMessage(refusal, deferred, t))
+                        },
+                        signInNeeded = refusal.error == INVALID_GRANT,
+                    )
+                }
+            }
+        } finally {
+            model.cancel()
+            httpClient.close()
+            // multipaz writes a rotated token only onto the document it provisioned; every document of
+            // the login gets it here, whatever happened after the exchange.
+            rotation.spent?.let { spent -> rotation.live?.let { live -> store.handOnRefreshToken(spent, live) } }
+        }
+    }
+
+    /**
+     * The re-issuance with a browser, when the refresh token was refused: the same configuration issued
+     * again after the user signs in, as a first issuance is, and the new document replacing the original
+     * by the same rules. Null when the stored authorization does not say which configuration it was for.
+     */
+    private suspend fun reIssueWithSignIn(
+        store: MultipazWalletStore,
+        documentId: String,
+        issuer: IosVciIssuer,
+        preflight: RegistrationPreflight,
+    ): IosIssuanceProgress? {
+        val configurationId = store.documentStore.lookupDocument(documentId)?.authorizationData
+            ?.openID4VciConfigurationId()
+            ?: return null
+        val log = IosIssuanceLog(
+            store = { store },
+            reissuance = true,
+            userTriggered = true,
+            requested = 1,
+            registration = preflight.registration,
+        )
+        val outcome = issueConfiguration?.invoke(issuer, configurationId)
+            ?: runCatching { provision(issuer, configurationId, log = log, replacesDocumentId = documentId) }
+        return outcome.fold(
+            onSuccess = { issuedId ->
+                log.documentFinished(issuedId)
+                log.finish()
+                val metadata = store.documentStore.lookupDocument(issuedId)?.eudiMetadata
+                Logger.i(TAG, "re-issued $documentId as $issuedId after signing in again")
+                IosIssuanceProgress.Issued(
+                    documentIds = listOf(issuedId),
+                    deferred = metadata
+                        ?.takeIf { it.issuedAt == null && it.deferredTransactionId != null }
+                        ?.let { mapOf(issuedId to it.format.identifier) }
+                        .orEmpty(),
+                )
+            },
+            onFailure = { error ->
+                if (error is CancellationException) throw error
+                log.failed(error)
+                log.finish()
+                Logger.w(TAG, "signing in again to re-issue $documentId failed: ${error.message}")
+                if (error.isIssuerNotTrusted()) {
+                    IosIssuanceProgress.IssuerNotTrusted(message = error.message ?: ISSUER_NOT_TRUSTED)
+                } else {
+                    IosIssuanceProgress.Failure(message = error.message ?: REFRESH_FAILED)
+                }
+            },
+        )
     }
 
     /**
@@ -804,6 +918,8 @@ class IosCredentialIssuer(
         /** The issuer to talk to, which for an offer is the offering issuer rather than the catalogue's. */
         issuerUrl: String = issuer.issuerUrl,
         log: IosIssuanceLog? = null,
+        /** The document this issuance re-issues, when it is one; see [reIssueWithSignIn]. */
+        replacesDocumentId: String? = null,
     ): String {
         val deferred = DeferredIssuanceNotice()
         val displayNotice = IssuerDisplayNotice()
@@ -826,6 +942,7 @@ class IosCredentialIssuer(
                 // So a `202 Accepted` parks the document instead of deleting it.
                 deferred = deferred,
                 issuanceLog = log,
+                replacesDocumentId = replacesDocumentId,
             ),
             httpClient = httpClient,
             promptModel = Platform.promptModel,

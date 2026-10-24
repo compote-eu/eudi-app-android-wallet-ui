@@ -200,10 +200,11 @@ internal class IosDocumentDetailsPlatformBridge(
      * [IosCredentialIssuer.reIssueDocument] reads that rather than trusting the caller — re-issuing
      * against an issuer that never knew this document would fail in a more confusing way.
      *
-     * **No browser, and no fallback to one yet.** The authorization kept from the original issuance is
-     * presented silently, which is the case this button exists for. When that is not possible — nothing
-     * stored, or the issuer refuses — it says so. Android's `allowAuthorizationFallback = true`, and the
-     * official iOS wallet's equivalent, sign the user in again instead; that is the next step here.
+     * **A browser only when needed.** The authorization kept from the original issuance is presented
+     * silently, which is the case this button exists for. When the issuer refuses its refresh token, the
+     * user signs in again in Safari, as Android's `allowAuthorizationFallback = true` and the official iOS
+     * wallet do; the redirect back is caught by `IosAuthorizationRedirects`, so this screen resumes nothing
+     * itself. With nothing stored at all, it says so.
      */
     override fun reIssueDocument(
         documentId: String,
@@ -245,10 +246,12 @@ internal class IosDocumentDetailsPlatformBridge(
     }
 
     /**
-     * False: there is no in-flight OpenID4VCI session on this screen to resume, because
-     * [reIssueDocument] never opens the browser.
+     * True, as on the add-document screen: a re-issue that has to sign in again opens Safari, and the
+     * redirect back is consumed by the flow that asked for it (`IosAuthorizationRedirects`). The only resume
+     * this screen hears is that class announcing `VCI_RESUME_ACTION`, which it does only when a flow was
+     * waiting, so turning the spinner back on is right.
      */
-    override fun resumeOpenId4VciWithAuthorization(uri: String) = false
+    override fun resumeOpenId4VciWithAuthorization(uri: String) = true
 
     /**
      * The `n/m` counter whenever the document reports a batch — reported unconditionally, because

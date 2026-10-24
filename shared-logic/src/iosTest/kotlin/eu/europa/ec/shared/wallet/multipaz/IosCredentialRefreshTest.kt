@@ -36,12 +36,14 @@ import kotlinx.io.bytestring.ByteString
 import org.multipaz.cbor.Cbor
 import org.multipaz.cbor.CborMap
 import org.multipaz.cbor.Tstr
+import org.multipaz.securearea.software.SoftwareCreateKeySettings
 import org.multipaz.securearea.software.SoftwareSecureArea
 import org.multipaz.storage.ephemeral.EphemeralStorage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class IosCredentialRefreshTest {
@@ -90,17 +92,27 @@ class IosCredentialRefreshTest {
             registrationChecks += issuerUrl to configurationIds
             registration
         },
-        httpEngine = MockEngine { request ->
-            sent += request.url.toString()
-            respond("", HttpStatusCode.NotFound)
-        },
+        httpEngine = issuerAnswering404(),
     )
+
+    private fun issuerAnswering404() = MockEngine { request ->
+        sent += request.url.toString()
+        respond("", HttpStatusCode.NotFound)
+    }
 
     /** The registration checks asked for, as issuer URL and configurations. */
     private val registrationChecks = mutableListOf<Pair<String, Set<String>>>()
 
-    /** A document that got as far as a re-issuance would: it holds the authorization from its issuance. */
-    private suspend fun MultipazWalletStore.authorize(documentId: String, refreshToken: String? = "a-refresh-token") {
+    /**
+     * A document that got as far as a re-issuance would: it holds the authorization from its issuance, and
+     * the DPoP key that names is in the secure area unless [dpopKey] says otherwise.
+     */
+    private suspend fun MultipazWalletStore.authorize(
+        documentId: String,
+        refreshToken: String? = "a-refresh-token",
+        dpopKey: Boolean = true,
+    ) {
+        if (dpopKey) keySecureArea.createKey("dpop-key", SoftwareCreateKeySettings.Builder().build())
         documentStore.lookupDocument(documentId)!!.edit {
             authorizationData = storedAuthorization(refreshToken = refreshToken)
         }
@@ -211,6 +223,155 @@ class IosCredentialRefreshTest {
         // evidence that it came from here.
         val failure = assertIs<IosIssuanceProgress.Failure>(progress)
         assertEquals(IosCredentialIssuer.UNKNOWN_ISSUER, failure.message)
+    }
+
+    // ---- signing in again when the refresh token is refused --------------------------------------------
+    //
+    // Android's `allowAuthorizationFallback` (wallet-core 0.31 `reissueDocument`): only on `invalid_grant`,
+    // and only for a re-issue the user asked for; the background one never opens a browser. The official iOS
+    // wallet does the same. Both halves are scripted: the refresh attempt's outcome, and the sign-in.
+
+    /** The configurations a sign-in was asked for. */
+    private val signIns = mutableListOf<String>()
+
+    private val tokenRefused = IosCredentialIssuer.ReIssuanceAttempt(
+        progress = IosIssuanceProgress.Failure(message = IosCredentialIssuer.AUTHORIZATION_EXPIRED),
+        signInNeeded = true,
+    )
+
+    /** [refreshAttempt] null runs the real one, against an issuer that answers every request with a 404. */
+    private fun signingInOver(
+        store: MultipazWalletStore,
+        refreshAttempt: IosCredentialIssuer.ReIssuanceAttempt?,
+        signIn: suspend () -> Result<String>,
+    ) = IosCredentialIssuer(
+        walletEngine = IosWalletEngine(),
+        walletStore = { store },
+        issuers = listOf(issuer),
+        httpEngine = issuerAnswering404(),
+        issueConfiguration = { _, configurationId ->
+            signIns += configurationId
+            signIn()
+        },
+        reIssueWithRefreshToken = refreshAttempt?.let { attempt -> { attempt } },
+    )
+
+    private suspend fun MultipazWalletStore.issuedDocument(): String = seedMdocDocument(
+        docType = MDOC_PID_DOC_TYPE,
+        displayName = "PID (new)",
+        namespace = MDOC_PID_DOC_TYPE,
+        elements = samplePidElements(),
+        policy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 1),
+    )
+
+    @Test
+    fun a_refused_refresh_token_signs_the_user_in_again_and_the_new_document_replaces_the_original() = runTest {
+        val (store, documentId) = walletWith()
+        store.authorize(documentId)
+        val newId = store.issuedDocument()
+
+        val progress = signingInOver(store, tokenRefused) { Result.success(newId) }
+            .reIssueDocument(documentId, userTriggered = true)
+
+        // The configuration the stored authorization was granted for, as the fixture names it.
+        assertEquals(listOf("pid_mdoc"), signIns)
+        assertEquals(listOf(newId), assertIs<IosIssuanceProgress.Issued>(progress).documentIds)
+        assertNull(store.documentStore.lookupDocument(documentId))
+    }
+
+    @Test
+    fun the_background_re_issue_never_signs_in() = runTest {
+        val (store, documentId) = walletWith()
+        store.authorize(documentId)
+
+        val progress = signingInOver(store, tokenRefused) { error("no sign-in expected") }
+            .reIssueDocument(documentId, userTriggered = false)
+
+        assertEquals(IosCredentialIssuer.AUTHORIZATION_EXPIRED, assertIs<IosIssuanceProgress.Failure>(progress).message)
+        assertTrue(signIns.isEmpty())
+        assertNotNull(store.documentStore.lookupDocument(documentId))
+    }
+
+    @Test
+    fun a_failure_other_than_a_refused_token_does_not_sign_in() = runTest {
+        val (store, documentId) = walletWith()
+        store.authorize(documentId)
+        val failed = IosCredentialIssuer.ReIssuanceAttempt(IosIssuanceProgress.Failure(IosCredentialIssuer.REFRESH_FAILED))
+
+        val progress = signingInOver(store, failed) { error("no sign-in expected") }
+            .reIssueDocument(documentId, userTriggered = true)
+
+        // A server error or a network failure: a browser would meet the same broken issuer.
+        assertEquals(IosCredentialIssuer.REFRESH_FAILED, assertIs<IosIssuanceProgress.Failure>(progress).message)
+        assertTrue(signIns.isEmpty())
+    }
+
+    // The refresh token is bound to its DPoP key: with the key gone it could only fail, so nothing is sent.
+
+    @Test
+    fun a_manual_re_issue_whose_dpop_key_is_gone_signs_in_again() = runTest {
+        val (store, documentId) = walletWith()
+        store.authorize(documentId, dpopKey = false)
+        val newId = store.issuedDocument()
+
+        val progress = signingInOver(store, refreshAttempt = null) { Result.success(newId) }
+            .reIssueDocument(documentId, userTriggered = true)
+
+        assertTrue(sent.isEmpty())
+        assertEquals(listOf("pid_mdoc"), signIns)
+        assertEquals(listOf(newId), assertIs<IosIssuanceProgress.Issued>(progress).documentIds)
+        assertNull(store.documentStore.lookupDocument(documentId))
+    }
+
+    @Test
+    fun a_background_re_issue_whose_dpop_key_is_gone_fails_without_signing_in() = runTest {
+        val (store, documentId) = walletWith()
+        store.authorize(documentId, dpopKey = false)
+
+        val progress = signingInOver(store, refreshAttempt = null) { error("no sign-in expected") }
+            .reIssueDocument(documentId, userTriggered = false)
+
+        assertEquals(IosCredentialIssuer.AUTHORIZATION_EXPIRED, assertIs<IosIssuanceProgress.Failure>(progress).message)
+        assertTrue(sent.isEmpty())
+        assertTrue(signIns.isEmpty())
+        assertNotNull(store.documentStore.lookupDocument(documentId))
+    }
+
+    @Test
+    fun a_sign_in_that_fails_leaves_the_original() = runTest {
+        val (store, documentId) = walletWith()
+        store.authorize(documentId)
+
+        val progress = signingInOver(store, tokenRefused) {
+            Result.failure(IllegalStateException("Authorization was not completed."))
+        }.reIssueDocument(documentId, userTriggered = true)
+
+        assertEquals("Authorization was not completed.", assertIs<IosIssuanceProgress.Failure>(progress).message)
+        assertNotNull(store.documentStore.lookupDocument(documentId))
+    }
+
+    @Test
+    fun a_sign_in_the_issuer_defers_keeps_the_original_until_its_credential_arrives() = runTest {
+        val (store, documentId) = walletWith()
+        store.authorize(documentId)
+
+        val progress = signingInOver(store, tokenRefused) {
+            Result.success(
+                store.documentStore.createDocument(
+                    displayName = "PID (deferred)",
+                    metadata = EudiDocumentMetadata.create(
+                        documentManagerId = store.documentManagerId,
+                        format = StoredDocumentFormat.MsoMdoc(MDOC_PID_DOC_TYPE),
+                        credentialPolicy = WalletCredentialPolicy.RotatingBatch(numberOfCredentials = 1),
+                        deferredTransactionId = "tx",
+                        replacesDocumentId = documentId,
+                    ),
+                ).identifier
+            )
+        }.reIssueDocument(documentId, userTriggered = true)
+
+        assertTrue(assertIs<IosIssuanceProgress.Issued>(progress).deferred.isNotEmpty())
+        assertNotNull(store.documentStore.lookupDocument(documentId))
     }
 
     // ---- dropping the expired wallet attestation multipaz would otherwise replay -----------------

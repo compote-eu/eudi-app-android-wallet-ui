@@ -362,6 +362,7 @@ internal fun ByteString.openID4VciDpopKeyAlias(): String? {
 
 private const val DPOP_KEY_ALIAS_KEY = "dpopKeyAlias"
 private const val REFRESH_TOKEN_KEY = "refreshToken"
+private const val CONFIGURATION_ID_KEY = "configurationId"
 
 /**
  * Collects the deferred credential for [documentId], if that document is waiting on one.
@@ -412,6 +413,15 @@ suspend fun IosWalletEngine.documentsAwaitingDeferredIssuance(): Map<String, Str
 internal fun ByteString.openID4VciRefreshToken(): String? {
     val map = runCatching { Cbor.decode(toByteArray()) }.getOrNull() as? CborMap ?: return null
     return (map.items[Tstr(REFRESH_TOKEN_KEY)] as? Tstr)?.value?.takeIf { it.isNotBlank() }
+}
+
+/**
+ * The issuer's credential configuration this authorization was granted for, which a new sign-in asks for
+ * again; null when the authorization does not say.
+ */
+internal fun ByteString.openID4VciConfigurationId(): String? {
+    val map = runCatching { Cbor.decode(toByteArray()) }.getOrNull() as? CborMap ?: return null
+    return (map.items[Tstr(CONFIGURATION_ID_KEY)] as? Tstr)?.value?.takeIf { it.isNotBlank() }
 }
 
 /**
