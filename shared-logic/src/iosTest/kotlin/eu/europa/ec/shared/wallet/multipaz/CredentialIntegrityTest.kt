@@ -23,6 +23,10 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.multipaz.cbor.Cbor
+import org.multipaz.cbor.CborArray
+import org.multipaz.cbor.CborMap
+import org.multipaz.cbor.DataItem
+import org.multipaz.cbor.RawCbor
 import org.multipaz.cbor.buildCborMap
 import org.multipaz.crypto.Algorithm
 import org.multipaz.crypto.Crypto
@@ -57,9 +61,10 @@ class CredentialIntegrityTest {
         givenName: String = "Valid",
         chain: X509CertChain? = signer.chain,
         signingKey: EcPrivateKey = signer.key,
+        extraElements: List<Pair<String, DataItem>> = emptyList(),
     ): String = issuerSignedDataFor(
         docType = docType,
-        issuerNamespaces = issuerNamespacesOf(docType, samplePidElements(givenName = givenName), Random.Default),
+        issuerNamespaces = issuerNamespacesOf(docType, samplePidElements(givenName = givenName) + extraElements, Random.Default),
         deviceKey = Crypto.createEcPrivateKey(EcCurve.P256).publicKey,
         validFrom = Clock.System.now() - 1.days,
         validUntil = Clock.System.now() + 30.days,
@@ -74,6 +79,19 @@ class CredentialIntegrityTest {
         return Cbor.encode(
             buildCborMap {
                 put("nameSpaces", altered["nameSpaces"])
+                put("issuerAuth", original["issuerAuth"])
+            }
+        ).toBase64Url()
+    }
+
+    /** [signed] with its first data element sent twice: still signed, since the MSO covers each element's bytes. */
+    private fun withFirstDataElementTwice(signed: String): String {
+        val original = Cbor.decode(signed.fromBase64Url())
+        val (nameSpace, items) = original["nameSpaces"].asMap.entries.first()
+        val repeated = CborArray((items.asArray + items.asArray.first()).toMutableList())
+        return Cbor.encode(
+            buildCborMap {
+                put("nameSpaces", CborMap(mutableMapOf<DataItem, DataItem>(nameSpace to repeated)))
                 put("issuerAuth", original["issuerAuth"])
             }
         ).toBase64Url()
@@ -141,6 +159,30 @@ class CredentialIntegrityTest {
     fun an_mdocs_type_is_not_compared_when_the_configuration_is_unknown() = runTest {
         verifyCredentialIntegrity(mdoc(testSigner()), expectedDocType = null)
     }
+
+    @Test
+    fun an_mdoc_naming_a_data_element_twice_is_refused() = runTest {
+        assertRefused(withFirstDataElementTwice(mdoc(testSigner())), mdlDocType, because = "twice in $mdlDocType")
+    }
+
+    @Test
+    fun an_mdoc_element_encoded_longer_than_it_needs_is_refused() = runTest {
+        // 1 in two bytes where one does: signed as sent, but multipaz would present it as `01`.
+        val credential = mdoc(testSigner(), extraElements = listOf("long_integer" to RawCbor(bytes(0x18, 0x01))))
+
+        assertRefused(credential, mdlDocType, because = "long_integer in $mdlDocType is encoded in a way")
+    }
+
+    @Test
+    fun an_mdoc_element_with_a_map_key_given_twice_is_refused() = runTest {
+        // {"a": 1, "a": 2}: multipaz keeps one of them, so the element it would present is not the one signed.
+        val twice = RawCbor(bytes(0xa2, 0x61, 0x61, 0x01, 0x61, 0x61, 0x02))
+        val credential = mdoc(testSigner(), extraElements = listOf("key_twice" to twice))
+
+        assertRefused(credential, mdlDocType, because = "key_twice in $mdlDocType is encoded in a way")
+    }
+
+    private fun bytes(vararg values: Int) = ByteArray(values.size) { values[it].toByte() }
 
     @Test
     fun an_mdoc_nested_past_the_bound_is_refused_before_it_is_decoded() = runTest {

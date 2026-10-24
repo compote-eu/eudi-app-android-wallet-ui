@@ -23,6 +23,7 @@ import class SharedKit.X5ChainProbeKt
 import class SharedKit.DeferredIssuanceProbeKt
 import class SharedKit.WalletEngineProbeKt
 import class SharedKit.KeychainStorageProbeKt
+import class SharedKit.ElementEncodingProbeKt
 #endif
 import class SharedKit.IosFirstRunWipeKt
 import class SharedKit.IosDevicePasscodeKt
@@ -318,6 +319,14 @@ struct iOSApp: App {
         if arguments.contains("--keychain-storage-probe") {
             KeychainStorageProbeKt.probeKeychainStorage { line in
                 print("KEYCHAIN-STORAGE: \(line)")
+            }
+            return
+        }
+
+        // What a stricter issuance check would refuse among the mdoc credentials already stored; reads only.
+        if arguments.contains("--element-encoding-probe") {
+            ElementEncodingProbeKt.probeElementEncodings { line in
+                print("ELEMENT-ENCODING: \(line)")
             }
             return
         }

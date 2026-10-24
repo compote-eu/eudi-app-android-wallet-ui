@@ -52,7 +52,9 @@ internal class CredentialIntegrityException(message: String) : IllegalStateExcep
  *
  * - **mdoc** (`MsoMdocCredentialCertifier`): `issuerAuth` carries an `x5chain` and verifies with its first
  *   certificate (ISO/IEC 18013-5 9.1.2.4); the MSO's `docType` is [expectedDocType]; every
- *   `IssuerSignedItemBytes` digests to the MSO's value for its `digestID` (9.1.2.5).
+ *   `IssuerSignedItemBytes` digests to the MSO's value for its `digestID` (9.1.2.5). Beyond Android, as the
+ *   official iOS wallet's data-model library now refuses them: no data element named twice in a namespace,
+ *   and none whose bytes do not re-encode as sent (PAR_ISO_DATA_MODEL_3 and _15).
  * - **SD-JWT VC** (`SdJwtVcCredentialCertifier`): the issuer-signed JWT carries an `x5c` and verifies with
  *   its first certificate (OpenID4VC HAIP 1.0 §6.1) — multipaz's own `SdJwt.verify`, the call Android makes.
  *
@@ -117,15 +119,30 @@ private suspend fun verifyValueDigests(nameSpaces: DataItem, mso: MobileSecurity
         val nameSpace = nameSpaceKey.asTstr
         val digests = mso.valueDigests[nameSpace]
             ?: throw CredentialIntegrityException("an mdoc's MSO has no digests for namespace $nameSpace")
+        val named = mutableSetOf<String>()
         for (itemBytes in items.asArray) {
-            val item = readOrRefuse("an mdoc data element that will not parse") { Cbor.decode(itemBytes.asTagged.asBstr) }
+            val sent = readOrRefuse("an mdoc data element that is not an embedded item") { itemBytes.asTagged.asBstr }
+            val item = readOrRefuse("an mdoc data element that will not parse") { Cbor.decode(sent) }
+            val identifier = readOrRefuse("an mdoc data element without an identifier") { item["elementIdentifier"].asTstr }
+            // Which of two same-named elements counts would depend on who reads them.
+            if (!named.add(identifier)) {
+                throw CredentialIntegrityException("an mdoc names $identifier twice in $nameSpace")
+            }
             val digestId = item["digestID"].asNumber
             val expected = digests[digestId]
                 ?: throw CredentialIntegrityException("an mdoc's MSO has no digest $digestId in namespace $nameSpace")
             val actual = Crypto.digest(mso.digestAlgorithm, Cbor.encode(itemBytes))
             if (!actual.contentEquals(expected.toByteArray())) {
                 throw CredentialIntegrityException(
-                    "an mdoc's ${item["elementIdentifier"].asTstr} in $nameSpace does not match its digest in the MSO",
+                    "an mdoc's $identifier in $nameSpace does not match its digest in the MSO",
+                )
+            }
+            // multipaz presents an element by encoding it again, and a verifier digests what it is sent, so
+            // bytes that do not come back the same — a map key given twice, an integer longer than it needs —
+            // could never be presented as the issuer signed them.
+            if (!Cbor.encode(item).contentEquals(sent)) {
+                throw CredentialIntegrityException(
+                    "an mdoc's $identifier in $nameSpace is encoded in a way this wallet cannot present as signed",
                 )
             }
         }
