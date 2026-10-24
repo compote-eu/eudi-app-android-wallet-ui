@@ -290,36 +290,63 @@ class IosCredentialIssuerTest {
     }
 
     @Test
-    fun a_pre_authorized_offer_stays_on_multipazs_own_flow() = runTest {
-        // Only multipaz's offer client holds the pre-authorized code; asking per configuration would
-        // silently turn this into an authorization_code request the issuer never offered.
-        val issuing = issuerWith(answers = emptyMap())
+    fun a_pre_authorized_offer_naming_several_documents_issues_every_one_of_them() = runTest {
+        // ⛔ Inverted 2026-10-24. Such an offer used to stay on multipaz's own flow, which issues the first
+        // document and drops the rest (multipaz#2026). The session now redeems the code for all of them.
+        val issuing = issuerWith(
+            answers = mapOf(
+                "pid_mdoc" to Result.success("doc-mdoc"),
+                "loyalty_mdoc" to Result.success("doc-loyalty"),
+            ),
+        )
 
         val progress = issuing.issueOffer(
             offer = offer(listOf("pid_mdoc", "loyalty_mdoc"), isPreAuthorized = true),
             txCode = "1234",
         ).first()
 
-        assertEquals(1, offersTakenWhole.size)
-        assertTrue(attempted.isEmpty())
+        assertTrue(offersTakenWhole.isEmpty())
+        assertEquals(listOf("pid_mdoc", "loyalty_mdoc"), attempted)
         assertEquals(
-            listOf("doc-whole-offer"),
+            listOf("doc-mdoc", "doc-loyalty"),
             assertIs<IosIssuanceProgress.Issued>(progress).documentIds,
         )
     }
 
     @Test
-    fun an_offer_carrying_issuer_state_stays_on_multipazs_own_flow() = runTest {
-        // `issuer_state` ties the authorization request back to this offer. Dropping it to ask per
-        // configuration would lose what the issuer uses to recognise the request.
-        val issuing = issuerWith(answers = emptyMap())
+    fun an_offer_carrying_issuer_state_issues_every_document_it_names() = runTest {
+        // ⛔ Inverted 2026-10-24. Watched on the simulator before: the EU Python issuer's three-document
+        // offer, which carries `issuer_state` as all its offers do, issued one. The state now goes into the
+        // one authorization request instead (IosOpenID4VciProvisioningClientTest).
+        val issuing = issuerWith(
+            answers = mapOf(
+                "pid_mdoc" to Result.success("doc-mdoc"),
+                "loyalty_mdoc" to Result.success("doc-loyalty"),
+            ),
+        )
 
-        issuing.issueOffer(
+        val progress = issuing.issueOffer(
             offer = offer(listOf("pid_mdoc", "loyalty_mdoc"), issuerState = "state-from-issuer"),
             txCode = null,
         ).first()
 
-        assertEquals(1, offersTakenWhole.size)
+        assertTrue(offersTakenWhole.isEmpty())
+        assertEquals(listOf("pid_mdoc", "loyalty_mdoc"), attempted)
+        assertEquals(
+            listOf("doc-mdoc", "doc-loyalty"),
+            assertIs<IosIssuanceProgress.Issued>(progress).documentIds,
+        )
+    }
+
+    @Test
+    fun a_single_document_offer_keeps_multipazs_own_flow_whatever_its_grant() = runTest {
+        // multipaz handles one document whole, pre-authorized or carrying `issuer_state`.
+        val issuing = issuerWith(answers = emptyMap())
+
+        issuing.issueOffer(offer = offer(listOf("pid_mdoc"), isPreAuthorized = true), txCode = "1234").first()
+        issuing.issueOffer(offer = offer(listOf("pid_mdoc"), issuerState = "state-from-issuer"), txCode = null).first()
+
+        assertEquals(2, offersTakenWhole.size)
         assertTrue(attempted.isEmpty())
     }
 

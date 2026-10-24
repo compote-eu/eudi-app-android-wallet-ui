@@ -98,6 +98,7 @@ class IosOpenID4VciProvisioningClientTest {
     private var parBody: String = ""
     private var parHeaders: Map<String, String> = emptyMap()
     private var tokenBody: String = ""
+    private var tokenRequests = 0
     private var credentialBodies = mutableListOf<String>()
     private var tokenResponse = """{"access_token":"at-1","refresh_token":"rt-1","c_nonce":"nonce-1"}"""
 
@@ -120,6 +121,7 @@ class IosOpenID4VciProvisioningClientTest {
 
             tokenEndpoint -> {
                 tokenBody = request.body.toByteArray().decodeToString()
+                tokenRequests++
                 respond(tokenResponse, HttpStatusCode.OK, json)
             }
 
@@ -160,6 +162,7 @@ class IosOpenID4VciProvisioningClientTest {
 
     private suspend fun session(
         configurationIds: List<String>,
+        offerGrant: IosOfferGrant? = null,
     ) = IosVciAuthorizationSession(
         issuerUrl = issuerUrl,
         configurationIds = configurationIds,
@@ -169,6 +172,7 @@ class IosOpenID4VciProvisioningClientTest {
         backend = backend,
         walletProviderBaseUrl = walletProviderUrl,
         clientId = clientPreferences.clientId,
+        offerGrant = offerGrant,
     )
 
     /** What the provisioning model hands back after the browser round trip. */
@@ -466,6 +470,69 @@ class IosOpenID4VciProvisioningClientTest {
 
         assertEquals(listOf(nonce), backend.challenges)
         assertEquals(listOf(nonce), noncesSpent)
+    }
+
+    // ---- offers naming several documents ---------------------------------------------------------
+
+    @Test
+    fun an_offers_issuer_state_goes_into_the_one_authorization_request() = runTest {
+        // It ties the request back to the offer, as Android's openid4vci-kt sends it. Before 2026-10-24 such
+        // an offer went to multipaz's own flow, which issued its first document and dropped the rest.
+        val session = session(
+            listOf("pid_mdoc", "loyalty_mdoc"),
+            offerGrant = IosOfferGrant.AuthorizationCode(issuerState = "state-from-issuer"),
+        )
+
+        session.challenge()
+
+        val sent = parBody.parseUrlEncodedParameters()
+        assertEquals("state-from-issuer", sent["issuer_state"])
+        assertEquals("pid_scope loyalty_scope", sent["scope"])
+    }
+
+    @Test
+    fun a_request_the_wallet_makes_by_itself_carries_no_issuer_state() = runTest {
+        session(listOf("pid_mdoc", "loyalty_mdoc")).challenge()
+
+        assertNull(parBody.parseUrlEncodedParameters()["issuer_state"])
+    }
+
+    @Test
+    fun a_pre_authorized_offer_is_redeemed_once_with_no_sign_in() = runTest {
+        val session = session(
+            listOf("pid_mdoc", "loyalty_mdoc"),
+            offerGrant = IosOfferGrant.PreAuthorizedCode(code = "pre-code-1", txCode = "12345"),
+        )
+        val first = IosOpenID4VciProvisioningClient(session, "pid_mdoc", httpClient)
+        val second = IosOpenID4VciProvisioningClient(session, "loyalty_mdoc", httpClient)
+
+        // No challenge for either, so multipaz's launch loop never opens the browser.
+        assertTrue(first.getAuthorizationChallenges().isEmpty())
+        assertTrue(second.getAuthorizationChallenges().isEmpty())
+
+        assertEquals("", parBody, "no authorization request at all")
+        assertEquals(1, tokenRequests)
+        val sent = tokenBody.parseUrlEncodedParameters()
+        assertEquals("urn:ietf:params:oauth:grant-type:pre-authorized_code", sent["grant_type"])
+        assertEquals("pre-code-1", sent["pre-authorized_code"])
+        assertEquals("12345", sent["tx_code"])
+        assertEquals(clientPreferences.clientId, sent["client_id"])
+        assertTrue(session.isAuthorized)
+
+        // Both documents are then asked for on that one token.
+        first.obtainCredentials(KeyBindingInfo.OpenidProofOfPossession(listOf(proofJwt("cred-a"))))
+        second.obtainCredentials(KeyBindingInfo.OpenidProofOfPossession(listOf(proofJwt("cred-b"))))
+        assertEquals(2, credentialBodies.size)
+    }
+
+    @Test
+    fun a_pre_authorized_offer_that_asks_for_no_transaction_code_is_sent_none() = runTest {
+        session(
+            listOf("pid_mdoc", "loyalty_mdoc"),
+            offerGrant = IosOfferGrant.PreAuthorizedCode(code = "pre-code-1", txCode = null),
+        ).challenge()
+
+        assertNull(tokenBody.parseUrlEncodedParameters()["tx_code"])
     }
 
     private suspend fun keyAttestation(credentialId: String) = CredentialKeyAttestation(

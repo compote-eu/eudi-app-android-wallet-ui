@@ -95,6 +95,12 @@ import kotlin.reflect.KClass
  * In particular the proof-of-possession JWTs arrive already built and signed in [KeyBindingInfo] — this
  * never touches credential key material.
  *
+ * ### Offers
+ *
+ * An offer naming several documents goes through here too, with its [IosOfferGrant]: the `issuer_state`
+ * it carries goes into the one authorization request, and a pre-authorized code is redeemed for the token
+ * with no browser at all. multipaz's own offer flow would issue only the first document (multipaz#2026).
+ *
  * ⛔ **Requests go through [openID4VciHttpClient], never a bare client.** That shim is what absorbs this
  * ecosystem's issuer quirks — the `authorization_details`-to-`scope` rewrite, the DPoP nonce dance, the
  * `202 Accepted` deferred answer — and a client of its own would quietly lose all of it.
@@ -110,6 +116,8 @@ internal class IosVciAuthorizationSession(
     /** Where the wallet instance attestation comes from; the authorization server demands one. */
     private val walletProviderBaseUrl: String,
     private val clientId: String,
+    /** The grant of the offer these configurations come from, or null when the wallet asked by itself. */
+    private val offerGrant: IosOfferGrant? = null,
 ) {
     private val lock = Mutex()
 
@@ -146,10 +154,15 @@ internal class IosVciAuthorizationSession(
      *
      * The first configuration to ask performs the pushed authorization request; every later one gets an
      * empty list back from its client, and `ProvisioningModel.launch`'s `while (isNotEmpty())` loop then
-     * never opens the browser.
+     * never opens the browser. A pre-authorized offer never raises one: the first to ask redeems the code.
      */
     suspend fun challenge(): AuthorizationChallenge? = lock.withLock {
         if (accessToken != null) return null
+
+        if (offerGrant is IosOfferGrant.PreAuthorizedCode) {
+            redeemPreAuthorizedCode(offerGrant)
+            return null
+        }
 
         val endpoints = resolveEndpoints()
         val verifier = SecureRandom.nextBytes(PKCE_BYTES).toBase64Url().also { pkceVerifier = it }
@@ -178,14 +191,40 @@ internal class IosVciAuthorizationSession(
         val code = oauth.parameterizedRedirectUrl.queryParameter("code")
             ?: throw IllegalStateException("The issuer's redirect carried no authorization code.")
 
-        val endpoints = resolveEndpoints()
-        val form = listOf(
-            "grant_type" to "authorization_code",
-            "code" to code,
-            "redirect_uri" to clientPreferences.redirectUrl,
-            "client_id" to clientPreferences.clientId,
-            "code_verifier" to (pkceVerifier ?: throw IllegalStateException("No PKCE verifier.")),
+        requestToken(
+            listOf(
+                "grant_type" to "authorization_code",
+                "code" to code,
+                "redirect_uri" to clientPreferences.redirectUrl,
+                "client_id" to clientPreferences.clientId,
+                "code_verifier" to (pkceVerifier ?: throw IllegalStateException("No PKCE verifier.")),
+            )
         )
+    }
+
+    /**
+     * Trades an offer's pre-authorized code, and the transaction code when the issuer asked for one, for the
+     * access token — the same request Android's openid4vci-kt and multipaz's own client make.
+     */
+    private suspend fun redeemPreAuthorizedCode(grant: IosOfferGrant.PreAuthorizedCode) {
+        Logger.i(
+            TAG,
+            "redeeming the offer's pre-authorized code for ${configurationIds.size} configurations " +
+                if (grant.txCode != null) "with a transaction code" else "without a transaction code"
+        )
+        requestToken(
+            buildList {
+                add("grant_type" to PRE_AUTHORIZED_CODE_GRANT)
+                add("pre-authorized_code" to grant.code)
+                grant.txCode?.let { add("tx_code" to it) }
+                add("client_id" to clientPreferences.clientId)
+            }
+        )
+    }
+
+    /** Asks the token endpoint for the session's token, and keeps what the answer carries. */
+    private suspend fun requestToken(form: List<Pair<String, String>>) {
+        val endpoints = resolveEndpoints()
         val body = postForm(endpoints.tokenEndpoint, form).also {
             if (it.status != HttpStatusCode.OK) {
                 throw IllegalStateException("Token request failed: ${it.status} ${it.bodyAsText()}")
@@ -358,6 +397,7 @@ internal class IosVciAuthorizationSession(
         // conclusion for the same reason, per configuration rather than per request.)
         val scopes = configurationIds.map { scopesByConfigurationId[it] }
         val useScopes = scopes.none { it == null } && scopes.distinct().size == configurationIds.size
+        val issuerState = (offerGrant as? IosOfferGrant.AuthorizationCode)?.issuerState
 
         val form = buildList {
             if (useScopes) {
@@ -382,12 +422,15 @@ internal class IosVciAuthorizationSession(
             add("redirect_uri" to clientPreferences.redirectUrl)
             add("client_id" to clientPreferences.clientId)
             add("state" to state)
+            // What ties this request back to the offer, as Android's openid4vci-kt sends it.
+            issuerState?.let { add("issuer_state" to it) }
         }
 
         Logger.i(
             TAG,
             "authorizing ${configurationIds.size} configurations in one request " +
-                if (useScopes) "by scope" else "by authorization_details"
+                (if (useScopes) "by scope" else "by authorization_details") +
+                if (issuerState != null) ", with the offer's issuer_state" else ""
         )
 
         val response = postForm(endpoints.parEndpoint, form)
@@ -601,6 +644,7 @@ internal class IosVciAuthorizationSession(
         const val CLIENT_ATTESTATION_HEADER = "OAuth-Client-Attestation"
         const val CLIENT_ATTESTATION_POP_HEADER = "OAuth-Client-Attestation-PoP"
         const val CLIENT_ATTESTATION_POP_TYPE = "oauth-client-attestation-pop+jwt"
+        const val PRE_AUTHORIZED_CODE_GRANT = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
         const val HTTP_BAD_REQUEST = 400
         const val PKCE_BYTES = 32
         const val STATE_BYTES = 15
@@ -665,6 +709,28 @@ internal class IosOpenID4VciProvisioningClient(
         return session.obtainCredentials(configurationId, keyInfo, credentialHttpClient, keyChallenge)
     }
 }
+
+/** How an offer lets the wallet authorize, which [IosVciAuthorizationSession] honours for all its documents. */
+internal sealed interface IosOfferGrant {
+
+    /** A sign-in, with the `issuer_state` the offer carried, if any, for the authorization request. */
+    data class AuthorizationCode(val issuerState: String?) : IosOfferGrant
+
+    /** No sign-in: the issuer's code, and the transaction code the user typed when the offer asked for one. */
+    data class PreAuthorizedCode(val code: String, val txCode: String?) : IosOfferGrant
+}
+
+/** The grant this offer gives, with the transaction code the offer-code screen collected. */
+internal fun IosCredentialOffer.grant(txCode: String?): IosOfferGrant =
+    if (isPreAuthorized) {
+        IosOfferGrant.PreAuthorizedCode(
+            code = preAuthorizedCode
+                ?: throw IllegalArgumentException("The offer's pre-authorized grant carries no code."),
+            txCode = txCode,
+        )
+    } else {
+        IosOfferGrant.AuthorizationCode(issuerState)
+    }
 
 /** The endpoints one issuance needs, read once per session. */
 private data class VciEndpoints(

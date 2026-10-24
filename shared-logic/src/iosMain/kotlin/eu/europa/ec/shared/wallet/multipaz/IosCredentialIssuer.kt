@@ -112,11 +112,11 @@ sealed interface IosIssuanceProgress {
  * What it adds over that is everything a screen needs: the browser hop, per-configuration
  * sequencing, and outcomes instead of printed lines.
  *
- * **One authorization per configuration, and that is multipaz's shape rather than a choice.**
- * `OpenID4VCIProvisioningClient` is built for a single credential configuration, so a request naming
- * several runs several flows and therefore several authorizations. Android asks for all of them in one
- * request instead (multiple scopes), which is nicer but is wallet-core's doing, not something this can
- * imitate without forking multipaz.
+ * **multipaz authorizes one configuration at a time.** `OpenID4VCIProvisioningClient` is built for a
+ * single credential configuration, so a request naming several would run several flows and therefore
+ * several authorizations. Android asks for all of them in one request (multiple scopes), and so does
+ * this, through [IosVciAuthorizationSession]: several documents — asked for in the wallet or named by
+ * one offer — cost one authorization ([provisionTogether]).
  *
  * 📌 **Read in multipaz's own source, 0.99.0, 0.101.0 and `main` alike (2026-09-18):** `CredentialOffer`
  * declares `abstract val configurationId: String`, the pushed authorization request appends a single
@@ -130,10 +130,10 @@ sealed interface IosIssuanceProgress {
  * comment called the second round "silent"; it is silent as to *login* only. Verified on a device
  * 2026-09-04.
  *
- * 🚩 **What that costs today: "PID Combined" asks for FOUR browser confirmations here against ONE on
- * Android.** The EUDI dev issuer publishes every credential twice — plain and `_deferred` — **under one
- * scope**, so "Combined" expands to four configurations and each one authorizes separately. Watched on a
- * device 2026-09-18: four confirmations, four documents. ⚖️ Kept deliberately — see [issue], below.
+ * 📜 **What that used to cost: "PID Combined" asked for FOUR browser confirmations here against ONE on
+ * Android** (watched on a device 2026-09-18), because "Combined" expands to four configurations and each
+ * authorized separately. One authorization since [IosVciAuthorizationSession]; watched 2026-10-24 at the
+ * EU Python issuer as one sign-in for three configurations.
  *
  * 🔄 **Deferred issuance IS supported**, since `1261ce22`. A `*_deferred` configuration parks with the
  * issuer's handle and is collected later by `IosDeferredDocumentCompleter`, on the issuer's own
@@ -162,9 +162,9 @@ class IosCredentialIssuer(
      */
     private val issueConfiguration: (suspend (IosVciIssuer, String) -> Result<String>)? = null,
     /**
-     * The same seam for the offer shapes that must stay on multipaz's own flow — pre-authorized, or
-     * carrying `issuer_state`. Separate from [issueConfiguration] because the point of the cases that
-     * use it is precisely that they do *not* go per configuration.
+     * The same seam for an offer that stays on multipaz's own flow: one naming a single document.
+     * Separate from [issueConfiguration] because the point of the cases that use it is precisely that they
+     * do *not* go per configuration.
      */
     private val issueWholeOffer: (suspend (IosCredentialOffer, String?) -> Result<String>)? = null,
     /** Whether the user has the registration check on, read per issuance since it can change. */
@@ -568,24 +568,8 @@ class IosCredentialIssuer(
         // ONCE, by [IosVciAuthorizationSession], instead of once per configuration as multipaz does
         // (multipaz#2026). "PID Combined" is four configurations and one browser confirmation.
         if (issueConfiguration == null && configurationIds.size > 1) {
-            val together = runCatching { provisionTogether(issuer, configurationIds, log = log) }
-            together
-                .onSuccess { (issued, failed, refused) ->
-                    documentIds += issued
-                    failures += failed
-                    untrusted += refused
-                    log.finish()
-                }
-                .onFailure { error ->
-                    if (error is CancellationException) throw error
-                    Logger.w(TAG, "issuing ${configurationIds.size} configurations failed: ${error.message}")
-                    failures[configurationIds.first()] =
-                        error.message ?: error::class.simpleName ?: "Issuance failed."
-                    if (error.isIssuerNotTrusted()) untrusted += configurationIds.first()
-                    log.finish(overallError = error)
-                }
-
-            emit(outcomeOf(documentIds, failures, untrusted))
+            val (issued, failed, refused) = issueTogether(issuer, configurationIds, log)
+            emit(outcomeOf(issued, failed, refused))
             return@flow
         }
 
@@ -627,17 +611,17 @@ class IosCredentialIssuer(
      * ✅ Measured by `MultipazOfferTruncationTest`, which drives multipaz's real client: the pushed
      * authorization request for a two-credential offer names only the first.
      *
-     * So the offer is read by [IosCredentialOfferReader] instead, and each configuration is issued
-     * through the same per-configuration flow [issue] uses. That costs one browser confirmation per
-     * credential — multipaz authorizes per configuration — which is the price of getting all of them.
+     * So the offer is read by [IosCredentialOfferReader] instead, and an offer naming several documents is
+     * issued behind **one** authorization under the offer's own grant ([provisionTogether] with its
+     * [IosOfferGrant]), as Android's wallet-core does: one sign-in carrying the offer's `issuer_state`, or
+     * none at all for a pre-authorized code. Only a single-document offer still goes through multipaz's own
+     * offer flow, which handles it whole.
      *
-     * ⛔ **Two offer shapes keep multipaz's own flow**, because re-expressing them per configuration
-     * would drop something the issuer relies on:
-     * - a **pre-authorized** offer, whose code only multipaz's offer client holds;
-     * - an offer carrying **`issuer_state`**, which ties the authorization request back to this offer.
-     *
-     * Both are single-document today, exactly as before. [IosOpenID4VciProvisioningClient] is what lifts
-     * that restriction; until then this is deliberately the conservative half.
+     * ⛔ **Until 2026-10-24 an offer carrying `issuer_state` or a pre-authorized code stayed on multipaz's
+     * flow whatever it named**, and so issued its first document and dropped the rest without a word.
+     * Watched on the simulator with a three-document offer from the EU Python issuer, which puts
+     * `issuer_state` in every offer it makes: three documents on the offer screen, one issued. An offer
+     * without either signed in once per document.
      *
      * @param offer the offer as the screen resolved it — already parsed, so it is not read twice.
      * @param txCode the transaction code the issuer asked for, already collected by the offer-code screen.
@@ -650,10 +634,9 @@ class IosCredentialIssuer(
         registration: IssuerRegistration? = null,
     ): Flow<IosIssuanceProgress> = flow {
         val configurationIds = offer.configurationIds
-        val mustUseOfferFlow = offer.isPreAuthorized || offer.issuerState != null
         // An offer comes from the issuer, so it is not user-triggered (TS10 §3.5), as wallet-core records it.
-        if (mustUseOfferFlow || configurationIds.size <= 1) {
-            // multipaz's own offer flow issues one credential, whatever the offer names.
+        if (configurationIds.size <= 1) {
+            // multipaz's own offer flow issues one credential, whatever the offer names — here, all of them.
             val log = IosIssuanceLog(walletStore, reissuance = false, userTriggered = false, requested = 1, registration)
             val outcome = issueWholeOffer?.invoke(offer, txCode)
                 ?: runCatching { provision(offerUri = offer.offerUri, txCode = txCode, log = log) }
@@ -693,11 +676,16 @@ class IosCredentialIssuer(
             registration = registration,
         )
 
+        if (issueConfiguration == null) {
+            val (issued, failed, refused) = issueTogether(issuer, configurationIds, log, offer, txCode)
+            emit(outcomeOf(issued, failed, refused))
+            return@flow
+        }
+
+        // The seam, one configuration at a time, as [issue] drives it: what the cases about sequencing and
+        // partial results need, without an issuer that mints signed credentials.
         for (configurationId in configurationIds) {
-            val outcome = issueConfiguration?.invoke(issuer, configurationId)
-                ?: runCatching {
-                    provision(issuer, configurationId, issuerUrl = offer.issuerUrl, log = log)
-                }
+            val outcome = issueConfiguration.invoke(issuer, configurationId)
 
             outcome
                 .onSuccess { documentId ->
@@ -791,6 +779,8 @@ class IosCredentialIssuer(
         issuer: IosVciIssuer,
         configurationIds: List<String>,
         issuerUrl: String = issuer.issuerUrl,
+        /** The grant of the offer the configurations come from; null when the wallet asked by itself. */
+        offerGrant: IosOfferGrant? = null,
         log: IosIssuanceLog? = null,
     ): BatchOutcome {
         val walletStore = walletEngine.store()
@@ -826,6 +816,7 @@ class IosCredentialIssuer(
             ),
             walletProviderBaseUrl = walletProviderBaseUrl,
             clientId = issuer.clientId,
+            offerGrant = offerGrant,
         )
 
         val documentIds = mutableListOf<String>()
@@ -924,6 +915,46 @@ class IosCredentialIssuer(
         val issued: List<String>,
         val failed: Map<String, String>,
         val untrusted: Set<String>,
+    )
+
+    /**
+     * [provisionTogether] as an issuance reports it: a failure of the whole batch counts against its first
+     * configuration, and the History row is finished either way.
+     *
+     * @param offer the offer the configurations come from, whose issuer URL and grant then apply; null when
+     *   the wallet asked by itself.
+     * @param txCode the transaction code the offer-code screen collected for a pre-authorized offer.
+     */
+    private suspend fun issueTogether(
+        issuer: IosVciIssuer,
+        configurationIds: List<String>,
+        log: IosIssuanceLog,
+        offer: IosCredentialOffer? = null,
+        txCode: String? = null,
+    ): BatchOutcome = runCatching {
+        provisionTogether(
+            issuer = issuer,
+            configurationIds = configurationIds,
+            issuerUrl = offer?.issuerUrl ?: issuer.issuerUrl,
+            offerGrant = offer?.grant(txCode),
+            log = log,
+        )
+    }.fold(
+        onSuccess = { outcome ->
+            log.finish()
+            outcome
+        },
+        onFailure = { error ->
+            if (error is CancellationException) throw error
+            Logger.w(TAG, "issuing ${configurationIds.size} configurations failed: ${error.message}")
+            log.finish(overallError = error)
+            val first = configurationIds.first()
+            BatchOutcome(
+                issued = emptyList(),
+                failed = mapOf(first to (error.message ?: error::class.simpleName ?: "Issuance failed.")),
+                untrusted = if (error.isIssuerNotTrusted()) setOf(first) else emptySet(),
+            )
+        },
     )
 
     /** Drives one OpenID4VCI flow to a document, or throws with what went wrong. */

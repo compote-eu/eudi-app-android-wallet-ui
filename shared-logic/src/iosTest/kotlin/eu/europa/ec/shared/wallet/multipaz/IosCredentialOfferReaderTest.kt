@@ -179,6 +179,33 @@ class IosCredentialOfferReaderTest {
     }
 
     @Test
+    fun a_pre_authorized_offer_keeps_its_code_for_the_token_request() = runTest {
+        // An offer naming several documents is redeemed by the wallet's own session, not multipaz's offer
+        // client, so the code has to come from here.
+        val grants = """
+            {"urn:ietf:params:oauth:grant-type:pre-authorized_code":
+              {"pre-authorized_code":"abc","tx_code":{"length":5,"input_mode":"numeric"}}}
+        """.trimIndent()
+
+        val resolution = reader(engine()).resolve(offerLink(grants = grants), locale = "en")
+
+        val offer = assertIs<IosOfferResolution.Resolved>(resolution).offer
+        assertEquals("abc", offer.preAuthorizedCode)
+        assertEquals(IosOfferGrant.PreAuthorizedCode(code = "abc", txCode = "12345"), offer.grant("12345"))
+    }
+
+    @Test
+    fun an_offers_issuer_state_is_the_grant_of_its_sign_in() = runTest {
+        // The EU Python issuer puts one in every offer it makes (measured 2026-10-24).
+        val grants = """{"authorization_code":{"issuer_state":"state-from-issuer"}}"""
+
+        val resolution = reader(engine()).resolve(offerLink(grants = grants), locale = "en")
+
+        val offer = assertIs<IosOfferResolution.Resolved>(resolution).offer
+        assertEquals(IosOfferGrant.AuthorizationCode(issuerState = "state-from-issuer"), offer.grant(txCode = null))
+    }
+
+    @Test
     fun a_free_text_transaction_code_is_reported_as_such_rather_than_rejected_here() = runTest {
         val grants = """
             {"urn:ietf:params:oauth:grant-type:pre-authorized_code":

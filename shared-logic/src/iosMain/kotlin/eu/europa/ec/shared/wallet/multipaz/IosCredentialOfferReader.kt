@@ -45,12 +45,11 @@ import io.ktor.client.HttpClient
  * @property txCodeLength how many characters the issuer's transaction code has, or null for none.
  * @property txCodeIsNumeric false when the issuer asks for free text — which this wallet cannot collect,
  *   a judgement made above rather than here.
- * @property isPreAuthorized true when the offer carries a pre-authorized code grant. Kept because a
- *   pre-authorized offer can only be redeemed through multipaz's own offer flow: its client is the only
- *   thing holding the code, and `createFromCredentialId` always builds an `authorization_code` grant.
+ * @property isPreAuthorized true when the offer carries a pre-authorized code grant. Such an offer is
+ *   redeemed without a sign-in, and never as an `authorization_code` request the issuer did not offer.
  * @property issuerState the `issuer_state` of an `authorization_code` grant, when the issuer sent one. It
- *   ties the authorization request back to this offer, so an offer carrying it cannot be re-expressed as
- *   a plain per-configuration request without dropping something the issuer may rely on.
+ *   ties the authorization request back to this offer, so it goes into that request.
+ * @property preAuthorizedCode the code of a pre-authorized grant, which the token request presents.
  */
 data class IosCredentialOffer(
     val offerUri: String,
@@ -60,6 +59,7 @@ data class IosCredentialOffer(
     val txCodeIsNumeric: Boolean,
     val isPreAuthorized: Boolean = false,
     val issuerState: String? = null,
+    val preAuthorizedCode: String? = null,
 )
 
 /** A resolved offer, with the display data the offer screen shows, or why it could not be resolved. */
@@ -221,6 +221,7 @@ class IosCredentialOfferReader internal constructor(
                     (txCode["input_mode"]?.jsonPrimitive?.contentOrNull ?: "numeric") == "numeric",
             isPreAuthorized = preAuthorizedGrant != null,
             issuerState = issuerState,
+            preAuthorizedCode = preAuthorizedGrant?.get("pre-authorized_code")?.jsonPrimitive?.contentOrNull,
         )
     }
 
