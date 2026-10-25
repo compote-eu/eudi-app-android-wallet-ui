@@ -1,17 +1,17 @@
 /*
- * Copyright (c) 2026 European Commission
+ * Copied from multipaz (https://github.com/openwallet-foundation/multipaz) — its ISO mdoc presentment in
+ * multipaz/src/commonMain/kotlin/org/multipaz/presentment/ (mdocPresentment.kt, Iso18013Presentment.kt and
+ * digitalCredentialsPresentment.kt) — and modified for this wallet. The release it was taken from and every
+ * change are described below the licence.
  *
- * Licensed under the EUPL, Version 1.2 or - as soon they will be approved by the European
- * Commission - subsequent versions of the EUPL (the "Licence"); You may not use this work
- * except in compliance with the Licence.
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at
  *
- * You may obtain a copy of the Licence at:
- * https://joinup.ec.europa.eu/software/page/eupl
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software distributed under
- * the Licence is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF
- * ANY KIND, either express or implied. See the Licence for the specific language
- * governing permissions and limitations under the Licence.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is
+ * distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and limitations under the License.
  */
 
 // multipaz 0.101's ISO mdoc presentment — the consent step `mdocPresentmentObtainConsent`, the `Iso18013Presentment`
