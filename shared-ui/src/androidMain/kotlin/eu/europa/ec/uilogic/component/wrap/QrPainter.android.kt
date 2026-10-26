@@ -40,7 +40,14 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-/** zxing, which the app already carries for QR *scanning*. */
+/**
+ * zxing, which the app already carries for QR *scanning*.
+ *
+ * Drawn off the main thread, so the painter is blank until the bitmap is ready. The drawing is keyed on what is
+ * drawn, so a new [content] restarts it. It was keyed on the bitmap: a content that changed while the previous
+ * one was still being drawn left the key null to null, nothing restarted, and the finished bitmap went to the
+ * previous content's state — a QR shown again after "Try again" stayed blank for good (watched 2026-10-26).
+ */
 @Composable
 actual fun rememberQrPainter(
     content: String,
@@ -56,11 +63,11 @@ actual fun rememberQrPainter(
     val sizePx = with(density) { size.roundToPx() }
     val paddingPx = with(density) { padding.roundToPx() }
 
-    var bitmap by remember(content) {
+    var bitmap by remember(content, sizePx, paddingPx) {
         mutableStateOf<Bitmap?>(null)
     }
 
-    LaunchedEffect(bitmap) {
+    LaunchedEffect(content, sizePx, paddingPx) {
         if (bitmap != null) return@LaunchedEffect
 
         launch(dispatcher) {

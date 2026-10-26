@@ -121,6 +121,10 @@ class ProximityQRViewModel(
     }
 
     private fun generateQrCode() {
+        // A retry from the error state listens afresh. The previous listener is still collecting the same
+        // exchange, and would take the restart's "idle" for the reader going away and back out of the screen
+        // (watched 2026-10-26: "Try again" on an expired QR went straight back to Home).
+        unsubscribe()
         setState {
             copy(
                 isLoading = true,

@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -201,6 +202,27 @@ class ProximityQRViewModelTest {
 
         assertEquals(Effect.Navigation.Pop, effect.await())
         assertTrue(interactor.cancelTransferCalls >= 1)
+    }
+
+    /**
+     * The exchange the screen listens to is one hot stream on iOS and Android alike. A retry that left the first
+     * listener collecting had two: the restart's "idle" reached the old one as a disconnect, and the screen
+     * backed out to Home instead of showing the new QR.
+     */
+    @Test
+    fun a_retry_leaves_one_listener_on_the_exchange() = runTest(mainDispatcher) {
+        val exchange = MutableSharedFlow<ProximityQRPartialState>()
+        val interactor = object : ProximityQRInteractor by FakeProximityQRInteractor() {
+            override fun startQrEngagement(): Flow<ProximityQRPartialState> = exchange
+        }
+        val viewModel = ProximityQRViewModel(interactor, config)
+        advanceUntilIdle()
+        exchange.emit(ProximityQRPartialState.Error("This QR code has expired."))
+
+        viewModel.setEvent(Event.Init)
+        advanceUntilIdle()
+
+        assertEquals(1, exchange.subscriptionCount.value)
     }
 
     @Test
