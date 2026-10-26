@@ -169,6 +169,12 @@ fun offeredAttestationsIn(
  * caller, against the EU list meant for exactly this. wallet-core's status verifier also judges the signer
  * itself, for the same reason.
  *
+ * A signer the caller does not trust makes the status [RevocationOutcome.Unknown], and the list is not read:
+ * anyone can sign a "valid" (or a "revoked") list with a certificate of their own and put it in `x5c`, so
+ * what such a list says is worth nothing. The validators refuse an unknown status. wallet-core refuses such a
+ * token when ETSI trust is configured, as our Android flavours do, and its #454 makes that the rule without
+ * ETSI trust too. Until 2026-10-26 the verdict was computed here and then ignored by both validators.
+ *
  * Shared by the issuer and relying-party validators because the mechanism is identical and the trap
  * above is worth having in one place rather than two.
  */
@@ -181,14 +187,12 @@ internal suspend fun registrationStatusOf(
     val chain = jwsCertificateChain(token)?.certificates?.takeIf { it.isNotEmpty() }
         ?: return RevocationOutcome.Unknown("status list token carries no x5c")
     val signer = chain.first()
-    val signerTrust = if (isSignerTrusted(X509CertChain(listOf(signer)))) {
-        StatusSignerTrustDomain.Trusted
-    } else {
-        StatusSignerTrustDomain.NotTrusted
+    if (!isSignerTrusted(X509CertChain(listOf(signer)))) {
+        return RevocationOutcome.Unknown("the status list's signer is not trusted for registration-certificate status")
     }
     when (StatusList.fromJwt(token, trustedRootCert = chain.last())[reference.index]) {
-        0 -> RevocationOutcome.Valid(signerTrust)
-        else -> RevocationOutcome.Invalid(signerTrust)
+        0 -> RevocationOutcome.Valid(StatusSignerTrustDomain.Trusted)
+        else -> RevocationOutcome.Invalid(StatusSignerTrustDomain.Trusted)
     }
 }.getOrElse {
     Logger.w("RegistrationStatus", "registration certificate status could not be read: ${it.message}")

@@ -134,13 +134,22 @@ internal class MultipazWalletEngine(
      * An issued document's deletion is recorded for the History tab, completed or not, as wallet-core's
      * `CredentialDeletionLogger` records it on Android. What the row says is read first, since it goes with
      * the document; a failure to record is logged and never fails the deletion.
+     *
+     * Only this wallet's own documents, which are all its lists show: a document of another document manager —
+     * the storage can be shared — is left alone, as a missing one is, rather than deleted by its id (wallet-core
+     * scopes its delete the same way since its #453).
      */
     suspend fun deleteDocument(documentId: String): Result<Unit> {
+        val document = runCatching { store.documentStore.lookupDocument(documentId) }
+            .onFailure { Logger.w(TAG, "could not read the document to record its deletion", it) }
+            .getOrNull()
+        if (document != null && document.eudiMetadata?.documentManagerId != store.documentManagerId) {
+            Logger.w(TAG, "$documentId belongs to another document manager; left alone")
+            return Result.success(Unit)
+        }
         val deletion = runCatching {
-            store.documentStore.lookupDocument(documentId)
-                ?.takeIf { it.eudiMetadata?.documentManagerId == store.documentManagerId }
-                ?.deletionRecord(at = Clock.System.now(), language = userLanguage())
-        }.onFailure { Logger.w(TAG, "could not read the document to record its deletion", it) }.getOrNull()
+            document?.deletionRecord(at = Clock.System.now(), language = userLanguage())
+        }.onFailure { Logger.w(TAG, "could not prepare the deletion's History row", it) }.getOrNull()
         return runCatching {
             // Under the refresh-token lock, so a rotation handed on meanwhile cannot write the key back.
             RefreshTokenChain.withLock {
