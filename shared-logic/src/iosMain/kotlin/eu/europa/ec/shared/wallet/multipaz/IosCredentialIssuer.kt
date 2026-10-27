@@ -376,13 +376,11 @@ class IosCredentialIssuer(
             displayNotice = displayNotice,
             reusePolicyNotice = reusePolicy,
         )
-        val log = IosIssuanceLog(
+        val log = IosIssuanceLog.forReIssuance(
             store = { store },
-            reissuance = true,
+            documentId = documentId,
             userTriggered = userTriggered,
-            requested = 1,
             registration = preflight.registration,
-            writeAhead = false,
         )
         val model = ProvisioningModel(
             documentProvisioningHandler = IosDocumentProvisioningHandler(

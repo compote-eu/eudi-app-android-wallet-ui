@@ -34,6 +34,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 /**
  * One issuance session's History rows, by wallet-core 0.31.0's `CredentialIssuanceLogger` rules: a row
@@ -224,6 +225,54 @@ class IosIssuanceLogTest {
 
         val row = store.issuances().single()
         assertEquals(TransactionResultDomain.NotCompleted(REASON_ISSUANCE_DEFERRED), row.result)
+    }
+
+    // ---- the background's attempts at one document ------------------------------------------------------
+
+    /**
+     * Wallet Kit's rule (its #484): every background attempt at one document updates one row. Without it, a
+     * document the issuer kept refusing added a row on every foreground sweep, every 15 minutes. The row tells the
+     * latest attempt: its reason, and its time.
+     */
+    @Test
+    fun the_background_attempts_at_one_document_keep_one_row_that_tells_the_latest() = runTest {
+        val store = store()
+        listOf(1_000L to "the first refusal", 2_000L to "the second refusal").forEach { (time, reason) ->
+            val log = IosIssuanceLog.forReIssuance(
+                store = { store },
+                documentId = "pid-1",
+                userTriggered = false,
+                registration = null,
+                now = Instant.fromEpochMilliseconds(time),
+            )
+            log.started(issuerName = "Plaut")
+            log.failed(IllegalStateException(reason))
+            log.finish()
+        }
+
+        val row = assertIs<TransactionLogDomain.CredentialReissuance>(store.transactionLogs().single())
+        assertEquals(TransactionResultDomain.NotCompleted("the second refusal"), row.result)
+        assertEquals(false, row.details.isUserTriggered)
+        val id = store.transactionRecordsTable().enumerate().single()
+        assertEquals(2_000L, store.transactionRecord(id)?.timeEpochMillis)
+    }
+
+    @Test
+    fun a_re_issue_the_user_asks_for_and_another_documents_get_rows_of_their_own() = runTest {
+        val store = store()
+        suspend fun attempt(documentId: String, userTriggered: Boolean) {
+            val log = IosIssuanceLog.forReIssuance({ store }, documentId, userTriggered, registration = null)
+            log.started(issuerName = "Plaut")
+            log.failed(IllegalStateException("refused"))
+            log.finish()
+        }
+
+        attempt("pid-1", userTriggered = false)
+        attempt("pid-2", userTriggered = false)
+        attempt("pid-1", userTriggered = true)
+        attempt("pid-1", userTriggered = true)
+
+        assertEquals(4, store.transactionLogs().size)
     }
 
     @Test

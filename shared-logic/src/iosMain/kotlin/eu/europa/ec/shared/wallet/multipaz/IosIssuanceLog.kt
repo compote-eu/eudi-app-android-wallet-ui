@@ -56,9 +56,11 @@ internal class IosIssuanceLog(
      * row, as on Android, where the re-issuance starts only after that exchange. [finish] writes it then.
      */
     private val writeAhead: Boolean = true,
+    /** The row's id: a new one per session unless given — see [forReIssuance]. */
+    rowId: String? = null,
 ) {
     @OptIn(ExperimentalUuidApi::class)
-    private val id = Uuid.random().toString()
+    private val id = rowId ?: Uuid.random().toString()
     private val time = now
     private val mutex = Mutex()
     private var isStarted = false
@@ -180,8 +182,35 @@ internal class IosIssuanceLog(
             .onFailure { Logger.w(TAG, "could not record the issuance", it) }
     }
 
-    private companion object {
-        const val TAG = "IosIssuanceLog"
+    companion object {
+        private const val TAG = "IosIssuanceLog"
+
+        /**
+         * The log of one re-issuance of [documentId] through its stored authorization. Its row is written when the
+         * re-issuance ends, never ahead (see [writeAhead]).
+         *
+         * Every background attempt at one document writes the same row — Wallet Kit's rule (its #484: "background
+         * retries for the same stored document update one transaction"). Without it, a document the issuer kept
+         * refusing added a "Not completed" re-issuance row on every foreground sweep, every 15 minutes. The row says
+         * how the latest attempt ended, and when, which is where this parts from Wallet Kit: it keeps the first
+         * attempt's time while the app stays open. A re-issue the user asks for gets a row of its own.
+         */
+        internal fun forReIssuance(
+            store: suspend () -> MultipazWalletStore,
+            documentId: String,
+            userTriggered: Boolean,
+            registration: IssuerRegistration?,
+            now: Instant = Clock.System.now(),
+        ) = IosIssuanceLog(
+            store = store,
+            reissuance = true,
+            userTriggered = userTriggered,
+            requested = 1,
+            registration = registration,
+            now = now,
+            writeAhead = false,
+            rowId = if (userTriggered) null else "background-reissuance:$documentId",
+        )
     }
 }
 
