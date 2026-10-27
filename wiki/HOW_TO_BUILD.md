@@ -6,6 +6,7 @@
 * [Prerequisites](#prerequisites)
 * [Build variants](#build-variants)
 * [Build commands](#build-commands)
+* [Building the iOS app](#building-the-ios-app)
 * [Running with remote services](#running-with-remote-services)
 * [Running with local services](#running-with-local-services)
 * [Why 10.0.2.2?](#why-10022)
@@ -15,7 +16,8 @@
 ## Overview
 
 This guide helps developers build the Android Wallet application and connect it to either the
-hosted reference services or locally running issuer/verifier services.
+hosted reference services or locally running issuer/verifier services. It also covers the iOS app:
+see [Building the iOS app](#building-the-ios-app).
 
 For production deployment, use this file only as a build reference. Production teams must also
 follow [the go-live guide](GO_LIVE.md).
@@ -136,6 +138,104 @@ environment variables. In the current Gradle file, `storePassword` is read from 
 `androidKeyPassword` / `ANDROID_KEY_PASSWORD` value used for `keyPassword`; if your keystore uses a
 separate store password, update the Gradle signing config before building release artifacts. For
 production signing, see [GO_LIVE.md](GO_LIVE.md#release-signing).
+
+## Building the iOS app
+
+The iOS app shares its Kotlin code with Android through `:shared-logic` and `:shared-ui`. Xcode builds
+the Swift app in `iosApp/` and, as one of its build phases, runs Gradle to compile that Kotlin code into
+a framework.
+
+### iOS prerequisites
+
+* A Mac with Apple silicon. The Kotlin code is built for phones (`iosArm64`) and Apple-silicon
+  simulators (`iosSimulatorArm64`) only.
+* Xcode with the iOS 26.2 SDK or later. The Digital Credentials extension targets iOS 26.2; the app
+  itself runs on iOS 17 and later.
+* XcodeGen: `brew install xcodegen`.
+* JDK 17, as for Android: Xcode runs the Gradle wrapper during the build.
+
+### Generating the Xcode project
+
+The Xcode project is generated, not committed: `iosApp/project.yml` is its source, and
+`iosApp/iosApp.xcodeproj` is git-ignored. From the project root:
+
+```bash
+./gradlew generateIosProject
+```
+
+Use this task, not a bare `xcodegen generate`. The task supplies the app's name, id and version from
+`version.properties` and `app.properties`, the same files Android reads; a bare `xcodegen generate`
+leaves them as literal text such as `${VERSION_NAME}`, without a warning.
+
+Run it again after switching branches. The project keeps the identity of the branch that generated it,
+and the build refuses to start when that no longer matches the checked-out files.
+
+### iOS flavors
+
+iOS has the same two flavors as Android, chosen with the Xcode build setting `BUILD_VARIANT`:
+
+* `dev` (the default): the bundle ID has the `.dev` suffix.
+* `demo`.
+
+The flavor also chooses the app icon, and Xcode passes it to Gradle as `-PappFlavor`, so the Kotlin
+framework is built with the same flavor's configuration.
+
+### iOS build commands
+
+From `iosApp/`, for a simulator:
+
+```bash
+xcodebuild -project iosApp.xcodeproj -scheme EudiWallet -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17' build
+```
+
+Name a simulator you have installed (`xcrun simctl list devices available`). Do not use
+`-destination 'generic/platform=iOS Simulator'`: it also asks for an Intel (`x86_64`) simulator build,
+which the Kotlin code does not have, and fails with *Xcode Requested Architecture Not Configured in
+Gradle*.
+
+For a physical iPhone:
+
+```bash
+xcodebuild -project iosApp.xcodeproj -scheme EudiWallet -configuration Debug \
+  -destination 'generic/platform=iOS' -allowProvisioningUpdates -derivedDataPath build build
+xcrun devicectl device install app --device <device name or UDID> \
+  build/Build/Products/Debug-iphoneos/EudiWallet.app
+```
+
+For the `demo` flavor, add `BUILD_VARIANT=demo` to the `xcodebuild` command. A build setting given on
+the command line applies to both targets: the app (`EudiWallet`) and its Digital Credentials extension
+(`EudiWalletDocumentProvider`).
+
+The first build takes several minutes, because Xcode resolves the Swift packages and Gradle compiles the
+Kotlin framework.
+
+### Building in Xcode
+
+Open `iosApp/iosApp.xcodeproj`, choose the **EudiWallet** scheme and a destination, then run. For
+`demo`, set `BUILD_VARIANT` to `demo` in the Build Settings of **both** targets, `EudiWallet` and
+`EudiWalletDocumentProvider`. Each target sets `dev` itself, so a project-level value has no effect,
+and the next `generateIosProject` sets both back to `dev`.
+
+### iOS signing
+
+Builds for a phone are signed with the Compote team (`D2YJRYD9TA`), so that team must be added in
+**Xcode > Settings > Accounts**. Ad-hoc signing does not work: the Digital Credentials entitlement
+(`com.apple.developer.identity-document-services.document-provider.mobile-document-types`) is restricted
+and is honored only when a real provisioning profile carries it.
+
+With `-allowProvisioningUpdates`, `xcodebuild` creates the app IDs and profiles it needs. The phone
+itself must be registered in the team: running on it once from Xcode does that, and so does adding
+`-allowProvisioningDeviceRegistration` with a destination that names the phone, such as
+`-destination 'platform=iOS,name=<device name>'`.
+
+Signing with another team takes three things: `DEVELOPMENT_TEAM=<team ID>` on the command line, bundle
+IDs that team can register, and Apple's approval of the Digital Credentials entitlement for that team.
+The app's bundle ID, the extension's (`<app ID>.provider`), the app group (`group.<app ID>`) and the
+keychain access group all derive from the app ID in `app.properties`, which also sets Android's
+application ID.
+
+Simulator builds do not need the team.
 
 ## Running with remote services
 
