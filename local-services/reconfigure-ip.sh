@@ -83,9 +83,11 @@ set_kv ".env" "LOCAL_IP" "$NEW"
 echo "Regenerating TLS server cert for ${NEW} ..."
 ( cd "$ROOT" && ./gradlew -q :network-logic:generateLocalServerCert -PhostIp="$NEW" -Pforce )
 
-# 3. Recreate the docker stack (--build picks up the statuslist config change).
+# 3. Recreate the docker stack so every service re-reads its bind-mounted config.
+#    Status URIs issued under the old IP can no longer be revoked: the status-list service
+#    only accepts URIs under its current service_url.
 echo "Recreating docker stack ..."
-docker compose up -d --build --force-recreate
+docker compose up -d --force-recreate
 
 # 4. Rebuild + reinstall the app so BuildConfig.LOCAL_IP takes effect.
 if [ "$SKIP_APP" = "0" ]; then

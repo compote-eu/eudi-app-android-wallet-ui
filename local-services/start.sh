@@ -70,17 +70,17 @@ CA="$ROOT/network-logic/.local-dev-ca"
 for f in \
   "$CA/ca.crt" "$CA/server.crt" "$CA/server.key" \
   config/issuer/config_issuer_backend.yaml \
-  config/issuer-oidc/config.json config/issuer-oidc/openid-configuration.json \
-  config/issuer-oidc/views.py config/issuer-frontend/frontend_config.yaml \
+  config/issuer-oidc/config.yaml config/issuer-frontend/frontend_config.yaml \
   config/wallet-provider/signing.p12 \
   config/issuer/privKey/PID-DS-03.key \
+  config/issuer/trust/wallet-providers/wallet-provider.pem \
+  config/issuer-oidc/oidc_trusted_attesters/wallet-provider.pem \
   config/statuslist/privKey/PID-DS-0001_UT.pem \
-  repos/eudi-srv-statuslist-py/Dockerfile ; do
+  config/statuslist/config_statuslist.yaml ; do
   [ -e "$f" ] && ok "$f" || bad "$f"
 done
-for d in config/issuer/credentials_supported config/wallet-provider/schemas/postgresql ; do
-  [ -n "$(ls -A "$d" 2>/dev/null || true)" ] && ok "$d/" || bad "$d/ (empty)"
-done
+d=config/wallet-provider/schemas/postgresql
+[ -n "$(ls -A "$d" 2>/dev/null || true)" ] && ok "$d/" || bad "$d/ (empty)"
 
 # Host-native wallet-provider image (built from source by bootstrap; not pulled).
 if docker image inspect eudi-srv-wallet-provider:local >/dev/null 2>&1; then
@@ -117,8 +117,8 @@ echo; echo "Starting stack ..."
 docker compose up -d
 
 echo "Health:"
-for u in ":8443/.well-known/openid-credential-issuer" ":8445/" ":8444/"; do
+for u in ":8444/.well-known/openid-credential-issuer" ":8443/.well-known/oauth-authorization-server/oidc/5d725b3c-6d42-448e-8bfd-1eff1fcf152d" ":8445/" ":8444/"; do
   code="$(curl -s -o /dev/null -w '%{http_code}' --cacert "$CA/ca.crt" "https://${LOCAL_IP}${u}" --max-time 8 2>/dev/null || echo 000)"
-  printf '  %-45s -> %s\n' "https://${LOCAL_IP}${u}" "$code"
+  printf '  %-100s -> %s\n' "https://${LOCAL_IP}${u}" "$code"
 done
 echo "Up. Open the localDebug app to issue (Add document > PID > FormEU)."

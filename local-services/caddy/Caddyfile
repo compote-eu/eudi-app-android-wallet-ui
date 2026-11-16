@@ -8,24 +8,33 @@
 	auto_https off
 }
 
-# Issuer (credential issuer) + OIDC authorization server, both on :8443.
-#   /.well-known/oauth-authorization-server/oidc -> OIDC svc /.well-known/oauth-authorization-server
-#   /oidc/*                                       -> OIDC svc /* (prefix stripped)
-#   everything else                               -> credential issuer
+# Issuer backend + OIDC authorization server + status lists, all on :8443.
+# The authorization server (issuer https://${LOCAL_IP}:8443/oidc) serves its routes under
+# /oidc itself, so paths pass through unchanged (no prefix stripping since v0.10.0):
+#   /oidc/*                                         -> issuer-oidc (the frontend's AS is /oidc/<frontend id>)
+#   /.well-known/oauth-authorization-server/oidc/*  -> issuer-oidc (RFC 8414 metadata)
+#   /.well-known/openid-configuration/oidc/*        -> issuer-oidc
+#   /token_status_list/*, /identifier_list/*        -> statuslist
+#   everything else                                 -> issuer backend (/credential, /nonce, ...)
+# The credential issuer itself (its /.well-known/openid-credential-issuer) is the frontend on :8444.
 :8443 {
 	tls /certs/server.crt /certs/server.key
 
-	handle /.well-known/oauth-authorization-server/oidc {
-		rewrite * /.well-known/oauth-authorization-server
+	handle /oidc/* {
 		reverse_proxy issuer-oidc:5000
 	}
-
-	handle_path /oidc/* {
+	handle /.well-known/oauth-authorization-server/oidc/* {
+		reverse_proxy issuer-oidc:5000
+	}
+	handle /.well-known/openid-configuration/oidc/* {
 		reverse_proxy issuer-oidc:5000
 	}
 
 	# Token status list (issuer revocation calls) -> statuslist service
 	handle /token_status_list/* {
+		reverse_proxy statuslist:5000
+	}
+	handle /identifier_list/* {
 		reverse_proxy statuslist:5000
 	}
 

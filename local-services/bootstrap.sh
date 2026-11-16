@@ -59,6 +59,19 @@ set_kv() { local f="$1" k="$2" v="$3"; if grep -qE "^${k}=" "$f" 2>/dev/null; th
   sed -i.bak -E "s|^${k}=.*|${k}=${v}|" "$f" && rm -f "$f.bak"; else printf '%s=%s\n' "$k" "$v" >> "$f"; fi; }
 set_kv .env LOCAL_IP "$LOCAL_IP"
 set_kv "$ROOT/local.properties" localIp "$LOCAL_IP"
+# Per-developer secrets, kept in .env and rendered into the configs (step 3). The services
+# refuse keys shorter than 32 characters or known placeholders such as "test" / "secret"
+# (status list v0.10.0+, issuer v0.11.0+), so a random value replaces a short or missing one.
+SECRETS="STATUSLIST_API_KEY ISSUER_SECRET_KEY ISSUER_BACKEND_API_KEY ISSUER_ADMIN_API_KEY ISSUER_AS_API_KEY ISSUER_PAYLOAD_KEY ISSUER_DB_PASSWORD"
+for name in $SECRETS; do
+  val="$(grep -E "^${name}=" .env | tail -1 | cut -d= -f2 | tr -d '[:space:]' || true)"   # absent: grep fails
+  if [ "${#val}" -lt 32 ]; then
+    val="$(openssl rand -hex 32)"
+    set_kv .env "$name" "$val"
+    echo "Generated $name in .env"
+  fi
+  printf -v "$name" "%s" "$val"
+done
 
 # ---------------------------------------------------------------------------------------
 step "1/10  Dev CA + TLS server cert (dev CA reused if it already exists)"
@@ -74,53 +87,44 @@ step "2/10  Wallet-provider ES256 signing keystore"
 ( cd "$ROOT" && "$GRADLEW" -q :network-logic:generateWalletProviderSigningKey )
 
 # ---------------------------------------------------------------------------------------
-step "3/10  Render service configs from templates/ (substitute LOCAL_IP)"
+step "3/10  Render service configs from templates/ (substitute LOCAL_IP + secrets)"
 # ---------------------------------------------------------------------------------------
-# Our known-good configs are committed under templates/ with a __LOCAL_IP__ placeholder,
-# so setup is deterministic (no fetch-and-patch of upstream = no version-skew surprises).
-render() { mkdir -p "$(dirname "$2")"; sed "s/__LOCAL_IP__/${LOCAL_IP}/g" "$1" > "$2"; echo "  $2"; }
+# Our known-good configs are committed under templates/ with __LOCAL_IP__ and __<SECRET>__
+# placeholders, so setup is deterministic (no fetch-and-patch of upstream = no version-skew
+# surprises; the images they fit are pinned in compose.yaml).
+render() { mkdir -p "$(dirname "$2")"
+  local args=(-e "s/__LOCAL_IP__/${LOCAL_IP}/g") name
+  for name in $SECRETS; do args+=(-e "s/__${name}__/${!name}/g"); done
+  sed "${args[@]}" "$1" > "$2"; echo "  $2"; }
 render templates/issuer/config_issuer_backend.yaml       config/issuer/config_issuer_backend.yaml
-render templates/issuer-oidc/config.json                 config/issuer-oidc/config.json
-render templates/issuer-oidc/openid-configuration.json   config/issuer-oidc/openid-configuration.json
-render templates/issuer-oidc/views.py                    config/issuer-oidc/views.py
+render templates/issuer-oidc/config.yaml                 config/issuer-oidc/config.yaml
 render templates/issuer-frontend/frontend_config.yaml    config/issuer-frontend/frontend_config.yaml
-: > config/issuer-oidc/oidc_trusted_attesters   # empty trust list is fine for the public-client flow
+# Left by setups older than the 2026-11 issuer releases; nothing reads them any more.
+rm -f config/issuer-oidc/config.json config/issuer-oidc/openid-configuration.json config/issuer-oidc/views.py
+rm -rf config/issuer/credentials_supported
+[ -f config/issuer-oidc/oidc_trusted_attesters ] && rm -f config/issuer-oidc/oidc_trusted_attesters
 
 # ---------------------------------------------------------------------------------------
 step "4/10  Issuer Document-Signer keys + global (nonce / credential-request) keys"
 # ---------------------------------------------------------------------------------------
 ./gen-issuer-ds.sh    # writes config/issuer/{privKey,cert}/* signed by the dev CA
+# The issuer images run as uid 10001, not root, so the bind-mounted keys must be readable by
+# others (openssl writes them 0600). Local dev keys; on Linux a 0600 key stops the issuer starting.
+chmod 644 config/issuer/privKey/*
 
 # ---------------------------------------------------------------------------------------
-step "5/10  Issuer credential metadata overrides (add key_attestations_required + both proofs)"
+step "5/10  Trust anchors for the wallet-provider's attestations"
 # ---------------------------------------------------------------------------------------
-# The app's OpenID4VCI SDK requires every proof type to declare key_attestations_required and
-# to offer BOTH jwt + attestation proofs. Extract the metadata from the issuer image and patch.
-if [ ! -d config/issuer/credentials_supported ] || [ -z "$(ls -A config/issuer/credentials_supported 2>/dev/null)" ]; then
-  mkdir -p config/issuer/credentials_supported
-  ISSUER_IMG=ghcr.io/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py:latest
-  docker run --rm --entrypoint sh "$ISSUER_IMG" -c \
-    'cd /app/app/metadata_config/credentials_supported && tar cf - .' | tar xf - -C config/issuer/credentials_supported
-  python3 - <<'PY'
-import json, glob
-for p in glob.glob("config/issuer/credentials_supported/*.json"):
-    d = json.load(open(p)); changed = False
-    for cid, cfg in d.items():
-        pts = cfg.get("proof_types_supported") if isinstance(cfg, dict) else None
-        if isinstance(pts, dict) and pts:
-            algs = next((m.get("proof_signing_alg_values_supported") for m in pts.values()
-                         if isinstance(m, dict) and m.get("proof_signing_alg_values_supported")), ["ES256"])
-            for t in ("jwt", "attestation"):
-                m = pts.get(t)
-                if not isinstance(m, dict): pts[t] = m = {}; changed = True
-                m.setdefault("proof_signing_alg_values_supported", algs)
-                if m.get("key_attestations_required") is None: m["key_attestations_required"] = {}; changed = True
-    if changed: json.dump(d, open(p, "w"), indent=2)
-print("  patched credential metadata")
-PY
-else
-  echo "  credentials_supported already present — skipping"
-fi
+# The wallet-provider signs wallet attestations (WIA) and key attestations with the self-signed
+# certificate of step 2. The issuer checks key attestations against it (trusted_CAs_paths) and
+# the authorization server checks WIAs against it (oidc_trusted_attesters). Both read *.pem only.
+# (The credential metadata needs no patch since issuer v0.11.0: every configuration it publishes
+# offers both the jwt and the attestation proof with key_attestations_required.)
+for d in config/issuer/trust/wallet-providers config/issuer-oidc/oidc_trusted_attesters; do
+  mkdir -p "$d"
+  openssl x509 -in config/wallet-provider/signing.crt -out "$d/wallet-provider.pem"
+  echo "  $d/wallet-provider.pem"
+done
 
 # ---------------------------------------------------------------------------------------
 step "6/10  Wallet-provider source (pinned v0.2.1) + PostgreSQL schema"
@@ -145,39 +149,12 @@ else
 fi
 
 # ---------------------------------------------------------------------------------------
-step "7/10  Status-list service (clone build-from-source, overlay config, generate key)"
+step "7/10  Status-list service (config + signing key; the image is pulled, pinned in compose.yaml)"
 # ---------------------------------------------------------------------------------------
-# Pinned to a tag for the same reason the wallet-provider is: an unpinned `--depth 1` clone
-# of the default branch silently gives each machine whatever `main` happened to be that day,
-# so two bootstraps can produce different stacks with nothing recording the difference.
-# v0.9.0 == upstream `main` at the time of pinning (2026-09-10).
-SL=repos/eudi-srv-statuslist-py
-SL_TAG=v0.9.0
-if [ -d "$SL/.git" ]; then
-  git -C "$SL" fetch --depth 1 origin "refs/tags/$SL_TAG:refs/tags/$SL_TAG" 2>/dev/null || true
-  git -C "$SL" checkout -q "$SL_TAG"
-else
-  git clone --depth 1 --branch "$SL_TAG" \
-    https://github.com/eu-digital-identity-wallet/eudi-srv-statuslist-py "$SL"
-fi
-# Overlay our localized config (FC country, LOCAL_IP) and a build Dockerfile (none ships upstream).
-render templates/statuslist/config_service.py "$SL/app/config_service.py"
-cat > "$SL/Dockerfile" <<'DOCKER'
-FROM python:3.10-slim
-WORKDIR /app
-COPY app/requirements.txt /app/app/requirements.txt
-RUN pip install --no-cache-dir -r /app/app/requirements.txt
-COPY . /app
-ENV FLASK_APP=app
-EXPOSE 5000
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
-DOCKER
-# Keep the clone's `git status` clean: our overlay + Dockerfile are byproducts, not edits
-# to contribute upstream. skip-worktree hides the tracked config_service.py modification;
-# .git/info/exclude (local-only) hides the untracked Dockerfile without adding a tracked
-# .gitignore. Both are re-applied on every fresh clone, so this stays quiet for teammates.
-git -C "$SL" update-index --skip-worktree app/config_service.py 2>/dev/null || true
-grep -qxF 'Dockerfile' "$SL/.git/info/exclude" 2>/dev/null || echo 'Dockerfile' >> "$SL/.git/info/exclude"
+# Since v0.10.0 upstream publishes a multi-arch image and reads a YAML config, so there is
+# nothing to clone or overlay any more: render the config and generate the signing key.
+# An old v0.9.0 clone under repos/ is no longer used and can be deleted.
+render templates/statuslist/config_statuslist.yaml config/statuslist/config_statuslist.yaml
 
 # Status-list signing key (the FC country maps to the UT key), signed by the dev CA.
 if [ ! -f config/statuslist/cert/PID-DS-0001_UT_cert.der ]; then
@@ -193,6 +170,9 @@ if [ ! -f config/statuslist/cert/PID-DS-0001_UT_cert.der ]; then
 else
   echo "  status-list key already present — skipping"
 fi
+# The image runs as uid 10001, not root, so the bind-mounted key must be readable by others
+# (openssl writes it 0600). A local dev key; on Linux a 0600 file stops the service starting.
+chmod 644 config/statuslist/privKey/PID-DS-0001_UT.pem
 
 # ---------------------------------------------------------------------------------------
 step "8/10  Native wallet-provider image (build from source — no arm64 image is published)"
@@ -221,7 +201,10 @@ fi
 # ---------------------------------------------------------------------------------------
 step "9/10  Build & start the stack"
 # ---------------------------------------------------------------------------------------
-docker compose up -d --build
+# --force-recreate: every service reads its bind-mounted config (and Caddy its Caddyfile) only
+# at start-up, and compose does not recreate a container whose mounted file changed, so a
+# re-run would otherwise keep serving the old config. Volumes (databases, keys) are kept.
+docker compose up -d --build --force-recreate
 
 # ---------------------------------------------------------------------------------------
 step "10/10  Android app (localDebug)"

@@ -252,7 +252,7 @@ comment-toggle away, in `core-logic/src/local/.../WalletCoreConfigImpl.kt` and
 
 | Service | Necessary? | Default in `local` | Port |
 |---|---|---|---|
-| Issuer (OpenID4VCI) | Yes | `https://${LOCAL_IP}` (dev URL commented) | `:8443` |
+| Issuer (OpenID4VCI) | Yes | `https://${LOCAL_IP}` (dev URL commented) | `:8444` (backend + authorization server on `:8443`) |
 | Wallet Provider | Yes | `https://${LOCAL_IP}` (dev URL commented) | `:8445` |
 | Trusted list (LoTE) | No | dev reference list (local URLs commented) | `:8446` |
 | RQES signer | No | dev reference signer (local URL commented) | `:8449` |

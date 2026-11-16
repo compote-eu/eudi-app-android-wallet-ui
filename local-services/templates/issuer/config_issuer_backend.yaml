@@ -1,86 +1,158 @@
-# config_issuer_backend.yaml - COMPLETE CONFIGURATION
-# ⚠️ IMPORTANT: This file contains SECRETS - DO NOT commit to git!
-# Add to .gitignore: config_issuer_backend.yaml, config_issuer_backend.*.yaml
+# Issuer backend (eudi-srv-web-issuing-eudiw-py v0.11.0) for the local stack.
+# Rendered by bootstrap.sh into config/issuer/config_issuer_backend.yaml (git-ignored): the
+# __NAME__ placeholders become LOCAL_IP and the secrets bootstrap.sh generates into .env.
+# Upstream's annotated example, with every key explained:
+#   https://github.com/eu-digital-identity-wallet/eudi-srv-web-issuing-eudiw-py/blob/v0.11.0/app/config_issuer_backend_example.yaml
+
+variables:
+  backend_url: "https://__LOCAL_IP__:8443"
+  # The FormEU frontend: the credential issuer the wallet talks to.
+  frontend_url: "https://__LOCAL_IP__:8444"
+  # The authorization server's issuer (issuer-oidc, behind Caddy under /oidc).
+  as_url: "https://__LOCAL_IP__:8443/oidc"
+  status_list_url: "https://__LOCAL_IP__:8443/token_status_list"
+  eudiw_dir: "/etc/eudiw/pid-issuer-dev"
+  keys_dir: "${eudiw_dir}/privKey"
+  certs_dir: "${eudiw_dir}/cert"
 
 # ============================================================================
-# SERVICE CONFIGURATION
+# SERVICE
 # ============================================================================
-service_url: "https://__LOCAL_IP__:8443"
-  
-wallet_tester_url: "https://__LOCAL_IP__:8443"
+service_url: "${backend_url}"
+wallet_tester_url: "${backend_url}"
+
+# Secrets (generated per developer by bootstrap.sh). backend_api_key is the one the
+# frontend sends; admin_api_key guards the admin endpoints; secret_key signs the session cookie.
+backend_api_key: "__ISSUER_BACKEND_API_KEY__"
+admin_api_key: "__ISSUER_ADMIN_API_KEY__"
+secret_key: "__ISSUER_SECRET_KEY__"
+
+# Caddy is the one reverse proxy in front of the backend.
+rate_limiting:
+  enabled: true
+  trusted_proxies: 1
+
+# The FormEU country (FC) is a test feature since v0.10: the user types the attributes.
+test_features:
+  form_countries: true
 
 revocation:
-  take_url: "https://__LOCAL_IP__:8443/token_status_list/take"
-  set_url: https://__LOCAL_IP__:8443/token_status_list/set
-  api_key: "secret"  # SECRET
+  take_url: "${status_list_url}/take"
+  set_url: "${status_list_url}/set"
+  api_key: "__STATUSLIST_API_KEY__"
   enabled: true
 
 # ============================================================================
-# FRONTEND CONFIGURATION
+# FRONTEND
 # ============================================================================
 frontend:
   default: "5d725b3c-6d42-448e-8bfd-1eff1fcf152d"
-  
   frontends_config:
     "5d725b3c-6d42-448e-8bfd-1eff1fcf152d":
-      url: "https://__LOCAL_IP__:8444"
-      metadata_signing_key_path: "/etc/eudiw/pid-issuer-dev/privKey/PID-DS-03.key"
-      metadata_access_certificate_path: "/etc/eudiw/pid-issuer-dev/cert/PID-DS-03.crt"
+      url: "${frontend_url}"
+      metadata_signing_key_path: "${keys_dir}/PID-DS-03.key"
+      metadata_access_certificate_path: "${certs_dir}/PID-DS-03.crt"
       metadata_signing_key_password: null
+      # Signs the payloads the backend posts to the frontend's /display_* pages (HS256);
+      # the same value is the frontend's payload_key.
+      payload_key: "__ISSUER_PAYLOAD_KEY__"
+      # The credentials this frontend publishes (it used to be the frontend's own list).
+      # aamva_mdl_mdoc is left out: it offers only the jwt proof, and the wallet needs
+      # both jwt and attestation proofs.
+      credentials_supported:
+        - "org.iso.18013.5.1.reservation_mdoc"
+        - "eu.europa.ec.eudi.cor_mdoc"
+        - "eu.europa.ec.eudi.diploma_vc_sd_jwt"
+        - "eu.europa.ec.eudi.ehic_sd_jwt_vc"
+        - "eu.europa.ec.eudi.ehic_mdoc"
+        - "eu.europa.ec.eudi.employee_mdoc"
+        - "eu.europa.ec.eudi.hiid_sd_jwt_vc"
+        - "eu.europa.ec.eudi.hiid_mdoc"
+        - "eu.europa.ec.eudi.iban_sd_jwt_vc"
+        - "eu.europa.ec.eudi.iban_mdoc"
+        - "eu.europa.ec.eudi.loyalty_mdoc"
+        - "eu.europa.ec.eudi.mdl_mdoc"
+        - "eu.europa.ec.eudi.msisdn_sd_jwt_vc"
+        - "eu.europa.ec.eudi.msisdn_mdoc"
+        - "eu.europa.ec.eudi.pda1_sd_jwt_vc"
+        - "eu.europa.ec.eudi.pda1_mdoc"
+        - "eu.europa.ec.eudi.photoid"
+        - "eu.europa.ec.eudi.pid_vc_sd_jwt"
+        - "eu.europa.ec.eudi.pid_mdoc_deferred"
+        - "eu.europa.ec.eudi.pid_mdoc"
+        - "eu.europa.ec.eudi.por_sd_jwt_vc"
+        - "eu.europa.ec.eudi.por_mdoc"
+        - "eu.europa.ec.eudi.seafarer_mdoc"
+        - "eu.europa.ec.eudi.tax_sd_jwt_vc"
+        - "eu.europa.ec.eudi.tax_mdoc"
+        - "eu.europa.ec.eudi.tax_residency_vc_sd_jwt"
+        - "eu.europa.ec.eudi.learning_credential_vc_sd_jwt"
+        - "org.iso.7367.2.1.mVC_mdoc"
 
 # ============================================================================
-# ISSUER AUTHORIZATION SERVER CONFIGURATION
+# AUTHORIZATION SERVER (issuer-oidc)
 # ============================================================================
-
 authorization_server:
-  base_url: "https://__LOCAL_IP__:8443/oidc"
-  user_verify_endpoint: "https://__LOCAL_IP__:8443/oidc/verify/user"
+  # Public issuer; each frontend's authorization server is <base_url>/<frontend id>.
+  base_url: "${as_url}"
+  user_verify_endpoint: "${as_url}/verify/user"
+  # Inside the docker network: introspection, /preauth_generate and the JWKS fetch go
+  # straight to the container instead of out through the LAN IP.
+  internal_url: "http://issuer-oidc:5000/oidc"
+  # Sent as X-Api-Key to /introspection and /preauth_generate; the authorization
+  # server's backend_api_key.
+  api_key: "__ISSUER_AS_API_KEY__"
 
 # ============================================================================
-# EXTERNAL SERVICES CONFIGURATION
+# EXTERNAL SERVICES
 # ============================================================================
-#verifier url for oid4vp request generation, available at https://github.com/eu-digital-identity-wallet/eudi-srv-verifier-endpoint
+# Only the PID login (OID4VP) uses it; the local stack issues through FormEU.
 dynamic_presentation_url: "https://verifier-backend.eudiw.dev/ui/presentations"
+intended_use_id:
+registration_certificate_jwt:
 
-# WUA trust validator url, available at https://github.com/eu-digital-identity-wallet/eudi-srv-trust-validator
-trust_validator:  
+# No hosted validators locally: chains are checked against the local trust anchors
+# below, and the status of wallet / key attestations is not checked.
+trust_validator:
   url: "https://trust-validator.eudiw.dev/trust"
   enabled: false
+status_validator:
+  url: "http://unused.invalid"
+  enabled: false
 
-# ============================================================================
-# SCHEMA CONFIGURATION
-# ============================================================================
 oid4vp_scheme: "haip-vp://"
-
 credential_offer_scheme: "haip-vci://"
 
-# ============================================================================
-# LOGGING
-# ============================================================================
+# Database of the wallet / key attestation status records (the issuer-db service).
+postgres:
+  host: "issuer-db"
+  port: 5432
+  dbname: "eudiw_issuer"
+  user: "issuer_backend"
+  password: "__ISSUER_DB_PASSWORD__"
+
 logging:
-  backend_path: "/tmp/log_prod/logs.log"
+  backend_path: "/tmp/log/logs.log"
   log_level: "INFO"
 
-# ============================================================================
-# EXPIRY TIMES (minutes)
-# ============================================================================
 expiry:
   revocation_code: 60
   form: 60
   session: 60
+  cleanup_interval: 60
 
-# ============================================================================
-# KEY PATHS
-# ============================================================================
 keys:
-  nonce_path: "/etc/eudiw/pid-issuer-dev/privKey/nonce_rsa2048.pem" # Private key that signs the nonce at the nonce enpoint. 
-  credential_request_path: "/etc/eudiw/pid-issuer-dev/privKey/credential_request.pem" # Private key used for credential request encryption. Metadata advertised public key is automatically generated from this private key.
+  nonce_path: "${keys_dir}/nonce_rsa2048.pem"
+  credential_request_path: "${keys_dir}/credential_request.pem"
 
-# Path to trusted CA certificates, used to validate VP_Tokens
-trusted_CAs_path: "/etc/eudiw/pid-issuer-dev/cert/"
+# Trust anchors (*.pem only). Key attestations come from the local wallet-provider,
+# whose self-signed signing certificate bootstrap.sh copies into its own folder.
+trusted_CAs_path: "${certs_dir}/"
+trusted_CAs_paths:
+  key_attestation: "/etc/eudiw/trust/wallet-providers/"
 
 # ============================================================================
-# CREDENTIALS AUTHENTICATION METHODS CONFIGURATION
+# CREDENTIAL AUTHENTICATION METHODS
 # ============================================================================
 credential_auth_methods:
   PID_login:
@@ -127,55 +199,46 @@ credential_auth_methods:
     - eu.europa.ec.eudi.learning_credential_vc_sd_jwt
 
 # ============================================================================
-# COUNTRIES CONFIGURATION
+# COUNTRIES (document signers made by gen-issuer-ds.sh, signed by the dev CA)
 # ============================================================================
-
-# Currently only _default is supported for both keys and custom_modifiers
-# Eventually keys will be separated by frontend and custom_modifiers per credential_configuration_id
-# Connection types supported: oauth or openid
-
 countries:
   EU:
     name: "nodeEU"
-
-    # Keys and certificates
     keys:
       _default:
-        private_key_path: "/etc/eudiw/pid-issuer-dev/privKey/PID-DS-0002_EU.pem"
-        private_key_password: null 
-        certificate_path: "/etc/eudiw/pid-issuer-dev/cert/PID-DS-0002_EU_cert.der"
-
+        private_key_path: "${keys_dir}/PID-DS-0002_EU.pem"
+        private_key_password: null
+        certificate_path: "${certs_dir}/PID-DS-0002_EU_cert.der"
     supported_credential_ids:
       - "eu.europa.ec.eudi.pid_mdoc"
       - "eu.europa.ec.eudi.pid_vc_sd_jwt"
       - "eu.europa.ec.eudi.pid_mdoc_deferred"
-    
     custom_modifiers:
       _default:
         family_name: "CurrentFamilyName"
         given_name: "CurrentGivenName"
         birth_date: "DateOfBirth"
-    
     connection_type: "oauth"
-    
     auth:
       base_url: "https://eidas.projj.eu"
-      redirect_uri: "https://__LOCAL_IP__:8443/dynamic/redirect"
+      redirect_uri: "${backend_url}/dynamic/redirect"
       scope: "profile"
       response_type: "code"
       client_id: "example"
       client_secret: "example"
 
+  # The one country that works offline: the user types the attributes.
   FC:
-    name: "FormEU"    
+    name: "FormEU"
     keys:
       _default:
-        private_key_path: "/etc/eudiw/pid-issuer-dev/privKey/PID-DS-0002_UT.pem"
+        private_key_path: "${keys_dir}/PID-DS-0002_UT.pem"
         private_key_password: null
-        certificate_path: "/etc/eudiw/pid-issuer-dev/cert/PID-DS-0002_UT_cert.der"
-    
+        certificate_path: "${certs_dir}/PID-DS-0002_UT_cert.der"
+    # FC is not a country: issuing_country must match the countryName of the
+    # document signer above (C=UT, as gen-issuer-ds.sh makes it).
+    issuing_country: "UT"
     un_distinguishing_sign: "FC"
-    
     supported_credential_ids:
       - "eu.europa.ec.eudi.pid_mdoc"
       - "eu.europa.ec.eudi.pid_vc_sd_jwt"
@@ -206,35 +269,28 @@ countries:
       - "eu.europa.ec.eudi.pid_mdoc_deferred"
       - "eu.europa.ec.eudi.learning_credential_vc_sd_jwt"
 
-
   PT:
     name: "Portugal"
-    
     keys:
       _default:
-        private_key_path: "/etc/eudiw/pid-issuer-dev/privKey/PID-DS-0002_PT.pem"
+        private_key_path: "${keys_dir}/PID-DS-0002_PT.pem"
         private_key_password: null
-        certificate_path: "/etc/eudiw/pid-issuer-dev/cert/PID-DS-0002_PT_cert.der"
-    
+        certificate_path: "${certs_dir}/PID-DS-0002_PT_cert.der"
     un_distinguishing_sign: "P"
-    
     supported_credential_ids:
       - "eu.europa.ec.eudi.pid_mdoc"
       - "eu.europa.ec.eudi.pid_vc_sd_jwt"
       - "eu.europa.ec.eudi.mdl_mdoc"
       - "eu.europa.ec.eudi.pid_mdoc_deferred"
-    
     connection_type: "oauth"
-    
     custom_modifiers:
       _default:
         "http://interop.gov.pt/MDC/Cidadao/DataNascimento": "birth_date"
         "http://interop.gov.pt/MDC/Cidadao/NomeApelido": "family_name"
         "http://interop.gov.pt/MDC/Cidadao/NomeProprio": "given_name"
-    
     auth:
       base_url: "https://country-connector.ageverification.dev"
-      redirect_uri: "https://__LOCAL_IP__:8443/dynamic/redirect"
+      redirect_uri: "${backend_url}/dynamic/redirect"
       scope: "profile"
       response_type: "code"
       client_id: "example"
@@ -242,19 +298,15 @@ countries:
 
   EE:
     name: "Estonia"
-    
     keys:
       _default:
-        private_key_path: "/etc/eudiw/pid-issuer-dev/privKey/PID-DS-0002_EE.pem"
+        private_key_path: "${keys_dir}/PID-DS-0002_EE.pem"
         private_key_password: null
-        certificate_path: "/etc/eudiw/pid-issuer-dev/cert/PID-DS-0002_EE_cert.der"
-    
+        certificate_path: "${certs_dir}/PID-DS-0002_EE_cert.der"
     supported_credential_ids:
       - "eu.europa.ec.eudi.pid_mdoc"
       - "eu.europa.ec.eudi.pid_vc_sd_jwt"
-    
     connection_type: "openid"
-    
     auth:
       base_url: "https://tara-test.ria.ee"
       redirect_uri: "https://pprpid.provider.eudiw.projj.eu/tara/redirect"
@@ -265,7 +317,6 @@ countries:
       client_secret: "Basic example=="
       authorization_headers: {"Host": "tara-test.ria.ee"}
       token_endpoint_headers: {"Host": "tara-test.ria.ee", "Content-Type": "application/x-www-form-urlencoded"}
-
     custom_modifiers:
       _default:
         family_name: "CurrentFamilyName"

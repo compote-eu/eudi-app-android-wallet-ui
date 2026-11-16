@@ -1,0 +1,35 @@
+# Token Status List service (eudi-srv-statuslist-py v0.10.0) for the local stack.
+# Rendered by bootstrap.sh into config/statuslist/config_statuslist.yaml; the container
+# reads it from /etc/statuslist_config/config_statuslist.yaml. Keys left out take the
+# service's defaults (app/config.py DEFAULTS), including allowed_doctypes, which already
+# covers every type the issuer and the wallet-provider ask for.
+
+# Public base of the lists: the status URIs written into credentials and attestations
+# start with it, and /set refuses a URI that does not. Caddy routes
+# /token_status_list/* and /identifier_list/* on :8443 to this service.
+service_url: https://__LOCAL_IP__:8443/
+
+# The service refuses to start with a key shorter than 32 characters or a known
+# placeholder ("test", "secret", ...). bootstrap.sh generates one into .env.
+api_key: "__STATUSLIST_API_KEY__"
+
+token_status_list_size: 10000
+status_list_dir: /var/opt/status_lists
+backup_dir: /var/opt/status_list_backup
+
+# Each signed list carries exp = iat + status_list_validity and is re-signed only at
+# 00:00 and 12:00 while the container runs. Upstream's default (1 day) leaves expired
+# lists behind a stack that was stopped overnight; 30 days covers a local stack that
+# runs now and then.
+status_list_validity: 2592000
+
+logging:
+  path: /var/log/status_lists/status_lists.log
+  log_level: INFO
+
+# One signing key per country. The wallet-provider asks for country FC; the key pair is
+# the dev-CA-signed one bootstrap.sh generates under config/statuslist/.
+countries:
+  FC:
+    private_key_path: /etc/eudiw/pid-issuer/privKey/PID-DS-0001_UT.pem
+    certificate_path: /etc/eudiw/pid-issuer/cert/PID-DS-0001_UT_cert.der

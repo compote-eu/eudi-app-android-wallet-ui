@@ -54,7 +54,8 @@ import kotlin.time.Duration.Companion.seconds
  * line. Flip any single service by swapping the active/commented lines.
  *
  * Port scheme for local services (adjust to whatever your local stack binds to):
- *   :8443 Issuer   ·   :8445 Wallet Provider   ·   :8446 Trusted list   ·   :8447 RQES
+ *   :8444 Issuer (its backend and authorization server answer on :8443)   ·   :8445 Wallet Provider
+ *   ·   :8446 Trusted list   ·   :8449 RQES
  */
 internal class WalletCoreConfigImpl(
     private val registrationCheckProvider: RegistrationCheckProvider,
@@ -197,9 +198,11 @@ internal class WalletCoreConfigImpl(
     override val issuersConfig: List<VciConfig>
         get() = listOf(
             // NECESSARY service: Issuer (OpenID4VCI).
-            // Active = local machine (:8443). Dev alternative is commented below.
+            // Active = local machine. Since issuer v0.11.0 the credential issuer identifier is the
+            // FormEU frontend (:8444); its metadata names the backend (:8443) for /credential and
+            // the authorization server (:8443/oidc/<frontend id>). Dev alternative is commented below.
             VciConfig(
-                issuerUrl = "https://${BuildConfig.LOCAL_IP}:8443",
+                issuerUrl = "https://${BuildConfig.LOCAL_IP}:8444",
                 // issuerUrl = "https://ec.dev.issuer.eudiw.dev", // dev fallback
                 config = OpenId4VciManager.Config.Builder()
                     .withClientAuthenticationType(
